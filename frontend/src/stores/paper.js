@@ -352,7 +352,11 @@ export const usePaperStore = defineStore('paper', () => {
         try {
           pollRes = await axios.get(`${API_BASE}/job/${jobId}`, { timeout: 10000 })
         } catch (pollErr) {
-          // Network error during poll — retry (don't abort)
+          // If the server returns 404 the job was already consumed — treat as error.
+          if (pollErr.response?.status === 404) {
+            throw new Error('Job tidak ditemukan. Server mungkin di-restart. Coba lagi.')
+          }
+          // Other network errors during poll — retry silently
           console.warn('[aiGenerateFullPaper] poll error (retrying):', pollErr.message)
           continue
         }

@@ -80,8 +80,14 @@ def get_openai_client():
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key or api_key == "sk-your-actual-api-key":
             raise Exception("OPENAI_API_KEY not configured. Please set it in backend/.env")
-        # Use client-level timeout of 600s (rps-web pattern — same model, proven 2-3 min)
-        openai_client = OpenAI(api_key=api_key, timeout=600.0)
+        # Use per-operation timeouts via httpx.Timeout:
+        #   connect=30s, read=1200s (20 min for full paper), write=60s
+        # max_retries=0 prevents compounding timeouts on retry
+        openai_client = OpenAI(
+            api_key=api_key,
+            timeout=httpx.Timeout(connect=30.0, read=1200.0, write=60.0, pool=10.0),
+            max_retries=0,
+        )
     return openai_client
 
 
@@ -307,7 +313,6 @@ Requirements:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
             ],
-            timeout=600
         )
 
         openai_duration = time.time() - t_openai_start
@@ -457,7 +462,13 @@ def get_job_status(job_id):
         return jsonify({"status": "pending", "elapsed": elapsed})
 
     elif job["status"] == "done":
-        _job_pop(job_id)   # clean up
+        # Keep the result in the store for 5 minutes so that a retry after a missed
+        # response does not return 404.  Use threading.Timer for deferred cleanup
+        # and only schedule it once (guard against duplicate timers on repeated polls).
+        if not job.get("_cleanup_scheduled"):
+            job["_cleanup_scheduled"] = True
+            _job_set(job_id, job)
+            threading.Timer(300, _job_pop, args=(job_id,)).start()
         return jsonify({
             "status": "done",
             "success": True,
