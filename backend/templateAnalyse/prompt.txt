@@ -1,0 +1,583 @@
+================================================================================
+PROMPT: GENERATE DOCX DARI TEMPLATE JURNAL
+================================================================================
+
+KONTEKS PROJECT:
+- Script analisis template: /home/sirobo/papergenerator/backend/templateAnalyse/_analyse.py
+- Data konten JSON: /home/sirobo/papergenerator/backend/templateAnalyse/_template.json
+- Naming convention output script: (namadoc)gen.py (contoh: JTUNDIPgen.py, ELKOLINDgen.py)
+- Naming convention output docx: (namadoc)_output.docx
+- Referensi gen.py yang sudah ada: El-Usrahgen.py, IJIMSgen.py
+- Folder kerja: /home/sirobo/papergenerator/backend/templateAnalyse/
+
+================================================================================
+LANGKAH KERJA (WAJIB URUT)
+================================================================================
+
+LANGKAH 1: ANALISA TEMPLATE ASLI
+---------------------------------
+Jalankan _analyse.py pada file template .docx/.doc asli untuk mendapatkan SEMUA detail format:
+  python _analyse.py (namafile).docx
+
+Catat dan gunakan SEMUA informasi berikut dari hasil analisa:
+- Page size (width tw, height tw, orientation)
+- Page margins (top, bottom, left, right, gutter, header distance, footer distance)
+- Columns (jumlah kolom, space antar kolom, equalWidth, individual col widths jika ada)
+- Header content (teks, font, size, bold/italic, alignment, fields/page number)
+- Footer content (teks, font, size, bold/italic, alignment, fields/page number)
+- Even/odd headers, first page header/footer (jika ada)
+- Semua styles yang digunakan (paragraph styles, character styles)
+- Font table (font apa saja yang dipakai)
+- Numbering definitions (format numbering section, subsection, list)
+- Table border styles
+- Body content formatting per paragraf (font, size, bold/italic, alignment, spacing, indent)
+
+LANGKAH 2: BUAT FILE (namadoc)gen.py
+--------------------------------------
+Buat script Python yang:
+a) Menggunakan dokumen asli .docx sebagai BASE TEMPLATE (paste keep formatting)
+   - Copy file asli ke output path
+   - Buka dengan python-docx
+   - Hapus HANYA body content (p dan tbl), PERTAHANKAN sectPr, headers, footers, styles, numbering, theme, fontTable
+   - Ini memastikan semua formatting bawaan template tetap ada
+
+b) Ambil SEMUA data dari _template.json
+
+c) Generate konten sesuai format template asli (detail di bawah)
+
+LANGKAH 3: GENERATE & VERIFIKASI (minimal 3 iterasi)
+------------------------------------------------------
+Jalankan script, buka output, verifikasi, perbaiki, ulangi sampai SEMUA benar.
+
+================================================================================
+DETAIL FORMAT PER ELEMEN (WAJIB DIIMPLEMENTASI)
+================================================================================
+
+1. TITLE (Judul Paper)
+   - Font: [sesuai analisa template]
+   - Size: [sesuai analisa template, dalam pt]
+   - Bold: [ya/tidak sesuai template]
+   - Italic: [ya/tidak sesuai template]
+   - Alignment: [center/left/right sesuai template]
+   - Spacing before: [sesuai template]
+   - Spacing after: [sesuai template]
+   - Case: [uppercase/titlecase/asis sesuai template]
+
+2. AUTHORS (Penulis)
+   - Font: [sesuai analisa]
+   - Size: [sesuai analisa]
+   - Bold: [sesuai analisa]
+   - Alignment: [center biasanya]
+   - Superscript untuk nomor afiliasi (jika template menggunakan)
+   - Afiliasi: font, size, italic/regular
+   - Email: font, size, italic/regular
+   - Spacing antar author/afiliasi/email
+
+3. ABSTRACT
+   - Label "Abstract": font, size, bold, alignment
+   - Isi abstract: font, size, italic/regular, alignment (justify), indent
+   - Spacing before/after
+
+4. KEYWORDS
+   - Label "Keywords:": font, size, bold
+   - Isi keywords: font, size, italic, separator (koma/semicolon)
+   - Alignment
+
+5. SECTION HEADING (Judul Bab)
+   - Font: [sesuai analisa]
+   - Size: [sesuai analisa]
+   - Bold: [ya biasanya]
+   - Alignment: [left/center/justify sesuai template]
+   - Spacing before: MINIMAL 3 pt (atau lebih sesuai template)
+   - Spacing after: MINIMAL 3 pt (atau lebih sesuai template)
+   - Numbering format: [sesuai template, contoh:]
+     * "I. JUDUL" (roman uppercase + dot + space + uppercase title)
+     * "1. Judul" (arabic + dot + space + titlecase)
+     * "JUDUL" (tanpa nomor, uppercase, bold)
+     * "Judul" (tanpa nomor, titlecase, bold)
+
+6. SUBSECTION HEADING (Sub Judul)
+   - Font: [sesuai analisa]
+   - Size: [sesuai analisa]
+   - Bold: [ya/tidak sesuai template]
+   - Italic: [ya/tidak sesuai template]
+   - Alignment: [sesuai template]
+   - Spacing before: MINIMAL 3 pt
+   - Spacing after: MINIMAL 3 pt
+   - Numbering format: [sesuai template, contoh:]
+     * "A. Sub Judul" (letter uppercase + dot)
+     * "1.1 Sub Judul" (arabic parent.child)
+     * "1.1. Sub Judul" (arabic parent.child + dot)
+     * "Sub Judul" (tanpa nomor, bold saja)
+
+7. BODY TEXT (Isi Paragraf)
+   - Font: [sesuai analisa]
+   - Size: [sesuai analisa]
+   - Bold: tidak
+   - Italic: tidak (kecuali inline formatting)
+   - Alignment: justify
+   - Line spacing: [sesuai template: single/1.15/1.5/exact Xpt]
+   - First-line indent: [sesuai template, biasanya 0.5" = 720tw atau 1cm = 567tw]
+   - Paragraf pertama setelah heading: TANPA indent (atau sesuai template)
+
+8. FIGURE (Gambar)
+   - Image: centered
+   - Width: [sesuai template, biasanya 1 kolom width atau tertentu dalam cm]
+   - Spacing before image: MINIMAL 3 pt
+   - Spacing after image: MINIMAL 3 pt
+
+9. FIGURE CAPTION (Judul Gambar)
+   - Format label: [sesuai template, contoh:]
+     * "Fig. 1. " (bold) + title (regular)
+     * "Gbr. 1. " (bold) + title (regular)
+     * "Gambar 1. " (bold) + title (regular)
+     * "Figure 1. " (bold) + title (italic)
+   - Font: [sesuai analisa]
+   - Size: [sesuai analisa, biasanya lebih kecil dari body]
+   - Alignment: center
+   - Spacing before: MINIMAL 3 pt
+   - Spacing after: MINIMAL 6 pt
+
+10. TABLE TITLE (Judul Tabel)
+    - Format label: [sesuai template, contoh:]
+      * "Table I. " (bold) + title (regular)
+      * "Tabel 1. " (bold) + title (regular)
+      * "TABLE I" (bold, uppercase, centered)
+      * "TABEL 1" + newline + title
+    - Font: [sesuai analisa]
+    - Size: [sesuai analisa]
+    - Alignment: center
+    - Spacing before: MINIMAL 6 pt
+    - Spacing after: MINIMAL 3 pt
+    - Posisi: SEBELUM tabel (di atas tabel)
+
+11. TABLE CONTENT (Isi Tabel)
+    - Border style: [sesuai template:]
+      * Three-line (top, bottom, insideH saja — tanpa left/right/insideV)
+      * Full borders (semua sisi)
+      * No borders
+    - Header row: bold, center aligned
+    - Data rows: regular, center/left aligned sesuai template
+    - Font: [sesuai analisa, biasanya lebih kecil dari body]
+    - Size: [sesuai analisa]
+    - Cell padding/spacing: sesuai template
+
+12. FORMULA/RUMUS
+    - Konten rumus: centered, italic (atau font Cambria Math)
+    - Numbering "(1)": rata kanan (right-aligned) atau tab stop kanan
+    - Font rumus: [Cambria Math / Cambria / Times New Roman italic]
+    - Size: [sesuai template]
+    - Spacing before: MINIMAL 3 pt
+    - Spacing after: MINIMAL 3 pt
+
+13. REFERENCES (Daftar Pustaka)
+    - Heading "REFERENCES": font, size, bold, alignment, spacing
+    - Format per referensi:
+      * Numbering: [1], [2], ... atau 1., 2., ...
+      * Font: [sesuai analisa]
+      * Size: [sesuai analisa, biasanya lebih kecil dari body]
+      * Alignment: justify
+      * Indent: hanging indent [sesuai template, biasanya 360-567tw]
+      * Line spacing: [sesuai template]
+    - Judul paper dalam referensi: italic atau dalam tanda kutip (sesuai template)
+
+14. HEADER DOKUMEN
+    - Konten: [sesuai analisa — nama jurnal, volume, halaman, dll]
+    - Font: [sesuai analisa]
+    - Size: [sesuai analisa]
+    - Bold/italic: [sesuai analisa]
+    - Alignment: [left/center/right sesuai template]
+    - Border bawah header: [ada/tidak, style, thickness]
+    - Even page vs odd page: [sama/berbeda]
+    - First page: [sama/berbeda/kosong]
+
+15. FOOTER DOKUMEN
+    - Konten: [page number, author info, dll sesuai analisa]
+    - Font: [sesuai analisa]
+    - Size: [sesuai analisa]
+    - Alignment: [center/left/right]
+    - Border atas footer: [ada/tidak]
+    - Even page vs odd page: [sama/berbeda]
+
+================================================================================
+HANDLING DATA JSON
+================================================================================
+
+ATURAN:
+1. Ambil SEMUA data yang ada di _template.json dan generate ke docx
+2. Jika suatu field TIDAK ADA di JSON, TETAP tuliskan elemen tersebut dengan:
+   - Format yang benar (sesuai template)
+   - Isi placeholder yang kontekstual:
+     * Title: "Paper Title Goes Here"
+     * Author: "Author Name"
+     * Affiliation: "Department, University"
+     * Email: "author@email.ac.id"
+     * Abstract: "Abstract text goes here. This section should contain 150-250 words summarizing the paper."
+     * Keywords: "keyword1, keyword2, keyword3"
+     * Section content: "Section content goes here."
+     * Figure: "[Image placeholder]"
+     * Table: minimal 2x2 dengan "Data"
+     * Formula: "E = mc^2"
+     * References: "[1] Author, Title, Journal, Year."
+
+3. Setelah selesai, LAPORKAN variabel/field apa saja yang perlu ditambahkan ke _template.json
+
+STRUKTUR JSON YANG DIPROSES:
+- data["title"] → judul paper
+- data["authors"] → list of {name, affiliation, location, email}
+- data["abstract"] → teks abstrak
+- data["keywords"] → list of string
+- data["section1"] → {title, content: [{id, text/...}]}
+- data["section1"]["section1a"] → subsection
+- data["section2"]["section2a"]["content"] → list items
+- Content item types:
+  * {"id": "text", "text": "..."}
+  * {"id": "gambar", "ImageNumber": "1", "Title": "...", "Path": "..."}
+  * {"id": "rumus", "FormulaNumber": "1", "latex": "..."}
+  * {"id": "tabel", "TableNumber": "I", "Title": "...", "Headers": [...], "Rows": [[...]]}
+- data["references"] → {title, content: [list of string]}
+
+================================================================================
+SPACING MINIMUM (TIDAK BOLEH KURANG DARI INI)
+================================================================================
+
+| Elemen              | Space Before (pt) | Space After (pt) |
+|---------------------|-------------------|------------------|
+| Title tabel         | 6                 | 3                |
+| Title figure/caption| 3                 | 6                |
+| Title section       | 3                 | 3                |
+| Title subsection    | 3                 | 3                |
+| Figure (image)      | 3                 | 3                |
+| Rumus/formula       | 3                 | 3                |
+
+Catatan: Jika template asli menggunakan spacing LEBIH BESAR dari minimum di atas,
+gunakan spacing template asli. Minimum ini hanya batas bawah.
+
+================================================================================
+STRUKTUR CODE (namadoc)gen.py
+================================================================================
+
+```python
+"""
+(namadoc)gen.py — Generator DOCX untuk jurnal (Nama Jurnal)
+Menggunakan dokumen asli (namadoc).docx sebagai base template (paste keep formatting).
+Data diambil dari _template.json.
+"""
+import json, copy, shutil, re, os
+from pathlib import Path
+from docx import Document
+from docx.shared import Pt, Cm, Inches, Twips, RGBColor, Emu
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.section import WD_ORIENT
+from docx.oxml.ns import qn, nsdecls
+from docx.oxml import parse_xml
+from lxml import etree
+
+BASE = Path(__file__).resolve().parent
+TEMPLATE_DOCX = BASE / "(namadoc).docx"
+TEMPLATE_JSON = BASE / "_template.json"
+OUTPUT_DOCX = BASE / "(namadoc)_output.docx"
+
+# ══════════════════════════════════════════════════════════════
+# KONFIGURASI FORMAT (dari hasil analisa _analyse.py)
+# ══════════════════════════════════════════════════════════════
+CFG = {
+    # Page setup
+    "page_width_tw": 0,        # dari analisa sectPr pgSz w
+    "page_height_tw": 0,       # dari analisa sectPr pgSz h
+    "margin_top_tw": 0,        # dari analisa pgMar top
+    "margin_bottom_tw": 0,     # dari analisa pgMar bottom
+    "margin_left_tw": 0,       # dari analisa pgMar left
+    "margin_right_tw": 0,      # dari analisa pgMar right
+    "margin_gutter_tw": 0,     # dari analisa pgMar gutter
+    "header_distance_tw": 0,   # dari analisa pgMar header
+    "footer_distance_tw": 0,   # dari analisa pgMar footer
+    "columns": 1,              # jumlah kolom (1 atau 2)
+    "col_space_tw": 0,         # space antar kolom
+
+    # Fonts
+    "font_title": "",
+    "font_body": "",
+    "font_heading": "",
+    "font_caption": "",
+    "font_reference": "",
+
+    # Sizes (dalam pt)
+    "size_title": 0,
+    "size_body": 0,
+    "size_heading1": 0,
+    "size_heading2": 0,
+    "size_caption": 0,
+    "size_reference": 0,
+    "size_header": 0,
+    "size_footer": 0,
+
+    # Section heading format
+    "section_heading_format": "roman_dot",  # roman_dot | arabic_dot | plain | plain_upper
+    "section_heading_upper": True,          # uppercase title atau tidak
+    "subsection_format": "letter_dot",      # letter_dot | arabic_parent_child | plain
+
+    # Figure/Table prefix
+    "fig_prefix": "Fig.",       # "Fig." | "Gbr." | "Gambar" | "Figure"
+    "tbl_prefix": "Table",      # "Table" | "Tabel" | "TABLE"
+    "tbl_number_format": "roman", # "roman" | "arabic"
+
+    # Table borders
+    "table_borders": "three_line",  # "three_line" | "full" | "none"
+
+    # Line spacing body
+    "line_spacing_body": 240,       # dalam twips (240=single, 276=1.15, 360=1.5, 480=double)
+    "line_spacing_rule": "auto",    # "auto" | "exact" | "atLeast"
+
+    # Indent
+    "first_line_indent_tw": 720,    # indent paragraf pertama (720tw = 0.5")
+
+    # Reference format
+    "ref_hanging_indent_tw": 360,   # hanging indent referensi
+    "ref_numbering": "bracket",     # "bracket" [1] | "dot" 1.
+}
+
+# ══════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ══════════════════════════════════════════════════════════════
+
+def load_json(): ...
+def set_run_font(run, font_name, size_pt, bold=False, italic=False, color=None): ...
+def set_paragraph_spacing(paragraph, before=None, after=None, line=None, line_rule=None): ...
+def set_paragraph_indent(paragraph, left=None, right=None, first_line=None, hanging=None): ...
+def clear_body(doc): ...
+
+# ══════════════════════════════════════════════════════════════
+# CONTENT GENERATORS
+# ══════════════════════════════════════════════════════════════
+
+def setup_headers_footers(doc, data): ...
+def add_title(doc, data): ...
+def add_authors(doc, data): ...
+def add_abstract(doc, data): ...
+def add_keywords(doc, data): ...
+def add_section_heading(doc, title, number=None): ...
+def add_subsection_heading(doc, title, parent_num=None, sub_num=None): ...
+def add_body_text(doc, text, first_paragraph=False): ...
+def add_figure(doc, fig_data): ...
+def add_formula(doc, formula_data): ...
+def add_table(doc, table_data): ...
+def add_references(doc, data): ...
+def process_section_content(doc, content_list): ...
+def process_section(doc, section_data, section_num, is_top_level=True): ...
+
+# ══════════════════════════════════════════════════════════════
+# MAIN GENERATE
+# ══════════════════════════════════════════════════════════════
+
+def generate():
+    data = load_json()
+
+    # Copy template asli → output (paste keep formatting)
+    shutil.copy2(TEMPLATE_DOCX, OUTPUT_DOCX)
+    doc = Document(str(OUTPUT_DOCX))
+
+    # Hapus body content, pertahankan sectPr/headers/footers/styles
+    clear_body(doc)
+
+    # Setup headers & footers (sesuai template)
+    setup_headers_footers(doc, data)
+
+    # Generate content
+    add_title(doc, data)
+    add_authors(doc, data)
+    add_abstract(doc, data)
+    add_keywords(doc, data)
+
+    # Process all sections
+    for i in range(1, 20):
+        key = f"section{i}"
+        if key in data:
+            process_section(doc, data[key], i, is_top_level=True)
+
+    # References
+    add_references(doc, data)
+
+    # Save
+    doc.save(str(OUTPUT_DOCX))
+    print(f"Generated: {OUTPUT_DOCX}")
+    return str(OUTPUT_DOCX)
+
+if __name__ == "__main__":
+    generate()
+```
+
+================================================================================
+VALIDASI & VERIFIKASI (WAJIB MINIMAL 3 ITERASI)
+================================================================================
+
+Setelah generate output docx, lakukan verifikasi berikut.
+Ulangi sampai SEMUA item PASS (minimal 3 kali iterasi).
+
+--- ITERASI 1: Verifikasi Format ---
+
+[V1.1] FONT CHECK
+  [ ] Title: font name = _____, size = _____pt, bold = ___
+  [ ] Author: font name = _____, size = _____pt, bold = ___
+  [ ] Abstract label: font = _____, size = _____pt, bold = ___
+  [ ] Abstract content: font = _____, size = _____pt, italic = ___
+  [ ] Keywords label: font = _____, size = _____pt, bold = ___
+  [ ] Keywords content: font = _____, size = _____pt, italic = ___
+  [ ] Section heading: font = _____, size = _____pt, bold = ___
+  [ ] Subsection heading: font = _____, size = _____pt, bold = ___
+  [ ] Body text: font = _____, size = _____pt
+  [ ] Figure caption: font = _____, size = _____pt
+  [ ] Table title: font = _____, size = _____pt
+  [ ] Table content: font = _____, size = _____pt
+  [ ] Formula: font = _____, size = _____pt, italic = ___
+  [ ] References: font = _____, size = _____pt
+  [ ] Header: font = _____, size = _____pt
+  [ ] Footer: font = _____, size = _____pt
+
+[V1.2] ALIGNMENT CHECK
+  [ ] Title: center/left/right = _____
+  [ ] Author: center
+  [ ] Abstract: justify
+  [ ] Body text: justify
+  [ ] Section heading: _____ (sesuai template)
+  [ ] Figure caption: center
+  [ ] Table title: center
+  [ ] Formula: center (numbering di kanan)
+  [ ] References: justify
+
+[V1.3] BOLD/ITALIC CHECK
+  [ ] Title: bold = ___
+  [ ] Section heading: bold = yes
+  [ ] Subsection heading: bold = ___
+  [ ] Figure caption label ("Fig. X."): bold = yes
+  [ ] Figure caption title: bold = no (biasanya)
+  [ ] Table title label ("Table X."): bold = yes
+  [ ] Table header row: bold = yes
+  [ ] Abstract label: bold = yes
+  [ ] Keywords label: bold = yes
+
+--- ITERASI 2: Verifikasi Spacing & Layout ---
+
+[V2.1] SPACING CHECK (dalam pt, tidak boleh kurang dari minimum)
+  [ ] Section heading: before >= 3pt, after >= 3pt
+  [ ] Subsection heading: before >= 3pt, after >= 3pt
+  [ ] Table title: before >= 6pt, after >= 3pt
+  [ ] Figure caption: before >= 3pt, after >= 6pt
+  [ ] Figure image: before >= 3pt, after >= 3pt
+  [ ] Formula: before >= 3pt, after >= 3pt
+  [ ] Body text line spacing: _____ (sesuai template)
+
+[V2.2] INDENT CHECK
+  [ ] Body text first-line indent: _____tw (sesuai template)
+  [ ] Paragraf pertama setelah heading: tanpa indent / dengan indent (sesuai template)
+  [ ] References hanging indent: _____tw
+  [ ] References left indent: _____tw
+
+[V2.3] PAGE LAYOUT CHECK
+  [ ] Page width: _____tw = _____cm
+  [ ] Page height: _____tw = _____cm
+  [ ] Margin top: _____tw
+  [ ] Margin bottom: _____tw
+  [ ] Margin left: _____tw
+  [ ] Margin right: _____tw
+  [ ] Gutter: _____tw
+  [ ] Columns: _____ kolom, space = _____tw
+  [ ] Header distance: _____tw
+  [ ] Footer distance: _____tw
+
+--- ITERASI 3: Verifikasi Content & Completeness ---
+
+[V3.1] HEADER/FOOTER CHECK
+  [ ] Header content tergenerate sesuai template
+  [ ] Footer content tergenerate sesuai template
+  [ ] Even/odd page header (jika ada): benar
+  [ ] First page header (jika berbeda): benar
+  [ ] Page number field (jika ada): benar
+
+[V3.2] CONTENT COMPLETENESS CHECK
+  [ ] Title tergenerate
+  [ ] Authors tergenerate (semua author dari JSON)
+  [ ] Abstract tergenerate
+  [ ] Keywords tergenerate
+  [ ] Section 1 + content tergenerate
+  [ ] Section 2 + subsections + content tergenerate
+  [ ] Section 3 + subsections + content tergenerate
+  [ ] Section 4 + subsections + content tergenerate
+  [ ] Section 5 + content tergenerate
+  [ ] Semua gambar tergenerate (dengan caption)
+  [ ] Semua tabel tergenerate (dengan title + data)
+  [ ] Semua rumus tergenerate (dengan numbering)
+  [ ] References tergenerate (semua item)
+
+[V3.3] NUMBERING CHECK
+  [ ] Section numbering berurutan dan format benar
+  [ ] Subsection numbering berurutan dan format benar
+  [ ] Figure numbering: 1, 2, 3, ... berurutan
+  [ ] Table numbering: I, II, III / 1, 2, 3 berurutan
+  [ ] Formula numbering: (1), (2), (3), ... berurutan
+  [ ] Reference numbering: [1], [2], ... berurutan
+
+[V3.4] TABLE FORMAT CHECK
+  [ ] Table borders sesuai template (three-line/full/none)
+  [ ] Table header row: bold, center
+  [ ] Table data alignment: sesuai template
+  [ ] Table width: sesuai kolom/page width
+
+[V3.5] OUTPUT INTEGRITY CHECK
+  [ ] File .docx bisa dibuka tanpa error
+  [ ] Tidak ada formatting yang hilang/rusak
+  [ ] Tidak ada data JSON yang terlewat
+  [ ] Tidak ada elemen duplikat
+
+================================================================================
+CATATAN PENTING
+================================================================================
+
+1. SELALU jalankan _analyse.py dulu sebelum coding. Jangan menebak format.
+2. Gunakan DOKUMEN ASLI sebagai base (shutil.copy2 → Document → clear body → generate).
+   Ini memastikan styles, numbering, theme, fontTable tetap dari template asli.
+3. Jika ada perbedaan antara analisa XML dan tampilan visual, PRIORITASKAN data XML.
+4. Untuk font: SELALU set w:ascii, w:hAnsi, w:cs (dan w:eastAsia jika perlu) secara eksplisit.
+5. Untuk spacing: gunakan nilai dalam TWIPS di XML (1 pt = 20 tw).
+6. Pastikan script bisa dijalankan standalone: python (namadoc)gen.py
+7. Jangan hardcode path absolut selain BASE. Gunakan relative path dari BASE.
+8. Handle edge case:
+   - JSON field kosong/tidak ada → gunakan placeholder
+   - Gambar tidak ditemukan → tulis "[Image placeholder]"
+   - Tabel tanpa data → buat minimal header row
+9. Setiap kali ada error atau format tidak sesuai, PERBAIKI dan ULANGI verifikasi.
+10. Laporkan di akhir:
+    - Variabel JSON yang perlu ditambahkan
+    - Item yang menggunakan placeholder (karena tidak ada di JSON)
+    - Hasil verifikasi final (PASS/FAIL per kategori)
+
+================================================================================
+OUTPUT YANG DIHARAPKAN
+================================================================================
+
+1. File: (namadoc)gen.py — script generator lengkap dan bisa dijalankan
+2. File: (namadoc)_output.docx — hasil generate yang sudah terverifikasi
+3. Laporan:
+   a. Variabel JSON yang perlu ditambahkan (jika ada field yang missing)
+   b. Hasil verifikasi 3 iterasi (ringkasan PASS/FAIL)
+   c. Catatan khusus (jika ada format yang tidak bisa direplikasi 100%)
+
+================================================================================
+CONTOH PERINTAH PENGGUNAAN
+================================================================================
+
+Untuk membuat generator jurnal JTUNDIP:
+> Buatkan JTUNDIPgen.py menggunakan template JTUNDIP.docx
+> Gunakan _analyse.py untuk analisa formatnya
+> Data dari _template.json
+> Verifikasi 3x sampai semua PASS
+
+Untuk membuat generator jurnal JNTETI:
+> Buatkan JNTETIgen.py menggunakan template JNTETI.docx
+> Analisa dulu dengan: python _analyse.py JNTETI.docx
+> Generate dan verifikasi sampai benar
+
+================================================================================
+END OF PROMPT
+================================================================================
