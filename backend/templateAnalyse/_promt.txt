@@ -1,0 +1,28 @@
+gunakan /home/sirobo/papergenerator/backend/templateAnalyse/_analyse.py
+pastikan benar semua.
+(namadoc)gen.py
+gunakan file dokumen aslinya.
+analisa penuh seluruh file xml nya
+mulai dari header footer.
+title,autor,abstract,keyword.
+title table,fig,section,subsection sesuai formatnya masing2.
+content section dan subsection,
+figure,rumus,tabel.
+referensi.
+semua ambil dari /home/sirobo/papergenerator/backend/templateAnalyse/_template.json
+jika tidak ada data di json, maka tetap tuliskan sesuai formatnya, kemudian kasih isinya yang tidak ada di json kamu isi dengan text yang sesuai. 
+kemudian info ke saya nanti ada tambahan variabel apa untuk di jsonnya.
+pastikan (ukuran font, jenis font, bold/italic/tidaknya, justify/center/left/rightnya masing2nya, numbering/lettering figt/tabel/rumus sudah sesuai bagian2nya.
+dan pastikan semua isi json sudah tergenerate di docx hasilnya.
+pastikan gunakan dokumen aslinya dan gunakan paste keep formating.
+minimal title tabel before 6 after 3,
+minimal title figure before 3 after 6,
+minimal title section before 3 after 3,
+minimal title subsection before 3 after 3,
+figurenya minimal before 3 after 3,
+rumusnya minimal before 3 after 3,
+kemudian generate all dan verifikasi hasilnya, pastikan sudah sesuai.
+verifikasi minimal 3x dan 
+pastikan sesuai, ukuran/jenis fontnya, before/after/spacing/coloumns, 
+header/footer. semua format2nya, format tabelnya. format referensi.
+kerjakan untuk
