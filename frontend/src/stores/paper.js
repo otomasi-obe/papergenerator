@@ -6,22 +6,21 @@ import api from '../api/index.js'
 const API_BASE = '/api'
 axios.defaults.timeout = 0
 
-// ─── Cookie helpers ────────────────────────────────────────────────────────
-const COOKIE_PAPER   = 'pg_paper'
-const COOKIE_JOB     = 'pg_job'
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days in seconds
+// ─── LocalStorage helpers ─────────────────────────────────────────────────
+const LS_PAPER = 'pg_paper'
+const LS_JOB = 'pg_job'
+const LS_LAST_PAPER_ID = 'pg_last_paper_id'
 
-function setCookie(name, value, maxAge = COOKIE_MAX_AGE) {
-  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAge}; path=/; SameSite=Lax`
+function lsSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* quota exceeded — ignore */ }
 }
 
-function getCookie(name) {
-  const match = document.cookie.split('; ').find(r => r.startsWith(name + '='))
-  return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : null
+function lsGet(key) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null } catch { return null }
 }
 
-function deleteCookie(name) {
-  document.cookie = `${name}=; max-age=0; path=/`
+function lsRemove(key) {
+  try { localStorage.removeItem(key) } catch { /* ignore */ }
 }
 
 // ─── Standalone helpers (needed before store init) ────────────────────────
@@ -98,9 +97,9 @@ function toRomanNum(num) {
 
 // ─── Paper Store ──────────────────────────────────────────────────────────
 export const usePaperStore = defineStore('paper', () => {
-  // Restore paper from cookie on init (if available)
-  const _cookieJson = (() => { try { const r = getCookie(COOKIE_PAPER); return r ? JSON.parse(r) : null } catch { return null } })()
-  const paper = ref(_cookieJson ? fromPaperJsonRaw(_cookieJson) : createEmptyPaper())
+  // Restore paper from localStorage on init (if available)
+  const _savedPaper = lsGet(LS_PAPER)
+  const paper = ref(_savedPaper ? fromPaperJsonRaw(_savedPaper) : createEmptyPaper())
 
   // Current paper DB id (null = unsaved new paper)
   const currentPaperId = ref(null)
@@ -114,6 +113,233 @@ export const usePaperStore = defineStore('paper', () => {
 
   const availableJournals = ref([])
   const journalsLoading = ref(false)
+
+  // ─── AI proposed changes (pending review) ─────────────────────────────
+  // Each entry: { id, kind, before, after, payload, status: 'pending'|'accepted'|'rejected' }
+  const pendingChanges = ref([])
+  let _pendId = 0
+
+  function _nextPendingId() {
+    _pendId += 1
+    return `pend-${Date.now()}-${_pendId}`
+  }
+
+  function pushProposal(proposal) {
+    if (!proposal || !proposal.kind) return null
+    const before = _captureBefore(proposal)
+    const entry = {
+      id: _nextPendingId(),
+      kind: proposal.kind,
+      payload: proposal,
+      before,
+      after: _previewAfter(proposal),
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    }
+    pendingChanges.value.push(entry)
+
+    // Auto-apply when the target field/section/reference is still empty (initial
+    // fill). The user explicitly asked the AI to write it — making them click
+    // "Accept" again in Preview is friction, and was causing whole sections to
+    // get silently lost. Edits that overwrite existing content still go through
+    // the diff-review flow.
+    if (_isInitialFill(proposal)) {
+      acceptProposal(entry.id)
+    }
+
+    return entry
+  }
+
+  function _isInitialFill(p) {
+    const paper_ = paper.value
+    switch (p.kind) {
+      case 'title':    return !(paper_.title || '').trim()
+      case 'abstract': return !(paper_.abstract || '').trim()
+      case 'keywords': return !(paper_.keywords || []).length
+      case 'section': {
+        const idx = p.section_index
+        if (idx === null || idx === undefined) return true
+        const s = paper_.sections?.[idx]
+        if (!s) return true
+        return !_sectionContentToText(s.content).trim() && !(s.title || '').trim()
+      }
+      case 'reference': {
+        const idx = p.ref_index
+        if (idx === null || idx === undefined) return true
+        const r = paper_.references?.[idx]
+        return !r || !String(r).trim()
+      }
+      default: return false
+    }
+  }
+
+  function _captureBefore(p) {
+    const paper_ = paper.value
+    switch (p.kind) {
+      case 'title': return { title: paper_.title || '' }
+      case 'abstract': return { abstract: paper_.abstract || '' }
+      case 'keywords': return { keywords: [...(paper_.keywords || [])] }
+      case 'journal': return { journal: paper_.journal || 'IEEE' }
+      case 'section': {
+        const idx = p.section_index
+        if (idx === null || idx === undefined || idx >= (paper_.sections || []).length) {
+          return { section: null, index: null }
+        }
+        const s = paper_.sections[idx]
+        return {
+          index: idx,
+          section: {
+            title: s.title || '',
+            content: _sectionContentToText(s.content),
+          },
+        }
+      }
+      case 'reference': {
+        const idx = p.ref_index
+        if (idx === null || idx === undefined || idx >= (paper_.references || []).length) {
+          return { reference: null, index: null }
+        }
+        return { index: idx, reference: paper_.references[idx] || '' }
+      }
+      case 'export_docx': return {}
+      default: return {}
+    }
+  }
+
+  function _previewAfter(p) {
+    switch (p.kind) {
+      case 'title': return { title: p.value || '' }
+      case 'abstract': return { abstract: p.value || '' }
+      case 'keywords': return { keywords: [...(p.value || [])] }
+      case 'journal': return { journal: p.value || '' }
+      case 'section': return {
+        index: p.section_index,
+        section: { title: p.title || '', content: p.content || '' },
+      }
+      case 'reference': return { index: p.ref_index, reference: p.value || '' }
+      case 'export_docx': return {}
+      default: return {}
+    }
+  }
+
+  function _sectionContentToText(content) {
+    if (!content) return ''
+    if (typeof content === 'string') return content
+    if (!Array.isArray(content)) return ''
+    return content
+      .map(it => (it && it.id === 'text' ? (it.text || '') : ''))
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
+  function _textToSectionContent(text) {
+    if (!text) return [{ id: 'text', text: '' }]
+    return [{ id: 'text', text: String(text) }]
+  }
+
+  async function acceptProposal(id) {
+    const idx = pendingChanges.value.findIndex(p => p.id === id)
+    if (idx < 0) return
+    const change = pendingChanges.value[idx]
+    if (change.status !== 'pending') return
+    const p = change.payload
+    try {
+      switch (p.kind) {
+        case 'title': paper.value.title = p.value || ''; break
+        case 'abstract': paper.value.abstract = p.value || ''; break
+        case 'keywords': paper.value.keywords = [...(p.value || [])]; break
+        case 'journal':
+          if (p.value) paper.value.journal = p.value
+          break
+        case 'section': {
+          const sIdx = p.section_index
+          const sec = {
+            title: p.title || '',
+            content: _textToSectionContent(p.content),
+            subsections: [],
+          }
+          if (sIdx === null || sIdx === undefined || sIdx >= paper.value.sections.length) {
+            paper.value.sections.push(sec)
+          } else {
+            const cur = paper.value.sections[sIdx]
+            paper.value.sections[sIdx] = {
+              title: sec.title,
+              content: sec.content,
+              subsections: cur.subsections || [],
+            }
+          }
+          break
+        }
+        case 'reference': {
+          const rIdx = p.ref_index
+          if (rIdx === null || rIdx === undefined || rIdx >= paper.value.references.length) {
+            paper.value.references.push(p.value || '')
+          } else {
+            paper.value.references[rIdx] = p.value || ''
+          }
+          break
+        }
+        case 'export_docx':
+          await exportDocx()
+          break
+      }
+      change.status = 'accepted'
+      showToast('Perubahan diterima', 'success')
+    } catch (e) {
+      showToast('Apply failed: ' + e.message, 'error')
+    }
+  }
+
+  function rejectProposal(id) {
+    const change = pendingChanges.value.find(p => p.id === id)
+    if (change && change.status === 'pending') {
+      change.status = 'rejected'
+      showToast('Perubahan ditolak', 'info')
+    }
+  }
+
+  async function acceptAllProposals() {
+    const ids = pendingChanges.value.filter(p => p.status === 'pending').map(p => p.id)
+    for (const id of ids) await acceptProposal(id)
+  }
+
+  function rejectAllProposals() {
+    for (const p of pendingChanges.value) {
+      if (p.status === 'pending') p.status = 'rejected'
+    }
+    showToast('Semua perubahan ditolak', 'info')
+  }
+
+  function clearResolvedProposals() {
+    pendingChanges.value = pendingChanges.value.filter(p => p.status === 'pending')
+  }
+
+  /**
+   * Apply a proposal immediately without going through the pending review flow.
+   * Used for low-risk operational changes the AI requests (journal switch, DOCX export).
+   */
+  async function applyImmediate(proposal) {
+    if (!proposal || !proposal.kind) return
+    try {
+      switch (proposal.kind) {
+        case 'journal':
+          if (proposal.value) {
+            paper.value.journal = proposal.value
+            showToast(`Jurnal diset ke ${proposal.value}`, 'success')
+          }
+          break
+        case 'export_docx':
+          await exportDocx()
+          break
+      }
+    } catch (e) {
+      showToast('Apply failed: ' + e.message, 'error')
+    }
+  }
+
+  const pendingCount = computed(() =>
+    pendingChanges.value.filter(p => p.status === 'pending').length
+  )
 
   async function fetchJournals() {
     if (availableJournals.value.length) return availableJournals.value
@@ -136,9 +362,9 @@ export const usePaperStore = defineStore('paper', () => {
     return availableJournals.value
   }
 
-  // ─── Auto-save paper to cookie on every deep change ───────────────────
+  // ─── Auto-save paper to localStorage on every deep change ──────────────
   watch(paper, (val) => {
-    try { setCookie(COOKIE_PAPER, JSON.stringify(toPaperJson())) } catch { /* ignore */ }
+    try { lsSet(LS_PAPER, toPaperJson()) } catch { /* ignore */ }
   }, { deep: true })
 
   function showToast(message, type = 'info') {
@@ -262,9 +488,9 @@ export const usePaperStore = defineStore('paper', () => {
   // ─── Import / Export ──────────────────────────────────────────────────
   function newPaper() {
     paper.value = createEmptyPaper()
-    deleteCookie(COOKIE_PAPER)
-    deleteCookie(COOKIE_JOB)
-    showToast('New paper created', 'success')
+    currentPaperId.value = null
+    lsRemove(LS_PAPER)
+    lsRemove(LS_JOB)
   }
 
   function uploadJson(file) {
@@ -324,7 +550,7 @@ export const usePaperStore = defineStore('paper', () => {
       try { poll = await api.get(`${API_BASE}/job/${jobId}`, { timeout: 10000 }) } catch { continue }
       if (poll.data.status === 'done') {
         paper.value = fromPaperJsonRaw(poll.data.paper)
-        deleteCookie(COOKIE_JOB)
+        lsRemove(LS_JOB)
         showToast('Paper berhasil dibuat!', 'success')
         return true
       }
@@ -344,7 +570,7 @@ export const usePaperStore = defineStore('paper', () => {
       const startRes = await api.post(`${API_BASE}/generate-full`, payload, { timeout: 15000 })
       if (!startRes.data?.job_id) throw new Error(startRes.data?.error || 'No job_id')
       const jobId = startRes.data.job_id
-      setCookie(COOKIE_JOB, JSON.stringify({ jobId, t0: Date.now() }), 60 * 30)
+      lsSet(LS_JOB, { jobId, t0: Date.now() })
       return await _pollJob(jobId, Date.now())
     } catch (err) {
       showToast('AI Error: ' + err.message, 'error')
@@ -353,27 +579,49 @@ export const usePaperStore = defineStore('paper', () => {
   }
 
   /**
+   * Attach to a generate-full job that was started by the chat AI tool. The
+   * regular spinner + polling kicks in, and when the job finishes the result
+   * lands in the editor — same path as a manual /api/generate-full call.
+   */
+  async function attachAiJob(jobId, prompt = '') {
+    if (!jobId) return false
+    const t0 = Date.now()
+    lsSet(LS_JOB, { jobId, t0 })
+    aiLoading.value = true
+    aiLoadingMessage.value = prompt
+      ? `AI sedang membuat paper: "${prompt.slice(0, 50)}${prompt.length > 50 ? '…' : ''}"`
+      : 'AI sedang membuat paper...'
+    try {
+      return await _pollJob(jobId, t0)
+    } catch (err) {
+      showToast('AI Error: ' + err.message, 'error')
+      return false
+    } finally {
+      aiLoading.value = false
+      aiLoadingMessage.value = ''
+    }
+  }
+
+  /**
    * Call this on app mount. If a job was in-flight when the page was refreshed,
    * resume polling and restore the result automatically.
    */
   async function resumePendingJob() {
-    const raw = getCookie(COOKIE_JOB)
-    if (!raw) return
-    let jobInfo
-    try { jobInfo = JSON.parse(raw) } catch { deleteCookie(COOKIE_JOB); return }
+    const jobInfo = lsGet(LS_JOB)
+    if (!jobInfo) return
     const { jobId, t0 } = jobInfo || {}
-    if (!jobId || !t0) { deleteCookie(COOKIE_JOB); return }
-    if (Date.now() - t0 > 25 * 60 * 1000) { deleteCookie(COOKIE_JOB); return }
+    if (!jobId || !t0) { lsRemove(LS_JOB); return }
+    if (Date.now() - t0 > 25 * 60 * 1000) { lsRemove(LS_JOB); return }
     try {
       const check = await api.get(`${API_BASE}/job/${jobId}`, { timeout: 8000 })
-      if (check.data.status === 'error' || !check.data.status) { deleteCookie(COOKIE_JOB); return }
+      if (check.data.status === 'error' || !check.data.status) { lsRemove(LS_JOB); return }
       if (check.data.status === 'done') {
         paper.value = fromPaperJsonRaw(check.data.paper)
-        deleteCookie(COOKIE_JOB)
+        lsRemove(LS_JOB)
         showToast('Paper dipulihkan dari proses sebelumnya!', 'success')
         return
       }
-    } catch { deleteCookie(COOKIE_JOB); return }
+    } catch { lsRemove(LS_JOB); return }
 
     aiLoading.value = true
     aiLoadingMessage.value = 'Melanjutkan proses AI...'
@@ -385,20 +633,23 @@ export const usePaperStore = defineStore('paper', () => {
   }
 
   // ─── DB Save/Load ─────────────────────────────────────────────────────
-  async function savePaperToDb() {
+  async function savePaperToDb(silent = false) {
     try {
-      loading.value = true
+      if (!silent) loading.value = true
       const paperData = { ...toPaperJson(), id: currentPaperId.value || undefined }
       const res = await api.post(`${API_BASE}/papers`, paperData)
       if (res.data.id && !currentPaperId.value) {
         currentPaperId.value = res.data.id
       }
-      showToast('Paper saved!', 'success')
+      if (currentPaperId.value) {
+        lsSet(LS_LAST_PAPER_ID, currentPaperId.value)
+      }
+      if (!silent) showToast('Paper saved!', 'success')
       return res.data.id
     } catch (err) {
-      showToast('Save failed: ' + (err.response?.data?.error || err.message), 'error')
+      if (!silent) showToast('Save failed: ' + (err.response?.data?.error || err.message), 'error')
       return null
-    } finally { loading.value = false }
+    } finally { if (!silent) loading.value = false }
   }
 
   async function loadPaperFromDb(paperId) {
@@ -407,7 +658,7 @@ export const usePaperStore = defineStore('paper', () => {
       const res = await api.get(`${API_BASE}/papers/${paperId}`)
       paper.value = fromPaperJsonRaw(res.data)
       currentPaperId.value = paperId
-      // Load paper images
+      lsSet(LS_LAST_PAPER_ID, paperId)
       await loadPaperImages(paperId)
       return true
     } catch (err) {
@@ -463,10 +714,18 @@ export const usePaperStore = defineStore('paper', () => {
   // ─── Helpers ──────────────────────────────────────────────────────────
   function toRoman(num) { return toRomanNum(num) }
 
+  function getLastPaperId() {
+    return lsGet(LS_LAST_PAPER_ID)
+  }
+
   return {
     paper, loading, aiLoading, aiLoadingMessage, toast,
     currentPaperId, paperImages,
     availableJournals, journalsLoading, fetchJournals,
+    pendingChanges, pendingCount,
+    pushProposal, acceptProposal, rejectProposal,
+    acceptAllProposals, rejectAllProposals, clearResolvedProposals,
+    applyImmediate, attachAiJob,
     numbering, getItemNumber, toPaperJson, fromPaperJson,
     addSection, removeSection, addSubsection, removeSubsection,
     addContent, removeContent, moveContent,
@@ -478,7 +737,7 @@ export const usePaperStore = defineStore('paper', () => {
     aiGenerateFullPaper, resumePendingJob,
     savePaperToDb, loadPaperFromDb, loadPaperImages,
     uploadImage, deletePaperImage,
-    showToast, toRoman,
+    showToast, toRoman, getLastPaperId,
     apiGet: (url) => api.get(url),
     apiUploadPdfs: (formData) => api.post(`${API_BASE}/upload-pdfs`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   }

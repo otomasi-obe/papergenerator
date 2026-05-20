@@ -28,6 +28,10 @@ class User(db.Model):
     role = db.Column(db.String(20), default='user')  # 'user' or 'admin'
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime, default=_utcnow)
+    # Token quota (admin-managed via /api/admin/users/<id>/quota)
+    token_quota_monthly = db.Column(db.Integer, default=50000, nullable=False)
+    token_used_month = db.Column(db.Integer, default=0, nullable=False)
+    usage_month_key = db.Column(db.String(7), default='')  # 'YYYY-MM'
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -49,6 +53,9 @@ class User(db.Model):
             'role': self.role,
             'created_at': self.created_at.isoformat(),
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'token_quota_monthly': self.token_quota_monthly,
+            'token_used_month': self.token_used_month,
+            'usage_month_key': self.usage_month_key,
         }
 
 
@@ -236,10 +243,27 @@ class AiJob(db.Model):
 
     id = db.Column(db.String(20), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='pending')  # pending | done | error
+    paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'), nullable=True, index=True)
+    kind = db.Column(db.String(30), nullable=False, default='generate_paper')
+    status = db.Column(db.String(20), nullable=False, default='queued')  # queued|running|done|error|cancelled
+    progress = db.Column(db.Integer, default=0)  # 0..100
+    stage = db.Column(db.String(60), default='')  # 'outline' | 'sections' | 'references' | ...
     prompt = db.Column(db.Text)
     result = db.Column(db.JSON, nullable=True, default=dict)
     error = db.Column(db.Text)
     timeout = db.Column(db.Boolean, default=False)
     started_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paper_id': self.paper_id,
+            'kind': self.kind,
+            'status': self.status,
+            'progress': self.progress,
+            'stage': self.stage,
+            'error': self.error,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }

@@ -140,15 +140,6 @@ METHODOLOGY KEYWORDS:
   nutrient adequacy ratio, dietary diversity score, randomized controlled trial,
   paired t-test, ANOVA, multiple regression, ethical approval
 
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   001. Pengaruh diet rendah indeks glikemik terhadap kontrol HbA1c pada pasien DM tipe 2 di RSUD Saiful Anwar Malang
   002. Efektivitas medical nutrition therapy terhadap perbaikan status gizi pasien kanker dengan kemoterapi
   003. Hubungan asupan protein dan albumin serum pada pasien hemodialisis di rumah sakit Indonesia
@@ -200,14 +191,6 @@ METHODOLOGY KEYWORDS:
   049. Analisis kebutuhan nutrisi perioperatif pada pasien bedah bariatrik
   050. Efektivitas telenutrition terhadap kepatuhan diet dan outcome klinis pasien kronis
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   051. Analisis determinan stunting pada balita di daerah pesisir Nusa Tenggara Timur
   052. Efektivitas program pemberian makanan tambahan (PMT) terhadap status gizi balita KEP
   053. Hubungan pola makan keluarga dan kejadian obesitas pada anak sekolah di Jakarta
@@ -259,14 +242,6 @@ METHODOLOGY KEYWORDS:
   099. Analisis sistem surveilans gizi dan efektivitasnya dalam deteksi masalah gizi
   100. Efektivitas multi-sectoral nutrition program terhadap penurunan stunting di kabupaten prioritas
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   101. Analisis kandungan gizi dan aktivitas antioksidan pada buah-buahan lokal Indonesia (manggis, salak, rambutan)
   102. Pengaruh metode pengolahan terhadap retensi vitamin C pada sayuran lokal
   103. Analisis profil asam amino pada tempe dari berbagai jenis kacang-kacangan lokal
@@ -318,14 +293,6 @@ METHODOLOGY KEYWORDS:
   149. Efektivitas teknologi nano-fortifikasi untuk meningkatkan bioavailabilitas zat besi
   150. Hubungan food processing level (NOVA classification) dan kualitas gizi produk pangan Indonesia
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   151. Pengaruh suplementasi asam folat perikonsepi terhadap pencegahan neural tube defect di Indonesia
   152. Hubungan status gizi ibu hamil trimester 1 dan berat badan lahir bayi
   153. Efektivitas suplementasi multiple micronutrient vs iron-folic acid pada ibu hamil
@@ -377,14 +344,6 @@ METHODOLOGY KEYWORDS:
   199. Pengaruh prenatal nutrition education terhadap kesiapan menyusui dan status gizi bayi
   200. Hubungan maternal diet diversity dan kualitas ASI pada ibu menyusui
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   201. Pengaruh suplementasi kreatin terhadap performa dan komposisi tubuh pada atlet angkat besi Indonesia
   202. Efektivitas carbohydrate loading terhadap endurance performance pada pelari maraton
   203. Hubungan asupan protein timing dan muscle protein synthesis pada atlet binaraga
@@ -436,14 +395,6 @@ METHODOLOGY KEYWORDS:
   249. Pengaruh suplementasi sodium bicarbonate terhadap performa high-intensity exercise
   250. Efektivitas sport nutrition mobile app terhadap kepatuhan diet atlet
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   251. Analisis polimorfisme gen FTO dan risiko obesitas pada populasi Jawa
   252. Hubungan variasi gen MTHFR dan kebutuhan asam folat pada ibu hamil Indonesia
   253. Pengaruh genotipe APOE terhadap respons diet terhadap profil lipid
@@ -495,14 +446,6 @@ METHODOLOGY KEYWORDS:
   299. Analisis ethical dan social implications nutrigenomik testing di Indonesia
   300. Hubungan epigenetic clock dan pola makan terhadap biological aging
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   301. Efektivitas ekstrak kunyit (curcumin) terhadap marker inflamasi pada pasien osteoarthritis
   302. Analisis aktivitas antioksidan dan potensi antidiabetes pada daun insulin (Smallanthus sonchifolius)
   303. Pengaruh konsumsi yogurt probiotik terhadap profil lipid dan tekanan darah
@@ -554,14 +497,6 @@ METHODOLOGY KEYWORDS:
   349. Hubungan konsumsi pangan fungsional dan kualitas hidup pada pasien penyakit kronis
   350. Analisis regulasi dan evidence-based claim pada produk pangan fungsional di Indonesia
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   351. Analisis determinan sosial ekonomi stunting pada anak bawah lima tahun di Papua
   352. Efektivitas program intervensi gizi spesifik dan sensitif terintegrasi terhadap penurunan stunting
   353. Hubungan ketahanan pangan rumah tangga dan status gizi anak di daerah rawan pangan NTT
@@ -613,14 +548,6 @@ METHODOLOGY KEYWORDS:
   399. Analisis sistem informasi ketahanan pangan dan gizi untuk early warning
   400. Efektivitas multi-stakeholder platform untuk koordinasi program gizi di tingkat kabupaten
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   401. Analisis status gizi dan kecukupan asupan pada lansia di panti werdha Indonesia
   402. Efektivitas suplementasi protein whey terhadap massa otot dan kekuatan pada lansia sarcopenia
   403. Hubungan malnutrisi dan risiko jatuh pada lansia di komunitas
@@ -672,14 +599,6 @@ METHODOLOGY KEYWORDS:
   449. Analisis hubungan sarcopenic obesity dan risiko kardiovaskular pada lansia
   450. Efektivitas digital nutrition monitoring terhadap deteksi dini malnutrisi lansia
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   451. Efektivitas mobile app dietary tracking terhadap penurunan berat badan pada obesitas
   452. Analisis akurasi AI-based food recognition untuk estimasi asupan nutrisi
   453. Pengaruh telenutrition counseling terhadap kepatuhan diet pada pasien DM
@@ -730,3 +649,33 @@ METHODOLOGY KEYWORDS:
   498. Efektivitas hybrid (online-offline) nutrition intervention terhadap perubahan perilaku
   499. Hubungan data integration (wearable + dietary app + lab) untuk comprehensive nutrition assessment
   500. Analisis regulatory framework untuk digital nutrition tools dan AI-based dietary advice di Indonesia
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Water Activity:
+    a_w = \\frac{p}{p_0}
+  Arrhenius (Shelf Life):
+    k = A e^{-E_a/(RT)}
+  Moisture Content (Dry Basis):
+    MC_{db} = \\frac{m_w}{m_d} \\times 100\\%
+  First-Order Kinetics:
+    \\ln\\frac{C}{C_0} = -kt
+  Henderson-Hasselbalch:
+    pH = pK_a + \\log\\frac{[A^-]}{[HA]}
+  Thermal Death Time:
+    D_T = \\frac{t}{\\log(N_0/N)}
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+

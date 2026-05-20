@@ -158,3 +158,33 @@ METHODOLOGY KEYWORDS:
 --- CATEGORY I: Polar & Deep Ocean Studies (401-450) ---
 
 --- CATEGORY J: Ocean Remote Sensing & Big Data (451-500) ---
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Shannon Diversity Index:
+    H' = -\\sum_{i=1}^{S} p_i \\ln p_i
+  Population Growth:
+    N_t = N_0 e^{rt}
+  Logistic Growth:
+    \\frac{dN}{dt} = rN\\left(1 - \\frac{N}{K}\\right)
+  Simpson's Index:
+    D = 1 - \\sum_{i=1}^{S} p_i^2
+  Allometric Scaling:
+    Y = a M^b
+  Chi-Square (Genetics):
+    \\chi^2 = \\sum \\frac{(O_i - E_i)^2}{E_i}
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

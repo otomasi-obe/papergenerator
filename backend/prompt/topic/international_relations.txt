@@ -118,12 +118,31 @@ INDONESIAN CONTEXT:
   - Bilateral Relations: US-China competition, Australia, Japan, Middle East, Pacific Islands
 
 
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Cronbach's Alpha:
+    \\alpha = \\frac{k}{k-1} \\left(1 - \\frac{\\sum \\sigma_i^2}{\\sigma_T^2}\\right)
+  Multiple Regression:
+    Y = \\beta_0 + \\beta_1 X_1 + \\beta_2 X_2 + ... + \\beta_k X_k + \\varepsilon
+  Chi-Square:
+    \\chi^2 = \\sum \\frac{(O_i - E_i)^2}{E_i}
+  Cohen's d:
+    d = \\frac{\\bar{X}_1 - \\bar{X}_2}{S_p}
+  Pearson Correlation:
+    r = \\frac{\\sum (x_i - \\bar{x})(y_i - \\bar{y})}{\\sqrt{\\sum (x_i - \\bar{x})^2 \\sum (y_i - \\bar{y})^2}}
+  NOTE: These equations are OPTIONAL for qualitative/humanities papers.
+  Include only if the methodology uses quantitative analysis.
 
-
-
-
-
-
-
-
-
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

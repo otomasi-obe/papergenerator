@@ -53,6 +53,24 @@ module.exports = {
       restart_delay: 3000,
       max_restarts: 10,
       min_uptime: '10s',
+    },
+    {
+      // RQ worker — long-running paper generation off the request thread so
+      // HTTP stays responsive and progress survives restarts (rofiq.txt #4).
+      name: 'paper-worker',
+      script: path.join(__dirname, 'backend/worker.sh'),
+      cwd: path.join(__dirname, 'backend'),
+      interpreter: '/bin/bash',
+      env: {
+        REDIS_URL: env.REDIS_URL || 'redis://localhost:6379/0',
+      },
+      log_file: path.join(__dirname, 'logs/worker.log'),
+      out_file: path.join(__dirname, 'logs/worker-out.log'),
+      error_file: path.join(__dirname, 'logs/worker-err.log'),
+      max_memory_restart: '1000M',
+      restart_delay: 3000,
+      max_restarts: 10,
+      min_uptime: '10s',
     }
   ]
 };

@@ -2,27 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global styles */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  margin: 0;
-  padding: 0;
-  background-color: #f0f2f5;
+/* ─── Theme tokens ────────────────────────────────────────────────────────
+   Neutral ivory/anthracite — matches the visual tone of claude.ai/settings:
+   off-white body in light, near-black text; warm dark anthracite in dark
+   with cream text. Tokens are referenced by legacy CSS via var(--*).
+   ──────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Calibrated against claude.ai measured tokens */
+  --bg-app: #f8f8f6;          /* body bg (light) */
+  --bg-surface: #ffffff;      /* card/input */
+  --bg-card: #ffffff;         /* section card / add-section dashed bg */
+  --bg-elev: #f3f2ee;         /* hover/elevated */
+  --surface-user: #ffffff;    /* user chat bubble bg in LIGHT (was inheriting dark) */
+  --surface-user-text: #121212;
+  --surface-ai: #f3f2ee;
+  --text-strong: #121212;     /* body text */
+  --text-base: #2a2826;
+  --text-muted: #56544c;
+  --border-soft: #d6d5cd;     /* tebal sedikit agar terbaca rofiq.txt #1 */
+  --border-strong: #1a1a1a;   /* garis hitam tebal untuk light mode rofiq.txt #1 */
+  --accent: #d97757;          /* claude.ai orange accent */
+  --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Scrollbar styling */
+html.dark {
+  --bg-app: #1f1f1e;          /* body bg (dark) */
+  --bg-surface: #2c2c2a;      /* claude.ai elevated surface */
+  --bg-card: #2c2c2a;         /* section card in dark — fix white leak rofiq screenshot */
+  --bg-elev: #383836;         /* hover */
+  --surface-user: #383836;    /* user chat bubble bg in DARK */
+  --surface-user-text: #f8f8f6;
+  --surface-ai: #2c2c2a;
+  --text-strong: #f8f8f6;     /* body text */
+  --text-base: #c3c2b7;       /* secondary */
+  --text-muted: #97958c;      /* muted */
+  --border-soft: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --accent: #d97757;
+}
+
+/* Global */
+body {
+  font-family: var(--sans);
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-strong);
+  /* Clean — no grain. Same in both modes. */
+  background-image: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+/* Headings: warm old-style serif (Tiempos-feel via free fallbacks).
+   Limit to display contexts (h1/h2 in pages and the editor "hero" title).
+   Inputs and labels stay in the sans stack so forms still read crisp. */
+h1, h2, .display-serif {
+  font-family: var(--serif);
+  letter-spacing: -0.005em;
+}
+
+/* Scrollbar — adapts to theme */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-elev);
 }
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
+  background: var(--border-strong);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--accent);
 }
 
 /* KaTeX display */
@@ -34,15 +89,16 @@ body {
 .editable-content {
   min-height: 60px;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  background: white;
+  background: var(--bg-surface);
+  color: var(--text-strong);
   transition: border-color 0.2s;
 }
 .editable-content:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(121, 82, 42, 0.2);
 }
 
 /* Toast notification */
@@ -72,10 +128,12 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Paper preview */
+/* Paper preview — always white, regardless of app theme. The paper itself
+   is a printable artifact, so flipping it to dark would lie about export. */
 .paper-preview {
   font-family: 'Times New Roman', Times, serif;
   background: white;
+  color: #111;
   padding: 40px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   max-width: 900px;

@@ -10,6 +10,7 @@ import re
 import logging
 from datetime import datetime, timedelta, timezone
 
+import requests
 from flask import Blueprint, redirect, request, jsonify, url_for, current_app
 from flask_jwt_extended import (
     create_access_token,
@@ -125,6 +126,36 @@ def register():
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'error': 'Request body required'}), 400
+
+    # Cloudflare Turnstile CAPTCHA — verifies human (rofiq.txt sprint 1 #H2).
+    # Bypass for E2E tests: backend reads ENABLE_CAPTCHA, frontend sends a
+    # well-known dummy token. The Turnstile testing key (1x00000000000000000000AA)
+    # is documented to always pass; we accept it as bypass token in test env too.
+    if os.getenv('ENABLE_CAPTCHA', 'false').lower() == 'true':
+        token = (data.get('captcha_token') or data.get('cf_turnstile_response') or '').strip()
+        if not token:
+            return jsonify({'error': 'CAPTCHA required'}), 400
+        secret = os.getenv('TURNSTILE_SECRET_KEY', '')
+        # Cloudflare-documented "always-pass" testing secret: 1x0000000000000000000000000000000AA
+        is_test_secret = secret.startswith('1x0000000000000000000000000000000')
+        if secret and not is_test_secret:
+            try:
+                resp = requests.post(
+                    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+                    data={
+                        'secret': secret,
+                        'response': token,
+                        'remoteip': (request.headers.get('X-Forwarded-For') or request.remote_addr or '').split(',')[0].strip(),
+                    },
+                    timeout=8,
+                )
+                payload = resp.json() if resp.ok else {}
+                if not payload.get('success'):
+                    log.info("turnstile_failed", extra={'errors': payload.get('error-codes', [])})
+                    return jsonify({'error': 'CAPTCHA verification failed'}), 400
+            except Exception as e:
+                log.warning("turnstile_unreachable: %s", e)
+                return jsonify({'error': 'CAPTCHA service unreachable, please retry'}), 503
 
     email = (data.get('email') or '').strip().lower()
     password = data.get('password') or ''

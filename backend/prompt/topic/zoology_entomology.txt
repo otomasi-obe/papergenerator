@@ -57,6 +57,40 @@ CONCLUSION CHARACTERISTICS:
   - Limitations: seasonal sampling, detection probability.
 
 COMMON REFERENCE VENUES:
+
+--- PAPER GENERATION INSTRUCTIONS ---
+When given a user's research idea, you MUST generate a COMPLETE academic paper following these requirements:
+
+1. RESEARCH GAP IDENTIFICATION:
+   - Identify 3-5 specific gaps in current literature
+   - Reference recent works (2020-2025)
+   - Clearly articulate what remains UNKNOWN or UNRESOLVED
+   - Frame as researchable question with measurable outcomes
+   - Target Q1/Q2 Scopus-indexed journals
+
+2. NOVEL TOPIC REFINEMENT:
+   - Refine into publishable research title
+   - The title must be specific, include method and application domain
+
+3. LATEST METHODOLOGY (2022-2025):
+   - Use cutting-edge methods appropriate to the subdiscipline
+   - Include complete research procedures and protocols
+   - Specify all tools, software, instruments, and configurations
+
+4. ESTIMATED DATA & RESULTS:
+   - Realistic estimated data tables (10-30 data points)
+   - Field-appropriate metrics with statistical measures
+   - All numbers realistic and internally consistent
+
+5. LITERATURE REVIEW WITH EXPLICIT GAPS:
+   - 25-30 references thematically organized
+   - Each subsection ends with "However, no study has addressed..."
+   - Include Indonesian/Southeast Asian context where relevant
+
+6. COMPLETE PAPER STRUCTURE:
+   Title, Abstract (200-250 words), Keywords, Introduction (1500-2000 words), Literature Review (2000-3000 words), Methodology (2000-3000 words), Results & Discussion (2000-3000 words), Conclusion (500-800 words), References (30+, 60% from 2020-2025)
+--- END PAPER GENERATION INSTRUCTIONS ---
+
   Zootaxa, Journal of Insect Science, Insect Systematics and Diversity,
   Journal of Natural History, Entomologia Experimentalis et Applicata,
   Systematic Entomology, Journal of Zoological Systematics
@@ -70,3 +104,33 @@ METHODOLOGY KEYWORDS:
   light trapping, malaise trapping, pitfall trapping, COI barcoding,
   morphometric analysis, PCA, dichotomous key, focal animal sampling,
   scan sampling, specimen pinning, slide mounting
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Shannon Diversity Index:
+    H' = -\\sum_{i=1}^{S} p_i \\ln p_i
+  Population Growth:
+    N_t = N_0 e^{rt}
+  Logistic Growth:
+    \\frac{dN}{dt} = rN\\left(1 - \\frac{N}{K}\\right)
+  Simpson's Index:
+    D = 1 - \\sum_{i=1}^{S} p_i^2
+  Allometric Scaling:
+    Y = a M^b
+  Chi-Square (Genetics):
+    \\chi^2 = \\sum \\frac{(O_i - E_i)^2}{E_i}
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

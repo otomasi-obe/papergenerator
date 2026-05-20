@@ -1,0 +1,18 @@
+2026/05/20-20:43:19.557 46069 Reusing MANIFEST /home/sirobo/papergenerator/backend/imageGenerator/account1/Default/Sync Data/LevelDB/MANIFEST-000001
+2026/05/20-20:43:19.561 46069 Recovering log #3
+2026/05/20-20:43:19.563 46069 Reusing old log /home/sirobo/papergenerator/backend/imageGenerator/account1/Default/Sync Data/LevelDB/000003.log 
+2026/05/20-20:43:26.405 4606b Level-0 table #5: started
+2026/05/20-20:43:26.410 4606b Level-0 table #5: 173143 bytes OK
+2026/05/20-20:43:26.411 4606b Delete type=0 #3
+2026/05/20-20:43:35.784 46073 Level-0 table #7: started
+2026/05/20-20:43:35.790 46073 Level-0 table #7: 98496 bytes OK
+2026/05/20-20:43:35.792 46073 Delete type=0 #4
+2026/05/20-20:43:40.708 4606b Level-0 table #9: started
+2026/05/20-20:43:40.711 4606b Level-0 table #9: 97929 bytes OK
+2026/05/20-20:43:40.713 4606b Delete type=0 #6
+2026/05/20-20:43:44.196 46073 Level-0 table #11: started
+2026/05/20-20:43:44.200 46073 Level-0 table #11: 97924 bytes OK
+2026/05/20-20:43:44.202 46073 Delete type=0 #8
+2026/05/20-20:43:48.128 4606b Level-0 table #13: started
+2026/05/20-20:43:48.132 4606b Level-0 table #13: 97921 bytes OK
+2026/05/20-20:43:48.134 4606b Delete type=0 #10

@@ -61,6 +61,45 @@ def promote_user(user_id):
     return jsonify({'success': True, 'message': f'{user.email} role set to {role}'})
 
 
+@admin_bp.route('/users/<int:user_id>/quota', methods=['PATCH'])
+@jwt_required()
+def set_user_quota(user_id):
+    """Admin sets monthly token quota for a user (rofiq.txt: admin set max per user)."""
+    if not _require_admin():
+        return jsonify({'error': 'Admin access required'}), 403
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.get_json() or {}
+    try:
+        quota = int(data.get('token_quota_monthly', 50000))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'token_quota_monthly must be integer'}), 400
+    if quota < 0 or quota > 10_000_000:
+        return jsonify({'error': 'quota out of range (0..10M)'}), 400
+
+    user.token_quota_monthly = quota
+    db.session.commit()
+    return jsonify({'success': True, 'user': user.to_dict()})
+
+
+@admin_bp.route('/users/<int:user_id>/reset-quota', methods=['POST'])
+@jwt_required()
+def reset_user_quota(user_id):
+    """Reset a user's monthly counter to 0 (manual reset, e.g. after billing event)."""
+    if not _require_admin():
+        return jsonify({'error': 'Admin access required'}), 403
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    user.token_used_month = 0
+    user.usage_month_key = datetime.utcnow().strftime('%Y-%m')
+    db.session.commit()
+    return jsonify({'success': True, 'user': user.to_dict()})
+
+
 @admin_bp.route('/papers', methods=['GET'])
 @jwt_required()
 def list_all_papers():

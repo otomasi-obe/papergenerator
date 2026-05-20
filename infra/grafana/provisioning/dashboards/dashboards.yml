@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: PaperFull
+    orgId: 1
+    folder: PaperFull
+    type: file
+    disableDeletion: false
+    options:
+      path: /var/lib/grafana/dashboards

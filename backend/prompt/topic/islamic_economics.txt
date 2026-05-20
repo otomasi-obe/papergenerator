@@ -148,15 +148,6 @@ METHODOLOGY KEYWORDS:
   content analysis sharia compliance, Islamic social finance measurement,
   ARDL cointegration, bibliometric analysis, qualitative comparative analysis
 
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   001. Analisis efisiensi Bank Syariah Indonesia (BSI) pasca merger menggunakan DEA
   002. Pengaruh intellectual capital terhadap kinerja keuangan bank syariah di Indonesia
   003. Hubungan good corporate governance dan profitabilitas bank umum syariah
@@ -208,14 +199,6 @@ METHODOLOGY KEYWORDS:
   049. Analisis systemic risk contribution bank syariah terhadap stabilitas keuangan
   050. Efektivitas Islamic banking roadmap OJK terhadap pencapaian target market share
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   051. Analisis efisiensi pengelolaan zakat BAZNAS menggunakan DEA
   052. Pengaruh transparansi dan akuntabilitas terhadap kepercayaan muzakki pada LAZ
   053. Hubungan digitalisasi pengumpulan zakat dan peningkatan penerimaan BAZNAS
@@ -267,14 +250,6 @@ METHODOLOGY KEYWORDS:
   099. Efektivitas program zakat untuk pemberdayaan perempuan mustahik
   100. Hubungan artificial intelligence dan optimalisasi distribusi zakat
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   101. Analisis kinerja reksa dana syariah vs konvensional di pasar modal Indonesia
   102. Pengaruh penerbitan sukuk negara terhadap pembiayaan infrastruktur Indonesia
   103. Hubungan Islamic stock screening criteria dan kinerja saham syariah di JII
@@ -326,14 +301,6 @@ METHODOLOGY KEYWORDS:
   149. Efektivitas shariah-compliant hedging instruments untuk manajemen risiko
   150. Hubungan information asymmetry dan pricing sukuk di pasar sekunder
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   151. Analisis dampak sertifikasi halal terhadap keputusan pembelian konsumen Muslim
   152. Pengaruh halal awareness terhadap willingness to pay produk halal premium
   153. Hubungan halal supply chain management dan integritas produk halal
@@ -385,14 +352,6 @@ METHODOLOGY KEYWORDS:
   199. Efektivitas halal free trade zone terhadap investasi industri halal
   200. Hubungan halal certification dan sustainable development goals (SDGs)
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   201. Analisis produktivitas aset wakaf di Indonesia dan strategi optimalisasi
   202. Pengaruh cash waqf terhadap pembiayaan pendidikan dan kesehatan umat
   203. Hubungan good waqf governance dan kinerja pengelolaan aset wakaf
@@ -444,14 +403,6 @@ METHODOLOGY KEYWORDS:
   249. Efektivitas wakaf untuk pembiayaan energi terbarukan di komunitas
   250. Hubungan Islamic social finance dan financial inclusion masyarakat marginal
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   251. Analisis tingkat kepatuhan syariah bank umum syariah terhadap fatwa DSN-MUI
   252. Pengaruh Dewan Pengawas Syariah (DPS) terhadap kinerja bank syariah
   253. Hubungan sharia governance framework dan kepercayaan stakeholder
@@ -503,14 +454,6 @@ METHODOLOGY KEYWORDS:
   299. Efektivitas sharia governance pada Islamic microfinance institutions
   300. Hubungan sharia governance maturity model dan roadmap pengembangan
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   301. Analisis efektivitas BMT dalam pemberdayaan ekonomi masyarakat akar rumput
   302. Pengaruh fintech syariah terhadap inklusi keuangan masyarakat unbanked
   303. Hubungan Islamic microfinance dan pengentasan kemiskinan di pedesaan Indonesia
@@ -562,14 +505,6 @@ METHODOLOGY KEYWORDS:
   349. Efektivitas Islamic sandbox regulatory terhadap inovasi fintech syariah
   350. Hubungan Islamic fintech ecosystem dan pertumbuhan ekonomi syariah Indonesia
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   351. Analisis efisiensi perusahaan takaful di Indonesia menggunakan DEA
   352. Pengaruh model operasional (wakalah vs mudharabah) terhadap kinerja takaful
   353. Hubungan underwriting surplus dan profitabilitas perusahaan takaful
@@ -621,14 +556,6 @@ METHODOLOGY KEYWORDS:
   399. Efektivitas takaful untuk perlindungan pekerja migran Indonesia
   400. Hubungan Islamic financial planning dan demand comprehensive takaful
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   401. Analisis implementasi PSAK Syariah pada pelaporan keuangan bank syariah Indonesia
   402. Pengaruh Islamic corporate social responsibility disclosure terhadap nilai perusahaan
   403. Hubungan sharia supervisory board dan kualitas pelaporan keuangan bank syariah
@@ -680,14 +607,6 @@ METHODOLOGY KEYWORDS:
   449. Efektivitas Islamic accounting curriculum dalam memenuhi kebutuhan industri
   450. Hubungan integrated thinking dan value creation reporting pada entitas syariah
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   451. Analisis kontribusi pemikiran ekonomi Islam terhadap pembangunan ekonomi Indonesia
   452. Pengaruh maqasid al-shariah terhadap perumusan kebijakan ekonomi nasional
   453. Hubungan Islamic moral economy dan sustainable development di Indonesia
@@ -738,3 +657,35 @@ METHODOLOGY KEYWORDS:
   498. Analisis Islamic economic model untuk smart city development
   499. Efektivitas Islamic economic framework untuk post-pandemic recovery
   500. Hubungan Islamic economics dan artificial intelligence ethics policy
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Cobb-Douglas Production:
+    Y = A K^{\\alpha} L^{1-\\alpha}
+  Solow Growth:
+    \\dot{k} = s f(k) - (n + \\delta) k
+  Panel Fixed Effects:
+    Y_{it} = \\alpha_i + X'_{it} \\beta + \\varepsilon_{it}
+  DID Estimator:
+    \\delta = (\\bar{Y}_{\\mathrm{treat,post}} - \\bar{Y}_{\\mathrm{treat,pre}}) - (\\bar{Y}_{\\mathrm{ctrl,post}} - \\bar{Y}_{\\mathrm{ctrl,pre}})
+  Gini Coefficient:
+    G = \\frac{2 \\sum_{i=1}^{n} i \\cdot y_i}{n \\sum_{i=1}^{n} y_i} - \\frac{n+1}{n}
+  Phillips Curve:
+    \\pi_t = \\pi_t^e - \\beta (u_t - u_t^n) + \\varepsilon_t
+  OLS Estimator:
+    \\hat{\\beta} = (X'X)^{-1} X'y
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+

@@ -1,0 +1,416 @@
+openapi: "3.1.0"
+info:
+  title: PaperFull API
+  version: "1.0.0"
+  description: |
+    Backend API for PaperFull — AI-assisted academic paper generation.
+    All routes are mounted under `/api/`. Authentication is JWT bearer
+    except where noted.
+servers:
+  - url: https://paperfull.app
+    description: Production
+  - url: http://localhost:8000
+    description: Local (frontend proxy)
+
+tags:
+  - name: Auth
+  - name: Papers
+  - name: Files
+  - name: Images
+  - name: AI
+  - name: Admin
+  - name: Health
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, model, timestamp]
+                properties:
+                  status: { type: string, example: "ok" }
+                  model: { type: string, example: "gpt-5-mini-2025-08-07" }
+                  timestamp: { type: string, format: date-time }
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Email/password registration
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Account created, JWT issued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Email/password login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+
+  /api/papers:
+    get:
+      tags: [Papers]
+      summary: List papers (paginated)
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - in: query
+          name: offset
+          schema: { type: integer, default: 0, minimum: 0 }
+      responses:
+        "200":
+          description: Paginated list of papers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [papers, pagination]
+                properties:
+                  papers:
+                    type: array
+                    items: { $ref: "#/components/schemas/PaperSummary" }
+                  pagination: { $ref: "#/components/schemas/Pagination" }
+    post:
+      tags: [Papers]
+      summary: Save / upsert a paper
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Paper" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  id: { type: string }
+                  paper: { $ref: "#/components/schemas/PaperSummary" }
+
+  /api/papers/{paper_id}:
+    parameters:
+      - $ref: "#/components/parameters/PaperId"
+    get:
+      tags: [Papers]
+      summary: Load full paper data
+      responses:
+        "200":
+          description: Paper data + id
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Paper" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Papers]
+      summary: Update paper
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Paper" }
+      responses:
+        "200": { description: Updated }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [Papers]
+      summary: Delete paper (cascades files, images, conversations, memory)
+      responses:
+        "200": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/papers/{paper_id}/sign:
+    parameters:
+      - $ref: "#/components/parameters/PaperId"
+    post:
+      tags: [Files, Images]
+      summary: Mint a short-lived HMAC signed URL for an image or file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, resource_id]
+              properties:
+                scope:
+                  type: string
+                  enum: [image, file]
+                resource_id:
+                  oneOf:
+                    - { type: string }
+                    - { type: integer }
+                ttl_seconds:
+                  type: integer
+                  minimum: 60
+                  maximum: 3600
+                  default: 600
+      responses:
+        "200":
+          description: Signed URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expires_in]
+                properties:
+                  url: { type: string, example: "/api/images/p1/x.png?s=…" }
+                  expires_in: { type: integer }
+
+  /api/generate-full:
+    post:
+      tags: [AI]
+      summary: Kick off async full-paper generation; poll /api/job/{id}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt: { type: string }
+                topic: { type: string, nullable: true }
+                style: { type: string, nullable: true }
+                pdf_texts:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Job started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  job_id: { type: string }
+
+  /api/job/{job_id}:
+    parameters:
+      - in: path
+        name: job_id
+        required: true
+        schema: { type: string }
+    get:
+      tags: [AI]
+      summary: Poll job status (one-shot — deletes on done/error)
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      status: { type: string, enum: [pending] }
+                      elapsed: { type: integer }
+                  - type: object
+                    properties:
+                      status: { type: string, enum: [done] }
+                      success: { type: boolean }
+                      paper: { $ref: "#/components/schemas/PaperData" }
+                  - type: object
+                    properties:
+                      status: { type: string, enum: [error] }
+                      error: { type: string }
+                      timeout: { type: boolean }
+
+components:
+  parameters:
+    PaperId:
+      in: path
+      name: paper_id
+      required: true
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9_-]{1,64}$"
+
+  responses:
+    BadRequest:
+      description: Bad input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or invalid auth
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Conflict (e.g. email already registered)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, maxLength: 80 }
+        email: { type: string, format: email, maxLength: 254 }
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: At least 3 of 4 character classes (lowercase, uppercase, digit, symbol)
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string, description: JWT bearer }
+        user: { $ref: "#/components/schemas/User" }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        name: { type: string }
+        avatar_url: { type: string, nullable: true }
+        role: { type: string, enum: [user, admin] }
+        created_at: { type: string, format: date-time }
+        last_login: { type: string, format: date-time, nullable: true }
+
+    PaperSummary:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        user_id: { type: integer }
+        image_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Paper:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        data: { $ref: "#/components/schemas/PaperData" }
+
+    PaperData:
+      type: object
+      properties:
+        title: { type: string }
+        abstract: { type: string }
+        keywords:
+          type: array
+          items: { type: string }
+        authors:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              affiliation: { type: string }
+              location: { type: string }
+              email: { type: string }
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              number: { type: string }
+              title: { type: string }
+              content: { type: string }
+        references:
+          oneOf:
+            - type: array
+              items:
+                oneOf:
+                  - type: string
+                  - type: object
+                    properties:
+                      id: { type: string }
+                      text: { type: string }
+            - type: object
+              properties:
+                title: { type: string }
+                content:
+                  type: array
+                  items: { type: object }
+
+    Pagination:
+      type: object
+      required: [limit, offset, total, has_more]
+      properties:
+        limit: { type: integer }
+        offset: { type: integer }
+        total: { type: integer }
+        has_more: { type: boolean }

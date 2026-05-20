@@ -86,6 +86,19 @@ frontend-*.log
 
 .playwright-mcp/
 
+# Sprint 1 additions
+backend/archive/
+backend/output/*
+backend/exports/*
+backend/imageGenerator/cookies-account*.json
+backups/
+.plan/
+.planning/
+infra/observability/data/
+test-results/
+playwright-report/
+coverage/
+
 # Java/Maven Build
 backendJava/target/
 backendJava/target/maven-status/

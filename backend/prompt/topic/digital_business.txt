@@ -150,15 +150,6 @@ METHODOLOGY KEYWORDS:
   netnography, sentiment analysis, conjoint analysis,
   online survey (Likert scale), e-SERVQUAL, DeLone & McLean IS Success Model
 
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   001. Analisis faktor-faktor yang mempengaruhi keputusan pembelian di Tokopedia menggunakan UTAUT2
   002. Pengaruh e-service quality terhadap kepuasan dan loyalitas pelanggan Shopee Indonesia
   003. Hubungan trust dan perceived risk terhadap purchase intention di marketplace online
@@ -210,14 +201,6 @@ METHODOLOGY KEYWORDS:
   049. Analisis second-hand e-commerce platform dan circular economy di Indonesia
   050. Efektivitas gamification (coins, missions, games) terhadap daily active users marketplace
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   051. Analisis efektivitas content marketing terhadap brand awareness UMKM digital
   052. Pengaruh influencer marketing terhadap purchase intention generasi Z di Indonesia
   053. Hubungan SEO strategy dan organic traffic growth pada website bisnis
@@ -269,14 +252,6 @@ METHODOLOGY KEYWORDS:
   099. Efektivitas shoppable content terhadap seamless purchase experience
   100. Hubungan first-party data strategy dan marketing effectiveness post-cookie era
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   101. Analisis faktor adopsi digital payment (GoPay, OVO, Dana) menggunakan UTAUT2
   102. Pengaruh perceived security terhadap trust dan continuance intention pengguna e-wallet
   103. Hubungan financial literacy dan adopsi fintech lending di kalangan UMKM
@@ -328,14 +303,6 @@ METHODOLOGY KEYWORDS:
   149. Efektivitas credit scoring alternatif (psychometric, social media) pada fintech
   150. Hubungan fintech partnership dengan bank dan mutual value creation
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   151. Analisis network effects dan critical mass pada platform marketplace Indonesia
   152. Pengaruh platform governance terhadap seller dan buyer behavior
   153. Hubungan multi-homing behavior dan platform loyalty di ride-hailing
@@ -387,14 +354,6 @@ METHODOLOGY KEYWORDS:
   199. Efektivitas platform partnership strategy dengan incumbent industry
   200. Hubungan platform culture dan organizational agility
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   201. Analisis digital maturity level UMKM Indonesia dan roadmap transformasi
   202. Pengaruh digital transformation terhadap kinerja operasional perusahaan manufaktur
   203. Hubungan digital leadership dan keberhasilan transformasi digital organisasi
@@ -446,14 +405,6 @@ METHODOLOGY KEYWORDS:
   249. Efektivitas digital transformation terhadap customer lifetime value improvement
   250. Hubungan digital transformation maturity dan financial performance
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   251. Analisis faktor keputusan pembelian melalui social commerce di Instagram dan TikTok
   252. Pengaruh influencer credibility terhadap purchase intention di social media
   253. Hubungan social commerce features dan impulse buying behavior
@@ -505,14 +456,6 @@ METHODOLOGY KEYWORDS:
   299. Analisis social commerce payment integration dan checkout optimization
   300. Efektivitas social commerce storytelling terhadap emotional purchase decision
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   301. Analisis faktor keberhasilan startup digital di Indonesia menggunakan lean startup
   302. Pengaruh entrepreneurial ecosystem terhadap pertumbuhan startup di Jakarta
   303. Hubungan founder characteristics dan startup performance di Indonesia
@@ -564,14 +507,6 @@ METHODOLOGY KEYWORDS:
   349. Efektivitas startup ecosystem events (demo day, hackathon) terhadap deal flow
   350. Hubungan startup impact measurement dan sustainable business model
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   351. Analisis implementasi business intelligence pada pengambilan keputusan perusahaan digital
   352. Pengaruh data analytics capability terhadap competitive advantage bisnis digital
   353. Hubungan data-driven culture dan organizational performance
@@ -623,14 +558,6 @@ METHODOLOGY KEYWORDS:
   399. Efektivitas customer health score terhadap proactive retention
   400. Hubungan analytics operating model dan sustainable data-driven culture
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   401. Analisis faktor-faktor yang mempengaruhi digital customer experience di e-commerce Indonesia
   402. Pengaruh omnichannel experience terhadap customer satisfaction dan loyalty
   403. Hubungan UX design quality dan customer retention pada aplikasi digital
@@ -682,14 +609,6 @@ METHODOLOGY KEYWORDS:
   449. Efektivitas customer experience governance terhadap consistent delivery
   450. Hubungan customer experience innovation dan competitive differentiation
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   451. Analisis adopsi artificial intelligence pada bisnis UMKM di Indonesia
   452. Pengaruh generative AI (ChatGPT, etc.) terhadap produktivitas bisnis digital
   453. Hubungan AI readiness dan competitive advantage perusahaan digital Indonesia
@@ -740,3 +659,33 @@ METHODOLOGY KEYWORDS:
   498. Analisis AI infrastructure cost dan business viability for SMEs
   499. Efektivitas blockchain for ESG reporting dan verification
   500. Hubungan emerging technology adoption dan Indonesia digital economy growth
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Cronbach's Alpha:
+    \\alpha = \\frac{k}{k-1} \\left(1 - \\frac{\\sum \\sigma_i^2}{\\sigma_T^2}\\right)
+  Multiple Regression:
+    Y = \\beta_0 + \\beta_1 X_1 + \\beta_2 X_2 + ... + \\beta_k X_k + \\varepsilon
+  Chi-Square:
+    \\chi^2 = \\sum \\frac{(O_i - E_i)^2}{E_i}
+  Cohen's d:
+    d = \\frac{\\bar{X}_1 - \\bar{X}_2}{S_p}
+  Pearson Correlation:
+    r = \\frac{\\sum (x_i - \\bar{x})(y_i - \\bar{y})}{\\sqrt{\\sum (x_i - \\bar{x})^2 \\sum (y_i - \\bar{y})^2}}
+  NOTE: These equations are OPTIONAL for qualitative/humanities papers.
+  Include only if the methodology uses quantitative analysis.
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+

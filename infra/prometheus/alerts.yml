@@ -1,0 +1,74 @@
+# Burn-rate SLO alerts (multi-window: 1h fast, 6h slow) per
+# rofiq.txt sprint 1 SLO conservative target (login/CRUD 99%, generate 95%).
+
+groups:
+  - name: slo_availability
+    rules:
+      - alert: HttpHighErrorBudgetBurn_1h
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[1h]))
+            / clamp_min(sum(rate(http_requests_total[1h])), 0.001)
+          ) > 0.014
+        for: 5m
+        labels: { severity: critical, service: paper-backend }
+        annotations:
+          summary: "Error rate >1.4% for 1h on paper-backend (fast burn)"
+          runbook: "Check pm2 logs paper-backend; recent deploy?; DB?; OpenAI 5xx?"
+
+      - alert: HttpSlowErrorBudgetBurn_6h
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[6h]))
+            / clamp_min(sum(rate(http_requests_total[6h])), 0.001)
+          ) > 0.001
+        for: 30m
+        labels: { severity: warning, service: paper-backend }
+        annotations:
+          summary: "Sustained error budget consumption >0.1% for 6h"
+
+      - alert: ApiP95LatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{endpoint!~"chat\\..*|jobs_bp\\..*"}[5m])) by (le, endpoint)
+          ) > 2
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 latency above 2s for {{ $labels.endpoint }}"
+
+  - name: backend_health
+    rules:
+      - alert: BackendDown
+        expr: up{job="paper-backend"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "paper-backend not scrapable for 2 minutes"
+
+      - alert: AiGenerationFailureSpike
+        expr: |
+          sum(rate(ai_generation_total{status=~"error|timeout"}[15m]))
+          > 3 * sum(rate(ai_generation_total{status="done"}[15m])) + 0.001
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "AI generation error rate exceeds 3× success rate"
+
+  - name: infra
+    rules:
+      - alert: NodeDiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.15
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Disk free <15% on / mount"
+
+      - alert: PostgresConnectionsHigh
+        expr: |
+          pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Postgres connection usage above 80% of max"

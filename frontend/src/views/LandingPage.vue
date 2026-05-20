@@ -1,52 +1,95 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white">
+  <div class="min-h-screen bg-gradient-to-br from-brown-900 via-brown-800 to-stone-900 text-cream-50">
     <!-- Navigation -->
     <nav class="flex items-center justify-between px-8 py-5 max-w-7xl mx-auto">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">📄</span>
-        <span class="text-xl font-bold">PaperGenerator</span>
-        <span class="text-xs bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full font-medium ml-1">Multi-Journal</span>
+      <div class="flex items-center gap-2.5">
+        <img :src="logoWithText" alt="PaperFull" class="h-9 object-contain" />
+        <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium ml-1">Multi-Journal</span>
       </div>
-      <button
-        @click="auth.loginWithGoogle()"
-        class="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-800 rounded-full font-medium hover:bg-gray-100 transition-colors shadow-lg text-sm"
+      <router-link to="/login"
+        class="flex items-center gap-2 px-5 py-2.5 bg-cream-100 text-brown-800 rounded-full font-medium hover:bg-cream-50 transition-colors shadow-lg text-sm"
       >
-        <GoogleIcon class="w-4 h-4" />
-        Sign in with Google
-      </button>
+        Sign In
+      </router-link>
     </nav>
 
     <!-- Hero -->
-    <section class="max-w-5xl mx-auto px-8 pt-20 pb-24 text-center">
-      <div class="inline-flex items-center gap-2 text-blue-400 text-sm font-medium bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-6">
-        <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
-        AI-Powered Academic Paper Writing
+    <section class="relative max-w-6xl mx-auto px-8 pt-16 pb-20">
+      <div class="grid lg:grid-cols-2 gap-12 items-center">
+        <div class="text-center lg:text-left">
+          <div class="inline-flex items-center gap-2 text-cream-200 text-sm font-medium bg-cream-300/10 border border-cream-300/30 rounded-full px-4 py-1.5 mb-6">
+            <span class="w-1.5 h-1.5 bg-cream-300 rounded-full animate-pulse"></span>
+            AI-Powered Academic Paper Writing
+          </div>
+          <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
+            Generate Papers for
+            <span class="bg-gradient-to-r from-cream-200 to-cream-400 bg-clip-text text-transparent">Journal</span>
+            <br />or Conference
+          </h1>
+          <p class="text-lg text-cream-200/70 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+            Generate publication-ready papers for IEEE, international journals, SINTA-indexed journals, and conferences. Auto-format with LaTeX formulas, figures, tables, and references — export to DOCX ready for submission.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <router-link to="/login"
+              class="flex items-center justify-center gap-3 px-8 py-4 bg-cream-100 text-brown-800 rounded-xl font-semibold hover:bg-cream-50 transition-all shadow-2xl text-base"
+            >
+              Get Started
+            </router-link>
+            <a href="#features" class="flex items-center justify-center gap-2 px-8 py-4 border border-cream-300/40 rounded-xl text-cream-200 hover:border-cream-200 hover:text-cream-50 transition-colors text-base">
+              Learn More →
+            </a>
+          </div>
+        </div>
+        <div class="relative">
+          <div class="absolute -inset-6 bg-gradient-to-r from-cream-300/20 via-cream-400/10 to-brown-500/20 blur-3xl"></div>
+          <img :src="landingHero" alt="PaperFull editor preview"
+            class="relative w-full rounded-2xl ring-1 ring-cream-200/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]" />
+        </div>
       </div>
-      <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
-        Generate Papers for
-        <span class="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Journal</span>
-        <br />or Conference
-      </h1>
-      <p class="text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-        Generate publication-ready papers for IEEE, international journals, SINTA-indexed journals, and conferences. Support for robotics, mechatronics, AI, power electronics, PLC automation, and embedded systems. Auto-format with LaTeX formulas, figures, tables, and references — export to DOCX ready for submission.
-      </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-          @click="auth.loginWithGoogle()"
-          class="flex items-center justify-center gap-3 px-8 py-4 bg-white text-gray-800 rounded-xl font-semibold hover:bg-gray-100 transition-all shadow-2xl text-base"
-        >
-          <GoogleIcon class="w-5 h-5" />
-          Get Started with Google
-        </button>
-        <a href="#features" class="flex items-center justify-center gap-2 px-8 py-4 border border-slate-600 rounded-xl text-slate-300 hover:border-slate-400 hover:text-white transition-colors text-base">
-          Learn More →
-        </a>
+    </section>
+
+    <!-- Trust Strip -->
+    <section class="relative">
+      <img :src="trustStrip" alt="" aria-hidden="true"
+        class="absolute inset-0 w-full h-full object-cover opacity-25" />
+      <div class="absolute inset-0 bg-gradient-to-r from-slate-900/85 via-slate-900/70 to-slate-900/85"></div>
+      <div class="relative max-w-6xl mx-auto px-8 py-12">
+        <p class="text-center text-slate-300 text-sm uppercase tracking-[0.2em] mb-8">
+          Trusted across disciplines · IEEE · SINTA · International Journals · Conferences
+        </p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          <div>
+            <div class="text-3xl font-bold text-white">100+</div>
+            <div class="text-slate-400 text-sm">Domain topics</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold text-white">20+</div>
+            <div class="text-slate-400 text-sm">Citation styles</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold text-white">4000+</div>
+            <div class="text-slate-400 text-sm">Words per paper</div>
+          </div>
+          <div>
+            <div class="text-3xl font-bold text-white">DOCX</div>
+            <div class="text-slate-400 text-sm">Submission-ready</div>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- Feature Cards -->
-    <section id="features" class="max-w-6xl mx-auto px-8 pb-24">
-      <h2 class="text-3xl font-bold text-center mb-12 text-white">Everything you need to write great papers</h2>
+    <section id="features" class="max-w-6xl mx-auto px-8 py-24">
+      <div class="grid lg:grid-cols-2 gap-12 items-center mb-16">
+        <div>
+          <h2 class="text-3xl font-bold mb-4 text-white">Everything you need to write great papers</h2>
+          <p class="text-slate-400 leading-relaxed">
+            From the first draft to the final DOCX, PaperFull handles the structural work so you can focus on the ideas. Domain-aware prompts, anti-detection writing, full citation hygiene, and a chat assistant that reads your reference PDFs.
+          </p>
+        </div>
+        <img :src="featureIllustration" alt="PaperFull feature illustration"
+          class="w-full rounded-2xl ring-1 ring-white/10 shadow-2xl" />
+      </div>
       <div class="grid md:grid-cols-3 gap-6">
         <div v-for="feature in features" :key="feature.title"
           class="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 transition-colors">
@@ -116,7 +159,7 @@
           <p class="text-slate-400 text-xs">Accounting, Finance, Economics, Management, Marketing, Entrepreneurship, Operations</p>
         </div>
         <div class="bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">�</div>
+          <div class="text-2xl mb-2">🧭</div>
           <h3 class="font-semibold mb-1 text-cyan-300">Social Sciences</h3>
           <p class="text-slate-400 text-xs">Psychology, Sociology, Anthropology, Political Science, Education, Communication, Law</p>
         </div>
@@ -138,37 +181,26 @@
       <div class="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-3xl p-12">
         <h2 class="text-3xl font-bold mb-4">Ready to write your paper?</h2>
         <p class="text-slate-400 mb-8">Join researchers using AI to accelerate their academic writing.</p>
-        <button
-          @click="auth.loginWithGoogle()"
+        <router-link to="/login"
           class="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors shadow-lg"
         >
-          <GoogleIcon class="w-5 h-5" />
           Start Writing for Free
-        </button>
+        </router-link>
       </div>
     </section>
 
     <!-- Footer -->
     <footer class="border-t border-white/10 py-8 text-center text-slate-500 text-sm">
-      <p>© 2026 PaperGenerator · Multi-Journal Academic Paper AI Tool</p>
+      <p>© 2026 PaperFull · Multi-Journal Academic Paper AI Tool</p>
     </footer>
   </div>
 </template>
 
 <script setup>
-import { useAuthStore } from '../stores/auth.js'
-
-const auth = useAuthStore()
-
-// Google icon as inline component
-const GoogleIcon = {
-  template: `<svg viewBox="0 0 24 24" fill="currentColor" class="text-current">
-    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-  </svg>`
-}
+import logoWithText from '../image/logo-with-text.png'
+import landingHero from '../image/landing-page.jpg'
+import featureIllustration from '../image/feature-illustration.jpg'
+import trustStrip from '../image/trust-strip-bg.jpg'
 
 const features = [
   {

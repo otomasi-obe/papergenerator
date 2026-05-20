@@ -160,3 +160,33 @@ METHODOLOGY KEYWORDS:
   DPPH antioxidant assay, Kirby-Bauer disc diffusion, MIC determination
 
 
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Arrhenius Equation:
+    k = A e^{-E_a/(RT)}
+  Nernst Equation:
+    E = E^0 - \\frac{RT}{nF} \\ln Q
+  Ideal Gas Law:
+    PV = nRT
+  Henderson-Hasselbalch:
+    pH = pK_a + \\log \\frac{[A^-]}{[HA]}
+  Beer-Lambert Law:
+    A = \\varepsilon l c
+  Rate Law:
+    r = k [A]^m [B]^n
+  Gibbs Free Energy:
+    \\Delta G = \\Delta H - T \\Delta S
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

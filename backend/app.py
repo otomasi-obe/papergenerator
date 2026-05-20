@@ -33,6 +33,28 @@ from chat import chat_bp
 from papers_bp import papers_bp
 from files_bp import files_bp
 from images_bp import paper_images_bp, image_serve_bp
+from jobs_bp import jobs_bp
+from slr_bp import slr_bp
+from quota_bp import quota_bp
+
+# ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    _dsn = os.getenv("GLITCHTIP_DSN", "").strip()
+    if _dsn:
+        sentry_sdk.init(
+            dsn=_dsn,
+            integrations=[FlaskIntegration(), SqlalchemyIntegration()],
+            traces_sample_rate=0.05,
+            send_default_pii=False,
+            release=os.getenv("SENTRY_RELEASE", "dev"),
+            environment=os.getenv("FLASK_ENV", "production"),
+        )
+except Exception:
+    pass
 
 from generate_ai_json_paper_aiotomasi import generate_paper_json
 from template.IEEEgen import build_document as build_ieee_docx
@@ -127,6 +149,9 @@ app.register_blueprint(papers_bp)
 app.register_blueprint(files_bp)
 app.register_blueprint(paper_images_bp)
 app.register_blueprint(image_serve_bp)
+app.register_blueprint(jobs_bp)
+app.register_blueprint(slr_bp)
+app.register_blueprint(quota_bp)
 
 
 # ─── OpenAPI / Swagger UI ─────────────────────────────────────────────────
@@ -304,6 +329,8 @@ def _get_current_user_id():
         return None
 
 def _log_api_usage(endpoint, usage, user_id=None):
+    """Insert usage row + bump per-user monthly counter (token quota tracking).
+    Called from a daemon thread, so it owns its own app context."""
     try:
         with app.app_context():
             log_entry = ApiUsageLog(
@@ -315,6 +342,19 @@ def _log_api_usage(endpoint, usage, user_id=None):
                 model=OPENAI_MODEL,
             )
             db.session.add(log_entry)
+
+            # Quota counter — reset on month change.
+            if user_id is not None:
+                from models import User
+                u = User.query.get(int(user_id))
+                if u:
+                    now = datetime.now(timezone.utc)
+                    month_key = now.strftime('%Y-%m')
+                    if (u.usage_month_key or '') != month_key:
+                        u.usage_month_key = month_key
+                        u.token_used_month = 0
+                    u.token_used_month = (u.token_used_month or 0) + int(usage.get('total_tokens', 0))
+
             db.session.commit()
     except Exception as e:
         log.warning("Failed to log API usage: %s", e)

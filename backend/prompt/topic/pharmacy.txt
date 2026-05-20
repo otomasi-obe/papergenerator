@@ -110,15 +110,6 @@ DOMAIN VOCABULARY:
 METHODOLOGY KEYWORDS:
   randomized controlled trial, cohort study, case-control study, cross-sectional study, mixed methods, implementation science, diagnostic accuracy, systematic review, meta-analysis, regression, survival analysis, thematic analysis, quality improvement.
 
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   001. Clinical pharmacotherapy: effectiveness in pharmacy practice
   002. Clinical pharmacotherapy: implementation barriers in pharmacy practice
   003. Clinical pharmacotherapy: diagnostic accuracy in pharmacy practice
@@ -170,14 +161,6 @@ METHODOLOGY KEYWORDS:
   049. Clinical pharmacotherapy: adverse event surveillance in pharmacy practice
   050. Clinical pharmacotherapy: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   051. Medication safety: effectiveness in pharmacy practice
   052. Medication safety: implementation barriers in pharmacy practice
   053. Medication safety: diagnostic accuracy in pharmacy practice
@@ -229,14 +212,6 @@ METHODOLOGY KEYWORDS:
   099. Medication safety: adverse event surveillance in pharmacy practice
   100. Medication safety: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   101. Pharmacovigilance: effectiveness in pharmacy practice
   102. Pharmacovigilance: implementation barriers in pharmacy practice
   103. Pharmacovigilance: diagnostic accuracy in pharmacy practice
@@ -288,14 +263,6 @@ METHODOLOGY KEYWORDS:
   149. Pharmacovigilance: adverse event surveillance in pharmacy practice
   150. Pharmacovigilance: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   151. Pharmaceutics: effectiveness in pharmacy practice
   152. Pharmaceutics: implementation barriers in pharmacy practice
   153. Pharmaceutics: diagnostic accuracy in pharmacy practice
@@ -347,14 +314,6 @@ METHODOLOGY KEYWORDS:
   199. Pharmaceutics: adverse event surveillance in pharmacy practice
   200. Pharmaceutics: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   201. Pharmacokinetics: effectiveness in pharmacy practice
   202. Pharmacokinetics: implementation barriers in pharmacy practice
   203. Pharmacokinetics: diagnostic accuracy in pharmacy practice
@@ -406,14 +365,6 @@ METHODOLOGY KEYWORDS:
   249. Pharmacokinetics: adverse event surveillance in pharmacy practice
   250. Pharmacokinetics: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   251. Pharmacy practice: effectiveness in pharmacy practice
   252. Pharmacy practice: implementation barriers in pharmacy practice
   253. Pharmacy practice: diagnostic accuracy in pharmacy practice
@@ -465,14 +416,6 @@ METHODOLOGY KEYWORDS:
   299. Pharmacy practice: adverse event surveillance in pharmacy practice
   300. Pharmacy practice: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   301. Antimicrobial stewardship: effectiveness in pharmacy practice
   302. Antimicrobial stewardship: implementation barriers in pharmacy practice
   303. Antimicrobial stewardship: diagnostic accuracy in pharmacy practice
@@ -524,14 +467,6 @@ METHODOLOGY KEYWORDS:
   349. Antimicrobial stewardship: adverse event surveillance in pharmacy practice
   350. Antimicrobial stewardship: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   351. Pharmacoeconomics: effectiveness in pharmacy practice
   352. Pharmacoeconomics: implementation barriers in pharmacy practice
   353. Pharmacoeconomics: diagnostic accuracy in pharmacy practice
@@ -583,14 +518,6 @@ METHODOLOGY KEYWORDS:
   399. Pharmacoeconomics: adverse event surveillance in pharmacy practice
   400. Pharmacoeconomics: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   401. Community pharmacy: effectiveness in pharmacy practice
   402. Community pharmacy: implementation barriers in pharmacy practice
   403. Community pharmacy: diagnostic accuracy in pharmacy practice
@@ -642,14 +569,6 @@ METHODOLOGY KEYWORDS:
   449. Community pharmacy: adverse event surveillance in pharmacy practice
   450. Community pharmacy: personalized intervention in pharmacy practice
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   451. Regulatory pharmacy: effectiveness in pharmacy practice
   452. Regulatory pharmacy: implementation barriers in pharmacy practice
   453. Regulatory pharmacy: diagnostic accuracy in pharmacy practice
@@ -700,3 +619,35 @@ METHODOLOGY KEYWORDS:
   498. Regulatory pharmacy: clinical decision pathway in pharmacy practice
   499. Regulatory pharmacy: adverse event surveillance in pharmacy practice
   500. Regulatory pharmacy: personalized intervention in pharmacy practice
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Odds Ratio:
+    OR = \\frac{a \\times d}{b \\times c}
+  Relative Risk:
+    RR = \\frac{a/(a+b)}{c/(c+d)}
+  Sensitivity:
+    \\mathrm{Sensitivity} = \\frac{TP}{TP + FN} \\times 100\\%
+  Specificity:
+    \\mathrm{Specificity} = \\frac{TN}{TN + FP} \\times 100\\%
+  NNT:
+    NNT = \\frac{1}{ARR}
+  Kaplan-Meier:
+    S(t) = \\prod_{t_i \\leq t} \\frac{n_i - d_i}{n_i}
+  Sample Size:
+    n = \\frac{(Z_{\\alpha/2} + Z_{\\beta})^2 \\cdot 2\\sigma^2}{d^2}
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+

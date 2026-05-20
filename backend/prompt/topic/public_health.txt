@@ -620,3 +620,35 @@ METHODOLOGY KEYWORDS:
   498. Noncommunicable diseases: clinical decision pathway in public health practice
   499. Noncommunicable diseases: adverse event surveillance in public health practice
   500. Noncommunicable diseases: personalized intervention in public health practice
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Odds Ratio:
+    OR = \\frac{a \\times d}{b \\times c}
+  Relative Risk:
+    RR = \\frac{a/(a+b)}{c/(c+d)}
+  Sensitivity:
+    \\mathrm{Sensitivity} = \\frac{TP}{TP + FN} \\times 100\\%
+  Specificity:
+    \\mathrm{Specificity} = \\frac{TN}{TN + FP} \\times 100\\%
+  NNT:
+    NNT = \\frac{1}{ARR}
+  Kaplan-Meier:
+    S(t) = \\prod_{t_i \\leq t} \\frac{n_i - d_i}{n_i}
+  Sample Size:
+    n = \\frac{(Z_{\\alpha/2} + Z_{\\beta})^2 \\cdot 2\\sigma^2}{d^2}
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

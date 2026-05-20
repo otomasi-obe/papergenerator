@@ -29,25 +29,79 @@ log = logging.getLogger(__name__)
 
 files_bp = Blueprint("paper_files", __name__, url_prefix="/api/papers")
 
-ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md"}
+ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv"}
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_PREVIEW_CHARS = 20_000
 
 
 def _extract_text_for_preview(filepath: Path, ext: str) -> str:
+    """Best-effort plain-text extraction. PDF prefers PyMuPDF (fitz) for
+    layout-aware output; Excel uses openpyxl multi-sheet flatten; DOCX uses
+    python-docx with table/paragraph traversal so cells aren't dropped.
+    rofiq.txt #6: 'extraksi ke text yang presisi'.
+    """
     try:
         if ext == ".pdf":
+            try:
+                import fitz  # PyMuPDF — better fidelity than pdfminer for tables
+                parts = []
+                with fitz.open(str(filepath)) as doc:
+                    for page in doc:
+                        parts.append(page.get_text("text"))
+                        if sum(len(p) for p in parts) >= MAX_PREVIEW_CHARS:
+                            break
+                txt = "\n\n".join(parts)
+                if txt.strip():
+                    return txt[:MAX_PREVIEW_CHARS]
+            except Exception:
+                pass
             from extract_pdfs import extract_text_from_pdf
             with open(filepath, "rb") as f:
                 txt = extract_text_from_pdf(f)
             return txt[:MAX_PREVIEW_CHARS]
+
         if ext in (".docx", ".doc"):
             from docx import Document
             doc = Document(str(filepath))
-            return "\n".join(p.text for p in doc.paragraphs)[:MAX_PREVIEW_CHARS]
+            chunks: list[str] = []
+            for p in doc.paragraphs:
+                if p.text.strip():
+                    chunks.append(p.text)
+            for tbl in doc.tables:
+                for row in tbl.rows:
+                    cells = [c.text.strip() for c in row.cells]
+                    if any(cells):
+                        chunks.append(" | ".join(cells))
+            return "\n".join(chunks)[:MAX_PREVIEW_CHARS]
+
+        if ext in (".xlsx", ".xls"):
+            from openpyxl import load_workbook
+            wb = load_workbook(str(filepath), read_only=True, data_only=True)
+            out: list[str] = []
+            for sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                out.append(f"# Sheet: {sheet_name}")
+                row_count = 0
+                for row in ws.iter_rows(values_only=True):
+                    cells = ["" if v is None else str(v) for v in row]
+                    if any(cells):
+                        out.append("\t".join(cells))
+                    row_count += 1
+                    if row_count >= 500:  # cap per sheet to keep extraction fast
+                        out.append("... (truncated)")
+                        break
+                out.append("")
+                if sum(len(s) for s in out) >= MAX_PREVIEW_CHARS:
+                    break
+            return "\n".join(out)[:MAX_PREVIEW_CHARS]
+
+        if ext == ".csv":
+            return filepath.read_text(encoding="utf-8", errors="replace")[:MAX_PREVIEW_CHARS]
+
         if ext in (".txt", ".md"):
             return filepath.read_text(encoding="utf-8", errors="replace")[:MAX_PREVIEW_CHARS]
-    except Exception:
+    except Exception as e:
+        log.info("extract_failed", extra={"file": str(filepath), "ext": ext, "err": str(e)})
         return ""
     return ""
 

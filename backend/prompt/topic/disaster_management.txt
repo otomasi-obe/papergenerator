@@ -66,6 +66,40 @@ CONCLUSION CHARACTERISTICS:
   - Future: multi-hazard risk assessment, early warning system design, post-disaster recovery planning.
 
 COMMON REFERENCE VENUES:
+
+--- PAPER GENERATION INSTRUCTIONS ---
+When given a user's research idea, you MUST generate a COMPLETE academic paper following these requirements:
+
+1. RESEARCH GAP IDENTIFICATION:
+   - Identify 3-5 specific gaps in current literature
+   - Reference recent works (2020-2025)
+   - Clearly articulate what remains UNKNOWN or UNRESOLVED
+   - Frame as researchable question with measurable outcomes
+   - Target Q1/Q2 Scopus-indexed journals
+
+2. NOVEL TOPIC REFINEMENT:
+   - Refine into publishable research title
+   - The title must be specific, include method and application domain
+
+3. LATEST METHODOLOGY (2022-2025):
+   - Use cutting-edge methods appropriate to the subdiscipline
+   - Include complete research procedures and protocols
+   - Specify all tools, software, instruments, and configurations
+
+4. ESTIMATED DATA & RESULTS:
+   - Realistic estimated data tables (10-30 data points)
+   - Field-appropriate metrics with statistical measures
+   - All numbers realistic and internally consistent
+
+5. LITERATURE REVIEW WITH EXPLICIT GAPS:
+   - 25-30 references thematically organized
+   - Each subsection ends with "However, no study has addressed..."
+   - Include Indonesian/Southeast Asian context where relevant
+
+6. COMPLETE PAPER STRUCTURE:
+   Title, Abstract (200-250 words), Keywords, Introduction (1500-2000 words), Literature Review (2000-3000 words), Methodology (2000-3000 words), Results & Discussion (2000-3000 words), Conclusion (500-800 words), References (30+, 60% from 2020-2025)
+--- END PAPER GENERATION INSTRUCTIONS ---
+
   Natural Hazards and Earth System Sciences, International Journal of Disaster Risk Reduction,
   Disasters, Natural Hazards, Geomatics Natural Hazards and Risk,
   Jurnal Bumi Indonesia (UGM), IOP Conference Series: Earth and Environmental Science
@@ -79,3 +113,33 @@ METHODOLOGY KEYWORDS:
   GIS multi-criteria evaluation (weighted overlay), remote sensing change detection (Sentinel-1/Landsat),
   community preparedness survey (structured questionnaire), hazard zone classification,
   flood inundation modeling, damage assessment (visual inspection), NDVI/NDWI index
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Risk Index:
+    R = H \\times V \\times E
+  Vulnerability:
+    V = \\frac{\\mathrm{Exposure} \\times \\mathrm{Sensitivity}}{\\mathrm{Adaptive\\ Capacity}}
+  Return Period:
+    T = \\frac{1}{P(X \\geq x)}
+  Flood Discharge (Rational):
+    Q = C \\cdot I \\cdot A
+  Earthquake Magnitude:
+    M_L = \\log_{10} A - \\log_{10} A_0
+  Damage Ratio:
+    DR = \\frac{\\mathrm{Damaged\\ Units}}{\\mathrm{Total\\ Units}} \\times 100\\%
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

@@ -65,6 +65,40 @@ CONCLUSION CHARACTERISTICS:
   - Future: high-frequency trading data, ESG integration, fintech disruption analysis.
 
 COMMON REFERENCE VENUES:
+
+--- PAPER GENERATION INSTRUCTIONS ---
+When given a user's research idea, you MUST generate a COMPLETE academic paper following these requirements:
+
+1. RESEARCH GAP IDENTIFICATION:
+   - Identify 3-5 specific gaps in current literature
+   - Reference recent works (2020-2025)
+   - Clearly articulate what remains UNKNOWN or UNRESOLVED
+   - Frame as researchable question with measurable outcomes
+   - Target Q1/Q2 Scopus-indexed journals
+
+2. NOVEL TOPIC REFINEMENT:
+   - Refine into publishable research title
+   - The title must be specific, include method and application domain
+
+3. LATEST METHODOLOGY (2022-2025):
+   - Use cutting-edge methods appropriate to the subdiscipline
+   - Include complete research procedures and protocols
+   - Specify all tools, software, instruments, and configurations
+
+4. ESTIMATED DATA & RESULTS:
+   - Realistic estimated data tables (10-30 data points)
+   - Field-appropriate metrics with statistical measures
+   - All numbers realistic and internally consistent
+
+5. LITERATURE REVIEW WITH EXPLICIT GAPS:
+   - 25-30 references thematically organized
+   - Each subsection ends with "However, no study has addressed..."
+   - Include Indonesian/Southeast Asian context where relevant
+
+6. COMPLETE PAPER STRUCTURE:
+   Title, Abstract (200-250 words), Keywords, Introduction (1500-2000 words), Literature Review (2000-3000 words), Methodology (2000-3000 words), Results & Discussion (2000-3000 words), Conclusion (500-800 words), References (30+, 60% from 2020-2025)
+--- END PAPER GENERATION INSTRUCTIONS ---
+
   Journal of Finance, Journal of Financial Economics, Journal of Banking & Finance,
   Pacific-Basin Finance Journal, Finance Research Letters, Jurnal Keuangan dan Perbankan (JKP),
   Jurnal Akuntansi dan Keuangan Indonesia (JAKI), Asian Journal of Finance & Accounting
@@ -78,3 +112,35 @@ METHODOLOGY KEYWORDS:
   panel data regression (FE/RE, Hausman test), event study (AR/CAR calculation, market model),
   Altman Z-score financial distress analysis, Tobin's Q calculation, SEM-PLS financial constructs,
   pooled OLS with robust SE, financial ratio analysis (IDX annual report data)
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Cobb-Douglas Production:
+    Y = A K^{\\alpha} L^{1-\\alpha}
+  Solow Growth:
+    \\dot{k} = s f(k) - (n + \\delta) k
+  Panel Fixed Effects:
+    Y_{it} = \\alpha_i + X'_{it} \\beta + \\varepsilon_{it}
+  DID Estimator:
+    \\delta = (\\bar{Y}_{\\mathrm{treat,post}} - \\bar{Y}_{\\mathrm{treat,pre}}) - (\\bar{Y}_{\\mathrm{ctrl,post}} - \\bar{Y}_{\\mathrm{ctrl,pre}})
+  Gini Coefficient:
+    G = \\frac{2 \\sum_{i=1}^{n} i \\cdot y_i}{n \\sum_{i=1}^{n} y_i} - \\frac{n+1}{n}
+  Phillips Curve:
+    \\pi_t = \\pi_t^e - \\beta (u_t - u_t^n) + \\varepsilon_t
+  OLS Estimator:
+    \\hat{\\beta} = (X'X)^{-1} X'y
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

@@ -137,15 +137,6 @@ METHODOLOGY KEYWORDS:
   behavior-based safety observation, chemical exposure monitoring,
   cross-sectional study, logistic regression, chi-square test
 
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   001. Analisis risiko ergonomi dengan metode REBA pada pekerja batik tulis di Pekalongan
   002. Hubungan postur kerja dan keluhan muskuloskeletal pada pengrajin gerabah di Kasongan Yogyakarta
   003. Evaluasi beban kerja fisik menggunakan NIOSH Lifting Equation pada pekerja gudang e-commerce di Jabodetabek
@@ -197,14 +188,6 @@ METHODOLOGY KEYWORDS:
   049. Analisis task demand dan kapasitas fisik pada pekerja pemadam kebakaran
   050. Hubungan work-rest schedule dan recovery rate pada pekerja panas di foundry
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   051. Analisis paparan debu kayu dan fungsi paru pada pekerja mebel di Jepara
   052. Hubungan paparan formaldehida dan gangguan pernapasan pada pekerja plywood di Kalimantan
   053. Evaluasi efektivitas ventilasi lokal terhadap konsentrasi uap solvent di percetakan offset
@@ -256,14 +239,6 @@ METHODOLOGY KEYWORDS:
   099. Analisis paparan electromagnetic field pada pekerja gardu induk PLN
   100. Hubungan paparan debu kapur dan gangguan fungsi paru pada pekerja tambang kapur
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   101. Evaluasi implementasi SMK3 PP 50/2012 pada perusahaan manufaktur di kawasan industri Cikarang
   102. Analisis gap ISO 45001:2018 dan SMK3 pada perusahaan migas di Kalimantan
   103. Pengaruh leadership commitment terhadap kinerja sistem manajemen K3 di industri petrokimia
@@ -315,14 +290,6 @@ METHODOLOGY KEYWORDS:
   149. Evaluasi efektivitas emergency drill terhadap kesiapsiagaan pekerja
   150. Pengaruh AI-based safety analytics terhadap prediksi kecelakaan kerja
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   151. Analisis faktor psikososial kerja dan burnout pada tenaga kesehatan pasca pandemi COVID-19
   152. Hubungan job demand-resource dan work engagement pada pekerja startup teknologi
   153. Pengaruh workplace bullying terhadap kesehatan mental dan turnover intention pada perawat
@@ -374,14 +341,6 @@ METHODOLOGY KEYWORDS:
   199. Analisis interseksi gender dan stres kerja pada pekerja perempuan di sektor maskulin
   200. Pengaruh organizational mindfulness terhadap collective well-being
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   201. Analisis risiko kecelakaan kerja jatuh dari ketinggian pada proyek gedung bertingkat di Jakarta
   202. Evaluasi efektivitas safety harness dan lifeline system pada pekerja konstruksi baja
   203. Pengaruh safety climate terhadap unsafe behavior pada pekerja proyek jalan tol Trans Jawa
@@ -433,14 +392,6 @@ METHODOLOGY KEYWORDS:
   249. Hubungan worker participation dan efektivitas safety committee proyek
   250. Evaluasi program safety recognition dan dampaknya terhadap safety motivation
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   251. Pemetaan kebisingan dan evaluasi program konservasi pendengaran di pabrik tekstil Bandung
   252. Analisis kualitas pencahayaan dan keluhan visual fatigue pada pekerja garmen
   253. Evaluasi paparan panas dan heat strain pada pekerja dapur katering industri
@@ -492,14 +443,6 @@ METHODOLOGY KEYWORDS:
   299. Evaluasi comprehensive industrial hygiene assessment pada industri petrokimia
   300. Pengaruh predictive exposure modeling terhadap efisiensi program higiene industri
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   301. Evaluasi sistem proteksi kebakaran aktif dan pasif pada gedung apartemen di Jakarta
   302. Analisis waktu evakuasi dan efektivitas jalur evakuasi pada pusat perbelanjaan
   303. Pengaruh fire drill berkala terhadap kesiapsiagaan penghuni gedung perkantoran
@@ -551,14 +494,6 @@ METHODOLOGY KEYWORDS:
   349. Evaluasi koordinasi multi-agency dalam penanganan bencana industri besar
   350. Analisis risiko kebakaran pada fasilitas pengolahan lithium-ion battery
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   351. Prevalensi dan faktor risiko noise-induced hearing loss pada pekerja pabrik tekstil di Jawa Tengah
   352. Hubungan paparan debu silika dan silikosis pada pekerja tambang pasir
   353. Analisis faktor risiko dermatitis kontak akibat kerja pada pekerja salon kecantikan
@@ -610,14 +545,6 @@ METHODOLOGY KEYWORDS:
   399. Pengaruh program comprehensive health surveillance terhadap kesehatan pekerja kimia
   400. Evaluasi hubungan paparan diesel exhaust dan kanker paru pada pekerja transportasi
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   401. Analisis faktor penyebab kecelakaan lalu lintas pada pengemudi truk logistik di jalur Pantura
   402. Hubungan fatigue driving dan kecelakaan pada pengemudi bus AKAP rute malam
   403. Evaluasi efektivitas fatigue management system pada perusahaan transportasi tambang
@@ -669,14 +596,6 @@ METHODOLOGY KEYWORDS:
   449. Analisis kecelakaan pada transportasi wisata (bus pariwisata, kapal wisata)
   450. Hubungan electric vehicle battery dan risiko keselamatan pada kecelakaan
 
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
   451. Analisis risiko K3 pada implementasi collaborative robot (cobot) di industri manufaktur
   452. Pengaruh AI-based hazard recognition terhadap pencegahan kecelakaan di pabrik
   453. Evaluasi efektivitas wearable IoT sensor untuk monitoring paparan real-time pada pekerja
@@ -727,3 +646,33 @@ METHODOLOGY KEYWORDS:
   498. Hubungan data privacy dan surveillance dalam program safety monitoring
   499. Analisis kesiapan SDM K3 Indonesia menghadapi transformasi digital industri
   500. Pengaruh integrated digital safety ecosystem terhadap zero accident achievement
+
+
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Odds Ratio:
+    OR = \\frac{a \\times d}{b \\times c}
+  Relative Risk:
+    RR = \\frac{a/(a+b)}{c/(c+d)}
+  Sensitivity:
+    \\mathrm{Sensitivity} = \\frac{TP}{TP + FN} \\times 100\\%
+  Specificity:
+    \\mathrm{Specificity} = \\frac{TN}{TN + FP} \\times 100\\%
+  Sample Size:
+    n = \\frac{(Z_{\\alpha/2} + Z_{\\beta})^2 \\cdot 2\\sigma^2}{d^2}
+  Prevalence:
+    P = \\frac{\\mathrm{Cases}}{\\mathrm{Population}} \\times 1000
+
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+

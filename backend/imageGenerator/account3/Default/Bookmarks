@@ -1,0 +1,121 @@
+{
+   "checksum": "3de69328f445d12161865dea59986ccb",
+   "roots": {
+      "bookmark_bar": {
+         "children": [ {
+            "date_added": "13180998474301303",
+            "date_last_used": "13353129635675218",
+            "guid": "2bffa8c2-105d-46b9-b9fe-dfcfaabda483",
+            "id": "12",
+            "name": "A",
+            "type": "url",
+            "url": "https://shopee.co.id/mutiara_cosmetics?page=3&sortBy=pop"
+         }, {
+            "date_added": "13245342425048260",
+            "date_last_used": "0",
+            "guid": "6f29e090-704c-4548-bf63-554dec6a3d0a",
+            "id": "13",
+            "name": "Modul Pedagogi 1 KB3.pdf",
+            "type": "url",
+            "url": "file:///D:/Downloads/Modul%20Pedagogi%201%20KB3.pdf"
+         } ],
+         "date_added": "13423756911469135",
+         "date_last_used": "0",
+         "date_modified": "13245342425048260",
+         "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+         "id": "1",
+         "name": "Bookmarks bar",
+         "type": "folder"
+      },
+      "other": {
+         "children": [ {
+            "date_added": "13422252238351091",
+            "date_last_used": "0",
+            "guid": "2cf3324e-e300-451a-a57c-510eb484241d",
+            "id": "11",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Google NotebookLM | AI Research Tool & Thinking Partner",
+            "type": "url",
+            "url": "https://notebooklm.google/"
+         } ],
+         "date_added": "13423756911469135",
+         "date_last_used": "0",
+         "date_modified": "13422252238351091",
+         "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+         "id": "2",
+         "name": "Other bookmarks",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [ {
+            "date_added": "13128427225992987",
+            "date_last_used": "0",
+            "guid": "3747824b-3c95-fb80-a996-9cba0bbdd431",
+            "id": "5",
+            "name": "Cara Mengatasi Kenakalan Remaja",
+            "type": "url",
+            "url": "http://googleweblight.com/?lite_url=http://belajarpsikologi.com/cara-mengatasi-kenakalan-remaja/&ei=eXel9qHq&lc=id-ID&s=1&m=675&host=www.google.co.id&ts=1483953549&sig=AF9NedktmzkB4mf4s2edTtH6KFI_DwRgRw"
+         }, {
+            "date_added": "13230867660659337",
+            "date_last_used": "0",
+            "guid": "b0e0e296-5ceb-4973-b029-7a90ffbd149e",
+            "id": "6",
+            "name": "One Step Checkout",
+            "type": "url",
+            "url": "https://www.thebodyshop.co.id/onestepcheckout/"
+         }, {
+            "date_added": "13253520635096955",
+            "date_last_used": "0",
+            "guid": "4fe8a897-ebdb-437a-9592-7a2c3c2d2de1",
+            "id": "7",
+            "name": "Kini Sepakat Bercerai, Meggy Wulandari Bongkar Tabiat Buruk Kiwil, Terlalu Agresif di Ranjang Hingga Bikin Jijik: Kalau Nggak Dilayani Langsung Marah",
+            "type": "url",
+            "url": "https://wiken.grid.id/amp/392132346/kini-sepakat-bercerai-meggy-wulandari-bongkar-tabiat-buruk-kiwil-terlalu-agresif-di-ranjang-hingga-bikin-jijik-kalau-nggak-dilayani-langsung-marah?page=2"
+         }, {
+            "date_added": "13372753953347946",
+            "date_last_used": "0",
+            "guid": "5aedd45f-edfe-4497-9241-4f058c453383",
+            "id": "8",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Peningkatan Keterampilan Siswa Melalui Pelatihan Robotika Sebagai Bentuk Penguatan Profil Pelajar Pancasila Di SDT Muhammadiyah 1 Besuki | ABDIMASTEK",
+            "type": "url",
+            "url": "http://ejurnal.unmuhjember.ac.id/index.php/ABDIMASTEK/article/view/2314"
+         }, {
+            "date_added": "13373885790847845",
+            "date_last_used": "0",
+            "guid": "9719756f-e4b8-43c9-8b1f-71b84cf696e9",
+            "id": "9",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "dosen kemdikbud gajian setiap tanggal berapa - Google Search",
+            "type": "url",
+            "url": "https://www.google.com/search?q=dosen+kemdikbud+gajian+setiap+tanggal+berapa&oq=dosen+kemdikbud+gajian+setiap+tanggal+berapa&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCTEyOTk3ajBqNKgCAbACAQ&client=ms-android-samsung-ss&sourceid=chrome-mobile&ie=UTF-8"
+         }, {
+            "date_added": "13375793292718928",
+            "date_last_used": "0",
+            "guid": "b92c933a-768f-4566-bc4d-5c5a1e8ad7fc",
+            "id": "10",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Pengembangan E-LKPD untuk Meningkatkan Keterampilan Kolaborasi Siswa SMP pada Pembelajaran IPA | Octaviana | EDUKATIF : JURNAL ILMU PENDIDIKAN",
+            "type": "url",
+            "url": "https://edukatif.org/index.php/edukatif/article/view/2332"
+         } ],
+         "date_added": "13423756911469135",
+         "date_last_used": "0",
+         "date_modified": "13375793292718928",
+         "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+         "id": "3",
+         "name": "Mobile bookmarks",
+         "type": "folder"
+      }
+   },
+   "sync_metadata": "CuABCr8BCIiBAhK4ASAAkgGjAQqgAQoOY2hyb21lX3N5bmNfYm0SBTUxIWJtGhIJYKWmrz9SBgARYKWmrz9SBgAiNAmeXX+vP1IGABADGdVgwiv0Qj4CIAEqHDUxIWJtL2ZkOjkxNjM3MjM1NTk0Njg4OTMxNjEiNAmeXX+vP1IGABADGdVgwiv0Qj4CIAEqHDUxIWJtL2ZkOjkxNjM3MjM1NTk0Njg4OTMxNjEpzx6orz9SBgDqAQwIj+u20AYQ4JSSigISACoYcGJTWWlVa1ZEN2hlUjRwaStlWWp4QT09SAMSrQIIDRKoAgocbDd6RWRqdldxUG9HMWh2SGZWYmIzUGQ5bHFnPRKmAVo6QURxdEFad2wyVzRwRi9MbExDRitpdWkrQWRBcldxTERMQUtxcnhGZmE0Y2JEV1IrMm50VVRnWDhMazg2d2F3QkVvUndVT1FWKzRVbE4zSzlORlliY0xQUzNQd2l4YlNHTzUzZlpGOUlFd3RCY3F6UXl1Ry9CczFJV0JkQWtGVmEvb2w2dkxaS0RRUkVaKzM4UzYzOXJ0dm01VWZNcGVCOWhRPT0YACAAKAAw8ZKa/POl9QI4tvqes9guQLb6nrPYLkoccVJkaUhuS24reVpQdWNxTE8zd1BVUy9wQmc0PVofIh23YS8xWVRiaWpFWGptdFU3QXBobHo4WlNqZ1dZPWUAAAAAEqwCCAUSpwIKHFMwWEJlY0MzT3RTTU9TeGkyWk40cG9yb05TZz0SpgFaOkFEcXRBWndsMlc0cEYvTGxMQ0YraXVpK0FkQXJXcUxETEFLcXJ4RmZhNGNiRFdSKzJ0ZmF5aVBYWGw0dnZOSjc5dXYyZGc0NWJsTlIvbWZGeXd6RDM3Z3dBcGx4MmlaZU1PYmRsVVladmNsYWFhM0VTLy9SMlQ3Tk8wa2h3b2N5YnMwS29aVDQvVXBGL0RsaWdvL241bllBaTI0RGpBeVI2dz09GAAgACgAMMvPrfzzpfUCOLX6nrPYLkC1+p6z2C5KHFBGa3pPMlpQN2UwTi9Wb2NPZGNJZzVDRmZCTT1aHiIcUVZtVU80b2hzMThmNktzWFpoa0VNQWJmZkV3PWUAAAAAEqsBCAESpgEKHHl4Si82ZnZrZWNyN2twNUVRekI0dFdMcGRiRT0STlo6QURxdEFaeXRQSEtDc0Vpb3phZXpWUnZVTW1HT2ZacHpLSEkxdmJuWWtSeEtrZllVNnZIa29WVzdRMHJ3T0w3MGxjS0JjdEJoaDc3LxgAIAAoADCeu/37+seUAzgAQABKHGFSQ1dMZ2hGOWI1SW5xS0lEdnVKL2p2UWtGYz1aAGUAAAAAEqwCCAwSpwIKHGZzdGcyOFdablZuTnRqM1dUbGZURjZXK21yZz0SpgFaOkFEcXRBWndsMlc0cEYvTGxMQ0YraXVpK0FkQXJXcUxETEFLcXJ4RmZhNGNiRFdSKzJxRjlhNFlLZnlHSmYwZC8vRkg3NjlQZml4OWs1MU0zM2hrdkN2Q0hWaExseDFkZ0NqbjhjdTRsdE15WWpIdllGT0kzZFZ1aDBMeXJvVWkwaHIzSWptT1k4MXRINUpKVkpXUXN0UHM5T09aRFZ3YlYxdz09GAAgACgAMMmBw+S3wIQDOLb6nrPYLkC2+p6z2C5KHEovQ1dGb1JEdVpTR09kY3JsVWxYZ2tyWmx3MD1aHiIcby9YSkNoUEpJYzhnY3NRSVJmclN3SnhhcHZVPWV9TrgCEq0CCAcSqAIKHDVVTEprOFlsZ29SNEZyMlI3YmZSaWt4VEUxZz0SpgFaOkFEcXRBWndsMlc0cEYvTGxMQ0YraXVpK0FkQXJyNlVaNjFjUzV2YlBoMU1WQmtqSzJnZ25ZdWRDMVhzSUZPNGtpaVlSU2ozK1lCVmFvczhSR1E4ZXBZVUxXa0lSOHh6LzQvckxTby9wSlppL0ZJMzRuYVdma1RJazM1MEtGWmhoNjlVUlJyVmJqRTFVL0NDVEtVWlFCd3B3SWRpWnFQMWladz09GAAgACgAMMvPrfzzpfUCOOOZtZXqLkDjmbWV6i5KHEVFaFBkUU82cTJ5Zk4vSDNiSTUwUGtNM2lOST1aHyIduFkrNW1mb0xXSmFyWXBJTWlraGdlNUNWV3RMcz1lGNnQpxLrAQgLEuYBChxFMU9Kb0JHZUlrNExSS09sTnZkU3h3SDluSDA9EmZaOkFEcXRBWndkSGVjeUR4anJ1MlRjZGZOS0NiZldzY2pwTERzMy9jTkJvdDhqM3lVc0lGcTJvU21XNU1TZjVLd20xWUpkUDF6MVJCZHFGRS91a2ZQc1F3QWdPa29RcHl5MGl3PT0YACAAKAAw7sjPypWclAM4j/z03t4zQI/89N7eM0ocVVdrZ2thOUVoVUt2NEtJSktsVVVpWXB2T2VVPVoeIhxNemozQ0lIMW14VVhsMmkrMFppZHIxR2ZRNXc9ZeLFM+ASrAIIBhKnAgocZUdIUk1vNjhxZ2JScVpDTDIwR2QrMUVkb2xRPRKmAVo6QURxdEFad2wyVzRwRi9MbExDRitpdWkrQWRBcldxTERMQUtxcnhGZmE0Y2JEV1IrMmdBOEZrOFVqRThyZWJhRzZELzFpbXF1TTVQNVpUc2F2bTA3T2pJVHdhM2d4bTZuZHNMZUpRWUsrUkdKNkJOWmpUMzBEaS81M3VEaENraDFWcVdxbFJFdENpWFVjemVlb1JadXoyYTA1RlcrSEltLzJ3PT0YACAAKAAwy8+t/POl9QI4tvqes9guQLb6nrPYLkocdEFRaGI3TXNZT0ZpTC8ra2lURThWaGpTRjBZPVoeIhxxT2xkemxGdHBySzJvUWpqMFZ6RGxuR3NjVkk9ZSeOVTYS7AEIChLnAQocWUJiSXVabzNzRlR4aEVNSkE0ZzNpdWFEL1NJPRJmWjpBRHF0QVp3ZEhlY3lEeGpydTJUY2RmTktDYmZXcXd3TmxWbTIrRGhBZUthaWw3WFJPOHYyNlcvOTVhN092WG5qbDhwK2Y5WUZ3NzdSMXpqZG9nM1FwSC9IQThUdkRHV3FUUT09GAAgACgAMNW8kbyE1IkDOL37x9WxMkC9+8fVsTJKHDJOV0FMTWVXZFZmK1BIZWRHV0ZaWU41SG9YST1aHyId9zFINXgvRU9MbzdtMjVmbDN1RitpR2NwdUswOD1loM29YRLDAQgCEr4BChxZY1NUb252RVNQd3FDczRMMmNyVmh2NjhMOTg9EmZaOkFEcXRBWnpzeGJURDRod0sxc2R6c0FQR1ZEcmRPOEp4RmR3dzRNSzFVUWVQTFBmUW1tMTRmVHpqNXdHaXVva3MxOURuRkV3emRkSW1EeHQyNllWWG14eXFza0orWW9RRkRRPT0YACAAKAAwnrv9+/rHlAM4AEAAShxvUFZraHdCUmJWNjVLQ1dSMitJT05IV29PdTg9WgBlAAAAABLsAQgIEucBChxJUm9uY0NJbDVnY3owbWdsd1FDQWZhSllTM2s9EmZaOkFEcXRBWndkSGVjeUR4anJ1MlRjZGZOS0NiZlcydCt6Q0Zib2w0YjFSVEYyWmZIeXE1aTFLZjlrbFR5WThQSkVxbGcvbmV6aDk5TEROREV2TTN1a09FRWZMUmRFb1A3MEdBPT0YACAAKAAw+cf4hcr7iAM4zLSlrKYyQMy0paymMkocSkV5cURRbGxkNVVmcWY0TnA2aGZkRFJsby8wPVofIh3cNjZvRjczcEorOFRVQXhwd1dnc212c3AvdGh3PWWgzb1hEuwBCAkS5wEKHEp5UDFVc0FzbjlsYXk5VUFuMzEwVDkrdjRJOD0SZlo6QURxdEFad2RIZWN5RHhqcnUyVGNkZk5LQ2JmV0hHWEoxSytVS1pZbU1UR0c5UlpydVFVL3lNN1VwaXc2T040Tyt3TkRuaUlnYzY2NWxPMzVubU44VzBTZFFVOXNoQ2puWHc9PRgAIAAoADCEsZK8wpyJAziCpf/HqjJAgqX/x6oyShwrUXQyaytia1VRdm00TXd1eXU4ZzJ6ZThaRlE9Wh8iHe5hQXhDZkRub1hvNW1DUlB3RWZSVHRGQTdaUDQ9ZbNuecUSwwEIAxK+AQocbmpnRHU4OGVDcnZYcDg2cEQ3ZkhHY3FGcDg4PRJmWjpBRHF0QVp6cEVPRHQ5dHVzL2hjREY4RHcwTW1oTmVHbHplelgzZURsWFBFMWJEaUEzWnkzSUxLQnVOQWh4Q3NvU1M4SkNaNy8vRUludnU4d1p3RFNHNUpWNHB2Y0NPSFZydz09GAAgACgAMJ67/fv6x5QDOABAAEoceXpOQjAxY241NEE3Y1JVMHVUKy9QZ21UdFVvPVoAZQAAAAAwATgA",
+   "version": 1
+}

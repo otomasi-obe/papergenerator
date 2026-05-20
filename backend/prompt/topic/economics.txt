@@ -168,12 +168,33 @@ METHODOLOGY KEYWORDS:
   impulse response function (VAR), variance decomposition, OLS robust SE (HC3)
 
 
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Cobb-Douglas Production:
+    Y = A K^{\\alpha} L^{1-\\alpha}
+  Solow Growth:
+    \\dot{k} = s f(k) - (n + \\delta) k
+  Panel Fixed Effects:
+    Y_{it} = \\alpha_i + X'_{it} \\beta + \\varepsilon_{it}
+  DID Estimator:
+    \\delta = (\\bar{Y}_{\\mathrm{treat,post}} - \\bar{Y}_{\\mathrm{treat,pre}}) - (\\bar{Y}_{\\mathrm{ctrl,post}} - \\bar{Y}_{\\mathrm{ctrl,pre}})
+  Gini Coefficient:
+    G = \\frac{2 \\sum_{i=1}^{n} i \\cdot y_i}{n \\sum_{i=1}^{n} y_i} - \\frac{n+1}{n}
+  Phillips Curve:
+    \\pi_t = \\pi_t^e - \\beta (u_t - u_t^n) + \\varepsilon_t
+  OLS Estimator:
+    \\hat{\\beta} = (X'X)^{-1} X'y
 
-
-
-
-
-
-
-
-
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

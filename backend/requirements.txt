@@ -15,3 +15,13 @@ json-repair
 lxml
 latex2mathml
 prometheus_client>=0.20.0
+playwright==1.49.1
+redis==5.0.4
+rq==1.16.2
+alembic==1.13.2
+openpyxl==3.1.2
+PyMuPDF==1.24.5
+jsonpatch==1.33
+jsonschema==4.22.0
+sentry-sdk[flask]==2.5.1
+schemathesis==3.36.0

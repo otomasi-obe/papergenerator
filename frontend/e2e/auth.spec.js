@@ -21,8 +21,10 @@ test('full auth flow: register → me → CSRF → refresh → logout', async ({
   const ctx = page.context();
   const api = ctx.request;
 
-  // 1. Register
-  const reg = await api.post('/api/auth/register', { data: E2E_USER });
+  // 1. Register — Cloudflare's documented "always pass" testing token
+  const reg = await api.post('/api/auth/register', {
+    data: { ...E2E_USER, captcha_token: '1x00000000000000000000AA' },
+  });
   expect(reg.status()).toBe(201);
   const regBody = await reg.json();
   expect(regBody.user.email).toBe(E2E_USER.email);

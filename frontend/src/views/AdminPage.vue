@@ -151,6 +151,8 @@
                   <tr class="text-left text-gray-400 text-xs uppercase">
                     <th class="px-4 py-3">User</th>
                     <th class="px-4 py-3">Role</th>
+                    <th class="px-4 py-3 text-right">Quota</th>
+                    <th class="px-4 py-3 text-right">Used</th>
                     <th class="px-4 py-3 text-right">Papers</th>
                     <th class="px-4 py-3 text-right">Joined</th>
                     <th class="px-4 py-3 text-right">Actions</th>
@@ -168,9 +170,30 @@
                         {{ u.role }}
                       </span>
                     </td>
+                    <!-- Quota inline edit -->
+                    <td class="px-4 py-3 text-right">
+                      <input
+                        v-if="u.role !== 'admin'"
+                        type="number"
+                        :value="u.token_quota_monthly ?? 50000"
+                        @blur="saveQuota(u, $event.target.value)"
+                        @keyup.enter="$event.target.blur()"
+                        min="0" step="1000"
+                        class="w-24 text-right tabular-nums px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+                        title="Klik untuk edit kuota bulanan"
+                      />
+                      <span v-else class="text-xs text-gray-400">∞</span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <span class="tabular-nums text-xs"
+                        :class="quotaPercent(u) >= 90 ? 'text-red-600 font-semibold' : quotaPercent(u) >= 70 ? 'text-amber-600' : 'text-gray-600'">
+                        {{ formatNum(u.token_used_month || 0) }}
+                      </span>
+                    </td>
                     <td class="px-4 py-3 text-right">{{ u.paper_count }}</td>
                     <td class="px-4 py-3 text-right text-xs text-gray-400">{{ formatDate(u.created_at) }}</td>
-                    <td class="px-4 py-3 text-right">
+                    <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                      <button v-if="u.role !== 'admin'" @click="resetQuota(u)" class="text-xs text-blue-600 hover:underline">Reset</button>
                       <button v-if="u.role !== 'admin'" @click="promoteUser(u, 'admin')"
                         class="text-xs text-purple-600 hover:underline">Make Admin</button>
                       <button v-else @click="promoteUser(u, 'user')"
@@ -178,7 +201,7 @@
                     </td>
                   </tr>
                   <tr v-if="!allUsers.length">
-                    <td colspan="5" class="px-4 py-8 text-center text-gray-400">No users yet</td>
+                    <td colspan="7" class="px-4 py-8 text-center text-gray-400">No users yet</td>
                   </tr>
                 </tbody>
               </table>
@@ -239,6 +262,40 @@ async function promoteUser(user, role) {
   }
 }
 
+// rofiq.txt: admin set quota per user inline + reset.
+async function saveQuota(user, value) {
+  const v = parseInt(value, 10)
+  if (!Number.isFinite(v) || v < 0) return
+  if (v === user.token_quota_monthly) return
+  try {
+    const res = await api.patch(`/api/admin/users/${user.id}/quota`, {
+      token_quota_monthly: v,
+    })
+    if (res?.data?.user) Object.assign(user, res.data.user)
+  } catch (e) {
+    console.error('saveQuota failed', e)
+  }
+}
+
+async function resetQuota(user) {
+  if (!confirm(`Reset kuota ${user.email} ke 0 untuk bulan ini?`)) return
+  try {
+    const res = await api.post(`/api/admin/users/${user.id}/reset-quota`)
+    if (res?.data?.user) Object.assign(user, res.data.user)
+  } catch (e) {
+    console.error('resetQuota failed', e)
+  }
+}
+
+function quotaPercent(u) {
+  const q = u.token_quota_monthly || 0
+  const used = u.token_used_month || 0
+  if (q <= 0) return 0
+  return Math.min(100, (used / q) * 100)
+}
+
+let _refreshTimer = null
+
 async function loadAll() {
   loading.value = true
   try {
@@ -259,5 +316,12 @@ async function loadAll() {
   }
 }
 
-onMounted(loadAll)
+onMounted(() => {
+  loadAll()
+  // rofiq.txt: auto-refresh tiap 30 detik agar admin pantau usage real-time.
+  _refreshTimer = setInterval(loadAll, 30_000)
+})
+
+import { onBeforeUnmount } from 'vue'
+onBeforeUnmount(() => { if (_refreshTimer) clearInterval(_refreshTimer) })
 </script>

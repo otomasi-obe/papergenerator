@@ -42,18 +42,6 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/files',
-    name: 'files',
-    component: () => import('../views/FilesPage.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/files/:paperId',
-    name: 'files-paper',
-    component: () => import('../views/FilesPage.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
     path: '/admin',
     name: 'admin',
     component: () => import('../views/AdminPage.vue'),

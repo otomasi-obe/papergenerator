@@ -41,6 +41,13 @@
             <input v-model="form.password" type="password" placeholder="Min. 8 chars, mix of types"
               class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
           </div>
+          <!-- Cloudflare Turnstile widget — only shown for register flow -->
+          <div v-if="isRegister && turnstileSiteKey" class="flex justify-center">
+            <div ref="turnstileBox" class="cf-turnstile"
+              :data-sitekey="turnstileSiteKey"
+              data-theme="dark"
+              data-callback="onTurnstileSuccess"></div>
+          </div>
           <button type="submit" :disabled="submitting"
             class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-brown-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50">
             {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
@@ -92,7 +99,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import api from '../api/index.js'
@@ -105,6 +112,50 @@ const router = useRouter()
 const isRegister = ref(false)
 const submitting = ref(false)
 const formError = ref('')
+
+// Turnstile site key dari env build-time. Kalau kosong, CAPTCHA dilewati FE
+// dan backend juga skip (ENABLE_CAPTCHA=false). Aman untuk dev local.
+const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
+const captchaToken = ref('')
+const turnstileBox = ref(null)
+let turnstileWidgetId = null
+
+function loadTurnstileScript() {
+  if (!turnstileSiteKey) return
+  if (window.turnstile || document.querySelector('script[src*="turnstile/v0/api.js"]')) return
+  const s = document.createElement('script')
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad'
+  s.async = true
+  s.defer = true
+  document.head.appendChild(s)
+}
+
+function renderTurnstile() {
+  if (!turnstileSiteKey || !window.turnstile || !turnstileBox.value) return
+  if (turnstileWidgetId !== null) {
+    try { window.turnstile.reset(turnstileWidgetId) } catch {}
+  }
+  turnstileWidgetId = window.turnstile.render(turnstileBox.value, {
+    sitekey: turnstileSiteKey,
+    callback: (token) => { captchaToken.value = token },
+    'error-callback': () => { captchaToken.value = '' },
+    theme: 'dark',
+  })
+}
+
+window.onTurnstileLoad = () => { if (isRegister.value) renderTurnstile() }
+window.onTurnstileSuccess = (token) => { captchaToken.value = token }
+
+watch(isRegister, async (v) => {
+  if (v && turnstileSiteKey) {
+    await nextTick()
+    renderTurnstile()
+  } else {
+    captchaToken.value = ''
+  }
+})
+
+onMounted(() => loadTurnstileScript())
 
 const form = reactive({
   name: '',
@@ -138,12 +189,16 @@ async function handleSubmit() {
     formError.value = 'Password must be at least 8 characters'
     return
   }
+  if (isRegister.value && turnstileSiteKey && !captchaToken.value) {
+    formError.value = 'Please complete the CAPTCHA'
+    return
+  }
 
   submitting.value = true
   try {
     const endpoint = isRegister.value ? '/api/auth/register' : '/api/auth/login'
     const payload = isRegister.value
-      ? { name: form.name, email: form.email, password: form.password }
+      ? { name: form.name, email: form.email, password: form.password, captcha_token: captchaToken.value }
       : { email: form.email, password: form.password }
 
     const res = await api.post(endpoint, payload)
@@ -151,6 +206,10 @@ async function handleSubmit() {
     router.push('/dashboard')
   } catch (err) {
     formError.value = err.response?.data?.error || 'Something went wrong. Please try again.'
+    if (turnstileWidgetId !== null && window.turnstile) {
+      try { window.turnstile.reset(turnstileWidgetId) } catch {}
+      captchaToken.value = ''
+    }
   } finally {
     submitting.value = false
   }

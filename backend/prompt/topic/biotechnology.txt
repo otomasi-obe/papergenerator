@@ -187,22 +187,31 @@ METHODOLOGY KEYWORDS:
 CRISPR-Cas9 gene editing, CRISPR-Cas12a (Cpf1), CRISPR-Cas13 (RNA targeting), base editing, prime editing, epigenome editing, CRISPRi/CRISPRa, multiplex genome editing, single-cell RNA-seq (scRNA-seq), spatial transcriptomics, ATAC-seq, ChIP-seq, Hi-C, long-read sequencing (Oxford Nanopore/PacBio), whole genome sequencing (WGS), metagenomics shotgun sequencing, 16S/ITS amplicon sequencing, metabolomics (LC-MS/MS, GC-MS), proteomics (TMT labeling, label-free quantification), flow cytometry (FACS), confocal microscopy, cryo-EM, X-ray crystallography, AlphaFold protein structure prediction, molecular dynamics simulation, flux balance analysis, genome-scale metabolic modeling, directed evolution, rational protein design, cell-free protein synthesis, microfluidics, droplet digital PCR (ddPCR), biosensor development, SELEX aptamer selection, phage display, yeast surface display, mammalian cell culture (CHO, HEK293), insect cell expression (Sf9), plant transformation (Agrobacterium), algal biotechnology, solid-state fermentation, submerged fermentation, immobilized enzyme technology, enzyme engineering (site-directed mutagenesis, error-prone PCR), bioelectrocatalysis
 
 
+LATEX-READY EQUATIONS (doubled backslashes for JSON):
+  Monod Growth:
+    \\mu = \\mu_{\\mathrm{max}} \\frac{S}{K_s + S}
+  Michaelis-Menten:
+    v = \\frac{V_{\\mathrm{max}} [S]}{K_m + [S]}
+  Doubling Time:
+    t_d = \\frac{\\ln 2}{\\mu}
+  Yield Coefficient:
+    Y_{X/S} = \\frac{\\Delta X}{\\Delta S}
+  PCR Amplification:
+    N = N_0 \\cdot 2^n
+  Beer-Lambert:
+    A = \\varepsilon l c
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+── HUMANIZE INTEGRATION NOTES ──────────────────────────────────────────────────
+When this TOPIC GUIDE is combined with the main system prompt, the generated
+paper MUST comply with ALL humanize rules (PART B of the main prompt):
+  • ZERO blacklisted words (delve, leverage, utilize, robust, seamless, etc.)
+  • Sentence length SD > 10 words — mix short (3–6w), medium (12–18w), long (40–60w)
+  • 1 parenthetical aside per 200 words
+  • 1 academic contraction per 300 words ("it's", "can't", "doesn't")
+  • 1 genuine question per 300 words
+  • Rotate sentence openers — minimum 6 different types
+  • Every claim grounded in a specific number, name, or evidence
+  • At least 1 honest limitation per major section
+  • Related Work: each cited paper has finding + concrete limitation
+  • Results: each metric has WHY-analysis + comparison
+────────────────────────────────────────────────────────────────────────────────

@@ -52,18 +52,22 @@
 <script setup>
 import { usePaperStore } from '../stores/paper.js'
 import katex from 'katex'
+import DOMPurify from 'dompurify'
 
 const store = usePaperStore()
 
 function renderKatex(latex) {
   if (!latex) return '<span class="text-gray-300">Enter equation...</span>'
   try {
-    return katex.renderToString(latex, {
+    const rendered = katex.renderToString(latex, {
       throwOnError: false,
-      displayMode: true
+      displayMode: true,
+      trust: false,
+      strict: 'ignore',
     })
+    return DOMPurify.sanitize(rendered, { USE_PROFILES: { html: true, mathMl: true, svg: true } })
   } catch (e) {
-    return `<span class="text-red-500 text-sm">${e.message}</span>`
+    return `<span class="text-red-500 text-sm">${DOMPurify.sanitize(String(e.message))}</span>`
   }
 }
 </script>

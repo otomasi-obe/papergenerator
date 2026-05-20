@@ -791,18 +791,24 @@ def _reference_parts(reference_text: str, fallback_number: int):
     return str(fallback_number), reference_text.strip()
 
 
+def _normalize_references_field(value):
+    """Frontend may ship references as list, dict {content: [...]}, or omit it."""
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        content = value.get("content", [])
+        return content if isinstance(content, list) else []
+    if isinstance(value, list):
+        return value
+    return None
+
+
 def _add_references(doc: Document, config: dict):
-    # Support both new format (references section) and legacy format
-    references = None
-    
-    # Try new format - look for direct references key
-    if "references" in config:
-        references = config["references"].get("content", [])
-    # Also try section_references key
-    elif "section_references" in config:
-        references = config["section_references"].get("content", [])
-    # If not found, try legacy sections format
-    else:
+    # Support new (list/dict), legacy (References array), and section-embedded formats.
+    references = _normalize_references_field(config.get("references"))
+    if references is None:
+        references = _normalize_references_field(config.get("section_references"))
+    if references is None:
         sections = config.get("sections", [])
         for section in sections:
             if section.get("title", "").upper() == "REFERENCES":
@@ -819,34 +825,29 @@ def _add_references(doc: Document, config: dict):
     heading = _para(doc, style_id="heading 1")
     _append_rich_text(heading, "REFERENCES")
     
-    # Handle different reference formats
-    if isinstance(references, list) and references and isinstance(references[0], dict):
-        # New format: list of reference objects with id and text
-        for reference in references:
-            ref_id = reference.get("id", "")
-            ref_text = reference.get("text", "")
-            if ref_text:
-                paragraph = _para(doc, style_id="references")
-                ppr = paragraph._p.get_or_add_pPr()
-                ind = OxmlElement("w:ind")
-                ind.set(qn("w:start"), str(int(round(17.7 * 20))))
-                ind.set(qn("w:hanging"), str(int(round(17.7 * 20))))
-                ppr.append(ind)
-                if ref_id:
-                    _append_rich_text(paragraph, f"[{ref_id}] {ref_text}".strip())
-                else:
-                    _append_rich_text(paragraph, ref_text.strip())
-    else:
-        # Legacy format: list of reference strings
-        for index, reference in enumerate(references, start=1):
+    # Render each entry; tolerate mixed dict/string lists.
+    for index, reference in enumerate(references, start=1):
+        if isinstance(reference, dict):
+            ref_id = str(reference.get("id", "") or "").strip()
+            ref_text = str(reference.get("text", "") or "").strip()
+            if not ref_text:
+                continue
+        else:
             ref_id, ref_text = _reference_parts(str(reference), index)
-            paragraph = _para(doc, style_id="references")
-            ppr = paragraph._p.get_or_add_pPr()
-            ind = OxmlElement("w:ind")
-            ind.set(qn("w:start"), str(int(round(17.7 * 20))))
-            ind.set(qn("w:hanging"), str(int(round(17.7 * 20))))
-            ppr.append(ind)
+            ref_id = (ref_id or str(index)).strip()
+            ref_text = (ref_text or "").strip()
+            if not ref_text:
+                continue
+        paragraph = _para(doc, style_id="references")
+        ppr = paragraph._p.get_or_add_pPr()
+        ind = OxmlElement("w:ind")
+        ind.set(qn("w:start"), str(int(round(17.7 * 20))))
+        ind.set(qn("w:hanging"), str(int(round(17.7 * 20))))
+        ppr.append(ind)
+        if ref_id:
             _append_rich_text(paragraph, f"[{ref_id}] {ref_text}".strip())
+        else:
+            _append_rich_text(paragraph, ref_text)
 
 
 def _render_content_item(doc: Document, item: dict, json_path: Path):
