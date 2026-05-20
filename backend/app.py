@@ -17,7 +17,7 @@ import importlib
 from pathlib import Path
 from datetime import datetime, timezone
 
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request
 from flask_limiter import Limiter
@@ -127,6 +127,57 @@ app.register_blueprint(papers_bp)
 app.register_blueprint(files_bp)
 app.register_blueprint(paper_images_bp)
 app.register_blueprint(image_serve_bp)
+
+
+# ─── OpenAPI / Swagger UI ─────────────────────────────────────────────────
+_OPENAPI_PATH = Path(__file__).parent / "openapi.yaml"
+
+
+@app.route("/api/openapi.yaml", methods=["GET"])
+def openapi_yaml():
+    """Serve the OpenAPI 3.1 spec as YAML."""
+    if not _OPENAPI_PATH.is_file():
+        return jsonify({"error": "Spec not found"}), 404
+    return send_file(_OPENAPI_PATH, mimetype="application/yaml")
+
+
+_SWAGGER_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PaperFull API — Swagger UI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+  <style>body { margin:0; } .topbar { display:none; }</style>
+</head>
+<body>
+  <div id="swagger"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: "/api/openapi.yaml",
+        dom_id: "#swagger",
+        deepLinking: true,
+        withCredentials: true,
+        requestInterceptor: (req) => {
+          // Forward CSRF for state-changing calls so try-it-out actually works.
+          const m = (document.cookie.match(/(?:^|;\\s*)csrf_access_token=([^;]+)/) || [])[1];
+          if (m && /^(POST|PUT|PATCH|DELETE)$/i.test(req.method || '')) {
+            req.headers['X-CSRF-TOKEN'] = decodeURIComponent(m);
+          }
+          return req;
+        },
+      });
+    };
+  </script>
+</body>
+</html>"""
+
+
+@app.route("/api/docs", methods=["GET"])
+def api_docs():
+    """Serve Swagger UI from CDN, pointed at /api/openapi.yaml."""
+    return Response(_SWAGGER_HTML, mimetype="text/html")
 
 
 # ─── Security headers ────────────────────────────────────────────────────────

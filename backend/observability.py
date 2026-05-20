@@ -162,6 +162,7 @@ def init_observability(app: Flask, db, *, log_file: Path) -> None:
         raise e
 
     @app.route("/metrics", methods=["GET"])
+    @app.route("/api/metrics", methods=["GET"])
     def metrics():
         # Prometheus exposition format — keep open to localhost / scraper only via firewall/nginx.
         return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
