@@ -188,6 +188,20 @@ jobs:
         working-directory: frontend
         run: npx playwright test --reporter=list
 
+      - name: Dump backend + frontend logs on failure
+        if: failure()
+        run: |
+          echo "==================== /tmp/backend.log ===================="
+          tail -200 /tmp/backend.log || true
+          echo "==================== /tmp/frontend.log ===================="
+          tail -100 /tmp/frontend.log || true
+          echo "==================== curl /api/health ===================="
+          curl -sv http://localhost:8001/api/health || true
+          echo "==================== curl /api/auth/register ===================="
+          curl -sv -X POST http://localhost:8001/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"x","email":"y@y.local","password":"E2eStrongPass123!","captcha_token":"1x00000000000000000000AA"}' || true
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
