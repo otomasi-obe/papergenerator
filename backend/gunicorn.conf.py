@@ -37,8 +37,19 @@ proc_name = "paper-generator-api"
 default_proc_name = "paper-generator-api"
 
 # ── Logging ──────────────────────────────────────────────────────────────────
-accesslog = "/home/sirobo/papergenerator/logs/gunicorn-access.log"
-errorlog  = "/home/sirobo/papergenerator/logs/gunicorn-error.log"
+# Allow overriding paths via env (CI doesn't have the absolute /home/sirobo/...
+# directory baked into the production config). Fallback creates the dir if
+# missing so first-boot in fresh environments doesn't blow up.
+import os
+from pathlib import Path
+
+_log_dir_env = os.getenv("GUNICORN_LOG_DIR")
+_default_log_dir = Path(__file__).resolve().parent.parent / "logs"
+_log_dir = Path(_log_dir_env) if _log_dir_env else _default_log_dir
+_log_dir.mkdir(parents=True, exist_ok=True)
+
+accesslog = str(_log_dir / "gunicorn-access.log")
+errorlog  = str(_log_dir / "gunicorn-error.log")
 loglevel  = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sµs'
 
