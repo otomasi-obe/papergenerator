@@ -166,14 +166,20 @@ jobs:
           VITE_TURNSTILE_SITE_KEY: ''
         run: npm run build
 
-      - name: Start backend (gunicorn)
+      - name: Start backend (flask)
         working-directory: backend
+        env:
+          FLASK_APP: app.py
         run: |
-          nohup gunicorn -c gunicorn.conf.py app:app > /tmp/backend.log 2>&1 &
+          # Use Flask's dev server in CI — avoids gunicorn arbiter quirks on
+          # GitHub runners (workers fork-loop on log-handler issues even with
+          # the log dir created). The HTTP surface is identical for E2E.
+          nohup python -m flask run --host=0.0.0.0 --port=8001 > /tmp/backend.log 2>&1 &
           for i in {1..30}; do
             curl -sf http://localhost:8001/api/health && break
             sleep 1
           done
+          curl -sf http://localhost:8001/api/health || (echo "BACKEND DID NOT START" && tail -100 /tmp/backend.log && exit 1)
 
       - name: Start frontend proxy
         working-directory: frontend
@@ -254,12 +260,15 @@ jobs:
 
       - name: Start backend
         working-directory: backend
+        env:
+          FLASK_APP: app.py
         run: |
-          nohup gunicorn -c gunicorn.conf.py app:app > /tmp/backend.log 2>&1 &
+          nohup python -m flask run --host=0.0.0.0 --port=8001 > /tmp/backend.log 2>&1 &
           for i in {1..30}; do
             curl -sf http://localhost:8001/api/health && break
             sleep 1
           done
+          curl -sf http://localhost:8001/api/health || (echo "BACKEND DID NOT START" && tail -100 /tmp/backend.log && exit 1)
 
       - name: Run Schemathesis (auth endpoints + public read)
         working-directory: backend
