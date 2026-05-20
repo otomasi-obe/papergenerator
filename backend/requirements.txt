@@ -14,3 +14,4 @@ gunicorn==23.0.0
 json-repair
 lxml
 latex2mathml
+prometheus_client>=0.20.0

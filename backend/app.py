@@ -1,5 +1,5 @@
 """
-Paper Generator - Backend API Server
+PaperFull - Backend API Server
 =====================================
 Flask API for AI-powered academic paper generation and DOCX export.
 Supports IEEE conference paper format, Google OAuth login, PostgreSQL storage.
@@ -12,11 +12,10 @@ import json
 import uuid
 import time
 import logging
-import traceback
 import threading
 import importlib
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -27,11 +26,15 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from models import db, User, Paper, PaperImage, ApiUsageLog, AiJob
+from models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob
 from auth import auth_bp, init_oauth
 from admin import admin_bp
+from chat import chat_bp
+from papers_bp import papers_bp
+from files_bp import files_bp
+from images_bp import paper_images_bp, image_serve_bp
 
-from generate_ai_josn_paper import generate_paper_json
+from generate_ai_json_paper_aiotomasi import generate_paper_json
 from template.IEEEgen import build_document as build_ieee_docx
 
 # Load environment variables
@@ -45,22 +48,58 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL',
-    'postgresql://papergenerator:papergenerator123@localhost:5432/papergenerator'
-)
+_db_url = os.getenv('DATABASE_URL')
+if not _db_url:
+    raise RuntimeError("DATABASE_URL environment variable is required. Set it in .env")
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# ── Connection pool: 5 workers × 8 threads, pool_size=12, max_overflow=28 → max 200 PG conns
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_size': 12,
     'max_overflow': 28,
     'pool_timeout': 30,
-    'pool_recycle': 1800,    # recycle connections every 30 min
-    'pool_pre_ping': True,   # test connection before use (handles dropped conns)
+    'pool_recycle': 1800,
+    'pool_pre_ping': True,
 }
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'change-me-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'flask-secret-key')
+
+_jwt_secret = os.getenv('JWT_SECRET_KEY')
+if not _jwt_secret or _jwt_secret == 'change-me-in-production':
+    raise RuntimeError("JWT_SECRET_KEY must be set to a secure value in .env")
+app.config['JWT_SECRET_KEY'] = _jwt_secret
+
+# JWT in httpOnly cookies (XSS-safe) + CSRF double-submit protection.
+# Bearer header still accepted as a fallback so signed-URL/E2E tooling and
+# legacy clients keep working during rollout.
+from datetime import timedelta as _td
+app.config['JWT_TOKEN_LOCATION'] = ['cookies', 'headers']
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = _td(hours=1)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = _td(days=7)
+app.config['JWT_COOKIE_SECURE'] = os.getenv('JWT_COOKIE_SECURE', 'true').lower() == 'true'
+app.config['JWT_COOKIE_HTTPONLY'] = True
+app.config['JWT_COOKIE_SAMESITE'] = 'Lax'   # Lax keeps SSO callback redirects working
+app.config['JWT_COOKIE_CSRF_PROTECT'] = True
+app.config['JWT_ACCESS_CSRF_HEADER_NAME'] = 'X-CSRF-TOKEN'
+app.config['JWT_REFRESH_CSRF_HEADER_NAME'] = 'X-CSRF-TOKEN'
+app.config['JWT_ACCESS_COOKIE_PATH'] = '/api/'
+app.config['JWT_REFRESH_COOKIE_PATH'] = '/api/auth/refresh'
+
+_secret_key = os.getenv('SECRET_KEY')
+if not _secret_key or _secret_key in ('flask-secret-key', 'change-me-in-production'):
+    raise RuntimeError("SECRET_KEY must be set to a secure non-default value in .env")
+app.config['SECRET_KEY'] = _secret_key
+
+# Session cookie hardening — flask sessions are only used for OAuth state, but
+# defaults are unsafe behind a reverse proxy.
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Lax (not Strict) so OAuth callback works
+
+# Server-signed URL secret — used for generating short-lived signed image/file
+# URLs that don't expose the bearer JWT in query strings or referer headers.
+# Falls back to SECRET_KEY so existing deployments don't break, but it's
+# recommended to set a dedicated rotating value.
+app.config['SIGNED_URL_SECRET'] = os.getenv('SIGNED_URL_SECRET') or _secret_key
+
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max upload
 
 # ─── Extensions ───────────────────────────────────────────────────────────────
 CORS(app, supports_credentials=True, origins=[
@@ -73,31 +112,44 @@ db.init_app(app)
 jwt = JWTManager(app)
 init_oauth(app)
 
-# Rate limiter — stored in-memory per worker (acceptable for 5 workers)
-# For strict global limiting across workers, set RATELIMIT_STORAGE_URI=redis://...
-# NOTE: nginx already handles burst rate limiting for external IPs.
-# Flask-Limiter is a fallback safety net at the application level.
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["1000 per minute"],    # 1000 req/min per IP (~16/s, enough for one real user)
-    storage_uri="memory://",
+    default_limits=["1000 per minute"],
+    storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"),
     strategy="fixed-window",
 )
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(chat_bp)
+app.register_blueprint(papers_bp)
+app.register_blueprint(files_bp)
+app.register_blueprint(paper_images_bp)
+app.register_blueprint(image_serve_bp)
+
+
+# ─── Security headers ────────────────────────────────────────────────────────
+@app.after_request
+def _security_headers(response):
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+    response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    # API responses should never be cached by intermediaries by default.
+    if request.path.startswith('/api/'):
+        response.headers.setdefault('Cache-Control', 'no-store')
+    return response
+
+
+# Stricter rate limit on auth endpoints to defend against credential stuffing.
+limiter.limit("10 per minute")(auth_bp)
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 LOG_FILE = Path(__file__).parent / "app.log"
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
-    ]
-)
+from observability import init_observability  # noqa: E402  (after app + db ready)
+init_observability(app, db, log_file=LOG_FILE)
 log = logging.getLogger(__name__)
 
 UPLOAD_FOLDER = Path(__file__).parent / "uploads"
@@ -221,16 +273,48 @@ with app.app_context():
     db.create_all()
     log.info("Database tables created/verified")
 
+
+# ─── AiJob sweeper (mark stuck pending jobs as errored) ──────────────────────
+AIJOB_PENDING_TIMEOUT_SECONDS = 15 * 60  # 15 minutes
+
+
+def _sweep_stuck_jobs():
+    """Best-effort: mark AiJob rows stuck in 'pending' beyond the timeout
+    as errored so the frontend stops polling forever after a worker crash.
+    Runs in-process from a daemon thread; safe under multi-worker because the
+    UPDATE is conditional on status='pending'.
+    """
+    while True:
+        try:
+            time.sleep(60)
+            with app.app_context():
+                cutoff = datetime.now(timezone.utc) - __import__('datetime').timedelta(seconds=AIJOB_PENDING_TIMEOUT_SECONDS)
+                stuck = AiJob.query.filter(
+                    AiJob.status == 'pending',
+                    AiJob.started_at < cutoff,
+                ).all()
+                if not stuck:
+                    continue
+                for j in stuck:
+                    j.status = 'error'
+                    j.error = f"Job stuck >{AIJOB_PENDING_TIMEOUT_SECONDS//60}min — worker likely crashed"
+                    j.timeout = True
+                db.session.commit()
+                log.warning("Swept %d stuck AI jobs", len(stuck))
+        except Exception:
+            log.exception("AiJob sweeper iteration failed")
+
+
+threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").start()
+
 # ─── Health Check ────────────────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])
 @limiter.exempt
 def health():
-    has_key = bool(os.getenv("OPENAI_API_KEY")) and os.getenv("OPENAI_API_KEY") != "sk-your-actual-api-key"
     return jsonify({
         "status": "ok",
         "model": OPENAI_MODEL,
-        "hasApiKey": has_key,
         "timestamp": datetime.now().isoformat()
     })
 
@@ -293,12 +377,12 @@ def generate():
         return jsonify({"success": True, "content": result, "model": OPENAI_MODEL, "usage": usage})
 
     except Exception as e:
-        traceback.print_exc()
+        log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
 
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
-def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None):
+def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None):
     t_start = time.time()
     log.info("[job:%s] started, prompt=%r", job_id, prompt[:80])
     uid = None
@@ -307,19 +391,20 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
     except Exception:
         uid = None
     try:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key == "sk-your-actual-api-key":
-            raise Exception("OPENAI_API_KEY not configured")
+        api_key = os.getenv("AIOTOMASI_APIKEY")
+        if not api_key:
+            raise Exception("AIOTOMASI_APIKEY not configured")
 
-        extra = ""
+        extra_parts = []
+        if custom_prompt:
+            extra_parts.append(custom_prompt)
         if pdf_texts:
             combined = "\n\n".join(pdf_texts[:5])
-            extra = f"\n\n[REFERENCE DOCUMENTS]\n{combined}"
+            extra_parts.append(f"[REFERENCE DOCUMENTS]\n{combined}")
+        extra = ("\n\n".join(extra_parts)).strip()
         paper_data = generate_paper_json(
             judul=prompt,
             custom_prompt=extra,
-            api_key=api_key,
-            model=OPENAI_MODEL,
             topic=topic,
             style=style,
         )
@@ -371,6 +456,26 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         elapsed = time.time() - t_start
         _log_api_usage("generate-full", {"total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0}, user_id)
         with app.app_context():
+            # Persist into Paper.data when chat-tool flow gave us a paper_id —
+            # this prevents the result being lost if the one-shot /api/job
+            # response is consumed before the editor reloads the paper.
+            if paper_id and uid is not None:
+                try:
+                    paper = Paper.query.filter_by(id=paper_id, user_id=uid).first()
+                    if paper:
+                        paper.data = paper_data
+                        paper.title = (
+                            paper_data.get("title")
+                            or (paper_data.get("data") or {}).get("title")
+                            or paper.title
+                            or "Untitled"
+                        )
+                        paper.updated_at = datetime.now(timezone.utc)
+                        db.session.commit()
+                        log.info("[job:%s] persisted into paper %s", job_id, paper_id)
+                except Exception:
+                    db.session.rollback()
+                    log.exception("[job:%s] failed to persist into paper %s", job_id, paper_id)
             if uid is not None:
                 _job_set_done(job_id, uid, paper_data, int(elapsed))
         log.info("[job:%s] DONE in %.1fs", job_id, elapsed)
@@ -423,7 +528,7 @@ def generate_full():
         return jsonify({"success": True, "job_id": job_id})
 
     except Exception as e:
-        traceback.print_exc()
+        log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
 
 
@@ -435,7 +540,7 @@ def get_job_status(job_id):
     if job is None:
         return jsonify({"error": "Job not found or already retrieved"}), 404
 
-    elapsed = int((datetime.utcnow() - (job.started_at or datetime.utcnow())).total_seconds())
+    elapsed = int((datetime.now(timezone.utc) - (job.started_at.replace(tzinfo=timezone.utc) if job.started_at and job.started_at.tzinfo is None else (job.started_at or datetime.now(timezone.utc)))).total_seconds())
     if job.status == "pending":
         return jsonify({"status": "pending", "elapsed": elapsed})
     if job.status == "done":
@@ -526,86 +631,14 @@ def upload_pdfs():
     return jsonify({"pdf_texts": results, "warnings": warnings})
 
 
-# ─── Paper-specific Image Upload ─────────────────────────────────────────────
+# ─── Paper Files (PDF/DOCX/DOC/TXT/MD) ────────────────────────────────────
+# Moved to files_bp.py — registered above.
 
-@app.route("/api/papers/<paper_id>/images", methods=["POST"])
-@jwt_required()
-def upload_paper_image(paper_id):
-    try:
-        user_id = int(get_jwt_identity())
-        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-        if not paper:
-            return jsonify({"error": "Paper not found"}), 404
+# ─── Paper-specific Image Upload + signed URLs + image serving ───────────
+# Moved to images_bp.py — registered above (paper_images_bp + image_serve_bp).
 
-        if "file" not in request.files:
-            return jsonify({"error": "No file provided"}), 400
-        file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
-
-        ext = Path(file.filename).suffix.lower()
-        if ext not in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"]:
-            return jsonify({"error": "Invalid image format"}), 400
-
-        paper_upload_dir = UPLOAD_FOLDER / paper_id
-        paper_upload_dir.mkdir(exist_ok=True)
-        filename = f"{uuid.uuid4().hex}{ext}"
-        filepath = paper_upload_dir / filename
-        file.save(str(filepath))
-
-        img = PaperImage(
-            paper_id=paper_id, user_id=user_id,
-            filename=filename, original_name=file.filename,
-            file_path=f"{paper_id}/{filename}",
-        )
-        db.session.add(img)
-        db.session.commit()
-        return jsonify({"success": True, "image": img.to_dict()})
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/papers/<paper_id>/images", methods=["GET"])
-@jwt_required()
-def list_paper_images(paper_id):
-    try:
-        user_id = int(get_jwt_identity())
-        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-        if not paper:
-            return jsonify({"error": "Paper not found"}), 404
-        images = PaperImage.query.filter_by(paper_id=paper_id).order_by(PaperImage.created_at).all()
-        return jsonify({"images": [img.to_dict() for img in images]})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/papers/<paper_id>/images/<int:image_id>", methods=["DELETE"])
-@jwt_required()
-def delete_paper_image(paper_id, image_id):
-    try:
-        user_id = int(get_jwt_identity())
-        img = PaperImage.query.filter_by(id=image_id, paper_id=paper_id, user_id=user_id).first()
-        if not img:
-            return jsonify({"error": "Image not found"}), 404
-        filepath = UPLOAD_FOLDER / img.file_path
-        if filepath.exists():
-            filepath.unlink()
-        db.session.delete(img)
-        db.session.commit()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/images/<paper_id>/<filename>", methods=["GET"])
-def get_paper_image(paper_id, filename):
-    safe_filename = Path(filename).name
-    filepath = UPLOAD_FOLDER / paper_id / safe_filename
-    if not filepath.exists():
-        return jsonify({"error": "Image not found"}), 404
-    return send_file(str(filepath))
+_PAPER_ID_RE = re.compile(r'^[A-Za-z0-9_-]{1,64}$')
+_FILENAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,128}$')
 
 
 @app.route("/api/journals", methods=["GET"])
@@ -619,6 +652,7 @@ def list_journals():
 # ─── Legacy Image Upload ──────────────────────────────────────────────────────
 
 @app.route("/api/upload-image", methods=["POST"])
+@limiter.limit("30 per minute")
 @jwt_required()
 def upload_image_legacy():
     try:
@@ -628,16 +662,21 @@ def upload_image_legacy():
         if file.filename == "":
             return jsonify({"error": "No file selected"}), 400
         ext = Path(file.filename).suffix.lower()
-        if ext not in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"]:
+        allowed_image_exts = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+        if ext not in allowed_image_exts:
             return jsonify({"error": "Invalid image format"}), 400
+        head = file.stream.read(16)
+        file.stream.seek(0)
+        if not _is_image_bytes(head, ext):
+            return jsonify({"error": "Invalid image file"}), 400
         legacy_dir = UPLOAD_FOLDER / "legacy"
         legacy_dir.mkdir(exist_ok=True)
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = legacy_dir / filename
         file.save(str(filepath))
-        return jsonify({"success": True, "filename": filename, "url": f"/api/images/legacy/{filename}", "originalName": file.filename})
+        return jsonify({"success": True, "filename": filename, "url": f"/api/images/legacy/{filename}", "originalName": file.filename[:255]})
     except Exception as e:
-        traceback.print_exc()
+        log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
 
 # ─── Export DOCX ──────────────────────────────────────────────────────────────
@@ -671,108 +710,26 @@ def export_docx():
             if not safe_title:
                 safe_title = 'paper'
             download_name = f"{canonical_journal}_{safe_title[:60]}.docx"
-            return send_file(
+            response = send_file(
                 str(output_path), as_attachment=True,
                 download_name=download_name,
                 mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
+            @response.call_on_close
+            def _cleanup():
+                try:
+                    output_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+            return response
         finally:
             json_filepath.unlink(missing_ok=True)
     except Exception as e:
-        traceback.print_exc()
+        log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
 
 # ─── Paper CRUD ───────────────────────────────────────────────────────────────
-
-@app.route("/api/papers", methods=["GET"])
-@jwt_required()
-def list_papers():
-    try:
-        user_id = int(get_jwt_identity())
-        papers = Paper.query.filter_by(user_id=user_id).order_by(Paper.updated_at.desc()).all()
-        return jsonify({"papers": [p.to_dict() for p in papers]})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/papers", methods=["POST"])
-@jwt_required()
-def save_paper():
-    try:
-        user_id = int(get_jwt_identity())
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-
-        paper_id = data.get("id") or uuid.uuid4().hex[:12]
-        title = data.get("title") or (data.get("data") or {}).get("title") or "Untitled"
-
-        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-        if paper:
-            paper.title = title
-            paper.data = data
-            paper.updated_at = datetime.utcnow()
-        else:
-            paper = Paper(id=paper_id, user_id=user_id, title=title, data=data)
-            db.session.add(paper)
-
-        db.session.commit()
-        return jsonify({"success": True, "id": paper_id, "paper": paper.to_dict()})
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/papers/<paper_id>", methods=["GET"])
-@jwt_required()
-def load_paper(paper_id):
-    try:
-        user_id = int(get_jwt_identity())
-        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-        if not paper:
-            return jsonify({"error": "Paper not found"}), 404
-        return jsonify({**(paper.data or {}), "id": paper.id})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/papers/<paper_id>", methods=["PUT"])
-@jwt_required()
-def update_paper(paper_id):
-    try:
-        user_id = int(get_jwt_identity())
-        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-        if not paper:
-            return jsonify({"error": "Paper not found"}), 404
-        data = request.get_json()
-        title = data.get("title") or (data.get("data") or {}).get("title") or "Untitled"
-        paper.title = title
-        paper.data = data
-        paper.updated_at = datetime.utcnow()
-        db.session.commit()
-        return jsonify({"success": True, "paper": paper.to_dict()})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/papers/<paper_id>", methods=["DELETE"])
-@jwt_required()
-def delete_paper(paper_id):
-    try:
-        user_id = int(get_jwt_identity())
-        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-        if not paper:
-            return jsonify({"error": "Paper not found"}), 404
-        paper_img_dir = UPLOAD_FOLDER / paper_id
-        if paper_img_dir.exists():
-            import shutil
-            shutil.rmtree(str(paper_img_dir))
-        db.session.delete(paper)
-        db.session.commit()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# Moved to papers_bp.py — registered above. Keeping this header as a breadcrumb.
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -780,6 +737,6 @@ if __name__ == "__main__":
     port = int(os.getenv("FLASK_PORT", os.getenv("BACKEND_PORT", 1001)))
     debug = os.getenv("FLASK_DEBUG", "true").lower() == "true"
     log.info("=" * 60)
-    log.info("Paper Generator API starting on port %d", port)
-    print(f"🚀 Paper Generator API running on http://localhost:{port}")
+    log.info("PaperFull API starting on port %d", port)
+    print(f"🚀 PaperFull API running on http://localhost:{port}")
     app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False, threaded=True)

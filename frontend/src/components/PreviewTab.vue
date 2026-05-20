@@ -1,6 +1,26 @@
 <template>
   <div class="p-6">
-    <div class="flex items-center justify-between mb-4">
+    <!-- Resolved changes (collapsible at top) -->
+    <div v-if="resolvedChanges.length > 0" class="mb-3 max-w-4xl mx-auto">
+      <button @click="resolvedOpen = !resolvedOpen"
+        class="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+        <span>{{ resolvedOpen ? '▾' : '▸' }}</span>
+        Riwayat persetujuan ({{ resolvedChanges.length }})
+        <button v-if="resolvedOpen" @click.stop="store.clearResolvedProposals()"
+          class="ml-2 text-[10px] underline text-slate-400 hover:text-slate-600">bersihkan</button>
+      </button>
+      <div v-if="resolvedOpen" class="mt-2 space-y-1.5">
+        <div v-for="c in resolvedChanges" :key="c.id"
+          class="text-[11px] flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
+          <span :class="c.status === 'accepted' ? 'text-emerald-600' : 'text-rose-500'">
+            {{ c.status === 'accepted' ? '✓' : '✕' }}
+          </span>
+          <span class="font-medium text-slate-600">{{ kindLabel(c.kind) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between mb-4 max-w-4xl mx-auto">
       <h2 class="text-lg font-semibold text-gray-800">Paper Preview</h2>
       <button @click="store.exportDocx()"
         class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium flex items-center gap-2">
@@ -12,10 +32,22 @@
       </button>
     </div>
 
-    <!-- IEEE Paper Preview -->
-    <div class="paper-preview border rounded-lg" ref="previewEl">
-      <!-- Title -->
-      <h1 class="text-2xl font-bold text-center mb-4 leading-tight" style="font-family: 'Times New Roman', serif;">
+    <!-- IEEE Paper Preview (rendered, with INLINE diffs) -->
+    <div class="paper-preview border rounded-lg bg-white p-8 max-w-4xl mx-auto shadow-sm">
+      <!-- Title (with inline diff if pending) -->
+      <DiffBlock v-if="pendingByKind.title" :change="pendingByKind.title" :store="store" align="center">
+        <template #before>
+          <h1 class="text-2xl font-bold leading-tight text-rose-700 line-through" style="font-family: 'Times New Roman', serif;">
+            {{ store.paper.title || 'Paper Title' }}
+          </h1>
+        </template>
+        <template #after>
+          <h1 class="text-2xl font-bold leading-tight text-emerald-800" style="font-family: 'Times New Roman', serif;">
+            {{ pendingByKind.title.payload.value || 'Paper Title' }}
+          </h1>
+        </template>
+      </DiffBlock>
+      <h1 v-else class="text-2xl font-bold text-center mb-4 leading-tight" style="font-family: 'Times New Roman', serif;">
         {{ store.paper.title || 'Paper Title' }}
       </h1>
 
@@ -35,54 +67,156 @@
         </div>
       </div>
 
-      <!-- Abstract -->
-      <div v-if="store.paper.abstract" class="mb-4 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+      <!-- Abstract (with inline diff if pending) -->
+      <DiffBlock v-if="pendingByKind.abstract" :change="pendingByKind.abstract" :store="store">
+        <template #before>
+          <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+            <span class="font-bold italic text-rose-700">Abstract—</span>
+            <span class="italic text-rose-700 line-through">{{ store.paper.abstract || '(kosong)' }}</span>
+          </div>
+        </template>
+        <template #after>
+          <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+            <span class="font-bold italic text-emerald-800">Abstract—</span>
+            <span class="italic text-emerald-800">{{ pendingByKind.abstract.payload.value }}</span>
+          </div>
+        </template>
+      </DiffBlock>
+      <div v-else-if="store.paper.abstract" class="mb-4 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
         <span class="font-bold italic">Abstract—</span>
         <span class="italic">{{ store.paper.abstract }}</span>
       </div>
 
-      <!-- Keywords -->
-      <div v-if="store.paper.keywords.length > 0" class="mb-6 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+      <!-- Keywords (with inline diff if pending) -->
+      <DiffBlock v-if="pendingByKind.keywords" :change="pendingByKind.keywords" :store="store">
+        <template #before>
+          <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+            <span class="font-bold italic text-rose-700">Keywords—</span>
+            <span class="italic text-rose-700 line-through">{{ (store.paper.keywords || []).join(', ') || '(kosong)' }}</span>
+          </div>
+        </template>
+        <template #after>
+          <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+            <span class="font-bold italic text-emerald-800">Keywords—</span>
+            <span class="italic text-emerald-800">{{ (pendingByKind.keywords.payload.value || []).join(', ') }}</span>
+          </div>
+        </template>
+      </DiffBlock>
+      <div v-else-if="store.paper.keywords.length > 0" class="mb-6 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
         <span class="font-bold italic">Keywords—</span>
         <span class="italic">{{ store.paper.keywords.join(', ') }}</span>
       </div>
 
-      <!-- Single-column layout -->
+      <!-- Sections -->
       <div class="space-y-4" style="font-family: 'Times New Roman', serif; font-size: 10pt;">
-        <!-- Sections -->
-        <div v-for="section in store.paper.sections" :key="section.id" class="mb-4">
-          <h2 class="text-center font-bold mb-2 text-sm">
-            {{ section.number }}. {{ section.title?.toUpperCase() }}
-          </h2>
-          <div class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ section.content }}</div>
+        <!-- Existing sections (with possible diff overlay) -->
+        <div v-for="(section, sIdx) in store.paper.sections" :key="sIdx" class="mb-4">
+          <DiffBlock v-if="pendingSectionByIdx[sIdx]" :change="pendingSectionByIdx[sIdx]" :store="store">
+            <template #before>
+              <h2 class="text-center font-bold mb-2 text-sm text-rose-700 line-through">
+                {{ toRoman(sIdx + 1) }}. {{ section.title?.toUpperCase() }}
+              </h2>
+              <p class="text-justify whitespace-pre-wrap text-sm text-rose-700 line-through">{{ sectionText(section) }}</p>
+            </template>
+            <template #after>
+              <h2 class="text-center font-bold mb-2 text-sm text-emerald-800">
+                {{ toRoman(sIdx + 1) }}. {{ (pendingSectionByIdx[sIdx].payload.title || '').toUpperCase() }}
+              </h2>
+              <p class="text-justify whitespace-pre-wrap text-sm text-emerald-800">{{ pendingSectionByIdx[sIdx].payload.content || '' }}</p>
+            </template>
+          </DiffBlock>
 
-          <!-- Subsections -->
-          <div v-for="sub in section.subsections" :key="sub.id" class="mt-3">
-            <h3 class="font-bold italic text-sm mb-1">
-              {{ sub.letter }}. {{ sub.title }}
-            </h3>
-            <div class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ sub.content }}</div>
+          <template v-else>
+            <h2 class="text-center font-bold mb-2 text-sm">
+              {{ toRoman(sIdx + 1) }}. {{ section.title?.toUpperCase() }}
+            </h2>
 
-            <div v-for="item in sub.numberedItems" :key="item.number" class="mt-2 ml-4">
-              <span class="font-bold italic text-sm">{{ item.number }}) {{ item.title }}</span>
-              <div class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.content }}</div>
+            <template v-for="(item, cIdx) in section.content" :key="cIdx">
+              <p v-if="item.id === 'text' && item.text" class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug mb-2">{{ item.text }}</p>
+              <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
+                <div class="inline-block border border-gray-200 rounded p-2">
+                  <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
+                  <div v-else class="w-48 h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>
+                </div>
+                <p v-if="item.Title" class="text-xs mt-1 text-gray-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+              </div>
+              <div v-else-if="item.id === 'tabel'" class="my-3">
+                <p v-if="item.Title" class="text-xs text-center font-semibold mb-1">TABLE {{ getItemNum(item) }}: {{ item.Title }}</p>
+                <table class="w-full text-xs border-collapse border border-gray-300 mx-auto">
+                  <thead>
+                    <tr>
+                      <th v-for="(h, hi) in item.Headers" :key="hi" class="border border-gray-300 bg-gray-50 px-2 py-1 text-center font-semibold">{{ h }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, ri) in item.Rows" :key="ri">
+                      <td v-for="(cell, ci) in row" :key="ci" class="border border-gray-300 px-2 py-1 text-center">{{ cell }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center font-mono text-sm text-gray-700">
+                ({{ getItemNum(item) }}) &nbsp; {{ item.latex }}
+              </div>
+            </template>
+
+            <div v-for="(sub, subIdx) in section.subsections" :key="subIdx" class="mt-3">
+              <h3 class="font-bold italic text-sm mb-1">
+                {{ String.fromCharCode(65 + subIdx) }}. {{ sub.title }}
+              </h3>
+              <template v-for="(item, cIdx) in sub.content" :key="cIdx">
+                <p v-if="item.id === 'text' && item.text" class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug mb-2">{{ item.text }}</p>
+                <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
+                  <div class="inline-block border border-gray-200 rounded p-2">
+                    <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
+                    <div v-else class="w-48 h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>
+                  </div>
+                  <p v-if="item.Title" class="text-xs mt-1 text-gray-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+                </div>
+              </template>
             </div>
-          </div>
+          </template>
         </div>
 
-        <!-- Acknowledgment -->
-        <div v-if="store.paper.acknowledgment" class="mb-4">
-          <h2 class="text-center font-bold mb-2 text-sm">ACKNOWLEDGMENT</h2>
-          <div class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ store.paper.acknowledgment }}</div>
-        </div>
+        <!-- Newly proposed sections (no existing index) -->
+        <DiffBlock v-for="change in newSectionProposals" :key="change.id" :change="change" :store="store">
+          <template #before>
+            <p class="text-rose-700 italic text-xs">(belum ada section ini — akan ditambahkan)</p>
+          </template>
+          <template #after>
+            <h2 class="text-center font-bold mb-2 text-sm text-emerald-800">
+              + {{ (change.payload.title || '').toUpperCase() }}
+            </h2>
+            <p class="text-justify whitespace-pre-wrap text-sm text-emerald-800">{{ change.payload.content || '' }}</p>
+          </template>
+        </DiffBlock>
 
         <!-- References -->
         <div v-if="store.paper.references.length > 0">
           <h2 class="text-center font-bold mb-2 text-sm">REFERENCES</h2>
-          <div v-for="ref in store.paper.references" :key="ref.id"
-            class="text-xs leading-snug mb-1 pl-6 -indent-6">
-            [{{ ref.id }}] {{ ref.text }}
+          <div v-for="(ref, i) in store.paper.references" :key="i">
+            <DiffBlock v-if="pendingRefByIdx[i]" :change="pendingRefByIdx[i]" :store="store">
+              <template #before>
+                <div class="text-xs leading-snug pl-6 -indent-6 text-rose-700 line-through">[{{ i + 1 }}] {{ ref || '(kosong)' }}</div>
+              </template>
+              <template #after>
+                <div class="text-xs leading-snug pl-6 -indent-6 text-emerald-800">[{{ i + 1 }}] {{ pendingRefByIdx[i].payload.value || '' }}</div>
+              </template>
+            </DiffBlock>
+            <div v-else class="text-xs leading-snug mb-1 pl-6 -indent-6">
+              [{{ i + 1 }}] {{ ref }}
+            </div>
           </div>
+
+          <!-- New reference proposals -->
+          <DiffBlock v-for="change in newRefProposals" :key="change.id" :change="change" :store="store">
+            <template #before>
+              <div class="text-rose-700 italic text-xs pl-6 -indent-6">(referensi baru — akan ditambahkan)</div>
+            </template>
+            <template #after>
+              <div class="text-xs leading-snug pl-6 -indent-6 text-emerald-800">+ [{{ store.paper.references.length + 1 }}] {{ change.payload.value }}</div>
+            </template>
+          </DiffBlock>
         </div>
       </div>
     </div>
@@ -90,6 +224,87 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
 import { usePaperStore } from '../stores/paper.js'
+import DiffBlock from './DiffBlock.vue'
+
 const store = usePaperStore()
+const resolvedOpen = ref(false)
+
+const pendingActive = computed(() =>
+  (store.pendingChanges || []).filter(p => p.status === 'pending')
+)
+const resolvedChanges = computed(() =>
+  (store.pendingChanges || []).filter(p => p.status !== 'pending')
+)
+
+// Group pending by kind for quick lookup
+const pendingByKind = computed(() => {
+  const map = {}
+  for (const c of pendingActive.value) {
+    if (['title', 'abstract', 'keywords'].includes(c.kind)) {
+      if (!map[c.kind]) map[c.kind] = c
+    }
+  }
+  return map
+})
+
+const pendingSectionByIdx = computed(() => {
+  const map = {}
+  for (const c of pendingActive.value) {
+    if (c.kind === 'section' && c.payload.section_index !== null && c.payload.section_index !== undefined) {
+      map[c.payload.section_index] = c
+    }
+  }
+  return map
+})
+
+const newSectionProposals = computed(() =>
+  pendingActive.value.filter(c => c.kind === 'section' && (c.payload.section_index === null || c.payload.section_index === undefined))
+)
+
+const pendingRefByIdx = computed(() => {
+  const map = {}
+  for (const c of pendingActive.value) {
+    if (c.kind === 'reference' && c.payload.ref_index !== null && c.payload.ref_index !== undefined) {
+      map[c.payload.ref_index] = c
+    }
+  }
+  return map
+})
+
+const newRefProposals = computed(() =>
+  pendingActive.value.filter(c => c.kind === 'reference' && (c.payload.ref_index === null || c.payload.ref_index === undefined))
+)
+
+function imgSrc(path) {
+  return `/api/images/${store.currentPaperId}/${path}`
+}
+
+function toRoman(num) { return store.toRoman(num) }
+
+function getItemNum(item) {
+  const info = store.getItemNumber(item)
+  return info.label || '?'
+}
+
+function sectionText(section) {
+  if (!section?.content) return ''
+  return section.content
+    .filter(it => it && it.id === 'text')
+    .map(it => it.text || '')
+    .join('\n\n')
+}
+
+function kindLabel(kind) {
+  return ({
+    title: 'Judul',
+    abstract: 'Abstrak',
+    keywords: 'Keywords',
+    section: 'Section',
+    reference: 'Referensi',
+    journal: 'Jurnal',
+    export_docx: 'Export DOCX',
+  })[kind] || kind
+}
 </script>

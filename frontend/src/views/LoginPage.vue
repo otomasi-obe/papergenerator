@@ -1,32 +1,63 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4">
+  <div class="min-h-screen bg-gradient-to-br from-brown-900 via-brown-800 to-stone-900 flex items-center justify-center px-4">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-8">
-        <div class="inline-flex items-center gap-2 mb-3">
-          <span class="text-4xl">📄</span>
+        <div class="inline-flex items-center justify-center mb-3">
+          <img :src="logoWithText" alt="PaperFull" class="h-12 object-contain drop-shadow-[0_4px_24px_rgba(212,180,131,0.35)]" />
         </div>
-        <h1 class="text-3xl font-bold text-white mb-1">PaperGenerator</h1>
-        <p class="text-slate-400 text-sm">AI-powered IEEE paper writing tool</p>
+        <p class="text-cream-200/70 text-sm">AI-powered academic paper writing tool</p>
       </div>
 
       <!-- Login Card -->
-      <div class="bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-sm">
-        <h2 class="text-white text-xl font-semibold mb-2 text-center">Sign in to your account</h2>
-        <p class="text-slate-400 text-sm text-center mb-7">
-          Use your Google account to access your papers
+      <div class="bg-cream-50/5 border border-cream-200/15 rounded-2xl p-8 backdrop-blur-sm">
+        <h2 class="text-cream-50 text-xl font-semibold mb-2 text-center">
+          {{ isRegister ? 'Create an account' : 'Sign in to your account' }}
+        </h2>
+        <p class="text-cream-200/70 text-sm text-center mb-7">
+          {{ isRegister ? 'Register with your email to get started' : 'Use your email or Google account' }}
         </p>
 
         <!-- Error Alert -->
-        <div v-if="errorMsg" class="mb-5 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl p-3">
+        <div v-if="errorMsg" class="mb-5 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl p-3">
           <span>⚠️</span>
           <span>{{ errorMsg }}</span>
+        </div>
+
+        <!-- Email/Password Form -->
+        <form @submit.prevent="handleSubmit" class="space-y-4 mb-5">
+          <div v-if="isRegister">
+            <label class="text-cream-200/70 text-xs block mb-1">Name</label>
+            <input v-model="form.name" type="text" placeholder="Your full name"
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+          </div>
+          <div>
+            <label class="text-cream-200/70 text-xs block mb-1">Email</label>
+            <input v-model="form.email" type="email" placeholder="you@example.com"
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+          </div>
+          <div>
+            <label class="text-cream-200/70 text-xs block mb-1">Password</label>
+            <input v-model="form.password" type="password" placeholder="Min. 8 chars, mix of types"
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+          </div>
+          <button type="submit" :disabled="submitting"
+            class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-brown-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50">
+            {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
+          </button>
+        </form>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-3 mb-5">
+          <div class="flex-1 h-px bg-cream-200/15"></div>
+          <span class="text-cream-200/50 text-xs">or</span>
+          <div class="flex-1 h-px bg-cream-200/15"></div>
         </div>
 
         <!-- Google Login Button -->
         <button
           @click="auth.loginWithGoogle()"
-          class="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white text-gray-800 rounded-xl font-semibold hover:bg-gray-100 transition-all shadow-lg text-base"
+          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-cream-50 text-brown-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-lg text-sm"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -37,14 +68,22 @@
           Continue with Google
         </button>
 
-        <p class="text-center text-slate-500 text-xs mt-6">
+        <!-- Toggle Register/Login -->
+        <p class="text-center text-cream-200/70 text-sm mt-6">
+          {{ isRegister ? 'Already have an account?' : "Don't have an account?" }}
+          <button @click="toggleMode" class="text-cream-200 hover:text-cream-50 font-medium ml-1">
+            {{ isRegister ? 'Sign In' : 'Register' }}
+          </button>
+        </p>
+
+        <p class="text-center text-cream-200/40 text-xs mt-4">
           By signing in, you agree to our privacy policy.<br>
           Your papers are private and belong to you.
         </p>
       </div>
 
       <div class="text-center mt-6">
-        <router-link to="/" class="text-slate-500 hover:text-slate-300 text-sm transition-colors">
+        <router-link to="/" class="text-cream-200/50 hover:text-cream-200 text-sm transition-colors">
           ← Back to home
         </router-link>
       </div>
@@ -53,15 +92,67 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, reactive, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import api from '../api/index.js'
+import logoWithText from '../image/logo-with-text.png'
 
 const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
+
+const isRegister = ref(false)
+const submitting = ref(false)
+const formError = ref('')
+
+const form = reactive({
+  name: '',
+  email: '',
+  password: '',
+})
 
 const errorMsg = computed(() => {
+  if (formError.value) return formError.value
   if (route.query.error === 'auth_failed') return 'Google sign-in failed. Please try again.'
   return null
 })
+
+function toggleMode() {
+  isRegister.value = !isRegister.value
+  formError.value = ''
+}
+
+async function handleSubmit() {
+  formError.value = ''
+
+  if (!form.email || !form.password) {
+    formError.value = 'Email and password are required'
+    return
+  }
+  if (isRegister.value && !form.name) {
+    formError.value = 'Name is required'
+    return
+  }
+  if (form.password.length < 8) {
+    formError.value = 'Password must be at least 8 characters'
+    return
+  }
+
+  submitting.value = true
+  try {
+    const endpoint = isRegister.value ? '/api/auth/register' : '/api/auth/login'
+    const payload = isRegister.value
+      ? { name: form.name, email: form.email, password: form.password }
+      : { email: form.email, password: form.password }
+
+    const res = await api.post(endpoint, payload)
+    auth.setUser(res.data.user)
+    router.push('/dashboard')
+  } catch (err) {
+    formError.value = err.response?.data?.error || 'Something went wrong. Please try again.'
+  } finally {
+    submitting.value = false
+  }
+}
 </script>

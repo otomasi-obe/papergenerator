@@ -37,8 +37,8 @@ proc_name = "paper-generator-api"
 default_proc_name = "paper-generator-api"
 
 # ── Logging ──────────────────────────────────────────────────────────────────
-accesslog = "/home/otomasi/papergenerator/logs/gunicorn-access.log"
-errorlog  = "/home/otomasi/papergenerator/logs/gunicorn-error.log"
+accesslog = "/home/sirobo/papergenerator/logs/gunicorn-access.log"
+errorlog  = "/home/sirobo/papergenerator/logs/gunicorn-error.log"
 loglevel  = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sµs'
 
@@ -50,3 +50,24 @@ max_requests_jitter = 500 # stagger recycling so not all workers restart at once
 
 # ── Worker tmp heartbeat dir ─────────────────────────────────────────────────
 worker_tmp_dir = "/dev/shm"  # use RAM for heartbeat files (faster than disk)
+
+
+# ── Shutdown noise suppression ───────────────────────────────────────────────
+# gthread + Python 3.10 logs harmless 'Exception ignored in: <module threading>'
+# on SIGINT (atexit / _threads_queues weakref race). Suppress at the worker
+# level so backend-err.log stays signal-only.
+def post_fork(server, worker):
+    import sys, atexit, contextlib
+    _orig_excepthook = sys.excepthook
+
+    def _silent_threading_excepthook(exc_type, exc, tb):
+        if isinstance(exc, SystemExit) and (exc.code == 0 or exc.code is None):
+            return
+        _orig_excepthook(exc_type, exc, tb)
+
+    sys.excepthook = _silent_threading_excepthook
+
+    @atexit.register
+    def _silence_stderr_on_shutdown():
+        with contextlib.suppress(Exception):
+            sys.stderr.flush()

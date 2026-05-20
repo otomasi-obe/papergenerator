@@ -18,25 +18,20 @@ const auth = useAuthStore()
 const statusMsg = ref('Completing sign-in...')
 
 onMounted(async () => {
-  const token = route.query.token
-
-  if (!token) {
-    statusMsg.value = 'Sign-in failed — no token received.'
-    setTimeout(() => router.push('/login?error=auth_failed'), 2000)
+  if (route.query.error) {
+    statusMsg.value = 'Sign-in failed.'
+    setTimeout(() => router.push('/login?error=' + route.query.error), 1500)
     return
   }
 
-  // Store the token
-  auth.setToken(token)
-
-  // Fetch user info
-  try {
-    await auth.fetchMe()
-    statusMsg.value = `Welcome back, ${auth.user?.name || 'user'}!`
-    setTimeout(() => router.push('/dashboard'), 800)
-  } catch {
+  // Cookies are already set by /api/auth/google/callback. Just load the user.
+  const me = await auth.fetchMe()
+  if (me) {
+    statusMsg.value = `Welcome back, ${me.name || 'user'}!`
+    setTimeout(() => router.push('/dashboard'), 600)
+  } else {
     statusMsg.value = 'Failed to load user info.'
-    setTimeout(() => router.push('/login?error=auth_failed'), 2000)
+    setTimeout(() => router.push('/login?error=auth_failed'), 1500)
   }
 })
 </script>

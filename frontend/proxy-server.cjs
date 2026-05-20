@@ -24,11 +24,17 @@ const mimeTypes = {
   '.eot': 'application/vnd.ms-fontobject',
 };
 
+// Crash-safe: never let a bad client/proxy hop kill the worker.
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err && err.stack ? err.stack : err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  
-  console.log(`${req.method} ${url.pathname}`);
-  
+
   // Proxy API requests to backend
   if (url.pathname.startsWith('/api/')) {
     const proxyOptions = {
@@ -42,18 +48,39 @@ const server = http.createServer((req, res) => {
       },
     };
 
-    console.log(`Proxying to backend: ${BACKEND_HOST}:${BACKEND_PORT}${url.pathname}`);
-
     const proxyReq = http.request(proxyOptions, (proxyRes) => {
-      console.log(`Backend response: ${proxyRes.statusCode}`);
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res);
+      proxyRes.on('error', (err) => {
+        console.error('[proxy-res] stream error:', err.code || err.message);
+        try { res.destroy(); } catch (_) { /* already closed */ }
+      });
     });
 
     proxyReq.on('error', (err) => {
-      console.error('Proxy error:', err);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Proxy error', message: err.message }));
+      const status = err.code === 'ECONNREFUSED' ? 503 : 502;
+      const msg = err.code === 'ECONNREFUSED'
+        ? 'Backend temporarily unavailable'
+        : 'Proxy error';
+      console.error(`[proxy-req] ${err.code || ''} ${url.pathname} -> ${status}`);
+      if (!res.headersSent) {
+        res.writeHead(status, {
+          'Content-Type': 'application/json',
+          'Retry-After': '5',
+        });
+        res.end(JSON.stringify({ error: msg, code: err.code || 'PROXY_ERR' }));
+      } else {
+        try { res.destroy(); } catch (_) { /* already closed */ }
+      }
+    });
+
+    // Client may abort mid-request — kill upstream cleanly.
+    req.on('error', (err) => {
+      console.error('[client-req] error:', err.code || err.message);
+      try { proxyReq.destroy(); } catch (_) { /* already destroyed */ }
+    });
+    req.on('aborted', () => {
+      try { proxyReq.destroy(); } catch (_) { /* already destroyed */ }
     });
 
     req.pipe(proxyReq);
@@ -61,8 +88,20 @@ const server = http.createServer((req, res) => {
   }
 
   // Serve static files from dist/
-  let filePath = path.join(DIST_DIR, url.pathname);
-  if (url.pathname === '/') {
+  let pathname;
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    pathname = url.pathname;
+  }
+  // Block path-traversal escape attempts before joining onto DIST_DIR
+  if (pathname.includes('\0') || pathname.split('/').some(p => p === '..')) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('Bad Request');
+    return;
+  }
+  let filePath = path.join(DIST_DIR, pathname);
+  if (pathname === '/') {
     filePath = path.join(DIST_DIR, 'index.html');
   }
 
