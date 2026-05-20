@@ -136,8 +136,14 @@ def register():
         if not token:
             return jsonify({'error': 'CAPTCHA required'}), 400
         secret = os.getenv('TURNSTILE_SECRET_KEY', '')
-        # Cloudflare-documented "always-pass" testing secret: 1x0000000000000000000000000000000AA
-        is_test_secret = secret.startswith('1x0000000000000000000000000000000')
+        # Cloudflare's documented testing secrets — always skip the network call.
+        # https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+        TURNSTILE_TEST_SECRETS = {
+            '1x0000000000000000000000000000000AA',  # always passes
+            '2x0000000000000000000000000000000AA',  # always fails
+            '3x0000000000000000000000000000000AA',  # always fails as challenge
+        }
+        is_test_secret = secret in TURNSTILE_TEST_SECRETS
         if secret and not is_test_secret:
             try:
                 resp = requests.post(
