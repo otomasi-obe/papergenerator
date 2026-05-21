@@ -211,12 +211,29 @@ class ProjectMemory(db.Model):
 
     The AI saves facts here (judul tentatif, metodologi, gaya bahasa, dll) via
     the SaveMemory tool, and reads them back at the start of every conversation.
+
+    Memory entries are scoped:
+    - `conversation_id IS NULL` -> paper-global memory (visible to every chat
+      in the paper).
+    - `conversation_id = '<id>'` -> chat-scoped memory (only that chat sees it,
+      and it is deleted when the chat is deleted).
+
+    Two partial unique indexes enforce uniqueness of `key` per scope:
+    - `uq_pm_paper_key_global`: one row per (paper_id, key) when global.
+    - `uq_pm_paper_conv_key`: one row per (paper_id, conversation_id, key) when
+      chat-scoped.
     """
     __tablename__ = 'project_memory'
 
     id = db.Column(db.Integer, primary_key=True)
     paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    conversation_id = db.Column(
+        db.String(20),
+        db.ForeignKey('conversations.id', ondelete='CASCADE'),
+        nullable=True,
+        index=True,
+    )
     key = db.Column(db.String(120), nullable=False)
     value = db.Column(db.Text, nullable=False)
     kind = db.Column(db.String(40), default='fact')
@@ -224,13 +241,25 @@ class ProjectMemory(db.Model):
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
     __table_args__ = (
-        db.UniqueConstraint('paper_id', 'key', name='uq_project_memory_paper_key'),
+        db.Index(
+            'uq_pm_paper_key_global', 'paper_id', 'key',
+            unique=True,
+            postgresql_where=db.text('conversation_id IS NULL'),
+            sqlite_where=db.text('conversation_id IS NULL'),
+        ),
+        db.Index(
+            'uq_pm_paper_conv_key', 'paper_id', 'conversation_id', 'key',
+            unique=True,
+            postgresql_where=db.text('conversation_id IS NOT NULL'),
+            sqlite_where=db.text('conversation_id IS NOT NULL'),
+        ),
     )
 
     def to_dict(self):
         return {
             'id': self.id,
             'paper_id': self.paper_id,
+            'conversation_id': self.conversation_id,
             'key': self.key,
             'value': self.value,
             'kind': self.kind,
@@ -245,7 +274,7 @@ class AiJob(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'), nullable=True, index=True)
     kind = db.Column(db.String(30), nullable=False, default='generate_paper')
-    status = db.Column(db.String(20), nullable=False, default='queued')  # queued|running|done|error|cancelled
+    status = db.Column(db.String(20), nullable=False, default='queued')  # queued|running|paused|done|error|cancelled
     progress = db.Column(db.Integer, default=0)  # 0..100
     stage = db.Column(db.String(60), default='')  # 'outline' | 'sections' | 'references' | ...
     prompt = db.Column(db.Text)
