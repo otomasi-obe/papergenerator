@@ -109,19 +109,29 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
         return _safe_read(arguments.get("file_path", ""))
     elif tool_name == "Bash":
         return _safe_bash(arguments.get("command", ""))
-    elif tool_name == "SaveMemory":
-        return _save_memory(
-            paper_id, user_id,
-            arguments.get("key", ""),
-            arguments.get("value", ""),
-            arguments.get("kind", "fact"),
-        )
-    elif tool_name == "GetMemory":
-        return _get_memory(paper_id, user_id, arguments.get("key"))
     elif tool_name == "ListMemory":
         return _list_memory(paper_id, user_id)
     elif tool_name == "DeleteMemory":
         return _delete_memory(paper_id, user_id, arguments.get("key", ""))
+    # ─── Tier-0 router + UI hint tools ─────────────────────────────────
+    elif tool_name == "RouteIntent":
+        # Classification tool. The chat blueprint reads the result, switches
+        # the conversation's mode, and re-calls upstream with the new bundle.
+        return {
+            "kind": "route",
+            "mode": (arguments.get("mode") or "casual"),
+            "reasoning": arguments.get("reasoning", ""),
+        }
+    elif tool_name == "ProposeChips":
+        chips = arguments.get("chips") or []
+        if not isinstance(chips, list):
+            chips = []
+        # Wrap as a structured proposal so the chat blueprint can forward it
+        # to the frontend through the SSE chips event.
+        return _propose("chips", {
+            "chips": chips,
+            "context_hint": arguments.get("context_hint", ""),
+        })
     # ─── Paper-edit proposal tools ──────────────────────────────────────
     # These tools don't mutate the paper. They emit a proposal payload that
     # the frontend collects and shows to the user for accept/reject.
@@ -640,7 +650,14 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     job_id = uuid.uuid4().hex[:12]
     try:
         with app.app_context():
-            _job_create(job_id, int(user_id), prompt)
+            # Pass paper_id so the job row is bound to this paper. Falls
+            # back to the legacy 3-arg signature for environments where
+            # app._job_create has not been updated yet (Agent D will land
+            # the matching change).
+            try:
+                _job_create(job_id, int(user_id), prompt, paper_id=paper_id)
+            except TypeError:
+                _job_create(job_id, int(user_id), prompt)
         thread = threading.Thread(
             target=_run_generate_full_job,
             args=(job_id, prompt, int(user_id)),
@@ -683,7 +700,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
 
     # Return a structured payload so the frontend can show the job spinner
     payload = {
-        "kind": "generate_full",
+        "kind": "paper_progress",
         "job_id": job_id,
         "prompt": prompt,
         "topic": topic,
@@ -1233,28 +1250,6 @@ CHAT_TOOLS = [
         },
     },
     {
-        "name": "SaveMemory",
-        "description": "Save a durable fact about THIS paper. Shared across all chats. Keys are short snake_case (e.g. tentative_title).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "key": {"type": "string"},
-                "value": {"type": "string"},
-                "kind": {"type": "string"},
-            },
-            "required": ["key", "value"],
-        },
-    },
-    {
-        "name": "GetMemory",
-        "description": "Read one memory by key (or list all if omitted).",
-        "input_schema": {
-            "type": "object",
-            "properties": {"key": {"type": "string"}},
-            "required": [],
-        },
-    },
-    {
         "name": "ListMemory",
         "description": "List all memory entries.",
         "input_schema": {"type": "object", "properties": {}, "required": []},
@@ -1335,5 +1330,68 @@ CHAT_TOOLS = [
         "name": "RequestExportDocx",
         "description": "Trigger DOCX export of current paper (auto-applied).",
         "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "RouteIntent",
+        "description": (
+            "Classify the user's intent into a workflow mode. Call this FIRST "
+            "when the conversation's mode is unknown (tier-0) or when the user "
+            "switches context (e.g. from discovery planning to editing an "
+            "existing section). The chat backend swaps in a mode-specific "
+            "system prompt + tool subset right after this call. Do NOT use "
+            "this tool unless you actually need to change mode."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["discovery", "slr", "edit", "rapikan", "memory", "casual"],
+                    "description": (
+                        "discovery = 7-step paper planning, slr = literature "
+                        "search, edit = paper editing, rapikan = renumber Fig/"
+                        "Table/Eq, memory = manage saved memory, casual = free chat."
+                    ),
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "One-line explanation of why this mode fits.",
+                },
+            },
+            "required": ["mode"],
+        },
+    },
+    {
+        "name": "ProposeChips",
+        "description": (
+            "Show the user 2-6 clickable option chips beside your message. "
+            "Each chip becomes the user's next reply when clicked. Use this "
+            "for question-with-options patterns (e.g. the 7-step discovery) "
+            "INSTEAD of writing 1) 2) 3) inline. Frontend renders both the "
+            "chip buttons and a free-text fallback."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "chips": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 6,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "label": {"type": "string", "description": "Short text shown on the chip."},
+                            "value": {"type": "string", "description": "The exact reply submitted when clicked."},
+                        },
+                        "required": ["label", "value"],
+                    },
+                },
+                "context_hint": {
+                    "type": "string",
+                    "description": "Optional one-line prompt rendered above the chips.",
+                },
+            },
+            "required": ["chips"],
+        },
     },
 ]
