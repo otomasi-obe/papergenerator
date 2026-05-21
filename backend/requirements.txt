@@ -25,3 +25,5 @@ jsonpatch==1.33
 jsonschema==4.22.0
 sentry-sdk[flask]==2.5.1
 schemathesis==3.36.0
+matplotlib==3.10.0
+numpy==1.26.4
