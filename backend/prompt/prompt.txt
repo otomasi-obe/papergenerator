@@ -53,7 +53,7 @@ FIELD ADAPTATIONS:
     "title": "INTRODUCTION",
     "content": [
       {"id": "text", "text": "PARAGRAPH 1 — 80–120 words. Open with a specific real-world context grounded in a named industry, location, phenomenon, or year. NOT 'In this paper...' or 'In today's world...'. Hook the reader."},
-      {"id": "text", "text": "PARAGRAPH 2 — 100–150 words. Survey existing approaches/literature. For each cited work, state method + specific result or finding + one concrete limitation. Cite [1][2][3][4] (or use the required citation style)."},
+      {"id": "text", "text": "PARAGRAPH 2 — 100–150 words. Survey existing approaches/literature. For each cited work, state method + specific result or finding + one concrete limitation. Cite using author-year style like (Smith, 2023) or (Chen et al., 2022) — DO NOT prepend a numeric citation token like [1], [2]. References will be numbered later in the references section."},
       {"id": "text", "text": "PARAGRAPH 3 — 80–120 words. State the precise gap or unsolved problem. Be specific — not vague 'limited performance' but a concrete unresolved issue or knowledge gap."},
       {"id": "text", "text": "PARAGRAPH 4 — 100–150 words. Overview of proposed approach and contributions list. Use \\n for bullet lines: \\n\\u2022 Contribution 1 (specific, verifiable)\\n\\u2022 Contribution 2\\n\\u2022 Contribution 3"},
       {"id": "text", "text": "PARAGRAPH 5 — 60–80 words. Paper organization paragraph. Name every section by content: 'Section II reviews related work... Section III describes the methodology... Section IV presents results... Section V concludes.'"}
@@ -69,7 +69,7 @@ FIELD ADAPTATIONS:
       "title": "Thread A — first literature strand (name it specifically)",
       "content": [
         {"id": "text", "text": "300–450 words. Review 5–7 prior works using the CRITICAL PATTERN from PART B6: method + specific result/finding + one concrete limitation + connection to your contribution. Cite appropriately."},
-        {"id": "gambar", "ImageNumber": "1", "Title": "Descriptive figure title", "Path": "gambar/related_overview.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — describe type of figure (diagram, chart, framework illustration), every element, label, arrow, spatial layout, colors. End with: White background, clean minimal style consistent with academic paper figures."},
+        {"id": "gambar", "ImageNumber": "1", "Title": "Descriptive figure title", "Path": "gambar/related_overview.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — describe type of figure (diagram, chart, framework illustration), every element, label, arrow, spatial layout, colors. End with: White background, clean minimal style consistent with academic paper figures.\")"},
         {"id": "text", "text": "60–100 words. Reference Fig. 1. Describe what it shows and connect to the surrounding text."}
       ]
     },
@@ -96,7 +96,7 @@ FIELD ADAPTATIONS:
       "title": "Research Design  [or: System Architecture | Conceptual Framework | Study Design]",
       "content": [
         {"id": "text", "text": "150–250 words. Describe the research/system design with clear RATIONALE. Why this approach over alternatives? What requirement or research question drove each design choice?"},
-        {"id": "gambar", "ImageNumber": "2", "Title": "Overall Research/System Framework", "Path": "gambar/system_architecture.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — block diagram, conceptual framework, or research model diagram with all named components, directional arrows with labels, clear layout. Describe every element. White background, clean style."},
+        {"id": "gambar", "ImageNumber": "2", "Title": "Overall Research/System Framework", "Path": "gambar/system_architecture.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — block diagram, conceptual framework, or research model diagram with all named components, directional arrows with labels, clear layout. Describe every element. White background, clean style.\")"},
         {"id": "text", "text": "80–150 words. Reference Fig. 2. Walk through each visible component. Highlight the most important or novel design decision."},
         {"id": "rumus", "FormulaNumber": "1", "latex": "WRITE ACTUAL LaTeX — PRIORITY: use an equation from the TOPIC GUIDE 'EQUATIONS' or 'METHODOLOGY' section; otherwise use a domain formula from PART C1. Must be directly relevant to the methodology described. Use \\mathrm{} for text labels, NOT \\text{}. Double ALL backslashes in JSON. Omit entire element if field has no equations."},
         {"id": "text", "text": "80–150 words. Reference equation (1) if present. Explain EVERY variable: symbol, meaning, unit, typical range. State what the equation computes and why this formulation."}
@@ -108,7 +108,7 @@ FIELD ADAPTATIONS:
         {"id": "text", "text": "150–200 words. Describe data sources, instruments, hardware, or participants with specific justification. Include real numbers: sample size N=X, parameters, specifications."},
         {"id": "tabel", "TableNumber": "I", "Title": "Research Instruments / System Specifications / Participant Profile", "Headers": ["Item", "Value / Description", "Notes"], "Rows": [["Sample size / Dataset", "N = 200 participants", "Purposive sampling"], ["Instrument", "Validated 5-point Likert scale", "Cronbach α = 0.87"], ["Duration", "6 months", "Jan–Jun 2024"]]},
         {"id": "text", "text": "80–120 words. Reference Table I. Comment on 2–3 key design choices and why they were selected over obvious alternatives."},
-        {"id": "gambar", "ImageNumber": "3", "Title": "Study Setup / Experimental Rig / Data Collection Process", "Path": "gambar/hardware_prototype.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — annotated diagram, prototype photo, or process flow showing the data collection or hardware setup. All major components labeled. White background, clean labeling, academic paper style."}
+        {"id": "gambar", "ImageNumber": "3", "Title": "Study Setup / Experimental Rig / Data Collection Process", "Path": "gambar/hardware_prototype.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — annotated diagram, prototype photo, or process flow showing the data collection or hardware setup. All major components labeled. White background, clean labeling, academic paper style.\")"}
       ]
     },
     "section3c": {
@@ -117,14 +117,14 @@ FIELD ADAPTATIONS:
         {"id": "text", "text": "200–300 words. Describe the method, algorithm, or analytical approach step by step with design reasoning. Use inline math or conceptual notation naturally where it fits."},
         {"id": "rumus", "FormulaNumber": "2", "latex": "WRITE ACTUAL LaTeX for the primary method/algorithm formula — PRIORITY: use an equation from the TOPIC GUIDE; otherwise use a domain formula from PART C1. Must match the algorithm described above. Double all backslashes in JSON. Omit if field has no equations."},
         {"id": "text", "text": "80–150 words. Reference (2) if present. Explain every variable and connect to the methodology described above."},
-        {"id": "gambar", "ImageNumber": "4", "Title": "Algorithm Flowchart / Process Diagram / Analytical Framework", "Path": "gambar/algorithm_flowchart.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — flowchart with processing steps as rectangles, decisions as diamonds, start/end as rounded capsules. OR conceptual diagram with boxes and labeled arrows. All boxes labeled. Top-to-bottom flow. White background, academic style."}
+        {"id": "gambar", "ImageNumber": "4", "Title": "Algorithm Flowchart / Process Diagram / Analytical Framework", "Path": "gambar/algorithm_flowchart.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — flowchart with processing steps as rectangles, decisions as diamonds, start/end as rounded capsules. OR conceptual diagram with boxes and labeled arrows. All boxes labeled. Top-to-bottom flow. White background, academic style.\")"}
       ]
     },
     "section3d": {
       "title": "Implementation  [or: Procedure | Intervention Design | Software Architecture]",
       "content": [
         {"id": "text", "text": "150–250 words. Describe implementation details, procedures, or software architecture. Include specific parameters, protocols, procedures, or steps. Be precise enough for replication."},
-        {"id": "gambar", "ImageNumber": "5", "Title": "Implementation Diagram / Software Stack / Procedure Overview", "Path": "gambar/comm_architecture.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — diagram showing implementation layers, procedure timeline, or software stack. Name every component. Show all connections with labels. Include timing or phase annotations where relevant. White background, academic style."},
+        {"id": "gambar", "ImageNumber": "5", "Title": "Implementation Diagram / Software Stack / Procedure Overview", "Path": "gambar/comm_architecture.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — diagram showing implementation layers, procedure timeline, or software stack. Name every component. Show all connections with labels. Include timing or phase annotations where relevant. White background, academic style.\")"},
         {"id": "text", "text": "80–120 words. Reference Fig. 5. Discuss specific implementation constraints and how the design satisfies them."}
       ]
     }
@@ -141,7 +141,7 @@ FIELD ADAPTATIONS:
         {"id": "text", "text": "150–250 words. Describe the evaluation environment precisely: conditions, instruments, software versions, number of repetitions or respondents, validation procedure. Reproducible level of detail."},
         {"id": "tabel", "TableNumber": "II", "Title": "Experimental Configuration / Study Parameters", "Headers": ["Parameter", "Value", "Unit / Note"], "Rows": [["Sample / Trials", "50", "—"], ["Duration", "300", "seconds"], ["Metric", "Accuracy", "%"], ["Baseline method", "Method A [5]", "for comparison"]]},
         {"id": "text", "text": "60–100 words. Reference Table II. Explain WHY these parameters — why this sample size, why these conditions, what each represents."},
-        {"id": "gambar", "ImageNumber": "6", "Title": "Experimental Setup / Research Environment", "Path": "gambar/test_setup.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — annotated photograph, diagram, or schematic of the test environment. Label every instrument, sensor, station, or component. Note measurement points. White background, academic style."}
+        {"id": "gambar", "ImageNumber": "6", "Title": "Experimental Setup / Research Environment", "Path": "gambar/test_setup.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — annotated photograph, diagram, or schematic of the test environment. Label every instrument, sensor, station, or component. Note measurement points. White background, academic style.\")"}
       ]
     },
     "section4b": {
@@ -150,7 +150,7 @@ FIELD ADAPTATIONS:
         {"id": "text", "text": "200–350 words. Use the RESULTS DISCUSSION PATTERN from PART B7: lead with the headline number or finding, explain WHY each result was achieved, note any anomaly, connect to deployment or real-world meaning."},
         {"id": "tabel", "TableNumber": "III", "Title": "Performance Metrics / Main Results", "Headers": ["Metric / Variable", "Achieved / Found", "Unit / Scale", "Target / Baseline"], "Rows": [["Accuracy", "95.4", "%", "\u2265 90"], ["Response time", "12.3", "ms", "\u2264 20"], ["F1-Score", "0.947", "—", "\u2265 0.90"], ["Reliability", "0.89", "Cronbach α", "\u2265 0.80"]]},
         {"id": "text", "text": "100–200 words. Reference Table III. For each metric: did it meet target? What design or methodological choice caused it to? Discuss the most interesting result."},
-        {"id": "gambar", "ImageNumber": "7", "Title": "Performance / Results Visualization", "Path": "gambar/performance_chart.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — bar chart, line chart, or scatter plot showing measured results. Horizontal axis: category names or conditions. Vertical axis: metric with units. Each bar/point labeled with its exact value. Reference line or target shown. Legend in upper right. White background, academic style."},
+        {"id": "gambar", "ImageNumber": "7", "Title": "Performance / Results Visualization", "Path": "gambar/performance_chart.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — bar chart, line chart, or scatter plot showing measured results. Horizontal axis: category names or conditions. Vertical axis: metric with units. Each bar/point labeled with its exact value. Reference line or target shown. Legend in upper right. White background, academic style.\")"},
         {"id": "text", "text": "80–150 words. Reference Fig. 7. Discuss the visible trend, peak value, or anomaly. Explain what it means."},
         {"id": "rumus", "FormulaNumber": "3", "latex": "WRITE ACTUAL LaTeX for the primary evaluation metric — PRIORITY: use an equation from the TOPIC GUIDE or PART C1 domain reference (accuracy, RMSE, F1, effect size, utilization bound, etc.). Must match the Results section topic. Double all backslashes in JSON. Omit if field has no formulas."},
         {"id": "text", "text": "60–100 words. Reference (3) if present. Define every variable and state the values obtained."}
@@ -162,7 +162,7 @@ FIELD ADAPTATIONS:
         {"id": "text", "text": "200–300 words. Compare to at least 3 prior works. Use COMPARISON PATTERN from PART B7: explain WHY the gap exists — which specific design/methodological choice produced the difference. Honestly note where prior work performs comparably."},
         {"id": "tabel", "TableNumber": "IV", "Title": "Comparison with Related Work", "Headers": ["Method / Study", "Key Metric", "Platform / Context", "Year"], "Rows": [["Method A [5]", "89.2%", "GPU-based", "2022"], ["Method B [8]", "91.7%", "CPU-based", "2023"], ["Method C [12]", "88.5%", "FPGA", "2021"], ["\\bProposed\\b", "\\b95.4%\\b", "\\bEmbedded MCU\\b", "\\b2025\\b"]]},
         {"id": "text", "text": "100–180 words. Reference Table IV. Interpret the comparison substantively — what accounts for the difference? Why does one method beat another?"},
-        {"id": "gambar", "ImageNumber": "8", "Title": "Comparative Analysis Chart", "Path": "gambar/comparison_chart.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — grouped bar chart or radar chart comparing 4+ methods/studies on 2–3 metrics. Each group is one method. Each metric has a distinct color. Value labels on bars. Legend shown. Proposed/current method highlighted. White background, academic style."}
+        {"id": "gambar", "ImageNumber": "8", "Title": "Comparative Analysis Chart", "Path": "gambar/comparison_chart.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — grouped bar chart or radar chart comparing 4+ methods/studies on 2–3 metrics. Each group is one method. Each metric has a distinct color. Value labels on bars. Legend shown. Proposed/current method highlighted. White background, academic style.\")"}
       ]
     },
     "section4d": {
@@ -171,7 +171,7 @@ FIELD ADAPTATIONS:
         {"id": "text", "text": "150–250 words. Describe validation, reliability, or stress tests. Include specific conditions, duration, load, or edge cases. Be honest about failure modes or limitations found."},
         {"id": "tabel", "TableNumber": "V", "Title": "Reliability / Validity Test Results", "Headers": ["Test Condition", "Duration / Scope", "Observed Result", "Status"], "Rows": [["Normal operating conditions", "Full run", "No anomaly detected", "Pass"], ["Edge case / extreme input", "Simulated", "Performance drop < 3%", "Pass"], ["Repeated measure reliability", "N=50 trials", "ICC = 0.92", "Pass"]]},
         {"id": "text", "text": "80–120 words. Reference Table V. Discuss the most challenging test and what it reveals about deployment robustness or research limitations."},
-        {"id": "gambar", "ImageNumber": "9", "Title": "Time-Series Response / Longitudinal Trend / Reliability Chart", "Path": "gambar/time_series.png", "Prompt": "WRITE THE ACTUAL 150+ WORD IMAGE PROMPT — multi-line time-series chart, longitudinal trend, or reliability diagram. Time or condition on horizontal axis. Measured variable on vertical axis with units. Key events annotated with dashed lines or labels. Anomaly or recovery points marked. White background, academic style."}
+        {"id": "gambar", "ImageNumber": "9", "Title": "Time-Series Response / Longitudinal Trend / Reliability Chart", "Path": "gambar/time_series.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — multi-line time-series chart, longitudinal trend, or reliability diagram. Time or condition on horizontal axis. Measured variable on vertical axis with units. Key events annotated with dashed lines or labels. Anomaly or recovery points marked. White background, academic style.\")"}
       ]
     }
   },
@@ -428,16 +428,26 @@ DOMAIN FORMULA REFERENCE:
 ── C2. FIGURE PROMPT RULES ───────────────────────────────────────────────────
 Every "gambar" item must have a "Prompt" field used for AI image generation.
 
-REQUIREMENTS:
+REQUIRED FORMAT (CRITICAL):
+The Prompt field MUST follow this exact format:
+   (create image"<150+ word description of the image>")
+
+The wrapper `(create image"...")` is mandatory. The image generator parses this
+specific syntax. Do NOT omit the wrapper. Do NOT use plain text without it.
+
+REQUIREMENTS for the description inside the quotes:
   1. Start with image TYPE: "A block diagram...", "A bar chart...", "A circuit schematic..."
   2. Describe EVERY element: module boxes, labels, arrows, axes, legend, colors, connections
   3. Specify SPATIAL LAYOUT: "on the left", "at center", "flowing left to right", "3 rows"
   4. Name TECHNICAL DETAILS: component names, signal names, axis units, actual data values
   5. Specify colors, line styles, and annotation style where relevant to clarity
   6. End with: "White background. Clean, minimal style consistent with IEEE paper figures."
-  7. MINIMUM 150 words — count every word. If under 150, add more technical detail.
+  7. MINIMUM 150 words inside the quotes — count every word. If under 150, add more technical detail.
   8. Every prompt must be precise enough that an AI generator produces the CORRECT image
      on the first attempt — no ambiguity, no missing labels, no unclear layout.
+
+EXAMPLE (good):
+  "Prompt": "(create image\"A block diagram showing a 5-stage MAC protocol pipeline. Left to right: sensor input layer with three labeled nodes (TempSensor, HumiditySensor, MotionSensor), MAC scheduler module in blue with sleep/wake logic blocks, transmission queue in green, RF transceiver in orange, and gateway output. All boxes connected with directional arrows labeled with signal names (DATA_REQ, ACK, SLEEP_TRIGGER). Vertical timing annotations on the right side show typical durations: 100ms scan, 200ms transmit, 5s sleep. White background. Clean, minimal style consistent with IEEE paper figures.\")"
 
 REQUIRED FIGURE TYPES (minimum 6–8 total in paper):
   Fig. 1 or 2 :  System architecture block diagram — always include this
@@ -467,16 +477,30 @@ REQUIRED FIGURE TYPES (minimum 6–8 total in paper):
   based on field: IEEE for engineering, APA for social/health sciences, MLA for
   humanities, Vancouver for medicine.
 
-  IEEE DEFAULT (if no style guide):
-    Single   :  "...was measured at 94.3% [1]."
-    Multiple :  "...shown in prior work [1], [2], [3]."
-    Range    :  "...in several studies [2]-[5]."
-    Mixed    :  "...reported in [2], [3], [6]-[8]."
+  CRITICAL — DO NOT AUTO-PREPEND NUMERIC CITATION TOKENS:
+  When generating section text content, DO NOT prepend a numeric citation
+  token like [1], [2], [3] to mention prior work. References will be numbered
+  later by the references chunk based on the literature catalog. Instead,
+  use natural author-year inline markers like:
+    "(Smith, 2023)"
+    "(Chen et al., 2022)"
+    "as shown by Smith and colleagues (2023)"
+    "in the work of Chen et al. (2022)"
+  
+  The references generation step will assign final numbers and rewrite the
+  text references appropriately. If you write [1], [2] inline you create
+  a numbering conflict with the literature catalog.
+
+  IEEE DEFAULT (only used at FINAL reference numbering, not inline in sections):
+    The references section will produce: "[1] A. Smith, 'Title,' Journal, 2023."
+    Section content should use author-year style for in-text mentions.
 
   INTEGRITY RULES (apply to ALL styles):
-  • Every in-text citation MUST correspond to an entry in the references list
-  • ALL 20+ references MUST be cited at least once — no orphaned references
-  • Spread citations: Introduction, Related Work, Methodology, Results, Conclusion
+  • Every author/year mentioned in section text MUST correspond to an entry
+    in the references list (added later)
+  • The references chunk numbers all entries [1]..[N] based on the literature
+    catalog provided
+  • Spread citations across: Introduction, Related Work, Methodology, Results, Conclusion
   • If user provides references → use them EXACTLY (names, titles, venues unchanged)
   • Reference entries: realistic author names, real journal/venue names, years 2010–2025
 

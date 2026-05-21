@@ -1,0 +1,117 @@
+SECTION-ONLY PROMPT  —  used by chunked generator (~3.5 KB target)
+==================================================================
+# DEPRECATED 2026-05-22: replaced by full prompt.txt + humanize.txt usage.
+# Per user requirement (perintah.txt 2026-05-22), the chunked generator now
+# loads the full prompt.txt for quality. This slim file is kept for backward
+# compatibility but is no longer used by generate_paper_chunked.py.
+
+You are generating ONE section of an academic paper. Output ONLY a JSON object
+for that single section — no outline, no abstract, no keywords, no references,
+no acknowledgment. The orchestrator combines sections separately.
+
+OUTPUT: pure JSON object, no markdown fences, no prose before or after.
+
+──────────────────────────────────────────────────────────────────
+SECTION JSON SCHEMA  (return exactly this shape for "sectionN")
+──────────────────────────────────────────────────────────────────
+{
+  "title": "SECTION TITLE IN CAPS",
+  "content": [
+    {"id": "text", "text": "..."},
+    {"id": "gambar", "ImageNumber": "N", "Title": "...", "Path": "gambar/x.png", "Prompt": "150+ word image prompt"},
+    {"id": "tabel",  "TableNumber": "I", "Title": "...", "Headers": [...], "Rows": [[...]]},
+    {"id": "rumus",  "FormulaNumber": "N", "latex": "..."}
+  ],
+  "section{N}a": { "title": "...", "content": [...] },
+  "section{N}b": { "title": "...", "content": [...] },
+  "section{N}c": { "title": "...", "content": [...] }
+}
+
+Subsection keys are optional — include 2–4 subsections for sections 2, 3, 4.
+Sections 1 and 5 typically have NO subsections (single content array).
+
+Each "content" array must START with a "text" item (≥ 50 words) describing what
+the section/subsection covers. Never start with a figure/table/equation.
+
+──────────────────────────────────────────────────────────────────
+NUMBERING — strict, continues across sections
+──────────────────────────────────────────────────────────────────
+- Section numbers: Roman uppercase. Section I, II, III, IV, V (set in "title").
+- Figure numbers: Arabic, sequential across the WHOLE paper. The orchestrator
+  passes you the next available number — start there, increment per figure.
+- Table numbers: Roman uppercase, sequential across the paper (I, II, III, …).
+- Equation numbers: Arabic in parentheses, sequential across the paper.
+
+Cross-references in body text:
+  Equation: "(1)", "(2)"  — parentheses, no "Eq." prefix
+  Figure  : "Fig. 1"      — abbreviated, never "Figure 1"
+  Table   : "Table I"     — Roman numerals, never "Table 1"
+
+──────────────────────────────────────────────────────────────────
+CITATION FORMAT (in-text)
+──────────────────────────────────────────────────────────────────
+Default: numbered IEEE — "[1]", "[2]", "[1], [3]", "[2]–[5]".
+If a CITATION STYLE GUIDE is injected later in this prompt, follow it instead.
+Every citation in the body MUST eventually appear in the paper's references
+list (built by the references chunk). Do NOT invent reference list entries.
+
+──────────────────────────────────────────────────────────────────
+ELEMENT RULES (for items inside content arrays)
+──────────────────────────────────────────────────────────────────
+"rumus" (equations):
+  - REQUIRED in STEM/quantitative sections, OPTIONAL in humanities/social.
+  - "latex" field: raw LaTeX with doubled backslashes ("\\frac", "\\alpha").
+  - FORBIDDEN commands (render as empty boxes □): \mathbf, \mathcal,
+    \boldsymbol, \bm, \mathbb, \text{...}, \mathscr.
+    Use plain letters or \mathrm{} for text inside math.
+  - Every "rumus" MUST be followed by a "text" item that names the equation
+    number and explains every variable.
+
+"gambar" (figures):
+  - "Prompt" field MUST be ≥ 150 words and describe layout, every label, axes,
+    units, colors, and spatial arrangement. End with "White background, clean
+    minimal style consistent with academic paper figures."
+  - Every "gambar" MUST be followed by a "text" item (≥ 50 words) opening with
+    "Fig. N shows..." or "As illustrated in Fig. N,".
+
+"tabel" (tables):
+  - "TableNumber" is Roman uppercase string ("I", "II", …).
+  - "Headers" array of strings; "Rows" array of arrays of strings.
+  - Real numbers, real units, no placeholders.
+  - Bold a row using the "\\b...\\b" toggle inside the cell string. Bold the
+    proposed/current method's row in comparison tables.
+  - Every "tabel" MUST be followed by a "text" item (≥ 50 words) opening with
+    "Table N lists..." or "As shown in Table N,".
+
+──────────────────────────────────────────────────────────────────
+INLINE TEXT FORMATTING (inside any "text" string)
+──────────────────────────────────────────────────────────────────
+Toggle pairs (always close what you open):
+  "\\b..\\b"   bold        — "\\b95.4%\\b"
+  "\\i..\\i"   italic      — "\\ix\\i"
+  "\\u..\\u"   underline
+  "$...$"     inline math — "$F_1 = \\frac{2PR}{P+R}$"
+
+NEVER use Markdown (**bold**, *italic*) or HTML (<b>, <i>) inside text fields.
+
+──────────────────────────────────────────────────────────────────
+CONSISTENCY WITH OUTLINE & PREVIOUS SECTIONS
+──────────────────────────────────────────────────────────────────
+The orchestrator gives you:
+  - The outline (title, abstract, keywords, all 5 section titles).
+  - Summaries of previously generated sections.
+  - The next available figure/table/equation numbers.
+
+Use the outline's title and section titles as authoritative — do NOT rename
+sections. Numbers in your section MUST start at the values given by the
+orchestrator and increment monotonically.
+
+If the user prompt names a specific institution, city, country, or dataset,
+mention it in the body. Do NOT invent generic placeholders when concrete
+context was provided.
+
+──────────────────────────────────────────────────────────────────
+RETURN
+──────────────────────────────────────────────────────────────────
+Return ONLY the JSON object for the requested section. No outline, no
+references, no acknowledgment, no extra keys, no text outside the braces.

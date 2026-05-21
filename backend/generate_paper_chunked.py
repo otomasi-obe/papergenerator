@@ -16,12 +16,29 @@ import os
 import re
 import json
 import time
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from json_repair import repair_json
 
 # Reuse existing API caller with fallback
 from generate_ai_json_paper_aiotomasi import _call_aiotomasi_with_fallback
+
+log = logging.getLogger(__name__)
+
+
+class GenerationCancelled(Exception):
+    """Raised by the orchestrator when a cancel_check() returns True.
+
+    The ``stage`` attribute names the chunk that was about to run (or had just
+    finished checkpointing) when the cancellation was observed. Callers use
+    this to persist a partial paper + accurate cancellation point.
+    """
+
+    def __init__(self, stage: str):
+        super().__init__(f"cancelled at {stage}")
+        self.stage = stage
+
 
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
@@ -35,6 +52,10 @@ AIOTOMASI_MODEL = os.getenv("AIOTOMASI_MODEL", "VIOLAGPT")
 # Prompt files
 PROMPT_FILE = BASE_DIR / "prompt" / "prompt.txt"
 HUMANIZE_FILE = BASE_DIR / "prompt" / "humanize.txt"
+# Slim prompts used by the per-section chunk to keep each request well under
+# the 30 KB / 30 s budget. Combined size is documented at the top of each file.
+PROMPT_SECTION_FILE = BASE_DIR / "prompt" / "prompt_section_only.txt"
+HUMANIZE_PROSE_FILE = BASE_DIR / "prompt" / "humanize_prose_only.txt"
 
 
 # ── Helper: Load prompt sections ──────────────────────────────────────────────
@@ -50,6 +71,33 @@ def _load_humanize_rules():
     if HUMANIZE_FILE.exists():
         return HUMANIZE_FILE.read_text(encoding="utf-8")
     return ""
+
+
+def _load_section_prompt():
+    """Slim section schema + numbering rules (~7.6 KB).
+
+    DEPRECATED 2026-05-22: Replaced by full prompt.txt usage per user requirement.
+    Kept for backward compatibility but no longer used by chunked generator.
+    
+    Falls back to the full prompt.txt if the slim file is missing so a partial
+    deploy doesn't break generation.
+    """
+    if PROMPT_SECTION_FILE.exists():
+        return PROMPT_SECTION_FILE.read_text(encoding="utf-8")
+    log.warning("prompt_section_only.txt missing; falling back to prompt.txt")
+    return _load_base_prompt()
+
+
+def _load_humanize_prose():
+    """Slim prose-only humanizer rules (~16 KB). Falls back to humanize.txt.
+    
+    DEPRECATED 2026-05-22: Replaced by full humanize.txt usage per user requirement.
+    Kept for backward compatibility but no longer used by chunked generator.
+    """
+    if HUMANIZE_PROSE_FILE.exists():
+        return HUMANIZE_PROSE_FILE.read_text(encoding="utf-8")
+    log.warning("humanize_prose_only.txt missing; falling back to humanize.txt")
+    return _load_humanize_rules()
 
 
 def _load_style_guide(style: str = None):
@@ -136,6 +184,120 @@ def _format_lit_for_refs(entries: list) -> str:
     return "\n".join(f"[{i}] {body}" for i, (_, body) in enumerate(entries, 1))
 
 
+# ── Helper: Load full context (history + literature + files) ──────────────────
+def _load_full_context(paper_id, conv_id=None, max_files=5, max_lit=20, history_msgs=10):
+    """Build a context block with chat history + literature + files for injection.
+
+    Per user requirement (perintah.txt 2026-05-22): inject full context into
+    chunked generation to restore quality lost by slim prompts.
+
+    Args:
+        paper_id: Required. The paper being generated.
+        conv_id: Optional. Conversation ID for chat history.
+        max_files: Max attached files to include (default 5).
+        max_lit: Max literature items to include (default 20).
+        history_msgs: Max recent chat messages to include (default 10).
+
+    Returns:
+        String under 30KB with chat history + literature + files context.
+    """
+    from models import ChatMessage, LiteratureItem, PaperFile
+    
+    lines = []
+    total_chars = 0
+    max_context_size = 30_000  # 30KB budget
+    
+    # ── Chat history ──────────────────────────────────────────────────────────
+    if conv_id:
+        try:
+            messages = (db.session.query(ChatMessage)
+                       .filter_by(conversation_id=conv_id)
+                       .order_by(ChatMessage.created_at.desc())
+                       .limit(history_msgs)
+                       .all())
+            if messages:
+                lines.append("## Recent chat history (context from conversation)")
+                # Reverse to chronological order
+                for msg in reversed(messages):
+                    role = msg.role
+                    content = (msg.content or "")[:500]  # Cap per message
+                    if content:
+                        lines.append(f"**{role}**: {content}")
+                        total_chars += len(content) + 20
+                        if total_chars > max_context_size:
+                            break
+                lines.append("")  # Blank line separator
+        except Exception as e:
+            log.warning("[_load_full_context] chat history failed: %s", e)
+    
+    # ── Literature catalog ────────────────────────────────────────────────────
+    if paper_id and total_chars < max_context_size:
+        try:
+            items = (db.session.query(LiteratureItem)
+                    .filter_by(paper_id=paper_id)
+                    .order_by(LiteratureItem.pinned.desc(),
+                             LiteratureItem.must_read.desc(),
+                             LiteratureItem.score_total.desc())
+                    .limit(max_lit)
+                    .all())
+            if items:
+                lines.append("## Literature catalog (authoritative reference list)")
+                for i, it in enumerate(items, 1):
+                    authors_list = it.authors or []
+                    authors = ", ".join(authors_list[:3])
+                    if len(authors_list) > 3:
+                        authors += " et al."
+                    marker = "[MUST READ] " if (it.pinned or it.must_read) else ""
+                    bits = [f"[L{i}] {marker}{it.title}"]
+                    if authors:
+                        bits.append(f"— {authors}")
+                    if it.year:
+                        bits.append(f"({it.year})")
+                    if it.venue:
+                        bits.append(f"in {it.venue}")
+                    if it.doi:
+                        bits.append(f"DOI: {it.doi}")
+                    line = " ".join(bits)
+                    if it.summary and total_chars < max_context_size - 300:
+                        line += f"\n   Summary: {it.summary[:200]}"
+                    lines.append(line)
+                    total_chars += len(line) + 10
+                    if total_chars > max_context_size:
+                        break
+                lines.append("")
+        except Exception as e:
+            log.warning("[_load_full_context] literature failed: %s", e)
+    
+    # ── Attached files ────────────────────────────────────────────────────────
+    if paper_id and total_chars < max_context_size:
+        try:
+            files = (db.session.query(PaperFile)
+                    .filter_by(paper_id=paper_id)
+                    .order_by(PaperFile.created_at.desc())
+                    .limit(max_files)
+                    .all())
+            if files:
+                lines.append("## Attached files (reference materials)")
+                for f in files:
+                    text = (f.extracted_text or "")[:800]  # Cap per file
+                    if text:
+                        lines.append(f"**{f.original_name}** ({f.ext}):")
+                        lines.append(text[:600] + ("..." if len(text) > 600 else ""))
+                        lines.append("")
+                        total_chars += len(text) + 50
+                        if total_chars > max_context_size:
+                            break
+        except Exception as e:
+            log.warning("[_load_full_context] files failed: %s", e)
+    
+    result = "\n".join(lines)
+    # Final safety cap
+    if len(result) > max_context_size:
+        result = result[:max_context_size] + "\n... [context truncated to 30KB]"
+    
+    return result
+
+
 # ── Helper: Parse JSON response ───────────────────────────────────────────────
 def _parse_json_response(raw_content: str) -> dict:
     """Parse JSON from API response, with repair fallback."""
@@ -159,10 +321,13 @@ def _parse_json_response(raw_content: str) -> dict:
 
 # ── Chunk 1: Generate Outline ─────────────────────────────────────────────────
 def _generate_outline(judul: str, custom_prompt: str, topic: str, style: str,
-                      api_key: str, base_url: str, model: str, progress_cb=None) -> dict:
+                      api_key: str, base_url: str, model: str, progress_cb=None,
+                      paper_id=None, conv_id=None) -> dict:
     """
     Generate paper outline: title, abstract, keywords, section titles.
-    Uses minimal prompt (no full content rules) to reduce size and time.
+    
+    Per user requirement (perintah.txt 2026-05-22): use full prompt.txt + 
+    humanize.txt for quality, NOT slim prompts. Trade token savings for quality.
 
     Returns:
         {
@@ -178,31 +343,35 @@ def _generate_outline(judul: str, custom_prompt: str, topic: str, style: str,
             }
         }
     """
-    # Build minimal system prompt for outline only
-    system_prompt = """You are a senior academic author generating a paper outline.
+    # Per user requirement (perintah.txt 2026-05-22): use full prompt+humanize for quality
+    full_prompt = _load_base_prompt()
+    humanize_rules = _load_humanize_rules()
+    
+    # Load full context: chat history + literature + files
+    context_block = _load_full_context(paper_id, conv_id, max_files=5, max_lit=20, history_msgs=10)
+    
+    # Build system prompt with full rules + context
+    system_prompt = f"""{full_prompt}
 
-TASK: Generate ONLY the outline structure in JSON format.
+{humanize_rules}
 
-OUTPUT SCHEMA:
-{
+CURRENT TASK: Generate ONLY the outline structure (title, abstract, keywords, section_titles).
+Return a JSON object with these fields:
+{{
   "title": "Specific, academic-style title — max 20 words",
   "abstract": "150–250 words: (1) problem, (2) limitation of existing approaches, (3) proposed method, (4) specific results, (5) impact",
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6"],
-  "section_titles": {
+  "section_titles": {{
     "section1": "INTRODUCTION",
     "section2": "RELATED WORK (or LITERATURE REVIEW)",
     "section3": "METHODOLOGY (or METHODS or PROPOSED SYSTEM)",
     "section4": "RESULTS (or EXPERIMENTAL RESULTS)",
     "section5": "CONCLUSION (or CONCLUSIONS AND FUTURE WORK)"
-  }
-}
+  }}
+}}
 
-RULES:
-- Title must be specific and academic
-- Abstract must include concrete problem, method, and results
-- Keywords must be relevant to the topic
-- Section titles can be adapted to the field (e.g., IMRAD for medicine, IEEE for engineering)
-- Return ONLY the JSON object, no markdown fences
+Section titles can be adapted to the field (e.g., IMRAD for medicine, IEEE for engineering).
+Return ONLY the JSON object, no markdown fences.
 """
 
     # Add topic/style guides if provided
@@ -215,6 +384,10 @@ RULES:
         style_guide = _load_style_guide(style)
         if style_guide:
             system_prompt += f"\n\nCITATION STYLE GUIDE:\n{style_guide}"
+    
+    # Inject full context
+    if context_block:
+        system_prompt += f"\n\nCONTEXT FROM PROJECT:\n{context_block}"
 
     user_message = f"""Topic description: {judul}
 
@@ -226,6 +399,10 @@ Generate the paper outline following the schema above."""
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message}
     ]
+    
+    # Log prompt size for observability
+    prompt_size_kb = len(system_prompt.encode('utf-8')) / 1024
+    log.info("outline prompt size: %.1f KB", prompt_size_kb)
 
     raw_content, model_used = _call_aiotomasi_with_fallback(
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
@@ -239,22 +416,31 @@ Generate the paper outline following the schema above."""
 def _generate_section(section_num: int, outline: dict, previous_sections: list,
                       judul: str, custom_prompt: str, topic: str, style: str,
                       api_key: str, base_url: str, model: str,
-                      numbering_state: dict, progress_cb=None) -> dict:
+                      numbering_state: dict, progress_cb=None,
+                      paper_id=None, conv_id=None) -> dict:
     """
     Generate a single section (I-V) with full content.
+    
+    Per user requirement (perintah.txt 2026-05-22): use FULL prompt.txt + 
+    humanize.txt + context (history + literature + files) for quality.
 
     Args:
         section_num: 1-5 (section number)
         outline: Output from _generate_outline()
         previous_sections: List of previously generated section dicts
         numbering_state: {"figure_count": N, "table_count": N, "equation_count": N}
+        paper_id: Optional paper ID for context loading
+        conv_id: Optional conversation ID for chat history
 
     Returns:
         Section dict matching the schema from prompt.txt
     """
-    # Load full prompt for this section
+    # Per user requirement (perintah.txt 2026-05-22): use full prompt+humanize for quality
     full_prompt = _load_base_prompt()
     humanize_rules = _load_humanize_rules()
+    
+    # Load full context: chat history + literature + files
+    context_block = _load_full_context(paper_id, conv_id, max_files=5, max_lit=20, history_msgs=10)
 
     # Extract section-specific schema from full prompt
     # This is a simplified approach - in production, you'd parse the prompt more carefully
@@ -302,8 +488,11 @@ def _generate_section(section_num: int, outline: dict, previous_sections: list,
 CONTEXT FROM PREVIOUS WORK:
 {context}
 
-CURRENT TASK: Generate ONLY Section {section_num} ({section_title}) following the schema in PART A.
-Return the section{section_num} object as JSON. Include all required subsections, figures, tables, and equations as specified in the schema.
+CURRENT TASK: Generate ONLY Section {section_num} ({section_title}) as the
+JSON object for "section{section_num}" following the SECTION JSON SCHEMA at
+the top of this prompt. Include subsections, figures, tables, and equations
+appropriate for this section type. Continue figure/table/equation numbering
+from the current numbering state.
 """
 
     if topic:
@@ -315,6 +504,10 @@ Return the section{section_num} object as JSON. Include all required subsections
         style_guide = _load_style_guide(style)
         if style_guide:
             system_prompt += f"\n\nCITATION STYLE GUIDE:\n{style_guide}"
+    
+    # Inject full context (history + literature + files)
+    if context_block:
+        system_prompt += f"\n\nCONTEXT FROM PROJECT:\n{context_block}"
 
     user_message = f"""Topic: {judul}
 
@@ -328,6 +521,10 @@ Return ONLY the JSON object for section{section_num}."""
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message}
     ]
+
+    # Log prompt size for observability (per user requirement)
+    prompt_size_kb = len(system_prompt.encode('utf-8')) / 1024
+    log.info("section %d prompt size: %.1f KB", section_num, prompt_size_kb)
 
     raw_content, model_used = _call_aiotomasi_with_fallback(
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
@@ -363,10 +560,14 @@ Return ONLY the JSON object for section{section_num}."""
 # ── Chunk 7: Generate References ──────────────────────────────────────────────
 def _generate_references(outline: dict, all_sections: list, style: str,
                         api_key: str, base_url: str, model: str,
-                        custom_prompt: str = "", progress_cb=None) -> list:
+                        custom_prompt: str = "", progress_cb=None,
+                        paper_id=None, conv_id=None) -> list:
     """
     Generate references for the paper.
 
+    Per user requirement (perintah.txt 2026-05-22): inject literature catalog
+    from DB directly when available, plus full prompt.txt rules for refs.
+    
     When ``custom_prompt`` carries a "## Literature catalog" block (produced
     by ``chat_tools._format_literature_block`` from the user's curated SLR
     rows), the prompt is rewritten to forbid fabrication and the AI is
@@ -398,9 +599,43 @@ def _generate_references(outline: dict, all_sections: list, style: str,
 
     style_guide = _load_style_guide(style) if style else ""
 
-    # Literature-aware path: user has curated SLR results.
+    # Literature-aware path: try custom_prompt first, then fall back to DB query.
     lit_block = _extract_literature_block(custom_prompt)
     lit_entries = _parse_literature_entries(lit_block)
+    
+    # If no literature in custom_prompt, try loading from DB via paper_id
+    if not lit_entries and paper_id:
+        try:
+            from models import LiteratureItem
+            items = (db.session.query(LiteratureItem)
+                    .filter_by(paper_id=paper_id)
+                    .order_by(LiteratureItem.pinned.desc(),
+                             LiteratureItem.must_read.desc(),
+                             LiteratureItem.score_total.desc())
+                    .limit(50).all())
+            if items:
+                # Build entries in (idx, body) format
+                lit_entries = []
+                for i, it in enumerate(items, 1):
+                    authors_list = it.authors or []
+                    authors = ", ".join(authors_list[:3])
+                    if len(authors_list) > 3:
+                        authors += " et al."
+                    bits = [it.title or "Untitled"]
+                    if authors:
+                        bits.append(f"— {authors}")
+                    if it.year:
+                        bits.append(f"({it.year})")
+                    if it.venue:
+                        bits.append(f"in {it.venue}")
+                    if it.doi:
+                        bits.append(f"DOI: {it.doi}")
+                    elif it.url:
+                        bits.append(f"URL: {it.url}")
+                    body = " ".join(bits)
+                    lit_entries.append((i, body))
+        except Exception as e:
+            log.warning("[_generate_references] DB literature load failed: %s", e)
 
     if lit_entries:
         num_refs = len(lit_entries)
@@ -491,6 +726,10 @@ Return the references as a JSON object with a "references" array."""
         {"role": "user", "content": user_message}
     ]
 
+    # Log prompt size for observability
+    prompt_size_kb = len(system_prompt.encode('utf-8')) / 1024
+    log.info("references prompt size: %.1f KB", prompt_size_kb)
+
     raw_content, model_used = _call_aiotomasi_with_fallback(
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
@@ -511,12 +750,20 @@ def generate_paper_json_chunked(
     topic: str = None,
     style: str = None,
     progress_cb=None,
+    *,
+    checkpoint_cb=None,
+    cancel_check=None,
+    resume_state=None,
+    paper_id=None,
+    conv_id=None,
 ) -> dict:
     """
-    Generate a complete IEEE conference paper JSON via chunked API calls.
+    Generate a complete academic paper JSON via chunked API calls.
 
     This is a drop-in replacement for generate_paper_json() that breaks the
-    generation into 7 smaller chunks to avoid 30s gateway timeouts.
+    generation into 7 smaller chunks to avoid 30s gateway timeouts. The new
+    keyword-only params let callers persist progress, cancel mid-flight, and
+    resume from the last successful chunk.
 
     Args:
         judul: Paper title / topic.
@@ -526,13 +773,32 @@ def generate_paper_json_chunked(
         model: Model name (falls back to AIOTOMASI_MODEL env var).
         topic: Topic guide file name (without .txt).
         style: Style guide file name (without .txt).
-        progress_cb: Optional callable(chars_done: int) for progress feedback.
+        progress_cb: Optional callable(chars_done: int) for low-level streaming
+            feedback (forwarded to the AI client).
+        checkpoint_cb: Optional callable(stage, progress, partial). Invoked AFTER
+            each chunk lands. ``stage`` is one of ``outline``, ``section_1`` ..
+            ``section_5``, ``references``, ``combine``. ``progress`` is 0..100.
+            ``partial`` is the current accumulated paper dict, safe to persist.
+            Exceptions raised by the callback are logged and swallowed so a
+            broken sink can never abort generation.
+        cancel_check: Optional callable() -> bool. Polled BEFORE each chunk and
+            after each checkpoint. When it returns True, ``GenerationCancelled``
+            is raised so the caller can persist the partial paper.
+        resume_state: Optional dict with keys ``chunks_done`` (list of stage
+            names already completed) and ``partial_paper`` (the partial dict
+            from a previous run). Chunks present in ``chunks_done`` are skipped.
+        paper_id: Optional paper ID. When provided, full context (literature
+            catalog, attached files) is loaded from the DB and injected into
+            every chunk's prompt. Per user requirement (perintah.txt 2026-05-22).
+        conv_id: Optional conversation ID. When provided, recent chat history
+            is loaded and injected as context for every chunk.
 
     Returns:
         Complete paper dict matching the schema from prompt.txt.
 
     Raises:
         ValueError: If API key/URL is missing or JSON cannot be parsed.
+        GenerationCancelled: If ``cancel_check`` returned True at a checkpoint.
     """
     _api_key = api_key or AIOTOMASI_APIKEY
     _base_url = base_url or AIOTOMASI_API
@@ -543,38 +809,122 @@ def generate_paper_json_chunked(
     if not _base_url:
         raise ValueError("AIOTOMASI_API not found in environment")
 
-    print("[generate_paper_json_chunked] Starting chunked generation...", flush=True)
+    # ── State machine ────────────────────────────────────────────────────────
+    state = resume_state or {}
+    if not isinstance(state, dict):
+        state = {}
+    chunks_done = list(state.get("chunks_done") or [])
+    done = set(chunks_done)
+    partial = dict(state.get("partial_paper") or {})
+
+    def _check_cancel(stage: str) -> None:
+        if cancel_check and cancel_check():
+            raise GenerationCancelled(stage)
+
+    def _checkpoint(stage: str, progress: int) -> None:
+        if stage not in done:
+            done.add(stage)
+            chunks_done.append(stage)
+        if checkpoint_cb is None:
+            return
+        try:
+            # Pass a shallow copy so a buggy sink can't mutate the live dict.
+            checkpoint_cb(stage=stage, progress=int(progress), partial=dict(partial))
+        except Exception:
+            log.exception("[generate_paper_json_chunked] checkpoint_cb failed at stage=%s", stage)
+
+    print(
+        f"[generate_paper_json_chunked] Starting (resume_state={'yes' if resume_state else 'no'}, "
+        f"already_done={sorted(done) or 'none'})...",
+        flush=True,
+    )
     t_start = time.time()
 
-    # Chunk 1: Generate outline
-    print("[1/7] Generating outline...", flush=True)
-    outline = _generate_outline(judul, custom_prompt, topic, style,
-                                _api_key, _base_url, _model, progress_cb)
+    # ── Chunk 1: Outline ─────────────────────────────────────────────────────
+    if "outline" not in done:
+        _check_cancel("outline")
+        print("[1/8] Generating outline...", flush=True)
+        outline = _generate_outline(
+            judul, custom_prompt, topic, style,
+            _api_key, _base_url, _model, progress_cb,
+            paper_id=paper_id, conv_id=conv_id,
+        )
+        partial["outline"] = outline
+        partial["title"] = outline.get("title", "")
+        partial["abstract"] = outline.get("abstract", "")
+        partial["keywords"] = outline.get("keywords", [])
+        partial.setdefault("sections", [])
+        _checkpoint("outline", 10)
+    else:
+        outline = partial.get("outline") or {}
+        partial.setdefault("sections", [])
+        print("[1/8] outline already done — skipping", flush=True)
 
-    # Initialize numbering state
+    # Reconstruct numbering state from any previously generated sections so
+    # resumed runs continue numbering monotonically across the boundary.
     numbering_state = {"figure_count": 0, "table_count": 0, "equation_count": 0}
+    sections = list(partial.get("sections") or [])
 
-    # Chunks 2-6: Generate sections I-V
-    sections = []
+    def _count_items(section, item_type):
+        n = 0
+        if isinstance(section, dict):
+            for value in section.values():
+                if isinstance(value, dict):
+                    if value.get("id") == item_type:
+                        n += 1
+                    n += _count_items(value, item_type)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            if item.get("id") == item_type:
+                                n += 1
+                            n += _count_items(item, item_type)
+        return n
+
+    for sec in sections:
+        numbering_state["figure_count"] += _count_items(sec, "gambar")
+        numbering_state["table_count"] += _count_items(sec, "tabel")
+        numbering_state["equation_count"] += _count_items(sec, "rumus")
+
+    # ── Chunks 2-6: Sections I-V ─────────────────────────────────────────────
     for i in range(1, 6):
-        print(f"[{i+1}/7] Generating Section {i}...", flush=True)
-        section = _generate_section(i, outline, sections, judul, custom_prompt,
-                                    topic, style, _api_key, _base_url, _model,
-                                    numbering_state, progress_cb)
+        chunk_id = f"section_{i}"
+        if chunk_id in done:
+            print(f"[{i+1}/8] {chunk_id} already done — skipping", flush=True)
+            continue
+        _check_cancel(chunk_id)
+        print(f"[{i+1}/8] Generating Section {i}...", flush=True)
+        section = _generate_section(
+            i, outline, sections, judul, custom_prompt,
+            topic, style, _api_key, _base_url, _model,
+            numbering_state, progress_cb,
+            paper_id=paper_id, conv_id=conv_id,
+        )
         sections.append(section)
+        partial["sections"] = sections
+        _checkpoint(chunk_id, 10 + i * 15)
 
-    # Chunk 7: Generate references
-    print("[7/7] Generating references...", flush=True)
-    references = _generate_references(outline, sections, style,
-                                     _api_key, _base_url, _model,
-                                     custom_prompt=custom_prompt,
-                                     progress_cb=progress_cb)
+    # ── Chunk 7: References ──────────────────────────────────────────────────
+    if "references" not in done:
+        _check_cancel("references")
+        print("[7/8] Generating references...", flush=True)
+        references = _generate_references(
+            outline, sections, style,
+            _api_key, _base_url, _model,
+            custom_prompt=custom_prompt,
+            progress_cb=progress_cb,
+            paper_id=paper_id, conv_id=conv_id,
+        )
+        partial["references"] = references
+        _checkpoint("references", 90)
+    else:
+        references = partial.get("references") or []
+        print("[7/8] references already done — skipping", flush=True)
 
-    # Combine all chunks into final paper structure.
-    # Frontend + downstream tools (chat.py, _get_paper_numbering, editor) read
-    # `sections` as canonical array. Older code emitted `section1..section5`
-    # which `app.py` then overwrote with `setdefault("sections", [])` → editor
-    # rendered an empty paper. Output the array shape.
+    # ── Chunk 8: Combine ─────────────────────────────────────────────────────
+    _check_cancel("combine")
+    print("[8/8] Combining...", flush=True)
+
     section_titles = outline.get("section_titles") or {}
     sections_array = []
     for i, sec in enumerate(sections, 1):
@@ -591,22 +941,20 @@ def generate_paper_json_chunked(
                 "name": "Author Name",
                 "affiliation": "Department, University",
                 "location": "City, Country",
-                "email": "author@example.com"
+                "email": "author@example.com",
             }
         ],
         "sections": sections_array,
         "acknowledgment": "",
         "references": references,
-        "figures": [],  # Extracted from sections
-        "tables": [],   # Extracted from sections
-        "equations": []  # Extracted from sections
+        "figures": [],
+        "tables": [],
+        "equations": [],
     }
 
-    # Extract figures, tables, equations from all sections
     def extract_items(obj, item_type, collection):
-        """Recursively extract items of a specific type."""
         if isinstance(obj, dict):
-            for key, value in obj.items():
+            for value in obj.values():
                 if isinstance(value, dict):
                     if value.get("id") == item_type:
                         collection.append(value)
@@ -619,6 +967,12 @@ def generate_paper_json_chunked(
         extract_items(section, "gambar", paper_json["figures"])
         extract_items(section, "tabel", paper_json["tables"])
         extract_items(section, "rumus", paper_json["equations"])
+
+    # Final checkpoint carries the fully assembled paper so callers can persist
+    # the canonical shape (with sections array + extracted figures/tables/eqs)
+    # without having to re-run the combine step on their side.
+    partial = paper_json
+    _checkpoint("combine", 100)
 
     elapsed = time.time() - t_start
     print(f"[generate_paper_json_chunked] Completed in {elapsed:.1f}s", flush=True)
