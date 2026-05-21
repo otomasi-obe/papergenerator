@@ -616,6 +616,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
                 "pdf_texts": pdf_texts,
                 "custom_prompt": custom_prompt,
                 "paper_id": paper_id,
+                "chunked": True,  # Use chunked generation to avoid 30s gateway timeouts
             },
             daemon=True,
         ).start()

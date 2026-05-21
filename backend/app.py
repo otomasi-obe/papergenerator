@@ -58,6 +58,7 @@ except Exception:
     pass
 
 from generate_ai_json_paper_aiotomasi import generate_paper_json
+from generate_paper_chunked import generate_paper_json_chunked
 from template.IEEEgen import build_document as build_ieee_docx
 
 # Load environment variables
@@ -493,9 +494,9 @@ def generate():
 
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
-def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None):
+def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, chunked=True):
     t_start = time.time()
-    log.info("[job:%s] started, prompt=%r", job_id, prompt[:80])
+    log.info("[job:%s] started, prompt=%r, chunked=%s", job_id, prompt[:80], chunked)
     uid = None
     try:
         uid = int(user_id) if user_id is not None else None
@@ -513,12 +514,22 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             combined = "\n\n".join(pdf_texts[:5])
             extra_parts.append(f"[REFERENCE DOCUMENTS]\n{combined}")
         extra = ("\n\n".join(extra_parts)).strip()
-        paper_data = generate_paper_json(
-            judul=prompt,
-            custom_prompt=extra,
-            topic=topic,
-            style=style,
-        )
+
+        # Use chunked generation by default to avoid 30s gateway timeouts
+        if chunked:
+            paper_data = generate_paper_json_chunked(
+                judul=prompt,
+                custom_prompt=extra,
+                topic=topic,
+                style=style,
+            )
+        else:
+            paper_data = generate_paper_json(
+                judul=prompt,
+                custom_prompt=extra,
+                topic=topic,
+                style=style,
+            )
 
         paper_data.setdefault("authors", [{"name": "Author Name", "affiliation": "Department, University", "location": "City, Country", "email": "author@example.com"}])
         paper_data.setdefault("keywords", [])
