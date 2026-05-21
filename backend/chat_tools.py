@@ -41,6 +41,7 @@ ALLOWED_READ_ROOTS = (
 
 
 def execute_tool(tool_name, arguments, user_id, paper_id=None):
+    logger.info(f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, args={json.dumps(arguments, ensure_ascii=False)[:300]}")
     try:
         if tool_name == "WebSearch":
             return _web_search(arguments.get("query", ""))
@@ -60,6 +61,19 @@ def execute_tool(tool_name, arguments, user_id, paper_id=None):
                 arguments.get("style"),
                 arguments.get("use_attached_files", True),
             )
+        elif tool_name == "RunSLR":
+            return _run_slr_tool(
+                paper_id, user_id,
+                arguments.get("query", ""),
+                arguments.get("sources"),
+                int(arguments.get("top_k", 50) or 50),
+                int(arguments.get("per_source", 60) or 60),
+                arguments.get("year_from"),
+                arguments.get("ai_model") or "V-OPUS",
+            )
+        elif tool_name == "GetLiterature":
+            return _get_literature_tool(paper_id, user_id,
+                                        int(arguments.get("limit", 50) or 50))
         elif tool_name == "ListAttachedFiles":
             return _list_attached_files(paper_id, user_id)
         elif tool_name == "ReadAttachedFile":
@@ -68,6 +82,8 @@ def execute_tool(tool_name, arguments, user_id, paper_id=None):
             return _get_paper_content(paper_id, user_id)
         elif tool_name == "GetPaperSection":
             return _get_paper_section(paper_id, user_id, arguments.get("section", ""))
+        elif tool_name == "GetPaperNumbering":
+            return _get_paper_numbering(paper_id, user_id)
         elif tool_name == "Read":
             return _safe_read(arguments.get("file_path", ""))
         elif tool_name == "Bash":
@@ -325,6 +341,203 @@ def _read_attached_file(paper_id, user_id, file_id):
     return _truncate(f"# {f.original_name} ({f.ext})\n\n{text}")
 
 
+# Pretty labels for well-known memory keys we surface explicitly in the
+# writer's custom_prompt. Anything not in this map is appended verbatim.
+_MEMORY_KEY_LABELS = {
+    "jurusan": "Jurusan",
+    "topik": "Topik",
+    "latar_belakang": "Latar belakang",
+    "literatur_review_status": "Literatur review",
+    "referensi_terpilih": "Referensi terpilih",
+    "metode": "Metode",
+    "data": "Data",
+    "data_asli": "Data (asli)",
+    "data_estimasi": "Data (estimasi)",
+    "kesimpulan_target": "Kesimpulan target",
+}
+# Render order so the block is stable across calls.
+_MEMORY_KEY_ORDER = [
+    "jurusan",
+    "topik",
+    "latar_belakang",
+    "literatur_review_status",
+    "referensi_terpilih",
+    "metode",
+    "data",
+    "data_asli",
+    "data_estimasi",
+    "kesimpulan_target",
+]
+
+
+def _format_literature_block(paper_id) -> str:
+    """Render up to 30 LiteratureItem rows as a markdown block. Pinned +
+    must_read first. Returns "" when empty."""
+    if not paper_id:
+        return ""
+    try:
+        from models import LiteratureItem
+        items = (LiteratureItem.query
+                 .filter_by(paper_id=paper_id)
+                 .order_by(LiteratureItem.pinned.desc(),
+                           LiteratureItem.must_read.desc(),
+                           LiteratureItem.score_total.desc(),
+                           LiteratureItem.created_at.desc())
+                 .limit(30).all())
+    except Exception:
+        return ""
+    if not items:
+        return ""
+    lines = [
+        "## Literature catalog (use these as the actual reference list — "
+        "cite by title/DOI; do not invent references not in this list)",
+    ]
+    for i, it in enumerate(items, 1):
+        authors_list = it.authors or []
+        authors = ", ".join(authors_list[:3])
+        if len(authors_list) > 3:
+            authors += " et al."
+        bits = [f"[L{i}] {it.title}"]
+        if authors:
+            bits.append(f"— {authors}")
+        if it.year:
+            bits.append(f"({it.year})")
+        if it.venue:
+            bits.append(f"in *{it.venue}*")
+        if it.doi:
+            bits.append(f"DOI: {it.doi}")
+        elif it.url:
+            bits.append(f"URL: {it.url}")
+        line = " ".join(bits)
+        if it.summary:
+            line += f"\n   Summary: {it.summary[:240]}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _format_memory_block(paper_id) -> str:
+    """Render every ProjectMemory row for this paper as a single markdown
+    block the writer leans on as source-of-truth. Returns "" when the paper
+    has no memory yet. Never raises — DB issues fall back to empty."""
+    if not paper_id:
+        return ""
+    try:
+        mems = ProjectMemory.query.filter_by(paper_id=paper_id).all()
+    except Exception:
+        return ""
+    if not mems:
+        return ""
+
+    by_key = {}
+    for m in mems:
+        k = (m.key or "").strip()
+        if not k:
+            continue
+        by_key[k] = (m.value or "").strip()
+    if not by_key:
+        return ""
+
+    lines = [
+        "## Project facts (from chat memory — pakai SEMUA fakta ini sebagai source of truth)"
+    ]
+    seen = set()
+    for k in _MEMORY_KEY_ORDER:
+        if k in by_key:
+            label = _MEMORY_KEY_LABELS.get(k, k)
+            lines.append(f"- {label}: {by_key[k]}")
+            seen.add(k)
+    extras = sorted(k for k in by_key.keys() if k not in seen)
+    for k in extras:
+        label = _MEMORY_KEY_LABELS.get(k, k)
+        lines.append(f"- {label}: {by_key[k]}")
+
+    return "\n".join(lines)
+
+
+def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
+                   year_from, ai_model):
+    """Enqueue an SLR job from the chat. Returns a structured proposal payload
+    so the frontend can show a progress card and the chat blueprint can
+    forward a friendly status to the model."""
+    if not paper_id:
+        return "Error: this chat is not linked to a paper."
+    if not user_id:
+        return "Error: not authenticated."
+    q = (query or "").strip()
+    if not q:
+        return "Error: query is required (the literature topic)."
+
+    try:
+        from slr_worker import enqueue_slr_job
+    except Exception as e:
+        return f"Error: SLR worker unavailable ({e})"
+
+    src_list = None
+    if isinstance(sources, list) and sources:
+        src_list = [s for s in sources if isinstance(s, str)]
+
+    try:
+        year_from_int = int(year_from) if year_from else None
+    except (TypeError, ValueError):
+        year_from_int = None
+
+    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"}:
+        ai_model = "V-OPUS"
+
+    job_id = enqueue_slr_job(
+        paper_id=paper_id, user_id=int(user_id), query=q,
+        sources=src_list, per_source=max(10, min(int(per_source), 100)),
+        top_k=max(10, min(int(top_k), 100)),
+        year_from=year_from_int,
+        ai_summarize=True, ai_model=ai_model,
+    )
+
+    payload = {
+        "kind": "slr_job",
+        "job_id": job_id,
+        "query": q,
+        "top_k": top_k,
+        "ai_model": ai_model,
+        "sources": src_list or "auto",
+    }
+    return PROPOSAL_PREFIX + json.dumps(payload, ensure_ascii=False)
+
+
+def _get_literature_tool(paper_id, user_id, limit=50):
+    """Return current LiteratureItem rows for the paper, ordered by relevance."""
+    if not paper_id:
+        return "No paper linked to this conversation."
+    try:
+        from models import LiteratureItem
+    except Exception as e:
+        return f"Error: cannot read literature ({e})"
+    items = (LiteratureItem.query
+             .filter_by(paper_id=paper_id)
+             .order_by(LiteratureItem.pinned.desc(),
+                       LiteratureItem.score_total.desc(),
+                       LiteratureItem.created_at.desc())
+             .limit(max(1, min(int(limit), 100)))
+             .all())
+    if not items:
+        return ("(Literature kosong. Pakai RunSLR untuk cari paper, atau import "
+                "file PDF/DOCX dulu.)")
+    rows = []
+    for it in items:
+        authors = ", ".join((it.authors or [])[:4])
+        rows.append({
+            "id": it.id,
+            "title": it.title,
+            "year": it.year,
+            "authors": authors,
+            "venue": it.venue,
+            "doi": it.doi,
+            "summary": (it.summary or it.abstract or "")[:400],
+            "must_read": bool(it.must_read),
+            "score": it.score_total,
+        })
+    return _truncate(json.dumps(rows, ensure_ascii=False, indent=2))
+
+
 def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_attached_files=True):
     """Kick off the same /api/generate-full job pipeline used by the dashboard,
     but from a chat tool call. Auto-injects extracted text from any files the
@@ -364,13 +577,25 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
         except Exception:
             memory_lines = ""
 
+    # LITERATURE BLOCK — pull current LiteratureItem rows so the writer knows
+    # which papers to cite. Pinned + must_read get prioritised.
+    literature_block = _format_literature_block(paper_id)
+
     outline = _plan_outline(prompt, memory_lines, topic, style)
-    custom_prompt = ""
+
+    # Build the writer's custom_prompt: full memory block as source-of-truth
+    # FIRST (so every fact the user locked in survives the prompt.txt pipeline),
+    # then the literature block (so the writer cites real papers from the
+    # Literature tab), then the planner outline. All three are optional.
+    parts = []
+    mem_block = _format_memory_block(paper_id)
+    if mem_block:
+        parts.append(mem_block)
+    if literature_block:
+        parts.append(literature_block)
     if outline:
-        custom_prompt = (
-            "## Outline agreed with the user (follow it strictly)\n"
-            f"{outline}\n"
-        )
+        parts.append(f"## Outline agreed with the user (follow it strictly)\n{outline}")
+    custom_prompt = "\n\n".join(parts)
 
     # Run inside the existing app context so Flask's job machinery is available
     try:
@@ -394,6 +619,13 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
             },
             daemon=True,
         ).start()
+        # Best-effort: tell the chat blueprint that this paper now has an
+        # in-flight generation job so its /active-job endpoint can surface it.
+        try:
+            from chat import register_active_job
+            register_active_job(paper_id, job_id)
+        except Exception:
+            pass  # registry not available — non-fatal
     except Exception as e:
         return f"Error starting job: {e}"
 
@@ -457,7 +689,7 @@ def _plan_outline(prompt: str, memory_lines: str, topic: str, style: str) -> str
                     {"role": "user", "content": user_prompt},
                 ],
                 "stream": False,
-                "max_tokens": 2000,
+                "max_tokens": 32000,
             },
             timeout=90,
         )
@@ -499,6 +731,124 @@ def _get_paper_section(paper_id, user_id, section):
         if s.get("title", "").lower() == section.lower():
             return _truncate(json.dumps(s, ensure_ascii=False, indent=2))
     return f"Section '{section}' not found. Available keys: {list(data.keys())}"
+
+
+# ─── Numbering helpers ────────────────────────────────────────────────────
+# These mirror the frontend's `numbering` computed (paper.js): walk every
+# section + subsection content list, assigning a sequential number to each
+# `gambar` / `tabel` / `rumus` item in document order. We expose this to the
+# AI so it can rewrite Fig./Table/Eq. mentions in section text after the user
+# has reordered items.
+_ROMAN_PAIRS = (
+    (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+    (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+    (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+)
+
+
+def _to_roman(num: int) -> str:
+    out = ""
+    for v, s in _ROMAN_PAIRS:
+        while num >= v:
+            out += s
+            num -= v
+    return out
+
+
+def _walk_content_for_numbering(content_list, fig_idx, tbl_idx, eq_idx,
+                                figs, tbls, eqs, section_title):
+    """Walk a content list (already shape-normalized: list of dicts with id)
+    and append entries to figs/tbls/eqs lists. Returns updated indices."""
+    for item in (content_list or []):
+        if not isinstance(item, dict):
+            continue
+        kind = item.get("id")
+        if kind == "gambar":
+            figs.append({
+                "fig_number": fig_idx,
+                "label": f"Fig. {fig_idx}",
+                "title": item.get("Title") or "",
+                "section": section_title,
+                "has_path": bool(item.get("Path")),
+                "prompt": (item.get("Prompt") or "")[:200],
+            })
+            fig_idx += 1
+        elif kind == "tabel":
+            tbls.append({
+                "table_number": tbl_idx,
+                "label": f"Table {_to_roman(tbl_idx)}",
+                "title": item.get("Title") or "",
+                "section": section_title,
+            })
+            tbl_idx += 1
+        elif kind == "rumus":
+            eqs.append({
+                "eq_number": eq_idx,
+                "label": f"Eq. ({eq_idx})",
+                "section": section_title,
+                "latex": (item.get("latex") or "")[:200],
+            })
+            eq_idx += 1
+    return fig_idx, tbl_idx, eq_idx
+
+
+def _get_paper_numbering(paper_id, user_id):
+    """Return the current ordered numbering of figures/tables/equations.
+
+    Use this BEFORE rewriting prose that mentions Fig./Table/Eq. — after the
+    user reorders content boxes, the displayed numbers shift, so any prose
+    that still says 'as shown in Fig. 2' may now refer to a different item.
+    The AI should read this, then issue ProposeSection with corrected
+    references in the section's text.
+    """
+    if not paper_id:
+        return "No paper linked to this conversation."
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return "Paper not found."
+
+    data = paper.data or {}
+    figs, tbls, eqs = [], [], []
+    fig_idx, tbl_idx, eq_idx = 1, 1, 1
+
+    # Support both the array shape (sections=[...]) and the legacy
+    # section1/section1a key shape used by some older papers.
+    sections = data.get("sections")
+    if isinstance(sections, list):
+        for sec in sections:
+            title = sec.get("title", "")
+            fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
+                sec.get("content"), fig_idx, tbl_idx, eq_idx,
+                figs, tbls, eqs, title)
+            for sub in (sec.get("subsections") or []):
+                fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
+                    sub.get("content"), fig_idx, tbl_idx, eq_idx,
+                    figs, tbls, eqs, f"{title} — {sub.get('title','')}")
+    else:
+        skeys = sorted(
+            (k for k in data.keys() if isinstance(k, str) and k.startswith("section") and k[7:].isdigit()),
+            key=lambda k: int(k[7:]),
+        )
+        for sk in skeys:
+            sec = data.get(sk) or {}
+            if not isinstance(sec, dict):
+                continue
+            title = sec.get("title", "")
+            fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
+                sec.get("content"), fig_idx, tbl_idx, eq_idx,
+                figs, tbls, eqs, title)
+            for subk in sorted(k for k in sec.keys() if isinstance(k, str) and k.startswith(sk) and k != sk):
+                sub = sec.get(subk) or {}
+                if not isinstance(sub, dict):
+                    continue
+                fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
+                    sub.get("content"), fig_idx, tbl_idx, eq_idx,
+                    figs, tbls, eqs, f"{title} — {sub.get('title','')}")
+
+    return _truncate(json.dumps(
+        {"figures": figs, "tables": tbls, "equations": eqs},
+        ensure_ascii=False, indent=2,
+    ))
 
 
 def _safe_read(file_path):
@@ -725,6 +1075,51 @@ CHAT_TOOLS = [
         },
     },
     {
+        "name": "RunSLR",
+        "description": (
+            "Kick off a full Systematic Literature Review search across multiple academic "
+            "indexes (OpenAlex, Crossref, Semantic Scholar, arXiv, DBLP, Europe PMC, IEEE, "
+            "SINTA/Garuda). The job is queued (max 10 workers) and runs asynchronously: "
+            "fetch all sources in parallel, dedup by DOI/title, rank with SBERT + citation "
+            "+ recency + venue quality, then summarize the top 50 with V-OPUS. Results are "
+            "automatically saved as LiteratureItem rows that show up in the user's Literature "
+            "tab. Use this when the user asks for a literature review, related work, or "
+            "to populate references."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query / topic."},
+                "sources": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional: restrict to specific sources (e.g. ['ieee','sinta']).",
+                },
+                "top_k": {"type": "integer", "description": "How many to summarize (default 50, max 100)."},
+                "per_source": {"type": "integer", "description": "Max results per source (default 60)."},
+                "year_from": {"type": "integer", "description": "Optional cutoff year."},
+                "ai_model": {"type": "string", "description": "V-OPUS|V-CLAUDE|V-GPT|V-GLM. Default V-OPUS."},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "GetLiterature",
+        "description": (
+            "Read the current Literature tab rows for this paper. Returns title, authors, "
+            "year, venue, DOI, AI summary, must_read flag, score. Use this to give the user "
+            "a tabel rangkuman literatur, or to confirm what references will be cited before "
+            "GenerateFullPaper."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "description": "Default 50, max 100."},
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "ListAttachedFiles",
         "description": "List files (PDF/DOCX/TXT/MD) the user uploaded to THIS paper. Returns id, name, size, extracted_chars.",
         "input_schema": {"type": "object", "properties": {}, "required": []},
@@ -751,6 +1146,20 @@ CHAT_TOOLS = [
             "properties": {"section": {"type": "string"}},
             "required": ["section"],
         },
+    },
+    {
+        "name": "GetPaperNumbering",
+        "description": (
+            "Return the current ORDERED list of figures, tables, and equations "
+            "in this paper, with their actual displayed numbers (Fig. 1, "
+            "Table II, Eq. (3), …) and their parent section. Numbers are "
+            "computed live from item order, so after a reorder the displayed "
+            "numbers will not match what older prose says. Call this BEFORE "
+            "rewriting any section that mentions Fig./Table/Eq. references — "
+            "then use ProposeSection to push back corrected text. Used by the "
+            "user's 'rapikan' command."
+        ),
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
         "name": "Read",

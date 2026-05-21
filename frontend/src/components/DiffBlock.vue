@@ -1,12 +1,14 @@
 <template>
   <div :class="['my-2 group/diff relative rounded-lg overflow-hidden', align === 'center' ? 'text-center' : '']">
-    <div class="bg-rose-50/60 border-l-4 border-rose-300 px-3 py-2">
-      <div class="text-[10px] uppercase tracking-wide text-rose-600 font-semibold mb-1">- Sebelum</div>
-      <slot name="before" />
-    </div>
+    <details class="bg-rose-50/60 border-l-4 border-rose-300 px-3 py-2 text-slate-700">
+      <summary class="text-[10px] uppercase tracking-wide text-rose-600 font-semibold cursor-pointer">− Removed / Sebelum · Show original</summary>
+      <div class="mt-1">
+        <slot name="before" />
+      </div>
+    </details>
     <div class="bg-emerald-50/60 border-l-4 border-emerald-400 px-3 py-2 mt-0.5">
       <div class="flex items-center justify-between mb-1 gap-2">
-        <span class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">+ Sesudah</span>
+        <span class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">+ Added / Sesudah</span>
         <div class="flex items-center gap-1.5 shrink-0">
           <button
             @click="store.acceptProposal(change.id)"

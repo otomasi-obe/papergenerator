@@ -16,13 +16,27 @@
         :is-streaming="isStreaming && !message.content"
       />
 
-      <!-- Tool Calls -->
-      <div v-if="message.tool_calls && message.tool_calls.length > 0" class="space-y-2 mb-3">
-        <ToolCallBlock
-          v-for="(tc, idx) in message.tool_calls"
-          :key="idx"
-          :tool-call="tc"
-        />
+      <!-- Full-paper generation progress (in-chat). The AI's GenerateFullPaper
+           tool call kicks off a long backend job; instead of an overlay, we
+           show this animated progress block right inside the chat bubble. -->
+      <div
+        v-if="generatingPaper"
+        class="mb-3 p-4 rounded-xl border border-brown-300 dark:border-cream-600 bg-gradient-to-r from-cream-50 to-brown-50 dark:from-ash-700 dark:to-ash-800"
+      >
+        <div class="flex items-center gap-3">
+          <div class="relative w-10 h-10 shrink-0">
+            <div class="absolute inset-0 rounded-full border-2 border-cream-300 dark:border-ash-600"></div>
+            <div class="absolute inset-0 rounded-full border-2 border-t-brown-600 dark:border-t-cream-200 animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-base">📝</div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-ink-900 dark:text-ink-50">AI sedang menulis paper lengkap</div>
+            <div class="text-xs text-ink-700 dark:text-ink-300 mt-0.5">Proses ini biasanya 3-10 menit. Editor akan auto-load hasilnya.</div>
+            <div class="mt-2 h-1 rounded-full bg-cream-200 dark:bg-ash-600 overflow-hidden">
+              <div class="h-full w-1/3 rounded-full bg-gradient-to-r from-brown-400 to-brown-600 dark:from-cream-300 dark:to-cream-400 animate-progress-slide"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Text Content -->
@@ -46,7 +60,7 @@
           <span class="inline-block w-5 text-amber-700 dark:text-amber-300 font-semibold">{{ i + 1 }}.</span>
           {{ opt }}
         </button>
-        <p class="text-[11px] text-amber-800/70 dark:text-amber-300/70 mt-0.5 px-1">
+        <p class="text-[11px] text-amber-900 dark:text-amber-200 mt-0.5 px-1">
           Atau ketik jawaban sendiri di kotak input.
         </p>
       </div>
@@ -83,7 +97,6 @@ import json from 'highlight.js/lib/languages/json'
 import xml from 'highlight.js/lib/languages/xml'
 import css from 'highlight.js/lib/languages/css'
 import ThinkingBlock from './ThinkingBlock.vue'
-import ToolCallBlock from './ToolCallBlock.vue'
 
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('python', python)
@@ -99,6 +112,38 @@ const props = defineProps({
 })
 
 defineEmits(['pick-option'])
+
+// Detect a full-paper generation tool call so we can render the in-chat
+// progress block. Only show spinner if:
+// 1. Tool call exists with name 'GenerateFullPaper'
+// 2. Tool call has completed (status === 'done')
+// 3. Result contains a valid job_id (indicating job was actually created)
+// This prevents showing spinner when AI hallucinates or tool execution fails.
+const generatingPaper = computed(() => {
+  const tc = (props.message.tool_calls || []).find(
+    tc => tc.name === 'GenerateFullPaper'
+  )
+  if (!tc) return false
+
+  // Only show spinner if tool completed successfully with a job_id
+  if (tc.status !== 'done') return false
+
+  // Parse the result to check for job_id
+  try {
+    const result = tc.result || ''
+    // Result format: "<<PROPOSAL>>{...json...}" or error message
+    if (result.startsWith('<<PROPOSAL>>')) {
+      const jsonStr = result.substring('<<PROPOSAL>>'.length)
+      const payload = JSON.parse(jsonStr)
+      return payload.kind === 'generate_full' && !!payload.job_id
+    }
+  } catch (e) {
+    // If parsing fails, don't show spinner
+    return false
+  }
+
+  return false
+})
 
 // Strip [OPSI]…[/OPSI] block from the visible content; we render those as
 // buttons below. Tolerates close-tag forgotten by the model.
@@ -153,6 +198,16 @@ const renderedContent = computed(() => {
 </script>
 
 <style scoped>
+/* In-chat full-paper-generation progress shimmer. */
+@keyframes progress-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(150%); }
+  100% { transform: translateX(-100%); }
+}
+.animate-progress-slide {
+  animation: progress-slide 2.4s ease-in-out infinite;
+}
+
 /* Chat bubble theming via CSS tokens — single source of truth.
    rofiq.txt #1: user box putih di light, dark anthracite di dark. */
 .chat-bubble-user {

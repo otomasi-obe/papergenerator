@@ -592,7 +592,14 @@ export const usePaperStore = defineStore('paper', () => {
       ? `AI sedang membuat paper: "${prompt.slice(0, 50)}${prompt.length > 50 ? '…' : ''}"`
       : 'AI sedang membuat paper...'
     try {
-      return await _pollJob(jobId, t0)
+      const ok = await _pollJob(jobId, t0)
+      // Refresh from DB if attached to a paper — backend persists into Paper.data,
+      // so reloading guarantees the editor shows the saved version (including
+      // anything the user might have edited concurrently in another tab).
+      if (ok && currentPaperId.value) {
+        try { await loadPaperFromDb(currentPaperId.value) } catch { /* keep _pollJob result */ }
+      }
+      return ok
     } catch (err) {
       showToast('AI Error: ' + err.message, 'error')
       return false

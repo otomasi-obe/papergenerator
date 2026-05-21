@@ -1,0 +1,107 @@
+"""Fetcher untuk OpenAlex - https://api.openalex.org"""
+import os
+from typing import Iterable
+from ..http_client import RateLimiter, fetch_json
+from ..paper import Paper
+
+BASE = "https://api.openalex.org/works"
+
+
+def _reconstruct_abstract(inv_index: dict | None) -> str | None:
+    if not inv_index:
+        return None
+    pos_map = {}
+    for word, positions in inv_index.items():
+        for p in positions:
+            pos_map[p] = word
+    if not pos_map:
+        return None
+    return " ".join(pos_map[i] for i in sorted(pos_map))
+
+
+def _parse_work(w: dict) -> Paper | None:
+    title = w.get("title") or w.get("display_name")
+    if not title:
+        return None
+
+    authors = []
+    for a in w.get("authorships", []) or []:
+        author = a.get("author") or {}
+        name = author.get("display_name")
+        if name:
+            authors.append(name)
+
+    venue = None
+    venue_type = None
+    publisher = None
+    primary_loc = w.get("primary_location") or {}
+    src = primary_loc.get("source") or {}
+    if src:
+        venue = src.get("display_name")
+        venue_type = src.get("type")
+        publisher = src.get("host_organization_name")
+
+    doi = w.get("doi")
+    if doi and doi.startswith("https://doi.org/"):
+        doi = doi[len("https://doi.org/"):]
+
+    return Paper(
+        source="openalex",
+        source_id=w.get("id", "").rsplit("/", 1)[-1],
+        title=title,
+        authors=authors,
+        abstract=_reconstruct_abstract(w.get("abstract_inverted_index")),
+        year=w.get("publication_year"),
+        venue=venue,
+        venue_type=venue_type,
+        doi=doi,
+        url=w.get("id"),
+        citations=w.get("cited_by_count"),
+        is_open_access=(w.get("open_access") or {}).get("is_oa"),
+        type=w.get("type"),
+        publisher=publisher,
+    )
+
+
+def search(client, query: str, limit: int = 25,
+           filters: dict | None = None) -> Iterable[Paper]:
+    """Search OpenAlex. filters contoh: {'type': 'article', 'is_paratext': 'false'}"""
+    rl = RateLimiter(0.12)
+    per_page = min(limit, 50)
+    fetched = 0
+    cursor = "*"
+
+    filter_parts = ["has_abstract:true"]
+    if filters:
+        for k, v in filters.items():
+            filter_parts.append(f"{k}:{v}")
+    filter_str = ",".join(filter_parts)
+
+    while fetched < limit:
+        rl.wait()
+        params = {
+            "search": query,
+            "per_page": min(per_page, limit - fetched),
+            "cursor": cursor,
+            "filter": filter_str,
+            "mailto": "research@example.com",
+        }
+        api_key = os.getenv("OPENALEX_API_KEY")
+        if api_key:
+            params["api_key"] = api_key
+        data = fetch_json(client, BASE, params=params)
+        if not data:
+            return
+        results = data.get("results", [])
+        if not results:
+            return
+        for w in results:
+            paper = _parse_work(w)
+            if paper:
+                yield paper
+                fetched += 1
+                if fetched >= limit:
+                    return
+        cursor = (data.get("meta") or {}).get("next_cursor")
+        if not cursor:
+            return

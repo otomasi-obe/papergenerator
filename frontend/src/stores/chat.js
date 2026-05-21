@@ -41,6 +41,12 @@ export const useChatStore = defineStore('chat', () => {
   // Memory for the current paper
   const memory = ref([])
 
+  // Active background job (full-paper generation) belonging to the current
+  // paper but possibly started in a different chat. While this is set, the
+  // input in the current chat is locked and a banner explains why.
+  const activeJob = ref(null)  // { active, job_id, prompt, elapsed_seconds } | null
+  let _activeJobTimer = null
+
   // Selected upstream model key (sent as `model` on each /messages POST).
   // Backend allowlists {V-OPUS, V-GEMINI, V-GPT}; if null we omit the field
   // and backend falls back to its env default.
@@ -125,6 +131,26 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function checkActiveJob() {
+    if (!currentPaperId.value) { activeJob.value = null; return null }
+    try {
+      const res = await api.get(`/api/papers/${currentPaperId.value}/active-job`)
+      activeJob.value = res.data?.active ? res.data : null
+      return activeJob.value
+    } catch { activeJob.value = null; return null }
+  }
+
+  function startActiveJobPolling(paperId) {
+    stopActiveJobPolling()
+    if (!paperId) return
+    checkActiveJob()
+    _activeJobTimer = setInterval(checkActiveJob, 4000)
+  }
+
+  function stopActiveJobPolling() {
+    if (_activeJobTimer) { clearInterval(_activeJobTimer); _activeJobTimer = null }
+  }
+
   async function deleteMemoryEntry(memId) {
     if (!currentPaperId.value || !memId) return
     try {
@@ -149,6 +175,8 @@ export const useChatStore = defineStore('chat', () => {
       loadConversations(paperId),
       loadMemory(paperId),
     ])
+
+    startActiveJobPolling(paperId)
 
     let target = conversations.value[0]
     if (!target) {
@@ -282,6 +310,26 @@ export const useChatStore = defineStore('chat', () => {
     if (stream.isStreaming) return
     error.value = null
 
+    // Block sending while another chat in this paper is generating a paper.
+    // Show an inline assistant warning instead of a silent no-op so the user
+    // understands why their message did not go through.
+    if (activeJob.value && activeJob.value.active) {
+      stream.messages.push({
+        id: Date.now(),
+        role: 'user',
+        content,
+        created_at: new Date().toISOString(),
+      })
+      stream.messages.push({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.',
+        created_at: new Date().toISOString(),
+      })
+      _syncFromStream(convId)
+      return
+    }
+
     // Auto-rename a fresh chat from its first user message — the backend already
     // does this on its side, but updating the local state immediately keeps the
     // sidebar and the toolbar title in sync without waiting for a full reload.
@@ -333,7 +381,24 @@ export const useChatStore = defineStore('chat', () => {
         }
       )
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      if (!response.ok) {
+        // Backend may reject the request because another chat is already
+        // running a full-paper generation for this paper. Surface a friendly
+        // explanation and refresh the active-job state so the banner appears.
+        if (response.status === 409) {
+          let payload = null
+          try { payload = await response.json() } catch { /* ignore */ }
+          if (payload && payload.code === 'GENERATION_IN_PROGRESS') {
+            if (stream.streamingMessage) {
+              stream.streamingMessage.content =
+                '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.'
+            }
+            checkActiveJob()
+            return
+          }
+        }
+        throw new Error(`HTTP ${response.status}`)
+      }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -475,6 +540,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function reset() {
+    stopActiveJobPolling()
+    activeJob.value = null
     currentPaperId.value = null
     currentConversationId.value = null
     conversations.value = []
@@ -498,6 +565,7 @@ export const useChatStore = defineStore('chat', () => {
     streamingMessage,
     error,
     selectedModel,
+    activeJob,
     setModel,
     loadPaperChats,
     loadConversations,
@@ -512,6 +580,9 @@ export const useChatStore = defineStore('chat', () => {
     clearCurrentChat,
     sendMessage,
     stopStreaming,
+    checkActiveJob,
+    startActiveJobPolling,
+    stopActiveJobPolling,
     reset,
     // Backwards-compat aliases (in case other components still call them)
     openPaperChat: openPaper,

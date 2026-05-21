@@ -13,6 +13,7 @@
       </router-link>
     </nav>
 
+    <main>
     <!-- Hero -->
     <section class="relative max-w-6xl mx-auto px-8 pt-16 pb-20">
       <div class="grid lg:grid-cols-2 gap-12 items-center">
@@ -93,7 +94,7 @@
       <div class="grid md:grid-cols-3 gap-6">
         <div v-for="feature in features" :key="feature.title"
           class="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 transition-colors">
-          <div class="text-3xl mb-4">{{ feature.icon }}</div>
+          <div class="text-3xl mb-4" aria-hidden="true">{{ feature.icon }}</div>
           <h3 class="text-lg font-semibold mb-2">{{ feature.title }}</h3>
           <p class="text-slate-400 text-sm leading-relaxed">{{ feature.description }}</p>
         </div>
@@ -105,25 +106,25 @@
       <h2 class="text-3xl font-bold text-center mb-4 text-white">Supported Publication Types</h2>
       <p class="text-slate-400 text-center mb-12 max-w-2xl mx-auto">Generate papers for various publication venues with proper formatting and citation styles</p>
       <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">📚</div>
-          <h3 class="font-semibold mb-1 text-indigo-300">IEEE Journals</h3>
-          <p class="text-slate-400 text-xs">TIE, TPEL, RA-L, TMECH, IoT-J, Access, and more. IEEE citation format and conference standards.</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">📚</div>
+          <h3 class="font-semibold mb-1 text-white">IEEE Journals</h3>
+          <p class="text-slate-300 text-xs">TIE, TPEL, RA-L, TMECH, IoT-J, Access, and more. IEEE citation format and conference standards.</p>
         </div>
-        <div class="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🌐</div>
-          <h3 class="font-semibold mb-1 text-emerald-300">International Journals</h3>
-          <p class="text-slate-400 text-xs">Scopus, Web of Science indexed journals. APA, Vancouver, and custom citation formats supported.</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🌐</div>
+          <h3 class="font-semibold mb-1 text-white">International Journals</h3>
+          <p class="text-slate-300 text-xs">Scopus, Web of Science indexed journals. APA, Vancouver, and custom citation formats supported.</p>
         </div>
-        <div class="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🏆</div>
-          <h3 class="font-semibold mb-1 text-amber-300">SINTA Journals</h3>
-          <p class="text-slate-400 text-xs">Indonesian SINTA 1-6 indexed journals. Proper formatting for national publication requirements.</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🏆</div>
+          <h3 class="font-semibold mb-1 text-white">SINTA Journals</h3>
+          <p class="text-slate-300 text-xs">Indonesian SINTA 1-6 indexed journals. Proper formatting for national publication requirements.</p>
         </div>
-        <div class="bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🎤</div>
-          <h3 class="font-semibold mb-1 text-rose-300">Conferences</h3>
-          <p class="text-slate-400 text-xs">International and local conferences. ICRA, IROS, IECON, and other technical conferences.</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🎤</div>
+          <h3 class="font-semibold mb-1 text-white">Conferences</h3>
+          <p class="text-slate-300 text-xs">International and local conferences. ICRA, IROS, IECON, and other technical conferences.</p>
         </div>
       </div>
     </section>
@@ -133,45 +134,45 @@
       <h2 class="text-3xl font-bold text-center mb-4 text-white">Specialized Domains</h2>
       <p class="text-slate-400 text-center mb-12 max-w-2xl mx-auto">Our AI is trained on 100+ domain-specific topics for accurate technical content generation</p>
       <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">⚙️</div>
-          <h3 class="font-semibold mb-1 text-blue-300">Engineering</h3>
-          <p class="text-slate-400 text-xs">Mechanical, Electrical, Civil, Chemical, Aerospace, Mechatronics, Robotics, Power Electronics</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">⚙️</div>
+          <h3 class="font-semibold mb-1 text-white">Engineering</h3>
+          <p class="text-slate-300 text-xs">Mechanical, Electrical, Civil, Chemical, Aerospace, Mechatronics, Robotics, Power Electronics</p>
         </div>
-        <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">💻</div>
-          <h3 class="font-semibold mb-1 text-purple-300">Computer Science</h3>
-          <p class="text-slate-400 text-xs">AI, Machine Learning, Data Science, Cybersecurity, Cloud Computing, IoT, Blockchain, Networks</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">💻</div>
+          <h3 class="font-semibold mb-1 text-white">Computer Science</h3>
+          <p class="text-slate-300 text-xs">AI, Machine Learning, Data Science, Cybersecurity, Cloud Computing, IoT, Blockchain, Networks</p>
         </div>
-        <div class="bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🏥</div>
-          <h3 class="font-semibold mb-1 text-red-300">Medical & Health</h3>
-          <p class="text-slate-400 text-xs">Medicine, Nursing, Cardiology, Oncology, Biomedical Engineering, Public Health, Pharmacology</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🏥</div>
+          <h3 class="font-semibold mb-1 text-white">Medical & Health</h3>
+          <p class="text-slate-300 text-xs">Medicine, Nursing, Cardiology, Oncology, Biomedical Engineering, Public Health, Pharmacology</p>
         </div>
-        <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🔬</div>
-          <h3 class="font-semibold mb-1 text-green-300">Natural Sciences</h3>
-          <p class="text-slate-400 text-xs">Biology, Chemistry, Physics, Mathematics, Environmental Science, Geology, Genetics</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🔬</div>
+          <h3 class="font-semibold mb-1 text-white">Natural Sciences</h3>
+          <p class="text-slate-300 text-xs">Biology, Chemistry, Physics, Mathematics, Environmental Science, Geology, Genetics</p>
         </div>
-        <div class="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">💰</div>
-          <h3 class="font-semibold mb-1 text-amber-300">Business & Finance</h3>
-          <p class="text-slate-400 text-xs">Accounting, Finance, Economics, Management, Marketing, Entrepreneurship, Operations</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">💰</div>
+          <h3 class="font-semibold mb-1 text-white">Business & Finance</h3>
+          <p class="text-slate-300 text-xs">Accounting, Finance, Economics, Management, Marketing, Entrepreneurship, Operations</p>
         </div>
-        <div class="bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🧭</div>
-          <h3 class="font-semibold mb-1 text-cyan-300">Social Sciences</h3>
-          <p class="text-slate-400 text-xs">Psychology, Sociology, Anthropology, Political Science, Education, Communication, Law</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🧭</div>
+          <h3 class="font-semibold mb-1 text-white">Social Sciences</h3>
+          <p class="text-slate-300 text-xs">Psychology, Sociology, Anthropology, Political Science, Education, Communication, Law</p>
         </div>
-        <div class="bg-gradient-to-br from-lime-500/10 to-lime-600/5 border border-lime-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🌾</div>
-          <h3 class="font-semibold mb-1 text-lime-300">Agriculture & Environment</h3>
-          <p class="text-slate-400 text-xs">Agriculture, Agronomy, Horticulture, Environmental Engineering, Climate Science, Food Science</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🌾</div>
+          <h3 class="font-semibold mb-1 text-white">Agriculture & Environment</h3>
+          <p class="text-slate-300 text-xs">Agriculture, Agronomy, Horticulture, Environmental Engineering, Climate Science, Food Science</p>
         </div>
-        <div class="bg-gradient-to-br from-pink-500/10 to-pink-600/5 border border-pink-500/20 rounded-xl p-5">
-          <div class="text-2xl mb-2">🎨</div>
-          <h3 class="font-semibold mb-1 text-pink-300">Arts & Humanities</h3>
-          <p class="text-slate-400 text-xs">Literature, Philosophy, History, Linguistics, Architecture, Performing Arts, Religious Studies</p>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+          <div class="text-2xl mb-2" aria-hidden="true">🎨</div>
+          <h3 class="font-semibold mb-1 text-white">Arts & Humanities</h3>
+          <p class="text-slate-300 text-xs">Literature, Philosophy, History, Linguistics, Architecture, Performing Arts, Religious Studies</p>
         </div>
       </div>
     </section>
@@ -189,18 +190,52 @@
       </div>
     </section>
 
+    </main>
+
+    <button
+      v-if="showBackToTop"
+      type="button"
+      class="fixed bottom-6 right-6 z-50 rounded-full px-4 py-3 text-white shadow-2xl transition-colors hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-orange-300/40"
+      style="background: var(--accent)"
+      aria-label="Back to top"
+      @click="backToTop"
+    >
+      ↑
+    </button>
+
     <!-- Footer -->
-    <footer class="border-t border-white/10 py-8 text-center text-slate-500 text-sm">
+    <footer class="border-t border-white/10 py-8 text-center text-slate-300 text-sm">
       <p>© 2026 PaperFull · Multi-Journal Academic Paper AI Tool</p>
     </footer>
   </div>
 </template>
 
 <script setup>
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import logoWithText from '../image/logo-with-text.png'
 import landingHero from '../image/landing-page.jpg'
 import featureIllustration from '../image/feature-illustration.jpg'
 import trustStrip from '../image/trust-strip-bg.jpg'
+
+const scrollY = ref(0)
+const showBackToTop = computed(() => scrollY.value > 520)
+
+function updateScrollY() {
+  scrollY.value = window.scrollY
+}
+
+function backToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+onMounted(() => {
+  updateScrollY()
+  window.addEventListener('scroll', updateScrollY, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateScrollY)
+})
 
 const features = [
   {

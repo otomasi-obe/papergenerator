@@ -19,25 +19,25 @@
 
     <!-- Sections List -->
     <div v-for="(section, sIdx) in store.paper.sections" :key="section.id"
-      class="border rounded-xl mb-4 overflow-hidden">
+      class="border dark:border-anthracite-500 rounded-xl mb-4 overflow-hidden">
 
       <!-- Section Header -->
-      <div class="bg-cream-200 px-4 py-3 flex items-center justify-between cursor-pointer"
+      <div class="bg-cream-200 dark:bg-anthracite-700 px-4 py-3 flex items-center justify-between cursor-pointer"
         @click="toggleSection(sIdx)">
         <div class="flex items-center gap-2">
           <svg :class="['w-4 h-4 transition-transform', expandedSections[sIdx] ? 'rotate-90' : '']"
             fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
           </svg>
-          <span class="font-bold text-brown-800">{{ section.number }}.</span>
+          <span class="font-bold text-brown-800 dark:text-anthracite-50">{{ section.number }}.</span>
           <input v-model="section.title" placeholder="Section Title (e.g. INTRODUCTION)"
-            class="bg-transparent font-semibold text-brown-900 focus:outline-none focus:bg-cream-50 px-2 py-0.5 rounded"
+            class="bg-transparent font-semibold text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 focus:outline-none focus:bg-cream-50 dark:focus:bg-anthracite-800 px-2 py-0.5 rounded"
             @click.stop />
         </div>
         <div class="flex items-center gap-2">
           <AiButton @click.stop="aiSection(sIdx)" label="AI" :loading="store.aiLoading" />
           <button @click.stop="store.addSubsection(sIdx)"
-            class="text-xs bg-cream-100 text-brown-700 px-2 py-1 rounded hover:bg-cream-300">+ Sub</button>
+            class="text-xs bg-cream-100 dark:bg-anthracite-600 text-brown-700 dark:text-anthracite-100 px-2 py-1 rounded hover:bg-cream-300 dark:hover:bg-anthracite-500">+ Sub</button>
           <button @click.stop="store.removeSection(sIdx)"
             class="text-xs text-red-400 hover:text-red-600">✕ Remove</button>
         </div>
@@ -46,28 +46,28 @@
       <!-- Section Content -->
       <div v-show="expandedSections[sIdx]" class="p-4 space-y-4">
         <div>
-          <label class="block text-xs text-brown-500 mb-1">Section Content</label>
+          <label class="block text-xs text-brown-500 dark:text-anthracite-200 mb-1">Section Content</label>
           <textarea v-model="section.content" rows="6"
             placeholder="Write section content... Use [1], [2] for citations. Use $$formula$$ for equations."
-            class="w-full px-3 py-2 border border-cream-300 bg-cream-50 text-brown-900 rounded-lg text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y font-serif"></textarea>
+            class="w-full px-3 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded-lg text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y"></textarea>
           <AiPromptBox :section="section.title || 'section'" :lastText="section.content"
             @generated="(text) => section.content = text" />
         </div>
 
         <!-- Subsections -->
         <div v-for="(sub, subIdx) in section.subsections" :key="sub.id"
-          class="border-l-4 border-cream-400 pl-4 ml-2 space-y-3">
+          class="border-l-4 border-cream-400 dark:border-anthracite-500 pl-4 ml-2 space-y-3">
 
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="font-semibold text-brown-700 text-sm">{{ sub.letter }}.</span>
+              <span class="font-semibold text-brown-700 dark:text-anthracite-100 text-sm">{{ sub.letter }}.</span>
               <input v-model="sub.title" placeholder="Subsection Title"
-                class="font-medium text-sm bg-transparent focus:outline-none focus:bg-cream-50 px-2 py-0.5 rounded border-b border-cream-300" />
+                class="font-medium text-sm bg-transparent text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 focus:outline-none focus:bg-cream-50 dark:focus:bg-anthracite-800 px-2 py-0.5 rounded border-b border-cream-300 dark:border-anthracite-500" />
             </div>
             <div class="flex items-center gap-2">
               <AiButton @click="aiSubsection(sIdx, subIdx)" label="AI" :loading="store.aiLoading" />
               <button @click="store.addNumberedItem(sIdx, subIdx)"
-                class="text-xs bg-cream-200 text-brown-700 px-2 py-1 rounded hover:bg-cream-300"># Item</button>
+                class="text-xs bg-cream-200 dark:bg-anthracite-600 text-brown-700 dark:text-anthracite-100 px-2 py-1 rounded hover:bg-cream-300 dark:hover:bg-anthracite-500"># Item</button>
               <button @click="store.removeSubsection(sIdx, subIdx)"
                 class="text-xs text-red-400 hover:text-red-600">✕</button>
             </div>
@@ -75,18 +75,18 @@
 
           <textarea v-model="sub.content" rows="4"
             placeholder="Subsection content..."
-            class="w-full px-3 py-2 border border-cream-300 bg-cream-50 text-brown-900 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y font-serif"></textarea>
+            class="w-full px-3 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y"></textarea>
           <AiPromptBox :section="sub.title || 'subsection'" :lastText="sub.content"
             @generated="(text) => sub.content = text" />
 
           <!-- Numbered Items (like "1) Weak Classifier Design") -->
           <div v-for="(item, itemIdx) in sub.numberedItems" :key="itemIdx"
-            class="border-l-4 border-cream-300 pl-3 ml-2 space-y-2">
+            class="border-l-4 border-cream-300 dark:border-anthracite-500 pl-3 ml-2 space-y-2">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-brown-600">{{ item.number }})</span>
+                <span class="text-sm font-semibold text-brown-600 dark:text-anthracite-100">{{ item.number }})</span>
                 <input v-model="item.title" placeholder="Item Title"
-                  class="text-sm bg-transparent focus:outline-none focus:bg-cream-50 px-2 py-0.5 rounded border-b border-cream-300" />
+                  class="text-sm bg-transparent text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 focus:outline-none focus:bg-cream-50 dark:focus:bg-anthracite-800 px-2 py-0.5 rounded border-b border-cream-300 dark:border-anthracite-500" />
               </div>
               <div class="flex items-center gap-1">
                 <AiButton @click="aiNumberedItem(sIdx, subIdx, itemIdx)" label="AI" :loading="store.aiLoading" />
@@ -96,7 +96,7 @@
             </div>
             <textarea v-model="item.content" rows="3"
               placeholder="Item content..."
-              class="w-full px-3 py-2 border border-cream-300 bg-cream-50 text-brown-900 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y font-serif"></textarea>
+              class="w-full px-3 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y"></textarea>
             <AiPromptBox :section="item.title || 'item'" :lastText="item.content"
               @generated="(text) => item.content = text" />
           </div>

@@ -22,6 +22,11 @@
   --border-soft: #d6d5cd;     /* tebal sedikit agar terbaca rofiq.txt #1 */
   --border-strong: #1a1a1a;   /* garis hitam tebal untuk light mode rofiq.txt #1 */
   --accent: #d97757;          /* claude.ai orange accent */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 40px; --space-7: 64px;
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 12px 32px rgba(0,0,0,0.16);
+  --t-fast: 150ms ease; --t-slow: 250ms ease;
+  --focus-ring: 0 0 0 3px rgba(217,119,87,0.3);
   --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -40,6 +45,11 @@ html.dark {
   --border-soft: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.22);
   --accent: #d97757;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 40px; --space-7: 64px;
+  --radius-sm: 6px; --radius-md: 12px; --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 12px 32px rgba(0,0,0,0.16);
+  --t-fast: 150ms ease; --t-slow: 250ms ease;
+  --focus-ring: 0 0 0 3px rgba(217,119,87,0.3);
 }
 
 /* Global */
@@ -119,9 +129,9 @@ h1, h2, .display-serif {
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
   border-radius: 50%;
-  border-top-color: #fff;
+  border-top-color: currentColor;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin {

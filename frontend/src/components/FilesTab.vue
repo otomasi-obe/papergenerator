@@ -2,8 +2,8 @@
   <div class="p-6">
     <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
       <div>
-        <h2 class="text-lg font-semibold text-gray-800">Files</h2>
-        <p class="text-xs text-gray-500 mt-0.5">PDF / DOCX / DOC / TXT / MD — max 10MB per file.</p>
+        <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Files</h2>
+        <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD — max 10MB per file. Bisa upload banyak file sekaligus.</p>
       </div>
       <div class="flex items-center gap-2">
         <input
@@ -17,48 +17,48 @@
         <button
           @click="fileInput?.click()"
           :disabled="!store.currentPaperId || uploading"
-          class="px-3 py-1.5 bg-brown-600 hover:bg-brown-700 text-cream-50 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+          class="px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
         >
-          <span v-if="uploading">Uploading…</span>
+          <span v-if="uploading">Uploading… ({{ uploadProgress }})</span>
           <span v-else>＋ Upload file</span>
         </button>
       </div>
     </div>
 
-    <p v-if="warning" class="max-w-5xl mx-auto mb-3 text-xs text-amber-600">{{ warning }}</p>
+    <p v-if="warning" class="max-w-5xl mx-auto mb-3 text-xs text-amber-700 dark:text-amber-300">{{ warning }}</p>
 
     <div class="max-w-5xl mx-auto grid lg:grid-cols-[280px,1fr] gap-4">
       <!-- File list -->
-      <aside class="bg-white border rounded-xl shadow-sm overflow-hidden">
-        <div class="px-3 py-2 border-b text-xs font-semibold text-slate-600 bg-slate-50">
+      <aside class="bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-sm overflow-hidden">
+        <div class="px-3 py-2 border-b border-cream-300 dark:border-ash-700 text-xs font-semibold text-ink-700 dark:text-ink-200 bg-cream-100 dark:bg-ash-850">
           {{ files.length }} file{{ files.length === 1 ? '' : 's' }}
         </div>
-        <div v-if="loading" class="px-3 py-6 text-center text-xs text-slate-400">Loading…</div>
-        <div v-else-if="!files.length" class="px-3 py-12 text-center text-xs text-slate-400">
+        <div v-if="loading" class="px-3 py-6 text-center text-xs text-ink-500 dark:text-ink-300">Loading…</div>
+        <div v-else-if="!files.length" class="px-3 py-12 text-center text-xs text-ink-500 dark:text-ink-300">
           Belum ada file. Klik <strong>＋ Upload file</strong>.
         </div>
-        <ul v-else class="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+        <ul v-else class="divide-y divide-cream-200 dark:divide-ash-700 max-h-[60vh] overflow-y-auto">
           <li
             v-for="f in files"
             :key="f.id"
             :class="[
               'group px-3 py-2 cursor-pointer flex items-start gap-2 transition-colors',
-              activeFileId === f.id ? 'bg-cream-200' : 'hover:bg-cream-100',
+              activeFileId === f.id ? 'bg-cream-200 dark:bg-ash-700' : 'hover:bg-cream-100 dark:hover:bg-ash-700',
             ]"
             @click="selectFile(f)"
           >
             <span class="text-base leading-none pt-0.5">{{ extIcon(f.ext) }}</span>
             <div class="min-w-0 flex-1">
-              <div :class="['text-xs truncate', activeFileId === f.id ? 'text-brown-800 font-semibold' : 'text-brown-700 font-medium']" :title="f.original_name">
+              <div :class="['text-xs truncate', activeFileId === f.id ? 'text-ink-900 dark:text-ink-50 font-semibold' : 'text-ink-700 dark:text-ink-100 font-medium']" :title="f.original_name">
                 {{ f.original_name }}
               </div>
-              <div class="text-[10px] text-slate-400 mt-0.5">
+              <div class="text-[10px] text-ink-500 dark:text-ink-300 mt-0.5">
                 {{ humanSize(f.size_bytes) }} · {{ formatDate(f.created_at) }}
               </div>
             </div>
             <button
               @click.stop="removeFile(f)"
-              class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 text-xs px-1"
+              class="opacity-0 group-hover:opacity-100 text-ink-400 dark:text-ink-300 hover:text-rose-500 text-xs px-1"
               title="Hapus"
             >🗑</button>
           </li>
@@ -66,27 +66,27 @@
       </aside>
 
       <!-- Preview pane -->
-      <section class="bg-white border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[60vh]">
-        <header v-if="activeFile" class="px-4 py-2.5 border-b flex items-center justify-between">
+      <section class="bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[60vh]">
+        <header v-if="activeFile" class="px-4 py-2.5 border-b border-cream-300 dark:border-ash-700 flex items-center justify-between">
           <div class="min-w-0 flex-1">
-            <div class="text-sm font-semibold text-slate-800 truncate" :title="activeFile.original_name">
+            <div class="text-sm font-semibold text-ink-900 dark:text-ink-50 truncate" :title="activeFile.original_name">
               {{ extIcon(activeFile.ext) }} {{ activeFile.original_name }}
             </div>
-            <div class="text-[11px] text-slate-400">{{ humanSize(activeFile.size_bytes) }}</div>
+            <div class="text-[11px] text-ink-500 dark:text-ink-300">{{ humanSize(activeFile.size_bytes) }}</div>
           </div>
           <a
             :href="rawUrl(activeFile)"
             target="_blank"
             rel="noopener"
-            class="text-xs text-brown-600 hover:text-brown-800 font-medium px-2 py-1 rounded hover:bg-cream-200"
+            class="text-xs text-ink-700 dark:text-ink-100 hover:text-ink-900 dark:hover:text-ink-50 font-medium px-2 py-1 rounded hover:bg-cream-200 dark:hover:bg-ash-700"
           >Buka di tab baru ↗</a>
         </header>
 
-        <div v-if="!activeFile" class="flex-1 flex items-center justify-center text-xs text-slate-400">
+        <div v-if="!activeFile" class="flex-1 flex items-center justify-center text-xs text-ink-500 dark:text-ink-300">
           Pilih file di kiri untuk melihat preview.
         </div>
 
-        <div v-else class="flex-1 overflow-y-auto bg-slate-50">
+        <div v-else class="flex-1 overflow-y-auto bg-cream-100/40 dark:bg-ash-850">
           <!-- PDF inline iframe -->
           <iframe
             v-if="activeFile.ext === '.pdf'"
@@ -96,16 +96,24 @@
           <!-- TXT / MD -->
           <pre
             v-else-if="['.txt', '.md'].includes(activeFile.ext)"
-            class="px-5 py-4 text-xs leading-relaxed text-slate-700 whitespace-pre-wrap font-mono"
+            class="px-5 py-4 text-xs leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap font-mono"
           >{{ previewText || '(kosong)' }}</pre>
           <!-- DOCX / DOC: show extracted text -->
-          <div v-else class="px-5 py-4 text-xs leading-relaxed text-slate-700 whitespace-pre-wrap font-mono">
-            <div v-if="!previewText" class="text-slate-400">(tidak bisa di-preview di browser)</div>
+          <div v-else class="px-5 py-4 text-xs leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap font-mono">
+            <div v-if="!previewText" class="text-ink-500 dark:text-ink-300">(tidak bisa di-preview di browser)</div>
             <template v-else>{{ previewText }}</template>
           </div>
         </div>
       </section>
     </div>
+
+    <AppDialog v-if="deleteFileTarget" :open="!!deleteFileTarget" title="Hapus file?" @close="deleteFileTarget = null">
+      <p class="text-sm text-ink-700 dark:text-ink-200">Hapus "{{ deleteFileTarget.original_name }}"?</p>
+      <template #actions>
+        <button @click="deleteFileTarget = null" class="px-3 py-1.5 text-xs rounded border border-cream-300 dark:border-ash-700 text-ink-700 dark:text-ink-200 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
+        <button @click="confirmRemoveFile" class="px-3 py-1.5 text-xs rounded bg-rose-600 hover:bg-rose-700 text-white">Delete</button>
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -113,17 +121,20 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import { usePaperStore } from '../stores/paper.js'
 import api from '../api/index.js'
+import AppDialog from './AppDialog.vue'
 
 const store = usePaperStore()
 
 const files = ref([])
 const loading = ref(false)
 const uploading = ref(false)
+const uploadProgress = ref('')
 const warning = ref('')
 
 const fileInput = ref(null)
 const activeFileId = ref(null)
 const previewText = ref('')
+const deleteFileTarget = ref(null)
 
 const activeFile = computed(() => files.value.find(f => f.id === activeFileId.value))
 
@@ -171,11 +182,21 @@ async function onFileChange(e) {
 
   uploading.value = true
   warning.value = ''
+  // Backend has a 20-worker extraction pool — we send the whole batch and let
+  // the server queue. The progress label is just a hint, real concurrency is
+  // server-side.
+  uploadProgress.value = `0/${list.length}`
   try {
     const fd = new FormData()
     list.forEach(f => fd.append('files', f))
     const res = await api.post(`/api/papers/${store.currentPaperId}/files`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (evt) => {
+        if (evt.total) {
+          const pct = Math.round((evt.loaded / evt.total) * 100)
+          uploadProgress.value = `${pct}%`
+        }
+      },
     })
     const newFiles = res.data.files || []
     files.value = [...newFiles, ...files.value]
@@ -185,11 +206,17 @@ async function onFileChange(e) {
     warning.value = 'Upload gagal: ' + (e.response?.data?.error || e.message)
   } finally {
     uploading.value = false
+    uploadProgress.value = ''
   }
 }
 
-async function removeFile(f) {
-  if (!confirm(`Hapus "${f.original_name}"?`)) return
+function removeFile(f) {
+  deleteFileTarget.value = f
+}
+
+async function confirmRemoveFile() {
+  const f = deleteFileTarget.value
+  if (!f) return
   try {
     await api.delete(`/api/papers/${store.currentPaperId}/files/${f.id}`)
     files.value = files.value.filter(x => x.id !== f.id)
@@ -200,6 +227,8 @@ async function removeFile(f) {
     }
   } catch (e) {
     warning.value = 'Hapus gagal: ' + (e.response?.data?.error || e.message)
+  } finally {
+    deleteFileTarget.value = null
   }
 }
 

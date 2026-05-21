@@ -26,7 +26,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob
+from models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
 from auth import auth_bp, init_oauth
 from admin import admin_bp
 from chat import chat_bp
@@ -34,6 +34,7 @@ from papers_bp import papers_bp
 from files_bp import files_bp
 from images_bp import paper_images_bp, image_serve_bp
 from jobs_bp import jobs_bp
+from image_jobs_bp import image_jobs_bp
 from slr_bp import slr_bp
 from quota_bp import quota_bp
 
@@ -150,6 +151,7 @@ app.register_blueprint(files_bp)
 app.register_blueprint(paper_images_bp)
 app.register_blueprint(image_serve_bp)
 app.register_blueprint(jobs_bp)
+app.register_blueprint(image_jobs_bp)
 app.register_blueprint(slr_bp)
 app.register_blueprint(quota_bp)
 
@@ -398,6 +400,24 @@ def _sweep_stuck_jobs():
 
 threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").start()
 
+# ─── Image generation worker pool (4 workers, 1 per Gemini account) ──────
+# Lazy-started so the import-only path (CLI / tests / migrations) doesn't try
+# to spin up Playwright. Started here on app boot.
+try:
+    from image_worker import start_image_workers as _start_image_workers  # noqa: PLC0415
+    _start_image_workers(app)
+except Exception:
+    log.exception("Failed to start image worker pool — generate-image will not work")
+
+# ─── SLR worker pool (max 10 workers, FIFO DB-backed queue) ─────────────
+# Pulls SlrJob rows and runs the multi-source academic search + AI
+# summarization pipeline. Idempotent across gunicorn worker processes.
+try:
+    from slr_worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
+    _start_slr_workers(app)
+except Exception:
+    log.exception("Failed to start SLR worker pool — Literature/SLR jobs will queue but not run")
+
 # ─── Health Check ────────────────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])
@@ -584,6 +604,51 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
                     f"Generation timed out after {int(elapsed)}s. Try a shorter topic." if timeout_flag else err_str,
                     timeout_flag=timeout_flag,
                 )
+    finally:
+        # Always clear the chat-side active-job registry so the
+        # /active-job endpoint stops reporting an in-flight job whether
+        # generation succeeded or failed.
+        try:
+            from chat import clear_active_job
+            if paper_id:
+                clear_active_job(paper_id)
+        except Exception:
+            pass
+
+
+@app.route("/api/papers/<paper_id>/active-job", methods=["GET"])
+@jwt_required()
+def get_paper_active_job(paper_id):
+    """Return the active generation job for this paper, or null."""
+    user_id = _get_current_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return jsonify({"error": "Paper not found"}), 404
+    try:
+        from chat import _active_jobs_by_paper
+        job_id = _active_jobs_by_paper.get(paper_id)
+        if not job_id:
+            return jsonify({"active": False})
+        job = AiJob.query.filter_by(id=job_id, user_id=int(user_id)).first()
+        if not job or job.status != 'pending':
+            # Stale — clean up and report no active job.
+            _active_jobs_by_paper.pop(paper_id, None)
+            return jsonify({"active": False})
+        elapsed = (
+            int((datetime.now(timezone.utc) - job.started_at.replace(tzinfo=timezone.utc)).total_seconds())
+            if job.started_at else 0
+        )
+        return jsonify({
+            "active": True,
+            "job_id": job.id,
+            "prompt": (job.prompt or "")[:200],
+            "elapsed_seconds": elapsed,
+            "status": job.status,
+        })
+    except Exception as e:
+        return jsonify({"active": False, "error": str(e)})
 
 
 @app.route("/api/generate-full", methods=["POST"])
@@ -601,9 +666,9 @@ def generate_full():
         style = data.get("style") or None
         pdf_texts = data.get("pdf_texts") or []
 
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key == "sk-your-actual-api-key":
-            raise Exception("OPENAI_API_KEY not configured")
+        api_key = os.getenv("AIOTOMASI_APIKEY")
+        if not api_key:
+            raise Exception("AIOTOMASI_APIKEY not configured")
 
         user_id = _get_current_user_id()
         if not user_id:
@@ -672,16 +737,22 @@ def list_styles():
     return jsonify({"styles": styles})
 
 
-MAX_PDF_FILES = 5
+MAX_PDF_FILES = 10
 MAX_WORDS_PER_FILE = 5000
 
 @app.route("/api/upload-pdfs", methods=["POST"])
 @limiter.limit("20 per minute")
 @jwt_required()
 def upload_pdfs():
-    """Extract text from up to 5 uploaded PDF/DOCX files (max 5000 words each)."""
+    """Extract text from up to 5 uploaded PDF/DOCX files (max 5000 words each).
+
+    Routes through the shared 20-worker extraction pool in files_bp so a chat
+    upload doesn't block a Files-tab upload (and vice versa).
+    """
     from extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
     from docx import Document  # noqa: PLC0415
+    from files_bp import _EXTRACT_POOL  # noqa: PLC0415
+    import io  # noqa: PLC0415
 
     files = request.files.getlist("files")
     if not files:
@@ -689,35 +760,47 @@ def upload_pdfs():
     if len(files) > MAX_PDF_FILES:
         return jsonify({"error": f"Max {MAX_PDF_FILES} files allowed"}), 400
 
-    results = []
+    # Read bytes synchronously (cheap), then extract in parallel.
+    payloads = []
     warnings = []
     for f in files:
+        filename = (f.filename or "").lower()
         try:
-            # Check file extension to determine extraction method
-            filename = f.filename.lower()
-            if filename.endswith('.pdf'):
-                text = extract_text_from_pdf(f.stream)
-            elif filename.endswith('.docx') or filename.endswith('.doc'):
-                # Extract text from DOCX/DOC
-                import io
-                from docx import Document  # noqa: PLC0415
-                
-                # Read stream into BytesIO for docx library
-                stream_data = f.stream.read()
-                doc_stream = io.BytesIO(stream_data)
-                doc = Document(doc_stream)
-                text = "\n".join([para.text for para in doc.paragraphs])
-            else:
-                warnings.append(f"{f.filename}: format tidak didukung (hanya PDF dan DOCX)")
-                continue
-
-            words = text.split()
-            if len(words) > MAX_WORDS_PER_FILE:
-                warnings.append(f"{f.filename}: file terlalu besar, dibatasi ke {MAX_WORDS_PER_FILE} kata")
-                text = " ".join(words[:MAX_WORDS_PER_FILE])
-            results.append(text)
+            data = f.stream.read()
         except Exception as e:
-            warnings.append(f"{f.filename}: gagal mengekstrak ({e})")
+            warnings.append(f"{f.filename}: gagal baca stream ({e})")
+            continue
+        if filename.endswith(".pdf"):
+            payloads.append(("pdf", f.filename, data))
+        elif filename.endswith(".docx") or filename.endswith(".doc"):
+            payloads.append(("docx", f.filename, data))
+        else:
+            warnings.append(f"{f.filename}: format tidak didukung (hanya PDF dan DOCX)")
+
+    def _extract(kind, name, blob):
+        try:
+            if kind == "pdf":
+                return extract_text_from_pdf(io.BytesIO(blob))
+            doc = Document(io.BytesIO(blob))
+            return "\n".join(p.text for p in doc.paragraphs)
+        except Exception as e:
+            return f"[Error reading {name}: {e}]"
+
+    futures = [(name, _EXTRACT_POOL.submit(_extract, kind, name, blob))
+               for kind, name, blob in payloads]
+
+    results = []
+    for name, fut in futures:
+        try:
+            text = fut.result(timeout=120)
+        except Exception as e:
+            warnings.append(f"{name}: gagal mengekstrak ({e})")
+            continue
+        words = text.split()
+        if len(words) > MAX_WORDS_PER_FILE:
+            warnings.append(f"{name}: file terlalu besar, dibatasi ke {MAX_WORDS_PER_FILE} kata")
+            text = " ".join(words[:MAX_WORDS_PER_FILE])
+        results.append(text)
 
     return jsonify({"pdf_texts": results, "warnings": warnings})
 

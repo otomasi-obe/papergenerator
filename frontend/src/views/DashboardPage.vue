@@ -15,84 +15,80 @@
         </router-link>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loading" class="text-center py-20 text-ink-600 dark:text-ink-300">
-        <div class="text-3xl mb-3 animate-spin">⚙️</div>
-        Loading your papers...
-      </div>
-
-      <!-- Empty State -->
-      <div v-else-if="papers.length === 0" class="text-center py-20">
-        <div class="text-6xl mb-4">📄</div>
-        <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
-        <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
-        <router-link to="/editor" class="px-6 py-3 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition-colors">
-          Create First Paper
-        </router-link>
-      </div>
-
-      <!-- Paper Grid -->
-      <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <div v-for="paper in papers" :key="paper.id"
-          @click="openPaper(paper)"
-          class="bg-cream-50 dark:bg-ash-800 rounded-2xl border border-cream-300 dark:border-ash-700 shadow-sm hover:shadow-md transition-all overflow-hidden group cursor-pointer hover:border-brown-500 dark:hover:border-cream-400">
-
-          <!-- Card Body (clickable) -->
-          <div class="p-5 pb-3">
-            <h3 class="font-semibold text-ink-900 dark:text-ink-50 text-sm leading-snug line-clamp-3 mb-2 group-hover:text-brown-700 dark:group-hover:text-cream-200 transition-colors">
-              {{ paper.title || 'Untitled Paper' }}
-            </h3>
-            <p class="text-xs text-ink-600 dark:text-ink-300">
-              Updated {{ formatDate(paper.updated_at) }}
-            </p>
+      <StateView :loading="loading" :error="errorMsg" :is-empty="papers.length === 0" :on-retry="loadPapers">
+        <template #loading>
+          <div class="text-center py-20 text-ink-600 dark:text-ink-300">
+            <div class="text-3xl mb-3 animate-spin" aria-hidden="true">⚙️</div>
+            Loading your papers...
           </div>
-
-          <!-- Stats row -->
-          <div class="flex items-center gap-3 px-5 pb-3 text-xs text-ink-600 dark:text-ink-300">
-            <span class="flex items-center gap-1">🖼️ {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
+        </template>
+        <template #empty>
+          <div class="text-center py-20">
+            <div class="text-6xl mb-4" aria-hidden="true">📄</div>
+            <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
+            <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
+            <router-link to="/editor" class="px-6 py-3 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition-colors">
+              Create First Paper
+            </router-link>
           </div>
+        </template>
 
-          <!-- Actions -->
-          <div class="flex items-center gap-1 px-4 pb-4" @click.stop>
-            <button @click="openPaper(paper)"
-              class="flex-1 px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-xs rounded-lg transition-colors font-medium">
-              Open
-            </button>
-            <button @click="copyPaper(paper)" :disabled="copying === paper.id"
-              class="px-3 py-1.5 bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition-colors disabled:opacity-50"
-              title="Copy paper">
-              {{ copying === paper.id ? '...' : 'Copy' }}
-            </button>
-            <button @click="confirmDelete(paper)"
-              class="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-xs rounded-lg transition-colors"
-              title="Delete paper">
-              Delete
-            </button>
-          </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <article v-for="paper in papers" :key="paper.id"
+            class="bg-cream-50 dark:bg-ash-800 rounded-2xl border border-cream-300 dark:border-ash-700 shadow-sm hover:shadow-md transition-all overflow-hidden group hover:border-brown-500 dark:hover:border-cream-400">
+            <router-link :to="{ name: 'editor', params: { paperId: paper.id } }" @click="store.currentPaperId = null"
+              class="block p-5 pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-t-2xl">
+              <h3 class="font-semibold text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-brown-700 dark:group-hover:text-cream-200 transition-colors">
+                {{ paper.title || 'Untitled Paper' }}
+              </h3>
+              <div class="flex flex-wrap gap-2 text-xs text-ink-600 dark:text-ink-300">
+                <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">Updated {{ formatDate(paper.updated_at) }}</span>
+                <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
+                <span v-if="paper.journal" class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">{{ paper.journal }}</span>
+                <span v-if="paper.section_count" class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">{{ paper.section_count }} sections</span>
+              </div>
+            </router-link>
+
+            <div class="flex items-center gap-1 px-4 pb-4">
+              <button @click="openPaper(paper)"
+                class="flex-1 px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-xs rounded-lg transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                Open
+              </button>
+              <button @click="copyPaper(paper)" :disabled="copying === paper.id"
+                class="px-3 py-1.5 bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                title="Copy paper">
+                {{ copying === paper.id ? '...' : 'Copy' }}
+              </button>
+              <button @click="confirmDelete(paper)"
+                class="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-xs rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                title="Delete paper">
+                Delete
+              </button>
+            </div>
+          </article>
         </div>
-      </div>
+      </StateView>
     </main>
 
-    <!-- Delete Confirm Modal -->
-    <div v-if="deleteTarget" class="fixed inset-0 bg-ash-900/60 dark:bg-ash-900/80 flex items-center justify-center z-50 p-4" @click.self="deleteTarget = null">
-      <div class="bg-cream-50 dark:bg-ash-800 rounded-2xl shadow-xl p-6 max-w-sm w-full border border-cream-300 dark:border-ash-700">
-        <div class="text-2xl mb-3">🗑️</div>
-        <h3 class="font-semibold text-ink-900 dark:text-ink-50 mb-2">Delete Paper?</h3>
-        <p class="text-ink-700 dark:text-ink-200 text-sm mb-5">
-          "<strong>{{ deleteTarget.title || 'Untitled Paper' }}</strong>" and all its images will be permanently deleted.
-        </p>
-        <div class="flex gap-3">
-          <button @click="deleteTarget = null"
-            class="flex-1 px-4 py-2.5 border border-cream-400 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">
-            Cancel
-          </button>
-          <button @click="doDelete()"
-            class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
+    <AppDialog v-if="deleteTarget" :open="!!deleteTarget" title="Delete Paper?" @close="deleteTarget = null">
+      <p class="text-ink-700 dark:text-ink-200 text-sm">
+        "<strong>{{ deleteTarget.title || 'Untitled Paper' }}</strong>" and all its images will be permanently deleted.
+      </p>
+      <template #actions>
+        <button @click="deleteTarget = null"
+          class="px-4 py-2.5 border border-cream-400 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">
+          Cancel
+        </button>
+        <button @click="doDelete()"
+          class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
+          Delete
+        </button>
+      </template>
+    </AppDialog>
+
+    <Teleport to="body">
+      <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div>
+    </Teleport>
   </div>
 </template>
 
@@ -101,6 +97,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/index.js'
 import AppHeader from '../components/AppHeader.vue'
+import AppDialog from '../components/AppDialog.vue'
+import StateView from '../components/StateView.vue'
 import { usePaperStore } from '../stores/paper.js'
 
 const router = useRouter()
@@ -110,13 +108,24 @@ const papers = ref([])
 const loading = ref(true)
 const deleteTarget = ref(null)
 const copying = ref(null)
+const errorMsg = ref('')
+const toastMsg = ref('')
+let toastTimer = null
+
+function showToast(msg) {
+  toastMsg.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMsg.value = '' }, 2500)
+}
 
 async function loadPapers() {
   loading.value = true
+  errorMsg.value = ''
   try {
     const res = await api.get('/api/papers')
     papers.value = res.data.papers || []
   } catch (e) {
+    errorMsg.value = 'Failed to load papers'
     console.error('Failed to load papers', e)
   } finally {
     loading.value = false
@@ -141,7 +150,9 @@ async function copyPaper(paper) {
     delete data.id
     await api.post('/api/papers', data)
     await loadPapers()
+    showToast('Paper copied')
   } catch (e) {
+    showToast('Copy failed — try again')
     console.error('Copy failed', e)
   } finally {
     copying.value = null
@@ -157,7 +168,9 @@ async function doDelete() {
   try {
     await api.delete(`/api/papers/${deleteTarget.value.id}`)
     papers.value = papers.value.filter(p => p.id !== deleteTarget.value.id)
+    showToast('Paper deleted')
   } catch (e) {
+    showToast('Delete failed — try again')
     console.error('Delete failed', e)
   } finally {
     deleteTarget.value = null

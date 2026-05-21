@@ -36,7 +36,7 @@
 
     <!-- Running indicator -->
     <div v-if="toolCall.status === 'running'" class="px-3 py-2 flex items-center gap-2">
-      <span class="inline-block w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></span>
+      <span class="inline-block w-3 h-3 border-2 border-[var(--accent)]/70 border-t-transparent rounded-full animate-spin"></span>
       <span class="text-gray-500">Executing...</span>
     </div>
   </div>

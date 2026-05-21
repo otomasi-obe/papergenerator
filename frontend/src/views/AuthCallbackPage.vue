@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-slate-900 flex items-center justify-center">
+  <main class="min-h-screen bg-slate-900 flex items-center justify-center">
     <div class="text-center text-white">
-      <div class="text-4xl mb-4 animate-spin">⚙️</div>
-      <p class="text-slate-400">{{ statusMsg }}</p>
+      <div class="text-4xl mb-4 animate-spin" aria-hidden="true">⚙️</div>
+      <p class="text-slate-400" role="status" aria-live="polite">{{ statusMsg }}</p>
     </div>
-  </div>
+  </main>
 </template>
 
 <script setup>

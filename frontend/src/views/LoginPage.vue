@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-brown-900 via-brown-800 to-stone-900 flex items-center justify-center px-4">
+  <main class="min-h-screen bg-gradient-to-br from-brown-900 via-brown-800 to-stone-900 flex items-center justify-center px-4">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-8">
@@ -26,21 +26,21 @@
 
         <!-- Email/Password Form -->
         <form @submit.prevent="handleSubmit" class="space-y-4 mb-5">
-          <div v-if="isRegister">
-            <label class="text-cream-200/70 text-xs block mb-1">Name</label>
+          <label v-if="isRegister" class="block">
+            <span class="text-cream-200/80 text-xs block mb-1">Name</span>
             <input v-model="form.name" type="text" placeholder="Your full name"
-              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
-          </div>
-          <div>
-            <label class="text-cream-200/70 text-xs block mb-1">Email</label>
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+          </label>
+          <label class="block">
+            <span class="text-cream-200/80 text-xs block mb-1">Email</span>
             <input v-model="form.email" type="email" placeholder="you@example.com"
-              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
-          </div>
-          <div>
-            <label class="text-cream-200/70 text-xs block mb-1">Password</label>
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+          </label>
+          <label class="block">
+            <span class="text-cream-200/80 text-xs block mb-1">Password</span>
             <input v-model="form.password" type="password" placeholder="Min. 8 chars, mix of types"
-              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/40 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
-          </div>
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+          </label>
           <!-- Cloudflare Turnstile widget — only shown for register flow -->
           <div v-if="isRegister && turnstileSiteKey" class="flex justify-center">
             <div ref="turnstileBox" class="cf-turnstile"
@@ -57,7 +57,7 @@
         <!-- Divider -->
         <div class="flex items-center gap-3 mb-5">
           <div class="flex-1 h-px bg-cream-200/15"></div>
-          <span class="text-cream-200/50 text-xs">or</span>
+          <span class="text-cream-200/70 text-xs">or</span>
           <div class="flex-1 h-px bg-cream-200/15"></div>
         </div>
 
@@ -83,19 +83,19 @@
           </button>
         </p>
 
-        <p class="text-center text-cream-200/40 text-xs mt-4">
+        <p class="text-center text-cream-200/80 text-xs mt-4">
           By signing in, you agree to our privacy policy.<br>
           Your papers are private and belong to you.
         </p>
       </div>
 
       <div class="text-center mt-6">
-        <router-link to="/" class="text-cream-200/50 hover:text-cream-200 text-sm transition-colors">
+        <router-link to="/" class="text-cream-200/70 hover:text-cream-200 text-sm transition-colors">
           ← Back to home
         </router-link>
       </div>
     </div>
-  </div>
+  </main>
 </template>
 
 <script setup>

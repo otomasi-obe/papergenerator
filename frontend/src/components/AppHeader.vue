@@ -9,8 +9,8 @@
         </router-link>
 
         <!-- Token quota bar -->
-        <div v-if="quota.quota_monthly > 0" class="relative group" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 cursor-default">
+        <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
+          <button type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
             <div class="w-24 h-2 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
               <div
                 class="h-full transition-all"
@@ -21,9 +21,9 @@
             <span class="text-[11px] font-mono tabular-nums text-ink-700 dark:text-ink-200">
               {{ formatNum(quota.used_month) }}/{{ formatNum(quota.quota_monthly) }}
             </span>
-          </div>
-          <!-- Tooltip on hover: detail breakdown -->
-          <div class="hidden group-hover:block absolute left-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-lg shadow-lg p-3 z-50 text-xs">
+          </button>
+          <!-- Tooltip: detail breakdown -->
+          <div v-if="quotaOpen" role="dialog" class="absolute left-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-lg shadow-lg p-3 z-50 text-xs" @keydown.escape.stop="quotaOpen = false">
             <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Pemakaian token bulan {{ quota.month_key }}</div>
             <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
               <span>Hari ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
@@ -44,10 +44,10 @@
         </div>
 
         <nav class="hidden md:flex items-center gap-1 text-sm">
-          <router-link to="/dashboard" class="px-3 py-1.5 rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50">
+          <router-link to="/dashboard" class="px-3 py-1.5 rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
             Papers
           </router-link>
-          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-brown-200 dark:bg-ash-600 text-ink-900 dark:text-ink-50">
+          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
             Admin
           </router-link>
         </nav>
@@ -57,7 +57,9 @@
       <div class="flex items-center gap-3">
         <div class="relative" ref="menuRef">
           <button @click="menuOpen = !menuOpen"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50">
+            class="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50"
+            aria-haspopup="menu"
+            :aria-expanded="menuOpen">
             <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-7 h-7 rounded-full" alt="avatar" />
             <span v-else class="w-7 h-7 rounded-full bg-brown-500 dark:bg-brown-400 flex items-center justify-center text-cream-50 text-xs font-bold">
               {{ auth.user?.name?.[0]?.toUpperCase() || 'U' }}
@@ -67,7 +69,7 @@
           </button>
 
           <!-- Dropdown -->
-          <div v-if="menuOpen" class="absolute right-0 top-full mt-1 w-56 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50">
+          <div v-if="menuOpen" role="menu" class="absolute right-0 top-full mt-1 w-56 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50">
             <div class="px-4 py-3 border-b border-cream-200 dark:border-ash-700">
               <p class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ auth.user?.name }}</p>
               <p class="text-xs text-ink-600 dark:text-ink-300">{{ auth.user?.email }}</p>
@@ -97,14 +99,14 @@
             </div>
 
             <router-link to="/dashboard" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors">
-              📄 My Papers
+              <span aria-hidden="true">📄</span> My Papers
             </router-link>
             <router-link v-if="auth.isAdmin" to="/admin" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors">
-              📊 Admin
+              <span aria-hidden="true">📊</span> Admin
             </router-link>
             <div class="border-t border-cream-200 dark:border-ash-700">
               <button @click="doLogout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
-                🚪 Sign Out
+                <span aria-hidden="true">🚪</span> Sign Out
               </button>
             </div>
           </div>
@@ -120,12 +122,14 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useTheme } from '../stores/theme.js'
 import api from '../api/index.js'
-import logoUrl from '../image/logo.png'
+const logoUrl = '/logo.png'
 
 const auth = useAuthStore()
 const router = useRouter()
 const menuOpen = ref(false)
+const quotaOpen = ref(false)
 const menuRef = ref(null)
+const quotaRef = ref(null)
 
 const { mode, setMode } = useTheme()
 
@@ -171,6 +175,9 @@ function doLogout() {
 function handleOutsideClick(e) {
   if (menuRef.value && !menuRef.value.contains(e.target)) {
     menuOpen.value = false
+  }
+  if (quotaRef.value && !quotaRef.value.contains(e.target)) {
+    quotaOpen.value = false
   }
 }
 

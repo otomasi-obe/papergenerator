@@ -35,8 +35,8 @@
       <div class="p-4 space-y-3">
         <!-- Caption -->
         <div>
-          <label class="block text-xs text-brown-500 mb-1">Caption</label>
-          <input v-model="table.caption"
+          <label :for="`table-${tIdx}-caption`" class="block text-xs text-brown-500 mb-1">Caption</label>
+          <input :id="`table-${tIdx}-caption`" v-model="table.caption"
             placeholder="TABLE I. STATISTICAL ANALYSIS"
             class="w-full px-3 py-1.5 border border-cream-300 bg-cream-50 text-brown-900 rounded text-sm" />
         </div>

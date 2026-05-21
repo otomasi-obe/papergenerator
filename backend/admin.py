@@ -74,7 +74,7 @@ def set_user_quota(user_id):
 
     data = request.get_json() or {}
     try:
-        quota = int(data.get('token_quota_monthly', 50000))
+        quota = int(data.get('token_quota_monthly', 1000000))
     except (TypeError, ValueError):
         return jsonify({'error': 'token_quota_monthly must be integer'}), 400
     if quota < 0 or quota > 10_000_000:

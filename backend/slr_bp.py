@@ -1,335 +1,452 @@
-"""
-SLR (Systematic Literature Review) blueprint — searches multiple OA paper
-indexes in parallel, deduplicates by DOI/title, ranks by citation count and
-recency, returns up to 30 candidates. Cached per (paper_id, topic) into
-project_memory so the same chat doesn't re-fetch.
+"""SLR + Literature blueprint.
 
-Endpoints
----------
-POST /api/papers/<paper_id>/slr
-    body: {topic: str, limit: int=30, refresh: bool=false}
-    Returns: {results: [...], sources_used: [...], sources_failed: [...], cached: bool}
+Endpoints:
 
-Sources (graceful skip on failure):
-- OpenAlex      — https://api.openalex.org/works
-- DOAJ          — https://doaj.org/api/search/articles/
-- Crossref      — https://api.crossref.org/works
-- Semantic Schl — https://api.semanticscholar.org/graph/v1/paper/search
+- POST   /api/papers/<paper_id>/slr/jobs            — enqueue an SLR job
+- GET    /api/papers/<paper_id>/slr/jobs            — list this paper's jobs
+- GET    /api/slr/jobs/<job_id>                     — job status + result snapshot
+- DELETE /api/slr/jobs/<job_id>                     — cancel/delete a job
+- GET    /api/papers/<paper_id>/literature          — list LiteratureItem rows
+- POST   /api/papers/<paper_id>/literature          — add a manual literature row
+- PATCH  /api/papers/<paper_id>/literature/<id>     — edit a row
+- DELETE /api/papers/<paper_id>/literature/<id>     — delete a row
+- POST   /api/papers/<paper_id>/literature/from-files — import attached PDFs/DOCXs
+                                                       as Literature rows
 
-SSRF hardening: every outbound request goes through ALLOWED_HOSTS allowlist.
+The legacy synchronous `POST /api/papers/<paper_id>/slr` is kept as a thin
+wrapper that enqueues a job and waits up to 25 s for it to finish so old
+callers (chat tools / tests) keep working. New callers should use the job
+endpoints.
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 from datetime import datetime, timezone
-from urllib.parse import urlparse
 
-import requests
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from models import Paper, ProjectMemory, db
+from models import (LiteratureItem, Paper, PaperFile, ProjectMemory, SlrJob,
+                    db)
 from paper_utils import PAPER_ID_RE
-
+from slr_worker import enqueue_slr_job
 
 log = logging.getLogger(__name__)
-slr_bp = Blueprint("slr", __name__, url_prefix="/api/papers")
+slr_bp = Blueprint("slr", __name__)
+
+JOB_ID_RE = re.compile(r"^[A-Za-z0-9]{6,32}$")
 
 
-# ── SSRF allowlist (only these hosts get outbound HTTP from SLR) ────────────
-ALLOWED_HOSTS = {
-    "api.openalex.org",
-    "doaj.org",
-    "api.crossref.org",
-    "api.semanticscholar.org",
-}
-
-
-def _safe_get(url: str, *, params: dict | None = None, timeout: int = 15) -> dict | None:
-    """Outbound GET that refuses any host outside ALLOWED_HOSTS and any
-    non-https scheme (cheap defense-in-depth)."""
+def _current_user_id() -> int | None:
+    raw = get_jwt_identity()
     try:
-        u = urlparse(url)
-        if u.scheme != "https" or u.hostname not in ALLOWED_HOSTS:
-            log.warning("slr.refuse_url", extra={"url": url})
-            return None
-        r = requests.get(
-            url, params=params, timeout=timeout,
-            headers={"User-Agent": "PaperFull-SLR/1.0 (mailto:admin@paperfull.app)"},
-        )
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except Exception as e:
-        log.info("slr.fetch_failed", extra={"url": url, "err": str(e)})
+        return int(raw)
+    except (TypeError, ValueError):
         return None
 
 
-# ── Per-source adapters: each returns list[dict] with normalized shape ──────
-def _norm(*, title, authors, year, doi, url, abstract, citations, source, venue=""):
-    return {
-        "title": (title or "").strip(),
-        "authors": authors or [],
-        "year": int(year) if year else None,
-        "doi": (doi or "").strip().lower() or None,
-        "url": url or "",
-        "abstract": (abstract or "")[:1500],
-        "citations": int(citations or 0),
-        "source": source,
-        "venue": (venue or "")[:240],
-    }
-
-
-def fetch_openalex(topic: str, limit: int = 25):
-    data = _safe_get(
-        "https://api.openalex.org/works",
-        params={"search": topic, "per-page": limit, "sort": "relevance_score:desc"},
-    )
-    if not data:
-        return []
-    out = []
-    for w in (data.get("results") or [])[:limit]:
-        title = w.get("title") or w.get("display_name")
-        doi = (w.get("doi") or "").replace("https://doi.org/", "")
-        url = (w.get("doi") and f"https://doi.org/{doi}") or w.get("id") or ""
-        abstract_inv = w.get("abstract_inverted_index") or {}
-        abstract = ""
-        if abstract_inv:
-            # Reverse the inverted index (OpenAlex format) to a plain string.
-            positions = []
-            for word, idxs in abstract_inv.items():
-                for i in idxs:
-                    positions.append((i, word))
-            positions.sort()
-            abstract = " ".join(w for _, w in positions[:300])
-        authors = [
-            (a.get("author") or {}).get("display_name", "")
-            for a in (w.get("authorships") or [])
-        ][:8]
-        venue = ((w.get("primary_location") or {}).get("source") or {}).get("display_name", "")
-        out.append(_norm(
-            title=title, authors=authors, year=w.get("publication_year"),
-            doi=doi, url=url, abstract=abstract,
-            citations=w.get("cited_by_count", 0),
-            source="openalex", venue=venue,
-        ))
-    return out
-
-
-def fetch_doaj(topic: str, limit: int = 20):
-    safe_topic = requests.utils.quote(topic, safe="")
-    data = _safe_get(
-        f"https://doaj.org/api/search/articles/{safe_topic}",
-        params={"pageSize": min(limit, 50)},
-    )
-    if not data:
-        return []
-    out = []
-    for item in (data.get("results") or [])[:limit]:
-        b = item.get("bibjson") or {}
-        title = b.get("title")
-        year = b.get("year")
-        doi = ""
-        url = ""
-        for ident in (b.get("identifier") or []):
-            if (ident.get("type") or "").lower() == "doi":
-                doi = ident.get("id", "")
-        for link in (b.get("link") or []):
-            if (link.get("type") or "").lower() == "fulltext":
-                url = link.get("url", "")
-                break
-        venue = (b.get("journal") or {}).get("title", "")
-        authors = [a.get("name", "") for a in (b.get("author") or [])][:8]
-        out.append(_norm(
-            title=title, authors=authors, year=year,
-            doi=doi, url=url or (doi and f"https://doi.org/{doi}") or "",
-            abstract=b.get("abstract", ""),
-            citations=0, source="doaj", venue=venue,
-        ))
-    return out
-
-
-def fetch_crossref(topic: str, limit: int = 20):
-    data = _safe_get(
-        "https://api.crossref.org/works",
-        params={"query": topic, "rows": limit, "select": "title,author,issued,DOI,URL,container-title,abstract,is-referenced-by-count"},
-    )
-    if not data:
-        return []
-    out = []
-    for it in ((data.get("message") or {}).get("items") or [])[:limit]:
-        title = (it.get("title") or [""])[0]
-        authors = [
-            f"{(a.get('given') or '').strip()} {(a.get('family') or '').strip()}".strip()
-            for a in (it.get("author") or [])
-        ][:8]
-        issued = ((it.get("issued") or {}).get("date-parts") or [[None]])[0]
-        year = issued[0] if issued else None
-        venue = (it.get("container-title") or [""])[0]
-        out.append(_norm(
-            title=title, authors=authors, year=year,
-            doi=it.get("DOI"), url=it.get("URL"),
-            abstract=re.sub(r"<[^>]+>", " ", it.get("abstract") or ""),
-            citations=it.get("is-referenced-by-count", 0),
-            source="crossref", venue=venue,
-        ))
-    return out
-
-
-def fetch_semantic_scholar(topic: str, limit: int = 20):
-    data = _safe_get(
-        "https://api.semanticscholar.org/graph/v1/paper/search",
-        params={
-            "query": topic, "limit": min(limit, 50),
-            "fields": "title,authors,year,externalIds,abstract,citationCount,venue,url",
-        },
-    )
-    if not data:
-        return []
-    out = []
-    for w in (data.get("data") or [])[:limit]:
-        ext = w.get("externalIds") or {}
-        doi = ext.get("DOI") or ""
-        out.append(_norm(
-            title=w.get("title"),
-            authors=[a.get("name", "") for a in (w.get("authors") or [])][:8],
-            year=w.get("year"),
-            doi=doi,
-            url=w.get("url") or (doi and f"https://doi.org/{doi}") or "",
-            abstract=w.get("abstract") or "",
-            citations=w.get("citationCount", 0),
-            source="semantic_scholar", venue=w.get("venue", ""),
-        ))
-    return out
-
-
-SOURCES = [
-    ("openalex", fetch_openalex),
-    ("doaj", fetch_doaj),
-    ("crossref", fetch_crossref),
-    ("semantic_scholar", fetch_semantic_scholar),
-]
-
-
-def _dedupe_and_rank(buckets: list[list[dict]], limit: int) -> list[dict]:
-    seen_doi: dict[str, dict] = {}
-    seen_title: dict[str, dict] = {}
-    flat: list[dict] = []
-    for bucket in buckets:
-        flat.extend(bucket or [])
-
-    for it in flat:
-        if not it.get("title"):
-            continue
-        key_doi = (it.get("doi") or "").lower()
-        key_title = re.sub(r"\s+", " ", it["title"].lower()).strip()[:120]
-        if key_doi and key_doi in seen_doi:
-            existing = seen_doi[key_doi]
-            if it["citations"] > existing["citations"]:
-                seen_doi[key_doi] = it
-            continue
-        if key_title in seen_title:
-            existing = seen_title[key_title]
-            if it["citations"] > existing["citations"]:
-                seen_title[key_title] = it
-            continue
-        if key_doi:
-            seen_doi[key_doi] = it
-        seen_title[key_title] = it
-
-    merged = list({id(v): v for v in [*seen_doi.values(), *seen_title.values()]}.values())
-    # Score = citations + recency boost.
-    current_year = datetime.now(timezone.utc).year
-    def score(it):
-        c = int(it.get("citations") or 0)
-        y = int(it.get("year") or 1900)
-        recency = max(0, 5 - (current_year - y))  # +5..+0 for last 5 years
-        return c + recency * 2
-    merged.sort(key=score, reverse=True)
-    return merged[:limit]
-
-
-# ── Endpoint ────────────────────────────────────────────────────────────────
-
-
-@slr_bp.route("/<paper_id>/slr", methods=["POST"])
-@jwt_required()
-def run_slr(paper_id: str):
+def _paper_or_404(paper_id: str, user_id: int):
     if not PAPER_ID_RE.match(paper_id):
-        return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+        return None, (jsonify({"error": "Invalid paper id"}), 400)
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
-        return jsonify({"error": "Paper not found"}), 404
+        return None, (jsonify({"error": "Paper not found"}), 404)
+    return paper, None
+
+
+# ─── SLR JOBS ─────────────────────────────────────────────────────────────
+
+@slr_bp.route("/api/papers/<paper_id>/slr/jobs", methods=["POST"])
+@jwt_required()
+def create_slr_job(paper_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
 
     body = request.get_json(silent=True) or {}
-    topic = (body.get("topic") or "").strip()
+    query = (body.get("query") or body.get("topic") or "").strip()
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+
+    sources = body.get("sources") or None
+    if sources is not None and not isinstance(sources, list):
+        return jsonify({"error": "sources must be a list"}), 400
+
+    try:
+        per_source = max(10, min(int(body.get("per_source", 60)), 100))
+    except (TypeError, ValueError):
+        per_source = 60
+    try:
+        top_k = max(10, min(int(body.get("top_k", 50)), 100))
+    except (TypeError, ValueError):
+        top_k = 50
+    try:
+        year_from = int(body["year_from"]) if body.get("year_from") else None
+    except (TypeError, ValueError):
+        year_from = None
+
+    ai_summarize = bool(body.get("ai_summarize", True))
+    ai_model = (body.get("ai_model") or "V-OPUS").strip()
+    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"}:
+        ai_model = "V-OPUS"
+
+    conv_id = body.get("conversation_id") or None
+
+    job_id = enqueue_slr_job(
+        paper_id=paper_id, user_id=user_id,
+        conversation_id=conv_id,
+        query=query, sources=sources,
+        per_source=per_source, top_k=top_k, year_from=year_from,
+        ai_summarize=ai_summarize, ai_model=ai_model,
+    )
+    job = SlrJob.query.filter_by(id=job_id).first()
+    return jsonify(job.to_dict() if job else {"id": job_id}), 202
+
+
+@slr_bp.route("/api/papers/<paper_id>/slr/jobs", methods=["GET"])
+@jwt_required()
+def list_slr_jobs(paper_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+    jobs = (SlrJob.query
+            .filter_by(paper_id=paper_id, user_id=user_id)
+            .order_by(SlrJob.queued_at.desc())
+            .limit(30)
+            .all())
+    return jsonify([j.to_dict() for j in jobs])
+
+
+@slr_bp.route("/api/slr/jobs/<job_id>", methods=["GET"])
+@jwt_required()
+def get_slr_job(job_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    if not JOB_ID_RE.match(job_id):
+        return jsonify({"error": "Invalid job id"}), 400
+    include_result = request.args.get("include_result", "false").lower() == "true"
+    job = SlrJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    return jsonify(job.to_dict(include_result=include_result))
+
+
+@slr_bp.route("/api/slr/jobs/<job_id>", methods=["DELETE"])
+@jwt_required()
+def cancel_slr_job(job_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    if not JOB_ID_RE.match(job_id):
+        return jsonify({"error": "Invalid job id"}), 400
+    job = SlrJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job.status in ("queued", "running"):
+        job.status = "cancelled"
+        job.stage = "cancelled"
+        job.finished_at = datetime.now(timezone.utc)
+    db.session.delete(job)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# ─── LITERATURE ITEMS ─────────────────────────────────────────────────────
+
+@slr_bp.route("/api/papers/<paper_id>/literature", methods=["GET"])
+@jwt_required()
+def list_literature(paper_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+    items = (LiteratureItem.query
+             .filter_by(paper_id=paper_id)
+             .order_by(LiteratureItem.pinned.desc(),
+                       LiteratureItem.score_total.desc(),
+                       LiteratureItem.created_at.desc())
+             .all())
+    return jsonify([i.to_dict() for i in items])
+
+
+@slr_bp.route("/api/papers/<paper_id>/literature", methods=["POST"])
+@jwt_required()
+def create_literature(paper_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    title = (body.get("title") or "").strip()
+    if not title:
+        return jsonify({"error": "title is required"}), 400
+    item = LiteratureItem(
+        paper_id=paper_id,
+        user_id=user_id,
+        source_kind=(body.get("source_kind") or "manual")[:20],
+        source=(body.get("source") or "")[:40],
+        title=title[:1000],
+        authors=body.get("authors") or [],
+        year=_safe_int(body.get("year")),
+        venue=(body.get("venue") or "")[:500],
+        publisher=(body.get("publisher") or "")[:500],
+        doi=(body.get("doi") or None),
+        url=(body.get("url") or "")[:1000],
+        abstract=body.get("abstract") or "",
+        summary=body.get("summary") or "",
+        citations=_safe_int(body.get("citations")),
+        score_total=_safe_float(body.get("score_total")),
+        score_breakdown=body.get("score_breakdown") or {},
+        must_read=bool(body.get("must_read", False)),
+        is_relevant=bool(body.get("is_relevant", True)),
+        notes=(body.get("notes") or ""),
+        pinned=bool(body.get("pinned", False)),
+    )
+    db.session.add(item)
+    db.session.commit()
+    return jsonify(item.to_dict()), 201
+
+
+@slr_bp.route("/api/papers/<paper_id>/literature/<int:item_id>", methods=["PATCH"])
+@jwt_required()
+def update_literature(paper_id: str, item_id: int):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+    item = LiteratureItem.query.filter_by(id=item_id, paper_id=paper_id).first()
+    if not item:
+        return jsonify({"error": "Literature item not found"}), 404
+
+    body = request.get_json(silent=True) or {}
+    editable = {
+        "title", "authors", "year", "venue", "publisher", "doi", "url",
+        "abstract", "summary", "citations", "must_read", "is_relevant",
+        "notes", "pinned", "source", "source_kind",
+    }
+    for k, v in body.items():
+        if k not in editable:
+            continue
+        if k == "year":
+            v = _safe_int(v)
+        elif k == "citations":
+            v = _safe_int(v)
+        elif k in ("must_read", "is_relevant", "pinned"):
+            v = bool(v)
+        elif k == "authors":
+            if not isinstance(v, list):
+                continue
+        setattr(item, k, v)
+    db.session.commit()
+    return jsonify(item.to_dict())
+
+
+@slr_bp.route("/api/papers/<paper_id>/literature/<int:item_id>", methods=["DELETE"])
+@jwt_required()
+def delete_literature(paper_id: str, item_id: int):
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+    item = LiteratureItem.query.filter_by(id=item_id, paper_id=paper_id).first()
+    if not item:
+        return jsonify({"error": "Literature item not found"}), 404
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@slr_bp.route("/api/papers/<paper_id>/literature/from-files", methods=["POST"])
+@jwt_required()
+def import_from_files(paper_id: str):
+    """Buat satu LiteratureItem per file PaperFile (yang sudah punya
+    extracted_text). Aman dipanggil berkali-kali — kita skip kalau file_id
+    sudah pernah diimport."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    files = (PaperFile.query
+             .filter_by(paper_id=paper_id, user_id=user_id)
+             .order_by(PaperFile.created_at.desc())
+             .all())
+    existing_file_ids = {
+        i.file_id for i in LiteratureItem.query
+        .filter_by(paper_id=paper_id).filter(LiteratureItem.file_id.isnot(None))
+        .all()
+    }
+    created = []
+    for f in files:
+        if f.id in existing_file_ids:
+            continue
+        excerpt = (f.extracted_text or "").strip()
+        # Use first non-empty line as title; cap.
+        title = (excerpt.split("\n", 1)[0] if excerpt else f.original_name)
+        title = (title or f.original_name)[:300]
+        item = LiteratureItem(
+            paper_id=paper_id,
+            user_id=user_id,
+            source_kind="file",
+            source=f.ext.lstrip("."),
+            title=title,
+            authors=[],
+            year=None,
+            venue="",
+            publisher="",
+            doi=None,
+            url=f"/api/papers/{paper_id}/files/{f.id}/preview",
+            abstract=excerpt[:3000],
+            summary=excerpt[:600],
+            file_id=f.id,
+            pinned=True,
+        )
+        db.session.add(item)
+        created.append(item)
+    db.session.commit()
+    return jsonify({"created": [i.to_dict() for i in created]})
+
+
+# ─── Legacy sync /slr endpoint (back-compat) ──────────────────────────────
+
+@slr_bp.route("/api/papers/<paper_id>/slr", methods=["POST"])
+@jwt_required()
+def run_slr_legacy(paper_id: str):
+    """Old synchronous endpoint. Enqueues a job and polls up to 25 s.
+
+    New callers should use POST /slr/jobs. This wrapper exists because the
+    chat tool layer + a couple of tests still hit the old shape and expect
+    `results` back inline.
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    body = request.get_json(silent=True) or {}
+    topic = (body.get("topic") or body.get("query") or "").strip()
     if not topic:
         return jsonify({"error": "topic required"}), 400
     try:
         limit = max(5, min(int(body.get("limit", 30)), 50))
     except (TypeError, ValueError):
         limit = 30
-    refresh = bool(body.get("refresh", False))
 
     cache_key = f"slr:{topic.lower()[:100]}"
-
-    if not refresh:
+    if not body.get("refresh", False):
         cached = ProjectMemory.query.filter_by(paper_id=paper_id, key=cache_key).first()
         if cached:
             try:
-                payload = json.loads(cached.value)
+                import json as _json
+                payload = _json.loads(cached.value)
                 if isinstance(payload, dict) and payload.get("results"):
                     return jsonify({**payload, "cached": True})
             except Exception:
                 pass
 
-    # Run sources in parallel, capture which succeeded.
-    sources_used: list[str] = []
-    sources_failed: list[str] = []
-    buckets: list[list[dict]] = []
-    per_source_limit = max(8, limit // 2)
+    job_id = enqueue_slr_job(
+        paper_id=paper_id, user_id=user_id, query=topic,
+        per_source=40, top_k=limit, ai_summarize=True,
+    )
+    deadline = time.time() + 25.0
+    while time.time() < deadline:
+        time.sleep(1.0)
+        job = SlrJob.query.filter_by(id=job_id).first()
+        if not job:
+            break
+        if job.status in ("done", "error", "cancelled"):
+            break
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = {ex.submit(fn, topic, per_source_limit): name for name, fn in SOURCES}
-        for fut in as_completed(futures, timeout=30):
-            name = futures[fut]
-            try:
-                results = fut.result(timeout=20) or []
-                if results:
-                    buckets.append(results)
-                    sources_used.append(name)
-                else:
-                    sources_failed.append(name)
-            except Exception as e:
-                log.info("slr.source_failed", extra={"source": name, "err": str(e)})
-                sources_failed.append(name)
+    job = SlrJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "Job vanished"}), 500
+    if job.status != "done":
+        return jsonify({
+            "error": f"Job still {job.status}. Use /slr/jobs/{job_id} to poll.",
+            "job_id": job_id,
+            "status": job.status,
+        }), 202
 
-    final = _dedupe_and_rank(buckets, limit)
-    payload = {
-        "results": final,
-        "sources_used": sources_used,
-        "sources_failed": sources_failed,
+    payload = job.result or {}
+    top = payload.get("top_k") or []
+    results = []
+    for r in top[:limit]:
+        results.append({
+            "title": r.get("title"),
+            "authors": r.get("authors") or [],
+            "year": r.get("year"),
+            "doi": r.get("doi"),
+            "url": r.get("url"),
+            "abstract": r.get("abstract") or "",
+            "summary": r.get("summary") or "",
+            "citations": r.get("citations") or 0,
+            "source": r.get("source"),
+            "venue": r.get("venue") or "",
+        })
+    out = {
+        "results": results,
+        "sources_used": list((payload.get("stats") or {}).get("papers_by_source") or {}),
+        "sources_failed": [],
         "topic": topic,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": payload.get("generated_at"),
+        "cached": False,
+        "job_id": job_id,
     }
 
-    # Cache (overwrite if exists)
+    # Update cache.
+    import json as _json
     mem = ProjectMemory.query.filter_by(paper_id=paper_id, key=cache_key).first()
     if mem:
-        mem.value = json.dumps(payload, ensure_ascii=False)
+        mem.value = _json.dumps(out, ensure_ascii=False)
         mem.kind = "slr_cache"
         mem.updated_at = datetime.now(timezone.utc)
     else:
         mem = ProjectMemory(
             paper_id=paper_id, user_id=user_id,
-            key=cache_key, value=json.dumps(payload, ensure_ascii=False),
+            key=cache_key, value=_json.dumps(out, ensure_ascii=False),
             kind="slr_cache",
         )
         db.session.add(mem)
     db.session.commit()
+    return jsonify(out)
 
-    return jsonify({**payload, "cached": False})
+
+# ─── helpers ──────────────────────────────────────────────────────────────
+
+def _safe_int(v):
+    if v is None or v == "":
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_float(v):
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from flask import Blueprint, jsonify, request, send_file
@@ -32,6 +33,11 @@ files_bp = Blueprint("paper_files", __name__, url_prefix="/api/papers")
 ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv"}
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_PREVIEW_CHARS = 20_000
+
+# Shared extraction pool. Capped at 20 — fitz/openpyxl/python-docx are CPU-bound
+# but release the GIL on heavy work, and we never want a single user to spawn
+# more than 20 simultaneous extractions across the whole process.
+_EXTRACT_POOL = ThreadPoolExecutor(max_workers=20, thread_name_prefix="pdf-extract")
 
 
 def _extract_text_for_preview(filepath: Path, ext: str) -> str:
@@ -143,32 +149,59 @@ def upload_paper_files(paper_id: str):
     files_dir = paper_dir / "files"
     files_dir.mkdir(parents=True, exist_ok=True)
 
-    saved, warnings = [], []
+    # Phase 1: read bytes + persist to disk synchronously. Cheap and we need a
+    # path before we can hand off to the extraction pool.
+    accepted: list[dict] = []
+    warnings: list[str] = []
+    for f in files:
+        ext = Path(f.filename or "").suffix.lower()
+        if ext not in ALLOWED_FILE_EXTS:
+            warnings.append(f"{f.filename}: format tidak didukung")
+            continue
+
+        data = f.stream.read()
+        if len(data) > MAX_FILE_BYTES:
+            warnings.append(f"{f.filename}: lebih dari 10MB, dilewati")
+            continue
+
+        name = f"{uuid.uuid4().hex}{ext}"
+        filepath = files_dir / name
+        filepath.write_bytes(data)
+        accepted.append({
+            "name": name,
+            "filepath": filepath,
+            "ext": ext,
+            "original_name": (f.filename or "")[:255],
+            "size": len(data),
+        })
+
+    if not accepted:
+        return jsonify({"success": True, "files": [], "warnings": warnings})
+
+    # Phase 2: extract text in parallel via the shared 20-worker pool. Each call
+    # is independent and DB-free; we collect texts then commit in one batch.
+    futures = [
+        (item, _EXTRACT_POOL.submit(_extract_text_for_preview, item["filepath"], item["ext"]))
+        for item in accepted
+    ]
+
+    saved = []
     try:
-        for f in files:
-            ext = Path(f.filename or "").suffix.lower()
-            if ext not in ALLOWED_FILE_EXTS:
-                warnings.append(f"{f.filename}: format tidak didukung")
-                continue
-
-            data = f.stream.read()
-            if len(data) > MAX_FILE_BYTES:
-                warnings.append(f"{f.filename}: lebih dari 10MB, dilewati")
-                continue
-
-            name = f"{uuid.uuid4().hex}{ext}"
-            filepath = files_dir / name
-            filepath.write_bytes(data)
-
+        for item, fut in futures:
+            try:
+                extracted = fut.result(timeout=120)
+            except Exception as e:
+                log.info("extract_failed", extra={"file": item["name"], "err": str(e)})
+                extracted = ""
             entry = PaperFile(
                 paper_id=paper_id,
                 user_id=user_id,
-                filename=name,
-                original_name=(f.filename or "")[:255],
-                ext=ext,
-                size_bytes=len(data),
-                file_path=f"{paper_id}/files/{name}",
-                extracted_text=_extract_text_for_preview(filepath, ext),
+                filename=item["name"],
+                original_name=item["original_name"],
+                ext=item["ext"],
+                size_bytes=item["size"],
+                file_path=f"{paper_id}/files/{item['name']}",
+                extracted_text=extracted,
             )
             db.session.add(entry)
             db.session.flush()

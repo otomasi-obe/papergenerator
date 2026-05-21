@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-gray-800">Equations</h2>
       <button @click="store.addEquation()"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+        class="px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:brightness-95 text-sm font-medium">
         + Add Equation
       </button>
     </div>

@@ -29,7 +29,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=_utcnow)
     last_login = db.Column(db.DateTime, default=_utcnow)
     # Token quota (admin-managed via /api/admin/users/<id>/quota)
-    token_quota_monthly = db.Column(db.Integer, default=50000, nullable=False)
+    token_quota_monthly = db.Column(db.Integer, default=1000000, nullable=False)
     token_used_month = db.Column(db.Integer, default=0, nullable=False)
     usage_month_key = db.Column(db.String(7), default='')  # 'YYYY-MM'
 
@@ -266,4 +266,174 @@ class AiJob(db.Model):
             'error': self.error,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class LiteratureItem(db.Model):
+    """One row in a paper's Literature tab.
+
+    Bisa berasal dari hasil SLR (`source_kind='slr'`), upload PDF/DOCX
+    (`source_kind='file'`), atau input manual user (`source_kind='manual'`).
+    Editable via PATCH endpoint dan dipakai sebagai data sumber utk
+    GenerateFullPaper.
+    """
+    __tablename__ = 'literature_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'),
+                         nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    source_kind = db.Column(db.String(20), default='slr')   # slr | file | manual
+    source = db.Column(db.String(40), default='')           # arxiv|ieee|sinta|...
+    title = db.Column(db.Text, default='')
+    authors = db.Column(db.JSON, nullable=True, default=list)  # list[str]
+    year = db.Column(db.Integer, nullable=True)
+    venue = db.Column(db.Text, default='')
+    publisher = db.Column(db.Text, default='')
+    doi = db.Column(db.String(255), nullable=True, index=True)
+    url = db.Column(db.Text, default='')
+    abstract = db.Column(db.Text, default='')
+    summary = db.Column(db.Text, default='')
+    citations = db.Column(db.Integer, nullable=True)
+    score_total = db.Column(db.Float, nullable=True)
+    score_breakdown = db.Column(db.JSON, nullable=True, default=dict)
+    must_read = db.Column(db.Boolean, default=False)
+    is_relevant = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text, default='')                  # user-editable notes
+    pinned = db.Column(db.Boolean, default=False)           # user-pinned to top
+    file_id = db.Column(db.Integer, db.ForeignKey('paper_files.id'),
+                        nullable=True)
+    slr_job_id = db.Column(db.String(20), db.ForeignKey('slr_jobs.id'),
+                           nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paper_id': self.paper_id,
+            'source_kind': self.source_kind,
+            'source': self.source,
+            'title': self.title,
+            'authors': self.authors or [],
+            'year': self.year,
+            'venue': self.venue,
+            'publisher': self.publisher,
+            'doi': self.doi,
+            'url': self.url,
+            'abstract': self.abstract,
+            'summary': self.summary,
+            'citations': self.citations,
+            'score_total': self.score_total,
+            'score_breakdown': self.score_breakdown or {},
+            'must_read': bool(self.must_read),
+            'is_relevant': bool(self.is_relevant),
+            'notes': self.notes or '',
+            'pinned': bool(self.pinned),
+            'file_id': self.file_id,
+            'slr_job_id': self.slr_job_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class SlrJob(db.Model):
+    """Background SLR search job. Diproses oleh slr_worker pool (≤10 worker)."""
+    __tablename__ = 'slr_jobs'
+
+    id = db.Column(db.String(20), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                        nullable=False, index=True)
+    paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'),
+                         nullable=False, index=True)
+    conversation_id = db.Column(db.String(20),
+                                db.ForeignKey('conversations.id'),
+                                nullable=True)
+    query = db.Column(db.Text, nullable=False)
+    sources = db.Column(db.JSON, nullable=True, default=list)
+    top_k = db.Column(db.Integer, default=50)
+    per_source = db.Column(db.Integer, default=60)
+    year_from = db.Column(db.Integer, nullable=True)
+    ai_summarize = db.Column(db.Boolean, default=True)
+    ai_model = db.Column(db.String(40), default='V-OPUS')
+
+    status = db.Column(db.String(20), default='queued', index=True)
+    # queued|running|done|error|cancelled
+    stage = db.Column(db.String(40), default='')
+    progress = db.Column(db.Integer, default=0)              # 0..100
+    progress_message = db.Column(db.Text, default='')
+    result = db.Column(db.JSON, nullable=True, default=dict)  # full pipeline output
+    error = db.Column(db.Text, default='')
+
+    queued_at = db.Column(db.DateTime, default=_utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self, include_result=False):
+        stats = (self.result or {}).get('stats') if isinstance(self.result, dict) else {}
+        d = {
+            'id': self.id,
+            'paper_id': self.paper_id,
+            'conversation_id': self.conversation_id,
+            'query': self.query,
+            'sources': self.sources or [],
+            'top_k': self.top_k,
+            'status': self.status,
+            'stage': self.stage,
+            'progress': int(self.progress or 0),
+            'progress_message': self.progress_message or '',
+            'error': self.error or '',
+            'queued_at': self.queued_at.isoformat() if self.queued_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+            'stats': stats or {},
+        }
+        if include_result:
+            d['result'] = self.result or {}
+        return d
+
+
+class ImageGenJob(db.Model):
+    """Background job to generate an image via the Gemini pool.
+
+    Workers (4, one per Gemini account) pick up `queued` jobs FIFO. Each worker
+    drives one Gemini account exclusively, so up to 4 generations can run in
+    parallel — one per account, never two on the same account. Within a single
+    worker, generations are strictly sequential (the underlying Playwright
+    profile cannot be shared concurrently).
+
+    The job survives across paper switches and full page reloads: the frontend
+    polls /api/image-jobs by user, attaches callbacks back to the matching
+    content item, and writes `image_id` into the corresponding section content
+    block when the worker finishes.
+    """
+    __tablename__ = 'image_gen_jobs'
+
+    id = db.Column(db.String(32), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'), nullable=False, index=True)
+    prompt = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='queued')  # queued|running|done|error
+    worker = db.Column(db.String(40), nullable=True)  # which account picked it up
+    image_id = db.Column(db.Integer, db.ForeignKey('paper_images.id'), nullable=True)
+    error = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+
+    image = db.relationship('PaperImage', foreign_keys=[image_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paper_id': self.paper_id,
+            'prompt': self.prompt,
+            'status': self.status,
+            'worker': self.worker,
+            'error': self.error,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'finished_at': self.finished_at.isoformat() if self.finished_at else None,
+            'image': self.image.to_dict() if self.image else None,
         }

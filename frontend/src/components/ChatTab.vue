@@ -129,7 +129,7 @@
               'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-cream-50 dark:border-ash-800',
               isStreaming ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400',
             ]"
-          ></span>
+          ><span class="sr-only">{{ isStreaming ? 'AI is thinking' : 'Online' }}</span></span>
         </div>
         <div class="min-w-0 flex-1">
           <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 truncate">
@@ -224,18 +224,33 @@
       </div>
 
       <!-- Suggestion chips -->
-      <div class="px-4 pt-2 bg-cream-50 dark:bg-ash-800 border-t border-cream-300 dark:border-ash-700">
+      <div v-if="showSuggestions && !inputText" class="px-4 pt-2 bg-cream-50 dark:bg-ash-800 border-t border-cream-300 dark:border-ash-700">
         <div class="flex flex-wrap gap-1.5 mb-2">
           <button
             v-for="s in quickSuggestions"
             :key="s.text"
             @click="sendSuggestion(s.text)"
-            :disabled="isStreaming"
+            :disabled="isStreaming || (activeJob && activeJob.active)"
             class="text-[11px] px-2.5 py-1 rounded-full bg-cream-100 dark:bg-ash-700 hover:bg-brown-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 text-ink-800 dark:text-ink-100 transition-colors border border-cream-300 dark:border-ash-600 disabled:opacity-50 disabled:cursor-not-allowed"
             :title="s.text"
           >
-            <span class="mr-1">{{ s.icon }}</span>{{ s.text }}
+            <span class="mr-1" aria-hidden="true">{{ s.icon }}</span>{{ s.text }}
           </button>
+        </div>
+      </div>
+
+      <!-- Active-job banner: another chat in this paper is generating a full
+           paper. We let the user keep doing other things, but the chat input
+           is locked until the job finishes. -->
+      <div
+        v-if="activeJob && activeJob.active"
+        class="mx-4 mb-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2"
+      >
+        <span class="text-base shrink-0">⏳</span>
+        <div class="flex-1 leading-snug">
+          <div class="font-medium">Sedang generate paper di chat lain</div>
+          <div class="opacity-80 mt-0.5">"{{ activeJob.prompt }}" · {{ formatElapsed(activeJob.elapsed_seconds) }}</div>
+          <div class="opacity-70 mt-0.5">Kamu bisa lakukan hal lain dulu (edit Section, lihat Figures, baca Files). Chat akan kembali aktif setelah generate selesai.</div>
         </div>
       </div>
 
@@ -261,6 +276,12 @@
 
         <div class="rounded-2xl border-2 border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-sm focus-within:border-brown-500 dark:focus-within:border-cream-400 focus-within:ring-4 focus-within:ring-cream-200 dark:focus-within:ring-ash-600 transition-all">
           <div class="flex items-end gap-2 p-2">
+            <button
+              @click="showSuggestions = !showSuggestions"
+              :aria-expanded="showSuggestions && !inputText"
+              class="shrink-0 h-9 px-2 text-[11px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 rounded-xl transition-colors"
+              title="Saran"
+            >💡 Saran</button>
             <input
               type="file"
               ref="fileInput"
@@ -269,21 +290,40 @@
               class="hidden"
               @change="onFileChange"
             />
-            <button
-              @click="fileInput?.click()"
-              :disabled="isStreaming || uploadingFiles"
-              class="shrink-0 h-9 w-9 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 rounded-xl transition-colors flex items-center justify-center disabled:opacity-40"
-              :title="uploadingFiles ? 'Uploading…' : 'Lampirkan file (PDF/DOCX/DOC)'"
-            >
-              <span v-if="uploadingFiles" class="w-4 h-4 border-2 border-ink-500 dark:border-ink-300 border-t-transparent rounded-full animate-spin"></span>
-              <span v-else class="text-base leading-none">＋</span>
-            </button>
+            <div class="relative shrink-0" v-click-outside="closeAttachMenu">
+              <button
+                @click="toggleAttachMenu"
+                :disabled="isStreaming || uploadingFiles"
+                class="h-9 w-9 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 rounded-xl transition-colors flex items-center justify-center disabled:opacity-40"
+                :title="uploadingFiles ? 'Uploading…' : 'Lampirkan'"
+              >
+                <span v-if="uploadingFiles" class="w-4 h-4 border-2 border-ink-500 dark:border-ink-300 border-t-transparent rounded-full animate-spin"></span>
+                <span v-else class="text-base leading-none">＋</span>
+              </button>
+              <div v-if="attachMenuOpen"
+                class="absolute bottom-full left-0 mb-2 z-30 w-44 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-lg overflow-hidden">
+                <button
+                  type="button"
+                  @click="pickUpload"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2"
+                >
+                  <span>📤</span><span>Upload baru</span>
+                </button>
+                <button
+                  type="button"
+                  @click="openExistingFiles"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600"
+                >
+                  <span>📁</span><span>Dari file paper ini</span>
+                </button>
+              </div>
+            </div>
             <textarea
               ref="inputRef"
               v-model="inputText"
               @keydown="handleKeydown"
-              :disabled="isStreaming"
-              placeholder="Ketik pesan… (Shift+Enter untuk baris baru)"
+              :disabled="activeJob && activeJob.active"
+              :placeholder="(activeJob && activeJob.active) ? 'Chat terkunci sampai generate paper selesai…' : (isStreaming ? 'Sedang menjawab… bisa ketik draft berikutnya' : 'Ketik pesan… (Shift+Enter untuk baris baru)')"
               rows="1"
               class="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-ink-900 dark:text-ink-50 focus:outline-none disabled:opacity-50 max-h-32 overflow-y-auto placeholder-ink-500 dark:placeholder-ink-300"
             ></textarea>
@@ -292,6 +332,7 @@
               @click="handleStop"
               class="shrink-0 h-9 w-9 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors flex items-center justify-center"
               title="Stop"
+              aria-label="Stop generating"
             >
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="6" y="6" width="12" height="12" rx="1.5"/>
@@ -300,9 +341,10 @@
             <button
               v-else
               @click="handleSend"
-              :disabled="!inputText.trim() && !attachedFiles.length"
+              :disabled="(!inputText.trim() && !attachedFiles.length) || (activeJob && activeJob.active)"
               class="shrink-0 h-9 w-9 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
               title="Send"
+              aria-label="Send message"
             >
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -310,33 +352,49 @@
               </svg>
             </button>
           </div>
+          <p class="text-[10px] text-ink-500 dark:text-ink-400 px-2 pb-1">Enter to send · Shift+Enter for new line</p>
         </div>
       </div>
     </template>
 
-    <!-- Delete chat confirm -->
-    <div
-      v-if="deleteTarget"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-      @click.self="deleteTarget = null"
-    >
-      <div class="bg-white rounded-xl shadow-xl p-5 max-w-sm w-full">
-        <h3 class="font-semibold text-slate-800 mb-1.5">Delete this chat?</h3>
-        <p class="text-sm text-slate-500 mb-4">
-          "<strong>{{ deleteTarget.title || 'Untitled chat' }}</strong>" akan dihapus permanen. Memory tetap aman.
-        </p>
-        <div class="flex gap-2 justify-end">
-          <button @click="deleteTarget = null"
-            class="px-3 py-1.5 text-sm rounded-lg border border-slate-200 hover:bg-slate-50">
-            Cancel
-          </button>
-          <button @click="doDeleteChat"
-            class="px-3 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white">
-            Delete
-          </button>
+    <AppDialog v-if="deleteTarget" :open="!!deleteTarget" title="Delete this chat?" @close="deleteTarget = null">
+      <p class="text-sm text-ink-600 dark:text-ink-300">
+        "<strong>{{ deleteTarget.title || 'Untitled chat' }}</strong>" akan dihapus permanen. Memory tetap aman.
+      </p>
+      <template #actions>
+        <button @click="deleteTarget = null" class="px-3 py-1.5 text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
+        <button @click="doDeleteChat" class="px-3 py-1.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white">Delete</button>
+      </template>
+    </AppDialog>
+
+    <!-- File picker (existing paper files) -->
+    <AppDialog v-if="filePickerOpen" :open="filePickerOpen" title="Pilih file dari paper ini" @close="filePickerOpen = false">
+      <div class="max-h-[50vh] overflow-y-auto -mx-4 px-4">
+        <div v-if="paperFilesLoading" class="text-center py-6 text-xs text-ink-500 dark:text-ink-300">Loading…</div>
+        <div v-else-if="!paperFiles.length" class="text-center py-6 text-xs text-ink-500 dark:text-ink-300">
+          Belum ada file. Upload dulu di tab Files.
         </div>
+        <ul v-else class="divide-y divide-cream-200 dark:divide-ash-700">
+          <li v-for="f in paperFiles" :key="f.id"
+              class="flex items-center gap-2 px-2 py-2 cursor-pointer hover:bg-cream-100 dark:hover:bg-ash-700 rounded"
+              @click="togglePickFile(f)">
+            <input type="checkbox" :checked="pickedFileIds.has(f.id)" class="pointer-events-none" />
+            <span>{{ extIcon(f.ext) }}</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs text-ink-900 dark:text-ink-50 truncate" :title="f.original_name">{{ f.original_name }}</div>
+              <div class="text-[10px] text-ink-500 dark:text-ink-300">{{ humanSize(f.size_bytes) }}</div>
+            </div>
+          </li>
+        </ul>
       </div>
-    </div>
+      <template #actions>
+        <button @click="filePickerOpen = false" class="px-3 py-1.5 text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
+        <button @click="confirmPickFiles" :disabled="!pickedFileIds.size"
+                class="px-3 py-1.5 text-sm rounded-lg bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40">
+          Lampirkan ({{ pickedFileIds.size }})
+        </button>
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -345,14 +403,18 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useChatStore } from '../stores/chat.js'
 import { usePaperStore } from '../stores/paper.js'
+import api from '../api/index.js'
 import ChatMessage from './ChatMessage.vue'
+import AppDialog from './AppDialog.vue'
 
 // Model picker — UI label is shown to the user, value is sent to backend.
 // Backend allowlists {V-OPUS, V-GEMINI, V-GPT} and rejects anything else.
 const MODELS = [
-  { value: 'V-OPUS',   label: 'Claude' },
-  { value: 'V-GEMINI', label: 'Gemini' },
-  { value: 'V-GPT',    label: 'Chatgpt' },
+  { value: 'V-OPUS',   label: 'Claude Opus 4.7' },
+  { value: 'V-CLAUDE', label: 'Claude Sonnet 4.5' },
+  { value: 'V-GPT',    label: 'ChatGPT 5.5' },
+  { value: 'V-GLM',    label: 'GLM 5' },
+  { value: 'V-DEEPSEEK', label: 'DeepSeek v4 Pro' },
 ]
 const LS_MODEL_KEY = 'pg_chat_model'
 
@@ -387,6 +449,7 @@ const {
   memory,
   isStreaming,
   currentChat,
+  activeJob,
 } = storeToRefs(chatStore)
 
 const inputText = ref('')
@@ -399,10 +462,92 @@ const messagesContainer = ref(null)
 const deleteTarget = ref(null)
 const creatingChat = ref(false)
 const memoryOpen = ref(false)
+const showSuggestions = ref(true)
 
 const renamingId = ref(null)
 const renameDraft = ref('')
 const renameInput = ref(null)
+
+// Attach menu (＋) — opens a 2-option dropdown: Upload baru / Pilih file paper.
+const attachMenuOpen = ref(false)
+function toggleAttachMenu() { attachMenuOpen.value = !attachMenuOpen.value }
+function closeAttachMenu() { attachMenuOpen.value = false }
+function pickUpload() {
+  attachMenuOpen.value = false
+  fileInput.value?.click()
+}
+
+// File picker state (option 2: pick from already-uploaded paper files).
+const filePickerOpen = ref(false)
+const paperFiles = ref([])
+const paperFilesLoading = ref(false)
+const pickedFileIds = ref(new Set())
+
+async function openExistingFiles() {
+  attachMenuOpen.value = false
+  if (!currentPaperId.value) return
+  filePickerOpen.value = true
+  pickedFileIds.value = new Set()
+  paperFilesLoading.value = true
+  try {
+    const res = await api.get(`/api/papers/${currentPaperId.value}/files`)
+    paperFiles.value = res.data?.files || []
+  } catch (e) {
+    paperFiles.value = []
+    attachWarning.value = 'Gagal memuat daftar file: ' + (e.message || e)
+  } finally {
+    paperFilesLoading.value = false
+  }
+}
+
+function togglePickFile(f) {
+  // Force a new Set so Vue re-renders the checkbox state.
+  const next = new Set(pickedFileIds.value)
+  if (next.has(f.id)) next.delete(f.id)
+  else next.add(f.id)
+  pickedFileIds.value = next
+}
+
+async function confirmPickFiles() {
+  if (!pickedFileIds.value.size) return
+  const ids = [...pickedFileIds.value]
+  filePickerOpen.value = false
+  // Fetch extracted text per file via the existing /preview endpoint, then
+  // append as pseudo-attachments. We use a synthetic File-shape entry on
+  // attachedFiles so the existing send pipeline handles them uniformly.
+  for (const id of ids) {
+    const f = paperFiles.value.find(x => x.id === id)
+    if (!f) continue
+    try {
+      const res = await api.get(`/api/papers/${currentPaperId.value}/files/${id}/preview`)
+      const text = res.data?.text || ''
+      attachedFiles.value = [...attachedFiles.value, {
+        name: f.original_name,
+        __preExtracted: true,
+        __text: text,
+      }].slice(0, 10)
+    } catch (e) {
+      attachWarning.value = 'Gagal baca file: ' + (e.message || e)
+    }
+  }
+}
+
+function extIcon(ext) {
+  switch ((ext || '').toLowerCase()) {
+    case '.pdf': return '📕'
+    case '.docx':
+    case '.doc': return '📘'
+    case '.txt': return '📄'
+    case '.md': return '📝'
+    default: return '📁'
+  }
+}
+function humanSize(b) {
+  if (!b) return '0 B'
+  if (b < 1024) return b + ' B'
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB'
+  return (b / 1024 / 1024).toFixed(1) + ' MB'
+}
 
 // Model picker state — persisted in localStorage; restored on mount.
 const modelMenuOpen = ref(false)
@@ -477,6 +622,7 @@ watch(
 watch(messages, () => nextTick(scrollToBottom), { deep: true })
 
 watch(inputText, () => {
+  if (inputText.value.length > 0) showSuggestions.value = false
   nextTick(() => {
     if (inputRef.value) {
       inputRef.value.style.height = 'auto'
@@ -510,6 +656,11 @@ function formatDate(s) {
   if (diff < 86400000) return Math.floor(diff / 3600000) + 'j lalu'
   if (diff < 7 * 86400000) return Math.floor(diff / 86400000) + 'h lalu'
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
+
+function formatElapsed(sec) {
+  if (!sec || sec < 60) return `${sec || 0}s`
+  return `${Math.floor(sec / 60)}m ${sec % 60}s`
 }
 
 async function handleSelectConversation(convId) {
@@ -575,21 +726,35 @@ async function doDeleteChat() {
 async function handleSend() {
   const text = inputText.value.trim()
   if ((!text && !attachedFiles.value.length) || isStreaming.value || !currentConversationId.value) return
+  if (activeJob.value && activeJob.value.active) return
   let composed = text
 
-  // Upload attached files first; their extracted text is appended to the message.
-  if (attachedFiles.value.length) {
+  // Split attached entries: real File objects need the upload-pdfs round-trip;
+  // entries flagged __preExtracted come from the existing-files picker and
+  // already carry their text.
+  const realFiles = attachedFiles.value.filter(f => !f.__preExtracted)
+  const preExtracted = attachedFiles.value.filter(f => f.__preExtracted)
+
+  if (realFiles.length || preExtracted.length) {
     uploadingFiles.value = true
     try {
-      const fd = new FormData()
-      attachedFiles.value.forEach(f => fd.append('files', f))
-      const res = await paperStore.apiUploadPdfs(fd)
-      const texts = res?.data?.pdf_texts || []
-      const warnings = res?.data?.warnings || []
+      let texts = []
+      let warnings = []
+      if (realFiles.length) {
+        const fd = new FormData()
+        realFiles.forEach(f => fd.append('files', f))
+        const res = await paperStore.apiUploadPdfs(fd)
+        texts = res?.data?.pdf_texts || []
+        warnings = res?.data?.warnings || []
+      }
+      const allTexts = [
+        ...preExtracted.map(f => f.__text || ''),
+        ...texts,
+      ].filter(Boolean)
       attachWarning.value = warnings.join('; ')
       const names = attachedFiles.value.map(f => f.name).join(', ')
-      const fileBlock = texts.length
-        ? `\n\n--- File terlampir (${names}) ---\n${texts.join('\n\n')}\n--- akhir file ---`
+      const fileBlock = allTexts.length
+        ? `\n\n--- File terlampir (${names}) ---\n${allTexts.join('\n\n')}\n--- akhir file ---`
         : `\n\n[File ${names} dilampirkan tetapi gagal diekstrak]`
       composed = (text || `Saya melampirkan ${attachedFiles.value.length} file. Tolong baca dan beri ringkasan/analisis.`) + fileBlock
       attachedFiles.value = []
@@ -643,7 +808,7 @@ function handleKeydown(e) {
 function sendSuggestion(text) {
   if (isStreaming.value) return
   inputText.value = text
-  handleSend()
+  inputRef.value?.focus()
 }
 
 async function pickOption(text) {

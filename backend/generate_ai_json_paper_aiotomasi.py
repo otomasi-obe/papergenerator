@@ -100,6 +100,33 @@ def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, tim
     return content
 
 
+# ── Fallback model chain ──────────────────────────────────────────────────────
+# Order: try the primary model first, then walk down the list. Each entry is
+# attempted independently; if all fail the last exception is re-raised.
+FALLBACK_MODELS = ["V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"]
+
+
+def _call_aiotomasi_with_fallback(messages: list, api_key: str, base_url: str, primary_model: str, timeout: float = 1200.0, progress_cb=None) -> tuple:
+    """Try primary_model first, then walk FALLBACK_MODELS on transient errors.
+    Returns (content, model_used). Raises the last exception if everything fails.
+    """
+    chain = [primary_model] + [m for m in FALLBACK_MODELS if m != primary_model]
+    last_err = None
+    for idx, m in enumerate(chain):
+        try:
+            content = _call_aiotomasi(messages, api_key, base_url, m, timeout=timeout, progress_cb=progress_cb)
+            return content, m
+        except Exception as e:
+            last_err = e
+            # Don't retry on auth (401/403) — those are config errors, not upstream flakiness
+            err_str = str(e)
+            if "401" in err_str or "403" in err_str:
+                raise
+            print(f"[fallback] model={m} failed ({err_str[:120]}); trying next…", flush=True)
+            continue
+    raise last_err if last_err else RuntimeError("All fallback models failed")
+
+
 # ── Callable API ─────────────────────────────────────────────────────────────
 def generate_paper_json(
     judul: str,
@@ -173,7 +200,8 @@ def generate_paper_json(
         {"role": "user",   "content": user_message},
     ]
 
-    raw_content = _call_aiotomasi(messages, _api_key, _base_url, _model, progress_cb=progress_cb)
+    raw_content, model_used = _call_aiotomasi_with_fallback(messages, _api_key, _base_url, _model, progress_cb=progress_cb)
+    print(f"[generate_paper_json] succeeded using model={model_used}", flush=True)
 
     # Strip markdown fences if present
     clean = re.sub(r"^```(?:json)?\s*", "", raw_content.strip(), flags=re.IGNORECASE)

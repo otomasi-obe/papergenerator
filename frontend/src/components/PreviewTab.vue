@@ -37,12 +37,12 @@
       <!-- Title (with inline diff if pending) -->
       <DiffBlock v-if="pendingByKind.title" :change="pendingByKind.title" :store="store" align="center">
         <template #before>
-          <h1 class="text-2xl font-bold leading-tight text-rose-700 line-through" style="font-family: 'Times New Roman', serif;">
+          <h1 class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
             {{ store.paper.title || 'Paper Title' }}
           </h1>
         </template>
         <template #after>
-          <h1 class="text-2xl font-bold leading-tight text-emerald-800" style="font-family: 'Times New Roman', serif;">
+          <h1 class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
             {{ pendingByKind.title.payload.value || 'Paper Title' }}
           </h1>
         </template>
@@ -71,14 +71,14 @@
       <DiffBlock v-if="pendingByKind.abstract" :change="pendingByKind.abstract" :store="store">
         <template #before>
           <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
-            <span class="font-bold italic text-rose-700">Abstract—</span>
-            <span class="italic text-rose-700 line-through">{{ store.paper.abstract || '(kosong)' }}</span>
+            <span class="font-bold italic">Abstract—</span>
+            <span class="italic">{{ store.paper.abstract || '(kosong)' }}</span>
           </div>
         </template>
         <template #after>
           <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
-            <span class="font-bold italic text-emerald-800">Abstract—</span>
-            <span class="italic text-emerald-800">{{ pendingByKind.abstract.payload.value }}</span>
+            <span class="font-bold italic">Abstract—</span>
+            <span class="italic">{{ pendingByKind.abstract.payload.value }}</span>
           </div>
         </template>
       </DiffBlock>
@@ -91,14 +91,14 @@
       <DiffBlock v-if="pendingByKind.keywords" :change="pendingByKind.keywords" :store="store">
         <template #before>
           <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
-            <span class="font-bold italic text-rose-700">Keywords—</span>
-            <span class="italic text-rose-700 line-through">{{ (store.paper.keywords || []).join(', ') || '(kosong)' }}</span>
+            <span class="font-bold italic">Keywords—</span>
+            <span class="italic">{{ (store.paper.keywords || []).join(', ') || '(kosong)' }}</span>
           </div>
         </template>
         <template #after>
           <div class="text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
-            <span class="font-bold italic text-emerald-800">Keywords—</span>
-            <span class="italic text-emerald-800">{{ (pendingByKind.keywords.payload.value || []).join(', ') }}</span>
+            <span class="font-bold italic">Keywords—</span>
+            <span class="italic">{{ (pendingByKind.keywords.payload.value || []).join(', ') }}</span>
           </div>
         </template>
       </DiffBlock>
@@ -113,16 +113,16 @@
         <div v-for="(section, sIdx) in store.paper.sections" :key="sIdx" class="mb-4">
           <DiffBlock v-if="pendingSectionByIdx[sIdx]" :change="pendingSectionByIdx[sIdx]" :store="store">
             <template #before>
-              <h2 class="text-center font-bold mb-2 text-sm text-rose-700 line-through">
+              <h2 class="text-center font-bold mb-2 text-sm">
                 {{ toRoman(sIdx + 1) }}. {{ section.title?.toUpperCase() }}
               </h2>
-              <p class="text-justify whitespace-pre-wrap text-sm text-rose-700 line-through">{{ sectionText(section) }}</p>
+              <p class="text-justify whitespace-pre-wrap text-sm">{{ sectionText(section) }}</p>
             </template>
             <template #after>
-              <h2 class="text-center font-bold mb-2 text-sm text-emerald-800">
+              <h2 class="text-center font-bold mb-2 text-sm">
                 {{ toRoman(sIdx + 1) }}. {{ (pendingSectionByIdx[sIdx].payload.title || '').toUpperCase() }}
               </h2>
-              <p class="text-justify whitespace-pre-wrap text-sm text-emerald-800">{{ pendingSectionByIdx[sIdx].payload.content || '' }}</p>
+              <p class="text-justify whitespace-pre-wrap text-sm">{{ pendingSectionByIdx[sIdx].payload.content || '' }}</p>
             </template>
           </DiffBlock>
 
@@ -184,10 +184,10 @@
             <p class="text-rose-700 italic text-xs">(belum ada section ini — akan ditambahkan)</p>
           </template>
           <template #after>
-            <h2 class="text-center font-bold mb-2 text-sm text-emerald-800">
+            <h2 class="text-center font-bold mb-2 text-sm">
               + {{ (change.payload.title || '').toUpperCase() }}
             </h2>
-            <p class="text-justify whitespace-pre-wrap text-sm text-emerald-800">{{ change.payload.content || '' }}</p>
+            <p class="text-justify whitespace-pre-wrap text-sm">{{ change.payload.content || '' }}</p>
           </template>
         </DiffBlock>
 
@@ -197,10 +197,10 @@
           <div v-for="(ref, i) in store.paper.references" :key="i">
             <DiffBlock v-if="pendingRefByIdx[i]" :change="pendingRefByIdx[i]" :store="store">
               <template #before>
-                <div class="text-xs leading-snug pl-6 -indent-6 text-rose-700 line-through">[{{ i + 1 }}] {{ ref || '(kosong)' }}</div>
+                <div class="text-xs leading-snug pl-6 -indent-6">[{{ i + 1 }}] {{ ref || '(kosong)' }}</div>
               </template>
               <template #after>
-                <div class="text-xs leading-snug pl-6 -indent-6 text-emerald-800">[{{ i + 1 }}] {{ pendingRefByIdx[i].payload.value || '' }}</div>
+                <div class="text-xs leading-snug pl-6 -indent-6">[{{ i + 1 }}] {{ pendingRefByIdx[i].payload.value || '' }}</div>
               </template>
             </DiffBlock>
             <div v-else class="text-xs leading-snug mb-1 pl-6 -indent-6">
@@ -214,7 +214,7 @@
               <div class="text-rose-700 italic text-xs pl-6 -indent-6">(referensi baru — akan ditambahkan)</div>
             </template>
             <template #after>
-              <div class="text-xs leading-snug pl-6 -indent-6 text-emerald-800">+ [{{ store.paper.references.length + 1 }}] {{ change.payload.value }}</div>
+              <div class="text-xs leading-snug pl-6 -indent-6">+ [{{ store.paper.references.length + 1 }}] {{ change.payload.value }}</div>
             </template>
           </DiffBlock>
         </div>

@@ -26,12 +26,12 @@
     <div v-for="(ref, index) in store.paper.references" :key="ref.id"
       class="flex items-start gap-3 mb-3 group">
       <span class="text-sm font-mono bg-gray-100 px-2 py-1.5 rounded text-gray-600 min-w-[40px] text-center">
-        [{{ ref.id }}]
+        [{{ index + 1 }}]
       </span>
       <div class="flex-1">
         <textarea v-model="ref.text" rows="2"
           :placeholder="`A. Author, B. Author, &quot;Title of paper,&quot; Journal Name, vol. X, no. Y, pp. 1-10, 2024.`"
-          class="w-full px-3 py-1.5 border rounded text-sm focus:ring-2 focus:ring-blue-200 outline-none resize-y font-serif"></textarea>
+          class="w-full px-3 py-1.5 border rounded text-sm focus:ring-2 focus:ring-blue-200 outline-none resize-y"></textarea>
       </div>
       <div class="flex flex-col gap-1">
         <AiButton @click="aiEditRef(index)" label="AI" :loading="store.aiLoading" />
@@ -90,7 +90,7 @@ async function aiGenerateRefs() {
   const result = await store.aiGenerate(
     `Based on the following paper content, generate IEEE format references that match the citations [1], [2], etc. mentioned in the text. Return each reference on a new line in format: [N] Author, "Title," Journal, vol. X, pp. X-Y, Year.\n\nPaper content:\n${allText.substring(0, 3000)}`,
     'references',
-    store.paper.references.map(r => `[${r.id}] ${r.text}`).join('\n')
+    store.paper.references.map((r, i) => `[${i + 1}] ${r.text}`).join('\n')
   )
   if (result) {
     parseAndSetReferences(result)

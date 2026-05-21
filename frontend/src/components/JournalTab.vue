@@ -17,27 +17,39 @@
               {{ store.paper.journal || 'IEEE' }}
             </span>
           </div>
+          <label for="journal-search" class="sr-only">Cari jurnal</label>
           <input
+            id="journal-search"
             v-model="search"
             @focus="open = true"
             @input="open = true"
             @keydown.escape="open = false"
-            @keydown.enter.prevent="pickFirstFiltered"
+            @keydown.down.prevent="moveHighlight(1)"
+            @keydown.up.prevent="moveHighlight(-1)"
+            @keydown.enter.prevent="pickHighlighted"
             type="text"
+            role="combobox"
+            :aria-expanded="open"
+            aria-controls="journal-list"
+            aria-haspopup="listbox"
             placeholder="🔍 Cari jurnal (contoh: IEEE, JOKI, JNTETI…)"
             class="w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none"
             :disabled="store.journalsLoading"
           />
 
           <ul v-if="open && filtered.length"
+            id="journal-list"
+            role="listbox"
             class="absolute z-50 mt-1 w-full bg-white dark:bg-anthracite-700 border border-ivory-300 dark:border-anthracite-500 rounded-xl shadow-lg max-h-72 overflow-y-auto text-sm">
             <li
-              v-for="j in filtered"
+              v-for="(j, idx) in filtered"
               :key="j"
               @click="pick(j)"
+              role="option"
+              :aria-selected="store.paper.journal === j"
               :class="[
                 'px-3 py-2 cursor-pointer flex items-center justify-between transition-colors',
-                store.paper.journal === j ? 'bg-ivory-200 dark:bg-anthracite-600 font-medium text-ink-900 dark:text-anthracite-50' : 'text-ink-800 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-600',
+                store.paper.journal === j || highlightedIndex === idx ? 'bg-ivory-200 dark:bg-anthracite-600 font-medium text-ink-900 dark:text-anthracite-50' : 'text-ink-800 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-600',
               ]"
             >
               <span>{{ j }}</span>
@@ -66,6 +78,7 @@ const store = usePaperStore()
 const search = ref('')
 const open = ref(false)
 const wrapRef = ref(null)
+const highlightedIndex = ref(0)
 
 const filtered = computed(() => {
   const list = (store.availableJournals || [])
@@ -80,8 +93,14 @@ function pick(j) {
   open.value = false
 }
 
-function pickFirstFiltered() {
-  if (filtered.value.length) pick(filtered.value[0])
+function moveHighlight(delta) {
+  open.value = true
+  if (!filtered.value.length) return
+  highlightedIndex.value = (highlightedIndex.value + delta + filtered.value.length) % filtered.value.length
+}
+
+function pickHighlighted() {
+  if (filtered.value.length) pick(filtered.value[highlightedIndex.value] || filtered.value[0])
 }
 
 function onClickOutside(e) {
