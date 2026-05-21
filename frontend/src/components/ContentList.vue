@@ -17,7 +17,7 @@
             </span>
             <span v-else class="text-[10px] font-medium uppercase tracking-wide pl-1.5 border-l-2"
               :class="badgeClass(item.id)">
-              Fig. {{ getItemNumber(item).label || '?' }}
+              Fig. {{ store.getItemNumber(item)?.label || '?' }}
             </span>
           </div>
           <button @click="store.removeContent(items, idx)"

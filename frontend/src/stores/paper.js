@@ -431,12 +431,16 @@ export const usePaperStore = defineStore('paper', () => {
 
   // ─── CRUD: Sections ───────────────────────────────────────────────────
   function addSection() {
+    if (!Array.isArray(paper.value.sections)) paper.value.sections = []
     paper.value.sections.push({ title: '', content: [{ id: 'text', text: '' }], subsections: [] })
   }
   function removeSection(idx) { paper.value.sections.splice(idx, 1) }
 
   function addSubsection(sIdx) {
-    paper.value.sections[sIdx].subsections.push({ title: '', content: [{ id: 'text', text: '' }] })
+    const sec = paper.value.sections?.[sIdx]
+    if (!sec) return
+    if (!Array.isArray(sec.subsections)) sec.subsections = []
+    sec.subsections.push({ title: '', content: [{ id: 'text', text: '' }] })
   }
   function removeSubsection(sIdx, subIdx) { paper.value.sections[sIdx].subsections.splice(subIdx, 1) }
 
@@ -467,7 +471,10 @@ export const usePaperStore = defineStore('paper', () => {
   function removeKeyword(idx) { paper.value.keywords.splice(idx, 1) }
 
   // ─── CRUD: References ─────────────────────────────────────────────────
-  function addReference() { paper.value.references.push('') }
+  function addReference() {
+    if (!Array.isArray(paper.value.references)) paper.value.references = []
+    paper.value.references.push('')
+  }
   function removeReference(idx) { paper.value.references.splice(idx, 1) }
 
   // ─── CRUD: Figure helpers ──────────────────────────────────────────────
