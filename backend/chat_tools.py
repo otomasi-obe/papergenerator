@@ -113,6 +113,22 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
         return _list_memory(paper_id, user_id)
     elif tool_name == "DeleteMemory":
         return _delete_memory(paper_id, user_id, arguments.get("key", ""))
+    elif tool_name == "SetCitationStyle":
+        style = (arguments.get("style") or "IEEE").strip()
+        if style not in {"ACS", "APA", "Chicago", "Harvard", "IEEE", "MLA", "Vancouver"}:
+            style = "IEEE"
+        msg = _save_memory(paper_id, user_id, "citation_style", style, kind="setting")
+        if isinstance(msg, str) and msg.startswith("Error"):
+            return msg
+        return _propose("setting_saved", {"key": "citation_style", "value": style})
+    elif tool_name == "SetLanguage":
+        lang = (arguments.get("language") or "id").strip().lower()
+        if lang not in {"id", "en"}:
+            lang = "id"
+        msg = _save_memory(paper_id, user_id, "paper_language", lang, kind="setting")
+        if isinstance(msg, str) and msg.startswith("Error"):
+            return msg
+        return _propose("setting_saved", {"key": "paper_language", "value": lang})
     # ─── Tier-0 router + UI hint tools ─────────────────────────────────
     elif tool_name == "RouteIntent":
         # Classification tool. The chat blueprint reads the result, switches
@@ -156,6 +172,36 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
         return _propose("journal", {"value": arguments.get("journal", "")})
     elif tool_name == "RequestExportDocx":
         return _propose("export_docx", {})
+    # ─── Revisi-mode proposals ──────────────────────────────────────────
+    elif tool_name == "Paraphrase":
+        return _propose_revisi(
+            tool="Paraphrase",
+            scope=arguments.get("scope"),
+            section_index=arguments.get("section_index"),
+            content_index=arguments.get("content_index"),
+            text=arguments.get("text"),
+            rewrite=arguments.get("rewrite", ""),
+            style=arguments.get("style"),
+        )
+    elif tool_name == "FixGrammar":
+        return _propose_revisi(
+            tool="FixGrammar",
+            scope=arguments.get("scope"),
+            section_index=arguments.get("section_index"),
+            content_index=arguments.get("content_index"),
+            text=arguments.get("text"),
+            rewrite=arguments.get("rewrite", ""),
+        )
+    elif tool_name == "Translate":
+        return _propose_revisi(
+            tool="Translate",
+            scope=arguments.get("scope"),
+            section_index=arguments.get("section_index"),
+            content_index=arguments.get("content_index"),
+            text=arguments.get("text"),
+            rewrite=arguments.get("rewrite", ""),
+            target_language=arguments.get("target_language"),
+        )
     elif tool_name in ("Write", "Edit"):
         return "Tool not permitted in chat environment for security reasons."
     else:
@@ -170,6 +216,40 @@ PROPOSAL_PREFIX = "<<PROPOSAL>>"
 def _propose(kind: str, fields: dict) -> str:
     """Wrap a proposal as a JSON payload prefixed with PROPOSAL_PREFIX."""
     payload = {"kind": kind, **fields}
+    return PROPOSAL_PREFIX + json.dumps(payload, ensure_ascii=False)
+
+
+def _propose_revisi(*, tool: str, scope, section_index, content_index,
+                    text, rewrite, target_language=None, style=None) -> str:
+    """Wrap a revisi-mode proposal (Paraphrase / FixGrammar / Translate).
+
+    The frontend (agent F2) will pick this up via the ``propose_revisi`` kind
+    and render a side-by-side diff scoped to ``scope`` (paragraph / section /
+    whole). All optional fields are dropped when ``None`` so the payload stays
+    small.
+    """
+    payload = {
+        "kind": "propose_revisi",
+        "tool": tool,
+        "scope": (scope or "paragraph"),
+        "rewrite": rewrite or "",
+    }
+    if section_index is not None:
+        try:
+            payload["section_index"] = int(section_index)
+        except (TypeError, ValueError):
+            pass
+    if content_index is not None:
+        try:
+            payload["content_index"] = int(content_index)
+        except (TypeError, ValueError):
+            pass
+    if text:
+        payload["text"] = text
+    if target_language:
+        payload["target_language"] = target_language
+    if style:
+        payload["style"] = style
     return PROPOSAL_PREFIX + json.dumps(payload, ensure_ascii=False)
 
 
@@ -613,11 +693,18 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     # writer takes over. We snapshot project memory so the planner sees what
     # the user already locked in (target journal, methodology, etc.).
     memory_lines = ""
+    citation_style = "IEEE"
+    paper_language = "id"
     if paper_id:
         try:
             mems = ProjectMemory.query.filter_by(paper_id=paper_id).all()
             if mems:
                 memory_lines = "\n".join(f"- {m.key}: {m.value}" for m in mems[:25])
+                for m in mems:
+                    if m.key == "citation_style" and (m.value or "").strip():
+                        citation_style = m.value.strip()
+                    elif m.key == "paper_language" and (m.value or "").strip():
+                        paper_language = m.value.strip().lower()
         except Exception:
             memory_lines = ""
 
@@ -639,6 +726,17 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
         parts.append(literature_block)
     if outline:
         parts.append(f"## Outline agreed with the user (follow it strictly)\n{outline}")
+    # Output settings — these are saved via SetCitationStyle / SetLanguage and
+    # carried through to every chunked stage. AI already knows the format
+    # rules for each style; we don't inject style.txt content here.
+    lang_label = "Bahasa Indonesia" if paper_language == "id" else "English"
+    parts.append(
+        f"## Output settings\n"
+        f"- CITATION STYLE: {citation_style} (use this exact format for "
+        f"in-text citations and the reference list — you already know it).\n"
+        f"- OUTPUT LANGUAGE: {lang_label} (write all prose, headings, "
+        f"figure/table captions in this language)."
+    )
     custom_prompt = "\n\n".join(parts)
 
     # Run inside the existing app context so Flask's job machinery is available
@@ -1264,6 +1362,40 @@ CHAT_TOOLS = [
         },
     },
     {
+        "name": "SetCitationStyle",
+        "description": (
+            "Save the user's chosen citation style for this paper. The AI "
+            "already knows the format conventions (ACS, APA, Chicago, "
+            "Harvard, IEEE, MLA, Vancouver) — no style file is injected. "
+            "Call this after the user picks via ProposeChips."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "style": {
+                    "type": "string",
+                    "enum": ["ACS", "APA", "Chicago", "Harvard", "IEEE", "MLA", "Vancouver"],
+                },
+            },
+            "required": ["style"],
+        },
+    },
+    {
+        "name": "SetLanguage",
+        "description": "Save the user's chosen output language for this paper (id = Bahasa Indonesia, en = English).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "language": {
+                    "type": "string",
+                    "enum": ["id", "en"],
+                    "description": "id = Bahasa Indonesia, en = English",
+                },
+            },
+            "required": ["language"],
+        },
+    },
+    {
         "name": "ProposeTitle",
         "description": "Propose a new title (pending diff).",
         "input_schema": {
@@ -1346,11 +1478,14 @@ CHAT_TOOLS = [
             "properties": {
                 "mode": {
                     "type": "string",
-                    "enum": ["discovery", "slr", "edit", "rapikan", "memory", "casual"],
+                    "enum": ["discovery", "slr", "edit", "rapikan", "memory", "casual", "revisi"],
                     "description": (
-                        "discovery = 7-step paper planning, slr = literature "
-                        "search, edit = paper editing, rapikan = renumber Fig/"
-                        "Table/Eq, memory = manage saved memory, casual = free chat."
+                        "discovery for 7-step paper planning; slr for "
+                        "literature search; edit for paper editing; rapikan "
+                        "for renumbering Fig/Table/Eq; revisi for revising a "
+                        "finished paper (abstract/section/data/paraphrase/"
+                        "grammar/translate); memory for memory management; "
+                        "casual for free chat."
                     ),
                 },
                 "reasoning": {
@@ -1392,6 +1527,94 @@ CHAT_TOOLS = [
                 },
             },
             "required": ["chips"],
+        },
+    },
+    {
+        "name": "Paraphrase",
+        "description": (
+            "Paraphrase a paragraph, section, or whole paper. Returns a "
+            "proposal the user accepts/rejects via the diff UI. Read the "
+            "target section with GetPaperSection FIRST so the rewrite stays "
+            "faithful to surrounding context."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "scope": {
+                    "type": "string",
+                    "enum": ["paragraph", "section", "whole"],
+                    "description": "What to paraphrase.",
+                },
+                "section_index": {
+                    "type": "integer",
+                    "description": "1-5 for sections; required if scope=section or paragraph.",
+                },
+                "content_index": {
+                    "type": "integer",
+                    "description": "Index of the content box within the section; required if scope=paragraph.",
+                },
+                "text": {
+                    "type": "string",
+                    "description": "The original text to paraphrase.",
+                },
+                "rewrite": {
+                    "type": "string",
+                    "description": "The paraphrased text the AI proposes.",
+                },
+                "style": {
+                    "type": "string",
+                    "description": "Optional: 'formal', 'concise', 'simple'.",
+                },
+            },
+            "required": ["scope", "rewrite"],
+        },
+    },
+    {
+        "name": "FixGrammar",
+        "description": (
+            "Fix grammar in a paragraph, section, or the whole paper. "
+            "Returns a proposal for the user to accept/reject. Preserve the "
+            "author's voice; only correct grammar/spelling/punctuation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "scope": {
+                    "type": "string",
+                    "enum": ["paragraph", "section", "whole"],
+                },
+                "section_index": {"type": "integer"},
+                "content_index": {"type": "integer"},
+                "text": {"type": "string"},
+                "rewrite": {"type": "string"},
+            },
+            "required": ["scope", "rewrite"],
+        },
+    },
+    {
+        "name": "Translate",
+        "description": (
+            "Translate a paragraph, section, or the whole paper to a target "
+            "language. Returns a proposal. Keep technical terms and citation "
+            "markers ([1], Fig. 2, Eq. (3)) intact."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "scope": {
+                    "type": "string",
+                    "enum": ["paragraph", "section", "whole"],
+                },
+                "section_index": {"type": "integer"},
+                "content_index": {"type": "integer"},
+                "text": {"type": "string"},
+                "target_language": {
+                    "type": "string",
+                    "description": "ISO code or readable label: 'id', 'en', 'Indonesian', 'English'.",
+                },
+                "rewrite": {"type": "string"},
+            },
+            "required": ["scope", "target_language", "rewrite"],
         },
     },
 ]

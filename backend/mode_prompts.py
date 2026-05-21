@@ -85,8 +85,9 @@ EDIT_PROMPT = (
     "  - Export DOCX          -> RequestExportDocx (auto-applied)\n\n"
     "Don't try to assemble a paper from scratch via repeated ProposeSection\n"
     "calls — that path belongs to discovery mode + GenerateFullPaper.\n"
-    "After every Propose* call, write 1-2 sentences explaining what changed\n"
-    "and why."
+    "Do NOT include any logo or auto-prepend '[N]' citation prefix in section\n"
+    "content; references are numbered separately at the end of the paper.\n"
+    "After every Propose* call, write 1-2 sentences explaining what changed."
 )
 
 RAPIKAN_PROMPT = (
@@ -98,7 +99,39 @@ RAPIKAN_PROMPT = (
     "  3. ProposeSection per section whose text references stale Fig.X /\n"
     "     Table Y / Eq. (Z) numbers. One Propose call per section.\n\n"
     "Skip sections that don't mention any figure, table, or equation.\n"
+    "Do NOT add a logo or '[N]' citation prefix in section content.\n"
     "After each Propose, give a 1-sentence note about which numbers moved."
+)
+
+REVISI_PROMPT = (
+    "User's paper is already generated. They want targeted revisions.\n"
+    "Match their language (default Bahasa Indonesia). Keep messages short.\n\n"
+    "Available actions:\n"
+    "  - ReviseAbstract     -> ProposeAbstract\n"
+    "  - ReviseSection N    -> ProposeSection (section_index=N, 1-5)\n"
+    "  - ReviseData         -> focus on section 4 data presentation; suggest\n"
+    "    concrete additions (e.g. 'tambahkan tabel ringkasan X').\n"
+    "  - ReviewPaper        -> overall review per the user's direction.\n"
+    "  - AddLiterature      -> read GetLiterature first; only call RunSLR\n"
+    "    when the user explicitly asks to search NEW keywords.\n"
+    "  - Paraphrase         -> Paraphrase tool (scope + rewrite).\n"
+    "  - FixGrammar         -> FixGrammar tool (scope + rewrite).\n"
+    "  - Translate          -> Translate tool (scope + target_language).\n\n"
+    "Workflow per request:\n"
+    "  1. Read ONLY what you need: GetPaperSection for the targeted section,\n"
+    "     not the whole paper. For paragraph-scoped paraphrase/grammar/\n"
+    "     translate, read just that section.\n"
+    "  2. Briefly state the change you'll make (1 sentence).\n"
+    "  3. Call exactly ONE proposal tool per turn (ProposeAbstract /\n"
+    "     ProposeSection / ProposeReference, or Paraphrase / FixGrammar /\n"
+    "     Translate). The frontend shows a diff for accept/reject.\n\n"
+    "Rules:\n"
+    "  - Do NOT add a logo or auto '[N]' citation prefix; references are\n"
+    "    numbered separately at the end of the paper.\n"
+    "  - Avoid RunSLR unless the user asks for new literature; prefer\n"
+    "    GetLiterature on existing rows.\n"
+    "  - For data revisions, propose concrete shapes (e.g. table columns +\n"
+    "    sample rows) rather than vague suggestions."
 )
 
 MEMORY_PROMPT = (
@@ -120,6 +153,7 @@ MODE_PROMPTS: dict[str, str] = {
     "slr": SLR_PROMPT,
     "edit": EDIT_PROMPT,
     "rapikan": RAPIKAN_PROMPT,
+    "revisi": REVISI_PROMPT,
     "memory": MEMORY_PROMPT,
     "casual": CASUAL_PROMPT,
 }
@@ -157,6 +191,17 @@ MODE_TOOLS: dict[str, list[str]] = {
         "GetPaperSection",
         "GetPaperNumbering",
         "ProposeSection",
+    ],
+    "revisi": [
+        "GetPaperContent",
+        "GetPaperSection",
+        "GetLiterature",
+        "ProposeAbstract",
+        "ProposeSection",
+        "ProposeReference",
+        "Paraphrase",
+        "FixGrammar",
+        "Translate",
     ],
     "memory": ["ListMemory", "DeleteMemory"],
     "casual": [],
