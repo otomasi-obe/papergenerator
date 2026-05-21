@@ -11,14 +11,17 @@ Data model:
 import json
 import os
 import logging
+import re
 import threading
 import time
 import uuid
 import requests
 from flask import Blueprint, request, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Conversation, ChatMessage, Paper, ProjectMemory, AiJob
+from models import db, Conversation, ChatMessage, Paper, ProjectMemory
 from chat_tools import execute_tool, CHAT_TOOLS, get_memory_summary
+from mode_prompts import get_mode_bundle, list_modes
+from auto_memory import extract_facts
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -58,189 +61,21 @@ def _resolve_model(requested):
 MAX_TOOL_ITERATIONS = 10
 MAX_HISTORY_MESSAGES = 12   # cap on prior turns we resend (token saver)
 
-# Heavy guidance is loaded via tools / on demand. The prompt encodes a small
-# state machine so the assistant doesn't dump 4 questions at once or rush
-# straight to GenerateFullPaper.
-SYSTEM_PROMPT = (
-    "You are PaperFull's academic-paper assistant. "
-    "Match the user's language (Bahasa Indonesia by default). "
-    "Keep messages short, warm, and concrete.\n\n"
+# Mode storage. The Conversation model has no JSON metadata column today,
+# so per-conversation mode is kept in an in-memory dict keyed by conv.id.
+# Resetting on backend restart is acceptable: tier-0 RouteIntent re-classifies
+# on the very next user turn, so the worst case is one extra router call.
+_CONV_MODE: dict[str, str] = {}
+_CONV_MODE_LOCK = threading.Lock()
 
-    "================  7-STEP DISCOVERY WORKFLOW  ================\n"
-    "Before generating ANY paper, you MUST walk the user through these 7 "
-    "steps IN ORDER, ONE QUESTION PER MESSAGE. After each user reply, save "
-    "the answer with SaveMemory using the exact `key` shown in brackets, "
-    "then move to the next step. Skip ahead only if the user already "
-    "answered that step in an earlier turn (check GetMemory first).\n\n"
-
-    "STEP 1 — JURUSAN [key=jurusan]\n"
-    "  Ask the user's field/jurusan (e.g. Teknik Elektro, Manajemen, Hukum, "
-    "  Kedokteran). Tailor option 1/2/3 to common jurusan.\n\n"
-
-    "STEP 2 — TOPIK [key=topik]\n"
-    "  Ask the specific topic within their jurusan. Options must be 3 "
-    "  realistic topic ideas inside their jurusan.\n\n"
-
-    "STEP 3 — LATAR BELAKANG [key=latar_belakang]\n"
-    "  Ask WHY this topic matters to them — the motivation/problem. "
-    "  Options should be 3 plausible motivations for that topik.\n\n"
-
-    "STEP 4 — LITERATUR REVIEW [key=referensi_terpilih]\n"
-    "  Ask whether the user already has literature, or wants help finding "
-    "  it. Options: 1) Belum, tolong carikan  2) Sudah, ini filenya  "
-    "  3) Pakai keduanya.\n"
-    "  - If 'belum / cari': call RunSLR with query=<topik + jurusan>. The "
-    "    Literature tab will populate over the next 2-5 menit — tell the "
-    "    user 'saya jalankan SLR di latar belakang, lihat tab Literatur "
-    "    untuk progress.' Do NOT block the workflow waiting; immediately "
-    "    move to STEP 5. The literature catalog will be available by the "
-    "    time we reach STEP 9 (GenerateFullPaper).\n"
-    "  - If 'sudah, file terlampir': call ListAttachedFiles. For EACH "
-    "    file returned (not just one), call ReadAttachedFile and write a "
-    "    2-sentence summary per file. If a file has extracted_chars=0, "
-    "    tell the user: 'file ini tidak bisa diekstrak, coba upload ulang "
-    "    dalam format text-based PDF'. Make sure at least 1 file is "
-    "    readable before continuing.\n\n"
-
-    "STEP 5 — METODE [key=metode]\n"
-    "  Suggest 3 concrete methodologies that fit the jurusan + topik + "
-    "  literature. Discuss in depth — if the user is unsure, keep "
-    "  discussing rather than locking in. Save only after the user "
-    "  confirms.\n\n"
-
-    "STEP 6 — DATA [key=data_asli OR key=data_estimasi]\n"
-    "  Ask whether they have real data or only estimates. Options: "
-    "  1) Punya data riil  2) Estimasi saja  3) Campuran.\n"
-    "  - 'punya data': accept their text description of the dataset, "
-    "    SaveMemory(key=data_asli).\n"
-    "  - 'estimasi': propose a realistic synthetic dataset given their "
-    "    metode (e.g. 'untuk eksperimen IoT, 30 hari pengukuran tiap 5 "
-    "    menit = 8640 data point per sensor'), SaveMemory(key="
-    "    data_estimasi).\n\n"
-
-    "STEP 7 — KESIMPULAN TARGET [key=kesimpulan_target]\n"
-    "  Ask what outcome / conclusion they hope the paper produces. "
-    "  Options: 3 plausible outcomes for that topic+metode.\n\n"
-
-    "STEP 8 — CONFIRM (no question — just summary):\n"
-    "  Restate all 7 answers as 7 short bullets, then close with this "
-    "  exact options block:\n"
-    "  [OPSI]\n"
-    "  1) Sudah pas, generate sekarang\n"
-    "  2) Tambah/revisi <field>\n"
-    "  3) Ubah <field>\n"
-    "  [/OPSI]\n\n"
-
-    "STEP 9 — GENERATE:\n"
-    "  Once the user confirms, call GenerateFullPaper(prompt=<topik>). "
-    "  Do NOT ask anything else. After the call, send 1-2 sentences: "
-    "  'Job dimulai. Editor akan auto-load hasilnya 3-10 menit. Kamu "
-    "  bisa pakai chat lain untuk hal lain (kecuali generate paper "
-    "  untuk paper yang sama).'\n"
-    "  Before calling GenerateFullPaper, if the Literature tab is empty "
-    "  AND the user did not bring their own files, run RunSLR first to "
-    "  populate the catalog so the generated paper cites real papers. "
-    "  If you ran RunSLR earlier and the user has not yet seen results, "
-    "  briefly verify with GetLiterature before generating; this ensures "
-    "  references in the paper are real.\n\n"
-
-    "================  ASK ONE THING AT A TIME  ================\n"
-    "Ask exactly ONE question per message. Never dump multiple questions. "
-    "EVERY question MUST end with this exact block:\n"
-    "[OPSI]\n"
-    "1) <concrete option tailored to the topic>\n"
-    "2) <different concrete option>\n"
-    "3) <third concrete option>\n"
-    "[/OPSI]\n"
-    "Options must be DISTINCT and CONCRETE — never generic placeholders "
-    "like 'option A'. The user can also type free text; the frontend "
-    "handles that. If the user skips a question, save the answer as "
-    "'(tidak diisi user)' and move on so the generator still has minimal "
-    "info.\n\n"
-
-    "================  WHEN USER SAYS 'JUST GENERATE'  ================\n"
-    "If the user's first message is something like 'buatkan saya paper "
-    "lengkap', 'buatin paper', 'langsung generate', 'bikin paper saya', "
-    "'lengkap saja', 'generate full paper': DO NOT generate yet. Ask "
-    "exactly one question:\n"
-    "  'Mau dirapikan dulu (tanya 7 hal: jurusan, topik, latar belakang, "
-    "  literatur, metode, data, kesimpulan) atau langsung generate "
-    "  dengan default minimal?'\n"
-    "  [OPSI]\n"
-    "  1) Dirapikan dulu (recommended)\n"
-    "  2) Langsung generate dengan default\n"
-    "  3) Saya kasih semua info sekaligus\n"
-    "  [/OPSI]\n"
-    "- Pilih (1) → mulai dari STEP 1.\n"
-    "- Pilih (2) → SaveMemory(key=jurusan, value='Teknik'), then call "
-    "  GenerateFullPaper(prompt=<topic from first message>).\n"
-    "- Pilih (3) → ask the user to write all 7 fields in one message, "
-    "  then jump to STEP 8 (CONFIRM).\n\n"
-
-    "================  EDITING EXISTING PAPER  ================\n"
-    "Only call Propose* tools when a paper already exists and the user "
-    "wants to tweak ONE specific part. Don't assemble a paper through "
-    "consecutive ProposeSection calls — use GenerateFullPaper.\n"
-    "- Keywords always go through ProposeKeywords.\n"
-    "- ProposeJournal and RequestExportDocx auto-apply.\n"
-    "- After a Propose* call, write 1-2 sentences explaining what + why.\n"
-    "- 'Rapikan' / renumber Fig.+Table+Eq.: when the user says rapikan, "
-    "  reorder, perbarui referensi, etc., FIRST call GetPaperNumbering to "
-    "  see the current ordered figure/table/equation list, THEN call "
-    "  GetPaperContent to read each section's prose, THEN issue one "
-    "  ProposeSection per section whose text references stale "
-    "  Fig.X / Table Y / Eq. (Z) numbers. Do NOT touch sections that don't "
-    "  mention any figure/table/equation.\n\n"
-
-    "================  TOOL HINTS  ================\n"
-    "- SaveMemory / GetMemory: use them aggressively to track the 7 "
-    "  discovery answers. Always check GetMemory first to avoid asking "
-    "  questions the user already answered.\n"
-    "- SearchPapers already filters out broken/inaccessible entries — "
-    "  just summarize, don't re-filter.\n"
-    "- ListAttachedFiles + ReadAttachedFile: always loop over EVERY "
-    "  attached file in step 4, not just the first.\n\n"
-
-    "When the user asks 'jurnal apa aja' / 'what journals do you support', "
-    "list ONLY the templates from '# Available journal templates' below — "
-    "do not invent generic options.\n\n"
-
-    "================  TOOL SELECTION — LITERATURE  ================\n"
-    "Tool selection — literature requests:\n"
-    "- When the user asks for \"literatur review\", \"tinjauan pustaka\", \"studi pustaka\",\n"
-    "  \"systematic literature review\", \"kumpulkan referensi\", \"cari paper untuk literatur\",\n"
-    "  or any phrasing that implies populating the Literature tab / persistent storage,\n"
-    "  ALWAYS call RunSLR (NOT SearchPapers).\n"
-    "- RunSLR is non-blocking — call it then continue the workflow. Don't wait for results\n"
-    "  in the same chat turn; the Literature tab populates asynchronously over 2-5 menit.\n"
-    "- Use SearchPapers only for ad-hoc inline lookups when the user explicitly requests\n"
-    "  \"tampilkan di chat\" or \"show in chat\" — i.e., they want results in the chat output,\n"
-    "  not stored persistently."
+# Heuristic for "show me what you remember" so we keep memory injection cheap.
+_MEMORY_RECALL_RE = re.compile(
+    r"(?i)(ingatan|memori|memory|apa.*kamu.*tau|apa.*kamu.*ingat)"
 )
 
-# Loaded only when the user actually asks for it via the GetGuide tool.
-EXTENDED_GUIDE = """# Detailed guide
-
-# When to use each tool
-- Title rewrite        → ProposeTitle
-- Abstract rewrite     → ProposeAbstract
-- Keywords             → ProposeKeywords (replace full list)
-- Section              → ProposeSection (section_index=null appends; otherwise replaces)
-- Reference            → ProposeReference
-- Switch journal       → ProposeJournal (auto-applied)
-- Export DOCX          → RequestExportDocx (auto-applied)
-
-# When to save memory
-Save things that should persist across all chats of THIS paper:
-- Tentative title, target venue, language preference
-- Methodology, dataset, metrics
-- Tone (formal/IEEE-style/etc)
-- Decisions, scope limits
-
-Don't save short-term context.
-
-# Style
-Use markdown sparingly. After Propose*, write 1-2 sentences explaining what and why."""
+# Heavy guidance now lives in mode_prompts.py. Each mode (tier0/discovery/
+# slr/edit/rapikan/memory/casual) ships a slim system prompt + scoped tool
+# list selected by the tier-0 RouteIntent classifier on first turn.
 
 
 def _gen_id():
@@ -365,70 +200,6 @@ def _call_upstream(messages, tools, model=None, _allow_no_thinking=True):
         _upstream_sem.release()
 
 
-# Cheap keyword router so we only ship the tools the user is plausibly
-# going to want this turn — saves a lot of tokens vs sending all of them.
-_TOOL_KEYWORDS = {
-    "ProposeTitle":      ("title", "judul"),
-    "ProposeAbstract":   ("abstract", "abstrak", "ringkasan"),
-    "ProposeKeywords":   ("keyword", "kata kunci"),
-    "ProposeSection":    ("section", "bagian", "pendahuluan", "introduction",
-                          "metodologi", "methodology", "results", "kesimpulan",
-                          "conclusion", "diskusi", "discussion", "literatur",
-                          "rapikan", "renumber", "rapikan referensi"),
-    "ProposeReference":  ("reference", "referensi", "sitasi", "citation",
-                          "daftar pustaka", "bibliography"),
-    "ProposeJournal":    ("journal", "jurnal", "template", "ieee", "format"),
-    "RequestExportDocx": ("docx", "export", "download", "ekspor", "unduh", "word"),
-    "WebSearch":         ("cari ", "search", "google ", "find paper"),
-    "WebFetch":          ("buka ", "fetch ", "http://", "https://"),
-    "SearchPapers":      ("paper", "related work", "state of the art", "sota",
-                          "referensi terkait"),
-    "RunSLR":            ("slr", "systematic literature", "literatur review",
-                          "literature review", "tinjauan pustaka", "studi pustaka",
-                          "cari paper", "kumpulkan referensi", "kumpulan paper",
-                          "literatur lengkap", "review lengkap"),
-    "GetLiterature":     ("literatur saya", "literatur paper", "list literatur",
-                          "tabel literatur", "show literature", "lihat literatur",
-                          "tampilkan literatur", "literature catalog"),
-    "GenerateFullPaper": ("buatkan paper", "buatin paper", "buat paper", "generate paper",
-                          "tulis paper", "buatkan saya paper", "bikin paper",
-                          "tolong buat paper", "lengkapi paper", "draft paper", "full paper"),
-    "ListAttachedFiles": ("file terlampir", "file yang saya upload", "lampiran",
-                          "attached", "pdf saya", "uploaded"),
-    "ReadAttachedFile":  ("baca pdf", "baca file", "isi file", "read pdf", "baca lampiran"),
-    "GetPaperContent":   ("lihat paper", "lihat semua", "tampilkan paper"),
-    "GetPaperSection":   ("lihat section", "tampilkan section", "section "),
-    "Read":              ("baca file project", "buka file", "read "),
-    "Bash":              ("ls ", "grep ", "find ", "wc "),
-    "SaveMemory":        ("ingat", "remember", "catat", "save", "simpan"),
-    "GetMemory":         ("memory", "ingatan"),
-    "ListMemory":        ("list memory", "semua memory"),
-    "DeleteMemory":      ("hapus memory", "lupakan", "forget"),
-    "GetPaperNumbering": ("rapikan", "renumber", "fig.", "table ", "eq.",
-                          "gambar ", "tabel ", "rumus ", "urutkan",
-                          "perbarui referensi gambar", "perbarui referensi tabel"),
-}
-
-# Default toolset: small + always-relevant. The 7-step DISCOVERY workflow
-# needs SaveMemory/GetMemory every turn to track answers, plus search/file
-# tools so step 4 (literature review) works without keyword-router gymnastics.
-_BASE_TOOLS = {
-    "SaveMemory",
-    "GetMemory",
-    "GetPaperContent",
-    "ListAttachedFiles",
-    "ReadAttachedFile",
-    "SearchPapers",
-    "RunSLR",
-    "GetLiterature",
-    # GenerateFullPaper must be ALWAYS available — the AI hits the CONFIRM step
-    # mid-conversation and a keyword like "generate sekarang" alone shouldn't
-    # decide whether the tool ships. Without this it would hallucinate a "Job
-    # started" reply and never actually call the tool.
-    "GenerateFullPaper",
-}
-
-
 # ─── Active-generation registry ───────────────────────────────────────────
 # In-memory map: paper_id -> AiJob.id of an active GenerateFullPaper job.
 # Set from chat_tools._generate_full_paper via register_active_job(); cleared
@@ -457,39 +228,58 @@ def clear_active_job(paper_id: str | None) -> None:
         _active_jobs_by_paper.pop(paper_id, None)
 
 
-def _paper_has_active_generation(paper_id, user_id):
-    """Return job_id if there is a pending GenerateFullPaper job for this
-    paper owned by this user, else None. Self-cleans stale entries."""
-    if not paper_id:
+# ─── Mode helpers ─────────────────────────────────────────────────────────
+
+def _resolve_mode(conv) -> str:
+    """Read the conversation's current mode. Defaults to 'tier0'."""
+    if conv is None or not getattr(conv, "id", None):
+        return "tier0"
+    with _CONV_MODE_LOCK:
+        return _CONV_MODE.get(conv.id) or "tier0"
+
+
+def _set_mode(conv, mode: str) -> None:
+    """Persist the conversation's mode (process-local, see _CONV_MODE)."""
+    if conv is None or not getattr(conv, "id", None) or not mode:
+        return
+    with _CONV_MODE_LOCK:
+        _CONV_MODE[conv.id] = mode
+
+
+def _get_last_assistant_msg(conv_id: str) -> str | None:
+    msg = (ChatMessage.query
+           .filter_by(conversation_id=conv_id, role="assistant")
+           .order_by(ChatMessage.created_at.desc())
+           .first())
+    return msg.content if msg else None
+
+
+def _find_tool_by_name(name: str):
+    """Look up a tool schema in CHAT_TOOLS by its declared name."""
+    if not name:
         return None
-    with _active_jobs_lock:
-        job_id = _active_jobs_by_paper.get(paper_id)
-    if not job_id:
-        return None
-    job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
-    if job and job.status in ('pending', 'queued', 'running'):
-        return job_id
-    # Stale entry — drop it so the next call returns None immediately.
-    with _active_jobs_lock:
-        cur = _active_jobs_by_paper.get(paper_id)
-        if cur == job_id:
-            _active_jobs_by_paper.pop(paper_id, None)
+    for t in CHAT_TOOLS:
+        # Anthropic-style schemas use a top-level "name"; OpenAI-style nest
+        # the name under function. Support both so this stays correct as
+        # CHAT_TOOLS evolves.
+        if t.get("name") == name:
+            return t
+        fn = t.get("function") or {}
+        if fn.get("name") == name:
+            return t
     return None
 
 
-def _select_tools(user_text: str):
-    """Return a slim CHAT_TOOLS subset relevant to this turn."""
-    needle = (user_text or "").lower()
-    selected = set(_BASE_TOOLS)
-    for name, kws in _TOOL_KEYWORDS.items():
-        if any(kw in needle for kw in kws):
-            selected.add(name)
-    # If none of the propose-tools matched, still allow ProposeAbstract /
-    # ProposeSection because "tulis…" / "write…" are common asks without
-    # explicit keywords.
-    if any(w in needle for w in ("tulis", "write", "buat", "draft", "rewrite", "perbaiki", "review", "improve", "rapikan")):
-        selected.update({"ProposeTitle", "ProposeAbstract", "ProposeSection", "ProposeReference"})
-    return [t for t in CHAT_TOOLS if t["name"] in selected]
+def _select_tools(conv, content: str):
+    """Return ``(system_prompt, tool_schemas)`` for this turn based on mode."""
+    mode = _resolve_mode(conv)
+    sysprompt, tool_names = get_mode_bundle(mode)
+    tools = []
+    for name in tool_names:
+        schema = _find_tool_by_name(name)
+        if schema is not None:
+            tools.append(schema)
+    return sysprompt, tools
 
 
 def _current_user_id():
@@ -704,22 +494,6 @@ def send_message(conv_id):
         return {"error": f"Unknown model. Allowed: {sorted(SELECTABLE_MODELS.keys())}"}, 400
     log.info("chat.send conv=%s user=%s model=%s len=%d", conv_id, user_id, upstream_model, len(content))
 
-    # Lock: if another chat in this paper has a generation job in flight, the
-    # user can't kick off a second one or even chat freely on the same paper
-    # without confusing the editor's auto-load. Steer them to a different
-    # paper or to wait. Cheaper than a DB-backed lock and survives across
-    # gunicorn workers via the AiJob.status double-check inside the helper.
-    active_job = _paper_has_active_generation(conv.paper_id, user_id)
-    if active_job:
-        return {
-            "error": (
-                "Chat lain di paper ini sedang generate paper. "
-                "Tunggu selesai (3-10 menit) atau pakai paper lain."
-            ),
-            "code": "GENERATION_IN_PROGRESS",
-            "job_id": active_job,
-        }, 409
-
     user_msg = ChatMessage(
         conversation_id=conv_id,
         role='user',
@@ -732,10 +506,19 @@ def send_message(conv_id):
         conv.title = (content[:60] + ('…' if len(content) > 60 else '')) or 'New Chat'
     db.session.commit()
 
+    # Auto-extract durable facts from the user's reply (jurusan, topik, …).
+    # Runs synchronously but is internally guarded so any failure here cannot
+    # break the chat stream.
+    try:
+        last_a = _get_last_assistant_msg(conv.id)
+        extract_facts(conv.paper_id, user_id, conv, content, last_assistant_msg=last_a)
+    except Exception as e:
+        log.exception("auto_memory.extract_facts failed: %s", e)
+
     def generate():
         try:
-            messages = _build_messages(conv)
-            selected_tools = _select_tools(content)
+            sysprompt, selected_tools = _select_tools(conv, content)
+            messages = _build_messages(conv, sysprompt, content)
             assistant_content = ""
             assistant_thinking = ""
             all_tool_calls_data = []
@@ -745,6 +528,7 @@ def send_message(conv_id):
                 tool_calls_raw = []
                 chunk_content = ""
                 chunk_thinking = ""
+                mode_changed = False  # Set if a RouteIntent tool fires this iter
 
                 response = _call_upstream(messages, selected_tools, model=upstream_model)
 
@@ -882,6 +666,33 @@ def send_message(conv_id):
 
                     yield _sse("tool_call", {"name": tool_name, "arguments": args})
 
+                    # ── RouteIntent — mode router ───────────────────────
+                    # Tier-0 classifier. We don't feed the result back as a
+                    # tool-result message; instead we switch the active mode
+                    # bundle and re-call upstream so the model continues with
+                    # the right system prompt + tool subset.
+                    if tool_name == "RouteIntent":
+                        new_mode = (args.get("mode") or "").strip().lower()
+                        if new_mode in list_modes() and new_mode != _resolve_mode(conv):
+                            _set_mode(conv, new_mode)
+                            mode_changed = True
+                            log.info(
+                                "chat.route conv=%s mode=%s reason=%s",
+                                conv.id, new_mode, args.get("reasoning", "")[:120],
+                            )
+                        # Surface the route to the frontend (no proposal panel).
+                        yield _sse("tool_result", {
+                            "name": tool_name,
+                            "result": json.dumps({"mode": new_mode}, ensure_ascii=False),
+                        })
+                        all_tool_calls_data.append({
+                            "name": tool_name, "arguments": args,
+                            "result": f"routed -> {new_mode}",
+                        })
+                        # Don't append a tool message — we'll rebuild messages
+                        # after this iteration with the new mode bundle.
+                        continue
+
                     try:
                         result = execute_tool(tool_name, args, user_id, conv.paper_id, model=upstream_model)
                         log.info(f"[TOOL_RESULT] {tool_name} returned: {str(result)[:500]}")
@@ -891,6 +702,19 @@ def send_message(conv_id):
                         yield _sse("tool_result", {"name": tool_name, "result": err_msg[:2000]})
                         yield _sse("error", {"message": err_msg})
                         return
+
+                    # ── ProposeChips — UI hint ──────────────────────────
+                    # Surface as a typed SSE event so the frontend renders
+                    # clickable chip buttons next to the assistant message.
+                    if tool_name == "ProposeChips" and isinstance(result, str) and result.startswith("<<PROPOSAL>>"):
+                        try:
+                            chip_payload = json.loads(result[len("<<PROPOSAL>>"):])
+                            yield _sse("chips", {
+                                "chips": chip_payload.get("chips") or [],
+                                "context_hint": chip_payload.get("context_hint", ""),
+                            })
+                        except Exception:
+                            pass
 
                     # Surface tool-side error strings (validation/setup failures)
                     # so the user sees them as a real error, not a hallucinated
@@ -978,6 +802,13 @@ def send_message(conv_id):
                         "content": upstream_result
                     })
 
+                # If the model just routed to a new mode, rebuild messages
+                # with the new mode bundle and continue the iteration loop.
+                # The model now has the mode-specific prompt + tool subset.
+                if mode_changed:
+                    sysprompt, selected_tools = _select_tools(conv, content)
+                    messages = _build_messages(conv, sysprompt, content)
+
             assistant_msg = ChatMessage(
                 conversation_id=conv_id,
                 role='assistant',
@@ -1033,7 +864,13 @@ def _list_available_journals():
         return []
 
 
-def _build_messages(conv):
+def _build_messages(conv, system_content: str, user_content: str = ""):
+    """Assemble the messages list for upstream.
+
+    ``system_content`` is the mode-specific prompt from ``_select_tools``;
+    paper meta (first turn only), journal templates (first turn only) and
+    project memory (first turn or memory-recall asks) are appended on top.
+    """
     messages = []
 
     db_messages = ChatMessage.query.filter_by(
@@ -1041,7 +878,6 @@ def _build_messages(conv):
     ).order_by(ChatMessage.created_at).all()
     is_first_turn = len([m for m in db_messages if m.role == 'assistant']) == 0
 
-    system_content = SYSTEM_PROMPT
     if conv.paper_id:
         # Only inject the paper meta on the FIRST turn — afterwards the
         # model can call GetPaperContent on demand. Saves tokens every reply.
@@ -1068,9 +904,14 @@ def _build_messages(conv):
             if journals:
                 system_content += "\n\n# Available journal templates (real, installed): " + ", ".join(journals)
 
-        memory_summary = get_memory_summary(conv.paper_id)
-        if memory_summary:
-            system_content += f"\n\n# Memory\n{memory_summary[:1500]}"
+        # Memory injection is gated: heavy on first turn (so the model knows
+        # what the user already locked in) or when the user explicitly asks
+        # about memory. Otherwise auto-extracted facts already live in their
+        # own ProjectMemory rows and the model can call ListMemory on demand.
+        if is_first_turn or (user_content and _MEMORY_RECALL_RE.search(user_content)):
+            memory_summary = get_memory_summary(conv.paper_id)
+            if memory_summary:
+                system_content += f"\n\n# Memory\n{memory_summary[:1500]}"
 
     messages.append({"role": "system", "content": system_content})
 
