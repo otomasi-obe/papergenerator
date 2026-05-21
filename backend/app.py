@@ -58,7 +58,7 @@ except Exception:
     pass
 
 from generate_ai_json_paper_aiotomasi import generate_paper_json
-from generate_paper_chunked import generate_paper_json_chunked
+from generate_paper_chunked import generate_paper_json_chunked, GenerationCancelled
 from template.IEEEgen import build_document as build_ieee_docx
 
 # Load environment variables
@@ -283,8 +283,24 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 openai_client = None
 
 # ─── AI Job Store (DB-backed; safe across multi-worker gunicorn) ─────────────
-def _job_create(job_id: str, user_id: int, prompt: str):
-    job = AiJob(id=job_id, user_id=user_id, status="pending", prompt=prompt)
+def _job_create(job_id: str, user_id: int, prompt: str, paper_id: str | None = None):
+    """Create an AiJob row.
+
+    ``paper_id`` is now first-class so the chat-initiated path can bind the job
+    to the paper that triggered it. Frontend uses the paper_id link to:
+      - resume an in-flight job after page reload
+      - show the recent-done badge on the paper card
+      - look up the active job from /api/papers/<paper_id>/ai-jobs/active
+    Older callers that pass only 3 positional args still work because paper_id
+    has a default of None.
+    """
+    job = AiJob(
+        id=job_id,
+        user_id=user_id,
+        paper_id=paper_id,
+        status="pending",
+        prompt=prompt,
+    )
     db.session.add(job)
     db.session.commit()
     return job
@@ -299,7 +315,21 @@ def _job_set_done(job_id: str, user_id: int, paper_data: dict, elapsed_s: int):
     if not job:
         return
     job.status = "done"
-    job.result = paper_data
+    job.progress = 100
+    job.stage = "combine"
+    # Preserve the checkpoint shape (chunks_done + partial_paper) so the GET
+    # handler can return paper_data via either old or new path. Falls back to
+    # plain paper_data when the row was created pre-chunked.
+    existing = job.result if isinstance(job.result, dict) else {}
+    chunks_done = list(existing.get("chunks_done") or [])
+    if "combine" not in chunks_done:
+        chunks_done.append("combine")
+    job.result = {
+        **existing,
+        "chunks_done": chunks_done,
+        "partial_paper": paper_data,
+        "elapsed_seconds": int(elapsed_s),
+    }
     job.error = None
     job.timeout = False
     db.session.commit()
@@ -496,7 +526,7 @@ def generate():
 
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
-def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, chunked=True, model=None):
+def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, chunked=True, model=None, resume_state=None):
     t_start = time.time()
     log.info("[job:%s] started, prompt=%r, chunked=%s", job_id, prompt[:80], chunked)
     log.info("[job:%s] model=%s", job_id, model or "<env>")
@@ -505,6 +535,69 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         uid = int(user_id) if user_id is not None else None
     except Exception:
         uid = None
+
+    # ── checkpoint + cancel wiring ─────────────────────────────────────────
+    # The checkpoint sink writes partial paper progress to AiJob.result and
+    # publishes the same payload to Redis so SSE subscribers (jobs_bp.stream)
+    # see live updates. Cancellation is signalled by the user/UI flipping
+    # AiJob.status to 'cancelled' (jobs_bp.cancel_job sets that), which we
+    # poll inside the chunked orchestrator.
+    def _make_checkpoint_cb(_job_id):
+        def _cb(stage, progress, partial):
+            try:
+                with app.app_context():
+                    j = AiJob.query.filter_by(id=_job_id).first()
+                    if not j:
+                        return
+                    j.stage = stage
+                    j.progress = max(0, min(100, int(progress)))
+                    # AiJob.result is the canonical resume payload — chunks_done
+                    # + partial_paper let /resume re-feed exactly the same shape
+                    # back into generate_paper_json_chunked(resume_state=...).
+                    existing = j.result if isinstance(j.result, dict) else {}
+                    chunks_done = list(existing.get("chunks_done") or [])
+                    if stage and stage not in chunks_done:
+                        chunks_done.append(stage)
+                    j.result = {
+                        **existing,
+                        "chunks_done": chunks_done,
+                        "partial_paper": partial,
+                        "last_stage": stage,
+                        "last_progress": int(progress),
+                    }
+                    db.session.commit()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                log.exception("[job:%s] checkpoint_cb failed at stage=%s", _job_id, stage)
+
+            # Best-effort SSE publish (no Redis = silent no-op).
+            try:
+                from jobs_bp import publish_progress
+                publish_progress(_job_id, {
+                    "stage": stage,
+                    "percent": int(progress),
+                    "status": "running",
+                })
+            except Exception:
+                pass
+        return _cb
+
+    def _make_cancel_check(_job_id):
+        def _check():
+            try:
+                with app.app_context():
+                    j = AiJob.query.filter_by(id=_job_id).first()
+                    return bool(j and j.status == "cancelled")
+            except Exception:
+                return False
+        return _check
+
+    checkpoint_cb = _make_checkpoint_cb(job_id) if chunked else None
+    cancel_check = _make_cancel_check(job_id) if chunked else None
+
     try:
         api_key = os.getenv("AIOTOMASI_APIKEY")
         if not api_key:
@@ -526,6 +619,9 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
                 topic=topic,
                 style=style,
                 model=model,
+                checkpoint_cb=checkpoint_cb,
+                cancel_check=cancel_check,
+                resume_state=resume_state,
             )
         else:
             paper_data = generate_paper_json(
@@ -606,6 +702,34 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             if uid is not None:
                 _job_set_done(job_id, uid, paper_data, int(elapsed))
         log.info("[job:%s] DONE in %.1fs", job_id, elapsed)
+
+    except GenerationCancelled as gc:
+        # Cooperative cancel: persist whatever was already checkpointed and
+        # mark the job cancelled (so the UI bubble can surface the partial
+        # result + a Resume button).
+        elapsed = time.time() - t_start
+        log.info("[job:%s] CANCELLED at stage=%s after %.1fs", job_id, gc.stage, elapsed)
+        with app.app_context():
+            try:
+                j = AiJob.query.filter_by(id=job_id).first()
+                if j:
+                    j.status = "cancelled"
+                    j.stage = gc.stage
+                    existing = j.result if isinstance(j.result, dict) else {}
+                    j.result = {
+                        **existing,
+                        "cancelled_at_stage": gc.stage,
+                        "elapsed_seconds": int(elapsed),
+                    }
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
+                log.exception("[job:%s] failed to persist cancellation", job_id)
+        try:
+            from jobs_bp import publish_progress
+            publish_progress(job_id, {"stage": gc.stage, "status": "cancelled"})
+        except Exception:
+            pass
 
     except Exception as e:
         elapsed = time.time() - t_start
@@ -720,22 +844,21 @@ def get_job_status(job_id):
     elapsed = int((datetime.now(timezone.utc) - (job.started_at.replace(tzinfo=timezone.utc) if job.started_at and job.started_at.tzinfo is None else (job.started_at or datetime.now(timezone.utc)))).total_seconds())
     if job.status == "pending":
         return jsonify({"status": "pending", "elapsed": elapsed})
+    # Don't delete the row on done/error any more — the badge inbox
+    # (/api/me/ai-jobs/recent) and the active-job lookup both need the row to
+    # stay around. Cleanup of stale rows is handled by a future cron sweep.
     if job.status == "done":
-        paper = job.result or {}
-        try:
-            db.session.delete(job)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        paper = (job.result or {}).get("partial_paper") or job.result or {}
+        # Backwards-compat: legacy callers expected the full paper dict here.
+        # The chunked path stores the canonical paper under partial_paper at
+        # the final 'combine' checkpoint; older legacy path stored the dict
+        # directly. Both shapes are tolerated.
+        if isinstance(paper, dict) and "sections" not in paper and isinstance(job.result, dict):
+            paper = job.result
         return jsonify({"status": "done", "success": True, "paper": paper, "usage": {}, "elapsed": elapsed})
 
     err = job.error or "Unknown error"
     timeout_flag = bool(job.timeout)
-    try:
-        db.session.delete(job)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
     return jsonify({"status": "error", "error": err, "timeout": timeout_flag})
 
 # ─── Topics / Styles / PDF Upload ─────────────────────────────────────────────

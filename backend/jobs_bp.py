@@ -17,8 +17,22 @@ GET  /api/jobs/<job_id>/stream         (SSE)
 GET  /api/papers/<paper_id>/active-jobs
     List active jobs (queued|running) for this paper, so the UI can resume.
 
+GET  /api/papers/<paper_id>/ai-jobs/active
+    Single active job (queued|running|paused) for the paper, or null.
+
 POST /api/jobs/<job_id>/cancel
+POST /api/ai-jobs/<job_id>/cancel
     Best-effort cancel (sets status=cancelled, worker checks the flag).
+
+POST /api/ai-jobs/<job_id>/resume
+    Re-enqueue with resume_state read from the row's checkpoint.
+
+POST /api/ai-jobs/<job_id>/retry-section
+    Body {stage}. Removes the stage from chunks_done + matching section from
+    partial_paper.sections, then re-enqueues so just that chunk regenerates.
+
+GET  /api/me/ai-jobs/recent
+    Filterable inbox of the user's recent jobs (badge + recently-done lookup).
 """
 from __future__ import annotations
 
@@ -26,6 +40,7 @@ import json
 import os
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 import redis
@@ -218,3 +233,256 @@ def stream_job(job_id: str):
         "Connection": "keep-alive",
     }
     return Response(stream_with_context(gen()), headers=headers)
+
+
+# ── Phase 1c — chunked generate workflow endpoints ──────────────────────────
+#
+# These endpoints power the chat-side progress bubble and the recent-done
+# inbox badge. They live alongside the legacy /api/jobs/* routes so older
+# clients keep working until they migrate.
+
+
+_NON_TERMINAL = ("queued", "running", "paused", "pending")
+_RESUMABLE = ("paused", "cancelled", "error")
+
+
+def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
+    """Re-enqueue a job with optional resume_state.
+
+    Tries the RQ path first (if Redis + the worker module are reachable).
+    Falls back to the in-process threaded runner from app.py so dev
+    environments without an RQ worker still progress. Both paths read the
+    same resume_state shape.
+    """
+    # Lazy imports so this module stays importable in alembic/test contexts.
+    try:
+        from rq import Queue
+        from tasks.generate_paper_task import run_generate_paper
+
+        q = Queue("paper", connection=_REDIS)
+        q.enqueue(
+            run_generate_paper,
+            args=(
+                job.id,
+                job.user_id,
+                job.paper_id,
+                job.prompt or "",
+                None,
+                None,
+            ),
+            kwargs={"resume_state": resume_state} if resume_state else {},
+            job_id=job.id,
+            job_timeout=900,
+            result_ttl=3600,
+        )
+        publish_progress(job.id, {"stage": job.stage or "queued", "percent": int(job.progress or 0)})
+        return
+    except Exception:
+        pass
+
+    # Fallback: kick off in-process via app._run_generate_full_job. This is the
+    # same path used by the chat tool and /api/generate-full POST.
+    try:
+        import threading
+        from app import _run_generate_full_job
+
+        threading.Thread(
+            target=_run_generate_full_job,
+            args=(job.id, job.prompt or "", job.user_id),
+            kwargs={
+                "paper_id": job.paper_id,
+                "resume_state": resume_state,
+                "chunked": True,
+            },
+            daemon=True,
+        ).start()
+    except Exception:
+        # Surface in the row so the UI can show "Resume failed".
+        job.status = "error"
+        job.error = "resume failed: no worker available"
+        db.session.commit()
+
+
+@jobs_bp.route("/api/papers/<paper_id>/ai-jobs/active", methods=["GET"])
+@jwt_required()
+def ai_jobs_active(paper_id: str):
+    """Return the most recent non-terminal generate_paper job for this paper.
+
+    Used by the chat surface on paper-load to re-attach a progress bubble.
+    Returns ``{"job": {...}}`` or ``{"job": null}``.
+    """
+    user_id = int(get_jwt_identity())
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return jsonify({"error": "paper not found"}), 404
+
+    job = (
+        AiJob.query
+        .filter_by(user_id=user_id, paper_id=paper_id, kind="generate_paper")
+        .filter(AiJob.status.in_(_NON_TERMINAL))
+        .order_by(AiJob.started_at.desc())
+        .first()
+    )
+    return jsonify({"job": job.to_dict() if job else None})
+
+
+@jobs_bp.route("/api/ai-jobs/<job_id>/cancel", methods=["POST"])
+@jwt_required()
+def ai_jobs_cancel(job_id: str):
+    """Mirror of /api/jobs/<job_id>/cancel under the new path prefix."""
+    user_id = int(get_jwt_identity())
+    job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "not found"}), 404
+    if job.status in ("done", "cancelled"):
+        return jsonify({"job": job.to_dict()})
+    # Set the cancel flag for both the RQ worker (Redis key) and the chunked
+    # orchestrator's DB-based cancel_check.
+    try:
+        _REDIS.setex(cancel_key(job_id), 3600, "1")
+    except Exception:
+        pass
+    job.status = "cancelled"
+    db.session.commit()
+    publish_progress(job_id, {
+        "stage": job.stage or "cancelled",
+        "percent": int(job.progress or 0),
+        "status": "cancelled",
+    })
+    return jsonify({"job": job.to_dict()})
+
+
+@jobs_bp.route("/api/ai-jobs/<job_id>/resume", methods=["POST"])
+@jwt_required()
+def ai_jobs_resume(job_id: str):
+    """Resume a paused/cancelled/errored job from its last checkpoint."""
+    user_id = int(get_jwt_identity())
+    job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "not found"}), 404
+    if job.status not in _RESUMABLE:
+        return jsonify({
+            "error": f"cannot resume from status={job.status}",
+            "job": job.to_dict(),
+        }), 409
+
+    result = job.result if isinstance(job.result, dict) else {}
+    resume_state = {
+        "chunks_done": list(result.get("chunks_done") or []),
+        "partial_paper": result.get("partial_paper") or {},
+    }
+
+    # Clear any stale cancel flag — previous /cancel may have set it.
+    try:
+        _REDIS.delete(cancel_key(job_id))
+    except Exception:
+        pass
+
+    job.status = "queued"
+    job.error = None
+    db.session.commit()
+
+    _enqueue_resume(job, resume_state)
+    return jsonify({"job": job.to_dict(), "resume_state": {
+        "chunks_done": resume_state["chunks_done"],
+    }})
+
+
+@jobs_bp.route("/api/ai-jobs/<job_id>/retry-section", methods=["POST"])
+@jwt_required()
+def ai_jobs_retry_section(job_id: str):
+    """Retry a single chunk (e.g. ``section_3``).
+
+    Removes the stage from ``chunks_done`` and, when the stage is a section,
+    drops the matching entry from ``partial_paper.sections`` so the resumed
+    run regenerates it cleanly. Other chunks stay cached.
+    """
+    user_id = int(get_jwt_identity())
+    job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "not found"}), 404
+    if job.status not in _RESUMABLE + ("done",):
+        return jsonify({
+            "error": f"cannot retry from status={job.status}",
+            "job": job.to_dict(),
+        }), 409
+
+    body = request.get_json(silent=True) or {}
+    stage = (body.get("stage") or "").strip()
+    if not stage:
+        return jsonify({"error": "stage required"}), 400
+
+    result = job.result if isinstance(job.result, dict) else {}
+    chunks_done = [s for s in (result.get("chunks_done") or []) if s != stage]
+    # Always re-run combine after a retry so the final assembly reflects the
+    # regenerated chunk.
+    chunks_done = [s for s in chunks_done if s != "combine"]
+    partial = dict(result.get("partial_paper") or {})
+
+    if stage.startswith("section_"):
+        try:
+            idx = int(stage.split("_", 1)[1]) - 1
+            sections = list(partial.get("sections") or [])
+            if 0 <= idx < len(sections):
+                sections.pop(idx)
+                partial["sections"] = sections
+        except Exception:
+            pass
+    elif stage == "outline":
+        partial.pop("outline", None)
+        partial["sections"] = []
+        # Outline drives every later chunk's context — invalidate them all.
+        chunks_done = []
+    elif stage == "references":
+        partial.pop("references", None)
+
+    job.result = {**result, "chunks_done": chunks_done, "partial_paper": partial}
+    job.status = "queued"
+    job.error = None
+    job.stage = stage
+    db.session.commit()
+
+    try:
+        _REDIS.delete(cancel_key(job_id))
+    except Exception:
+        pass
+
+    _enqueue_resume(job, {
+        "chunks_done": chunks_done,
+        "partial_paper": partial,
+    })
+    return jsonify({"job": job.to_dict()})
+
+
+@jobs_bp.route("/api/me/ai-jobs/recent", methods=["GET"])
+@jwt_required()
+def ai_jobs_recent():
+    """Recent jobs for the current user — feeds the inbox badge.
+
+    Query params:
+      - status: single status to filter on (default: ``done``)
+      - since:  ISO 8601 timestamp; only jobs with started_at >= since
+      - limit:  default 20, max 50
+    """
+    user_id = int(get_jwt_identity())
+    status = (request.args.get("status") or "done").strip()
+    since_raw = request.args.get("since")
+    try:
+        limit = min(50, max(1, int(request.args.get("limit", 20))))
+    except (TypeError, ValueError):
+        limit = 20
+
+    q = AiJob.query.filter_by(user_id=user_id, kind="generate_paper", status=status)
+
+    if since_raw:
+        try:
+            # tolerate trailing 'Z'
+            since_dt = datetime.fromisoformat(since_raw.replace("Z", "+00:00"))
+            if since_dt.tzinfo is None:
+                since_dt = since_dt.replace(tzinfo=timezone.utc)
+            q = q.filter(AiJob.started_at >= since_dt)
+        except ValueError:
+            return jsonify({"error": "invalid since timestamp"}), 400
+
+    rows = q.order_by(AiJob.started_at.desc()).limit(limit).all()
+    return jsonify({"jobs": [r.to_dict() for r in rows]})
