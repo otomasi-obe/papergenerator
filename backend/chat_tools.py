@@ -204,6 +204,13 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
         )
     elif tool_name in ("Write", "Edit"):
         return "Tool not permitted in chat environment for security reasons."
+    elif tool_name == "ClassifyFile":
+        return _classify_file_tool(
+            paper_id, user_id,
+            arguments.get("file_id"),
+            (arguments.get("kind") or "other"),
+            (arguments.get("caption") or ""),
+        )
     else:
         return f"Unknown tool: {tool_name}"
 
@@ -448,6 +455,85 @@ def _read_attached_file(paper_id, user_id, file_id):
     if not text:
         return f"(file '{f.original_name}' has no extracted text)"
     return _truncate(f"# {f.original_name} ({f.ext})\n\n{text}")
+
+
+_VALID_FILE_KINDS = {"data", "paper_read", "paper_slr", "template", "image", "other"}
+
+
+def _classify_file_tool(paper_id, user_id, file_id, kind, caption):
+    """Persist a user-confirmed classification for an attached file.
+
+    The PaperFile model has no JSON metadata column today, so the role is
+    stored as a ProjectMemory row keyed `file_kind:<file_id>` (paper-scoped,
+    survives across chats) and the optional image caption as
+    `file_caption:<file_id>`. Other tools can read these back if they need
+    to know what role a file plays in this paper.
+    """
+    if not paper_id:
+        return "Error: this chat is not linked to a paper."
+    if not user_id:
+        return "Error: not authenticated."
+    if file_id is None:
+        return "Error: file_id is required."
+    try:
+        fid = int(file_id)
+    except (TypeError, ValueError):
+        return "Error: file_id must be an integer."
+
+    k = (kind or "other").strip().lower()
+    if k not in _VALID_FILE_KINDS:
+        k = "other"
+
+    pf = PaperFile.query.filter_by(id=fid, paper_id=paper_id, user_id=user_id).first()
+    if not pf:
+        return _propose("file_classified_error", {
+            "file_id": fid,
+            "error": "file not found or unauthorized",
+        })
+
+    cap = (caption or "").strip()[:500]
+    try:
+        kind_key = f"file_kind:{fid}"
+        kind_entry = ProjectMemory.query.filter_by(
+            paper_id=paper_id, key=kind_key, conversation_id=None,
+        ).first()
+        if kind_entry:
+            kind_entry.value = k
+            kind_entry.kind = "file_meta"
+        else:
+            db.session.add(ProjectMemory(
+                paper_id=paper_id, user_id=user_id,
+                key=kind_key, value=k, kind="file_meta",
+            ))
+
+        if cap:
+            cap_key = f"file_caption:{fid}"
+            cap_entry = ProjectMemory.query.filter_by(
+                paper_id=paper_id, key=cap_key, conversation_id=None,
+            ).first()
+            if cap_entry:
+                cap_entry.value = cap
+                cap_entry.kind = "file_meta"
+            else:
+                db.session.add(ProjectMemory(
+                    paper_id=paper_id, user_id=user_id,
+                    key=cap_key, value=cap, kind="file_meta",
+                ))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("ClassifyFile commit failed")
+        return _propose("file_classified_error", {
+            "file_id": fid,
+            "error": f"persist failed: {e}",
+        })
+
+    return _propose("file_classified", {
+        "file_id": fid,
+        "file_kind": k,
+        "caption": cap,
+        "original_name": pf.original_name,
+    })
 
 
 # Pretty labels for well-known memory keys we surface explicitly in the
@@ -1615,6 +1701,35 @@ CHAT_TOOLS = [
                 "rewrite": {"type": "string"},
             },
             "required": ["scope", "target_language", "rewrite"],
+        },
+    },
+    {
+        "name": "ClassifyFile",
+        "description": (
+            "Mark an uploaded file's role for this paper: data, paper_read, "
+            "paper_slr, template, image, or other. Call this AFTER asking the "
+            "user 'ini file apa?' via ProposeChips and getting their answer. "
+            "If kind=image, also pass the user's caption. The classification "
+            "persists across chats so other tools (GenerateFullPaper, SLR "
+            "import, image insertion) can use the right files."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_id": {
+                    "type": "integer",
+                    "description": "PaperFile id (use ListAttachedFiles to find).",
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": ["data", "paper_read", "paper_slr", "template", "image", "other"],
+                },
+                "caption": {
+                    "type": "string",
+                    "description": "If kind=image, the user's caption text.",
+                },
+            },
+            "required": ["file_id", "kind"],
         },
     },
 ]

@@ -167,6 +167,7 @@ MODE_TOOLS: dict[str, list[str]] = {
         "ReadAttachedFile",
         "GenerateFullPaper",
         "ProposeChips",
+        "ClassifyFile",
     ],
     "slr": [
         "RunSLR",
@@ -202,6 +203,7 @@ MODE_TOOLS: dict[str, list[str]] = {
         "Paraphrase",
         "FixGrammar",
         "Translate",
+        "ClassifyFile",
     ],
     "memory": ["ListMemory", "DeleteMemory"],
     "casual": [],

@@ -547,6 +547,7 @@ async function confirmPickFiles() {
         name: f.original_name,
         __preExtracted: true,
         __text: text,
+        __fileId: id,
       }].slice(0, 10)
     } catch (e) {
       attachWarning.value = 'Gagal baca file: ' + (e.message || e)
@@ -779,34 +780,76 @@ async function handleSend() {
   if (activeJob.value && activeJob.value.active) return
   let composed = text
 
-  // Split attached entries: real File objects need the upload-pdfs round-trip;
+  // Split attached entries: real File objects need an upload round-trip;
   // entries flagged __preExtracted come from the existing-files picker and
-  // already carry their text.
+  // already carry their text + persistent file_id.
   const realFiles = attachedFiles.value.filter(f => !f.__preExtracted)
   const preExtracted = attachedFiles.value.filter(f => f.__preExtracted)
 
   if (realFiles.length || preExtracted.length) {
     uploadingFiles.value = true
     try {
-      let texts = []
+      const fileEntries = []
       let warnings = []
+      // Upload new files via the per-paper endpoint so they become real
+      // PaperFile rows the AI can find via ListAttachedFiles and classify
+      // via ClassifyFile. Falls back to /api/upload-pdfs (no persistence)
+      // when the chat has no paper context.
       if (realFiles.length) {
-        const fd = new FormData()
-        realFiles.forEach(f => fd.append('files', f))
-        const res = await paperStore.apiUploadPdfs(fd)
-        texts = res?.data?.pdf_texts || []
-        warnings = res?.data?.warnings || []
+        if (currentPaperId.value) {
+          const fd = new FormData()
+          realFiles.forEach(f => fd.append('files', f))
+          const res = await api.post(
+            `/api/papers/${currentPaperId.value}/files`,
+            fd,
+            { headers: { 'Content-Type': 'multipart/form-data' } },
+          )
+          const saved = res?.data?.files || []
+          warnings = res?.data?.warnings || []
+          for (const s of saved) {
+            fileEntries.push({
+              id: s.id,
+              name: s.original_name || s.filename || '',
+              text: s.text || '',
+            })
+          }
+        } else {
+          const fd = new FormData()
+          realFiles.forEach(f => fd.append('files', f))
+          const res = await paperStore.apiUploadPdfs(fd)
+          const texts = res?.data?.pdf_texts || []
+          warnings = res?.data?.warnings || []
+          texts.forEach((t, i) => {
+            fileEntries.push({ id: null, name: realFiles[i]?.name || '', text: t })
+          })
+        }
       }
-      const allTexts = [
-        ...preExtracted.map(f => f.__text || ''),
-        ...texts,
-      ].filter(Boolean)
+      for (const f of preExtracted) {
+        fileEntries.push({
+          id: f.__fileId ?? null,
+          name: f.name || '',
+          text: f.__text || '',
+        })
+      }
+
       attachWarning.value = warnings.join('; ')
       const names = attachedFiles.value.map(f => f.name).join(', ')
-      const fileBlock = allTexts.length
-        ? `\n\n--- File terlampir (${names}) ---\n${allTexts.join('\n\n')}\n--- akhir file ---`
+      const blocks = fileEntries.map(e => {
+        const header = e.id != null
+          ? `--- File terlampir: ${e.name} [file_id=${e.id}] ---`
+          : `--- File terlampir: ${e.name} ---`
+        return `${header}\n${e.text || '(ekstrak teks gagal / kosong)'}\n--- akhir file ---`
+      })
+      const fileBlock = blocks.length
+        ? '\n\n' + blocks.join('\n\n')
         : `\n\n[File ${names} dilampirkan tetapi gagal diekstrak]`
-      composed = (text || `Saya melampirkan ${attachedFiles.value.length} file. Tolong baca dan beri ringkasan/analisis.`) + fileBlock
+      const idsHint = fileEntries.filter(e => e.id != null).map(e => e.id).join(',')
+      const idsLine = idsHint
+        ? `\n[FILE_IDS=${idsHint}] (use ClassifyFile after asking 'ini file apa?')`
+        : ''
+      composed = (text || `Saya melampirkan ${attachedFiles.value.length} file. Tolong tanya dulu "ini file apa?" untuk masing-masing file dengan ProposeChips, lalu panggil ClassifyFile sesuai jawaban user.`)
+        + idsLine
+        + fileBlock
       attachedFiles.value = []
     } catch (e) {
       attachWarning.value = 'Upload gagal: ' + (e.message || e)

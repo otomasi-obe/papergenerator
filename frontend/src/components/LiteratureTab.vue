@@ -624,7 +624,14 @@ async function loadItems() {
   loading.value = true
   try {
     const res = await api.get(`/api/papers/${currentPaperId.value}/literature`)
-    items.value = res.data || []
+    const data = res.data
+    if (Array.isArray(data)) {
+      items.value = data
+    } else if (data && Array.isArray(data.items)) {
+      items.value = data.items
+    } else {
+      items.value = []
+    }
     loadError.value = ''
   } catch (e) {
     loadError.value = 'Gagal memuat literatur: ' + (e?.response?.data?.error || e?.message || 'network error')
@@ -713,6 +720,12 @@ async function runSLR() {
       ai_model: 'V-OPUS',
     })
     await loadJobs()
+    // Re-arm the poller on the fast cadence so the newly-queued job's
+    // completion is detected within seconds, not the next 30s tick. Without
+    // this, the table appears "empty" for up to half a minute after the job
+    // actually finishes because schedulePoll() was last called when
+    // activeJobs was empty (delay=30000).
+    schedulePoll()
   } catch (e) {
     const msg = e?.response?.data?.error || e?.message || 'SLR failed'
     toast('SLR error: ' + msg, 'error')

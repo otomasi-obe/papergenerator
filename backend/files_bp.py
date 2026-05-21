@@ -205,7 +205,10 @@ def upload_paper_files(paper_id: str):
             )
             db.session.add(entry)
             db.session.flush()
-            saved.append(entry.to_dict())
+            # Include extracted text so the chat upload path can inline it
+            # into the user's message in one round trip. The Files-tab UI
+            # ignores this field — it calls /preview on demand.
+            saved.append(entry.to_dict(include_text=True))
 
         db.session.commit()
         return jsonify({"success": True, "files": saved, "warnings": warnings})
