@@ -107,3 +107,23 @@ def get_image_job(job_id: str):
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify(job.to_dict())
+
+
+@image_jobs_bp.route("/<job_id>/cancel", methods=["POST"])
+@jwt_required()
+def cancel_image_job(job_id: str):
+    """Mark a job as cancelled. Workers cooperate by checking status before
+    writing the final 'done' or 'error' state, so a cancelled job will not
+    end up creating a stray PaperImage row even if the generation actually
+    completes a moment later."""
+    user_id = int(get_jwt_identity())
+    job = ImageGenJob.query.filter_by(id=job_id, user_id=user_id).first()
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job.status in ('done', 'error', 'cancelled'):
+        return jsonify({"id": job.id, "status": job.status})
+    from datetime import datetime, timezone  # noqa: PLC0415
+    job.status = 'cancelled'
+    job.finished_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify({"id": job.id, "status": job.status})

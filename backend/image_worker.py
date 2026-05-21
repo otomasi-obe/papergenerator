@@ -99,11 +99,25 @@ class _Worker(threading.Thread):
             user_id = job.user_id
             prompt = job.prompt
 
+            # Resolve paper dir under app_context (safe_paper_dir uses
+            # current_app.root_path).
+            paper_dir = safe_paper_dir(paper_id)
+
+        if paper_dir is None:
+            with self.app.app_context():
+                from models import ImageGenJob, db  # noqa: PLC0415
+                job2 = db.session.get(ImageGenJob, job_id)
+                if job2:
+                    job2.status = 'error'
+                    job2.error = 'Invalid paper_id (path resolution failed)'
+                    job2.finished_at = datetime.now(timezone.utc)
+                    db.session.commit()
+            return
+
         # Long-running work outside DB transaction (no app_context needed).
         out_path: Optional[Path] = None
         ext = ".jpg"
         try:
-            paper_dir = UPLOADS_DIR / paper_id
             paper_dir.mkdir(parents=True, exist_ok=True)
             filename = f"{uuid.uuid4().hex}{ext}"
             out_path = paper_dir / filename
@@ -137,9 +151,24 @@ class _Worker(threading.Thread):
 
                 job2 = db.session.get(ImageGenJob, job_id)
                 if job2:
-                    job2.status = 'done'
-                    job2.image_id = img.id
-                    job2.finished_at = datetime.now(timezone.utc)
+                    # Respect a concurrent cancel: if the job was cancelled
+                    # while we were generating, don't overwrite that status.
+                    if job2.status == 'cancelled':
+                        # Drop the freshly-created image (orphaned) and the
+                        # file on disk.
+                        try:
+                            db.session.delete(img)
+                        except Exception:
+                            pass
+                        try:
+                            if out_path and out_path.exists():
+                                out_path.unlink()
+                        except Exception:
+                            pass
+                    else:
+                        job2.status = 'done'
+                        job2.image_id = img.id
+                        job2.finished_at = datetime.now(timezone.utc)
                 db.session.commit()
 
             log.info("img-worker %s: done job=%s file=%s size=%s",
@@ -154,7 +183,7 @@ class _Worker(threading.Thread):
             with self.app.app_context():
                 from models import ImageGenJob, db  # noqa: PLC0415
                 job2 = db.session.get(ImageGenJob, job_id)
-                if job2:
+                if job2 and job2.status != 'cancelled':
                     job2.status = 'error'
                     job2.error = str(e)[:500]
                     job2.finished_at = datetime.now(timezone.utc)

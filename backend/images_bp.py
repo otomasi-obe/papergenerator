@@ -85,6 +85,80 @@ def upload_paper_image(paper_id: str):
     return jsonify({"success": True, "image": img.to_dict()})
 
 
+@paper_images_bp.route("/<paper_id>/images/upload", methods=["POST"])
+@jwt_required()
+def upload_user_image(paper_id: str):
+    """User-uploaded image variant.
+
+    Same on-disk storage as the regular upload endpoint
+    (backend/uploads/<paper_id>/) so the existing /api/images/<paper_id>/<file>
+    serving route works unchanged. The response shape includes ``kind:
+    'uploaded'`` so the chat / editor frontend can distinguish AI-generated
+    images from user uploads and ask for a caption.
+
+    Constraints:
+      * multipart/form-data, field name ``file``
+      * accepted MIME / extensions: png, jpeg/jpg, webp
+      * size <= 10 MB (also bounded by app.config['MAX_CONTENT_LENGTH'])
+    """
+    if not PAPER_ID_RE.match(paper_id):
+        return jsonify({"error": "Invalid paper id"}), 400
+    user_id = int(get_jwt_identity())
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return jsonify({"error": "Paper not found"}), 404
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    allowed = {".png", ".jpg", ".jpeg", ".webp"}
+    ext = Path(file.filename).suffix.lower()
+    if ext not in allowed:
+        return jsonify({"error": "Format harus png/jpeg/webp"}), 400
+
+    # 10 MB cap — also enforced globally by MAX_CONTENT_LENGTH but we
+    # double-check so the error message is friendly.
+    file.stream.seek(0, 2)
+    size = file.stream.tell()
+    file.stream.seek(0)
+    if size > 10 * 1024 * 1024:
+        return jsonify({"error": "Ukuran file > 10 MB"}), 413
+
+    head = file.stream.read(16)
+    file.stream.seek(0)
+    if not is_image_bytes(head, ext):
+        return jsonify({"error": "Invalid image file"}), 400
+
+    paper_dir = safe_paper_dir(paper_id)
+    if not paper_dir:
+        return jsonify({"error": "Invalid paper id"}), 400
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{ext}"
+    filepath = paper_dir / filename
+    file.save(str(filepath))
+
+    img = PaperImage(
+        paper_id=paper_id, user_id=user_id,
+        filename=filename, original_name=file.filename[:255],
+        file_path=f"{paper_id}/{filename}",
+    )
+    db.session.add(img)
+    db.session.commit()
+
+    d = img.to_dict()
+    return jsonify({
+        "id": d["id"],
+        "filename": d["filename"],
+        "original_name": d["original_name"],
+        "url": d["url"],
+        "kind": "uploaded",
+        "paper_id": paper_id,
+    })
+
+
 @paper_images_bp.route("/<paper_id>/images", methods=["GET"])
 @jwt_required()
 def list_paper_images(paper_id: str):
