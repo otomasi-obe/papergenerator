@@ -55,6 +55,43 @@
 
       <!-- User Menu -->
       <div class="flex items-center gap-3">
+        <!-- Job inbox bell -->
+        <div class="bell-wrap relative" ref="bellRef">
+          <button @click="onBellClick"
+            class="p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative"
+            aria-haspopup="menu"
+            :aria-expanded="bellOpen"
+            :title="recentCount > 0 ? `${recentCount} paper baru selesai` : 'Belum ada paper baru selesai'">
+            <svg class="w-5 h-5 text-ink-700 dark:text-ink-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+            <span v-if="recentCount > 0"
+                  class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
+              {{ recentCount > 99 ? '99+' : recentCount }}
+            </span>
+          </button>
+          <div v-if="bellOpen"
+               role="menu"
+               class="absolute right-0 mt-2 w-72 bg-cream-50 dark:bg-ash-800 rounded-lg shadow-lg border border-cream-300 dark:border-ash-700 z-50">
+            <div class="p-3 border-b border-cream-200 dark:border-ash-700 text-sm font-semibold text-ink-900 dark:text-ink-50">
+              Recent generated papers
+            </div>
+            <div class="max-h-80 overflow-y-auto p-2">
+              <div v-if="!recentDone.length" class="text-xs text-ink-500 dark:text-ink-300 p-3 text-center">
+                Belum ada paper yang baru selesai.
+              </div>
+              <router-link v-for="j in recentDone" :key="j.id"
+                 :to="{ name: 'editor', params: { paperId: j.paper_id } }"
+                 @click="bellOpen = false"
+                 class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded text-sm text-ink-800 dark:text-ink-100">
+                <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
+                <div class="text-[10px] text-ink-500 dark:text-ink-300">{{ formatTime(j.updated_at) }}</div>
+              </router-link>
+            </div>
+          </div>
+        </div>
+
         <div class="relative" ref="menuRef">
           <button @click="menuOpen = !menuOpen"
             class="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50"
@@ -117,10 +154,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import { useTheme } from '../stores/theme.js'
+import { usePaperJobsStore } from '../stores/paperJobs.js'
 import api from '../api/index.js'
 const logoUrl = '/logo.png'
 
@@ -128,10 +166,31 @@ const auth = useAuthStore()
 const router = useRouter()
 const menuOpen = ref(false)
 const quotaOpen = ref(false)
+const bellOpen = ref(false)
 const menuRef = ref(null)
 const quotaRef = ref(null)
+const bellRef = ref(null)
 
 const { mode, setMode } = useTheme()
+
+const jobsStore = usePaperJobsStore()
+const recentDone = computed(() => jobsStore.recentDone)
+const recentCount = computed(() => recentDone.value.length)
+
+function onBellClick() {
+  bellOpen.value = !bellOpen.value
+}
+
+function formatTime(iso) {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString()
+  } catch {
+    return ''
+  }
+}
 
 const themeOptions = [
   { value: 'light',  label: 'Light',  icon: '☀️' },
@@ -178,6 +237,9 @@ function handleOutsideClick(e) {
   }
   if (quotaRef.value && !quotaRef.value.contains(e.target)) {
     quotaOpen.value = false
+  }
+  if (bellRef.value && !bellRef.value.contains(e.target)) {
+    bellOpen.value = false
   }
 }
 
