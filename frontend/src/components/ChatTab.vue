@@ -216,6 +216,7 @@
           :message="msg"
           :is-streaming="isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant'"
           @pick-option="pickOption"
+          @chip-select="onChipSelect"
         />
       </div>
 
@@ -618,6 +619,12 @@ const quickPrompts = [
 ]
 
 function onEntryPick(value) {
+  if (!value || isStreaming.value || !currentConversationId.value) return
+  if (activeJob.value && activeJob.value.active) return
+  chatStore.sendMessage(value)
+}
+
+function onChipSelect(value) {
   if (!value || isStreaming.value || !currentConversationId.value) return
   if (activeJob.value && activeJob.value.active) return
   chatStore.sendMessage(value)

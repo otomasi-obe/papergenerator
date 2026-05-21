@@ -512,6 +512,21 @@ export const useChatStore = defineStore('chat', () => {
     const stream = streams.value[convId]
     if (!stream || !stream.streamingMessage) return
     const msg = stream.streamingMessage
+
+    // Attach a chips payload to the currently-streaming assistant message so
+    // ChatMessage.vue can render ActionChips beside its content. Backend
+    // (chat.py) emits this as a typed 'chips' SSE event after a ProposeChips
+    // tool call resolves.
+    if (event === 'chips') {
+      msg.metadata = {
+        ...(msg.metadata || {}),
+        kind: 'chips',
+        chips: Array.isArray(data?.chips) ? data.chips : [],
+        context_hint: data?.context_hint || '',
+      }
+      _syncFromStream(convId)
+      return
+    }
     switch (event) {
       case 'text':
         msg.content += data.content
@@ -544,11 +559,19 @@ export const useChatStore = defineStore('chat', () => {
             const paperStore = usePaperStore()
             if (proposal.kind === 'journal' || proposal.kind === 'export_docx') {
               paperStore.applyImmediate(proposal)
-            } else if (proposal.kind === 'generate_full') {
+            } else if (proposal.kind === 'generate_full' || proposal.kind === 'paper_progress') {
               // Full-paper job started by the AI: hand it to the paper store
               // so the existing job-polling spinner kicks in and loads the
-              // result into the editor when ready.
+              // result into the editor when ready. Also attach the job_id to
+              // the streaming message so ChatMessage can render an inline
+              // PaperProgressBubble.
               paperStore.attachAiJob(proposal.job_id, proposal.prompt)
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'paper_progress',
+                job_id: proposal.job_id,
+                prompt: proposal.prompt,
+              }
             } else if (proposal.kind === 'slr_job') {
               // Fallback path for SLR auto-open in case the dedicated
               // `open_tab` SSE event was not emitted (older backend builds).

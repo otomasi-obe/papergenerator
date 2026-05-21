@@ -65,6 +65,22 @@
         </p>
       </div>
 
+      <!-- Structured chips proposed by ProposeChips tool (kind=chips). -->
+      <ActionChips
+        v-if="metaKind === 'chips' && metaChips.length && message.role === 'assistant'"
+        :chips="metaChips"
+        @select="(v) => $emit('chip-select', v)"
+      />
+
+      <!-- Inline paper-generation progress bubble (kind=paper_progress).
+           PaperProgressBubble is owned by Agent G; if missing, the async
+           component falls back to a small TODO placeholder. -->
+      <PaperProgressBubble
+        v-if="metaKind === 'paper_progress' && metaJobId && message.role === 'assistant'"
+        :job-id="metaJobId"
+        class="mt-2"
+      />
+
       <!-- Streaming cursor -->
       <span
         v-if="isStreaming && message.role === 'assistant' && !message.content && !message.thinking"
@@ -86,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js/lib/core'
@@ -97,6 +113,28 @@ import json from 'highlight.js/lib/languages/json'
 import xml from 'highlight.js/lib/languages/xml'
 import css from 'highlight.js/lib/languages/css'
 import ThinkingBlock from './ThinkingBlock.vue'
+import ActionChips from './ActionChips.vue'
+
+// PaperProgressBubble.vue is owned by Agent G and may not exist on disk yet
+// when this file is built in parallel. Loading it asynchronously with a
+// graceful fallback keeps the build green and the runtime resilient if the
+// component is missing.
+// TODO(agent-g): once PaperProgressBubble.vue lands, the placeholder below
+// becomes a no-op because the dynamic import will resolve.
+const PaperProgressBubble = defineAsyncComponent({
+  loader: () => import('./PaperProgressBubble.vue'),
+  errorComponent: {
+    props: ['jobId'],
+    template: `
+      <div class="mt-2 p-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-900 dark:text-amber-200">
+        <div class="font-medium">📝 Generate paper started</div>
+        <div class="opacity-80 mt-0.5">Job <code class="font-mono">{{ jobId }}</code> sedang berjalan. Bubble progress sedang dimuat…</div>
+      </div>
+    `,
+  },
+  delay: 0,
+  timeout: 8000,
+})
 
 hljs.registerLanguage('javascript', javascript)
 hljs.registerLanguage('python', python)
@@ -111,7 +149,17 @@ const props = defineProps({
   isStreaming: { type: Boolean, default: false }
 })
 
-defineEmits(['pick-option'])
+defineEmits(['pick-option', 'chip-select'])
+
+// Convenience accessors for typed-message metadata. Backend writes:
+//   metadata.kind === 'chips'           -> render ActionChips below content
+//   metadata.kind === 'paper_progress'  -> render PaperProgressBubble below content
+const metaKind = computed(() => props.message?.metadata?.kind || null)
+const metaChips = computed(() => {
+  const c = props.message?.metadata?.chips
+  return Array.isArray(c) ? c : []
+})
+const metaJobId = computed(() => props.message?.metadata?.job_id || null)
 
 // Detect a full-paper generation tool call so we can render the in-chat
 // progress block. Only show spinner if:
