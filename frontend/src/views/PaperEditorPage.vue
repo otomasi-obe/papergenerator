@@ -316,11 +316,13 @@ import LiteratureTab from '../components/LiteratureTab.vue'
 import PreviewTab from '../components/PreviewTab.vue'
 import ChatTab from '../components/ChatTab.vue'
 import { useImageGenStore } from '../stores/imageGen.js'
+import { usePaperJobsStore } from '../stores/paperJobs.js'
 
 const store = usePaperStore()
 const ui = useUiStore()
 const chatStore = useChatStore()
 const imageGenStore = useImageGenStore()
+const paperJobsStore = usePaperJobsStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -406,12 +408,15 @@ onUnmounted(() => {
   clearTimeout(autoSaveTimer)
   clearInterval(tickTimer)
   window.removeEventListener('resize', resizeAbstract)
+  paperJobsStore.stopPolling()
 })
 
 onMounted(async () => {
   tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
   window.addEventListener('resize', resizeAbstract)
   imageGenStore.resume()
+  // Global recent-done poller (10s); guarded so multiple mounts don't stack.
+  paperJobsStore.startGlobalPolling()
   const paperId = route.params.paperId
   if (paperId) {
     await store.loadPaperFromDb(paperId)
@@ -424,6 +429,10 @@ onMounted(async () => {
       router.replace({ name: 'editor', params: { paperId: newId } })
       chatOpen.value = ui.getChatOpen(newId)
     }
+  }
+  // Start active-job poller for whichever paper we ended up on.
+  if (store.currentPaperId) {
+    paperJobsStore.startPolling(store.currentPaperId)
   }
   try {
     const [tRes, sRes] = await Promise.all([
@@ -447,6 +456,15 @@ watch(() => route.params.paperId, async (newId, oldId) => {
     await store.loadPaperFromDb(newId)
     chatOpen.value = ui.getChatOpen(newId)
     resizeAbstract()
+  }
+})
+
+// Restart per-paper job polling whenever the active paper changes.
+watch(() => store.currentPaperId, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    paperJobsStore.startPolling(newId)
+  } else if (!newId) {
+    paperJobsStore.stopPolling()
   }
 })
 
