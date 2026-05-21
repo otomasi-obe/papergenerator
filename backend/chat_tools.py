@@ -7,6 +7,7 @@ Executes tools requested by the AI during chat conversations.
 import os
 import shlex
 import json
+import logging
 import subprocess
 import ipaddress
 import socket
@@ -17,6 +18,9 @@ from urllib.parse import urlparse
 
 import requests
 from models import Paper, ProjectMemory, PaperFile, db
+
+
+logger = logging.getLogger(__name__)
 
 
 SAFE_BASH_COMMANDS = {'grep', 'find', 'wc', 'cat', 'head', 'tail', 'ls', 'echo', 'date', 'pwd'}
@@ -377,7 +381,7 @@ def _format_literature_block(paper_id) -> str:
         return ""
     try:
         from models import LiteratureItem
-        items = (LiteratureItem.query
+        items = (db.session.query(LiteratureItem)
                  .filter_by(paper_id=paper_id)
                  .order_by(LiteratureItem.pinned.desc(),
                            LiteratureItem.must_read.desc(),
@@ -511,7 +515,7 @@ def _get_literature_tool(paper_id, user_id, limit=50):
         from models import LiteratureItem
     except Exception as e:
         return f"Error: cannot read literature ({e})"
-    items = (LiteratureItem.query
+    items = (db.session.query(LiteratureItem)
              .filter_by(paper_id=paper_id)
              .order_by(LiteratureItem.pinned.desc(),
                        LiteratureItem.score_total.desc(),

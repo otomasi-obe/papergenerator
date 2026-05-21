@@ -104,7 +104,7 @@ def create_slr_job(paper_id: str):
         per_source=per_source, top_k=top_k, year_from=year_from,
         ai_summarize=ai_summarize, ai_model=ai_model,
     )
-    job = SlrJob.query.filter_by(id=job_id).first()
+    job = db.session.query(SlrJob).filter_by(id=job_id).first()
     return jsonify(job.to_dict() if job else {"id": job_id}), 202
 
 
@@ -117,7 +117,7 @@ def list_slr_jobs(paper_id: str):
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
         return err
-    jobs = (SlrJob.query
+    jobs = (db.session.query(SlrJob)
             .filter_by(paper_id=paper_id, user_id=user_id)
             .order_by(SlrJob.queued_at.desc())
             .limit(30)
@@ -134,7 +134,7 @@ def get_slr_job(job_id: str):
     if not JOB_ID_RE.match(job_id):
         return jsonify({"error": "Invalid job id"}), 400
     include_result = request.args.get("include_result", "false").lower() == "true"
-    job = SlrJob.query.filter_by(id=job_id, user_id=user_id).first()
+    job = db.session.query(SlrJob).filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
     return jsonify(job.to_dict(include_result=include_result))
@@ -148,7 +148,7 @@ def cancel_slr_job(job_id: str):
         return jsonify({"error": "Unauthorized"}), 401
     if not JOB_ID_RE.match(job_id):
         return jsonify({"error": "Invalid job id"}), 400
-    job = SlrJob.query.filter_by(id=job_id, user_id=user_id).first()
+    job = db.session.query(SlrJob).filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
     if job.status in ("queued", "running"):
@@ -171,7 +171,7 @@ def list_literature(paper_id: str):
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
         return err
-    items = (LiteratureItem.query
+    items = (db.session.query(LiteratureItem)
              .filter_by(paper_id=paper_id)
              .order_by(LiteratureItem.pinned.desc(),
                        LiteratureItem.score_total.desc(),
@@ -229,7 +229,7 @@ def update_literature(paper_id: str, item_id: int):
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
         return err
-    item = LiteratureItem.query.filter_by(id=item_id, paper_id=paper_id).first()
+    item = db.session.query(LiteratureItem).filter_by(id=item_id, paper_id=paper_id).first()
     if not item:
         return jsonify({"error": "Literature item not found"}), 404
 
@@ -265,7 +265,7 @@ def delete_literature(paper_id: str, item_id: int):
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
         return err
-    item = LiteratureItem.query.filter_by(id=item_id, paper_id=paper_id).first()
+    item = db.session.query(LiteratureItem).filter_by(id=item_id, paper_id=paper_id).first()
     if not item:
         return jsonify({"error": "Literature item not found"}), 404
     db.session.delete(item)
@@ -291,7 +291,7 @@ def import_from_files(paper_id: str):
              .order_by(PaperFile.created_at.desc())
              .all())
     existing_file_ids = {
-        i.file_id for i in LiteratureItem.query
+        i.file_id for i in db.session.query(LiteratureItem)
         .filter_by(paper_id=paper_id).filter(LiteratureItem.file_id.isnot(None))
         .all()
     }
@@ -372,13 +372,13 @@ def run_slr_legacy(paper_id: str):
     deadline = time.time() + 25.0
     while time.time() < deadline:
         time.sleep(1.0)
-        job = SlrJob.query.filter_by(id=job_id).first()
+        job = db.session.query(SlrJob).filter_by(id=job_id).first()
         if not job:
             break
         if job.status in ("done", "error", "cancelled"):
             break
 
-    job = SlrJob.query.filter_by(id=job_id, user_id=user_id).first()
+    job = db.session.query(SlrJob).filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job vanished"}), 500
     if job.status != "done":

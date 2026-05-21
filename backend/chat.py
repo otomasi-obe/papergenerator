@@ -35,10 +35,11 @@ MODEL = os.getenv("AIOTOMASI_MODEL") or ""
 # UI label → backend upstream identifier. Hard-coded per product spec; the
 # label NEVER hits the upstream API. Unknown values fall back to env MODEL.
 SELECTABLE_MODELS = {
-    "V-OPUS":   "V-OPUS",
-    "V-CLAUDE": "V-CLAUDE",
-    "V-GPT":    "V-GPT",
-    "V-GLM":    "V-GLM",
+    "V-OPUS":     "V-OPUS",
+    "V-CLAUDE":   "V-CLAUDE",
+    "V-GPT":      "V-GPT",
+    "V-GLM":      "V-GLM",
+    "V-DEEPSEEK": "V-DEEPSEEK",
 }
 DEFAULT_MODEL_KEY = "V-CLAUDE"
 
@@ -859,15 +860,15 @@ def send_message(conv_id):
                         args = {}
 
                     # Log tool call for debugging Bug A
-                    logger.info(f"[TOOL_CALL] AI requested tool: {tool_name} with args: {json.dumps(args, ensure_ascii=False)[:500]}")
+                    log.info(f"[TOOL_CALL] AI requested tool: {tool_name} with args: {json.dumps(args, ensure_ascii=False)[:500]}")
 
                     yield _sse("tool_call", {"name": tool_name, "arguments": args})
 
                     try:
                         result = execute_tool(tool_name, args, user_id, conv.paper_id)
-                        logger.info(f"[TOOL_RESULT] {tool_name} returned: {str(result)[:500]}")
+                        log.info(f"[TOOL_RESULT] {tool_name} returned: {str(result)[:500]}")
                     except Exception as e:
-                        logger.error(f"[TOOL_ERROR] {tool_name} failed: {type(e).__name__}: {str(e)}", exc_info=True)
+                        log.error(f"[TOOL_ERROR] {tool_name} failed: {type(e).__name__}: {str(e)}", exc_info=True)
                         result = f"Tool execution error: {type(e).__name__}: {str(e)}"
 
                     # Forward the raw result to the frontend so it can route

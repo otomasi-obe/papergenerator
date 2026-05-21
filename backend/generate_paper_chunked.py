@@ -164,7 +164,7 @@ Generate the paper outline following the schema above."""
     ]
 
     raw_content, model_used = _call_aiotomasi_with_fallback(
-        messages, api_key, base_url, model, timeout=600.0, progress_cb=progress_cb
+        messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
     print(f"[_generate_outline] succeeded using model={model_used}", flush=True)
 
@@ -266,7 +266,7 @@ Return ONLY the JSON object for section{section_num}."""
     ]
 
     raw_content, model_used = _call_aiotomasi_with_fallback(
-        messages, api_key, base_url, model, timeout=600.0, progress_cb=progress_cb
+        messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
     print(f"[_generate_section] Section {section_num} succeeded using model={model_used}", flush=True)
 
@@ -373,7 +373,7 @@ Return the references as a JSON object with a "references" array."""
     ]
 
     raw_content, model_used = _call_aiotomasi_with_fallback(
-        messages, api_key, base_url, model, timeout=600.0, progress_cb=progress_cb
+        messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
     print(f"[_generate_references] succeeded using model={model_used}", flush=True)
 

@@ -111,7 +111,7 @@ def _dispatch_pending(app):
         return
 
     # Pull up to `free` queued jobs and atomically transition to 'running'.
-    candidates = (SlrJob.query
+    candidates = (db.session.query(SlrJob)
                   .filter(SlrJob.status == "queued")
                   .order_by(SlrJob.queued_at.asc())
                   .limit(free * 2)
@@ -128,7 +128,7 @@ def _dispatch_pending(app):
             if job.id in _inflight:
                 continue
         # Optimistic claim — re-fetch + check.
-        fresh = SlrJob.query.filter_by(id=job.id, status="queued").first()
+        fresh = db.session.query(SlrJob).filter_by(id=job.id, status="queued").first()
         if fresh is None:
             continue
         fresh.status = "running"
@@ -160,14 +160,14 @@ def _run_job(app, job_id: str):
     from datetime import datetime, timezone
 
     with app.app_context():
-        job = SlrJob.query.filter_by(id=job_id).first()
+        job = db.session.query(SlrJob).filter_by(id=job_id).first()
         if not job:
             return
 
         def progress(stage: str, info: dict):
             try:
                 with app.app_context():
-                    j = SlrJob.query.filter_by(id=job_id).first()
+                    j = db.session.query(SlrJob).filter_by(id=job_id).first()
                     if not j or j.status != "running":
                         return
                     j.stage = stage[:40]
@@ -190,7 +190,7 @@ def _run_job(app, job_id: str):
             )
         except Exception as e:
             log.exception("slr.pipeline error job=%s", job_id)
-            job = SlrJob.query.filter_by(id=job_id).first()
+            job = db.session.query(SlrJob).filter_by(id=job_id).first()
             if job:
                 job.status = "error"
                 job.stage = "error"
@@ -201,7 +201,7 @@ def _run_job(app, job_id: str):
 
         # Persist top_k records as LiteratureItem rows (pinned=False, source_kind='slr').
         # Replaces any prior literature rows for THIS job.
-        LiteratureItem.query.filter_by(slr_job_id=job_id).delete(
+        db.session.query(LiteratureItem).filter_by(slr_job_id=job_id).delete(
             synchronize_session=False)
         db.session.commit()
         top = payload.get("top_k") or []
@@ -237,7 +237,7 @@ def _run_job(app, job_id: str):
         except Exception:
             db.session.rollback()
 
-        job = SlrJob.query.filter_by(id=job_id).first()
+        job = db.session.query(SlrJob).filter_by(id=job_id).first()
         if not job:
             return
         job.status = "done"

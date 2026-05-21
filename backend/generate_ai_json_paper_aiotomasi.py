@@ -49,7 +49,7 @@ Additional instructions: {custom_prompt}
 """
 
 
-def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, timeout: float = 1200.0, progress_cb=None) -> str:
+def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, timeout: float = 900.0, progress_cb=None) -> str:
     """Call AIOTOMASI API via requests with SSE streaming."""
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {
@@ -60,6 +60,7 @@ def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, tim
         "model": model,
         "messages": messages,
         "stream": True,
+        "max_tokens": 32000,
     }
 
     resp = requests.post(url, json=payload, headers=headers, timeout=timeout, stream=True)
@@ -103,10 +104,10 @@ def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, tim
 # ── Fallback model chain ──────────────────────────────────────────────────────
 # Order: try the primary model first, then walk down the list. Each entry is
 # attempted independently; if all fail the last exception is re-raised.
-FALLBACK_MODELS = ["V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"]
+FALLBACK_MODELS = ["V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"]
 
 
-def _call_aiotomasi_with_fallback(messages: list, api_key: str, base_url: str, primary_model: str, timeout: float = 1200.0, progress_cb=None) -> tuple:
+def _call_aiotomasi_with_fallback(messages: list, api_key: str, base_url: str, primary_model: str, timeout: float = 900.0, progress_cb=None) -> tuple:
     """Try primary_model first, then walk FALLBACK_MODELS on transient errors.
     Returns (content, model_used). Raises the last exception if everything fails.
     """
