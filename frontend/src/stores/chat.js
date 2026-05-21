@@ -587,6 +587,22 @@ export const useChatStore = defineStore('chat', () => {
                   ai_model: proposal.ai_model,
                 })
               }
+            } else if (proposal.kind === 'propose_revisi') {
+              // Paraphrase / FixGrammar / Translate proposals: stamp the
+              // payload onto the streaming assistant message so ChatMessage
+              // can render an inline RevisiProposalCard with diff + accept/
+              // reject buttons. The card calls paper store actions on accept.
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'propose_revisi',
+                tool: proposal.tool,
+                scope: proposal.scope,
+                section_index: proposal.section_index,
+                content_index: proposal.content_index,
+                text: proposal.text,
+                rewrite: proposal.rewrite,
+                target_language: proposal.target_language,
+              }
             } else {
               paperStore.pushProposal(proposal)
             }

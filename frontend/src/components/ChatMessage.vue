@@ -81,6 +81,16 @@
         class="mt-2"
       />
 
+      <!-- Inline revisi proposal card (kind=propose_revisi). Shown when an AI
+           Paraphrase / FixGrammar / Translate tool returns a rewrite payload.
+           User can accept (apply via paper store) or reject the change. -->
+      <RevisiProposalCard
+        v-if="metaKind === 'propose_revisi' && message.role === 'assistant'"
+        :proposal="message.metadata"
+        @accepted="$emit('revisi-accepted', $event)"
+        @rejected="$emit('revisi-rejected', $event)"
+      />
+
       <!-- Streaming cursor -->
       <span
         v-if="isStreaming && message.role === 'assistant' && !message.content && !message.thinking"
@@ -114,6 +124,7 @@ import xml from 'highlight.js/lib/languages/xml'
 import css from 'highlight.js/lib/languages/css'
 import ThinkingBlock from './ThinkingBlock.vue'
 import ActionChips from './ActionChips.vue'
+import RevisiProposalCard from './RevisiProposalCard.vue'
 
 // PaperProgressBubble.vue is owned by Agent G and may not exist on disk yet
 // when this file is built in parallel. Loading it asynchronously with a
@@ -149,7 +160,7 @@ const props = defineProps({
   isStreaming: { type: Boolean, default: false }
 })
 
-defineEmits(['pick-option', 'chip-select'])
+defineEmits(['pick-option', 'chip-select', 'revisi-accepted', 'revisi-rejected'])
 
 // Convenience accessors for typed-message metadata. Backend writes:
 //   metadata.kind === 'chips'           -> render ActionChips below content

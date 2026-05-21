@@ -337,6 +337,70 @@ export const usePaperStore = defineStore('paper', () => {
     }
   }
 
+  // ─── Revisi (Paraphrase / FixGrammar / Translate) apply helpers ───────
+  // These are called by RevisiProposalCard.vue when the user accepts an
+  // AI-proposed rewrite. They mutate the paper in place and trigger an
+  // autosave so the change is persisted.
+
+  async function replaceContent(sIdx, cIdx, newText) {
+    const sec = paper.value.sections?.[sIdx]
+    if (!sec) throw new Error('Section tidak ditemukan')
+    if (!Array.isArray(sec.content)) sec.content = []
+    const item = sec.content[cIdx]
+    if (!item) throw new Error('Paragraph tidak ditemukan')
+    sec.content[cIdx] = { ...item, id: item.id || 'text', text: String(newText ?? '') }
+    if (currentPaperId.value) {
+      try { await savePaperToDb(true) } catch { /* ignore — local watcher persists too */ }
+    }
+    showToast('Paragraph diperbarui', 'success')
+  }
+
+  async function replaceSectionText(sIdx, payload) {
+    const sec = paper.value.sections?.[sIdx]
+    if (!sec) throw new Error('Section tidak ditemukan')
+    if (typeof payload === 'string') {
+      sec.content = _textToSectionContent(payload)
+    } else if (payload && typeof payload === 'object') {
+      if (payload.title !== undefined) sec.title = payload.title || sec.title
+      if (payload.content !== undefined) {
+        sec.content = typeof payload.content === 'string'
+          ? _textToSectionContent(payload.content)
+          : normContent(payload.content)
+      }
+      if (Array.isArray(payload.subsections)) sec.subsections = payload.subsections
+    } else {
+      throw new Error('Payload section tidak dikenali')
+    }
+    if (currentPaperId.value) {
+      try { await savePaperToDb(true) } catch { /* ignore */ }
+    }
+    showToast('Section diperbarui', 'success')
+  }
+
+  async function replaceWhole(payload) {
+    if (typeof payload === 'string') {
+      // Fallback: drop into the first section's first paragraph.
+      if (!paper.value.sections.length) addSection()
+      const sec = paper.value.sections[0]
+      if (!Array.isArray(sec.content) || !sec.content.length) {
+        sec.content = [{ id: 'text', text: '' }]
+      }
+      sec.content[0] = { ...sec.content[0], id: sec.content[0].id || 'text', text: payload }
+    } else if (payload && typeof payload === 'object') {
+      if (payload.sections || payload.title || payload.abstract) {
+        paper.value = fromPaperJsonRaw(payload)
+      } else {
+        Object.assign(paper.value, payload)
+      }
+    } else {
+      throw new Error('Payload paper tidak dikenali')
+    }
+    if (currentPaperId.value) {
+      try { await savePaperToDb(true) } catch { /* ignore */ }
+    }
+    showToast('Paper diperbarui', 'success')
+  }
+
   const pendingCount = computed(() =>
     pendingChanges.value.filter(p => p.status === 'pending').length
   )
@@ -740,6 +804,7 @@ export const usePaperStore = defineStore('paper', () => {
     pushProposal, acceptProposal, rejectProposal,
     acceptAllProposals, rejectAllProposals, clearResolvedProposals,
     applyImmediate, attachAiJob,
+    replaceContent, replaceSectionText, replaceWhole,
     numbering, getItemNumber, toPaperJson, fromPaperJson,
     addSection, removeSection, addSubsection, removeSubsection,
     addContent, removeContent, moveContent,
