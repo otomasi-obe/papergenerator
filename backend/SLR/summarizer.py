@@ -208,16 +208,20 @@ def summarize_with_ai(papers: list[dict],
                       query: str,
                       model: str | None = None,
                       batch_size: int = 10,
-                      progress_cb=None) -> dict[int, str]:
+                      progress_cb=None) -> tuple[dict[int, str], bool]:
     """Batch-summarize a list of paper dicts via the upstream LLM.
 
     Each item must carry at least `id` and `title`; `abstract`, `year`
-    optional. Returns {id -> summary}. Items missing from the response fall
-    back to the extractive `summarize`.
+    optional. Returns ``({id -> summary}, ai_used)`` where ``ai_used`` is
+    ``True`` if at least one paper got a real AI-generated summary, and
+    ``False`` if every batch fell through to the extractive fallback (e.g.
+    upstream env vars missing or all calls failed). Items missing from the
+    response fall back to the extractive ``summarize``.
     """
     out: dict[int, str] = {}
+    ai_used = False
     if not papers:
-        return out
+        return out, ai_used
 
     chosen_model = model or _DEFAULT_MODEL
     total = len(papers)
@@ -269,6 +273,7 @@ def summarize_with_ai(papers: list[dict],
                 summary = (item.get("summary") or "").strip()
                 if summary:
                     out[pid] = summary[:1200]
+                    ai_used = True
             for p in batch:
                 if "id" not in p:
                     continue
@@ -288,6 +293,7 @@ def summarize_with_ai(papers: list[dict],
                 # results to the caller so they aren't silently dropped.
                 try:
                     e.partial_summaries = dict(out)  # type: ignore[attr-defined]
+                    e.partial_ai_used = ai_used  # type: ignore[attr-defined]
                 except Exception:
                     pass
                 raise
@@ -302,4 +308,4 @@ def summarize_with_ai(papers: list[dict],
             else:
                 time.sleep(0.3)
 
-    return out
+    return out, ai_used

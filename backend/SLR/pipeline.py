@@ -154,6 +154,7 @@ def run(query: str,
     # 3. AI SUMMARIZE top-K (rest gets extractive)
     top_scored = scored[:top_k]
     summaries: dict[int, str] = {}
+    ai_used = False
     top_input = []
     for i, sp in enumerate(top_scored):
         top_input.append({
@@ -167,7 +168,7 @@ def run(query: str,
         if progress_cb:
             progress_cb("summarizing", {"count": len(top_input)})
         try:
-            summaries = summarize_with_ai(
+            summaries, ai_used = summarize_with_ai(
                 top_input, query=query, model=ai_model,
                 progress_cb=progress_cb,
             )
@@ -177,6 +178,9 @@ def run(query: str,
             partial = getattr(e, "partial_summaries", None)
             if isinstance(partial, dict):
                 summaries = partial
+            partial_ai_used = getattr(e, "partial_ai_used", None)
+            if isinstance(partial_ai_used, bool):
+                ai_used = partial_ai_used
             if isinstance(e, Exception) and not isinstance(e, KeyboardInterrupt):
                 # Re-raise progress-callback-driven cancels (e.g. WorkerCancelled
                 # in slr_worker) so the worker can mark the job cancelled.
@@ -221,10 +225,13 @@ def run(query: str,
         progress_cb("complete", {"top_k": len(top_records),
                                   "total": len(all_records)})
 
+    stats = _stats(query, raw_papers, scored)
+    stats["ai_summary_used"] = bool(ai_used)
+
     return {
         "query": query,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "stats": _stats(query, raw_papers, scored),
+        "stats": stats,
         "papers": all_records,
         "top_k": top_records,
     }

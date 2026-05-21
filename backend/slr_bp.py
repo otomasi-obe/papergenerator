@@ -168,7 +168,7 @@ def create_slr_job(paper_id: str):
 
     ai_summarize = bool(body.get("ai_summarize", True))
     ai_model = (body.get("ai_model") or "V-OPUS").strip()
-    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"}:
+    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}:
         ai_model = "V-OPUS"
 
     conv_id = body.get("conversation_id") or None

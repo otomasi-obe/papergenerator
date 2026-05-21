@@ -145,9 +145,18 @@
             />
           </label>
         </div>
-        <div class="text-[11px] text-ink-500 dark:text-anthracite-200">
-          {{ filteredItems.length }} / {{ items.length }} literatur
-          · {{ pinnedCount }} pinned
+        <div class="text-[11px] text-ink-500 dark:text-anthracite-200 flex items-center gap-2">
+          <span
+            v-if="lastSlrJob && lastSlrJob.status === 'done'"
+            :class="aiSummaryUsed
+              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
+              : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700'"
+            :title="aiSummaryUsed
+              ? 'AI summaries enabled — top-K papers received LLM-generated summaries.'
+              : 'AI summary not configured. Set AIOTOMASI_API + AIOTOMASI_APIKEY for AI-generated summaries.'"
+            class="px-2 py-0.5 rounded text-[10px] font-medium"
+          >{{ aiSummaryUsed ? '✨ AI summaries' : 'Summary: extractive only' }}</span>
+          <span>{{ filteredItems.length }} / {{ items.length }} literatur · {{ pinnedCount }} pinned</span>
         </div>
       </div>
 
@@ -376,6 +385,7 @@ const slrQuery = ref('')
 const slrTopK = ref(50)
 const slrRunning = ref(false)
 const activeJobs = ref([])
+const lastSlrJob = ref(null)
 const slrCardRef = ref(null)
 const slrInputRef = ref(null)
 let _pollTimer = null
@@ -402,6 +412,10 @@ const sortKey = ref('default') // 'default' | 'title' | 'year' | 'score' | 'cita
 const sortDir = ref('desc')
 
 const paperTitle = computed(() => store.paper?.title || '')
+
+const aiSummaryUsed = computed(() => {
+  return !!(lastSlrJob.value && lastSlrJob.value.stats && lastSlrJob.value.stats.ai_summary_used)
+})
 
 const filteredItems = computed(() => {
   const q = filter.value.trim().toLowerCase()
@@ -629,6 +643,14 @@ async function loadJobs() {
     const jobs = res.data || []
     const active = jobs.filter(j => j.status === 'queued' || j.status === 'running')
     activeJobs.value = active
+    const finished = jobs
+      .filter(j => j.status === 'done' || j.status === 'error')
+      .sort((a, b) => {
+        const ta = new Date(a.finished_at || a.queued_at || 0).getTime()
+        const tb = new Date(b.finished_at || b.queued_at || 0).getTime()
+        return tb - ta
+      })
+    lastSlrJob.value = finished[0] || null
     const newlyDone = jobs.filter(j =>
       j.status === 'done' &&
       (!_lastJobIds.has(j.id) || _lastJobStatus[j.id] !== 'done')
@@ -1004,6 +1026,7 @@ watch(currentPaperId, async (id) => {
   _lastJobIds = new Set()
   _lastJobStatus = {}
   activeJobs.value = []
+  lastSlrJob.value = null
   selectedIds.value = new Set()
   loadError.value = ''
   // Restore filters: defaults first, then overlay any saved state for this paper.
