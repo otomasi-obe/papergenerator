@@ -413,11 +413,13 @@ except Exception:
 # ─── SLR worker pool (max 10 workers, FIFO DB-backed queue) ─────────────
 # Pulls SlrJob rows and runs the multi-source academic search + AI
 # summarization pipeline. Idempotent across gunicorn worker processes.
-try:
-    from slr_worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
-    _start_slr_workers(app)
-except Exception:
-    log.exception("Failed to start SLR worker pool — Literature/SLR jobs will queue but not run")
+# Skipped under TESTING so unit tests don't spin up the executor / pump.
+if not app.config.get("TESTING"):
+    try:
+        from slr_worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
+        _start_slr_workers(app)
+    except Exception:
+        log.exception("Failed to start SLR worker pool — Literature/SLR jobs will queue but not run")
 
 # ─── Health Check ────────────────────────────────────────────────────────────
 
@@ -494,9 +496,10 @@ def generate():
 
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
-def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, chunked=True):
+def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, chunked=True, model=None):
     t_start = time.time()
     log.info("[job:%s] started, prompt=%r, chunked=%s", job_id, prompt[:80], chunked)
+    log.info("[job:%s] model=%s", job_id, model or "<env>")
     uid = None
     try:
         uid = int(user_id) if user_id is not None else None
@@ -522,6 +525,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
                 custom_prompt=extra,
                 topic=topic,
                 style=style,
+                model=model,
             )
         else:
             paper_data = generate_paper_json(
@@ -529,6 +533,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
                 custom_prompt=extra,
                 topic=topic,
                 style=style,
+                model=model,
             )
 
         paper_data.setdefault("authors", [{"name": "Author Name", "affiliation": "Department, University", "location": "City, Country", "email": "author@example.com"}])
@@ -676,6 +681,11 @@ def generate_full():
         topic = data.get("topic") or None
         style = data.get("style") or None
         pdf_texts = data.get("pdf_texts") or []
+        model = data.get("model") or None
+        if model is not None:
+            allowed_models = {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}
+            if model not in allowed_models:
+                return jsonify({"error": f"Invalid model. Allowed: {sorted(allowed_models)}"}), 400
 
         api_key = os.getenv("AIOTOMASI_APIKEY")
         if not api_key:
@@ -689,7 +699,7 @@ def generate_full():
         threading.Thread(
             target=_run_generate_full_job,
             args=(job_id, prompt, user_id),
-            kwargs={"topic": topic, "style": style, "pdf_texts": pdf_texts},
+            kwargs={"topic": topic, "style": style, "pdf_texts": pdf_texts, "model": model},
             daemon=True,
         ).start()
         return jsonify({"success": True, "job_id": job_id})

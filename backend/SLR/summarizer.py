@@ -97,11 +97,25 @@ _AI_BASE = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
 _AI_KEY = os.getenv("AIOTOMASI_APIKEY") or ""
 _DEFAULT_MODEL = os.getenv("AIOTOMASI_MODEL") or "V-OPUS"
 
+_AI_MISSING_WARNED = False
+
+
+def _warn_ai_missing_once():
+    global _AI_MISSING_WARNED
+    if _AI_MISSING_WARNED:
+        return
+    _AI_MISSING_WARNED = True
+    log.warning(
+        "summarizer: AIOTOMASI_API/AIOTOMASI_APIKEY not configured; "
+        "AI summaries disabled, falling back to extractive."
+    )
+
 
 def _ai_chat(messages, model: str | None = None,
              max_tokens: int = 32000, timeout: int = 90) -> str | None:
     """Synchronous, non-streaming chat completion. Returns content or None."""
     if not (_AI_BASE and _AI_KEY):
+        _warn_ai_missing_once()
         return None
     chosen = model or _DEFAULT_MODEL
     try:
@@ -127,7 +141,8 @@ def _ai_chat(messages, model: str | None = None,
         choices = data.get("choices") or []
         if not choices:
             return None
-        return (choices[0].get("message", {}).get("content") or "").strip()
+        msg = choices[0].get("message") or {}
+        return (msg.get("content") or "").strip()
     except Exception as e:
         log.warning("summarizer.ai_chat error: %s", e)
         return None
@@ -146,23 +161,41 @@ _AI_SYS_PROMPT = (
 
 
 def _parse_json_array(text: str):
-    """Parse text into a JSON array, tolerating preamble/postamble noise."""
+    """Parse text into a JSON array, tolerating preamble/postamble noise.
+
+    Also accepts top-level dict envelopes like {"summaries": [...]} or
+    {"results": [...]} that some models emit despite the "array only" prompt.
+    """
     text = (text or "").strip()
     if not text:
         return None
+
+    def _from_obj(obj):
+        if isinstance(obj, list):
+            return obj
+        if isinstance(obj, dict):
+            for k in ("summaries", "results", "items", "data"):
+                v = obj.get(k)
+                if isinstance(v, list):
+                    return v
+        return None
+
     try:
         data = json.loads(text)
-        if isinstance(data, list):
-            return data
+        arr = _from_obj(data)
+        if arr is not None:
+            return arr
     except json.JSONDecodeError:
         pass
-    fence = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", text, re.DOTALL)
+    fence = re.search(r"```(?:json)?\s*(.+?)\s*```", text, re.DOTALL)
     if fence:
         try:
-            return json.loads(fence.group(1))
+            arr = _from_obj(json.loads(fence.group(1)))
+            if arr is not None:
+                return arr
         except json.JSONDecodeError:
             pass
-    m = re.search(r"\[\s*\{.*\}\s*\]", text, re.DOTALL)
+    m = re.search(r"\[\s*\{.*?\}\s*\]", text, re.DOTALL)
     if m:
         try:
             return json.loads(m.group(0))
@@ -174,7 +207,7 @@ def _parse_json_array(text: str):
 def summarize_with_ai(papers: list[dict],
                       query: str,
                       model: str | None = None,
-                      batch_size: int = 8,
+                      batch_size: int = 10,
                       progress_cb=None) -> dict[int, str]:
     """Batch-summarize a list of paper dicts via the upstream LLM.
 
@@ -188,11 +221,15 @@ def summarize_with_ai(papers: list[dict],
 
     chosen_model = model or _DEFAULT_MODEL
     total = len(papers)
+    batches = [papers[i:i + batch_size] for i in range(0, total, batch_size)]
+    consecutive_failures = 0
 
-    for i in range(0, total, batch_size):
-        batch = papers[i:i + batch_size]
+    for bi, batch in enumerate(batches):
+        i = bi * batch_size
         body = []
         for p in batch:
+            if "id" not in p:
+                continue
             body.append({
                 "id": p["id"],
                 "title": (p.get("title") or "")[:400],
@@ -214,12 +251,17 @@ def summarize_with_ai(papers: list[dict],
             log.warning("summarizer batch %d-%d: AI failed/parse error; extractive fallback",
                         i, i + len(batch))
             for p in batch:
+                if "id" not in p:
+                    continue
                 out[p["id"]] = (
                     summarize(p.get("abstract"), query=query, n_sentences=3)
                     or (p.get("title") or "")[:280]
                 )
+            consecutive_failures += 1
         else:
             for item in parsed:
+                if not isinstance(item, dict):
+                    continue
                 try:
                     pid = int(item.get("id"))
                 except (TypeError, ValueError):
@@ -228,16 +270,36 @@ def summarize_with_ai(papers: list[dict],
                 if summary:
                     out[pid] = summary[:1200]
             for p in batch:
+                if "id" not in p:
+                    continue
                 if p["id"] not in out:
                     out[p["id"]] = (
                         summarize(p.get("abstract"), query=query, n_sentences=3)
                         or (p.get("title") or "")[:280]
                     )
+            consecutive_failures = 0
 
         if progress_cb:
-            progress_cb("summarized", {"done": min(i + batch_size, total),
-                                        "total": total})
+            try:
+                progress_cb("summarized", {"done": min(i + batch_size, total),
+                                            "total": total})
+            except BaseException as e:
+                # Cancellation (or any progress_cb failure) — surface partial
+                # results to the caller so they aren't silently dropped.
+                try:
+                    e.partial_summaries = dict(out)  # type: ignore[attr-defined]
+                except Exception:
+                    pass
+                raise
 
-        time.sleep(0.3)  # be polite to upstream
+        if bi < len(batches) - 1:
+            # Backoff on failure: 1s after first failure, 2s after second+,
+            # otherwise polite 0.3s pause between successful batches.
+            if consecutive_failures >= 2:
+                time.sleep(2.0)
+            elif consecutive_failures == 1:
+                time.sleep(1.0)
+            else:
+                time.sleep(0.3)
 
     return out

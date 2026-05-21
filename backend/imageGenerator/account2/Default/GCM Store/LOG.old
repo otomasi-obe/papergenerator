@@ -1,2 +1,3 @@
-2026/05/20-20:17:56.324 43704 Creating DB /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/GCM Store since it was missing.
-2026/05/20-20:17:56.329 43704 Reusing MANIFEST /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/GCM Store/MANIFEST-000001
+2026/05/20-21:36:24.092 4effa Reusing MANIFEST /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/GCM Store/MANIFEST-000001
+2026/05/20-21:36:24.093 4effa Recovering log #3
+2026/05/20-21:36:24.093 4effa Reusing old log /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/GCM Store/000003.log 

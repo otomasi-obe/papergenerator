@@ -89,11 +89,12 @@ SYSTEM_PROMPT = (
     "  Ask whether the user already has literature, or wants help finding "
     "  it. Options: 1) Belum, tolong carikan  2) Sudah, ini filenya  "
     "  3) Pakai keduanya.\n"
-    "  - If 'belum / cari': call SearchPapers with the topic, then "
-    "    summarize the 8-12 best results in a short bullet list. Ask "
-    "    'pakai semua atau ada yang mau diganti?'. After the user "
-    "    confirms, SaveMemory(key=referensi_terpilih, value=<short list "
-    "    of titles>).\n"
+    "  - If 'belum / cari': call RunSLR with query=<topik + jurusan>. The "
+    "    Literature tab will populate over the next 2-5 menit — tell the "
+    "    user 'saya jalankan SLR di latar belakang, lihat tab Literatur "
+    "    untuk progress.' Do NOT block the workflow waiting; immediately "
+    "    move to STEP 5. The literature catalog will be available by the "
+    "    time we reach STEP 9 (GenerateFullPaper).\n"
     "  - If 'sudah, file terlampir': call ListAttachedFiles. For EACH "
     "    file returned (not just one), call ReadAttachedFile and write a "
     "    2-sentence summary per file. If a file has extracted_chars=0, "
@@ -135,7 +136,13 @@ SYSTEM_PROMPT = (
     "  Do NOT ask anything else. After the call, send 1-2 sentences: "
     "  'Job dimulai. Editor akan auto-load hasilnya 3-10 menit. Kamu "
     "  bisa pakai chat lain untuk hal lain (kecuali generate paper "
-    "  untuk paper yang sama).'\n\n"
+    "  untuk paper yang sama).'\n"
+    "  Before calling GenerateFullPaper, if the Literature tab is empty "
+    "  AND the user did not bring their own files, run RunSLR first to "
+    "  populate the catalog so the generated paper cites real papers. "
+    "  If you ran RunSLR earlier and the user has not yet seen results, "
+    "  briefly verify with GetLiterature before generating; this ensures "
+    "  references in the paper are real.\n\n"
 
     "================  ASK ONE THING AT A TIME  ================\n"
     "Ask exactly ONE question per message. Never dump multiple questions. "
@@ -196,7 +203,19 @@ SYSTEM_PROMPT = (
 
     "When the user asks 'jurnal apa aja' / 'what journals do you support', "
     "list ONLY the templates from '# Available journal templates' below — "
-    "do not invent generic options."
+    "do not invent generic options.\n\n"
+
+    "================  TOOL SELECTION — LITERATURE  ================\n"
+    "Tool selection — literature requests:\n"
+    "- When the user asks for \"literatur review\", \"tinjauan pustaka\", \"studi pustaka\",\n"
+    "  \"systematic literature review\", \"kumpulkan referensi\", \"cari paper untuk literatur\",\n"
+    "  or any phrasing that implies populating the Literature tab / persistent storage,\n"
+    "  ALWAYS call RunSLR (NOT SearchPapers).\n"
+    "- RunSLR is non-blocking — call it then continue the workflow. Don't wait for results\n"
+    "  in the same chat turn; the Literature tab populates asynchronously over 2-5 menit.\n"
+    "- Use SearchPapers only for ad-hoc inline lookups when the user explicitly requests\n"
+    "  \"tampilkan di chat\" or \"show in chat\" — i.e., they want results in the chat output,\n"
+    "  not stored persistently."
 )
 
 # Loaded only when the user actually asks for it via the GetGuide tool.
@@ -362,9 +381,8 @@ _TOOL_KEYWORDS = {
     "RequestExportDocx": ("docx", "export", "download", "ekspor", "unduh", "word"),
     "WebSearch":         ("cari ", "search", "google ", "find paper"),
     "WebFetch":          ("buka ", "fetch ", "http://", "https://"),
-    "SearchPapers":      ("paper", "literature", "literatur", "slr",
-                          "systematic review", "tinjauan pustaka", "referensi terkait",
-                          "related work", "state of the art", "sota", "studi pustaka"),
+    "SearchPapers":      ("paper", "related work", "state of the art", "sota",
+                          "referensi terkait"),
     "RunSLR":            ("slr", "systematic literature", "literatur review",
                           "literature review", "tinjauan pustaka", "studi pustaka",
                           "cari paper", "kumpulkan referensi", "kumpulan paper",
@@ -865,15 +883,45 @@ def send_message(conv_id):
                     yield _sse("tool_call", {"name": tool_name, "arguments": args})
 
                     try:
-                        result = execute_tool(tool_name, args, user_id, conv.paper_id)
+                        result = execute_tool(tool_name, args, user_id, conv.paper_id, model=upstream_model)
                         log.info(f"[TOOL_RESULT] {tool_name} returned: {str(result)[:500]}")
                     except Exception as e:
                         log.error(f"[TOOL_ERROR] {tool_name} failed: {type(e).__name__}: {str(e)}", exc_info=True)
-                        result = f"Tool execution error: {type(e).__name__}: {str(e)}"
+                        err_msg = f"Tool {tool_name} gagal: {type(e).__name__}: {str(e)}"
+                        yield _sse("tool_result", {"name": tool_name, "result": err_msg[:2000]})
+                        yield _sse("error", {"message": err_msg})
+                        return
+
+                    # Surface tool-side error strings (validation/setup failures)
+                    # so the user sees them as a real error, not a hallucinated
+                    # success message. Applies to mutation/job tools only.
+                    if (isinstance(result, str)
+                            and result.startswith("Error:")
+                            and tool_name in {"GenerateFullPaper", "RunSLR"}):
+                        log.warning(f"[TOOL_VALIDATION_ERROR] {tool_name}: {result[:500]}")
+                        yield _sse("tool_result", {"name": tool_name, "result": result[:2000]})
+                        yield _sse("error", {"message": result})
+                        return
 
                     # Forward the raw result to the frontend so it can route
                     # proposals through the diff/apply flow.
                     yield _sse("tool_result", {"name": tool_name, "result": result[:2000]})
+
+                    # Emit a typed open_tab event for RunSLR so the frontend
+                    # has a canonical signal (no parsing of the result string).
+                    if tool_name == "RunSLR" and isinstance(result, str) and result.startswith("<<PROPOSAL>>"):
+                        try:
+                            _payload = json.loads(result[len("<<PROPOSAL>>"):])
+                            yield _sse("open_tab", {
+                                "tab": "literature",
+                                "reason": "slr_started",
+                                "job_id": _payload.get("job_id"),
+                                "query":  _payload.get("query"),
+                                "top_k":  _payload.get("top_k", 50),
+                                "ai_model": _payload.get("ai_model", "V-OPUS"),
+                            })
+                        except Exception:
+                            pass
 
                     # But scrub the internal proposal sentinel before re-feeding
                     # the result back to the model. Otherwise the model sees the
@@ -956,6 +1004,7 @@ def send_message(conv_id):
             yield _sse("done", {"message_id": assistant_msg.id})
 
         except Exception as e:
+            log.exception("chat stream failed")
             yield _sse("error", {"message": str(e)})
 
     return Response(

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
+import re
 from .http_client import get_client
 from .fetchers import ALL, SOURCE_TOPICS
 from .paper import Paper
@@ -36,29 +37,31 @@ DEFAULT_LIMIT_PER_SOURCE = 60
 
 
 _TOPIC_KEYWORDS = {
-    "medical": ("medic", "clinic", "patient", "covid", "cancer", "drug",
-                "pharma", "therapy", "disease", "diagnosis", "kesehatan",
-                "kedokteran"),
+    "medical": ("medic", "medis", "clinic", "klinis", "patient", "covid",
+                "cancer", "drug", "obat", "pharma", "therapy", "disease",
+                "penyakit", "diagnosis", "kesehatan", "kedokteran"),
     "biology": ("biolog", "gene", "protein", "cell", "neuron"),
     "cs":      ("software", "algorit", "programming", "compiler", "database",
                 "system", "network", "cloud", "distributed", "kernel",
                 "komputer", "informatika"),
-    "ai":      ("machine learning", "deep learning", "neural", "ml ", "ai ",
+    "ai":      ("machine learning", "deep learning", "neural", "ml", "ai",
                 "lstm", "transformer", "nlp", "computer vision", "agent",
-                "reinforcement", "kecerdasan buatan"),
+                "reinforcement", "kecerdasan buatan", "pembelajaran mesin",
+                "pembelajaran mendalam"),
     "engineering": ("engineering", "control", "robot", "iot", "embedded",
                     "signal", "circuit", "rangkaian", "teknik elektro",
-                    "mesin"),
+                    "teknik", "rekayasa", "elektronika", "mesin"),
     "physics": ("physics", "quantum", "particle", "astro"),
-    "indonesia": ("indonesia", "sinta", "garuda", "kemdikbud", "lokal"),
+    "indonesia": ("indonesia", "sinta", "garuda", "kemdikbud", "lokal",
+                  "akreditasi sinta", "lokal indonesia"),
 }
 
 
 def _detect_topics(query: str) -> set[str]:
-    q = (query or "").lower()
+    q = f" {(query or '').lower().strip()} "
     found: set[str] = set()
     for topic, kws in _TOPIC_KEYWORDS.items():
-        if any(kw in q for kw in kws):
+        if any(f" {k.strip()} " in q for k in kws):
             found.add(topic)
     if not found:
         found.add("any")
@@ -88,8 +91,13 @@ def is_predatory(paper: Paper) -> bool:
     return any(bad in p for bad in PREDATORY_PUBLISHERS)
 
 
+_PUNCT_RE = re.compile(r"[^\w\s]")
+
+
 def _norm_title(t: str | None) -> str:
-    return " ".join((t or "").lower().split())
+    s = (t or "").lower().strip()
+    s = _PUNCT_RE.sub(" ", s)
+    return " ".join(s.split())
 
 
 def fetch_from_source(name: str, query: str, limit: int,
@@ -134,20 +142,30 @@ def fetch_titles(query: str,
             ex.submit(fetch_from_source, name, query, limit_per_source, filters): name
             for name in sources
         }
-        for fut in as_completed(futures):
-            name = futures[fut]
-            try:
-                papers = fut.result() or []
-            except Exception as e:
-                log.warning("SLR future [%s] error: %s", name, e)
-                papers = []
-            completed += 1
-            if progress_cb:
-                progress_cb("source_done", {
-                    "source": name, "count": len(papers),
-                    "completed": completed, "total": len(sources),
-                })
-            all_papers.extend(papers)
+        try:
+            for fut in as_completed(futures):
+                name = futures[fut]
+                try:
+                    papers = fut.result() or []
+                except Exception as e:
+                    log.warning("SLR future [%s] error: %s", name, e)
+                    papers = []
+                completed += 1
+                # progress_cb may raise to signal cancellation (e.g. slr_worker's
+                # WorkerCancelled). We let it propagate so pending fetches can
+                # be cancelled in the except branch below.
+                if progress_cb:
+                    progress_cb("source_done", {
+                        "source": name, "count": len(papers),
+                        "completed": completed, "total": len(sources),
+                    })
+                all_papers.extend(papers)
+        except BaseException:
+            # Cancel any still-pending fetches before re-raising so we don't
+            # leak threads stuck on slow upstream HTTP calls.
+            for f in futures:
+                f.cancel()
+            raise
 
     # Round-robin per source so output isn't dominated by one fast index.
     by_source: dict[str, list[Paper]] = {}
@@ -157,7 +175,10 @@ def fetch_titles(query: str,
     seen_keys: set[str] = set()
     seen_titles: set[str] = set()
     results: list[Paper] = []
-    queues = [list(reversed(v)) for v in by_source.values()]
+    # Sort sources alphabetically so round-robin merge order is deterministic
+    # across runs regardless of which fetcher finished first.
+    queues = [list(reversed(by_source[name]))
+              for name in sorted(by_source.keys())]
 
     while queues:
         next_queues = []

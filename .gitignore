@@ -99,11 +99,8 @@ test-results/
 playwright-report/
 coverage/
 
-# Java/Maven Build
-backendJava/target/
-backendJava/target/maven-status/
-backendJava/target/maven-status/maven-compiler-plugin/
-backendJava/target/generated-test-sources/
-backendJava/target/generated-sources/
-backendJava/target/classes/
-backendJava/target/papergenerator-java-1.0.0.jar.original
+backend/imageGenerator/account1/
+backend/imageGenerator/account2/
+backend/imageGenerator/account3/
+backend/imageGenerator/account4/
+backend/image/

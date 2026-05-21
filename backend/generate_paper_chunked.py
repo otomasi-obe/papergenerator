@@ -72,6 +72,70 @@ def _load_topic_guide(topic: str = None):
     return ""
 
 
+# ── Helper: Literature catalog extraction ────────────────────────────────────
+_LIT_HEADING_RE = re.compile(
+    r"^##\s*Literature catalog\b.*$", re.IGNORECASE | re.MULTILINE
+)
+_LIT_LINE_RE = re.compile(
+    r"^\[L(\d+)\]\s*(.+?)\s*$", re.MULTILINE
+)
+
+
+def _extract_literature_block(custom_prompt: str) -> str:
+    """Return the literature catalog markdown block embedded in custom_prompt.
+
+    The block begins with a line like ``## Literature catalog ...`` (produced
+    by ``chat_tools._format_literature_block``) and runs until the next ``## ``
+    heading or end-of-string. Returns "" when no catalog is present.
+    """
+    if not custom_prompt:
+        return ""
+    match = _LIT_HEADING_RE.search(custom_prompt)
+    if not match:
+        return ""
+    start = match.start()
+    tail = custom_prompt[match.end():]
+    next_heading = re.search(r"^##\s+\S", tail, re.MULTILINE)
+    end = match.end() + next_heading.start() if next_heading else len(custom_prompt)
+    return custom_prompt[start:end].strip()
+
+
+def _parse_literature_entries(block: str) -> list:
+    """Parse a literature catalog block into a list of (idx, body) tuples.
+
+    ``idx`` is the 1-based number from ``[Lidx]``; ``body`` is the trailing
+    text (title, authors, venue, DOI, optional summary collapsed to one line).
+    Returns [] on empty/invalid input.
+    """
+    if not block:
+        return []
+    entries = []
+    lines = block.splitlines()
+    current = None
+    for raw in lines:
+        m = _LIT_LINE_RE.match(raw)
+        if m:
+            if current is not None:
+                entries.append(current)
+            current = (int(m.group(1)), m.group(2).strip())
+        elif current is not None and raw.strip().lower().startswith("summary:"):
+            idx, body = current
+            extra = raw.strip()
+            current = (idx, f"{body} | {extra}")
+    if current is not None:
+        entries.append(current)
+    entries.sort(key=lambda e: e[0])
+    return entries
+
+
+def _format_lit_for_refs(entries: list) -> str:
+    """Render parsed literature entries as a compact numbered list for the
+    reference-generation prompt."""
+    if not entries:
+        return ""
+    return "\n".join(f"[{i}] {body}" for i, (_, body) in enumerate(entries, 1))
+
+
 # ── Helper: Parse JSON response ───────────────────────────────────────────────
 def _parse_json_response(raw_content: str) -> dict:
     """Parse JSON from API response, with repair fallback."""
@@ -298,9 +362,17 @@ Return ONLY the JSON object for section{section_num}."""
 
 # ── Chunk 7: Generate References ──────────────────────────────────────────────
 def _generate_references(outline: dict, all_sections: list, style: str,
-                        api_key: str, base_url: str, model: str, progress_cb=None) -> list:
+                        api_key: str, base_url: str, model: str,
+                        custom_prompt: str = "", progress_cb=None) -> list:
     """
-    Generate references based on citations found in all sections.
+    Generate references for the paper.
+
+    When ``custom_prompt`` carries a "## Literature catalog" block (produced
+    by ``chat_tools._format_literature_block`` from the user's curated SLR
+    rows), the prompt is rewritten to forbid fabrication and the AI is
+    instructed to convert ONLY those entries into the requested citation
+    style. When the catalog is absent (no SLR run yet) the original
+    "plausible-but-fabricated" fallback is preserved for backward compat.
 
     Returns:
         List of reference strings in the required citation format.
@@ -324,14 +396,61 @@ def _generate_references(outline: dict, all_sections: list, style: str,
     for section in all_sections:
         extract_citations(section)
 
-    # Determine how many references to generate
-    max_citation = max(citations) if citations else 20
-    num_refs = max(max_citation, 20)  # Minimum 20 references
-
-    # Build system prompt for references
     style_guide = _load_style_guide(style) if style else ""
 
-    system_prompt = f"""You are generating references for an academic paper.
+    # Literature-aware path: user has curated SLR results.
+    lit_block = _extract_literature_block(custom_prompt)
+    lit_entries = _parse_literature_entries(lit_block)
+
+    if lit_entries:
+        num_refs = len(lit_entries)
+        lit_inline = _format_lit_for_refs(lit_entries)
+
+        system_prompt = f"""You are converting a curated literature list into the IEEE/APA reference list of an academic paper.
+
+Use ONLY the entries below as references. DO NOT invent, fabricate, or add references not in the list. Match the requested citation style. If the paper text uses [N] markers higher than the catalog size, ignore them.
+
+PAPER CONTEXT:
+Title: {outline.get('title', '')}
+Abstract: {outline.get('abstract', '')}
+Keywords: {', '.join(outline.get('keywords', []))}
+
+CITATION STYLE:
+{style_guide if style_guide else "Use numbered IEEE format: [1], [2], etc."}
+
+CURATED LITERATURE LIST (authoritative — use exactly these {num_refs} entries, in this order, numbered [1]..[{num_refs}]):
+{lit_inline}
+
+RULES:
+- Output exactly {num_refs} references, numbered [1]..[{num_refs}], matching the order above.
+- Reformat each entry into the requested citation style (authors, title, venue, year, DOI/URL).
+- Do NOT add, remove, merge, or invent references.
+- Do NOT drop DOIs or URLs that are present in the source entry.
+- Preserve author names, year, and venue exactly as given.
+
+OUTPUT SCHEMA:
+{{
+  "references": [
+    "[1] <reformatted reference 1>",
+    "[2] <reformatted reference 2>",
+    ...
+    "[{num_refs}] <reformatted reference {num_refs}>"
+  ]
+}}
+
+Return ONLY the JSON object, no markdown fences."""
+
+        user_message = f"""Reformat the {num_refs} curated literature entries above into the citation style for this paper.
+Topic: {outline.get('title', '')}
+
+Return the references as a JSON object with a "references" array of {num_refs} items."""
+
+    else:
+        # Fallback: no curated literature — generate plausible references.
+        max_citation = max(citations) if citations else 20
+        num_refs = max(max_citation, 20)
+
+        system_prompt = f"""You are generating references for an academic paper.
 
 TASK: Generate {num_refs} references in the required citation format.
 
@@ -362,7 +481,7 @@ OUTPUT SCHEMA:
 
 Return ONLY the JSON object."""
 
-    user_message = f"""Generate {num_refs} references for this paper following the citation style above.
+        user_message = f"""Generate {num_refs} references for this paper following the citation style above.
 The paper is about: {outline.get('title', '')}
 
 Return the references as a JSON object with a "references" array."""
@@ -375,7 +494,8 @@ Return the references as a JSON object with a "references" array."""
     raw_content, model_used = _call_aiotomasi_with_fallback(
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
-    print(f"[_generate_references] succeeded using model={model_used}", flush=True)
+    mode = "literature-aware" if lit_entries else "fallback-plausible"
+    print(f"[_generate_references] succeeded using model={model_used} mode={mode} count={num_refs}", flush=True)
 
     refs_data = _parse_json_response(raw_content)
     return refs_data.get("references", [])
@@ -446,9 +566,22 @@ def generate_paper_json_chunked(
     # Chunk 7: Generate references
     print("[7/7] Generating references...", flush=True)
     references = _generate_references(outline, sections, style,
-                                     _api_key, _base_url, _model, progress_cb)
+                                     _api_key, _base_url, _model,
+                                     custom_prompt=custom_prompt,
+                                     progress_cb=progress_cb)
 
-    # Combine all chunks into final paper structure
+    # Combine all chunks into final paper structure.
+    # Frontend + downstream tools (chat.py, _get_paper_numbering, editor) read
+    # `sections` as canonical array. Older code emitted `section1..section5`
+    # which `app.py` then overwrote with `setdefault("sections", [])` → editor
+    # rendered an empty paper. Output the array shape.
+    section_titles = outline.get("section_titles") or {}
+    sections_array = []
+    for i, sec in enumerate(sections, 1):
+        sec = dict(sec) if isinstance(sec, dict) else {}
+        sec.setdefault("title", section_titles.get(f"section{i}", f"SECTION {i}"))
+        sections_array.append(sec)
+
     paper_json = {
         "title": outline.get("title", ""),
         "abstract": outline.get("abstract", ""),
@@ -461,11 +594,7 @@ def generate_paper_json_chunked(
                 "email": "author@example.com"
             }
         ],
-        "section1": sections[0] if len(sections) > 0 else {},
-        "section2": sections[1] if len(sections) > 1 else {},
-        "section3": sections[2] if len(sections) > 2 else {},
-        "section4": sections[3] if len(sections) > 3 else {},
-        "section5": sections[4] if len(sections) > 4 else {},
+        "sections": sections_array,
         "acknowledgment": "",
         "references": references,
         "figures": [],  # Extracted from sections

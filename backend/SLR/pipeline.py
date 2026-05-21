@@ -58,7 +58,7 @@ def _paper_record(idx: int, sp: ScoredPaper, summary: str | None = None) -> dict
         "abstract": p.abstract,
         "summary": summary or "",
         "score_total": sp.score_total,
-        "score_breakdown": sp.score_breakdown,
+        "score_breakdown": sp.score_breakdown or {},
         "is_relevant": sp.is_relevant,
         "must_read": sp.must_read,
     }
@@ -110,16 +110,22 @@ def run(query: str,
     sources = sources or pick_sources_for_topic(query)
 
     # 1. FETCH (titles + whatever metadata source returns for free)
+    # When year_from is set, fetch 2x then filter so we don't end up below max_total.
+    fetch_max = max_total
+    if year_from and max_total:
+        fetch_max = max_total * 2
     raw_papers = fetch_titles(
         query=query,
         sources=sources,
         limit_per_source=per_source,
-        max_total=max_total,
+        max_total=fetch_max,
         skip_predatory=skip_predatory,
         progress_cb=progress_cb,
     )
     if year_from:
         raw_papers = [p for p in raw_papers if p.year and p.year >= year_from]
+        if max_total:
+            raw_papers = raw_papers[:max_total]
 
     if not raw_papers:
         if progress_cb:
@@ -165,21 +171,35 @@ def run(query: str,
                 top_input, query=query, model=ai_model,
                 progress_cb=progress_cb,
             )
-        except Exception as e:
-            log.warning("AI summarize failed: %s", e)
-            summaries = {}
+        except BaseException as e:
+            # Preserve any partial summaries the summarizer attached before
+            # the cancel/error so we still return useful data on cancellation.
+            partial = getattr(e, "partial_summaries", None)
+            if isinstance(partial, dict):
+                summaries = partial
+            if isinstance(e, Exception) and not isinstance(e, KeyboardInterrupt):
+                # Re-raise progress-callback-driven cancels (e.g. WorkerCancelled
+                # in slr_worker) so the worker can mark the job cancelled.
+                # Generic AI errors are swallowed and we continue with extractive.
+                if e.__class__.__name__ in ("WorkerCancelled", "CancelledByCaller"):
+                    raise
+                log.warning("AI summarize failed: %s", e)
+                if not isinstance(partial, dict):
+                    summaries = {}
+            else:
+                raise
 
     # 4. Assemble records
+    top_pos = {id(s.paper): i for i, s in enumerate(top_scored)}
+    global_pos = {id(p): i for i, p in enumerate(raw_papers)}
+
     all_records: list[dict] = []
     for global_idx, p in enumerate(raw_papers):
         sp = score_lookup.get(id(p))
         if sp is None:
             continue
         # Top-K records get AI summary; rest get extractive (cheap, lazy).
-        try:
-            top_idx = top_scored.index(sp)
-        except ValueError:
-            top_idx = -1
+        top_idx = top_pos.get(id(sp.paper), -1)
 
         if top_idx >= 0 and top_idx in summaries:
             summary = summaries[top_idx]
@@ -190,10 +210,8 @@ def run(query: str,
 
     top_records = []
     for top_idx, sp in enumerate(top_scored):
-        # Find this sp's global index by identity
-        try:
-            global_idx = next(i for i, q in enumerate(raw_papers) if q is sp.paper)
-        except StopIteration:
+        global_idx = global_pos.get(id(sp.paper))
+        if global_idx is None:
             continue
         summary = summaries.get(top_idx) or \
             extractive_summarize(sp.paper.abstract or "", query=query, n_sentences=2)

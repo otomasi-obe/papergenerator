@@ -9,13 +9,14 @@ detail-fetch sebanyak `limit` paper teratas saja (kalau user butuh banyak,
 dia tetap dapat list dari source lain).
 
 Optional: kalau ada `SINTA_OFFLINE_DIR` environment variable yang menunjuk ke
-folder berisi `papers.jsonl` (hasil scraping offline /home/sirobo/sinta-scraping),
-fetcher akan cari di file itu dulu (cepat, tidak hit network) lalu mundur ke
-HTTP scrape kalau hasil offline kurang.
+folder berisi `papers.jsonl` (hasil scraping offline), fetcher akan cari di
+file itu dulu (cepat, tidak hit network) lalu mundur ke HTTP scrape kalau
+hasil offline kurang. Kalau env var tidak diset, offline path dilewati.
 """
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from pathlib import Path
@@ -23,6 +24,8 @@ from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_text
 from ..paper import Paper
+
+log = logging.getLogger(__name__)
 
 BASE = "https://garuda.kemdiktisaintek.go.id"
 SEARCH_URL = f"{BASE}/documents/"
@@ -45,6 +48,8 @@ def _parse_search_html(html: str) -> list[tuple[str, str]]:
         title = _strip_html(m.group(3))
         if title:
             out.append((doc_id, title))
+    if not out and html and len(html) > 1024:
+        log.warning("sinta search parse: 0 hits in %d-byte HTML; layout may have changed", len(html))
     return out
 
 
@@ -96,6 +101,9 @@ def _parse_detail_html(html: str) -> dict:
     if m:
         doi = m.group(0).rstrip(".,;)").strip()
 
+    if not title and html and len(html) > 1024:
+        log.warning("sinta detail parse: no title in %d-byte HTML; layout may have changed", len(html))
+
     return {
         "title": title, "abstract": abstract, "year": year,
         "venue": venue, "publisher": publisher,
@@ -104,16 +112,19 @@ def _parse_detail_html(html: str) -> dict:
 
 
 def _from_offline(query: str, limit: int) -> Iterable[Paper]:
-    """Match query against an offline papers.jsonl, if available. Cheap full-text
-    contains check on title+abstract+keywords."""
-    offline = os.getenv("SINTA_OFFLINE_DIR") or "/home/sirobo/sinta-scraping"
+    """Match query against an offline papers.jsonl, if available. Tokenize the
+    query and rank candidates by how many tokens hit the title+abstract+keywords."""
+    offline = os.getenv("SINTA_OFFLINE_DIR")
+    if not offline:
+        return
     p = Path(offline) / "papers.jsonl"
     if not p.is_file():
         return
-    needles = [w.lower() for w in re.findall(r"\w+", query) if len(w) >= 3]
-    if not needles:
+    tokens = [w.lower() for w in query.split() if w.strip()]
+    if not tokens:
         return
-    yielded = 0
+    threshold = max(1, len(tokens) // 2)
+    candidates: list[tuple[int, dict]] = []
     try:
         with p.open("r", encoding="utf-8") as fp:
             for line in fp:
@@ -129,35 +140,41 @@ def _from_offline(query: str, limit: int) -> Iterable[Paper]:
                     rec.get("abstract") or "",
                     " ".join(rec.get("keywords") or []),
                 ]).lower()
-                if not all(n in hay for n in needles):
+                hits = sum(1 for t in tokens if t in hay)
+                if hits < threshold:
                     continue
-                year = None
-                y = rec.get("year") or ""
-                if isinstance(y, int):
-                    year = y
-                elif isinstance(y, str) and y.isdigit():
-                    year = int(y)
-                yield Paper(
-                    source="sinta",
-                    source_id=str(rec.get("doc_id") or ""),
-                    title=rec.get("title") or "",
-                    authors=rec.get("authors") or [],
-                    abstract=rec.get("abstract") or None,
-                    year=year,
-                    venue=rec.get("journal_name") or rec.get("journal") or None,
-                    venue_type="journal",
-                    doi=(rec.get("doi") or None),
-                    url=rec.get("garuda_doc_url") or rec.get("view_url") or rec.get("source_url") or None,
-                    citations=None,
-                    is_open_access=True,
-                    type="journal-article",
-                    publisher=rec.get("publisher") or None,
-                )
-                yielded += 1
-                if yielded >= limit:
-                    return
+                candidates.append((hits, rec))
     except OSError:
         return
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    yielded = 0
+    for _hits, rec in candidates:
+        year = None
+        y = rec.get("year") or ""
+        if isinstance(y, int):
+            year = y
+        elif isinstance(y, str) and y.isdigit():
+            year = int(y)
+        yield Paper(
+            source="sinta",
+            source_id=str(rec.get("doc_id") or ""),
+            title=rec.get("title") or "",
+            authors=rec.get("authors") or [],
+            abstract=rec.get("abstract") or None,
+            year=year,
+            venue=rec.get("journal_name") or rec.get("journal") or None,
+            venue_type="journal",
+            doi=(rec.get("doi") or None),
+            url=rec.get("garuda_doc_url") or rec.get("view_url") or rec.get("source_url") or None,
+            citations=None,
+            is_open_access=True,
+            type="journal-article",
+            publisher=rec.get("publisher") or None,
+        )
+        yielded += 1
+        if yielded >= limit:
+            return
 
 
 def search(client, query: str, limit: int = 25,

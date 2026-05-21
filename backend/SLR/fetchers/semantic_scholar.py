@@ -30,7 +30,7 @@ def _parse(p: dict) -> Paper | None:
 
     return Paper(
         source="semantic_scholar",
-        source_id=p.get("paperId", ""),
+        source_id=(p.get("paperId") or ""),
         title=title,
         authors=authors,
         abstract=p.get("abstract"),

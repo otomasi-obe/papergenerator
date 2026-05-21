@@ -303,10 +303,20 @@ class LiteratureItem(db.Model):
     pinned = db.Column(db.Boolean, default=False)           # user-pinned to top
     file_id = db.Column(db.Integer, db.ForeignKey('paper_files.id'),
                         nullable=True)
-    slr_job_id = db.Column(db.String(20), db.ForeignKey('slr_jobs.id'),
+    slr_job_id = db.Column(db.String(20),
+                           db.ForeignKey('slr_jobs.id', ondelete='SET NULL'),
                            nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        db.Index(
+            'uq_literature_paper_doi', 'paper_id', 'doi',
+            unique=True,
+            postgresql_where=db.text('doi IS NOT NULL'),
+            sqlite_where=db.text('doi IS NOT NULL'),
+        ),
+    )
 
     def to_dict(self):
         return {
@@ -362,13 +372,19 @@ class SlrJob(db.Model):
     stage = db.Column(db.String(40), default='')
     progress = db.Column(db.Integer, default=0)              # 0..100
     progress_message = db.Column(db.Text, default='')
-    result = db.Column(db.JSON, nullable=True, default=dict)  # full pipeline output
+    result = db.Column(db.JSON, nullable=True, default=dict)
+    """Full pipeline output. Callers MUST keep this small (top_k items + stats only);
+    the worker is responsible for trimming large payloads before persisting."""
     error = db.Column(db.Text, default='')
 
     queued_at = db.Column(db.DateTime, default=_utcnow)
     started_at = db.Column(db.DateTime, nullable=True)
     finished_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        db.Index('ix_slr_jobs_status_queued_at', 'status', 'queued_at'),
+    )
 
     def to_dict(self, include_result=False):
         stats = (self.result or {}).get('stats') if isinstance(self.result, dict) else {}

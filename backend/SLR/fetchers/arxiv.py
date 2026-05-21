@@ -61,7 +61,7 @@ def _parse_entry(entry: ET.Element) -> Paper | None:
         abstract=abstract,
         year=year,
         venue=venue,
-        venue_type="preprint" if not venue else None,
+        venue_type="journal" if venue else "preprint",
         doi=doi,
         url=f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else None,
         is_open_access=True,

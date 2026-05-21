@@ -72,7 +72,7 @@ def test_jsonpatch_apply_replace_section_text():
 
 def test_slr_safe_url_blocks_private_hosts():
     """SSRF allowlist must reject non-https + non-allowlisted host + private IP."""
-    from slr_bp import _safe_get
+    from searchPaper import _safe_get
     import requests
 
     # http scheme — refused.

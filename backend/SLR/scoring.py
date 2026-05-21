@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Sequence
 
 import numpy as np
@@ -71,7 +71,7 @@ def _sigmoid(x: float, k: float = 1.0) -> float:
 def _recency_score(year: int | None) -> float:
     if not year:
         return 0.3
-    now = datetime.utcnow().year
+    now = datetime.now(timezone.utc).year
     age = max(0, now - int(year))
     return _sigmoid(2.0 - age / 3.0)
 
@@ -129,7 +129,8 @@ def score_papers(query: str, papers: Iterable[Paper],
 
     # Sinyal pelengkap: TF-IDF cosine. Bekerja walau abstract pendek.
     try:
-        vec = TfidfVectorizer(stop_words="english", max_df=0.9, min_df=1,
+        max_df = 1.0 if len(plist) < 20 else 0.9
+        vec = TfidfVectorizer(stop_words="english", max_df=max_df, min_df=1,
                               ngram_range=(1, 2))
         mat = vec.fit_transform([query] + texts)
         tfidf_sims = cosine_similarity(mat[0:1], mat[1:]).flatten()

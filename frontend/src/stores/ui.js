@@ -27,6 +27,11 @@ export const useUiStore = defineStore('ui', () => {
   const stored = load()
   const perPaper = ref(stored.perPaper || {})
 
+  // Bumped every time something external (e.g. chat-triggered SLR) asks the
+  // editor to switch tabs. Components can `watch` this to react even if the
+  // tab id didn't change.
+  const tabSwitchSignal = ref(0)
+
   watch(perPaper, (s) => save({ perPaper: s }), { deep: true })
 
   function _entry(paperId) {
@@ -62,5 +67,17 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  return { getTab, setTab, getChatOpen, setChatOpen, reset }
+  /**
+   * External request to switch tab (used by chat → SLR auto-open).
+   * Always bumps the signal so listeners can react even on identical tabIds.
+   */
+  function requestTab(paperId, tabId) {
+    setTab(paperId, tabId)
+    tabSwitchSignal.value += 1
+  }
+
+  return {
+    tabSwitchSignal,
+    getTab, setTab, getChatOpen, setChatOpen, reset, requestTab,
+  }
 })

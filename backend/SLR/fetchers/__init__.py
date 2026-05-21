@@ -21,13 +21,17 @@ ALL = {
 }
 
 # Each source's strength. Used by orchestrator.pick_sources_for_topic.
+# NOTE: orchestrator._detect_topics currently emits only:
+#   ai, cs, engineering, medical, indonesia, general
+# Other keys below (physics, math, stats, electrical, robotics, biology, health)
+# are unused until matching keyword groups are added in orchestrator._TOPIC_KEYWORDS.
 SOURCE_TOPICS: dict[str, set[str]] = {
     "openalex":         {"general", "any"},
     "crossref":         {"general", "any"},
     "semantic_scholar": {"general", "cs", "ai", "any"},
-    "arxiv":            {"cs", "ai", "physics", "math", "stats"},
+    "arxiv":            {"cs", "ai", "physics", "math", "stats"},  # physics/math/stats unused
     "dblp":             {"cs", "ai"},
-    "ieee":             {"cs", "ai", "engineering", "electrical", "robotics"},
-    "europepmc":        {"medical", "biology", "health"},
-    "sinta":            {"indonesia", "general", "any"},
+    "ieee":             {"cs", "ai", "engineering", "electrical", "robotics"},  # electrical/robotics unused
+    "europepmc":        {"medical", "biology", "health"},  # biology/health unused
+    "sinta":            {"indonesia"},
 }

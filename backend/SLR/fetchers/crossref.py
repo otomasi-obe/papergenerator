@@ -1,4 +1,7 @@
 """Fetcher untuk Crossref - https://api.crossref.org"""
+import html
+import os
+import re
 from typing import Iterable
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
@@ -31,8 +34,8 @@ def _parse_item(item: dict) -> Paper | None:
     abstract = item.get("abstract")
     if abstract:
         # Crossref abstract sering dibungkus tag JATS
-        import re
         abstract = re.sub(r"<[^>]+>", "", abstract).strip()
+        abstract = html.unescape(abstract)
 
     return Paper(
         source="crossref",
@@ -70,7 +73,7 @@ def search(client, query: str, limit: int = 25,
             "query": query,
             "rows": min(per_page, limit - fetched),
             "offset": offset,
-            "mailto": "research@example.com",
+            "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
             "select": "DOI,title,author,issued,container-title,abstract,type,publisher,URL,is-referenced-by-count",
         }
         if filter_parts:

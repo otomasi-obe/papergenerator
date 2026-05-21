@@ -13,6 +13,8 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import api from '../api/index.js'
 import { usePaperStore } from './paper.js'
+import { useUiStore } from './ui.js'
+import { useLiteratureStore } from './literature.js'
 
 const PROPOSAL_PREFIX = '<<PROPOSAL>>'
 
@@ -482,6 +484,31 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function _handleSSEEvent(convId, event, data) {
+    // 'open_tab' is paper-scoped, not chat-scoped: it can fire even after the
+    // streamingMessage has been finalised. Handle it before the early-return
+    // guard below so it doesn't get swallowed.
+    if (event === 'open_tab') {
+      try {
+        const ui = useUiStore()
+        const lit = useLiteratureStore()
+        const paperStore = usePaperStore()
+        const pid = paperStore.currentPaperId
+        const tab = data && data.tab
+        if (pid && tab) {
+          ui.requestTab(pid, tab)
+          if (data.reason === 'slr_started' && data.job_id) {
+            lit.attachJob({
+              job_id:   data.job_id,
+              query:    data.query,
+              top_k:    data.top_k,
+              ai_model: data.ai_model,
+            })
+          }
+        }
+      } catch { /* defensive: never break the SSE loop */ }
+      return
+    }
+
     const stream = streams.value[convId]
     if (!stream || !stream.streamingMessage) return
     const msg = stream.streamingMessage
@@ -522,6 +549,21 @@ export const useChatStore = defineStore('chat', () => {
               // so the existing job-polling spinner kicks in and loads the
               // result into the editor when ready.
               paperStore.attachAiJob(proposal.job_id, proposal.prompt)
+            } else if (proposal.kind === 'slr_job') {
+              // Fallback path for SLR auto-open in case the dedicated
+              // `open_tab` SSE event was not emitted (older backend builds).
+              const ui = useUiStore()
+              const lit = useLiteratureStore()
+              const pid = paperStore.currentPaperId
+              if (pid) {
+                ui.requestTab(pid, 'literature')
+                lit.attachJob({
+                  job_id:   proposal.job_id,
+                  query:    proposal.query,
+                  top_k:    proposal.top_k,
+                  ai_model: proposal.ai_model,
+                })
+              }
             } else {
               paperStore.pushProposal(proposal)
             }

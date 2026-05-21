@@ -44,6 +44,7 @@ Based on the topic description above:
 7. EQUATIONS: Use equations from the TOPIC GUIDE if one is provided. Otherwise, use domain-appropriate formulas from the system prompt's DOMAIN FORMULA REFERENCE. Every equation must directly match the methodology described (e.g., PID formula for a PID control paper, DH transform for a robot kinematics paper). Do NOT use generic or unrelated placeholder math.
 8. DATA CONSISTENCY: Pick one fixed set of numeric values at the start and use them identically in the abstract, every table row, every text paragraph, and the conclusion. Do NOT round differently in different sections (e.g., do not say "~95%" in the abstract but "95.4%" in the table — use 95.4% everywhere).
 9. TEXT FORMATTING: Use \\b...\\b for bold, \\i...\\i for italic, \\u...\\u for underline inside "text" field values and table "Rows" strings. Do NOT use **...** or *...* (Markdown is not supported by the DOCX renderer).
+10. LITERATURE CATALOG: If Additional instructions contain a "## Literature catalog" block, use ONLY those entries as the reference list. Do NOT invent references. Number them [1]..[N] matching catalog order.
 
 Additional instructions: {custom_prompt}
 """

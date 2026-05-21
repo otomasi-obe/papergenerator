@@ -4,12 +4,15 @@ API key gratis tapi wajib (https://developer.ieee.org). Kalau IEEE_API_KEY
 tidak diset, fetcher me-skip diam-diam (tidak crash) supaya pipeline SLR
 tetap jalan dengan source lainnya.
 """
+import logging
 import os
 from typing import Iterable
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
 BASE = "https://ieeexploreapi.ieee.org/api/v1/search/articles"
+
+_warned = False
 
 
 def _parse_article(a: dict) -> Paper | None:
@@ -59,10 +62,14 @@ def _parse_article(a: dict) -> Paper | None:
 
 def search(client, query: str, limit: int = 25,
            filters: dict | None = None) -> Iterable[Paper]:
+    global _warned
     api_key = os.getenv("IEEE_API_KEY")
     if not api_key:
         # No API key: skip silently. Other sources still produce IEEE-published
         # papers via OpenAlex/Crossref/DBLP, just without IEEE-native metadata.
+        if not _warned:
+            logging.getLogger(__name__).info("ieee fetcher skipped: IEEE_API_KEY not set")
+            _warned = True
         return iter([])
 
     rl = RateLimiter(0.4)
@@ -76,8 +83,8 @@ def search(client, query: str, limit: int = 25,
         "format": "json",
         "max_records": min(per_page, limit - fetched),
         "start_record": start_record,
-        "sort_field": "article_title",
-        "sort_order": "asc",
+        "sort_field": "relevance",
+        "sort_order": "desc",
     }
     if filters:
         if filters.get("year_from"):

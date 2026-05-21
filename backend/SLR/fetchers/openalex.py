@@ -47,7 +47,7 @@ def _parse_work(w: dict) -> Paper | None:
 
     return Paper(
         source="openalex",
-        source_id=w.get("id", "").rsplit("/", 1)[-1],
+        source_id=(w.get("id") or "").rsplit("/", 1)[-1],
         title=title,
         authors=authors,
         abstract=_reconstruct_abstract(w.get("abstract_inverted_index")),
@@ -71,9 +71,13 @@ def search(client, query: str, limit: int = 25,
     fetched = 0
     cursor = "*"
 
-    filter_parts = ["has_abstract:true"]
+    filter_parts = []
     if filters:
+        if filters.get("require_abstract", False):
+            filter_parts.append("has_abstract:true")
         for k, v in filters.items():
+            if k == "require_abstract":
+                continue
             filter_parts.append(f"{k}:{v}")
     filter_str = ",".join(filter_parts)
 
@@ -83,9 +87,10 @@ def search(client, query: str, limit: int = 25,
             "search": query,
             "per_page": min(per_page, limit - fetched),
             "cursor": cursor,
-            "filter": filter_str,
-            "mailto": "research@example.com",
+            "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
         }
+        if filter_str:
+            params["filter"] = filter_str
         api_key = os.getenv("OPENALEX_API_KEY")
         if api_key:
             params["api_key"] = api_key

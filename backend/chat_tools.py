@@ -44,97 +44,112 @@ ALLOWED_READ_ROOTS = (
 )
 
 
-def execute_tool(tool_name, arguments, user_id, paper_id=None):
-    logger.info(f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, args={json.dumps(arguments, ensure_ascii=False)[:300]}")
+_ALLOWED_MODELS = {None, "V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}
+
+
+def execute_tool(tool_name, arguments, user_id, paper_id=None, model=None):
+    if model not in _ALLOWED_MODELS:
+        model = None
+    logger.info(f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, model={model}, args={json.dumps(arguments, ensure_ascii=False)[:300]}")
     try:
-        if tool_name == "WebSearch":
-            return _web_search(arguments.get("query", ""))
-        elif tool_name == "WebFetch":
-            return _web_fetch(arguments.get("url", ""), arguments.get("prompt", ""))
-        elif tool_name == "SearchPapers":
-            return _search_papers(
-                arguments.get("query", ""),
-                int(arguments.get("limit_per_source", 3) or 3),
-                arguments.get("sources"),
-            )
-        elif tool_name == "GenerateFullPaper":
-            return _generate_full_paper(
-                paper_id, user_id,
-                arguments.get("prompt", ""),
-                arguments.get("topic"),
-                arguments.get("style"),
-                arguments.get("use_attached_files", True),
-            )
-        elif tool_name == "RunSLR":
-            return _run_slr_tool(
-                paper_id, user_id,
-                arguments.get("query", ""),
-                arguments.get("sources"),
-                int(arguments.get("top_k", 50) or 50),
-                int(arguments.get("per_source", 60) or 60),
-                arguments.get("year_from"),
-                arguments.get("ai_model") or "V-OPUS",
-            )
-        elif tool_name == "GetLiterature":
-            return _get_literature_tool(paper_id, user_id,
-                                        int(arguments.get("limit", 50) or 50))
-        elif tool_name == "ListAttachedFiles":
-            return _list_attached_files(paper_id, user_id)
-        elif tool_name == "ReadAttachedFile":
-            return _read_attached_file(paper_id, user_id, arguments.get("file_id"))
-        elif tool_name == "GetPaperContent":
-            return _get_paper_content(paper_id, user_id)
-        elif tool_name == "GetPaperSection":
-            return _get_paper_section(paper_id, user_id, arguments.get("section", ""))
-        elif tool_name == "GetPaperNumbering":
-            return _get_paper_numbering(paper_id, user_id)
-        elif tool_name == "Read":
-            return _safe_read(arguments.get("file_path", ""))
-        elif tool_name == "Bash":
-            return _safe_bash(arguments.get("command", ""))
-        elif tool_name == "SaveMemory":
-            return _save_memory(
-                paper_id, user_id,
-                arguments.get("key", ""),
-                arguments.get("value", ""),
-                arguments.get("kind", "fact"),
-            )
-        elif tool_name == "GetMemory":
-            return _get_memory(paper_id, user_id, arguments.get("key"))
-        elif tool_name == "ListMemory":
-            return _list_memory(paper_id, user_id)
-        elif tool_name == "DeleteMemory":
-            return _delete_memory(paper_id, user_id, arguments.get("key", ""))
-        # ─── Paper-edit proposal tools ──────────────────────────────────────
-        # These tools don't mutate the paper. They emit a proposal payload that
-        # the frontend collects and shows to the user for accept/reject.
-        elif tool_name == "ProposeTitle":
-            return _propose("title", {"value": arguments.get("title", "")})
-        elif tool_name == "ProposeAbstract":
-            return _propose("abstract", {"value": arguments.get("abstract", "")})
-        elif tool_name == "ProposeKeywords":
-            return _propose("keywords", {"value": arguments.get("keywords") or []})
-        elif tool_name == "ProposeSection":
-            return _propose("section", {
-                "section_index": arguments.get("section_index"),
-                "title": arguments.get("title"),
-                "content": arguments.get("content"),
-            })
-        elif tool_name == "ProposeReference":
-            return _propose("reference", {
-                "ref_index": arguments.get("ref_index"),
-                "value": arguments.get("value", ""),
-            })
-        elif tool_name == "ProposeJournal":
-            return _propose("journal", {"value": arguments.get("journal", "")})
-        elif tool_name == "RequestExportDocx":
-            return _propose("export_docx", {})
-        elif tool_name in ("Write", "Edit"):
-            return "Tool not permitted in chat environment for security reasons."
-        else:
-            return f"Unknown tool: {tool_name}"
+        result = _dispatch_tool(tool_name, arguments, user_id, paper_id, model=model)
+        logger.info(f"[EXECUTE_TOOL_OK] tool={tool_name} result_preview={str(result)[:200]}")
+        return result
     except Exception as e:
-        return f"Tool execution error: {str(e)}"
+        logger.exception(f"[EXECUTE_TOOL_ERROR] tool={tool_name} user_id={user_id} paper_id={paper_id}")
+        raise
+
+
+def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
+    if model not in _ALLOWED_MODELS:
+        model = None
+    if tool_name == "WebSearch":
+        return _web_search(arguments.get("query", ""))
+    elif tool_name == "WebFetch":
+        return _web_fetch(arguments.get("url", ""), arguments.get("prompt", ""))
+    elif tool_name == "SearchPapers":
+        return _search_papers(
+            arguments.get("query", ""),
+            int(arguments.get("limit_per_source", 3) or 3),
+            arguments.get("sources"),
+        )
+    elif tool_name == "GenerateFullPaper":
+        return _generate_full_paper(
+            paper_id, user_id,
+            arguments.get("prompt", ""),
+            arguments.get("topic"),
+            arguments.get("style"),
+            arguments.get("use_attached_files", True),
+            model=model,
+        )
+    elif tool_name == "RunSLR":
+        return _run_slr_tool(
+            paper_id, user_id,
+            arguments.get("query", ""),
+            arguments.get("sources"),
+            int(arguments.get("top_k", 50) or 50),
+            int(arguments.get("per_source", 60) or 60),
+            arguments.get("year_from"),
+            arguments.get("ai_model") or model or "V-OPUS",
+        )
+    elif tool_name == "GetLiterature":
+        return _get_literature_tool(paper_id, user_id,
+                                    int(arguments.get("limit", 50) or 50))
+    elif tool_name == "ListAttachedFiles":
+        return _list_attached_files(paper_id, user_id)
+    elif tool_name == "ReadAttachedFile":
+        return _read_attached_file(paper_id, user_id, arguments.get("file_id"))
+    elif tool_name == "GetPaperContent":
+        return _get_paper_content(paper_id, user_id)
+    elif tool_name == "GetPaperSection":
+        return _get_paper_section(paper_id, user_id, arguments.get("section", ""))
+    elif tool_name == "GetPaperNumbering":
+        return _get_paper_numbering(paper_id, user_id)
+    elif tool_name == "Read":
+        return _safe_read(arguments.get("file_path", ""))
+    elif tool_name == "Bash":
+        return _safe_bash(arguments.get("command", ""))
+    elif tool_name == "SaveMemory":
+        return _save_memory(
+            paper_id, user_id,
+            arguments.get("key", ""),
+            arguments.get("value", ""),
+            arguments.get("kind", "fact"),
+        )
+    elif tool_name == "GetMemory":
+        return _get_memory(paper_id, user_id, arguments.get("key"))
+    elif tool_name == "ListMemory":
+        return _list_memory(paper_id, user_id)
+    elif tool_name == "DeleteMemory":
+        return _delete_memory(paper_id, user_id, arguments.get("key", ""))
+    # ─── Paper-edit proposal tools ──────────────────────────────────────
+    # These tools don't mutate the paper. They emit a proposal payload that
+    # the frontend collects and shows to the user for accept/reject.
+    elif tool_name == "ProposeTitle":
+        return _propose("title", {"value": arguments.get("title", "")})
+    elif tool_name == "ProposeAbstract":
+        return _propose("abstract", {"value": arguments.get("abstract", "")})
+    elif tool_name == "ProposeKeywords":
+        return _propose("keywords", {"value": arguments.get("keywords") or []})
+    elif tool_name == "ProposeSection":
+        return _propose("section", {
+            "section_index": arguments.get("section_index"),
+            "title": arguments.get("title"),
+            "content": arguments.get("content"),
+        })
+    elif tool_name == "ProposeReference":
+        return _propose("reference", {
+            "ref_index": arguments.get("ref_index"),
+            "value": arguments.get("value", ""),
+        })
+    elif tool_name == "ProposeJournal":
+        return _propose("journal", {"value": arguments.get("journal", "")})
+    elif tool_name == "RequestExportDocx":
+        return _propose("export_docx", {})
+    elif tool_name in ("Write", "Edit"):
+        return "Tool not permitted in chat environment for security reasons."
+    else:
+        return f"Unknown tool: {tool_name}"
 
 
 # Sentinel prefix that the frontend uses to detect a structured proposal
@@ -375,8 +390,8 @@ _MEMORY_KEY_ORDER = [
 
 
 def _format_literature_block(paper_id) -> str:
-    """Render up to 30 LiteratureItem rows as a markdown block. Pinned +
-    must_read first. Returns "" when empty."""
+    """Render up to 50 LiteratureItem rows as a markdown block. Pinned +
+    must_read first (with [MUST READ] marker). Returns "" when empty."""
     if not paper_id:
         return ""
     try:
@@ -387,21 +402,27 @@ def _format_literature_block(paper_id) -> str:
                            LiteratureItem.must_read.desc(),
                            LiteratureItem.score_total.desc(),
                            LiteratureItem.created_at.desc())
-                 .limit(30).all())
+                 .limit(50).all())
     except Exception:
         return ""
     if not items:
         return ""
+    priority = [it for it in items if getattr(it, "pinned", False) or getattr(it, "must_read", False)]
+    rest = [it for it in items if it not in priority]
+    ordered = priority + rest
     lines = [
         "## Literature catalog (use these as the actual reference list — "
         "cite by title/DOI; do not invent references not in this list)",
     ]
-    for i, it in enumerate(items, 1):
+    for i, it in enumerate(ordered, 1):
         authors_list = it.authors or []
         authors = ", ".join(authors_list[:3])
         if len(authors_list) > 3:
             authors += " et al."
-        bits = [f"[L{i}] {it.title}"]
+        marker = ""
+        if getattr(it, "pinned", False) or getattr(it, "must_read", False):
+            marker = "[MUST READ] "
+        bits = [f"[L{i}] {marker}{it.title}"]
         if authors:
             bits.append(f"— {authors}")
         if it.year:
@@ -416,6 +437,12 @@ def _format_literature_block(paper_id) -> str:
         if it.summary:
             line += f"\n   Summary: {it.summary[:240]}"
         lines.append(line)
+    n = len(ordered)
+    lines.append(
+        f"\nRULE: Use ONLY the entries above as the reference list. Do NOT "
+        f"invent references not in this list. Number them [1]..[{n}] in "
+        f"catalog order."
+    )
     return "\n".join(lines)
 
 
@@ -488,13 +515,14 @@ def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
     if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"}:
         ai_model = "V-OPUS"
 
-    job_id = enqueue_slr_job(
+    job = enqueue_slr_job(
         paper_id=paper_id, user_id=int(user_id), query=q,
         sources=src_list, per_source=max(10, min(int(per_source), 100)),
         top_k=max(10, min(int(top_k), 100)),
         year_from=year_from_int,
         ai_summarize=True, ai_model=ai_model,
     )
+    job_id = job.id
 
     payload = {
         "kind": "slr_job",
@@ -542,12 +570,14 @@ def _get_literature_tool(paper_id, user_id, limit=50):
     return _truncate(json.dumps(rows, ensure_ascii=False, indent=2))
 
 
-def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_attached_files=True):
+def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_attached_files=True, model=None):
     """Kick off the same /api/generate-full job pipeline used by the dashboard,
     but from a chat tool call. Auto-injects extracted text from any files the
     user has attached to this paper. Also runs a quick planner pass first so
     the writer agent gets a concrete outline + scope (multi-stage cooperation
     on a single model)."""
+    if model not in _ALLOWED_MODELS:
+        model = None
     if not user_id:
         return "Error: not authenticated."
     prompt = (prompt or "").strip()
@@ -611,7 +641,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     try:
         with app.app_context():
             _job_create(job_id, int(user_id), prompt)
-        threading.Thread(
+        thread = threading.Thread(
             target=_run_generate_full_job,
             args=(job_id, prompt, int(user_id)),
             kwargs={
@@ -620,19 +650,36 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
                 "pdf_texts": pdf_texts,
                 "custom_prompt": custom_prompt,
                 "paper_id": paper_id,
+                "model": model,
                 "chunked": True,  # Use chunked generation to avoid 30s gateway timeouts
             },
             daemon=True,
-        ).start()
-        # Best-effort: tell the chat blueprint that this paper now has an
-        # in-flight generation job so its /active-job endpoint can surface it.
-        try:
-            from chat import register_active_job
-            register_active_job(paper_id, job_id)
-        except Exception:
-            pass  # registry not available — non-fatal
+        )
+        thread.start()
+        logger.info("paper.generate model=%s prompt=%s", model or "<env>", prompt[:80])
     except Exception as e:
-        return f"Error starting job: {e}"
+        # Cleanup the AiJob row so the paper isn't stuck with a phantom 'pending' job
+        try:
+            with app.app_context():
+                from models import AiJob
+                row = AiJob.query.get(job_id)
+                if row:
+                    row.status = "error"
+                    row.error = f"start failed: {e}"[:500]
+                    db.session.commit()
+        except Exception:
+            pass
+        return f"Error: starting job failed ({e})"
+
+    # Best-effort: tell the chat blueprint that this paper now has an
+    # in-flight generation job so its /active-job endpoint can surface it.
+    # Only registered AFTER thread.start() so the registry stays consistent
+    # with worker state.
+    try:
+        from chat import register_active_job
+        register_active_job(paper_id, job_id)
+    except Exception:
+        pass  # registry not available — non-fatal
 
     # Return a structured payload so the frontend can show the job spinner
     payload = {
@@ -1082,14 +1129,15 @@ CHAT_TOOLS = [
     {
         "name": "RunSLR",
         "description": (
-            "Kick off a full Systematic Literature Review search across multiple academic "
-            "indexes (OpenAlex, Crossref, Semantic Scholar, arXiv, DBLP, Europe PMC, IEEE, "
-            "SINTA/Garuda). The job is queued (max 10 workers) and runs asynchronously: "
-            "fetch all sources in parallel, dedup by DOI/title, rank with SBERT + citation "
-            "+ recency + venue quality, then summarize the top 50 with V-OPUS. Results are "
-            "automatically saved as LiteratureItem rows that show up in the user's Literature "
-            "tab. Use this when the user asks for a literature review, related work, or "
-            "to populate references."
+            "Trigger a Systematic Literature Review (SLR) job that fetches papers from "
+            "academic APIs (OpenAlex, Crossref, Semantic Scholar, arXiv, DBLP, Europe PMC, "
+            "IEEE, SINTA/Garuda), ranks them with SBERT + citation + recency + venue quality, "
+            "AI-summarizes the top results, and persists them to the Literature tab as "
+            "LiteratureItem rows. Use this whenever the user asks for literature review, "
+            "tinjauan pustaka, studi pustaka, systematic review, related work, kumpulkan "
+            "referensi, or wants to populate the Literature tab. Do NOT use SearchPapers "
+            "for these requests — RunSLR is the persistent path; SearchPapers is only for "
+            "ad-hoc inline lookups when the user explicitly wants results shown in chat."
         ),
         "input_schema": {
             "type": "object",

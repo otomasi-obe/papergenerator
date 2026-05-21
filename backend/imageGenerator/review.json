@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "gambar",
+      "ImageNumber": 1,
+      "Title": "smoke test",
+      "Path": "/home/sirobo/papergenerator/backend/image/smoke-account1.png",
+      "Prompt": "a futuristic neon-lit Tokyo bazaar at night, rainy reflections, ultra-detailed cinematic"
+    }
+  ]
+}

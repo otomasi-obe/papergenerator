@@ -84,8 +84,13 @@
          When no tab is selected, the left pane collapses and the chat goes
          full-width — useful for distraction-free conversation. -->
     <div ref="splitRoot" class="flex h-[calc(100vh-105px)] overflow-hidden relative">
-      <!-- LEFT: editor / journal / figures / preview (hidden when no tab is active) -->
-      <div v-if="activeTab" class="overflow-y-auto" :class="chatOpen ? 'w-1/2' : 'w-full'">
+      <!-- LEFT: editor / journal / figures / preview.
+           NOTE: we use v-show (not v-if) on the outer wrapper so all panels
+           — including LiteratureTab — stay mounted from the very first paint.
+           This is what makes chat-triggered SLR auto-open work seamlessly:
+           the literature poller is already running before the tab gets
+           switched in by `ui.requestTab(...)`. -->
+      <div v-show="activeTab" class="overflow-y-auto" :class="chatOpen ? 'w-1/2' : 'w-full'">
         <div class="px-4 lg:px-8 py-6">
 
           <!-- TAB: EDITOR -->
@@ -134,7 +139,7 @@
           <label class="label">Abstract</label>
           <textarea v-model="store.paper.abstract" rows="2" @input="autoResize"
             ref="abstractRef"
-            class="input resize-none overflow-hidden" placeholder="Paper abstract..."></textarea>
+            class="input resize-none overflow-hidden min-h-[4.5rem]" placeholder="Paper abstract..."></textarea>
         </div>
 
         <!-- Keywords -->
@@ -321,7 +326,17 @@ const router = useRouter()
 
 // rofiq.txt #2 + #3: tab & chat panel state per-paper, restore saat reload.
 // Default paper baru = no tab + chat full (lihat ui.js).
-const activeTab = ref('')
+// `activeTab` is a computed proxy onto the UI store so chat-triggered tab
+// switches (e.g. SLR auto-open) take effect immediately.
+const activeTab = computed({
+  get: () => (store.currentPaperId ? ui.getTab(store.currentPaperId) : '') || '',
+  set: (v) => {
+    if (store.currentPaperId) ui.setTab(store.currentPaperId, v || '')
+  },
+})
+// Force a re-read whenever something external bumps the signal — even when
+// the new tab id is the same as the old one.
+watch(() => ui.tabSwitchSignal, () => { /* computed re-evaluates via getTab */ })
 const newKeyword = ref('')
 const abstractRef = ref(null)
 const saveStatus = ref('saved')
@@ -387,15 +402,19 @@ watch(() => store.paper, () => {
   }, 1800)
 }, { deep: true })
 
-onUnmounted(() => { clearTimeout(autoSaveTimer); clearInterval(tickTimer) })
+onUnmounted(() => {
+  clearTimeout(autoSaveTimer)
+  clearInterval(tickTimer)
+  window.removeEventListener('resize', resizeAbstract)
+})
 
 onMounted(async () => {
   tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
+  window.addEventListener('resize', resizeAbstract)
   imageGenStore.resume()
   const paperId = route.params.paperId
   if (paperId) {
     await store.loadPaperFromDb(paperId)
-    activeTab.value = ui.getTab(paperId)
     chatOpen.value = ui.getChatOpen(paperId)
   } else {
     store.newPaper()
@@ -403,7 +422,6 @@ onMounted(async () => {
     const newId = await store.savePaperToDb(true)
     if (newId) {
       router.replace({ name: 'editor', params: { paperId: newId } })
-      activeTab.value = ui.getTab(newId)
       chatOpen.value = ui.getChatOpen(newId)
     }
   }
@@ -417,32 +435,30 @@ onMounted(async () => {
   } catch (e) { /* non-critical */ }
 
   nextTick(() => {
-    if (abstractRef.value) {
-      abstractRef.value.style.height = 'auto'
-      abstractRef.value.style.height = abstractRef.value.scrollHeight + 'px'
-    }
+    resizeAbstract()
   })
 })
+
+watch(() => store.paper.abstract, () => resizeAbstract())
+watch(() => chatOpen.value, () => resizeAbstract())
 
 watch(() => route.params.paperId, async (newId, oldId) => {
   if (newId && newId !== oldId && newId !== store.currentPaperId) {
     await store.loadPaperFromDb(newId)
-    activeTab.value = ui.getTab(newId)
     chatOpen.value = ui.getChatOpen(newId)
+    resizeAbstract()
   }
 })
 
 function toRoman(num) { return store.toRoman(num) }
 function toggleTab(id) {
   activeTab.value = activeTab.value === id ? '' : id
-  if (store.currentPaperId) ui.setTab(store.currentPaperId, activeTab.value)
 }
 function onTabKeydown(e) {
   if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return
   const idx = leftTabs.findIndex(t => t.id === activeTab.value)
   const next = e.key === 'ArrowRight' ? (idx + 1) % leftTabs.length : (idx - 1 + leftTabs.length) % leftTabs.length
   activeTab.value = leftTabs[next].id
-  if (store.currentPaperId) ui.setTab(store.currentPaperId, activeTab.value)
 }
 function moveItem(list, from, to) {
   if (!Array.isArray(list) || to < 0 || to >= list.length || from === to) return
@@ -463,6 +479,14 @@ function autoResize(e) {
   const el = e.target
   el.style.height = 'auto'
   el.style.height = el.scrollHeight + 'px'
+}
+function resizeAbstract() {
+  nextTick(() => {
+    const el = abstractRef.value
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  })
 }
 function addKw() {
   if (newKeyword.value.trim()) { store.addKeyword(newKeyword.value.trim()); newKeyword.value = '' }
