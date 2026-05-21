@@ -522,7 +522,7 @@ def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
     except (TypeError, ValueError):
         year_from_int = None
 
-    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM"}:
+    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}:
         ai_model = "V-OPUS"
 
     job = enqueue_slr_job(
