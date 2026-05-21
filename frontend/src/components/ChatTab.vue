@@ -176,18 +176,38 @@
 
       <!-- Messages -->
       <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        <div v-if="messages.length === 0 && !isStreaming"
-          class="flex flex-col items-center justify-center min-h-full text-center py-6">
-          <div class="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center mb-3">
-            <svg class="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09z"/>
-            </svg>
-          </div>
-          <h3 class="text-base font-semibold text-slate-800 mb-1.5">Mulai percakapan</h3>
-          <p class="text-xs text-slate-500 max-w-md leading-relaxed">
-            Ketik pesan, atau pilih saran cepat di bawah.
+        <!-- Empty-state hero: no messages yet. Offers entry chips + quick
+             prompts to seed a focused first turn instead of staring at a
+             blank textarea. -->
+        <div
+          v-if="!messages.length && !isStreaming"
+          class="empty-hero flex flex-col items-center justify-center min-h-full px-6 py-8 text-center"
+        >
+          <div class="text-3xl mb-4" aria-hidden="true">📝</div>
+          <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">
+            Mau buat paper apa?
+          </h2>
+          <p class="text-sm text-ink-600 dark:text-ink-300 mb-6 max-w-md">
+            Pilih path di bawah, atau ketik bebas.
           </p>
+          <ActionChips
+            :chips="entryChips"
+            @select="onEntryPick"
+            class="justify-center"
+          />
+          <div class="mt-8 text-xs uppercase tracking-wider text-ink-500 dark:text-ink-400">
+            atau quick start
+          </div>
+          <div class="mt-3 flex flex-col gap-2 items-center">
+            <button
+              v-for="(qp, i) in quickPrompts"
+              :key="i"
+              @click="onEntryPick(qp.value)"
+              class="text-sm text-brown-700 dark:text-cream-200 hover:underline"
+            >
+              • {{ qp.label }}
+            </button>
+          </div>
         </div>
 
         <ChatMessage
@@ -406,6 +426,7 @@ import { usePaperStore } from '../stores/paper.js'
 import api from '../api/index.js'
 import ChatMessage from './ChatMessage.vue'
 import AppDialog from './AppDialog.vue'
+import ActionChips from './ActionChips.vue'
 
 // Model picker — UI label is shown to the user, value is sent to backend.
 // Backend allowlists {V-OPUS, V-GEMINI, V-GPT} and rejects anything else.
@@ -579,6 +600,28 @@ const quickSuggestions = [
   { icon: '🎨', text: 'Parafrase paragraf saya' },
   { icon: '🪶', text: 'Perbaiki grammar' },
 ]
+
+// Entry chips and quick prompts shown in the empty-state hero. Picking any
+// of them just sends a message to the AI; the AI then routes via RouteIntent
+// (Tier-0) and may follow up with ProposeChips for next steps.
+const entryChips = [
+  { label: 'Mulai dari 0',         value: 'saya mau mulai dari 0' },
+  { label: 'Sudah ada literatur',  value: 'saya sudah punya literatur' },
+  { label: 'Sudah ada metode',     value: 'saya sudah ada metode' },
+  { label: 'Sudah ada data',       value: 'saya sudah punya data' },
+]
+
+const quickPrompts = [
+  { label: 'Lanjutkan dari memory',     value: 'lanjutkan dari yang kita bahas sebelumnya' },
+  { label: 'Pakai literatur yang ada',  value: 'pakai literatur yang sudah saya kumpulkan' },
+  { label: 'Lihat draft saya',          value: 'tampilkan draft paper saya' },
+]
+
+function onEntryPick(value) {
+  if (!value || isStreaming.value || !currentConversationId.value) return
+  if (activeJob.value && activeJob.value.active) return
+  chatStore.sendMessage(value)
+}
 
 onMounted(async () => {
   if (props.paperId) {
