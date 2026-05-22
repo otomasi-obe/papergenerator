@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T17:46:24.978996Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "26371d049ce4",
+  "conv_id": "50ee5280438b4922",
+  "model": "V-DEEPSEEK",
+  "content": "Oke mantap! Tapi sebelum saya generate full paper, saya perlu beberapa info penting dulu. Tolong jawab ya biar hasilnya maksimal! 😊\n\n**1. Judul Paper**\nBerdasarkan literatur yang ada, ini rekomendasi judulnya:\n> *\"Integrasi Navigasi dan Kontrol PID pada Automated Guided Vehicle (AGV) untuk Optimalisasi Smart Manufacturing\"*\n\nSetuju? Atau mau judul lain?\n\n**2. Bahasa**\n- 🇮🇩 Bahasa Indonesia\n- 🇬🇧 English\n\n**3. Citation Style**\n- IEEE\n- APA\n- ACS\n- MLA\n\n**4. Jumlah Halaman estimasi**\n- 10-15 halaman (standar jurnal nasional)\n- 15-20 halaman (jurnal internasional)\n- 20-25 halaman (skripsi/tesis)\n\nSilakan jawab ya, nanti saya langsung eksekusi semua! 🚀",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 3041,
+    "completion_tokens": 376,
+    "total_tokens": 3417
+  },
+  "status": "ok"
+}

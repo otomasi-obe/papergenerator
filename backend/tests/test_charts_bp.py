@@ -45,8 +45,8 @@ except Exception as e:  # pragma: no cover
 @pytest.fixture()
 def app(tmp_path):
     flask_app = Flask(__name__)
-    # Critical: make uploads/ sit inside tmp_path so the blueprint's
-    # safe_paper_dir doesn't write to the real backend uploads folder.
+    # Critical: make data/uploads/ sit inside tmp_path so the blueprint's
+    # safe_paper_dir doesn't write to the real backend data/uploads folder.
     flask_app.root_path = str(tmp_path)
     flask_app.config.update(
         TESTING=True,
@@ -95,7 +95,7 @@ def _auth_headers(user):
 
 @pytest.fixture()
 def fake_chart_png(tmp_path):
-    """Return a real PNG file path. The blueprint moves it into uploads/<paper_id>/."""
+    """Return a real PNG file path. The blueprint moves it into data/uploads/<paper_id>/."""
     p = tmp_path / "fake_chart.png"
     p.write_bytes(
         b"\x89PNG\r\n\x1a\n"

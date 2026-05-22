@@ -81,7 +81,7 @@ LOG_DIR_ENV = os.environ.get("GEMINI_LOG_DIR")
 if LOG_DIR_ENV:
     LOG_DIR = Path(LOG_DIR_ENV)
 else:
-    LOG_DIR = REPO_DIR.parent.parent / "logs" / "generator"
+    LOG_DIR = REPO_DIR.parent / "data" / "logs" / "generator"
 
 _LOGGERS: dict[str, logging.Logger] = {}
 
@@ -584,7 +584,7 @@ def main() -> int:
     parser.add_argument("--prompt", help="Prompt single-shot")
     parser.add_argument("--out", help="Output path (untuk --prompt)")
     parser.add_argument("--prompts-json", help="JSON file: [{name, prompt}, …]")
-    parser.add_argument("--out-dir", default=str(REPO_DIR.parent / "image"), help="Output directory untuk --prompts-json")
+    parser.add_argument("--out-dir", default=str(REPO_DIR.parent / "data" / "image"), help="Output directory untuk --prompts-json")
     parser.add_argument("--check", action="store_true", help="Cek pool akun lalu exit")
     parser.add_argument("--no-compress", action="store_true", help="Jangan compress hasil")
     parser.add_argument("--max-size-mb", type=float, default=1.0)

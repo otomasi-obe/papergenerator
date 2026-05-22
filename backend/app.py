@@ -286,14 +286,14 @@ def _security_headers(response):
 limiter.limit("10 per minute")(auth_bp)
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
-LOG_FILE = Path(__file__).parent / "app.log"
+LOG_FILE = Path(__file__).parent / "data" / "logs" / "app.log"
 from observability import init_observability  # noqa: E402  (after app + db ready)
 init_observability(app, db, log_file=LOG_FILE)
 log = logging.getLogger(__name__)
 
-UPLOAD_FOLDER = Path(__file__).parent / "uploads"
+UPLOAD_FOLDER = Path(__file__).parent / "data/uploads"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
-EXPORT_FOLDER = Path(__file__).parent / "exports"
+EXPORT_FOLDER = Path(__file__).parent / "data" / "exports"
 EXPORT_FOLDER.mkdir(exist_ok=True)
 
 TEMPLATE_FOLDER = Path(__file__).parent / "template"

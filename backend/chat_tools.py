@@ -66,7 +66,7 @@ SAFE_BASH_COMMANDS = {'grep', 'find', 'wc', 'cat', 'head', 'tail', 'ls', 'echo',
 
 MAX_RESULT_LENGTH = 6000
 
-LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logs", "chat_calls")
+LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "logs", "chat_calls")
 try:
     os.makedirs(LOGS_DIR, exist_ok=True)
 except Exception as _e:
@@ -98,7 +98,7 @@ SENSITIVE_FILE_NAMES = {
     'id_ecdsa', 'id_ed25519', '.gitconfig',
 }
 SENSITIVE_PATH_FRAGMENTS = (
-    '/.git/', '/node_modules/', '/uploads/', '/exports/',
+    '/.git/', '/node_modules/', '/data/uploads/', '/data/exports/',
     '/.ssh/', '/certs/', '/__pycache__/',
 )
 ALLOWED_READ_ROOTS = (

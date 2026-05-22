@@ -189,7 +189,7 @@ def test_happy_path_creates_paperimage_and_finishes_job(app_ctx, tmp_path):
     u, p = _mk_user_paper()
     job_id = _mk_job(u.id, p.id, "happy path prompt")
 
-    # Rebind uploads root to a tmpdir for this test.
+    # Rebind data/uploads root to a tmpdir for this test.
     flask_app.root_path = str(tmp_path)
 
     class FakeAccount:
@@ -218,8 +218,8 @@ def test_happy_path_creates_paperimage_and_finishes_job(app_ctx, tmp_path):
     img = db.session.get(PaperImage, j.image_id)
     assert img is not None
     assert img.paper_id == p.id
-    # The bytes were written to backend/<root>/uploads/<paper_id>/<file>.
-    on_disk = Path(flask_app.root_path) / "uploads" / p.id / img.filename
+    # The bytes were written to backend/<root>/data/uploads/<paper_id>/<file>.
+    on_disk = Path(flask_app.root_path) / "data/uploads" / p.id / img.filename
     assert on_disk.is_file(), f"image not saved: {on_disk}"
     assert on_disk.read_bytes().startswith(b"\xff\xd8\xff")
 
@@ -264,6 +264,6 @@ def test_cancel_during_generation_drops_image(app_ctx, tmp_path):
     # No paper image rows for this paper.
     assert PaperImage.query.filter_by(paper_id=p.id).count() == 0
     # Disk file unlinked.
-    paper_dir = Path(flask_app.root_path) / "uploads" / p.id
+    paper_dir = Path(flask_app.root_path) / "data/uploads" / p.id
     leftover = list(paper_dir.glob("*")) if paper_dir.exists() else []
     assert leftover == []

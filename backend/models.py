@@ -99,7 +99,7 @@ class PaperImage(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     filename = db.Column(db.String(255), nullable=False)      # stored filename (uuid-based)
     original_name = db.Column(db.String(255), nullable=False)  # original upload name
-    file_path = db.Column(db.String(500), nullable=False)      # relative path in uploads/
+    file_path = db.Column(db.String(500), nullable=False)      # relative path in data/uploads/
     created_at = db.Column(db.DateTime, default=_utcnow)
 
     def to_dict(self):
@@ -124,7 +124,7 @@ class PaperFile(db.Model):
     original_name = db.Column(db.String(255), nullable=False)  # original upload name
     ext = db.Column(db.String(10), nullable=False)             # .pdf .docx etc
     size_bytes = db.Column(db.Integer, default=0)
-    file_path = db.Column(db.String(500), nullable=False)      # relative path in uploads/
+    file_path = db.Column(db.String(500), nullable=False)      # relative path in data/uploads/
     extracted_text = db.Column(db.Text, default='')            # cached text for preview
     created_at = db.Column(db.DateTime, default=_utcnow)
 

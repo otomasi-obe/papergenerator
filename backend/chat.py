@@ -73,7 +73,7 @@ def _gen_id():
 # ── Error sanitization ───────────────────────────────────────────────────────
 # We never echo SQL fragments, stack traces, or vendor exception class names
 # to the chat UI — that's both confusing for users and a small information leak.
-# The full traceback still lands in app.log via log.exception(...).
+# The full traceback still lands in data/logs/app.log via log.exception(...).
 _SQL_HINT_RE = re.compile(
     r"psycopg2|sqlalchemy|UndefinedTable|relation\s+\".*\"\s+does\s+not\s+exist|"
     r"IntegrityError|OperationalError|ProgrammingError",
@@ -99,12 +99,12 @@ def _safe_user_error(raw: object, fallback: str = "Terjadi kendala teknis. Coba 
 
 
 # ── Per-turn JSON log ────────────────────────────────────────────────────────
-# Layout: backend/log/<user_slug>/<paper_id>/<chat_id>/<turn-id>.send.json
-#         backend/log/<user_slug>/<paper_id>/<chat_id>/<turn-id>.recv.json
+# Layout: backend/data/logs/<user_slug>/<paper_id>/<chat_id>/<turn-id>.send.json
+#         backend/data/logs/<user_slug>/<paper_id>/<chat_id>/<turn-id>.recv.json
 # Used for after-the-fact debugging of an individual chat turn (request payload
 # the AI saw + the assistant turn it produced). All errors here are swallowed
 # — logging must NEVER crash a chat stream.
-_TURN_LOG_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
+_TURN_LOG_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "logs")
 _SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 

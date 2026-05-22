@@ -4,7 +4,7 @@ so Section 4 (Results) can render matplotlib PNGs from user-supplied data.
 POST /api/papers/<paper_id>/charts
     JSON body: { kind, title, xlabel, ylabel, data, series_labels?, x_data? }
     Generates a PNG via chart_generator.generate_chart(), moves it into the
-    paper's uploads/ folder, registers a PaperImage row, and returns
+    paper's data/uploads/ folder, registers a PaperImage row, and returns
     {image_id, filename, url} so the frontend can embed it in Section 4.
 """
 from __future__ import annotations

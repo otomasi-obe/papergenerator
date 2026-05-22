@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T17:45:48.554865Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "26371d049ce4",
+  "conv_id": "50ee5280438b4922",
+  "model": "V-DEEPSEEK",
+  "content": "Oke, kita kebut semuanya! Biar saya tanya dulu beberapa hal penting sekaligus biar paper-nya maksimal. Silakan jawab ya! 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 5425,
+    "completion_tokens": 205,
+    "total_tokens": 5630
+  },
+  "status": "ok"
+}

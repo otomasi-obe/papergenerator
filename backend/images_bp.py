@@ -91,7 +91,7 @@ def upload_user_image(paper_id: str):
     """User-uploaded image variant.
 
     Same on-disk storage as the regular upload endpoint
-    (backend/uploads/<paper_id>/) so the existing /api/images/<paper_id>/<file>
+    (backend/data/uploads/<paper_id>/) so the existing /api/images/<paper_id>/<file>
     serving route works unchanged. The response shape includes ``kind:
     'uploaded'`` so the chat / editor frontend can distinguish AI-generated
     images from user uploads and ask for a caption.

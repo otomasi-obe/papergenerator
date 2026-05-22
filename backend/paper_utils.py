@@ -18,7 +18,7 @@ FILENAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 
 def upload_folder() -> Path:
-    return Path(current_app.root_path) / "uploads"
+    return Path(current_app.root_path) / "data/uploads"
 
 
 def safe_paper_dir(paper_id: str) -> Path | None:

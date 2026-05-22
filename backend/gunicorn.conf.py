@@ -44,7 +44,7 @@ import os
 from pathlib import Path
 
 _log_dir_env = os.getenv("GUNICORN_LOG_DIR")
-_default_log_dir = Path(__file__).resolve().parent.parent / "logs"
+_default_log_dir = Path(__file__).resolve().parent / "data" / "logs"
 _log_dir = Path(_log_dir_env) if _log_dir_env else _default_log_dir
 _log_dir.mkdir(parents=True, exist_ok=True)
 

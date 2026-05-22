@@ -1,7 +1,7 @@
 """Chart generator for paper section 4 (Results).
 
 Generates matplotlib PNG charts from user-provided or AI-estimated data.
-Output saved to backend/charts/<paper_id>/<chart_id>.png.
+Output saved to backend/data/charts/<paper_id>/<chart_id>.png.
 
 Usage:
     from chart_generator import generate_chart, ChartSpec
@@ -24,7 +24,7 @@ from typing import Literal, Optional
 
 log = logging.getLogger(__name__)
 
-CHARTS_DIR = os.path.join(os.path.dirname(__file__), "charts")
+CHARTS_DIR = os.path.join(os.path.dirname(__file__), "data", "charts")
 os.makedirs(CHARTS_DIR, exist_ok=True)
 
 

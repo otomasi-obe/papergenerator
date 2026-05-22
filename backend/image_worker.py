@@ -32,7 +32,7 @@ from typing import Optional
 log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent
-UPLOADS_DIR = REPO_ROOT / "uploads"
+UPLOADS_DIR = REPO_ROOT / "data/uploads"
 
 # Lazy import: GeminiPool needs Playwright + Chrome and is heavy.
 _pool = None

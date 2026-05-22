@@ -55,6 +55,7 @@ Thumbs.db
 
 # Project specific
 backend/uploads/
+backend/data/uploads/
 backend/exports/
 exports/
 uploads/
@@ -103,4 +104,4 @@ backend/imageGenerator/account1/
 backend/imageGenerator/account2/
 backend/imageGenerator/account3/
 backend/imageGenerator/account4/
-backend/image/
+backend/data/images/

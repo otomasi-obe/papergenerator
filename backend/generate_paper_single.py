@@ -45,14 +45,14 @@ log = logging.getLogger(__name__)
 # ── Generator turn-log helpers ───────────────────────────────────────────────
 # We persist the actual prompt sent to V-OPUS and the raw reply (plus parsed
 # shape + validation) under
-#   backend/log/<user_slug>/<paper_id>/<job_id>/
+#   backend/data/logs/<user_slug>/<paper_id>/<job_id>/
 # alongside the chat logs (which use the same `<user_slug>/<paper_id>/<chat_id>`
 # layout). Both share the same per-user folder so an account's generator job
 # and the chat that spawned it can be inspected in one place.
 import datetime as _dt
 import json as _json
 
-_LOG_ROOT = Path(__file__).parent / "log"
+_LOG_ROOT = Path(__file__).parent / "data" / "logs"
 _SAFE_NAME_RE_GEN = re.compile(r"[^A-Za-z0-9._-]+")
 
 
@@ -85,7 +85,7 @@ def _user_slug_for_log(user_id) -> str:
 def _gen_log_dir(user_id, paper_id, job_id) -> Path | None:
     """Build (and create) the per-job log directory.
 
-    Layout: ``backend/log/<user_slug>/<paper_id>/<job_id>/``. Job filenames
+    Layout: ``backend/data/logs/<user_slug>/<paper_id>/<job_id>/``. Job filenames
     (``00_request.json``, ``01_raw_response.txt`` etc) never collide with
     chat turn filenames (``<turn-id>.{send,recv}.json``), so generator and
     chat logs can safely share the same per-paper folder.
