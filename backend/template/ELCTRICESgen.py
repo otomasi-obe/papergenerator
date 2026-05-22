@@ -383,6 +383,11 @@ def _load_template_samples(template_path: Path) -> dict[str, etree._Element | No
     if body_sectpr is None:
         raise RuntimeError("Template ELCTRICES tidak memiliki section break body penutup.")
 
+    # Final body sectPr (cols=2) — section terakhir di original (references area)
+    final_body_sectpr = deepcopy(body.find(_wq("sectPr")))
+    if final_body_sectpr is None:
+        raise RuntimeError("Template ELCTRICES tidak memiliki final sectPr.")
+
     return {
         "title_id_ppr": clone_ppr(1),
         "title_id_rpr": clone_rpr(1, contains="Sistem"),
@@ -445,6 +450,7 @@ def _load_template_samples(template_path: Path) -> dict[str, etree._Element | No
         "reference_item_ppr": clone_ppr(63),
         "reference_item_rpr": clone_rpr(63, contains="Penulis1 A"),
         "body_sectpr": body_sectpr,
+        "final_body_sectpr": final_body_sectpr,
     }
 
 
@@ -819,6 +825,19 @@ def _next_table_number(item: dict, state: RenderState) -> str:
 
 
 def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, etree._Element | None], state: RenderState) -> None:
+
+    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
+    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
+    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
+    if _ai_title:
+        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
+        from docx.shared import RGBColor as _RGB
+        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        _ai_para = doc.add_paragraph()
+        _ai_para.alignment = _WAP.CENTER
+        _ai_run = _ai_para.add_run(_ai_full)
+        _ai_run.italic = True
+        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     title = str(item.get("Title") or item.get("title") or "").strip()
     path_text = str(item.get("Path") or item.get("path") or "").strip()
     prompt = str(item.get("Prompt") or "").strip()
@@ -1069,6 +1088,12 @@ def _add_references(doc: Document, config: dict, samples: dict[str, etree._Eleme
     if not items:
         return
 
+    # Sisipkan section break (continuous, cols=1) sebelum references — ini section ke-2
+    # di original ELCTRICES (body[103] sectPr cols=1 type=continuous).
+    break_para = _new_paragraph(doc, None)
+    pPr = break_para._p.get_or_add_pPr()
+    pPr.append(deepcopy(samples["body_sectpr"]))
+
     heading = _new_paragraph(doc, samples["reference_heading_ppr"])
     _add_sample_run(heading, title.upper(), samples["reference_heading_rpr"], bold=True)
 
@@ -1111,7 +1136,7 @@ def build_document(
     final_output = (
         Path(output_path)
         if output_path is not None
-        else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1120,7 +1145,7 @@ def build_document(
     shutil.copy(str(template_path), str(final_output))
     doc = Document(str(final_output))
     _clear_document_body(doc)
-    _set_document_final_sectpr(doc, samples["body_sectpr"])
+    _set_document_final_sectpr(doc, samples["final_body_sectpr"])
 
     _render_title_block(doc, config, samples)
     _render_sections(doc, config, Path(json_path), samples)

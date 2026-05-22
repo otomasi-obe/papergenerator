@@ -27,6 +27,8 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from sqlalchemy.exc import DBAPIError, OperationalError
+from sqlalchemy.orm import defer
 
 from models import LiteratureItem, Paper, PaperFile, SlrJob, db
 from paper_utils import PAPER_ID_RE
@@ -167,9 +169,9 @@ def create_slr_job(paper_id: str):
         return year_err
 
     ai_summarize = bool(body.get("ai_summarize", True))
-    ai_model = (body.get("ai_model") or "V-OPUS").strip()
-    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}:
-        ai_model = "V-OPUS"
+    ai_model = (body.get("ai_model") or "V-DEEPSEEK").strip()
+    if ai_model not in {"V-OPUS", "V-DEEPSEEK"}:
+        ai_model = "V-DEEPSEEK"
 
     conv_id = body.get("conversation_id") or None
 
@@ -217,12 +219,87 @@ def list_slr_jobs(paper_id: str):
         limit = 30
     limit = max(1, min(limit, 100))
 
-    q = (db.session.query(SlrJob)
-         .filter_by(paper_id=paper_id, user_id=user_id))
-    if statuses:
-        q = q.filter(SlrJob.status.in_(statuses))
-    jobs = q.order_by(SlrJob.queued_at.desc()).limit(limit).all()
-    return jsonify([j.to_dict() for j in jobs])
+    try:
+        # Defer the large `result` JSON column so each poll only ships the
+        # status fields. Callers that need the full payload hit
+        # `GET /api/slr/jobs/<job_id>?include_result=true`.
+        q = (db.session.query(SlrJob)
+             .options(defer(SlrJob.result))
+             .filter_by(paper_id=paper_id, user_id=user_id))
+        if statuses:
+            q = q.filter(SlrJob.status.in_(statuses))
+        jobs = q.order_by(SlrJob.queued_at.desc()).limit(limit).all()
+        return jsonify([j.to_dict() for j in jobs])
+    except (OperationalError, DBAPIError) as e:
+        # Postgres busy / lock timeout / connection blip → tell the frontend
+        # to back off and retry instead of bubbling up as a 500/524.
+        db.session.rollback()
+        log.warning("slr.list_jobs DB busy paper=%s: %s", paper_id, e)
+        return jsonify({"error": "DB busy, retry", "code": "DB_BUSY"}), 503
+
+
+@slr_bp.route("/api/papers/<paper_id>/slr/jobs/wait", methods=["GET"])
+@jwt_required()
+def wait_slr_jobs(paper_id: str):
+    """Long-poll for SlrJob changes for this paper.
+
+    Holds the connection for up to 30 s, returning as soon as `max(updated_at)`
+    moves past the caller's `?after=<unix_ts>` cursor. Frontend uses this to
+    avoid hammering the DB with 2-3 s polls — and to dodge the proxy 524 the
+    cheap polls were causing under load.
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    try:
+        after = float(request.args.get("after", "0"))
+    except (TypeError, ValueError):
+        after = 0.0
+
+    deadline = time.monotonic() + 30.0
+    poll_step = 2.0
+    try:
+        while time.monotonic() < deadline:
+            try:
+                latest = (db.session.query(db.func.max(SlrJob.updated_at))
+                          .filter_by(paper_id=paper_id, user_id=user_id)
+                          .scalar())
+            except (OperationalError, DBAPIError) as e:
+                db.session.rollback()
+                log.warning("slr.wait_jobs probe DB busy paper=%s: %s",
+                            paper_id, e)
+                return jsonify({"error": "DB busy, retry",
+                                "code": "DB_BUSY"}), 503
+
+            ts = latest.timestamp() if latest else 0.0
+            if ts > after:
+                jobs = (db.session.query(SlrJob)
+                        .options(defer(SlrJob.result))
+                        .filter_by(paper_id=paper_id, user_id=user_id)
+                        .order_by(SlrJob.queued_at.desc())
+                        .limit(30)
+                        .all())
+                # Close the read txn so we don't pin a snapshot across the
+                # caller's polling cycle. Rollback is enough for read-only.
+                db.session.rollback()
+                return jsonify({
+                    "jobs": [j.to_dict() for j in jobs],
+                    "ts": ts,
+                })
+            # Release the implicit read txn between polls so other writers
+            # (the worker pool) don't block waiting on us.
+            db.session.rollback()
+            time.sleep(poll_step)
+    except (OperationalError, DBAPIError) as e:
+        db.session.rollback()
+        log.warning("slr.wait_jobs DB busy paper=%s: %s", paper_id, e)
+        return jsonify({"error": "DB busy, retry", "code": "DB_BUSY"}), 503
+
+    return jsonify({"jobs": [], "ts": after, "noop": True})
 
 
 @slr_bp.route("/api/slr/jobs/<job_id>", methods=["GET"])
@@ -679,7 +756,9 @@ def run_slr_legacy(paper_id: str):
     if year_err:
         return year_err
 
-    ai_model = (body.get("ai_model") or "V-OPUS")
+    ai_model = (body.get("ai_model") or "V-DEEPSEEK").strip()
+    if ai_model not in {"V-OPUS", "V-DEEPSEEK"}:
+        ai_model = "V-DEEPSEEK"
     log.info(
         "slr.create user=%d paper=%s query=%s top_k=%d ai_model=%s",
         user_id, paper.id, query[:60], top_k, ai_model,

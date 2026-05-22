@@ -561,7 +561,7 @@ def _set_table_borders(table) -> None:
         if element is None:
             element = OxmlElement(f"w:{edge}")
             borders.append(element)
-        element.set(qn("w:val"), "single")
+        element.set(qn("w:val"), "single" if edge in ("top", "bottom", "insideH") else "nil")
         element.set(qn("w:sz"), "4")
         element.set(qn("w:space"), "0")
         element.set(qn("w:color"), "000000")
@@ -578,6 +578,19 @@ def _fill_cell(cell, text: str, *, bold: bool = False, italic: bool = False,
 
 
 def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) -> None:
+
+    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
+    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
+    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
+    if _ai_title:
+        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
+        from docx.shared import RGBColor as _RGB
+        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        _ai_para = doc.add_paragraph()
+        _ai_para.alignment = _WAP.CENTER
+        _ai_run = _ai_para.add_run(_ai_full)
+        _ai_run.italic = True
+        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     title = str(item.get("Title") or item.get("title") or "").strip() or _placeholder_text("judul gambar")
     number = str(item.get("ImageNumber") or item.get("number") or "").strip()
     if not number:
@@ -655,10 +668,6 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
     _append_rich_text(caption, title, size_pt=10.0)
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
-    try:
-        table.style = "Table Grid"
-    except Exception:
-        pass
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
     _set_table_borders(table)
@@ -803,7 +812,7 @@ def build_document(json_path: Path = JSON_PATH,
     final_output = (
         Path(output_path)
         if output_path is not None
-        else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 

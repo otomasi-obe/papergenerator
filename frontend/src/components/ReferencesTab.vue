@@ -29,7 +29,7 @@
         [{{ index + 1 }}]
       </span>
       <div class="flex-1">
-        <textarea v-model="ref.text" rows="2"
+        <textarea v-model="ref.text" rows="2" v-autosize
           :placeholder="`A. Author, B. Author, &quot;Title of paper,&quot; Journal Name, vol. X, no. Y, pp. 1-10, 2024.`"
           class="w-full px-3 py-1.5 border rounded text-sm focus:ring-2 focus:ring-blue-200 outline-none resize-y"></textarea>
       </div>

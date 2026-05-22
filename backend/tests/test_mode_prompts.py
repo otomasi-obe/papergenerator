@@ -149,10 +149,10 @@ def test_save_memory_not_in_any_mode():
 
 def test_discovery_prompt_mentions_key_markers():
     p = MODE_PROMPTS["discovery"]
-    assert "[key=jurusan]" in p
-    assert "[key=topik]" in p
-    assert "[key=metode]" in p
-    assert "ProposeChips" in p
+    assert "key=jurusan" in p
+    assert "key=topik" in p
+    assert "key=metode" in p
+    assert "AskQuestions" in p
 
 
 def test_tier0_prompt_mentions_routeintent():

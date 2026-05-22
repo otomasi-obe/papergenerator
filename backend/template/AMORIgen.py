@@ -56,7 +56,7 @@ XSL_CANDIDATES = [
 ]
 
 STYLE_XML_ID = {
-    "body": "WP",
+    "body": "Normal",
     "heading1": "Heading1",
     "figurecaption": "figurecaption",
     "tableheading": "TableHeading",
@@ -560,7 +560,7 @@ def _set_table_full_borders(table) -> None:
         if el is None:
             el = OxmlElement(f"w:{edge}")
             tbl_borders.append(el)
-        el.set(qn("w:val"), "single")
+        el.set(qn("w:val"), "single" if edge in ("top", "bottom", "insideH") else "nil")
         el.set(qn("w:sz"), "4")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "000000")
@@ -595,6 +595,18 @@ def _add_figure(doc: Document, item: dict, json_path: Path,
     except (TypeError, ValueError):
         width_cm = MAX_FIGURE_WIDTH_CM
     width_cm = min(max(width_cm, 1.0), MAX_FIGURE_WIDTH_CM)
+
+    # Emit AI prompt (warna merah, di atas image / sebelum caption)
+    if title:
+        prompt_desc = str(item.get("Description", "") or item.get("Prompt", "") or title).strip()
+        prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_desc}]"
+        prompt_para = doc.add_paragraph()
+        prompt_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _set_paragraph_spacing(prompt_para, before=3.0, after=1.5)
+        from docx.shared import RGBColor as _RGB
+        pr = prompt_para.add_run(prompt_text)
+        pr.italic = True
+        pr.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
 
     if path_text:
         image_path = _resolve_path(path_text, json_path)
@@ -646,7 +658,6 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
     _append_text_run(caption, caption_text, size_pt=10.0, bold=True, italic=True)
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
-    table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
     _set_table_full_borders(table)
@@ -769,7 +780,7 @@ def build_document(json_path: Path = JSON_PATH,
     final_output = (
         Path(output_path)
         if output_path is not None
-        else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 

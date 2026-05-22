@@ -27,12 +27,12 @@
       <!-- Inline error banner -->
       <div
         v-if="loadError"
-        class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 px-3 py-2 text-xs flex items-center justify-between gap-2"
+        class="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs flex items-center justify-between gap-2"
       >
-        <span class="text-red-800 dark:text-red-200 truncate">{{ loadError }}</span>
+        <span class="text-amber-800 dark:text-amber-200 truncate">{{ loadError }}</span>
         <button
           @click="retryLoad"
-          class="px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-[11px] font-semibold shrink-0"
+          class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-semibold shrink-0"
         >Coba lagi</button>
       </div>
 
@@ -642,12 +642,47 @@ async function loadItems() {
 
 let _lastJobIds = new Set()
 let _lastJobStatus = {}
+let _consecutiveFailures = 0
+let _waitCursor = 0
+const _TRANSIENT_STATUSES = new Set([0, 408, 429, 502, 503, 504, 520, 521, 522, 523, 524])
 
 async function loadJobs() {
   if (!currentPaperId.value) return
   try {
-    const res = await api.get(`/api/papers/${currentPaperId.value}/slr/jobs`)
-    const jobs = res.data || []
+    // When there are jobs we already know are running, prefer the long-poll
+    // /wait endpoint: it sleeps server-side and returns as soon as job state
+    // moves, so we get near-instant updates without 2s polling. The list
+    // endpoint is the fallback for the idle case where there's nothing to
+    // wait on.
+    //
+    // BUT: under load, the /wait connection can hit a proxy 524 even when
+    // the worker has already finished the job. Once we've seen 2 consecutive
+    // failures, drop back to the cheap /jobs GET so we don't get wedged on a
+    // long-poll endpoint that can't reach us.
+    const hasRunning = activeJobs.value.some(
+      j => j.status === 'running' || j.status === 'pending' || j.status === 'queued'
+    )
+    const useLongPoll = hasRunning && _consecutiveFailures < 2
+    let jobs
+    if (useLongPoll) {
+      const res = await api.get(`/api/papers/${currentPaperId.value}/slr/jobs/wait`, {
+        params: { after: _waitCursor },
+        timeout: 35000,
+      })
+      const data = res.data || {}
+      if (data.noop) {
+        // Server hit its own timeout with no changes — stay quiet, the next
+        // schedulePoll() tick will re-arm.
+        _consecutiveFailures = 0
+        if (loadError.value) loadError.value = ''
+        return
+      }
+      jobs = Array.isArray(data.jobs) ? data.jobs : []
+      _waitCursor = typeof data.ts === 'number' ? data.ts : _waitCursor
+    } else {
+      const res = await api.get(`/api/papers/${currentPaperId.value}/slr/jobs`)
+      jobs = Array.isArray(res.data) ? res.data : []
+    }
     const active = jobs.filter(j => j.status === 'queued' || j.status === 'running')
     activeJobs.value = active
     const finished = jobs
@@ -670,30 +705,92 @@ async function loadJobs() {
       // Re-arm one extra fast cycle so the first idle poll still happens
       // quickly after the final job state lands.
       _extraFastPolls = 1
+      // SLR finished → refresh the literature rows table.
       await loadItems()
       if (newlyDone.length > 0) {
-        toast(`SLR selesai. ${items.value.length} literatur masuk.`, 'success')
+        const n = items.value.length
+        toast(`SLR selesai. ${n} literatur masuk.`, 'success')
+        // Inject a system note into the active chat with action chips so the
+        // user can decide the next step (continue generate, review, etc.)
+        // without firing another AI round-trip. Lazy import to avoid the
+        // chat ↔ paper circular dep.
+        try {
+          const { useChatStore } = await import('../stores/chat.js')
+          const chatStore = useChatStore()
+          const j = newlyDone[0]
+          const q = j?.query || ''
+          const body = [
+            `✅ **SLR selesai.** ${n} literatur berhasil dikumpulkan` +
+              (q ? ` untuk query *"${q}"*.` : '.'),
+            '',
+            'Mau lanjut yang mana?',
+            '[OPSI]',
+            'Lanjutkan generate paper lengkap dengan literatur ini',
+            'Lihat & pilih literatur dulu (pin must-read)',
+            'Tambahkan keyword lain untuk SLR berikutnya',
+            'Cukup, saya akan ketik permintaan sendiri',
+            '[/OPSI]',
+          ].join('\n')
+          chatStore.injectAssistantMessage?.(body)
+        } catch (e) {
+          // Silent — chat injection is best-effort, table state already updated.
+        }
       }
     }
     _lastJobIds = new Set(jobs.map(j => j.id))
     _lastJobStatus = Object.fromEntries(jobs.map(j => [j.id, j.status]))
     slrRunning.value = active.length > 0
-    // If items load was previously failing, clear the banner now that jobs OK.
-    // Only clear if loadItems also succeeded (loadError already empty after success).
+    _consecutiveFailures = 0
+    // Clear any stale transient banner now that the poll succeeded.
+    if (loadError.value) loadError.value = ''
   } catch (e) {
-    loadError.value = 'Gagal memuat status job: ' + (e?.response?.data?.error || e?.message || 'network error')
+    const status = e?.response?.status ?? 0
+    const code = e?.response?.data?.code
+    // 3-strikes rule: only surface the banner after THREE consecutive failures.
+    // Single-shot proxy timeouts / DB hiccups stay silent and recover on the
+    // next tick. Banner copy stays generic — no raw 524 / status code in UX.
+    const transient = _TRANSIENT_STATUSES.has(status) || code === 'DB_BUSY'
+    _consecutiveFailures++
+    // Bump to fast cadence so we recover quickly once the DB / proxy frees up.
+    _extraFastPolls = Math.max(_extraFastPolls, 2)
+    // The /wait long-poll can 524 even when the SLR worker has *already*
+    // persisted the literature rows server-side. Without a fallback refresh
+    // here, the table stays empty during the 3-strikes silent window — which
+    // is exactly the "SLR belum tampil di Literatur" symptom users see.
+    // Fire a best-effort literature-items reload so rows surface even if the
+    // jobs poll keeps timing out. Cheap GET on the same paper, fail silent.
+    if (transient && activeJobs.value.length > 0) {
+      loadItems().catch(() => { /* swallow — banner handles UX */ })
+    }
+    if (_consecutiveFailures < 3) {
+      // Stay quiet — the next poll will probably succeed.
+      return
+    }
+    if (transient) {
+      loadError.value = 'Sambungan ke server lambat. Coba lagi?'
+    } else {
+      loadError.value = 'Sambungan ke server lambat. Coba lagi?'
+    }
   }
 }
 
 async function retryLoad() {
   loadError.value = ''
+  _consecutiveFailures = 0
   await Promise.all([loadItems(), loadJobs()])
 }
 
 function schedulePoll() {
   if (_pollTimer) clearTimeout(_pollTimer)
+  // Visibility-aware cadence:
+  //  - tab hidden        → 5 s (just keep state warm without hammering)
+  //  - active SLR job    → 2.5 s (catch progress / completion fast)
+  //  - just-finished     → 2.5 s for one extra cycle
+  //  - idle, tab visible → 30 s (cheapest; backstop in case server push lost)
   let delay
-  if (activeJobs.value.length > 0) {
+  if (typeof document !== 'undefined' && document.hidden) {
+    delay = 5000
+  } else if (activeJobs.value.length > 0) {
     delay = 2500
   } else if (_extraFastPolls > 0) {
     _extraFastPolls--
@@ -705,6 +802,12 @@ function schedulePoll() {
     await loadJobs()
     schedulePoll()
   }, delay + Math.floor(Math.random() * 500))
+}
+
+function _onVisibilityChange() {
+  // Re-arm immediately so a tab that was hidden for >30s doesn't wait out
+  // the long delay before its first refresh.
+  schedulePoll()
 }
 
 // ----- SLR runner -----
@@ -746,16 +849,13 @@ async function cancelJob(jobId) {
 
 async function startSLRFromPaperTopic() {
   const title = paperTitle.value
-  if (title) slrQuery.value = title
+  if (!title) return
+  slrQuery.value = title
   await nextTick()
   if (slrCardRef.value && typeof slrCardRef.value.scrollIntoView === 'function') {
     slrCardRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
-  setTimeout(() => {
-    if (slrInputRef.value && typeof slrInputRef.value.focus === 'function') {
-      slrInputRef.value.focus()
-    }
-  }, 250)
+  await runSLR()
 }
 
 // ----- Import / manual -----
@@ -1038,6 +1138,8 @@ watch(currentPaperId, async (id) => {
   // paper doesn't fire after switching.
   _lastJobIds = new Set()
   _lastJobStatus = {}
+  _consecutiveFailures = 0
+  _waitCursor = 0
   activeJobs.value = []
   lastSlrJob.value = null
   selectedIds.value = new Set()
@@ -1061,10 +1163,16 @@ onMounted(async () => {
   }
   applyIntent(litStore.consumeIntent())
   schedulePoll()
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', _onVisibilityChange)
+  }
 })
 
 onUnmounted(() => {
   if (_pollTimer) clearTimeout(_pollTimer)
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', _onVisibilityChange)
+  }
 })
 </script>
 

@@ -15,11 +15,18 @@ import re
 import threading
 import time
 import uuid
+import datetime
 import requests
 from flask import Blueprint, request, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Conversation, ChatMessage, Paper, ProjectMemory
+from models import db, Conversation, ChatMessage, Paper, ProjectMemory, User
 from chat_tools import execute_tool, CHAT_TOOLS, get_memory_summary
+try:
+    from chat_tools import _log_chat_call  # type: ignore
+except ImportError:
+    def _log_chat_call(*_args, **_kwargs):  # noqa: D401 — placeholder
+        """No-op when chat_tools._log_chat_call hasn't landed yet (Agent 2)."""
+        return None
 from mode_prompts import get_mode_bundle, list_modes
 from auto_memory import extract_facts
 from dotenv import load_dotenv
@@ -34,29 +41,10 @@ API_URL = (_AIOTOMASI_API_BASE.rstrip('/') + "/chat/completions") if _AIOTOMASI_
 API_KEY = os.getenv("AIOTOMASI_APIKEY") or ""
 MODEL = os.getenv("AIOTOMASI_MODEL") or ""
 
-# ─── Selectable models (frontend picker) ─────────────────────────────────────
-# UI label → backend upstream identifier. Hard-coded per product spec; the
-# label NEVER hits the upstream API. Unknown values fall back to env MODEL.
-SELECTABLE_MODELS = {
-    "V-OPUS":     "V-OPUS",
-    "V-CLAUDE":   "V-CLAUDE",
-    "V-GPT":      "V-GPT",
-    "V-GLM":      "V-GLM",
-    "V-DEEPSEEK": "V-DEEPSEEK",
-}
-DEFAULT_MODEL_KEY = "V-CLAUDE"
-
-
-def _resolve_model(requested):
-    """Map a client-supplied model key to an upstream model identifier.
-
-    - None / empty   → falls back to env MODEL (legacy behaviour preserved)
-    - Known key      → its mapped value
-    - Unknown string → None (caller emits 400)
-    """
-    if not requested:
-        return MODEL or SELECTABLE_MODELS[DEFAULT_MODEL_KEY]
-    return SELECTABLE_MODELS.get(requested)
+# ─── Hard-coded chat model ────────────────────────────────────────────────
+# Chat is always served by V-DEEPSEEK. The frontend may still send a `model`
+# field on the request body; it is ignored silently for back-compat.
+CHAT_MODEL = "V-DEEPSEEK"
 
 MAX_TOOL_ITERATIONS = 10
 MAX_HISTORY_MESSAGES = 12   # cap on prior turns we resend (token saver)
@@ -82,6 +70,94 @@ def _gen_id():
     return uuid.uuid4().hex[:16]
 
 
+# ── Error sanitization ───────────────────────────────────────────────────────
+# We never echo SQL fragments, stack traces, or vendor exception class names
+# to the chat UI — that's both confusing for users and a small information leak.
+# The full traceback still lands in app.log via log.exception(...).
+_SQL_HINT_RE = re.compile(
+    r"psycopg2|sqlalchemy|UndefinedTable|relation\s+\".*\"\s+does\s+not\s+exist|"
+    r"IntegrityError|OperationalError|ProgrammingError",
+    re.IGNORECASE,
+)
+_TRACEBACK_HINT_RE = re.compile(
+    r"Traceback|File\s+\".*\",\s+line\s+\d+|raise\s+[A-Za-z]+Error",
+    re.IGNORECASE,
+)
+
+
+def _safe_user_error(raw: object, fallback: str = "Terjadi kendala teknis. Coba kirim lagi sebentar.") -> str:
+    s = ("" if raw is None else str(raw)).strip()
+    if not s:
+        return fallback
+    if _SQL_HINT_RE.search(s) or _TRACEBACK_HINT_RE.search(s):
+        return "Ada gangguan internal di server. Coba kirim lagi sebentar."
+    if s.lower().startswith("api error:") or "upstream" in s.lower():
+        return "AI sedang sibuk. Coba kirim lagi sebentar."
+    if len(s) > 240:
+        return s[:240] + "…"
+    return s
+
+
+# ── Per-turn JSON log ────────────────────────────────────────────────────────
+# Layout: backend/log/<user_slug>/<paper_id>/<chat_id>/<turn-id>.send.json
+#         backend/log/<user_slug>/<paper_id>/<chat_id>/<turn-id>.recv.json
+# Used for after-the-fact debugging of an individual chat turn (request payload
+# the AI saw + the assistant turn it produced). All errors here are swallowed
+# — logging must NEVER crash a chat stream.
+_TURN_LOG_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
+_SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _safe_path_seg(value: object, fallback: str) -> str:
+    s = _SAFE_NAME_RE.sub("_", str(value or "")).strip("._-")
+    return s or fallback
+
+
+def _user_dir_slug(user_id) -> str:
+    """Map `user_id` to a directory-safe identifier ('<id>__<email-local>').
+
+    Falls back to '<id>' if the user is not findable / has no email.
+    """
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        return _safe_path_seg(user_id, "anon")
+    user = User.query.get(uid)
+    if user and user.email:
+        local = user.email.split("@", 1)[0]
+        return f"{uid}__{_safe_path_seg(local, 'user')}"
+    return f"{uid}"
+
+
+def _turn_log_dir(user_id, paper_id, chat_id) -> str | None:
+    try:
+        u = _user_dir_slug(user_id)
+        p = _safe_path_seg(paper_id, "_no-paper")
+        c = _safe_path_seg(chat_id, "_no-chat")
+        path = os.path.join(_TURN_LOG_ROOT, u, p, c)
+        os.makedirs(path, exist_ok=True)
+        return path
+    except Exception as e:
+        log.warning("turn_log_dir failed: %s", e)
+        return None
+
+
+def _write_turn_log(dirpath: str | None, turn_id: str, kind: str, payload: dict) -> None:
+    if not dirpath or not turn_id:
+        return
+    try:
+        fname = os.path.join(dirpath, f"{turn_id}.{kind}.json")
+        body = {
+            "ts": datetime.datetime.utcnow().isoformat() + "Z",
+            "kind": kind,
+            **payload,
+        }
+        with open(fname, "w", encoding="utf-8") as f:
+            json.dump(body, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log.warning("write_turn_log failed (%s): %s", kind, e)
+
+
 # ── Upstream concurrency control ────────────────────────────────────────────
 # Global semaphore caps how many upstream requests we hold open per worker
 # process. Without this, when several users (or several papers in the same
@@ -93,8 +169,10 @@ _MAX_UPSTREAM_INFLIGHT = int(os.getenv("CHAT_UPSTREAM_INFLIGHT", "3"))
 _upstream_sem = threading.BoundedSemaphore(_MAX_UPSTREAM_INFLIGHT)
 
 
-def _call_upstream(messages, tools, model=None, _allow_no_thinking=True):
+def _call_upstream(messages, tools, model="V-DEEPSEEK", _allow_no_thinking=True):
     """POST to the upstream chat-completions endpoint with retry/backoff.
+
+    Hard-coded model: V-DEEPSEEK for all chat. No fallback chain.
 
     Returns the streaming Response on success (status 200), or None on
     network failure / persistent error. The caller is responsible for
@@ -104,19 +182,8 @@ def _call_upstream(messages, tools, model=None, _allow_no_thinking=True):
       - 429 / 5xx        → up to 3 attempts with exponential backoff (0.8s, 1.6s, 3.2s)
       - 400 + thinking   → one retry without thinking (some payloads/tool combos
                            confuse adaptive thinking on the upstream side)
-      - persistent 5xx   → fall back to V-CLAUDE → V-GLM (one regional outage
-                           on Opus shouldn't take chat down)
-      - other            → return as-is
+      - persistent error → return None (caller emits SSE error)
     """
-    primary_model = model or MODEL
-    # Models to try in order. V-CLAUDE first (most reliable in benchmarks),
-    # then Opus for quality, then GLM as last resort. One regional outage
-    # on any single backend shouldn't take chat down.
-    fallback_chain = [primary_model]
-    for fb in ("V-CLAUDE", "V-OPUS", "01/claude-sonnet-4.5-1m", "V-GLM"):
-        if fb != primary_model and fb not in fallback_chain:
-            fallback_chain.append(fb)
-
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
@@ -127,73 +194,63 @@ def _call_upstream(messages, tools, model=None, _allow_no_thinking=True):
         "max_tokens": 32000,
         "thinking": {"type": "adaptive"},
         "tools": tools,
+        "model": model,
     }
 
     if not _upstream_sem.acquire(timeout=90):
-        log.warning("chat._call_upstream: semaphore acquire timeout")
+        log.warning("_call_upstream: semaphore acquire timeout")
         return None
 
     try:
         last = None
-        for model_idx, current_model in enumerate(fallback_chain):
-            payload = dict(base_payload, model=current_model)
-            attempts = 3 if model_idx == 0 else 1  # only retry primary heavily
-            for attempt in range(attempts):
+        for attempt in range(3):
+            try:
+                resp = requests.post(
+                    API_URL, headers=headers, json=base_payload,
+                    stream=True, timeout=180,
+                )
+            except requests.RequestException as e:
+                log.warning("_call_upstream net err attempt=%d: %s", attempt, e)
+                last = None
+                time.sleep(0.8 * (2 ** attempt))
+                continue
+
+            if resp.status_code == 200:
+                return resp
+
+            # 400 + thinking → drop thinking and retry once.
+            if (resp.status_code == 400 and _allow_no_thinking
+                    and base_payload.get("thinking")):
+                resp.close()
+                base_payload.pop("thinking", None)
                 try:
-                    resp = requests.post(
-                        API_URL, headers=headers, json=payload,
+                    resp2 = requests.post(
+                        API_URL, headers=headers, json=base_payload,
                         stream=True, timeout=180,
                     )
+                    if resp2.status_code == 200:
+                        return resp2
+                    last = resp2
                 except requests.RequestException as e:
-                    log.warning("chat._call_upstream net err model=%s attempt=%d: %s",
-                                current_model, attempt, e)
+                    log.warning("_call_upstream no-think err: %s", e)
                     last = None
+
+            # 429 or 5xx → backoff and retry.
+            if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                last = resp
+                try:
+                    body = resp.raw.read(200, decode_content=True)
+                    log.warning("_call_upstream %s attempt=%d body=%r",
+                                resp.status_code, attempt, body[:200])
+                except Exception:
+                    pass
+                resp.close()
+                if attempt < 2:
                     time.sleep(0.8 * (2 ** attempt))
                     continue
 
-                if resp.status_code == 200:
-                    if model_idx > 0:
-                        log.info("chat._call_upstream fallback succeeded with %s", current_model)
-                    return resp
-
-                # 400 + thinking → drop thinking and retry the same model.
-                if (resp.status_code == 400 and _allow_no_thinking
-                        and payload.get("thinking")):
-                    resp.close()
-                    payload.pop("thinking", None)
-                    try:
-                        resp2 = requests.post(
-                            API_URL, headers=headers, json=payload,
-                            stream=True, timeout=180,
-                        )
-                        if resp2.status_code == 200:
-                            return resp2
-                        last = resp2
-                    except requests.RequestException as e:
-                        log.warning("chat._call_upstream no-think err: %s", e)
-                        last = None
-
-                # 429 or 5xx → backoff and retry, then fall through to next model.
-                if resp.status_code == 429 or 500 <= resp.status_code < 600:
-                    last = resp
-                    try:
-                        body = resp.raw.read(200, decode_content=True)
-                        log.warning("chat._call_upstream %s model=%s attempt=%d body=%r",
-                                    resp.status_code, current_model, attempt, body[:200])
-                    except Exception:
-                        pass
-                    resp.close()
-                    if attempt < attempts - 1:
-                        time.sleep(0.8 * (2 ** attempt))
-                    continue
-
-                # Other 4xx → return so caller emits a useful error.
-                return resp
-
-            # Primary model exhausted retries; try next model in chain.
-            if model_idx == 0 and len(fallback_chain) > 1:
-                log.warning("chat._call_upstream falling back from %s to %s",
-                            current_model, fallback_chain[1])
+            # Other 4xx → return so caller emits a useful error.
+            return resp
 
         return last
     finally:
@@ -488,11 +545,9 @@ def send_message(conv_id):
     if len(content) > 16000:
         return {"error": "Message is too long (max 16000 chars)"}, 400
 
-    requested_model = (data.get('model') or '').strip() or None
-    upstream_model = _resolve_model(requested_model)
-    if upstream_model is None:
-        return {"error": f"Unknown model. Allowed: {sorted(SELECTABLE_MODELS.keys())}"}, 400
-    log.info("chat.send conv=%s user=%s model=%s len=%d", conv_id, user_id, upstream_model, len(content))
+    # Frontend may still send a `model` field; ignore silently for back-compat.
+    # All chat is hard-coded to CHAT_MODEL.
+    log.info("chat.send conv=%s user=%s model=%s len=%d", conv_id, user_id, CHAT_MODEL, len(content))
 
     user_msg = ChatMessage(
         conversation_id=conv_id,
@@ -515,6 +570,25 @@ def send_message(conv_id):
     except Exception as e:
         log.exception("auto_memory.extract_facts failed: %s", e)
 
+    # Per-call JSONL log: user turn.
+    try:
+        _log_chat_call(conv.paper_id, conv.id, "user", {"content": content[:2000]})
+    except Exception:
+        log.exception("_log_chat_call user failed")
+
+    # Per-turn structured log (one JSON per request + one per response). Lets
+    # us trace any failed turn end-to-end without grepping logs.
+    turn_id = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%S") + "_" + _gen_id()
+    turn_dir = _turn_log_dir(user_id, conv.paper_id, conv.id)
+    _write_turn_log(turn_dir, turn_id, "send", {
+        "user_id": user_id,
+        "paper_id": conv.paper_id,
+        "conv_id": conv.id,
+        "model": CHAT_MODEL,
+        "content": content[:8000],
+        "len": len(content),
+    })
+
     def generate():
         try:
             sysprompt, selected_tools = _select_tools(conv, content)
@@ -530,7 +604,7 @@ def send_message(conv_id):
                 chunk_thinking = ""
                 mode_changed = False  # Set if a RouteIntent tool fires this iter
 
-                response = _call_upstream(messages, selected_tools, model=upstream_model)
+                response = _call_upstream(messages, selected_tools, model=CHAT_MODEL)
 
                 if response is None or response.status_code != 200:
                     code = response.status_code if response is not None else 'no-response'
@@ -539,19 +613,21 @@ def send_message(conv_id):
                     # model can still produce a useful text reply.
                     if code == 500 and selected_tools:
                         yield _sse("text", {"content": (
-                            "\n\n_(Upstream API hiccup — mencoba lagi tanpa tool…)_\n\n"
+                            "\n\n_(Sambungan ke AI sedang macet — mencoba lagi…)_\n\n"
                         )})
-                        retry = _call_upstream(messages, [], model=upstream_model)
+                        retry = _call_upstream(messages, [], model=CHAT_MODEL)
                         if retry is not None and retry.status_code == 200:
                             response = retry
                         else:
+                            log.warning("chat upstream retry failed: code=%s", code)
                             yield _sse("error", {"message": (
-                                f"API error: {code}. Coba pesan lebih pendek atau "
+                                "AI sedang sibuk. Coba kirim lagi sebentar, atau "
                                 "buat chat baru kalau berulang."
                             )})
                             return
                     else:
-                        yield _sse("error", {"message": f"API error: {code}"})
+                        log.warning("chat upstream failed: code=%s", code)
+                        yield _sse("error", {"message": "AI sedang sibuk. Coba kirim lagi sebentar."})
                         return
 
                 for line in response.iter_lines():
@@ -694,13 +770,17 @@ def send_message(conv_id):
                         continue
 
                     try:
-                        result = execute_tool(tool_name, args, user_id, conv.paper_id, model=upstream_model)
+                        result = execute_tool(tool_name, args, user_id, conv.paper_id, conv_id=conv.id)
                         log.info(f"[TOOL_RESULT] {tool_name} returned: {str(result)[:500]}")
                     except Exception as e:
                         log.error(f"[TOOL_ERROR] {tool_name} failed: {type(e).__name__}: {str(e)}", exc_info=True)
-                        err_msg = f"Tool {tool_name} gagal: {type(e).__name__}: {str(e)}"
-                        yield _sse("tool_result", {"name": tool_name, "result": err_msg[:2000]})
-                        yield _sse("error", {"message": err_msg})
+                        # Friendly message for the user; full detail stays in logs.
+                        friendly = _safe_user_error(
+                            f"{tool_name} gagal: {e}",
+                            fallback=f"Tool {tool_name} sedang bermasalah. Coba lagi sebentar."
+                        )
+                        yield _sse("tool_result", {"name": tool_name, "result": friendly})
+                        yield _sse("error", {"message": friendly})
                         return
 
                     # ── ProposeChips — UI hint ──────────────────────────
@@ -742,7 +822,7 @@ def send_message(conv_id):
                                 "job_id": _payload.get("job_id"),
                                 "query":  _payload.get("query"),
                                 "top_k":  _payload.get("top_k", 50),
-                                "ai_model": _payload.get("ai_model", "V-OPUS"),
+                                "ai_model": _payload.get("ai_model", "V-DEEPSEEK"),
                             })
                         except Exception:
                             pass
@@ -775,7 +855,7 @@ def send_message(conv_id):
                                 upstream_result = (
                                     f"SLR job queued (job_id={payload.get('job_id','?')}, "
                                     f"query={payload.get('query','')!r}, "
-                                    f"top_k={payload.get('top_k', 50)}, ai={payload.get('ai_model','V-OPUS')}). "
+                                    f"top_k={payload.get('top_k', 50)}, ai={payload.get('ai_model','V-DEEPSEEK')}). "
                                     f"The Literature tab will populate automatically once "
                                     f"the worker finishes (~2-5 menit). Tell the user to "
                                     f"watch the Literatur tab; meanwhile they can keep "
@@ -816,6 +896,27 @@ def send_message(conv_id):
                 thinking=assistant_thinking if assistant_thinking else None,
                 tool_calls=all_tool_calls_data if all_tool_calls_data else None
             )
+            # Per-call JSONL log: assistant turn.
+            try:
+                _log_chat_call(conv.paper_id, conv.id, "assistant", {
+                    "content": assistant_content[:4000],
+                    "tool_calls": all_tool_calls_data,
+                    "usage": total_usage,
+                })
+            except Exception:
+                log.exception("_log_chat_call assistant failed")
+            # Per-turn structured log: assistant final.
+            _write_turn_log(turn_dir, turn_id, "recv", {
+                "user_id": user_id,
+                "paper_id": conv.paper_id,
+                "conv_id": conv.id,
+                "model": CHAT_MODEL,
+                "content": assistant_content[:16000],
+                "thinking": (assistant_thinking or "")[:8000] or None,
+                "tool_calls": all_tool_calls_data,
+                "usage": total_usage,
+                "status": "ok",
+            })
             db.session.add(assistant_msg)
             db.session.commit()
 
@@ -836,7 +937,19 @@ def send_message(conv_id):
 
         except Exception as e:
             log.exception("chat stream failed")
-            yield _sse("error", {"message": str(e)})
+            try:
+                _write_turn_log(turn_dir, turn_id, "recv", {
+                    "user_id": user_id,
+                    "paper_id": conv.paper_id,
+                    "conv_id": conv.id,
+                    "model": CHAT_MODEL,
+                    "status": "error",
+                    "error_class": type(e).__name__,
+                    "error": str(e)[:4000],
+                })
+            except Exception:
+                pass
+            yield _sse("error", {"message": _safe_user_error(e)})
 
     return Response(
         stream_with_context(generate()),

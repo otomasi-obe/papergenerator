@@ -35,7 +35,7 @@ from PIL import Image, ImageDraw, ImageFont
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
 
-JSON_PATH = ROOT_DIR / "output" / "20260331_004418_robotik.json"
+JSON_PATH = BASE_DIR / "_template.json"
 TEMPLATE_PATH = BASE_DIR / "CERiMRE.docx"
 JOURNAL_NAME = TEMPLATE_PATH.stem
 
@@ -71,6 +71,60 @@ class RenderState:
     table_count: int = 0
     equation_count: int = 0
 
+
+def _set_ai_prompt_color_red(doc):
+    """Post-process output DOCX:
+    1. Set warna text MERAH untuk paragraf prompt AI gambar.
+    2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
+    Idempotent dan aman dipanggil sebelum doc.save()."""
+    from docx.shared import RGBColor
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    RED = RGBColor(0xFF, 0x00, 0x00)
+
+    def _color_prompt(p):
+        text = p.text or ""
+        if "[PROMPT UNTUK AI GAMBAR" in text or "[PROMPT AI GAMBAR" in text:
+            for r in p.runs:
+                try:
+                    r.font.color.rgb = RED
+                except Exception:
+                    pass
+
+    for p in doc.paragraphs:
+        _color_prompt(p)
+    for t in doc.tables:
+        for row in t.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    _color_prompt(p)
+
+    # Set border tabel data (skip layout 1x1, 1xN equation)
+    for t in doc.tables:
+        rows = t.rows
+        if len(rows) < 2 or len(rows[0].cells) < 2:
+            continue
+        header_text = "".join((c.text or "").strip() for c in rows[0].cells)
+        if not header_text:
+            continue
+        tbl = t._element
+        tblPr = tbl.find(qn("w:tblPr"))
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            tbl.insert(0, tblPr)
+        borders = tblPr.find(qn("w:tblBorders"))
+        if borders is None:
+            borders = OxmlElement("w:tblBorders")
+            tblPr.append(borders)
+        for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            el = borders.find(qn(f"w:{side}"))
+            if el is None:
+                el = OxmlElement(f"w:{side}")
+                borders.append(el)
+            el.set(qn("w:val"), "single")
+            el.set(qn("w:sz"), "4")
+            el.set(qn("w:space"), "0")
+            el.set(qn("w:color"), "000000")
 
 def _set_para_style(paragraph, style_id: str) -> None:
     ppr = paragraph._p.get_or_add_pPr()
@@ -875,7 +929,7 @@ def build_document(
     final_output = (
         Path(output_path)
         if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -892,6 +946,7 @@ def build_document(
     _render_sections(doc, config, Path(json_path), state)
     _add_ack_and_references(doc, config)
 
+    _set_ai_prompt_color_red(doc)
     doc.save(str(final_output))
     return final_output
 

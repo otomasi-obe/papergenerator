@@ -30,7 +30,9 @@ FIELD ADAPTATIONS:
     for medicine and life sciences. IEEE sections for engineering. Thematic sections
     for humanities/social sciences/law.
   ▶ References: use EXACTLY the format specified in the CITATION STYLE GUIDE.
-    Default if no guide: numbered IEEE format [1], [2].
+    If no citation style guide: use author-year style (Smith, 2023) for in-text mentions.
+    The system auto-numbers the references list AFTER generation — DO NOT type bracket
+    tokens like [1], [2] in section prose; the post-processor inserts numbering.
 
 {
   "title": "Specific, academic-style title — max 20 words — reflects method/approach and application/context",

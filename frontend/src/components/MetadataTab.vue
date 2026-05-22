@@ -52,7 +52,7 @@
         <label class="text-sm font-semibold text-ink-900 dark:text-ink-50">Abstract</label>
         <AiButton @click="aiAbstract" label="AI Generate" :loading="store.aiLoading" />
       </div>
-      <textarea v-model="store.paper.abstract" rows="5"
+      <textarea v-model="store.paper.abstract" rows="5" v-autosize
         placeholder="Write or generate abstract..."
         class="w-full px-4 py-2 border border-ivory-300 dark:border-anthracite-500 bg-white dark:bg-anthracite-700 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 rounded-lg focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none text-sm resize-y"></textarea>
       <!-- AI Prompt for Abstract -->
@@ -83,7 +83,7 @@
         <label class="text-sm font-semibold text-ink-900 dark:text-ink-50">Acknowledgment</label>
         <AiButton @click="aiAck" label="AI Generate" :loading="store.aiLoading" />
       </div>
-      <textarea v-model="store.paper.acknowledgment" rows="3"
+      <textarea v-model="store.paper.acknowledgment" rows="3" v-autosize
         placeholder="Acknowledgment text..."
         class="w-full px-4 py-2 border border-ivory-300 dark:border-anthracite-500 bg-white dark:bg-anthracite-700 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 rounded-lg focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none text-sm resize-y"></textarea>
     </div>

@@ -50,11 +50,19 @@ const props = defineProps({
 const store = usePaperJobsStore()
 
 // Subscribe by paperId — there's only ever one active job per paper, and the
-// store keys by paperId. jobId is accepted as a hint for symmetry with the
-// backend payload but isn't required for lookup.
+// store keys by paperId. Fall back to scanning all active jobs by jobId if
+// paperId is not yet wired (chat injection happens before paper store has
+// re-fetched its active job).
 const job = computed(() => {
-  if (!props.paperId) return null
-  return store.activeByPaper[props.paperId] || null
+  const byPaper = props.paperId
+    ? store.activeByPaper[props.paperId] || null
+    : null
+  if (byPaper) return byPaper
+  if (props.jobId) {
+    const all = Object.values(store.activeByPaper || {})
+    return all.find(j => j && j.id === props.jobId) || null
+  }
+  return null
 })
 
 const STAGE_LABELS = {

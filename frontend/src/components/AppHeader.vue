@@ -30,13 +30,6 @@
               <span>Bulan ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_month) }}</span>
               <span>Sisa</span><span class="text-right tabular-nums">{{ formatNum(quota.remaining) }}</span>
             </div>
-            <div v-if="quota.breakdown_by_model.length" class="mt-2 pt-2 border-t border-cream-200 dark:border-ash-700">
-              <div class="text-[10px] uppercase text-ink-500 dark:text-ink-400 mb-1">Per model</div>
-              <div v-for="b in quota.breakdown_by_model" :key="b.model" class="flex justify-between text-ink-600 dark:text-ink-300">
-                <span class="truncate">{{ b.model }}</span>
-                <span class="tabular-nums">{{ formatNum(b.tokens) }}</span>
-              </div>
-            </div>
           </div>
         </div>
         <div v-else-if="quota.is_unlimited" class="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-[11px] font-medium text-amber-800 dark:text-amber-200">

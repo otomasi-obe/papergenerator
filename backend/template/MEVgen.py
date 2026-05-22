@@ -467,8 +467,10 @@ def _add_table(doc: Document, item: dict) -> None:
         _append_rich_text(paragraph, title)
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
+
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    _set_table_borders_match_template(table)
     for column_index, value in enumerate(headers):
         paragraph = table.rows[0].cells[column_index].paragraphs[0]
         paragraph.paragraph_format.first_line_indent = None
@@ -627,6 +629,35 @@ def main():
         except Exception as exc:
             print(f"Error: {json_path.name} - {exc}")
 
+
+
+
+def _set_table_borders_match_template(table) -> None:
+    """Set border tabel sesuai pattern template original: FULL_GRID.
+
+    Set semua side (top, left, bottom, right, insideH, insideV) jadi single/sz=4.
+    Auto-injected oleh _fix_table_borders_v2.py.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement("w:tblPr")
+        tbl.insert(0, tbl_pr)
+    tbl_borders = tbl_pr.find(qn("w:tblBorders"))
+    if tbl_borders is None:
+        tbl_borders = OxmlElement("w:tblBorders")
+        tbl_pr.append(tbl_borders)
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        el = tbl_borders.find(qn(f"w:{edge}"))
+        if el is None:
+            el = OxmlElement(f"w:{edge}")
+            tbl_borders.append(el)
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "000000")
 
 if __name__ == "__main__":
     main()

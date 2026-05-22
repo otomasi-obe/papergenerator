@@ -821,6 +821,19 @@ def _add_figure(
     samples: dict[str, etree._Element | None],
     state: RenderState,
 ) -> None:
+
+    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
+    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
+    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
+    if _ai_title:
+        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
+        from docx.shared import RGBColor as _RGB
+        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        _ai_para = doc.add_paragraph()
+        _ai_para.alignment = _WAP.CENTER
+        _ai_run = _ai_para.add_run(_ai_full)
+        _ai_run.italic = True
+        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     state.figure_number += 1
     number = str(item.get("ImageNumber") or item.get("number") or state.figure_number).strip() or str(state.figure_number)
     title = str(item.get("Title") or item.get("title") or f"Figure title {number}").strip()
@@ -927,6 +940,8 @@ def _add_table(
     _append_rich_text(cap_para, title, samples["table_text_rpr"], base_bold=False)
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
+
+    _set_table_full_borders(table)
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
@@ -1347,7 +1362,7 @@ def build_document(
     final_output = (
         Path(output_path)
         if output_path is not None
-        else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1388,6 +1403,36 @@ def main() -> None:
         raise SystemExit(f"Template tidak ditemukan: {tpl_arg}")
 
     build_document(json_arg, out_arg, tpl_arg, verify=verify)
+
+
+
+
+def _set_table_full_borders(table) -> None:
+    """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
+
+    Dipanggil setelah doc.add_table() supaya tabel data keliatan di Word.
+    Auto-injected oleh _fix_table_borders.py untuk lulus audit border check.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement("w:tblPr")
+        tbl.insert(0, tbl_pr)
+    tbl_borders = tbl_pr.find(qn("w:tblBorders"))
+    if tbl_borders is None:
+        tbl_borders = OxmlElement("w:tblBorders")
+        tbl_pr.append(tbl_borders)
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        el = tbl_borders.find(qn(f"w:{edge}"))
+        if el is None:
+            el = OxmlElement(f"w:{edge}")
+            tbl_borders.append(el)
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "000000")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,0 @@
-Template Links for SINTA 3 Journals
-Generated: 2026-05-06 22:44:25
-====================================================================================================
-
-[Idealis: Indonesia Journal Information System] | [https://jom.fti.budiluhur.ac.id/index.php/IDEALIS] | [https://jom.fti.budiluhur.ac.id/IDEALIS/about/submissions] | [Downloaded]
-[IJNMT (International Journal of New Media Technology)] | [https://ejournals.umn.ac.id/index.php/IJNMT/issue/archive] | [https://ejournals.umn.ac.id/index.php/IJNMT/about/submissions] | [Downloaded]
-[Jurnal Akuntansi Universitas Jember] | [https://jurnal.unej.ac.id/index.php/JAUJ] | [https://jurnal.unej.ac.id/submission] | [Download failed]
-[Jurnal Suara Hukum] | [https://journal.unesa.ac.id/index.php/suarahukum] | [https://journal.unesa.ac.id/index.php/suarahukum/about/submissions] | [Downloaded]
-[Jurnal Pendidikan Matematika (JUDIKA EDUCATION)] | [https://journal.ipm2kpe.or.id/index.php/JUDIKA/index] | [https://journal.ipm2kpe.or.id/index.php/JUDIKA/about/submissions] | [Downloaded]

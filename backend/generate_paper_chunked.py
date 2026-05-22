@@ -18,7 +18,7 @@ import json
 import time
 import logging
 from pathlib import Path
-from dotenv import load_dotenv
+from env_loader import load_app_env
 from json_repair import repair_json
 
 # Reuse existing API caller with fallback
@@ -42,20 +42,15 @@ class GenerationCancelled(Exception):
 
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
-load_dotenv(BASE_DIR.parent / ".env")
-load_dotenv(BASE_DIR / ".env", override=True)
+load_app_env()
 
 AIOTOMASI_API = os.getenv("AIOTOMASI_API")
 AIOTOMASI_APIKEY = os.getenv("AIOTOMASI_APIKEY")
-AIOTOMASI_MODEL = os.getenv("AIOTOMASI_MODEL", "VIOLAGPT")
+AIOTOMASI_MODEL = os.getenv("AIOTOMASI_MODEL", "V-OPUS")
 
 # Prompt files
 PROMPT_FILE = BASE_DIR / "prompt" / "prompt.txt"
 HUMANIZE_FILE = BASE_DIR / "prompt" / "humanize.txt"
-# Slim prompts used by the per-section chunk to keep each request well under
-# the 30 KB / 30 s budget. Combined size is documented at the top of each file.
-PROMPT_SECTION_FILE = BASE_DIR / "prompt" / "prompt_section_only.txt"
-HUMANIZE_PROSE_FILE = BASE_DIR / "prompt" / "humanize_prose_only.txt"
 
 
 # ── Helper: Load prompt sections ──────────────────────────────────────────────
@@ -71,33 +66,6 @@ def _load_humanize_rules():
     if HUMANIZE_FILE.exists():
         return HUMANIZE_FILE.read_text(encoding="utf-8")
     return ""
-
-
-def _load_section_prompt():
-    """Slim section schema + numbering rules (~7.6 KB).
-
-    DEPRECATED 2026-05-22: Replaced by full prompt.txt usage per user requirement.
-    Kept for backward compatibility but no longer used by chunked generator.
-    
-    Falls back to the full prompt.txt if the slim file is missing so a partial
-    deploy doesn't break generation.
-    """
-    if PROMPT_SECTION_FILE.exists():
-        return PROMPT_SECTION_FILE.read_text(encoding="utf-8")
-    log.warning("prompt_section_only.txt missing; falling back to prompt.txt")
-    return _load_base_prompt()
-
-
-def _load_humanize_prose():
-    """Slim prose-only humanizer rules (~16 KB). Falls back to humanize.txt.
-    
-    DEPRECATED 2026-05-22: Replaced by full humanize.txt usage per user requirement.
-    Kept for backward compatibility but no longer used by chunked generator.
-    """
-    if HUMANIZE_PROSE_FILE.exists():
-        return HUMANIZE_PROSE_FILE.read_text(encoding="utf-8")
-    log.warning("humanize_prose_only.txt missing; falling back to humanize.txt")
-    return _load_humanize_rules()
 
 
 def _load_style_guide(style: str = None):
@@ -185,7 +153,8 @@ def _format_lit_for_refs(entries: list) -> str:
 
 
 # ── Helper: Load full context (history + literature + files) ──────────────────
-def _load_full_context(paper_id, conv_id=None, max_files=5, max_lit=20, history_msgs=10):
+def _load_full_context(paper_id, conv_id=None, max_files=5, max_lit=20,
+                       history_msgs=10, custom_prompt=None):
     """Build a context block with chat history + literature + files for injection.
 
     Per user requirement (perintah.txt 2026-05-22): inject full context into
@@ -197,12 +166,18 @@ def _load_full_context(paper_id, conv_id=None, max_files=5, max_lit=20, history_
         max_files: Max attached files to include (default 5).
         max_lit: Max literature items to include (default 20).
         history_msgs: Max recent chat messages to include (default 10).
+        custom_prompt: Optional caller-supplied prompt. When it already
+            contains a ``[REFERENCE DOCUMENTS]`` marker the file injection
+            block is skipped to avoid duplicating attached PDFs that were
+            inlined upstream by ``app._run_generate_full_job``.
 
     Returns:
         String under 30KB with chat history + literature + files context.
     """
-    from models import ChatMessage, LiteratureItem, PaperFile
-    
+    from models import db, ChatMessage, LiteratureItem, PaperFile
+
+    skip_files = bool(custom_prompt and "[REFERENCE DOCUMENTS]" in custom_prompt)
+
     lines = []
     total_chars = 0
     max_context_size = 30_000  # 30KB budget
@@ -269,7 +244,7 @@ def _load_full_context(paper_id, conv_id=None, max_files=5, max_lit=20, history_
             log.warning("[_load_full_context] literature failed: %s", e)
     
     # ── Attached files ────────────────────────────────────────────────────────
-    if paper_id and total_chars < max_context_size:
+    if paper_id and not skip_files and total_chars < max_context_size:
         try:
             files = (db.session.query(PaperFile)
                     .filter_by(paper_id=paper_id)
@@ -348,7 +323,8 @@ def _generate_outline(judul: str, custom_prompt: str, topic: str, style: str,
     humanize_rules = _load_humanize_rules()
     
     # Load full context: chat history + literature + files
-    context_block = _load_full_context(paper_id, conv_id, max_files=5, max_lit=20, history_msgs=10)
+    context_block = _load_full_context(paper_id, conv_id, max_files=5, max_lit=20,
+                                       history_msgs=10, custom_prompt=custom_prompt)
     
     # Build system prompt with full rules + context
     system_prompt = f"""{full_prompt}
@@ -440,7 +416,8 @@ def _generate_section(section_num: int, outline: dict, previous_sections: list,
     humanize_rules = _load_humanize_rules()
     
     # Load full context: chat history + literature + files
-    context_block = _load_full_context(paper_id, conv_id, max_files=5, max_lit=20, history_msgs=10)
+    context_block = _load_full_context(paper_id, conv_id, max_files=5, max_lit=20,
+                                       history_msgs=10, custom_prompt=custom_prompt)
 
     # Extract section-specific schema from full prompt
     # This is a simplified approach - in production, you'd parse the prompt more carefully
@@ -606,7 +583,7 @@ def _generate_references(outline: dict, all_sections: list, style: str,
     # If no literature in custom_prompt, try loading from DB via paper_id
     if not lit_entries and paper_id:
         try:
-            from models import LiteratureItem
+            from models import db, LiteratureItem
             items = (db.session.query(LiteratureItem)
                     .filter_by(paper_id=paper_id)
                     .order_by(LiteratureItem.pinned.desc(),

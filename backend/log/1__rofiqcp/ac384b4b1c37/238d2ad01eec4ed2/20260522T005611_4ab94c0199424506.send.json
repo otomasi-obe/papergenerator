@@ -1,0 +1,10 @@
+{
+  "ts": "2026-05-22T00:56:11.127330Z",
+  "kind": "send",
+  "user_id": 1,
+  "paper_id": "ac384b4b1c37",
+  "conv_id": "238d2ad01eec4ed2",
+  "model": "V-DEEPSEEK",
+  "content": "Generate paper lengkap (auto full paper).",
+  "len": 41
+}

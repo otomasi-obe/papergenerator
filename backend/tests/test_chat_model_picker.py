@@ -1,4 +1,4 @@
-"""Model selector tests for chat blueprint."""
+"""Chat model is hard-coded to V-DEEPSEEK; client-supplied model must be ignored."""
 import os
 import sys
 
@@ -9,33 +9,36 @@ os.environ.setdefault('JWT_SECRET_KEY', 'test-jwt-secret-not-real-and-not-short'
 os.environ.setdefault('SECRET_KEY', 'test-secret-not-real-and-not-default')
 
 
-def _import():
-    from chat import _resolve_model, SELECTABLE_MODELS, DEFAULT_MODEL_KEY
-    return _resolve_model, SELECTABLE_MODELS, DEFAULT_MODEL_KEY
+def test_chat_model_constant_is_v_deepseek():
+    import chat
+    assert chat.CHAT_MODEL == "V-DEEPSEEK"
 
 
-def test_known_keys_map_through():
-    resolve, allow, _ = _import()
-    for key in allow.keys():
-        assert resolve(key) == allow[key]
+def test_call_upstream_default_kwarg_is_v_deepseek():
+    """`_call_upstream(model=...)` defaults to V-DEEPSEEK."""
+    import inspect
+    import chat
+    sig = inspect.signature(chat._call_upstream)
+    assert sig.parameters["model"].default == "V-DEEPSEEK"
 
 
-def test_unknown_key_returns_none():
-    resolve, _, _ = _import()
-    assert resolve("V-FAKE") is None
-    assert resolve("anthropic-secret-name") is None
-    assert resolve("../../etc/passwd") is None
+def test_legacy_picker_attrs_removed():
+    """The old SELECTABLE_MODELS / DEFAULT_MODEL_KEY / _resolve_model API is gone."""
+    import chat
+    assert not hasattr(chat, "SELECTABLE_MODELS")
+    assert not hasattr(chat, "DEFAULT_MODEL_KEY")
+    assert not hasattr(chat, "_resolve_model")
 
 
-def test_empty_falls_back_to_default():
-    resolve, allow, default_key = _import()
-    # MODEL env unset → falls back to default key value
-    result = resolve("")
-    # Result must be either the env MODEL (if set) or the default mapped value
-    assert result in (allow[default_key], os.environ.get('AIOTOMASI_MODEL') or allow[default_key])
-
-
-def test_none_falls_back_to_default():
-    resolve, allow, default_key = _import()
-    result = resolve(None)
-    assert result in (allow[default_key], os.environ.get('AIOTOMASI_MODEL') or allow[default_key])
+def test_send_message_ignores_client_model_field():
+    """Client `model` field on the body must NOT cause a 400 — it's silently dropped.
+    We inspect source rather than firing a request to avoid spinning up app+db."""
+    import inspect
+    import chat
+    src = inspect.getsource(chat.send_message)
+    # No 400 path mentioning "Unknown model" anymore.
+    assert "Unknown model" not in src
+    # No reference to the removed picker attrs.
+    assert "SELECTABLE_MODELS" not in src
+    assert "_resolve_model" not in src
+    assert "upstream_model" not in src

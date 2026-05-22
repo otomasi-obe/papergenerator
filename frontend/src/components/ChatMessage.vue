@@ -78,6 +78,7 @@
       <PaperProgressBubble
         v-if="metaKind === 'paper_progress' && metaJobId && message.role === 'assistant'"
         :job-id="metaJobId"
+        :paper-id="currentPaperId"
         class="mt-2"
       />
 
@@ -90,6 +91,196 @@
         @accepted="$emit('revisi-accepted', $event)"
         @rejected="$emit('revisi-rejected', $event)"
       />
+
+      <!-- Inline chart preview (kind=chart_proposal). Backend tool renders the
+           chart server-side and returns a URL + spec; the user can accept it
+           into the paper or ask for a regenerate. -->
+      <ChartPreviewCard
+        v-if="metaKind === 'chart_proposal' && message.role === 'assistant'"
+        :url="message.metadata.url"
+        :spec="message.metadata.spec"
+        :image-id="message.metadata.image_id"
+        :title="message.metadata.title"
+        @accept="$emit('chart-accept', { ...message.metadata, ...$event })"
+        @regenerate="$emit('chart-regenerate', { ...message.metadata, ...$event })"
+      />
+
+      <!-- Inline long-file review (kind=file_review). Used when an attached
+           file is too big to inject in full; user picks which slice/kind to
+           pull into context. -->
+      <FileReviewCard
+        v-if="metaKind === 'file_review' && message.role === 'assistant'"
+        :filename="message.metadata.filename"
+        :word-count="message.metadata.word_count || 0"
+        :head="message.metadata.head"
+        :tail="message.metadata.tail"
+        :suggested-kinds="message.metadata.suggested_kinds"
+        :file-id="message.metadata.file_id"
+        @pick="$emit('file-review-pick', { ...message.metadata, ...$event })"
+      />
+
+      <!-- Multi-question card (kind=multi_question). Renders 1-5 questions
+           with chip options + free-text fallback. Submits a single grouped
+           user message via submitMultiQuestionAnswers. -->
+      <MultiQuestionCard
+        v-if="metaKind === 'multi_question' && message.role === 'assistant' && (message.metadata.questions || []).length"
+        :questions="message.metadata.questions"
+        @multi-question-submit="$emit('multi-question-submit', $event)"
+      />
+
+      <!-- Review plan notice (kind=review_plan). Visual-only banner that the
+           AI is starting a multi-step review pass over the paper. -->
+      <div
+        v-if="metaKind === 'review_plan' && message.role === 'assistant'"
+        class="my-2 p-3 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20"
+      >
+        <div class="flex items-start gap-2">
+          <span class="text-base leading-none mt-0.5">🔍</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+              Memulai review menyeluruh
+            </div>
+            <div
+              v-if="message.metadata.directive"
+              class="text-xs text-indigo-800 dark:text-indigo-200 mt-0.5 break-words"
+            >
+              {{ message.metadata.directive }}
+            </div>
+            <div
+              v-if="message.metadata.scope"
+              class="text-[10px] uppercase tracking-wide text-indigo-700 dark:text-indigo-300 mt-1"
+            >
+              scope: {{ message.metadata.scope }}
+            </div>
+            <div class="mt-2">
+              <button
+                type="button"
+                @click="$emit('review-cancel', message.metadata)"
+                class="px-3 py-1 rounded-full text-xs font-medium border
+                       bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
+                       border-cream-300 dark:border-ash-600
+                       text-ink-800 dark:text-ink-100"
+              >
+                Batalkan
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data revision notice (kind=revise_data). Small banner showing the
+           AI plans to revise data in Section 4 (Results). Visual-only. -->
+      <div
+        v-if="metaKind === 'revise_data' && message.role === 'assistant'"
+        class="my-2 p-2.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-xs text-amber-900 dark:text-amber-100"
+      >
+        <span class="font-medium">📊 Revisi data Section 4:</span>
+        <span class="ml-1 break-words">{{ message.metadata.directive || '(tanpa keterangan)' }}</span>
+      </div>
+
+
+      <!-- Inline validation banner (kind=validation_error). Shown when a
+           tool refuses to run (e.g. NEED_MORE_LITERATURE) and offers a
+           one-click recovery action. -->
+      <div
+        v-if="metaKind === 'validation_error' && message.role === 'assistant'"
+        class="my-2 p-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20"
+      >
+        <div class="flex items-start gap-2">
+          <span class="text-base leading-none mt-0.5">⚠️</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-amber-900 dark:text-amber-100">
+              {{ message.metadata.message || 'Tidak bisa lanjut.' }}
+            </div>
+            <div
+              v-if="message.metadata.hint"
+              class="text-xs text-amber-800 dark:text-amber-200 mt-0.5"
+            >
+              {{ message.metadata.hint }}
+            </div>
+            <div
+              v-if="message.metadata.error_code"
+              class="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-300 mt-1"
+            >
+              {{ message.metadata.error_code }}
+            </div>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <button
+                v-if="message.metadata.error_code === 'NEED_MORE_LITERATURE'"
+                type="button"
+                @click="$emit('chip-select', 'Jalankan SLR untuk mencari literatur tambahan.')"
+                class="px-3 py-1.5 rounded-full text-xs font-medium border
+                       bg-amber-100 hover:bg-amber-200 dark:bg-amber-800/40 dark:hover:bg-amber-800/60
+                       border-amber-300 dark:border-amber-700
+                       text-amber-900 dark:text-amber-100"
+              >
+                Jalankan SLR
+              </button>
+              <button
+                v-if="message.metadata.retry_prompt"
+                type="button"
+                @click="$emit('chip-select', message.metadata.retry_prompt)"
+                class="px-3 py-1.5 rounded-full text-xs font-medium border
+                       bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
+                       border-cream-300 dark:border-ash-600
+                       text-ink-800 dark:text-ink-100"
+              >
+                Coba lagi
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inline image-prompt review (kind=image_prompt_review). Posted by
+           the paperJobs hook when a full-paper job finishes; lists each
+           figure prompt with quick actions. -->
+      <div
+        v-if="metaKind === 'image_prompt_review' && message.role === 'assistant'"
+        class="my-2 p-3 rounded-lg border border-cream-300 dark:border-ash-700 bg-cream-50 dark:bg-ash-800"
+      >
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-base">🖼️</span>
+          <span class="text-sm font-medium text-ink-800 dark:text-ink-100">
+            Review prompt gambar ({{ (message.metadata.images || []).length }})
+          </span>
+        </div>
+        <ol class="space-y-2 text-xs text-ink-800 dark:text-ink-100">
+          <li
+            v-for="(im, i) in (message.metadata.images || [])"
+            :key="i"
+            class="rounded border border-cream-300 dark:border-ash-700 p-2 bg-cream-100 dark:bg-ash-900"
+          >
+            <div class="font-medium">Fig. {{ i + 1 }} — {{ im.title || 'Untitled' }}</div>
+            <div class="opacity-80 mt-0.5 whitespace-pre-wrap break-words">{{ im.prompt }}</div>
+          </li>
+        </ol>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button
+            type="button"
+            @click="$emit('chip-select', 'Generate semua prompt gambar di paper sekarang.')"
+            class="px-3 py-1.5 rounded-full text-xs font-medium
+                   bg-brown-600 hover:bg-brown-700 text-cream-50
+                   dark:bg-cream-300 dark:hover:bg-cream-200 dark:text-ink-900"
+          >Generate semua</button>
+          <button
+            type="button"
+            @click="$emit('chip-select', 'Tolong bantu edit prompt gambar dulu sebelum generate.')"
+            class="px-3 py-1.5 rounded-full text-xs font-medium border
+                   bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
+                   border-cream-300 dark:border-ash-600
+                   text-ink-800 dark:text-ink-100"
+          >Edit prompt dulu</button>
+          <button
+            type="button"
+            @click="$emit('chip-select', 'Skip generate gambar untuk sekarang.')"
+            class="px-3 py-1.5 rounded-full text-xs font-medium border
+                   bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
+                   border-cream-300 dark:border-ash-600
+                   text-ink-800 dark:text-ink-100"
+          >Skip</button>
+        </div>
+      </div>
 
       <!-- Streaming cursor -->
       <span
@@ -125,6 +316,13 @@ import css from 'highlight.js/lib/languages/css'
 import ThinkingBlock from './ThinkingBlock.vue'
 import ActionChips from './ActionChips.vue'
 import RevisiProposalCard from './RevisiProposalCard.vue'
+import ChartPreviewCard from './ChartPreviewCard.vue'
+import FileReviewCard from './FileReviewCard.vue'
+import MultiQuestionCard from './MultiQuestionCard.vue'
+import { usePaperStore } from '../stores/paper.js'
+
+const paperStore = usePaperStore()
+const currentPaperId = computed(() => paperStore.currentPaperId || '')
 
 // PaperProgressBubble.vue is owned by Agent G and may not exist on disk yet
 // when this file is built in parallel. Loading it asynchronously with a
@@ -160,7 +358,17 @@ const props = defineProps({
   isStreaming: { type: Boolean, default: false }
 })
 
-defineEmits(['pick-option', 'chip-select', 'revisi-accepted', 'revisi-rejected'])
+defineEmits([
+  'pick-option',
+  'chip-select',
+  'revisi-accepted',
+  'revisi-rejected',
+  'chart-accept',
+  'chart-regenerate',
+  'file-review-pick',
+  'multi-question-submit',
+  'review-cancel',
+])
 
 // Convenience accessors for typed-message metadata. Backend writes:
 //   metadata.kind === 'chips'           -> render ActionChips below content

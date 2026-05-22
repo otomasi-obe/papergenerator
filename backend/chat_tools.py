@@ -14,10 +14,11 @@ import socket
 import threading
 import time
 import uuid
+import datetime
 from urllib.parse import urlparse
 
 import requests
-from models import Paper, ProjectMemory, PaperFile, db
+from models import Paper, ProjectMemory, PaperFile, PaperImage, db
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,31 @@ logger = logging.getLogger(__name__)
 SAFE_BASH_COMMANDS = {'grep', 'find', 'wc', 'cat', 'head', 'tail', 'ls', 'echo', 'date', 'pwd'}
 
 MAX_RESULT_LENGTH = 6000
+
+LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logs", "chat_calls")
+try:
+    os.makedirs(LOGS_DIR, exist_ok=True)
+except Exception as _e:
+    logger.warning(f"could not create chat_calls log dir: {_e}")
+
+
+def _log_chat_call(paper_id, conv_id, role, payload):
+    """Append a JSONL line per chat call for tracing."""
+    try:
+        date_str = datetime.datetime.utcnow().strftime("%Y-%m-%d")
+        sub = os.path.join(LOGS_DIR, str(paper_id or "_global"))
+        os.makedirs(sub, exist_ok=True)
+        fname = os.path.join(sub, f"{date_str}.jsonl")
+        line = json.dumps({
+            "ts": datetime.datetime.utcnow().isoformat() + "Z",
+            "conv_id": conv_id,
+            "role": role,
+            "payload": payload,
+        }, ensure_ascii=False)
+        with open(fname, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception as e:
+        logger.warning(f"_log_chat_call failed: {e}")
 
 # Files / paths the AI must NEVER be able to read.
 SENSITIVE_FILE_NAMES = {
@@ -44,23 +70,36 @@ ALLOWED_READ_ROOTS = (
 )
 
 
-_ALLOWED_MODELS = {None, "V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}
+_ALLOWED_MODELS = {None, "V-OPUS", "V-DEEPSEEK"}
 
 
-def execute_tool(tool_name, arguments, user_id, paper_id=None, model=None):
+def execute_tool(tool_name, arguments, user_id, paper_id=None, model=None, conv_id=None):
     if model not in _ALLOWED_MODELS:
         model = None
-    logger.info(f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, model={model}, args={json.dumps(arguments, ensure_ascii=False)[:300]}")
+    logger.info(f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, model={model}, conv_id={conv_id}, args={json.dumps(arguments, ensure_ascii=False)[:300]}")
+    _log_chat_call(paper_id, conv_id, "tool_call", {
+        "tool": tool_name,
+        "arguments": arguments,
+        "model": model,
+    })
     try:
-        result = _dispatch_tool(tool_name, arguments, user_id, paper_id, model=model)
+        result = _dispatch_tool(tool_name, arguments, user_id, paper_id, model=model, conv_id=conv_id)
         logger.info(f"[EXECUTE_TOOL_OK] tool={tool_name} result_preview={str(result)[:200]}")
+        _log_chat_call(paper_id, conv_id, "tool_result", {
+            "tool": tool_name,
+            "result_preview": str(result)[:2000],
+        })
         return result
     except Exception as e:
         logger.exception(f"[EXECUTE_TOOL_ERROR] tool={tool_name} user_id={user_id} paper_id={paper_id}")
+        _log_chat_call(paper_id, conv_id, "tool_error", {
+            "tool": tool_name,
+            "error": str(e)[:2000],
+        })
         raise
 
 
-def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
+def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, conv_id=None):
     if model not in _ALLOWED_MODELS:
         model = None
     if tool_name == "WebSearch":
@@ -90,7 +129,20 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
             int(arguments.get("top_k", 50) or 50),
             int(arguments.get("per_source", 60) or 60),
             arguments.get("year_from"),
-            arguments.get("ai_model") or model or "V-OPUS",
+            arguments.get("ai_model") or model or "V-DEEPSEEK",
+        )
+    elif tool_name == "AddLiterature":
+        kw = (arguments.get("keyword") or "").strip()
+        if not kw:
+            return "Error: keyword is required"
+        return _run_slr_tool(
+            paper_id, user_id,
+            kw,
+            None,
+            int(arguments.get("top_k", 30) or 30),
+            60,
+            arguments.get("year_from"),
+            "V-DEEPSEEK",
         )
     elif tool_name == "GetLiterature":
         return _get_literature_tool(paper_id, user_id,
@@ -211,6 +263,25 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None):
             (arguments.get("kind") or "other"),
             (arguments.get("caption") or ""),
         )
+    elif tool_name == "GenerateChart":
+        return _generate_chart_tool(paper_id, user_id, arguments)
+    elif tool_name == "GetParagraphContext":
+        return _get_paragraph_context(paper_id, user_id, arguments)
+    elif tool_name == "ReviewLargeFile":
+        return _review_large_file(paper_id, user_id, arguments)
+    elif tool_name == "AskQuestions":
+        qs = arguments.get("questions") or []
+        if not isinstance(qs, list) or not qs:
+            return "Error: questions array is required"
+        return _propose("multi_question", {"questions": qs[:5]})
+    elif tool_name == "ReviewPaper":
+        return _propose("review_plan", {
+            "directive": arguments.get("directive", ""),
+            "scope": arguments.get("scope", "whole"),
+            "suggestions": [],
+        })
+    elif tool_name == "ReviseData":
+        return _propose("revise_data", {"directive": arguments.get("directive", "")})
     else:
         return f"Unknown tool: {tool_name}"
 
@@ -688,8 +759,8 @@ def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
     except (TypeError, ValueError):
         year_from_int = None
 
-    if ai_model not in {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}:
-        ai_model = "V-OPUS"
+    if ai_model not in {"V-OPUS", "V-DEEPSEEK"}:
+        ai_model = "V-DEEPSEEK"
 
     job = enqueue_slr_job(
         paper_id=paper_id, user_id=int(user_id), query=q,
@@ -764,6 +835,30 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     if not api_key:
         return "Error: AIOTOMASI_APIKEY is not configured on the server."
 
+    # Pre-flight: require ≥20 literature rows (or at least one MUST READ pin)
+    # before kicking off generation. Without enough SLR coverage the writer
+    # falls back to fabricated references; surface a structured validation
+    # error so the frontend can offer to run SLR first.
+    if paper_id:
+        try:
+            from models import LiteratureItem
+            n_lit = LiteratureItem.query.filter_by(paper_id=paper_id).count()
+            n_must = LiteratureItem.query.filter_by(
+                paper_id=paper_id, must_read=True,
+            ).count()
+        except Exception:
+            n_lit, n_must = 0, 0
+        if n_lit < 20 and n_must == 0:
+            return _propose("validation_error", {
+                "error_code": "NEED_MORE_LITERATURE",
+                "message": (
+                    f"Baru ada {n_lit} literatur. Minimal 20 paper SLR untuk "
+                    f"generate berkualitas. Mau jalankan SLR otomatis dulu?"
+                ),
+                "current": n_lit,
+                "required": 20,
+            })
+
     # Collect attached file texts (capped) so the generator can use them as refs
     pdf_texts = []
     if use_attached_files and paper_id:
@@ -799,6 +894,11 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     literature_block = _format_literature_block(paper_id)
 
     outline = _plan_outline(prompt, memory_lines, topic, style)
+
+    # Resolve effective citation-style slug: explicit kwarg > memory > default.
+    # The slug must match a file under prompt/style/<slug>.txt so
+    # generate_paper_chunked._load_style_guide can load the right rules.
+    effective_style = (style or "").strip() or citation_style or None
 
     # Build the writer's custom_prompt: full memory block as source-of-truth
     # FIRST (so every fact the user locked in survives the prompt.txt pipeline),
@@ -847,17 +947,15 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
             args=(job_id, prompt, int(user_id)),
             kwargs={
                 "topic": topic,
-                "style": style,
+                "style": effective_style,
                 "pdf_texts": pdf_texts,
                 "custom_prompt": custom_prompt,
                 "paper_id": paper_id,
-                "model": model,
-                "chunked": True,  # Use chunked generation to avoid 30s gateway timeouts
             },
             daemon=True,
         )
         thread.start()
-        logger.info("paper.generate model=%s prompt=%s", model or "<env>", prompt[:80])
+        logger.info("paper.generate prompt=%s", prompt[:80])
     except Exception as e:
         # Cleanup the AiJob row so the paper isn't stuck with a phantom 'pending' job
         try:
@@ -888,7 +986,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
         "job_id": job_id,
         "prompt": prompt,
         "topic": topic,
-        "style": style,
+        "style": effective_style,
         "attached_files_used": len(pdf_texts),
         "outlined": bool(outline),
     }
@@ -901,7 +999,7 @@ def _plan_outline(prompt: str, memory_lines: str, topic: str, style: str) -> str
     are non-fatal — the writer step is still ok with an empty custom_prompt."""
     base = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
     api_key = os.getenv("AIOTOMASI_APIKEY") or ""
-    model = os.getenv("AIOTOMASI_MODEL") or ""
+    model = "V-DEEPSEEK"
     if not (base and api_key and model):
         return ""
 
@@ -1263,6 +1361,206 @@ def get_memory_summary(paper_id) -> str:
     return "\n".join(lines)
 
 
+def _generate_chart_tool(paper_id, user_id, args):
+    """Wrapper around chart_generator.generate_chart that persists the result
+    as a PaperImage row so it can be referenced from a section just like any
+    other figure."""
+    if not paper_id:
+        return "Error: this chat is not linked to a paper."
+    if not user_id:
+        return "Error: not authenticated."
+
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return "Error: paper not found"
+
+    try:
+        from chart_generator import generate_chart, ChartSpec
+        from paper_utils import safe_paper_dir
+    except Exception as e:
+        return f"Error: chart generator unavailable ({e})"
+
+    try:
+        spec_kwargs = {
+            "kind": args.get("kind"),
+            "title": args.get("title") or "",
+            "xlabel": args.get("xlabel") or "",
+            "ylabel": args.get("ylabel") or "",
+            "data": args.get("data") or [],
+            "series_labels": args.get("series_labels") or [],
+            "x_data": args.get("x_data"),
+        }
+        spec = ChartSpec(**spec_kwargs)
+    except Exception as e:
+        return f"Error: invalid chart spec ({e})"
+
+    try:
+        chart_path = generate_chart(paper_id, spec)
+    except Exception as e:
+        return f"Error: chart generation failed ({e})"
+
+    try:
+        paper_dir = safe_paper_dir(paper_id)
+        if paper_dir is None:
+            return "Error: invalid paper id (path resolution failed)"
+        paper_dir.mkdir(parents=True, exist_ok=True)
+
+        src = os.path.abspath(chart_path)
+        ext = os.path.splitext(src)[1].lower() or ".png"
+        fname = f"{uuid.uuid4().hex}{ext}"
+        dest = paper_dir / fname
+        try:
+            import shutil
+            shutil.copyfile(src, str(dest))
+        except Exception as e:
+            return f"Error: persisting chart failed ({e})"
+
+        img = PaperImage(
+            paper_id=paper_id,
+            user_id=int(user_id),
+            filename=fname,
+            original_name=f"chart_{spec.kind}_{fname}",
+            file_path=f"{paper_id}/{fname}",
+        )
+        db.session.add(img)
+        db.session.commit()
+        img_id = img.id
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return f"Error: persisting chart failed ({e})"
+
+    return PROPOSAL_PREFIX + json.dumps({
+        "kind": "chart_proposal",
+        "image_id": img_id,
+        "filename": fname,
+        "url": f"/api/images/{paper_id}/{fname}",
+        "spec": {"kind": args.get("kind"), "title": args.get("title")},
+    }, ensure_ascii=False)
+
+
+def _get_paragraph_context(paper_id, user_id, args):
+    """Token-efficient context for paragraph-scoped revisions: returns the
+    target paragraph plus immediate neighbors plus a one-line outline."""
+    import re as _re
+    if not paper_id:
+        return "No paper linked to this conversation."
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return "Error: paper not found"
+    try:
+        s_idx = int(args["section_index"]) - 1
+        c_idx = int(args["content_index"])
+    except (KeyError, ValueError, TypeError):
+        return "Error: section_index and content_index must be integers"
+
+    sections = (paper.data or {}).get("sections") or []
+    if s_idx < 0 or s_idx >= len(sections):
+        return f"Error: section_index out of range (have {len(sections)})"
+    sec = sections[s_idx]
+    content = sec.get("content") or []
+    if c_idx < 0 or c_idx >= len(content):
+        return f"Error: content_index out of range (section has {len(content)} items)"
+
+    target = content[c_idx] if isinstance(content[c_idx], dict) else {}
+    window = max(0, int(args.get("neighbor_window", 1) or 0))
+    cit_re = _re.compile(r"\[\d+\]|\(\w+,\s*\d{4}\)")
+    fig_re = _re.compile(r"Fig\.?\s*\d+|Table\s*[IVX0-9]+|Eq\.?\s*\(?\d+\)?", _re.I)
+    text = target.get("text") or ""
+
+    outline = []
+    for i, ci in enumerate(content):
+        if not isinstance(ci, dict):
+            continue
+        snippet = (ci.get("text") or "")[:80]
+        marker = " ← target" if i == c_idx else ""
+        outline.append(f"P{i} — {snippet}{marker}")
+
+    try:
+        mems = {m.key: m.value for m in ProjectMemory.query.filter_by(paper_id=paper_id).all()}
+    except Exception:
+        mems = {}
+
+    prev_text = ""
+    next_text = ""
+    if window > 0:
+        if c_idx > 0 and isinstance(content[c_idx - 1], dict):
+            prev_text = content[c_idx - 1].get("text") or ""
+        if c_idx + 1 < len(content) and isinstance(content[c_idx + 1], dict):
+            next_text = content[c_idx + 1].get("text") or ""
+
+    payload = {
+        "section_meta": {
+            "index": s_idx + 1,
+            "title": sec.get("title", ""),
+            "neighbor_titles": {
+                "prev": sections[s_idx - 1].get("title") if s_idx > 0 else None,
+                "next": sections[s_idx + 1].get("title") if s_idx + 1 < len(sections) else None,
+            },
+            "section_outline": outline,
+        },
+        "target": {
+            "section_index": s_idx + 1,
+            "content_index": c_idx,
+            "kind": target.get("id", "text"),
+            "text": text,
+        },
+        "neighbors": {
+            "prev": prev_text,
+            "next": next_text,
+        },
+        "citations_in_target": list(set(cit_re.findall(text))),
+        "fig_table_refs": list(set(fig_re.findall(text))),
+        "constraints": {
+            "language": mems.get("paper_language", "id"),
+            "citation_style": mems.get("citation_style", "IEEE"),
+        },
+    }
+    if args.get("include_paper_meta"):
+        payload["paper_meta"] = {"title": paper.title or ""}
+    return _truncate(json.dumps(payload, ensure_ascii=False))
+
+
+def _review_large_file(paper_id, user_id, args):
+    """For attached files >3000 words, return head/tail preview plus a
+    proposal asking the user (via ProposeChips) which kind of content to
+    extract. For smaller files, fall back to ReadAttachedFile semantics."""
+    if not paper_id:
+        return "No paper linked to this conversation."
+    file_id = args.get("file_id")
+    if file_id is None:
+        return "Error: file_id is required."
+    try:
+        fid = int(file_id)
+    except (TypeError, ValueError):
+        return "Error: file_id must be an integer."
+
+    f = PaperFile.query.filter_by(id=fid, paper_id=paper_id, user_id=user_id).first()
+    if not f:
+        return f"File id={fid} not found in this paper."
+
+    text = f.extracted_text or ""
+    words = text.split()
+    word_count = len(words)
+    if word_count <= 3000:
+        return _read_attached_file(paper_id, user_id, fid)
+
+    head = " ".join(words[:200])
+    tail = " ".join(words[-200:])
+    return PROPOSAL_PREFIX + json.dumps({
+        "kind": "file_review",
+        "file_id": fid,
+        "filename": f.original_name or f.filename,
+        "word_count": word_count,
+        "head": head,
+        "tail": tail,
+        "suggested_kinds": ["data", "methods", "results", "abstract", "literature"],
+        "needs_user_pick": True,
+    }, ensure_ascii=False)
+
+
 CHAT_TOOLS = [
     {
         "name": "WebSearch",
@@ -1352,7 +1650,7 @@ CHAT_TOOLS = [
                 "top_k": {"type": "integer", "description": "How many to summarize (default 50, max 100)."},
                 "per_source": {"type": "integer", "description": "Max results per source (default 60)."},
                 "year_from": {"type": "integer", "description": "Optional cutoff year."},
-                "ai_model": {"type": "string", "description": "V-OPUS|V-CLAUDE|V-GPT|V-GLM. Default V-OPUS."},
+                "ai_model": {"type": "string", "description": "V-OPUS|V-DEEPSEEK. Default V-DEEPSEEK."},
             },
             "required": ["query"],
         },
@@ -1706,12 +2004,22 @@ CHAT_TOOLS = [
     {
         "name": "ClassifyFile",
         "description": (
-            "Mark an uploaded file's role for this paper: data, paper_read, "
-            "paper_slr, template, image, or other. Call this AFTER asking the "
-            "user 'ini file apa?' via ProposeChips and getting their answer. "
-            "If kind=image, also pass the user's caption. The classification "
-            "persists across chats so other tools (GenerateFullPaper, SLR "
-            "import, image insertion) can use the right files."
+            "Mark an uploaded file's role for this paper. Call this AFTER the "
+            "user picks via AskQuestions/ProposeChips. Canonical kinds + "
+            "default chip labels (Bahasa Indonesia):\n"
+            "  - paper_slr    'Paper review (masuk SLR)'\n"
+            "  - paper_read   'Paper jadi (retemplating, skip SLR)'\n"
+            "  - data         'Data file (tabel/grafik)'\n"
+            "  - image        'Gambar (figure paper)'\n"
+            "  - template     'Template jurnal'\n"
+            "  - other        fallback when none fits\n"
+            "If kind=image, also pass the user's caption. Files classified as "
+            "paper_read MUST be skipped from SLR; tell the user the file is "
+            "marked for retemplating only. Files classified as paper_slr with "
+            ">3000 words should be paired with ReviewLargeFile so the user "
+            "picks which sections (data/methods/results/abstract/literature) "
+            "to extract — one file at a time. The classification persists "
+            "across chats."
         ),
         "input_schema": {
             "type": "object",
@@ -1730,6 +2038,118 @@ CHAT_TOOLS = [
                 },
             },
             "required": ["file_id", "kind"],
+        },
+    },
+    {
+        "name": "GenerateChart",
+        "description": "Generate a matplotlib chart from data and persist it as a PaperImage. Use this for Section 4 (Results) figures when the user has confirmed the chart kind and data shape. After this returns, propose a ProposeSection that references Fig. N where the new chart should appear.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "kind": {"type": "string", "enum": ["line", "bar", "scatter", "hist", "box", "heatmap", "pie"]},
+                "title": {"type": "string"},
+                "xlabel": {"type": "string"},
+                "ylabel": {"type": "string"},
+                "data": {"type": "array", "items": {"type": "array", "items": {"type": "number"}}},
+                "series_labels": {"type": "array", "items": {"type": "string"}},
+                "x_data": {"type": "array"},
+            },
+            "required": ["kind", "title", "data"],
+        },
+    },
+    {
+        "name": "GetParagraphContext",
+        "description": "Get a single paragraph plus its immediate neighbors and a section outline. Use this BEFORE Paraphrase/FixGrammar/Translate when the scope is a single paragraph. Returns ~80% fewer tokens than GetPaperSection while still giving you context to preserve voice, citations, and figure references.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "section_index": {"type": "integer", "description": "1-indexed section number (1..5)"},
+                "content_index": {"type": "integer", "description": "0-indexed position in section.content array"},
+                "neighbor_window": {"type": "integer", "default": 1, "description": "How many paragraphs above/below to include"},
+                "include_paper_meta": {"type": "boolean", "default": False},
+            },
+            "required": ["section_index", "content_index"],
+        },
+    },
+    {
+        "name": "ReviewLargeFile",
+        "description": "Review an attached file >3000 tokens. Returns metadata + length info + first/last paragraphs only, telling AI to ask user (via ProposeChips) which kinds to extract: data, methods, results, abstract, literature. Pair with ProposeChips so user picks what to keep.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_id": {"type": "integer"},
+            },
+            "required": ["file_id"],
+        },
+    },
+    {
+        "name": "AskQuestions",
+        "description": "Ask the user up to 5 multiple-choice questions at once (Claude-Code style). Each question has 2-6 chip options; the user can also type a free-text answer. Use ONLY in discovery mode for batched fact gathering. Frontend renders MultiQuestionCard. After user answers, auto-memory persists each (key, value).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "questions": {
+                    "type": "array",
+                    "minItems": 1, "maxItems": 5,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {"type": "string", "description": "Memory key, e.g. jurusan, topik, metode."},
+                            "label": {"type": "string", "description": "Question text in user's language."},
+                            "options": {
+                                "type": "array",
+                                "minItems": 2, "maxItems": 6,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "label": {"type": "string"},
+                                        "value": {"type": "string"},
+                                    },
+                                    "required": ["label", "value"],
+                                },
+                            },
+                        },
+                        "required": ["key", "label", "options"],
+                    },
+                },
+            },
+            "required": ["questions"],
+        },
+    },
+    {
+        "name": "ReviewPaper",
+        "description": "Run a holistic review of the paper per the user's directive. Returns a list of suggested edits the user can accept individually. Use this when the user asks for a comprehensive revisi/review.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "directive": {"type": "string", "description": "User's review directive (e.g., 'tighten language', 'check coherence', 'verify citations')."},
+                "scope": {"type": "string", "enum": ["whole", "section1", "section2", "section3", "section4", "section5"], "default": "whole"},
+            },
+            "required": ["directive"],
+        },
+    },
+    {
+        "name": "ReviseData",
+        "description": "Trigger Section 4 (Results) data revision. Use this when the user wants to fix data, regenerate the chart from new numbers, or re-cast the analysis.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "directive": {"type": "string"},
+            },
+            "required": ["directive"],
+        },
+    },
+    {
+        "name": "AddLiterature",
+        "description": "Add new literature via SLR. Reads existing GetLiterature first, then enqueues a new RunSLR job with the provided keyword(s). Use when the user wants to expand the reference list.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "keyword": {"type": "string"},
+                "year_from": {"type": "integer"},
+                "top_k": {"type": "integer", "default": 30},
+            },
+            "required": ["keyword"],
         },
     },
 ]

@@ -34,7 +34,7 @@
         <!-- LaTeX Input -->
         <div>
           <label class="block text-xs text-gray-500 mb-1">LaTeX</label>
-          <textarea v-model="eq.latex" rows="2"
+          <textarea v-model="eq.latex" rows="2" v-autosize
             placeholder="e.g.: E = mc^2 or \frac{a}{b}"
             class="w-full px-3 py-2 border rounded font-mono text-sm focus:ring-2 focus:ring-blue-200 outline-none resize-y"></textarea>
         </div>

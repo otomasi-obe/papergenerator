@@ -515,7 +515,21 @@ export const usePaperStore = defineStore('paper', () => {
       tabel: { id: 'tabel', Title: '', Headers: ['Col 1', 'Col 2'], Rows: [['', '']] },
       rumus: { id: 'rumus', latex: '' }
     }
-    if (items[type]) container.push({ ...items[type] })
+    if (items[type]) {
+      container.push({ ...items[type] })
+      if (type === 'gambar') {
+        try {
+          // Lazy import to avoid the chat.js ↔ paper.js circular dep loop.
+          import('./chat.js').then(({ useChatStore }) => {
+            const chat = useChatStore()
+            chat.injectAssistantMessage?.(
+              'Saya menambahkan slot gambar baru di section. Itu gambar apa keterangannya? '
+              + 'Tulis caption + deskripsi visual singkat, supaya saya bisa generate prompt format (create image"...").'
+            )
+          }).catch(() => { /* chat store unavailable — silent no-op */ })
+        } catch { /* ignore */ }
+      }
+    }
   }
   function removeContent(container, idx) { container.splice(idx, 1) }
   function moveContent(container, idx, dir) {
@@ -772,6 +786,17 @@ export const usePaperStore = defineStore('paper', () => {
         paper.value.figures[figureIndex].url = img.url
       }
       showToast('Image uploaded!', 'success')
+      try {
+        // Nudge the chat so the AI can ask for a caption + reference context.
+        // Lazy import to avoid the chat.js ↔ paper.js circular dep loop.
+        import('./chat.js').then(({ useChatStore }) => {
+          const chat = useChatStore()
+          chat.injectAssistantMessage?.(
+            `Gambar "${file.name}" berhasil diupload. Itu gambar apa keterangannya? `
+            + `Saya pakai untuk caption Fig. dan referensi di prose.`
+          )
+        }).catch(() => { /* chat store unavailable — silent no-op */ })
+      } catch { /* ignore */ }
       return img
     } catch (err) {
       showToast('Upload failed: ' + (err.response?.data?.error || err.message), 'error')

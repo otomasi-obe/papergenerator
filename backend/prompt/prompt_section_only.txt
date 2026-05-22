@@ -50,7 +50,7 @@ Cross-references in body text:
 ──────────────────────────────────────────────────────────────────
 CITATION FORMAT (in-text)
 ──────────────────────────────────────────────────────────────────
-Default: numbered IEEE — "[1]", "[2]", "[1], [3]", "[2]–[5]".
+Default: author-year (Smith, 2023). System auto-numbers references — DO NOT type bracket tokens in prose.
 If a CITATION STYLE GUIDE is injected later in this prompt, follow it instead.
 Every citation in the body MUST eventually appear in the paper's references
 list (built by the references chunk). Do NOT invent reference list entries.

@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import or_, update as sa_update
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 from models import LiteratureItem, SlrJob, db
 from SLR.pipeline import run as run_slr_pipeline
@@ -67,7 +68,7 @@ def enqueue_slr_job(*, paper_id: str, user_id: int,
                     top_k: int = 50,
                     year_from: int | None = None,
                     ai_summarize: bool = True,
-                    ai_model: str = "V-OPUS") -> SlrJob:
+                    ai_model: str = "V-DEEPSEEK") -> SlrJob:
     """Insert an SlrJob row in `queued` status and return it. Workers pick it up."""
     job = SlrJob(
         id=_gen_id(),
@@ -80,7 +81,7 @@ def enqueue_slr_job(*, paper_id: str, user_id: int,
         per_source=int(per_source),
         year_from=year_from,
         ai_summarize=bool(ai_summarize),
-        ai_model=(ai_model or "V-OPUS")[:40],
+        ai_model=(ai_model or "V-DEEPSEEK")[:40],
         status="queued",
         stage="queued",
         progress=0,
@@ -95,37 +96,49 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
     """Kill orphaned 'running' jobs whose started_at is missing or older than
     JOB_TIMEOUT. Returns number of rows updated. Caller must hold app context.
     """
-    now = datetime.now(timezone.utc)
-    timeout_cutoff = now - timedelta(seconds=JOB_TIMEOUT)
-    boot_cutoff = now - timedelta(minutes=30)
-    cutoff = max(timeout_cutoff, boot_cutoff) if reason != "Worker restart" else boot_cutoff
-    # On boot, sweep anything 'running' for >30min OR with no started_at.
-    # On periodic sweep, also kill jobs running past JOB_TIMEOUT.
-    if reason == "Worker restart":
-        q = db.session.query(SlrJob).filter(
-            SlrJob.status == "running",
-            or_(SlrJob.started_at.is_(None), SlrJob.started_at < cutoff),
+    try:
+        now = datetime.now(timezone.utc)
+        timeout_cutoff = now - timedelta(seconds=JOB_TIMEOUT)
+        boot_cutoff = now - timedelta(minutes=30)
+        cutoff = max(timeout_cutoff, boot_cutoff) if reason != "Worker restart" else boot_cutoff
+        # On boot, sweep anything 'running' for >30min OR with no started_at.
+        # On periodic sweep, also kill jobs running past JOB_TIMEOUT.
+        if reason == "Worker restart":
+            q = db.session.query(SlrJob).filter(
+                SlrJob.status == "running",
+                or_(SlrJob.started_at.is_(None), SlrJob.started_at < cutoff),
+            )
+        else:
+            q = db.session.query(SlrJob).filter(
+                SlrJob.status == "running",
+                or_(SlrJob.started_at.is_(None),
+                    SlrJob.started_at < timeout_cutoff),
+            )
+        n = q.update(
+            {"status": "error", "error": reason, "finished_at": now},
+            synchronize_session=False,
         )
-    else:
-        q = db.session.query(SlrJob).filter(
-            SlrJob.status == "running",
-            or_(SlrJob.started_at.is_(None),
-                SlrJob.started_at < timeout_cutoff),
+        if n:
+            log.info("slr.sweep killed %d dead 'running' job(s) reason=%s", n, reason)
+            _safe_commit(where=f"sweep:{reason}")
+        else:
+            # keep the txn clean even if no rows touched
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        return n
+    except (OperationalError, DBAPIError) as e:
+        log.warning(
+            "slr.sweep skipped due to DB busy/lock (reason=%s); jobs will sweep "
+            "on next worker tick: %s",
+            reason, e,
         )
-    n = q.update(
-        {"status": "error", "error": reason, "finished_at": now},
-        synchronize_session=False,
-    )
-    if n:
-        log.info("slr.sweep killed %d dead 'running' job(s) reason=%s", n, reason)
-        _safe_commit(where=f"sweep:{reason}")
-    else:
-        # keep the txn clean even if no rows touched
         try:
-            db.session.commit()
-        except Exception:
             db.session.rollback()
-    return n
+        except Exception:
+            pass
+        return 0
 
 
 def start_slr_workers(app) -> None:
@@ -348,13 +361,10 @@ def _run_job(app, job_id: str):
         # Persist top_k records as LiteratureItem rows (pinned=False, source_kind='slr').
         # Replaces any prior literature rows for THIS job. Other SLR jobs on the
         # same paper keep their rows so the user's pins/edits survive.
-        try:
-            db.session.query(LiteratureItem).filter_by(slr_job_id=job_id).delete(
-                synchronize_session=False)
-            _safe_commit(job_id, where="literature.delete")
-        except Exception:
-            log.exception("slr.literature delete failed job=%s", job_id)
-
+        #
+        # DELETE+INSERT is wrapped in a SAVEPOINT so a mid-flight failure
+        # rolls back to the pre-delete state instead of leaving the row set
+        # empty. The outer commit only happens once everything succeeded.
         top = payload.get("top_k") or []
 
         # Detect a totally empty pipeline run — every source failed (e.g.
@@ -390,46 +400,59 @@ def _run_job(app, job_id: str):
         except Exception:
             log.exception("slr.literature doi preload failed job=%s", job_id)
 
-        for rec in top:
-            try:
-                title = (rec.get("title") or "").strip()
-                if not title:
-                    # Predatory / malformed records sometimes slip through
-                    # with empty titles. Skip them.
-                    continue
-                doi_raw = rec.get("doi") or None
-                doi_key = (doi_raw or "").strip().lower()
-                if doi_key and doi_key in existing_dois:
-                    # Don't shadow a row the user may have already pinned/edited.
-                    continue
-                pi = rec.get("publisher_info") or {}
-                item = LiteratureItem(
-                    paper_id=job.paper_id,
-                    user_id=job.user_id,
-                    source_kind='slr',
-                    source=rec.get("source") or '',
-                    title=title,
-                    authors=rec.get("authors") or [],
-                    year=rec.get("year") or pi.get("year"),
-                    venue=rec.get("venue") or pi.get("venue") or '',
-                    publisher=rec.get("publisher") or pi.get("publisher") or '',
-                    doi=doi_raw,
-                    url=rec.get("url") or '',
-                    abstract=rec.get("abstract") or '',
-                    summary=rec.get("summary") or '',
-                    citations=rec.get("citations"),
-                    score_total=rec.get("score_total"),
-                    score_breakdown=rec.get("score_breakdown") or {},
-                    must_read=bool(rec.get("must_read")),
-                    is_relevant=bool(rec.get("is_relevant", True)),
-                    slr_job_id=job_id,
-                )
-                db.session.add(item)
-                if doi_key:
-                    existing_dois.add(doi_key)
-            except Exception:
-                log.exception("slr.literature insert failed")
-        _safe_commit(job_id, where="literature.insert")
+        try:
+            with db.session.begin_nested():
+                db.session.query(LiteratureItem).filter_by(
+                    slr_job_id=job_id).delete(synchronize_session=False)
+
+                for rec in top:
+                    title = (rec.get("title") or "").strip()
+                    if not title:
+                        # Predatory / malformed records sometimes slip through
+                        # with empty titles. Skip them.
+                        continue
+                    doi_raw = rec.get("doi") or None
+                    doi_key = (doi_raw or "").strip().lower()
+                    if doi_key and doi_key in existing_dois:
+                        # Don't shadow a row the user may have already pinned/edited.
+                        continue
+                    pi = rec.get("publisher_info") or {}
+                    item = LiteratureItem(
+                        paper_id=job.paper_id,
+                        user_id=job.user_id,
+                        source_kind='slr',
+                        source=rec.get("source") or '',
+                        title=title,
+                        authors=rec.get("authors") or [],
+                        year=rec.get("year") or pi.get("year"),
+                        venue=rec.get("venue") or pi.get("venue") or '',
+                        publisher=rec.get("publisher") or pi.get("publisher") or '',
+                        doi=doi_raw,
+                        url=rec.get("url") or '',
+                        abstract=rec.get("abstract") or '',
+                        summary=rec.get("summary") or '',
+                        citations=rec.get("citations"),
+                        score_total=rec.get("score_total"),
+                        score_breakdown=rec.get("score_breakdown") or {},
+                        must_read=bool(rec.get("must_read")),
+                        is_relevant=bool(rec.get("is_relevant", True)),
+                        slr_job_id=job_id,
+                    )
+                    db.session.add(item)
+                    if doi_key:
+                        existing_dois.add(doi_key)
+            _safe_commit(job_id, where="literature.persist")
+        except Exception:
+            db.session.rollback()
+            log.exception("slr.literature persist failed job=%s", job_id)
+            j = db.session.query(SlrJob).filter_by(id=job_id).first()
+            if j and j.status == "running":
+                j.status = "error"
+                j.stage = "error"
+                j.error = "Failed to persist literature rows"
+                j.finished_at = datetime.now(timezone.utc)
+                _safe_commit(job_id, where="error.persist")
+            return
 
         j = db.session.query(SlrJob).filter_by(id=job_id).first()
         if not j:

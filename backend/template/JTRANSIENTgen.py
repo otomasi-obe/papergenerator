@@ -674,6 +674,12 @@ def _add_front_matter(doc: Document, config: dict[str, Any], proto: dict[str, et
 
     abstract_title = _new_paragraph(doc, proto["abstract_title_ppr"])
     _append_run(abstract_title, "Abstrak", proto["abstract_title_rpr"])
+    # Set italic + superscript di run pertama (sesuai template asli)
+    for i, r in enumerate(abstract_title.runs):
+        r.italic = True
+        r.bold = True
+        if i == 0:
+            r.font.superscript = True
 
     _new_paragraph(doc, proto["blank_justify_ppr"])
 
@@ -739,6 +745,19 @@ def _add_subsection_heading(
 
 
 def _add_figure(doc: Document, item: dict[str, Any], json_path: Path, proto: dict[str, etree._Element | None], state: RenderState) -> None:
+
+    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
+    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
+    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
+    if _ai_title:
+        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
+        from docx.shared import RGBColor as _RGB
+        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        _ai_para = doc.add_paragraph()
+        _ai_para.alignment = _WAP.CENTER
+        _ai_run = _ai_para.add_run(_ai_full)
+        _ai_run.italic = True
+        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     title = _fallback_text(item.get("Title", ""), f"Judul gambar {state.figure_number}")
     image_path = _resolve_path(str(item.get("Path", "")).strip(), json_path)
 
@@ -910,7 +929,7 @@ def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None)
     final_output = (
         Path(output_path)
         if output_path is not None
-        else json_path.parent / f"{JOURNAL_NAME}_{json_path.stem}.docx"
+        else json_path.parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -924,6 +943,35 @@ def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None)
 
     state = RenderState()
     _render_sections(doc, config, json_path, prototypes, state)
+
+    # Inject inline section break (cols=2 continuous) sebelum references
+    # untuk match struktur 4-section original (title 1col -> body 2col ->
+    # refs 2col -> final 2col).
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn as _qn
+    from copy import deepcopy as _deepcopy
+
+    # Ambil pgSz/pgMar dari final body sectPr supaya page setup match
+    body_el = doc._element.body
+    final_sectpr = body_el.find(_qn("w:sectPr"))
+
+    break_para = doc.add_paragraph()
+    pPr = break_para._p.get_or_add_pPr()
+    sectPr = OxmlElement("w:sectPr")
+    sec_type = OxmlElement("w:type")
+    sec_type.set(_qn("w:val"), "continuous")
+    sectPr.append(sec_type)
+    if final_sectpr is not None:
+        for tag in ("w:pgSz", "w:pgMar"):
+            src = final_sectpr.find(_qn(tag))
+            if src is not None:
+                sectPr.append(_deepcopy(src))
+    cols = OxmlElement("w:cols")
+    cols.set(_qn("w:num"), "2")
+    cols.set(_qn("w:space"), "360")
+    sectPr.append(cols)
+    pPr.append(sectPr)
+
     _render_references(doc, config, prototypes)
 
     doc.save(str(final_output))

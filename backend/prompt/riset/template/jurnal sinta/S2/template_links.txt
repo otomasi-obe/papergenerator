@@ -1,9 +1,0 @@
-Template Links for SINTA 2 Journals
-Generated: 2026-05-06 22:44:09
-====================================================================================================
-
-[Tafkir: Interdisciplinary Journal of Islamic Education] | [https://pasca.jurnalikhac.ac.id/index.php/tijie] | [https://pasca.jurnalikhac.ac.id/index.php/tijie/AuthorGuidelines] | [Downloaded]
-[Jurnal Pendidikan dan Kebudayaan] | [https://jurnaldikbud.kemdikbud.go.id/index.php/jpnk] | [] | [Error: HTTPSConnectionPool(host='jurnaldikbud.kemdikbud.go.id', port=443): Max retries exceeded with url: /index.php/jpnk (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7b69d95a1e70>: Failed to establish a new connection: [Errno -2] Name or service not known'))]
-[Ikonomika: Jurnal Ekonomi dan Bisnis Islam] | [http://ejournal.radenintan.ac.id/index.php/ikonomika] | [] | [Error: 403 Client Error: Forbidden for url: https://ejournal.radenintan.ac.id/index.php/ikonomika]
-[Jurnal Penyuluhan] | [http://journal.ipb.ac.id/index.php/jupe] | [] | [No template found]
-[Al-Intaj: Jurnal Ekonomi dan Perbankan Syariah] | [https://ejournal.uinfasbengkulu.ac.id/index.php/Al-Intaj] | [] | [Error: HTTPSConnectionPool(host='ejournal.uinfasbengkulu.ac.id', port=443): Read timed out. (read timeout=15)]

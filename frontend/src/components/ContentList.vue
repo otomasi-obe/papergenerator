@@ -17,7 +17,7 @@
             </span>
             <span v-else class="text-[10px] font-medium uppercase tracking-wide pl-1.5 border-l-2"
               :class="badgeClass(item.id)">
-              Fig. {{ store.getItemNumber(item)?.label || '?' }}
+              Fig. {{ store.getItemNumber?.(item)?.label || '?' }}
             </span>
           </div>
           <button @click="store.removeContent(items, idx)"
@@ -27,10 +27,10 @@
         <!-- TEXT -->
         <template v-if="item.id === 'text'">
           <textarea :value="item.text"
-            @input="onTextInput($event, item)"
-            ref="textareas"
+            @input="item.text = $event.target.value"
+            v-autosize
             rows="2"
-            class="content-textarea-auto w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-none overflow-hidden break-words"
+            class="w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none break-words"
             placeholder="Write text content... Use [1], [2] for citations."></textarea>
         </template>
 
@@ -73,9 +73,10 @@
             <!-- Prompt + Generate (hidden by default, toggled by the button above) -->
             <div v-show="promptOpen[stableKey(item)]" class="space-y-1.5">
               <textarea :value="item.Prompt || ''"
-                @input="item.Prompt = $event.target.value; autoResize($event)"
+                @input="item.Prompt = $event.target.value"
+                v-autosize
                 rows="2"
-                class="content-textarea-auto w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 rounded text-xs outline-none focus:border-brown-400 resize-none overflow-hidden text-brown-700 dark:text-anthracite-100 dark:placeholder-anthracite-300"
+                class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 rounded text-xs outline-none focus:border-brown-400 text-brown-700 dark:text-anthracite-100 dark:placeholder-anthracite-300"
                 placeholder="AI Image Prompt (deskripsi gambar untuk Gemini)"></textarea>
               <button @click="generateImage(item)" type="button"
                 :disabled="!String(item.Prompt || '').trim() || !!generating[stableKey(item)]"
@@ -265,7 +266,7 @@ function badgeClass(id) {
 }
 
 function badgeLabel(item, idx) {
-  const nums = store.getItemNumber(item)
+  const nums = store.getItemNumber?.(item) || {}
   if (item.id === 'gambar') return `Fig. ${nums.label || '?'}`
   if (item.id === 'tabel') return `Table ${nums.label || '?'}`
   if (item.id === 'rumus') return `Eq. (${nums.label || '?'})`

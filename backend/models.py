@@ -482,3 +482,34 @@ class ImageGenJob(db.Model):
             'finished_at': self.finished_at.isoformat() if self.finished_at else None,
             'image': self.image.to_dict() if self.image else None,
         }
+
+
+# ─── Production safeguard ────────────────────────────────────────────────────
+# Wrap ``db.drop_all`` so it refuses to run against the production Postgres
+# database. We had a near-disaster where a test fixture leaked into production
+# (env-loading order issue) and dropped the live tables. Even with a clean
+# conftest override, this is cheap insurance — flip the env-flag to override.
+import os as _os
+_real_drop_all = db.drop_all
+
+
+def _safe_drop_all(*args, **kwargs):
+    try:
+        url = str(db.engine.url)
+    except Exception:
+        # No app context → no engine → impossible to verify; refuse.
+        raise RuntimeError(
+            "db.drop_all() refused: no active app context to verify the bound DB."
+        )
+    is_sqlite = url.startswith('sqlite:')
+    allow = _os.environ.get('PAPERFULL_ALLOW_DESTRUCTIVE_DB') == '1'
+    if not is_sqlite and not allow:
+        raise RuntimeError(
+            f"db.drop_all() refused: connected DB is not sqlite ({url!r}). "
+            "Set PAPERFULL_ALLOW_DESTRUCTIVE_DB=1 only when you really mean it."
+        )
+    return _real_drop_all(*args, **kwargs)
+
+
+db.drop_all = _safe_drop_all
+

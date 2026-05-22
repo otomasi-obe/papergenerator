@@ -1,66 +1,76 @@
 <template>
-  <div class="revisi-proposal rounded-lg border p-3 my-2
-              bg-cream-50 dark:bg-ash-800
-              border-cream-300 dark:border-ash-700">
-    <div class="flex items-center justify-between mb-2 gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        <span class="text-base shrink-0">{{ icon }}</span>
-        <span class="text-sm font-medium text-ink-800 dark:text-ink-100 truncate">
-          {{ title }}
-        </span>
-        <span
-          v-if="proposal.scope"
-          class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-300 shrink-0"
+  <div
+    class="revisi-proposal rounded-lg border p-3 my-2
+           bg-cream-50 dark:bg-ash-800
+           border-cream-300 dark:border-ash-700"
+  >
+    <!-- Header: tool title, scope subtitle, language badge, action buttons -->
+    <div class="flex items-start justify-between gap-2 mb-2">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2">
+          <span class="text-base shrink-0">{{ icon }}</span>
+          <span class="text-sm font-semibold text-ink-800 dark:text-ink-100 truncate">
+            {{ title }}
+          </span>
+          <span
+            v-if="proposal.tool === 'Translate' && proposal.target_language"
+            class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 shrink-0"
+          >
+            → {{ targetLangLabel }}
+          </span>
+        </div>
+        <div
+          v-if="subtitle"
+          class="text-[11px] mt-0.5 text-ink-500 dark:text-ink-400"
         >
-          {{ proposal.scope }}
-        </span>
-        <span
-          v-if="proposal.tool === 'Translate' && proposal.target_language"
-          class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 shrink-0"
-        >
-          → {{ proposal.target_language }}
-        </span>
+          {{ subtitle }}
+        </div>
       </div>
+
       <div v-if="status === 'pending'" class="flex gap-1 shrink-0">
         <button
+          type="button"
           @click="onAccept"
           :disabled="busy"
-          class="px-2 py-1 text-xs rounded text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-2.5 py-1 text-xs font-medium rounded
+                 bg-emerald-600 hover:bg-emerald-700 text-white
+                 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ busy ? '…' : '✓ Accept' }}
+          {{ busy ? '…' : '✓ Terima' }}
         </button>
         <button
+          type="button"
           @click="onReject"
           :disabled="busy"
-          class="px-2 py-1 text-xs rounded text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="px-2.5 py-1 text-xs font-medium rounded border
+                 border-red-300 dark:border-red-700
+                 text-red-700 dark:text-red-300
+                 hover:bg-red-50 dark:hover:bg-red-900/30
+                 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ✕ Reject
+          ✕ Tolak
         </button>
       </div>
       <span
         v-else-if="status === 'accepted'"
-        class="text-xs text-emerald-700 dark:text-emerald-300 shrink-0"
-      >✓ Accepted</span>
+        class="text-xs font-medium text-emerald-700 dark:text-emerald-300 shrink-0 self-center"
+      >✓ Diterima</span>
       <span
         v-else
-        class="text-xs text-red-700 dark:text-red-300 shrink-0"
-      >✕ Rejected</span>
+        class="text-xs font-medium text-red-700 dark:text-red-300 shrink-0 self-center"
+      >✕ Ditolak</span>
     </div>
 
-    <div v-if="originalText" class="mb-2">
-      <div class="text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-400 mb-1">Original</div>
-      <div class="text-xs text-ink-700 dark:text-ink-300 line-through opacity-60 leading-relaxed whitespace-pre-wrap">{{ originalText }}</div>
-    </div>
-    <div v-if="rewriteText">
-      <div class="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-1">Proposal</div>
-      <div class="text-xs text-ink-800 dark:text-ink-100 leading-relaxed whitespace-pre-wrap">{{ rewriteText }}</div>
-    </div>
-
-    <div
-      v-if="locationLabel"
-      class="mt-2 text-[10px] text-ink-500 dark:text-ink-400"
-    >
-      {{ locationLabel }}
+    <!-- Side-by-side diff: original vs rewrite -->
+    <div class="diff-grid">
+      <div class="diff-col diff-original">
+        <div class="diff-label">Original</div>
+        <pre class="diff-text">{{ originalText || '—' }}</pre>
+      </div>
+      <div class="diff-col diff-rewrite">
+        <div class="diff-label diff-label-rewrite">Rewrite</div>
+        <pre class="diff-text">{{ rewriteText || '—' }}</pre>
+      </div>
     </div>
   </div>
 </template>
@@ -72,7 +82,7 @@ import { usePaperStore } from '../stores/paper'
 const props = defineProps({
   proposal: { type: Object, required: true },
 })
-const emit = defineEmits(['accepted', 'rejected'])
+const emit = defineEmits(['accepted', 'rejected', 'revisi-accept', 'revisi-reject'])
 
 const paperStore = usePaperStore()
 const status = ref('pending')
@@ -84,13 +94,47 @@ const ICON_MAP = {
   Translate: '🌐',
 }
 const TITLE_MAP = {
-  Paraphrase: 'Paraphrase proposal',
-  FixGrammar: 'Grammar fix',
-  Translate: 'Translation',
+  Paraphrase: 'Paraphrase',
+  FixGrammar: 'Fix Grammar',
+  Translate: 'Translate',
+}
+const LANG_MAP = {
+  en: 'Bahasa Inggris',
+  id: 'Bahasa Indonesia',
+  english: 'Bahasa Inggris',
+  indonesian: 'Bahasa Indonesia',
 }
 
 const icon = computed(() => ICON_MAP[props.proposal.tool] || '✏')
 const title = computed(() => TITLE_MAP[props.proposal.tool] || 'Edit proposal')
+
+const targetLangLabel = computed(() => {
+  const t = String(props.proposal.target_language || '').toLowerCase()
+  return LANG_MAP[t] || props.proposal.target_language || ''
+})
+
+const subtitle = computed(() => {
+  const p = props.proposal
+  const scope = p.scope
+  if (!scope) return ''
+  if (scope === 'whole') return 'whole'
+  if (scope === 'section') {
+    if (p.section_index !== undefined && p.section_index !== null) {
+      return `section ${p.section_index}`
+    }
+    return 'section'
+  }
+  if (scope === 'paragraph') {
+    if (p.section_index !== undefined && p.section_index !== null) {
+      const para = (p.content_index !== undefined && p.content_index !== null)
+        ? ` · paragraph ${p.content_index + 1}`
+        : ''
+      return `paragraph (section ${p.section_index}${para})`
+    }
+    return 'paragraph'
+  }
+  return scope
+})
 
 function _stringify(v) {
   if (v === null || v === undefined) return ''
@@ -100,16 +144,6 @@ function _stringify(v) {
 
 const originalText = computed(() => _stringify(props.proposal.text))
 const rewriteText = computed(() => _stringify(props.proposal.rewrite))
-
-const locationLabel = computed(() => {
-  const p = props.proposal
-  if (p.section_index === undefined || p.section_index === null) return ''
-  let s = `Section ${p.section_index}`
-  if (p.content_index !== undefined && p.content_index !== null) {
-    s += ` · paragraph ${p.content_index + 1}`
-  }
-  return s
-})
 
 async function onAccept() {
   if (status.value !== 'pending' || busy.value) return
@@ -131,6 +165,7 @@ async function onAccept() {
     }
     status.value = 'accepted'
     emit('accepted', p)
+    emit('revisi-accept', p)
   } catch (e) {
     console.warn('Apply revisi failed', e)
     paperStore.showToast?.('Gagal apply: ' + (e?.message || e), 'error')
@@ -143,5 +178,60 @@ function onReject() {
   if (status.value !== 'pending') return
   status.value = 'rejected'
   emit('rejected', props.proposal)
+  emit('revisi-reject', props.proposal)
 }
 </script>
+
+<style scoped>
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 540px) {
+  .diff-grid { grid-template-columns: 1fr; }
+}
+.diff-col {
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+.diff-original {
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+.diff-rewrite {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.diff-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #b91c1c;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.diff-label-rewrite { color: #047857; }
+.diff-text {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-strong, #1f2937);
+}
+
+:deep(html.dark) .diff-original {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+:deep(html.dark) .diff-rewrite {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+:deep(html.dark) .diff-label { color: #fca5a5; }
+:deep(html.dark) .diff-label-rewrite { color: #6ee7b7; }
+:deep(html.dark) .diff-text { color: #eddbac; }
+</style>

@@ -47,7 +47,7 @@
       <div v-show="expandedSections[sIdx]" class="p-4 space-y-4">
         <div>
           <label class="block text-xs text-brown-500 dark:text-anthracite-200 mb-1">Section Content</label>
-          <textarea v-model="section.content" rows="6"
+          <textarea v-model="section.content" rows="6" v-autosize
             placeholder="Write section content... Use [1], [2] for citations. Use $$formula$$ for equations."
             class="w-full px-3 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded-lg text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y"></textarea>
           <AiPromptBox :section="section.title || 'section'" :lastText="section.content"
@@ -73,7 +73,7 @@
             </div>
           </div>
 
-          <textarea v-model="sub.content" rows="4"
+          <textarea v-model="sub.content" rows="4" v-autosize
             placeholder="Subsection content..."
             class="w-full px-3 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y"></textarea>
           <AiPromptBox :section="sub.title || 'subsection'" :lastText="sub.content"
@@ -94,7 +94,7 @@
                   class="text-xs text-red-400 hover:text-red-600">✕</button>
               </div>
             </div>
-            <textarea v-model="item.content" rows="3"
+            <textarea v-model="item.content" rows="3" v-autosize
               placeholder="Item content..."
               class="w-full px-3 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none resize-y"></textarea>
             <AiPromptBox :section="item.title || 'item'" :lastText="item.content"

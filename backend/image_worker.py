@@ -83,18 +83,31 @@ class _Worker(threading.Thread):
                               self.account_name, job_id)
 
     def _process(self, job_id: str):
+        from sqlalchemy import update  # noqa: PLC0415
+
         from models import ImageGenJob, PaperImage, db  # noqa: PLC0415
         from paper_utils import safe_paper_dir  # noqa: PLC0415
 
         with self.app.app_context():
-            job = db.session.get(ImageGenJob, job_id)
-            if not job or job.status not in ('queued', 'running'):
-                return
-            job.status = 'running'
-            job.worker = self.account_name
-            job.started_at = datetime.now(timezone.utc)
+            # Atomic claim: only the FIRST worker that flips status from
+            # 'queued' to 'running' actually proceeds. This is the single
+            # source of truth that defends against (a) the dispatcher
+            # double-dispatching (window between check and submit) and
+            # (b) a user cancelling between our read and write.
+            now = datetime.now(timezone.utc)
+            result = db.session.execute(
+                update(ImageGenJob)
+                .where(ImageGenJob.id == job_id, ImageGenJob.status == 'queued')
+                .values(status='running', worker=self.account_name, started_at=now)
+            )
             db.session.commit()
+            if result.rowcount == 0:
+                # Lost the race or job is cancelled/done/missing.
+                return
 
+            job = db.session.get(ImageGenJob, job_id)
+            if job is None:
+                return
             paper_id = job.paper_id
             user_id = job.user_id
             prompt = job.prompt
@@ -133,10 +146,10 @@ class _Worker(threading.Thread):
             res = acc.generate_image(prompt, out_path, generate_timeout_s=240)
 
             try:
-                from compress import compress_image  # noqa: PLC0415
+                from imageGenerator.compress import compress_image  # noqa: PLC0415
                 compress_image(out_path, max_size_mb=1.0)
             except Exception:
-                pass
+                log.warning("compress_image skipped for %s", out_path, exc_info=True)
 
             with self.app.app_context():
                 img = PaperImage(
@@ -240,12 +253,30 @@ class _Dispatcher(threading.Thread):
                         .all()
                     )
                     ids = [j.id for j in queued]
+                # Atomically claim each id: only the thread that successfully
+                # adds it to `_dispatched` submits it. This closes the window
+                # where the poll loop and submit_now() could both route the
+                # same job to a worker. The atomic claim in `_Worker._process`
+                # is the second line of defence; this avoids paying the cost
+                # of starting a second browser run that will then no-op.
                 with self._lock:
-                    new_ids = [i for i in ids if i not in self._dispatched]
-                for jid in new_ids:
-                    self._least_loaded_worker().submit(jid)
-                    with self._lock:
+                    to_submit = [i for i in ids if i not in self._dispatched]
+                    for jid in to_submit:
                         self._dispatched.add(jid)
+                for jid in to_submit:
+                    self._least_loaded_worker().submit(jid)
+                # Bound the dispatched set: drop entries that left the active
+                # set on the DB side (done/error/cancelled). Without this the
+                # set grows unboundedly across the process lifetime.
+                if len(self._dispatched) > 256:
+                    with self.app.app_context():
+                        active = {
+                            r[0] for r in db.session.query(ImageGenJob.id)
+                            .filter(ImageGenJob.status.in_(['queued', 'running']))
+                            .all()
+                        }
+                    with self._lock:
+                        self._dispatched.intersection_update(active)
             except Exception:
                 log.exception("img-dispatcher: poll failed")
             time.sleep(self.poll_interval)

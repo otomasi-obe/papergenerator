@@ -18,6 +18,31 @@ import { useLiteratureStore } from './literature.js'
 
 const PROPOSAL_PREFIX = '<<PROPOSAL>>'
 
+/**
+ * Sanitize raw backend / network error messages before showing them to the
+ * end user. Stack traces, SQL fragments, file paths, and DB internals are
+ * useless to the user and leak implementation detail. The full original is
+ * still visible in the network panel for developers.
+ */
+function _safeErrorMessage(raw) {
+  const s = String(raw || '').trim()
+  if (!s) return 'Terjadi kendala teknis. Coba kirim lagi sebentar.'
+  // DB / SQL errors
+  if (/psycopg2|sqlalchemy|UndefinedTable|relation .* does not exist|integrityerror|operationalerror/i.test(s)) {
+    return 'Ada gangguan internal di server. Coba kirim lagi sebentar.'
+  }
+  // Python-y traceback / file paths / SQL keywords
+  if (/traceback|\bsql\b|file ".*", line \d+|raise [a-z]/i.test(s)) {
+    return 'Terjadi kendala teknis. Coba kirim lagi sebentar.'
+  }
+  // HTTP-status / upstream API hiccups
+  if (/^api error: \d+|^http \d{3}$|status_code|upstream/i.test(s)) {
+    return 'AI sedang sibuk. Coba kirim lagi sebentar.'
+  }
+  if (s.length > 240) return s.slice(0, 240) + '…'
+  return s
+}
+
 export const useChatStore = defineStore('chat', () => {
   // Sidebar — one row per paper
   const paperChats = ref([])
@@ -49,13 +74,12 @@ export const useChatStore = defineStore('chat', () => {
   const activeJob = ref(null)  // { active, job_id, prompt, elapsed_seconds } | null
   let _activeJobTimer = null
 
-  // Selected upstream model key (sent as `model` on each /messages POST).
-  // Backend allowlists {V-OPUS, V-GEMINI, V-GPT}; if null we omit the field
-  // and backend falls back to its env default.
+  // Backwards-compat shims for ChatTab.vue (read-only at this scope). The
+  // model picker is no longer wired to the request body; these exist only so
+  // existing template/script references keep building. Removing them entirely
+  // requires touching ChatTab, which is out of scope for this agent.
   const selectedModel = ref(null)
-  function setModel(value) {
-    selectedModel.value = value || null
-  }
+  function setModel(_value) { /* no-op: model picker disabled */ }
 
   const currentChat = computed(() =>
     conversations.value.find(c => c.id === currentConversationId.value)
@@ -368,7 +392,6 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const csrf = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
       const payload = { content }
-      if (selectedModel.value) payload.model = selectedModel.value
       const response = await fetch(
         `/api/chat/conversations/${convId}/messages`,
         {
@@ -462,9 +485,10 @@ export const useChatStore = defineStore('chat', () => {
           stream.streamingMessage.content += '\n\n_(dihentikan oleh pengguna)_'
         }
       } else {
-        error.value = e.message
+        const friendly = _safeErrorMessage(e && e.message)
+        error.value = friendly
         if (stream.streamingMessage) {
-          stream.streamingMessage.content += `\n\n[Error: ${e.message}]`
+          stream.streamingMessage.content += `\n\n_${friendly}_`
         }
       }
     } finally {
@@ -481,6 +505,46 @@ export const useChatStore = defineStore('chat', () => {
     if (s && s.abortCtrl) {
       try { s.abortCtrl.abort() } catch { /* ignore */ }
     }
+  }
+
+  /**
+   * Push a synthetic assistant message into the currently-active conversation
+   * WITHOUT hitting the backend. Used by the editor (paper store) to nudge the
+   * chat with a context-aware question when the user adds/uploads an image, so
+   * the AI can later generate a caption + a `create image"..."` prompt.
+   *
+   * Silent no-op when no chat is open (e.g. user is on a tab where chat is not
+   * active yet) — the editor change still proceeds.
+   */
+  function injectAssistantMessage(content) {
+    const convId = currentConversationId.value
+    if (!convId || !content) return
+    const stream = _ensureStream(convId)
+    const msg = {
+      id: `synthetic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      role: 'assistant',
+      content: String(content),
+      created_at: new Date().toISOString(),
+      metadata: { kind: 'system_note', synthetic: true },
+    }
+    stream.messages.push(msg)
+    _syncFromStream(convId)
+  }
+
+  /**
+   * Post the user's answers from a MultiQuestionCard as a single user message.
+   * `answers` is an array of {key, value}. The text is formatted as a simple
+   * "Jawaban saya:\nkey: value\n..." block so the backend can parse it like
+   * any other user reply.
+   */
+  async function submitMultiQuestionAnswers(answers) {
+    if (!Array.isArray(answers) || answers.length === 0) return
+    const lines = answers
+      .filter(a => a && a.key && a.value !== undefined && a.value !== null)
+      .map(a => `${a.key}: ${a.value}`)
+      .join('\n')
+    if (!lines) return
+    return await sendMessage(`Jawaban saya:\n${lines}`)
   }
 
   function _handleSSEEvent(convId, event, data) {
@@ -603,6 +667,82 @@ export const useChatStore = defineStore('chat', () => {
                 rewrite: proposal.rewrite,
                 target_language: proposal.target_language,
               }
+            } else if (proposal.kind === 'chart_proposal') {
+              // Chart proposal: stamp metadata so ChatMessage can render
+              // an inline ChartPreviewCard with the rendered preview image
+              // and a small spec describing the chart.
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'chart_proposal',
+                url: proposal.url || proposal.image_url || '',
+                image_id: proposal.image_id ?? null,
+                spec: proposal.spec || null,
+                title: proposal.title || '',
+                section_index: proposal.section_index,
+                content_index: proposal.content_index,
+              }
+            } else if (proposal.kind === 'file_review') {
+              // Long file review: backend returns word_count + head/tail
+              // preview + suggested kinds (e.g. cite, summarize, extract).
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'file_review',
+                file_id: proposal.file_id ?? null,
+                filename: proposal.filename || '',
+                word_count: proposal.word_count || 0,
+                head: proposal.head || '',
+                tail: proposal.tail || '',
+                suggested_kinds: Array.isArray(proposal.suggested_kinds)
+                  ? proposal.suggested_kinds
+                  : [],
+              }
+            } else if (proposal.kind === 'validation_error') {
+              // Validation error: warning banner with optional retry / SLR
+              // action. error_code drives which extra chip is shown.
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'validation_error',
+                error_code: proposal.error_code || '',
+                message: proposal.message || '',
+                hint: proposal.hint || '',
+                retry_prompt: proposal.retry_prompt || '',
+              }
+            } else if (proposal.kind === 'image_prompt_review') {
+              // Post-paper image-prompt review (also injected from
+              // paperJobs hook). Stamp metadata so ChatMessage can render
+              // a checklist-style review UI.
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'image_prompt_review',
+                images: Array.isArray(proposal.images) ? proposal.images : [],
+                paper_id: proposal.paper_id ?? null,
+              }
+            } else if (proposal.kind === 'multi_question') {
+              // Multi-question card: backend sends a list of questions, each
+              // with chip options + free-text fallback. ChatMessage renders
+              // MultiQuestionCard which submits answers as a single user
+              // message via submitMultiQuestionAnswers.
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'multi_question',
+                questions: Array.isArray(proposal.questions) ? proposal.questions : [],
+              }
+            } else if (proposal.kind === 'review_plan') {
+              // Review plan: AI announces a multi-step review pass over the
+              // current paper. Visual-only notice for now, with a cancel hook.
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'review_plan',
+                directive: proposal.directive || '',
+                scope: proposal.scope || 'whole',
+              }
+            } else if (proposal.kind === 'revise_data') {
+              // Data revision notice for the current Section 4 (Results).
+              msg.metadata = {
+                ...(msg.metadata || {}),
+                kind: 'revise_data',
+                directive: proposal.directive || '',
+              }
             } else {
               paperStore.pushProposal(proposal)
             }
@@ -614,7 +754,7 @@ export const useChatStore = defineStore('chat', () => {
         if (data.message_id) msg.id = data.message_id
         break
       case 'error':
-        msg.content += `\n\n**Error:** ${data.message}`
+        msg.content += `\n\n_${_safeErrorMessage(data && data.message)}_`
         break
     }
     _syncFromStream(convId)
@@ -645,8 +785,8 @@ export const useChatStore = defineStore('chat', () => {
     isStreaming,
     streamingMessage,
     error,
-    selectedModel,
     activeJob,
+    selectedModel,
     setModel,
     loadPaperChats,
     loadConversations,
@@ -660,7 +800,9 @@ export const useChatStore = defineStore('chat', () => {
     deleteConversation,
     clearCurrentChat,
     sendMessage,
+    submitMultiQuestionAnswers,
     stopStreaming,
+    injectAssistantMessage,
     checkActiveJob,
     startActiveJobPolling,
     stopActiveJobPolling,

@@ -139,39 +139,6 @@
             {{ isStreaming ? 'Sedang berpikir…' : 'Online' }}
           </p>
         </div>
-
-        <!-- Model picker — UI labels (Claude/Gemini/Chatgpt) hide upstream
-             V-OPUS / V-GEMINI / V-GPT identifiers per product spec. -->
-        <div class="relative shrink-0" v-click-outside="closeModelMenu">
-          <button
-            @click="modelMenuOpen = !modelMenuOpen"
-            :disabled="isStreaming"
-            class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-800 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-600 disabled:opacity-50 transition-colors"
-            :title="'Model: ' + currentModelLabel"
-          >
-            <span class="leading-none">{{ currentModelLabel }}</span>
-            <span class="text-[9px] opacity-60 leading-none">▾</span>
-          </button>
-          <div
-            v-if="modelMenuOpen"
-            class="absolute right-0 top-full mt-1 z-40 w-32 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-lg overflow-hidden"
-            role="menu"
-          >
-            <button
-              v-for="m in MODELS"
-              :key="m.value"
-              @click="selectModel(m.value)"
-              :class="[
-                'w-full text-left px-3 py-1.5 text-[11px] hover:bg-cream-200 dark:hover:bg-ash-600 transition-colors flex items-center justify-between',
-                m.value === selectedModel ? 'bg-cream-100 dark:bg-ash-600 font-semibold text-ink-900 dark:text-ink-50' : 'text-ink-700 dark:text-ink-200'
-              ]"
-              role="menuitem"
-            >
-              <span>{{ m.label }}</span>
-              <span v-if="m.value === selectedModel" class="text-emerald-600 dark:text-emerald-400">✓</span>
-            </button>
-          </div>
-        </div>
       </header>
 
       <!-- Messages -->
@@ -217,6 +184,13 @@
           :is-streaming="isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant'"
           @pick-option="pickOption"
           @chip-select="onChipSelect"
+          @chart-accept="onChartAccept"
+          @chart-regenerate="onChartRegenerate"
+          @file-review-pick="onFileReviewPick"
+          @multi-question-submit="onMultiQuestionSubmit"
+          @revisi-accepted="onRevisiAccept"
+          @revisi-rejected="onRevisiReject"
+          @review-cancel="onReviewCancel"
         />
       </div>
 
@@ -249,13 +223,13 @@
         <div class="flex flex-wrap gap-1.5 mb-2">
           <button
             v-for="s in quickSuggestions"
-            :key="s.text"
-            @click="sendSuggestion(s.text)"
+            :key="s.key"
+            @click="sendSuggestion(s)"
             :disabled="isStreaming || (activeJob && activeJob.active)"
             class="text-[11px] px-2.5 py-1 rounded-full bg-cream-100 dark:bg-ash-700 hover:bg-brown-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 text-ink-800 dark:text-ink-100 transition-colors border border-cream-300 dark:border-ash-600 disabled:opacity-50 disabled:cursor-not-allowed"
             :title="s.text"
           >
-            <span class="mr-1" aria-hidden="true">{{ s.icon }}</span>{{ s.text }}
+            {{ s.label }}
           </button>
         </div>
       </div>
@@ -429,18 +403,7 @@ import ChatMessage from './ChatMessage.vue'
 import AppDialog from './AppDialog.vue'
 import ActionChips from './ActionChips.vue'
 
-// Model picker — UI label is shown to the user, value is sent to backend.
-// Backend allowlists {V-OPUS, V-GEMINI, V-GPT} and rejects anything else.
-const MODELS = [
-  { value: 'V-OPUS',   label: 'Claude Opus 4.7' },
-  { value: 'V-CLAUDE', label: 'Claude Sonnet 4.5' },
-  { value: 'V-GPT',    label: 'ChatGPT 5.5' },
-  { value: 'V-GLM',    label: 'GLM 5' },
-  { value: 'V-DEEPSEEK', label: 'DeepSeek v4 Pro' },
-]
-const LS_MODEL_KEY = 'pg_chat_model'
-
-// Light-weight click-outside directive used by the model menu.
+// Light-weight click-outside directive used by various dropdowns.
 const vClickOutside = {
   mounted(el, binding) {
     el.__clickOutsideHandler__ = (event) => {
@@ -573,34 +536,18 @@ function humanSize(b) {
 }
 
 // Model picker state — persisted in localStorage; restored on mount.
-const modelMenuOpen = ref(false)
-const selectedModel = ref(localStorage.getItem(LS_MODEL_KEY) || MODELS[0].value)
-const currentModelLabel = computed(
-  () => MODELS.find(m => m.value === selectedModel.value)?.label || MODELS[0].label
-)
-
-function selectModel(value) {
-  if (!MODELS.some(m => m.value === value)) return
-  selectedModel.value = value
-  localStorage.setItem(LS_MODEL_KEY, value)
-  modelMenuOpen.value = false
-  chatStore.setModel(value)
-}
-
-function closeModelMenu() {
-  modelMenuOpen.value = false
-}
-
-// Sync the store with the restored selection on mount, BEFORE any sendMessage.
-chatStore.setModel(selectedModel.value)
+// (Model picker UI removed; backend uses default model.)
 
 const quickSuggestions = [
-  { icon: '✍️', text: 'Bantu tulis abstrak' },
-  { icon: '✍️', text: 'Bantu tulis pendahuluan' },
-  { icon: '🔍', text: 'Review pendahuluan saya' },
-  { icon: '📚', text: 'Cari referensi terkait' },
-  { icon: '🎨', text: 'Parafrase paragraf saya' },
-  { icon: '🪶', text: 'Perbaiki grammar' },
+  { key: 'paperfull', label: 'paperfull', text: 'Generate paper lengkap (auto full paper).' },
+  { key: 'abstract',  label: 'abstract',  text: 'Revisi abstract paper saya.' },
+  { key: 'section',   label: 'section',   text: 'Saya mau revisi sebuah section. Tanyakan dulu section nomor berapa, lalu fokus revisi bagian itu saja.' },
+  { key: 'data',      label: 'data',      text: 'Revisi data saya (Section 4 / Hasil) — perbaiki tabel, angka, dan grafik bila perlu.' },
+  { key: 'review',    label: 'Review',    text: 'Lakukan review menyeluruh paper saya sesuai arahan saya — beri rekomendasi per bagian.' },
+  { key: 'literatur', label: 'Literatur', text: 'Cari literatur tambahan. Baca dulu literatur yang sudah ada, lalu sarankan keyword tambahan dan jalankan SLR untuk keyword itu.' },
+  { key: 'parafrase', label: 'Parafrase', text: 'Parafrase. Tanyakan dulu scope-nya: paragraf tertentu, section tertentu, atau seluruh paper.' },
+  { key: 'grammar',   label: 'Grammar',   text: 'Perbaiki grammar. Tanyakan dulu scope-nya: paragraf tertentu, section tertentu, atau seluruh paper.' },
+  { key: 'translate', label: 'Translate', text: 'Translate. Tanyakan dulu scope-nya (paragraf/section/seluruh) dan target_language (id/en).' },
 ]
 
 // Entry chips and quick prompts shown in the empty-state hero. Picking any
@@ -629,6 +576,50 @@ function onChipSelect(value) {
   if (!value || isStreaming.value || !currentConversationId.value) return
   if (activeJob.value && activeJob.value.active) return
   chatStore.sendMessage(value)
+}
+
+async function onChartAccept({ image_id, filename, url, spec }) {
+  if (!currentConversationId.value) return
+  await chatStore.sendMessage(
+    `Pakai chart ini (image_id=${image_id}) di Section 4 dengan caption "${spec?.title || 'Hasil evaluasi'}".`
+  )
+}
+
+async function onChartRegenerate({ image_id }) {
+  if (!currentConversationId.value) return
+  await chatStore.sendMessage(
+    `Regenerate chart yang baru aja kamu bikin dengan parameter berbeda — jelaskan dulu apa yang mau diubah.`
+  )
+}
+
+async function onFileReviewPick({ file_id, kinds }) {
+  if (!currentConversationId.value) return
+  const k = (kinds || []).join(', ') || 'data'
+  await chatStore.sendMessage(`Untuk file id=${file_id}, ambil bagian: ${k}. Lanjutkan analisis.`)
+}
+
+async function onMultiQuestionSubmit(answers) {
+  if (!currentConversationId.value) return
+  if (chatStore.submitMultiQuestionAnswers) {
+    return chatStore.submitMultiQuestionAnswers(answers)
+  }
+  const lines = (answers || []).map(a => `${a.key}: ${a.value}`).join('\n')
+  await chatStore.sendMessage(`Jawaban saya:\n${lines}`)
+}
+
+async function onRevisiAccept() {
+  if (!currentConversationId.value) return
+  await chatStore.sendMessage(`Terima rewrite ini.`)
+}
+
+async function onRevisiReject() {
+  if (!currentConversationId.value) return
+  await chatStore.sendMessage(`Tolak rewrite ini, coba versi lain.`)
+}
+
+async function onReviewCancel() {
+  if (!currentConversationId.value) return
+  await chatStore.sendMessage(`Batal review.`)
 }
 
 onMounted(async () => {
@@ -845,9 +836,12 @@ async function handleSend() {
         : `\n\n[File ${names} dilampirkan tetapi gagal diekstrak]`
       const idsHint = fileEntries.filter(e => e.id != null).map(e => e.id).join(',')
       const idsLine = idsHint
-        ? `\n[FILE_IDS=${idsHint}] (use ClassifyFile after asking 'ini file apa?')`
+        ? `\n[FILE_IDS=${idsHint}] (use AskQuestions with key=file_kind:<id> per file, then ClassifyFile per answer; options must include paper_slr/paper_read/data/image/template)`
         : ''
-      composed = (text || `Saya melampirkan ${attachedFiles.value.length} file. Tolong tanya dulu "ini file apa?" untuk masing-masing file dengan ProposeChips, lalu panggil ClassifyFile sesuai jawaban user.`)
+      const defaultText = fileEntries.length
+        ? `Saya melampirkan ${fileEntries.length} file. Tanya dulu "ini file apa?" untuk masing-masing file via AskQuestions (satu pertanyaan per file_id, key=file_kind:<id>) dengan pilihan: paper_slr, paper_read, data, image, template. Lalu panggil ClassifyFile sesuai jawaban. Untuk file paper_slr >3000 kata, pakai ReviewLargeFile.`
+        : ''
+      composed = (text || defaultText)
         + idsLine
         + fileBlock
       attachedFiles.value = []
@@ -898,8 +892,13 @@ function handleKeydown(e) {
   }
 }
 
-function sendSuggestion(text) {
+function sendSuggestion(s) {
   if (isStreaming.value) return
+  if (activeJob.value && activeJob.value.active) return
+  const text = (s && s.text) || (typeof s === 'string' ? s : '')
+  if (!text) return
+  // Just fill the input — let the user review / edit / add context before
+  // pressing Enter (or Send). Auto-sending was surprising users.
   inputText.value = text
   inputRef.value?.focus()
 }

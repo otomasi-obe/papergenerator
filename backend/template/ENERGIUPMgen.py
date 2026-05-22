@@ -73,6 +73,60 @@ class RenderState:
     table_count: int = 0
 
 
+def _set_ai_prompt_color_red(doc):
+    """Post-process output DOCX:
+    1. Set warna text MERAH untuk paragraf prompt AI gambar.
+    2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
+    Idempotent dan aman dipanggil sebelum doc.save()."""
+    from docx.shared import RGBColor
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    RED = RGBColor(0xFF, 0x00, 0x00)
+
+    def _color_prompt(p):
+        text = p.text or ""
+        if "[PROMPT UNTUK AI GAMBAR" in text or "[PROMPT AI GAMBAR" in text:
+            for r in p.runs:
+                try:
+                    r.font.color.rgb = RED
+                except Exception:
+                    pass
+
+    for p in doc.paragraphs:
+        _color_prompt(p)
+    for t in doc.tables:
+        for row in t.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    _color_prompt(p)
+
+    # Set border tabel data (skip layout 1x1, 1xN equation)
+    for t in doc.tables:
+        rows = t.rows
+        if len(rows) < 2 or len(rows[0].cells) < 2:
+            continue
+        header_text = "".join((c.text or "").strip() for c in rows[0].cells)
+        if not header_text:
+            continue
+        tbl = t._element
+        tblPr = tbl.find(qn("w:tblPr"))
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            tbl.insert(0, tblPr)
+        borders = tblPr.find(qn("w:tblBorders"))
+        if borders is None:
+            borders = OxmlElement("w:tblBorders")
+            tblPr.append(borders)
+        for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            el = borders.find(qn(f"w:{side}"))
+            if el is None:
+                el = OxmlElement(f"w:{side}")
+                borders.append(el)
+            el.set(qn("w:val"), "single")
+            el.set(qn("w:sz"), "4")
+            el.set(qn("w:space"), "0")
+            el.set(qn("w:color"), "000000")
+
 def _pt_to_twips(value: float) -> int:
     return int(round(value * 20))
 
@@ -595,19 +649,65 @@ def _add_keywords(doc: Document, config: dict) -> None:
     _append_rich_text(paragraph, f"Keywords: {text}")
 
 
+def _normalize_heading_case(text: str) -> str:
+    """Normalize heading: kalau seluruhnya UPPERCASE, ubah ke Title Case
+    supaya konsisten dengan template (Heading 1 numbering pakai Title Case)."""
+    if not text:
+        return text
+    s = str(text).strip()
+    # Kalau sudah ada huruf kecil, biarkan apa adanya
+    if any(c.islower() for c in s):
+        return s
+    # Semua huruf besar -> ubah ke title case (kata-kata pendek tetap kapital)
+    return s.title()
+
+
+def _set_paragraph_rpr_size(paragraph, half_points: int) -> None:
+    """Set rPr di pPr untuk override ukuran auto-numbering marker.
+    Style 'Heading1' di template ENERGIUPM punya sz=40 (20pt) yang bikin
+    angka '1.' render terlalu besar. Override ke half_points (11pt = 22)
+    supaya angka match body text size."""
+    pPr = paragraph._p.get_or_add_pPr()
+    # rPr di dalam pPr controls paragraph mark + auto-numbering label
+    rpr = pPr.find(qn("w:rPr"))
+    if rpr is None:
+        rpr = OxmlElement("w:rPr")
+        pPr.append(rpr)
+    # Set size
+    sz = rpr.find(qn("w:sz"))
+    if sz is None:
+        sz = OxmlElement("w:sz")
+        rpr.append(sz)
+    sz.set(qn("w:val"), str(half_points))
+    szcs = rpr.find(qn("w:szCs"))
+    if szcs is None:
+        szcs = OxmlElement("w:szCs")
+        rpr.append(szcs)
+    szcs.set(qn("w:val"), str(half_points))
+    # Set font ke body font (Palatino Linotype) supaya konsisten
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.insert(0, rfonts)
+    for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
+        rfonts.set(qn(f"w:{attr}"), BODY_FONT)
+
+
 def _add_section_heading(doc: Document, text: str) -> None:
     paragraph = doc.add_paragraph()
     _set_para_style(paragraph, "Heading1")
     _set_num_pr(paragraph, num_id=1, ilvl=0)
+    _set_paragraph_rpr_size(paragraph, _pt_to_twips(BODY_SIZE_PT) // 10)
     paragraph.paragraph_format.left_indent = Pt(SECTION_INDENT_TW / 20)
     paragraph.paragraph_format.first_line_indent = Pt(-(SECTION_INDENT_TW / 20))
-    _append_rich_text(paragraph, text, size_pt=BODY_SIZE_PT)
+    _append_rich_text(paragraph, _normalize_heading_case(text), size_pt=BODY_SIZE_PT)
 
 
 def _add_subsection_heading(doc: Document, text: str) -> None:
     paragraph = doc.add_paragraph()
     _set_para_style(paragraph, "Heading3")
     _set_num_pr(paragraph, num_id=1, ilvl=1)
+    _set_paragraph_rpr_size(paragraph, _pt_to_twips(BODY_SIZE_PT) // 10)
     paragraph.paragraph_format.left_indent = Pt(SUBSECTION_INDENT_TW / 20)
     paragraph.paragraph_format.first_line_indent = Pt(-(SUBSECTION_INDENT_TW / 20))
     _append_rich_text(paragraph, text, size_pt=BODY_SIZE_PT)
@@ -623,6 +723,19 @@ def _add_subsubsection_heading(doc: Document, text: str) -> None:
 
 
 def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) -> None:
+
+    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
+    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
+    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
+    if _ai_title:
+        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
+        from docx.shared import RGBColor as _RGB
+        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        _ai_para = doc.add_paragraph()
+        _ai_para.alignment = _WAP.CENTER
+        _ai_run = _ai_para.add_run(_ai_full)
+        _ai_run.italic = True
+        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     path_text = str(item.get("Path", "")).strip()
     title = str(item.get("Title", "")).strip()
     number = _figure_number_text(item, state)
@@ -869,7 +982,7 @@ def build_document(
     final_output = (
         Path(output_path)
         if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -893,6 +1006,7 @@ def build_document(
     _render_sections(doc, config, Path(json_path), state)
     _add_references(doc, config)
 
+    _set_ai_prompt_color_red(doc)
     doc.save(str(final_output))
     print(f"Generated: {final_output}")
     return final_output

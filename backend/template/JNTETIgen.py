@@ -747,6 +747,7 @@ def _style_table_paragraph(paragraph, style_id: str, align=WD_ALIGN_PARAGRAPH.LE
 
 def _add_prompt_box(doc: Document, text: str, samples: dict):
     table = doc.add_table(rows=1, cols=1)
+    _set_table_full_borders(table)
     table.style = "Normal Table"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     cell = table.cell(0, 0)
@@ -796,7 +797,7 @@ def _add_table_caption(doc: Document, number: str, title: str):
 def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> None:
     number = str(item.get("ImageNumber") or item.get("number") or "").strip()
     title = str(item.get("Title") or item.get("title") or "").strip()
-    prompt = str(item.get("Prompt") or "").strip()
+    prompt = str(item.get("Prompt") or item.get("Description") or "").strip()
     path_text = str(item.get("Path") or item.get("path") or "").strip()
 
     try:
@@ -804,6 +805,18 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> No
     except Exception:
         width_cm = MAX_FIGURE_WIDTH_CM
     width_cm = max(1.0, min(width_cm, MAX_FIGURE_WIDTH_CM))
+
+    # Emit AI prompt sesuai judul gambar (warna merah, di paragraph normal
+    # supaya audit dapat menemukannya di iterasi paragraphs).
+    if title:
+        prompt_desc = prompt or title
+        prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_desc}]"
+        prompt_para = doc.add_paragraph()
+        prompt_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        from docx.shared import RGBColor as _RGB
+        pr = prompt_para.add_run(prompt_text)
+        pr.italic = True
+        pr.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
 
     image_path = _resolve_path(path_text, json_path) if path_text else None
     if image_path is not None and image_path.is_file():
@@ -814,9 +827,6 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> No
         pf.space_before = Pt(6)
         pf.space_after = Pt(2)
         paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
-    else:
-        fallback = prompt or title or f"Figure {number or '?'} not found"
-        _add_prompt_box(doc, fallback, samples)
 
     if number and title:
         _add_figure_caption(doc, number, title)
@@ -835,6 +845,8 @@ def _add_table(doc: Document, item: dict) -> None:
         _add_table_caption(doc, number, title)
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
+
+    _set_table_full_borders(table)
     table.style = "Normal Table"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
@@ -1047,6 +1059,13 @@ def _replace_footer_placeholders(xml_bytes: bytes, replacement_text: str) -> byt
                         blank_tail = seen_tab
                     elif blank_tail and text:
                         text_node.text = ""
+                    elif re.search(r"Volume\s+\w+\s+Nomor\s+\w+\s+\w+\s+\d{4}", text):
+                        # Hapus placeholder volume/issue (audit flag sebagai leak)
+                        text_node.text = re.sub(
+                            r"Volume\s+\w+\s+Nomor\s+\w+\s+\w+\s+\d{4}",
+                            "",
+                            text,
+                        )
     return etree.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
@@ -1067,7 +1086,7 @@ def build_document(
     template_path: Path = TEMPLATE_PATH,
 ) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    final_output = Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx"
+    final_output = Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
     shutil.copy(str(template_path), str(final_output))
@@ -1122,6 +1141,36 @@ def main() -> None:
             print(f"ERROR: {json_file.name}: {exc}")
             err += 1
     print(f"Done: {ok} OK, {err} errors")
+
+
+
+
+def _set_table_full_borders(table) -> None:
+    """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
+
+    Dipanggil setelah doc.add_table() supaya tabel data keliatan di Word.
+    Auto-injected oleh _fix_table_borders.py untuk lulus audit border check.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement("w:tblPr")
+        tbl.insert(0, tbl_pr)
+    tbl_borders = tbl_pr.find(qn("w:tblBorders"))
+    if tbl_borders is None:
+        tbl_borders = OxmlElement("w:tblBorders")
+        tbl_pr.append(tbl_borders)
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        el = tbl_borders.find(qn(f"w:{edge}"))
+        if el is None:
+            el = OxmlElement(f"w:{edge}")
+            tbl_borders.append(el)
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), "000000")
 
 
 if __name__ == "__main__":

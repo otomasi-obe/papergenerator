@@ -95,7 +95,7 @@ def batch_summarize(texts: Iterable[str | None], query: str | None = None,
 
 _AI_BASE = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
 _AI_KEY = os.getenv("AIOTOMASI_APIKEY") or ""
-_DEFAULT_MODEL = os.getenv("AIOTOMASI_MODEL") or "V-OPUS"
+_DEFAULT_MODEL = os.getenv("AIOTOMASI_MODEL") or "V-DEEPSEEK"
 
 _AI_MISSING_WARNED = False
 

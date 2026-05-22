@@ -24,7 +24,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
 from auth import auth_bp, init_oauth
@@ -33,6 +32,7 @@ from chat import chat_bp
 from papers_bp import papers_bp
 from files_bp import files_bp
 from images_bp import paper_images_bp, image_serve_bp
+from charts_bp import charts_bp
 from jobs_bp import jobs_bp
 from image_jobs_bp import image_jobs_bp
 from slr_bp import slr_bp
@@ -56,14 +56,25 @@ try:
         )
 except Exception:
     pass
-
-from generate_ai_json_paper_aiotomasi import generate_paper_json
-from generate_paper_chunked import generate_paper_json_chunked, GenerationCancelled
+from generate_paper_chunked import GenerationCancelled
+from generate_paper_single import generate_paper_json_single
 from template.IEEEgen import build_document as build_ieee_docx
 
-# Load environment variables
-load_dotenv(Path(__file__).parent.parent / ".env")
-load_dotenv(Path(__file__).parent / ".env", override=True)
+# Load environment variables.
+#
+# IMPORTANT: tests set DATABASE_URL to ``sqlite:///:memory:`` BEFORE importing
+# app.py (see backend/tests/conftest.py). If we blindly call load_dotenv with
+# override=True the production Postgres URL from .env clobbers the test value
+# and the test fixture's ``db.drop_all()`` then runs against the live database.
+# That happened once. Never again — when we detect a sqlite test override
+# already in place we DON'T override env from .env.
+_in_tests = (
+    os.environ.get('PYTEST_CURRENT_TEST') is not None
+    or os.environ.get('FLASK_ENV') == 'testing'
+    or (os.environ.get('DATABASE_URL', '').startswith('sqlite:'))
+)
+load_dotenv(Path(__file__).parent.parent / ".env", override=not _in_tests)
+load_dotenv(Path(__file__).parent / ".env", override=not _in_tests)
 
 app = Flask(__name__)
 
@@ -77,13 +88,21 @@ if not _db_url:
     raise RuntimeError("DATABASE_URL environment variable is required. Set it in .env")
 app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_size': 12,
-    'max_overflow': 28,
-    'pool_timeout': 30,
-    'pool_recycle': 1800,
-    'pool_pre_ping': True,
-}
+# Pooling options only make sense for server-grade DBs (Postgres/MySQL).
+# Under sqlite (used by tests) SQLAlchemy uses StaticPool which rejects
+# pool_size/max_overflow/pool_timeout. Skip those keys when on sqlite.
+if not _db_url.startswith('sqlite:'):
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 12,
+        'max_overflow': 28,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,
+        'pool_pre_ping': True,
+    }
+else:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+    }
 
 _jwt_secret = os.getenv('JWT_SECRET_KEY')
 if not _jwt_secret or _jwt_secret == 'change-me-in-production':
@@ -136,6 +155,27 @@ db.init_app(app)
 jwt = JWTManager(app)
 init_oauth(app)
 
+# ─── PostgreSQL session safeguards ────────────────────────────────────────
+# Hindari sesi nyangkut: timeout query 30 dtk, idle txn 5 menit, lock 5 dtk.
+# Hanya aktif untuk koneksi psycopg (PostgreSQL); SQLite/test akan di-skip.
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+
+@event.listens_for(Engine, "connect")
+def _set_pg_session_defaults(dbapi_connection, _):
+    """Hindari sesi nyangkut: timeout query 30 dtk, idle txn 5 menit, lock 5 dtk."""
+    if not dbapi_connection.__class__.__module__.startswith("psycopg"):
+        return
+    try:
+        with dbapi_connection.cursor() as cur:
+            cur.execute("SET statement_timeout = '30s'")
+            cur.execute("SET idle_in_transaction_session_timeout = '5min'")
+            cur.execute("SET lock_timeout = '5s'")
+        dbapi_connection.commit()
+    except Exception:
+        logging.getLogger(__name__).exception("failed to set pg session defaults")
+
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
@@ -151,6 +191,7 @@ app.register_blueprint(papers_bp)
 app.register_blueprint(files_bp)
 app.register_blueprint(paper_images_bp)
 app.register_blueprint(image_serve_bp)
+app.register_blueprint(charts_bp)
 app.register_blueprint(jobs_bp)
 app.register_blueprint(image_jobs_bp)
 app.register_blueprint(slr_bp)
@@ -279,8 +320,7 @@ def _get_builder_for_journal(journal_code: str):
         raise ValueError(f"Template generator missing build_document: {canonical}gen")
     return canonical, builder
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-openai_client = None
+AIOTOMASI_MODEL = os.getenv("AIOTOMASI_MODEL", "V-OPUS")
 
 # ─── AI Job Store (DB-backed; safe across multi-worker gunicorn) ─────────────
 def _job_create(job_id: str, user_id: int, prompt: str, paper_id: str | None = None):
@@ -344,15 +384,6 @@ def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool
     job.timeout = bool(timeout_flag)
     db.session.commit()
 
-def get_openai_client():
-    global openai_client
-    if openai_client is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key == "sk-your-actual-api-key":
-            raise Exception("OPENAI_API_KEY not configured. Please set it in .env")
-        openai_client = OpenAI(api_key=api_key, timeout=1200.0)
-    return openai_client
-
 def _get_current_user_id():
     try:
         verify_jwt_in_request(optional=True)
@@ -372,7 +403,7 @@ def _log_api_usage(endpoint, usage, user_id=None):
                 prompt_tokens=usage.get('prompt_tokens', 0),
                 completion_tokens=usage.get('completion_tokens', 0),
                 total_tokens=usage.get('total_tokens', 0),
-                model=OPENAI_MODEL,
+                model=AIOTOMASI_MODEL,
             )
             db.session.add(log_entry)
 
@@ -458,7 +489,7 @@ if not app.config.get("TESTING"):
 def health():
     return jsonify({
         "status": "ok",
-        "model": OPENAI_MODEL,
+        "model": AIOTOMASI_MODEL,
         "timestamp": datetime.now().isoformat()
     })
 
@@ -481,7 +512,12 @@ def generate():
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
 
-        client = get_openai_client()
+        api_key = os.getenv("AIOTOMASI_APIKEY")
+        base_url = os.getenv("AIOTOMASI_API")
+        if not api_key:
+            return jsonify({"error": "AIOTOMASI_APIKEY not configured"}), 500
+        if not base_url:
+            return jsonify({"error": "AIOTOMASI_API not configured"}), 500
 
         prompts_by_section = {
             "title": "You are an IEEE conference paper title writer. Generate a concise, specific paper title (max 15 words). Return ONLY the title.",
@@ -509,16 +545,17 @@ def generate():
             messages.append({"role": "assistant", "content": "I understand the context. What would you like me to do?"})
         messages.append({"role": "user", "content": prompt})
 
-        response = client.chat.completions.create(model=OPENAI_MODEL, messages=messages)
-        result = response.choices[0].message.content
-        usage = {
-            "prompt_tokens": response.usage.prompt_tokens,
-            "completion_tokens": response.usage.completion_tokens,
-            "total_tokens": response.usage.total_tokens
-        }
+        from generate_ai_json_paper_aiotomasi import _call_aiotomasi_with_fallback  # noqa: PLC0415
+        result, model_used = _call_aiotomasi_with_fallback(
+            messages, api_key, base_url, AIOTOMASI_MODEL,
+        )
+        # Upstream SSE doesn't return token counts; report char-derived estimate
+        # so the frontend keeps its existing usage shape without claiming false
+        # token totals. _log_api_usage records 0/0/0 which is harmless.
+        usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         user_id = _get_current_user_id()
         threading.Thread(target=_log_api_usage, args=("generate", usage, user_id), daemon=True).start()
-        return jsonify({"success": True, "content": result, "model": OPENAI_MODEL, "usage": usage})
+        return jsonify({"success": True, "content": result, "text": result, "model": model_used, "usage": usage})
 
     except Exception as e:
         log.exception("unhandled error")
@@ -526,10 +563,18 @@ def generate():
 
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
-def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, chunked=True, model=None, resume_state=None):
+def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, conv_id=None, resume_state=None, **_legacy_kwargs):
+    """Generate a full paper via single-shot V-OPUS.
+
+    Legacy callers may still pass ``model=`` or ``chunked=`` — both are now
+    silently ignored. The model is hard-coded to V-OPUS inside
+    ``generate_paper_json_single``; chunked orchestration has been retired in
+    favour of one round-trip with the full prompt.txt schema.
+    """
     t_start = time.time()
-    log.info("[job:%s] started, prompt=%r, chunked=%s", job_id, prompt[:80], chunked)
-    log.info("[job:%s] model=%s", job_id, model or "<env>")
+    log.info("[job:%s] started, prompt=%r (single-shot V-OPUS)", job_id, prompt[:80])
+    if _legacy_kwargs:
+        log.info("[job:%s] ignoring legacy kwargs: %s", job_id, sorted(_legacy_kwargs.keys()))
     uid = None
     try:
         uid = int(user_id) if user_id is not None else None
@@ -537,66 +582,46 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         uid = None
 
     # ── checkpoint + cancel wiring ─────────────────────────────────────────
-    # The checkpoint sink writes partial paper progress to AiJob.result and
-    # publishes the same payload to Redis so SSE subscribers (jobs_bp.stream)
-    # see live updates. Cancellation is signalled by the user/UI flipping
-    # AiJob.status to 'cancelled' (jobs_bp.cancel_job sets that), which we
-    # poll inside the chunked orchestrator.
-    def _make_checkpoint_cb(_job_id):
-        def _cb(stage, progress, partial):
-            try:
-                with app.app_context():
-                    j = AiJob.query.filter_by(id=_job_id).first()
-                    if not j:
-                        return
-                    j.stage = stage
-                    j.progress = max(0, min(100, int(progress)))
-                    # AiJob.result is the canonical resume payload — chunks_done
-                    # + partial_paper let /resume re-feed exactly the same shape
-                    # back into generate_paper_json_chunked(resume_state=...).
-                    existing = j.result if isinstance(j.result, dict) else {}
-                    chunks_done = list(existing.get("chunks_done") or [])
-                    if stage and stage not in chunks_done:
-                        chunks_done.append(stage)
-                    j.result = {
-                        **existing,
-                        "chunks_done": chunks_done,
-                        "partial_paper": partial,
-                        "last_stage": stage,
-                        "last_progress": int(progress),
-                    }
-                    db.session.commit()
-            except Exception:
-                try:
-                    db.session.rollback()
-                except Exception:
-                    pass
-                log.exception("[job:%s] checkpoint_cb failed at stage=%s", _job_id, stage)
+    # In single-shot mode we still maintain the AiJob row + Redis SSE channel
+    # so existing UI code keeps working. The single round-trip means there's
+    # no mid-flight checkpoint cadence — we publish "running" once at start
+    # and "complete" once at the end. Cancellation is checked once before we
+    # call out so a user who hit Cancel before the API was reached is honoured.
+    def _publish(stage, percent, status):
+        try:
+            from jobs_bp import publish_progress
+            publish_progress(job_id, {
+                "stage": stage,
+                "percent": int(percent),
+                "status": status,
+            })
+        except Exception:
+            pass
 
-            # Best-effort SSE publish (no Redis = silent no-op).
+    def _cancel_check():
+        try:
+            with app.app_context():
+                j = AiJob.query.filter_by(id=job_id).first()
+                return bool(j and j.status == "cancelled")
+        except Exception:
+            return False
+
+    def _checkpoint(stage, progress):
+        try:
+            with app.app_context():
+                j = AiJob.query.filter_by(id=job_id).first()
+                if not j:
+                    return
+                j.stage = stage
+                j.progress = max(0, min(100, int(progress)))
+                db.session.commit()
+        except Exception:
             try:
-                from jobs_bp import publish_progress
-                publish_progress(_job_id, {
-                    "stage": stage,
-                    "percent": int(progress),
-                    "status": "running",
-                })
+                db.session.rollback()
             except Exception:
                 pass
-        return _cb
-
-    def _make_cancel_check(_job_id):
-        def _check():
-            try:
-                with app.app_context():
-                    j = AiJob.query.filter_by(id=_job_id).first()
-                    return bool(j and j.status == "cancelled")
-            except Exception:
-                return False
-        return _check
-
-    checkpoint_cb = _make_checkpoint_cb(job_id) if chunked else None
-    cancel_check = _make_cancel_check(job_id) if chunked else None
+            log.exception("[job:%s] checkpoint failed at stage=%s", job_id, stage)
+        _publish(stage, progress, "running" if int(progress) < 100 else "complete")
 
     try:
         api_key = os.getenv("AIOTOMASI_APIKEY")
@@ -611,26 +636,47 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             extra_parts.append(f"[REFERENCE DOCUMENTS]\n{combined}")
         extra = ("\n\n".join(extra_parts)).strip()
 
-        # Use chunked generation by default to avoid 30s gateway timeouts
-        if chunked:
-            paper_data = generate_paper_json_chunked(
-                judul=prompt,
-                custom_prompt=extra,
-                topic=topic,
-                style=style,
-                model=model,
-                checkpoint_cb=checkpoint_cb,
-                cancel_check=cancel_check,
-                resume_state=resume_state,
+        # Pre-flight cancel check — honour the user pressing Cancel before we
+        # hit the upstream API. Mirrors the behaviour of the chunked path.
+        if _cancel_check():
+            raise GenerationCancelled("start")
+
+        _checkpoint("generating", 5)
+
+        paper_data = generate_paper_json_single(
+            judul=prompt,
+            custom_prompt=extra,
+            topic=topic,
+            style=style,
+            paper_id=paper_id,
+            conv_id=conv_id,
+            job_id=job_id,
+        )
+
+        # Validate that the model returned a complete paper before persisting.
+        # Without this, an upstream truncation (e.g. the model stopped at
+        # section1 because of `max_tokens`) silently produces a stub paper that
+        # only the user discovers after waiting 5–10 minutes.
+        from generate_paper_single import _validate_paper_shape as _vps
+        validation = _vps(paper_data)
+        if not validation["ok"]:
+            log.warning(
+                "[job:%s] generated paper INCOMPLETE: %s",
+                job_id, validation["issues"],
             )
-        else:
-            paper_data = generate_paper_json(
-                judul=prompt,
-                custom_prompt=extra,
-                topic=topic,
-                style=style,
-                model=model,
-            )
+            # We still save the partial result (better than nothing), but mark
+            # the job stage so the chat surfaces the issue rather than
+            # silently calling it "done".
+            try:
+                with app.app_context():
+                    j = AiJob.query.filter_by(id=job_id).first()
+                    if j:
+                        existing = (j.error or "").strip()
+                        warn = "Generated paper incomplete: " + ", ".join(validation["issues"])
+                        j.error = (existing + "\n" if existing else "") + warn
+                        db.session.commit()
+            except Exception:
+                pass
 
         paper_data.setdefault("authors", [{"name": "Author Name", "affiliation": "Department, University", "location": "City, Country", "email": "author@example.com"}])
         paper_data.setdefault("keywords", [])
@@ -675,6 +721,9 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             json_out.write_text(json.dumps(paper_data, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as save_err:
             log.warning("[job:%s] Could not save JSON: %s", job_id, save_err)
+
+        # Single end-of-run checkpoint — stage="complete", progress=100.
+        _checkpoint("complete", 100)
 
         elapsed = time.time() - t_start
         _log_api_usage("generate-full", {"total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0}, user_id)
@@ -807,7 +856,7 @@ def generate_full():
         pdf_texts = data.get("pdf_texts") or []
         model = data.get("model") or None
         if model is not None:
-            allowed_models = {"V-OPUS", "V-CLAUDE", "V-GPT", "V-GLM", "V-DEEPSEEK"}
+            allowed_models = {"V-OPUS", "V-DEEPSEEK"}
             if model not in allowed_models:
                 return jsonify({"error": f"Invalid model. Allowed: {sorted(allowed_models)}"}), 400
 
@@ -823,7 +872,7 @@ def generate_full():
         threading.Thread(
             target=_run_generate_full_job,
             args=(job_id, prompt, user_id),
-            kwargs={"topic": topic, "style": style, "pdf_texts": pdf_texts, "model": model},
+            kwargs={"topic": topic, "style": style, "pdf_texts": pdf_texts},
             daemon=True,
         ).start()
         return jsonify({"success": True, "job_id": job_id})

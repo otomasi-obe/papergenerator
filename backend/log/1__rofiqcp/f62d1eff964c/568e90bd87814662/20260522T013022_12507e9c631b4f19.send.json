@@ -1,0 +1,10 @@
+{
+  "ts": "2026-05-22T01:30:22.692949Z",
+  "kind": "send",
+  "user_id": 1,
+  "paper_id": "f62d1eff964c",
+  "conv_id": "568e90bd87814662",
+  "model": "V-DEEPSEEK",
+  "content": "Skip detail teknis. Langsung generate paper lengkap dengan judul yang kamu pilih sendiri, metode default, dataset publik, sitasi IEEE, bahasa Indonesia. Generate full paper sekarang.",
+  "len": 182
+}

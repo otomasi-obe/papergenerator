@@ -805,6 +805,19 @@ def _add_prompt_box(doc: Document, text: str):
 
 
 def _add_figure(doc: Document, item: dict, json_path: Path):
+
+    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
+    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
+    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
+    if _ai_title:
+        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
+        from docx.shared import RGBColor as _RGB
+        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        _ai_para = doc.add_paragraph()
+        _ai_para.alignment = _WAP.CENTER
+        _ai_run = _ai_para.add_run(_ai_full)
+        _ai_run.italic = True
+        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     """
     Tambah gambar + caption JRC:
       - Gambar: centered, width max 8.4cm (1 column)
@@ -1348,7 +1361,7 @@ def build_document(json_path: Path = JSON_PATH,
 
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (Path(output_path) if output_path
-                    else Path(json_path).parent / f"{JOURNAL_NAME}_{Path(json_path).stem}.docx")
+                    else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx")
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
     # ── Buka template langsung (paste keep formatting) ────────────
@@ -1386,7 +1399,7 @@ def build_document(json_path: Path = JSON_PATH,
     # Final sectPr dari template sudah tersisa di body → 1-kolom penutup
 
     doc.save(str(final_output))
-    print(f"✅ Generated: {final_output}")
+    print(f"[OK] Generated: {final_output}")
     return final_output
 
 
@@ -1404,18 +1417,18 @@ def main():
         template_arg = Path(sys.argv[3]) if len(sys.argv) >= 4 else TEMPLATE_PATH
 
         if not json_arg.exists():
-            print(f"❌ File tidak ditemukan: {json_arg}")
+            print(f"[ERR] File tidak ditemukan: {json_arg}")
             sys.exit(1)
 
         result = build_document(json_arg, output_arg, template_arg)
-        print(f"✅ Selesai: {result}")
+        print(f"[OK] Selesai: {result}")
 
     else:
         # Mode batch: semua JSON di folder
         print(f"Generating JRC DOCX untuk semua JSON di {base_dir}...")
         json_files = sorted(base_dir.glob("*.json"))
         if not json_files:
-            print("❌ Tidak ada file JSON ditemukan.")
+            print("[ERR] Tidak ada file JSON ditemukan.")
             return
 
         ok = err = 0
@@ -1425,15 +1438,15 @@ def main():
             try:
                 data = json.loads(jf.read_text(encoding="utf-8"))
                 if not isinstance(data, dict):
-                    print(f"❌ Skip: {jf.name} (bukan dict JSON)")
+                    print(f"[ERR] Skip: {jf.name} (bukan dict JSON)")
                     continue
                 build_document(jf)
                 ok += 1
             except json.JSONDecodeError as e:
-                print(f"❌ Skip: {jf.name} — JSON error: {e}")
+                print(f"[ERR] Skip: {jf.name} — JSON error: {e}")
                 err += 1
             except Exception as e:
-                print(f"❌ Error: {jf.name} — {e}")
+                print(f"[ERR] Error: {jf.name} — {e}")
                 err += 1
 
         print(f"\nSelesai: {ok} berhasil, {err} gagal.")

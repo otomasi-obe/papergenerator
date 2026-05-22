@@ -15,6 +15,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api from '../api/index.js'
+import { usePaperStore } from './paper.js'
 
 export const usePaperJobsStore = defineStore('paperJobs', () => {
   // paperId → active job object
@@ -23,6 +24,12 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
   const recentDone = ref([])
   // Job ids the user has already been notified about (or pre-seeded on first load)
   const seenDoneIds = ref(new Set())
+  // Job ids that have already triggered the post-done chat injection. We
+  // track this separately from seenDoneIds because notifications and the
+  // chat hook have different lifecycles (e.g. seenDoneIds is seeded on the
+  // first load to suppress back-fill notifs, but we still want the hook to
+  // fire exactly once per job).
+  const _processedJobIds = new Set()
 
   let activePollInterval = null
   let globalPollInterval = null
@@ -115,6 +122,68 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     } catch { /* some browsers throw if called too early */ }
   }
 
+  // Walk the paper JSON for figure-blocks (`id === 'gambar'`) and collect
+  // their {title, prompt, section, content_index}. Used by the post-done
+  // hook to surface a one-shot image-prompt review chat bubble.
+  function _collectImagePrompts(paper) {
+    const imgs = []
+    const sections = paper?.data?.sections || paper?.sections || []
+    sections.forEach((s, sIdx) => {
+      const items = s.content || []
+      items.forEach((c, cIdx) => {
+        if (c && c.id === 'gambar' && (c.Prompt || c.prompt)) {
+          imgs.push({
+            section_index: sIdx,
+            content_index: cIdx,
+            title: c.Title || c.title || '',
+            prompt: c.Prompt || c.prompt || '',
+          })
+        }
+      })
+    })
+    return imgs
+  }
+
+  // Post-done hook for full-paper jobs: nudges the user to review the
+  // figure prompts the writer produced before triggering bulk image gen.
+  // Silent no-op if there is no chat open or the kind doesn't match.
+  // Guarded against re-firing for the same job id across the polling lifetime.
+  async function _onJobDone(job) {
+    if (!job?.id) return
+    if (_processedJobIds.has(job.id)) return
+    _processedJobIds.add(job.id)
+    const kind = job.kind || job.tool || job.action || ''
+    const isFullPaper =
+      kind === 'generate_full_paper' ||
+      kind === 'generate_paper' ||
+      kind === 'generate_full'
+    if (!isFullPaper) return
+    try {
+      const paperStore = usePaperStore()
+      // Lazy-import the chat store to avoid the chat.js ↔ paper.js circular
+      // dep loop (paper.js already lazy-imports chat.js).
+      const { useChatStore } = await import('./chat.js')
+      const chatStore = useChatStore()
+      const paper = paperStore.paper
+      if (!paper) return
+      // job.paper_id is always set; bail if the user is on a different paper
+      if (job.paper_id && paper.id && job.paper_id !== paper.id) return
+      const images = _collectImagePrompts(paper)
+      if (!images.length) return
+      const lines = images.map((im, i) => {
+        const t = im.title || 'Untitled'
+        return `**Fig. ${i + 1}** — ${t}\n  prompt: ${im.prompt}`
+      })
+      const body =
+        'Paper sudah selesai. Saya menemukan ' + images.length +
+        ' prompt gambar:\n\n' + lines.join('\n\n') +
+        '\n\nMau saya generate semua sekarang, edit prompt dulu, atau skip?'
+      chatStore.injectAssistantMessage(body)
+    } catch (e) {
+      console.warn('paperJobs._onJobDone hook failed', e)
+    }
+  }
+
   async function fetchRecentDone() {
     try {
       const r = await api.get('/api/me/ai-jobs/recent', {
@@ -131,6 +200,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
         newOnes.forEach(j => {
           seenDoneIds.value.add(j.id)
           _notify(j)
+          _onJobDone(j)
         })
       }
       recentDone.value = list

@@ -16,10 +16,14 @@ Output:
     is_relevant     -> bool (>= 0.40, threshold PROMPTHEUS default)
 
 Tidak menggunakan API berbayar. Embedding dipakai pakai
-`all-MiniLM-L6-v2` (model lokal, 80 MB, ~3 ms/abstract di CPU).
+`all-MiniLM-L6-v2` (model lokal, 80 MB, ~3 ms/abstract di CPU). Bila
+`sentence_transformers` tidak terinstall (mis. lingkungan slim / CI),
+embedder otomatis fallback ke TF-IDF (max_features=384, normalized) dengan
+sentinel `_TFIDF_FALLBACK` sehingga cosine downstream tetap jalan.
 """
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -32,8 +36,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 from .paper import Paper
 from .text_cleaner import clean_abstract, clean_title
 
+log = logging.getLogger(__name__)
+
 _SBERT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 _SBERT = None  # lazy
+_TFIDF_FALLBACK = "TFIDF_FALLBACK"
 
 _HIGH_QUALITY_VENUE_TOKENS = (
     "ieee", "acm", "springer", "elsevier", "nature", "science",
@@ -42,10 +49,19 @@ _HIGH_QUALITY_VENUE_TOKENS = (
 
 
 def _get_sbert():
+    """Return the SBERT model, or the sentinel `_TFIDF_FALLBACK` string when
+    `sentence_transformers` is missing / fails to load. Cached per-process."""
     global _SBERT
     if _SBERT is None:
-        from sentence_transformers import SentenceTransformer
-        _SBERT = SentenceTransformer(_SBERT_MODEL)
+        try:
+            from sentence_transformers import SentenceTransformer
+            _SBERT = SentenceTransformer(_SBERT_MODEL)
+        except Exception as e:
+            log.warning(
+                "sentence_transformers unavailable, using TF-IDF fallback: %s",
+                e,
+            )
+            _SBERT = _TFIDF_FALLBACK
     return _SBERT
 
 
@@ -105,7 +121,30 @@ def _has_signal(p: Paper) -> bool:
 
 
 def _embed(texts: Sequence[str]) -> np.ndarray:
+    """Encode `texts` to L2-normalized dense vectors.
+
+    Prefers SBERT (`all-MiniLM-L6-v2`, 384-dim). When `sentence_transformers`
+    is not available, falls back to a TF-IDF vectorizer with `max_features=384`
+    and L2 normalization, which keeps cosine math downstream unchanged.
+    """
     sbert = _get_sbert()
+    if sbert == _TFIDF_FALLBACK:
+        if not texts:
+            return np.zeros((0, 384), dtype=np.float32)
+        try:
+            vec = TfidfVectorizer(
+                stop_words="english",
+                max_features=384,
+                ngram_range=(1, 2),
+                sublinear_tf=True,
+            )
+            mat = vec.fit_transform(list(texts)).astype(np.float32).toarray()
+        except ValueError:
+            # Empty vocab (e.g. all-stopword inputs) → fall back to zeros.
+            return np.zeros((len(texts), 384), dtype=np.float32)
+        norms = np.linalg.norm(mat, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        return mat / norms
     return sbert.encode(list(texts), batch_size=32, show_progress_bar=False,
                          convert_to_numpy=True, normalize_embeddings=True)
 
