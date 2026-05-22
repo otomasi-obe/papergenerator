@@ -3,11 +3,19 @@ Enhanced Observability Module with Log Rotation
 ================================================
 Structured JSON logging with daily rotation, compression, and retention policies.
 
-Changes from original:
-- Added TimedRotatingFileHandler with daily rotation
-- Added gzip compression for archived logs
-- Separate handlers for errors and performance logs
-- 7-day retention for app logs, 30-day for errors
+Log Files:
+- app.log: All application logs (INFO+), 7-day retention
+- error.log: Error logs only (ERROR+), 30-day retention
+- access.log: HTTP access logs (INFO+), 7-day retention
+- worker.log: Background worker logs (INFO+), 7-day retention
+- perf.log: Performance logs (WARNING+), 7-day retention
+
+Features:
+- TimedRotatingFileHandler with daily rotation at midnight UTC
+- Gzip compression for archived logs
+- JSON format for structured logging
+- Separate handlers for different log categories
+- Automatic log cleanup based on retention policies
 """
 from __future__ import annotations
 
@@ -155,9 +163,11 @@ def _create_rotating_handler(
 def _configure_logging(log_dir: Path) -> None:
     """Configure root logger with rotating file handlers and stdout.
     
-    Creates three log files:
+    Creates five log files:
     - app.log: All logs (INFO+), 7-day retention
-    - errors.log: Errors only (ERROR+), 30-day retention
+    - error.log: Errors only (ERROR+), 30-day retention
+    - access.log: HTTP access logs (INFO+), 7-day retention
+    - worker.log: Background worker logs (INFO+), 7-day retention
     - perf.log: Performance logs (WARNING+), 7-day retention
     """
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -174,14 +184,25 @@ def _configure_logging(log_dir: Path) -> None:
     
     # Error log (errors only, 30-day retention for compliance)
     error_handler = _create_rotating_handler(
-        log_dir, 'errors.log', level=logging.ERROR, backup_count=30
+        log_dir, 'error.log', level=logging.ERROR, backup_count=30
     )
+    
+    # Access log (HTTP requests, 7-day retention)
+    access_handler = _create_rotating_handler(
+        log_dir, 'access.log', level=logging.INFO, backup_count=7
+    )
+    access_handler.addFilter(lambda r: 'papergenerator.obs' in r.name and 'http' in r.msg)
+    
+    # Worker log (background workers, 7-day retention)
+    worker_handler = _create_rotating_handler(
+        log_dir, 'worker.log', level=logging.INFO, backup_count=7
+    )
+    worker_handler.addFilter(lambda r: any(x in r.name for x in ['worker', 'slr', 'image', 'gemini']))
     
     # Performance log (warnings about slow operations, 7-day retention)
     perf_handler = _create_rotating_handler(
         log_dir, 'perf.log', level=logging.WARNING, backup_count=7
     )
-    # Only capture performance-related logs
     perf_handler.addFilter(lambda r: 'perf' in r.name.lower())
     
     # Stdout for Docker/systemd log collection
@@ -194,6 +215,8 @@ def _configure_logging(log_dir: Path) -> None:
     root.setLevel(log_level)
     root.addHandler(app_handler)
     root.addHandler(error_handler)
+    root.addHandler(access_handler)
+    root.addHandler(worker_handler)
     root.addHandler(perf_handler)
     root.addHandler(stream_handler)
 

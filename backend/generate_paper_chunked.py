@@ -383,7 +383,7 @@ Generate the paper outline following the schema above."""
     raw_content, model_used = _call_aiotomasi_with_fallback(
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
-    print(f"[_generate_outline] succeeded using model={model_used}", flush=True)
+    log.info("[_generate_outline] succeeded using model=%s", model_used)
 
     return _parse_json_response(raw_content)
 
@@ -506,7 +506,7 @@ Return ONLY the JSON object for section{section_num}."""
     raw_content, model_used = _call_aiotomasi_with_fallback(
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
-    print(f"[_generate_section] Section {section_num} succeeded using model={model_used}", flush=True)
+    log.info("[_generate_section] Section %d succeeded using model=%s", section_num, model_used)
 
     section_data = _parse_json_response(raw_content)
 
@@ -711,7 +711,7 @@ Return the references as a JSON object with a "references" array."""
         messages, api_key, base_url, model, timeout=900.0, progress_cb=progress_cb
     )
     mode = "literature-aware" if lit_entries else "fallback-plausible"
-    print(f"[_generate_references] succeeded using model={model_used} mode={mode} count={num_refs}", flush=True)
+    log.info("[_generate_references] succeeded using model=%s mode=%s count=%d", model_used, mode, num_refs)
 
     refs_data = _parse_json_response(raw_content)
     return refs_data.get("references", [])
@@ -810,17 +810,17 @@ def generate_paper_json_chunked(
         except Exception:
             log.exception("[generate_paper_json_chunked] checkpoint_cb failed at stage=%s", stage)
 
-    print(
-        f"[generate_paper_json_chunked] Starting (resume_state={'yes' if resume_state else 'no'}, "
-        f"already_done={sorted(done) or 'none'})...",
-        flush=True,
+    log.info(
+        "[generate_paper_json_chunked] Starting (resume_state=%s, already_done=%s)",
+        'yes' if resume_state else 'no',
+        sorted(done) or 'none'
     )
     t_start = time.time()
 
     # ── Chunk 1: Outline ─────────────────────────────────────────────────────
     if "outline" not in done:
         _check_cancel("outline")
-        print("[1/8] Generating outline...", flush=True)
+        log.info("[1/8] Generating outline...")
         outline = _generate_outline(
             judul, custom_prompt, topic, style,
             _api_key, _base_url, _model, progress_cb,
@@ -835,7 +835,7 @@ def generate_paper_json_chunked(
     else:
         outline = partial.get("outline") or {}
         partial.setdefault("sections", [])
-        print("[1/8] outline already done — skipping", flush=True)
+        log.info("[1/8] outline already done — skipping")
 
     # Reconstruct numbering state from any previously generated sections so
     # resumed runs continue numbering monotonically across the boundary.
@@ -867,10 +867,10 @@ def generate_paper_json_chunked(
     for i in range(1, 6):
         chunk_id = f"section_{i}"
         if chunk_id in done:
-            print(f"[{i+1}/8] {chunk_id} already done — skipping", flush=True)
+            log.info("[%d/8] %s already done — skipping", i+1, chunk_id)
             continue
         _check_cancel(chunk_id)
-        print(f"[{i+1}/8] Generating Section {i}...", flush=True)
+        log.info("[%d/8] Generating Section %d...", i+1, i)
         section = _generate_section(
             i, outline, sections, judul, custom_prompt,
             topic, style, _api_key, _base_url, _model,
@@ -884,7 +884,7 @@ def generate_paper_json_chunked(
     # ── Chunk 7: References ──────────────────────────────────────────────────
     if "references" not in done:
         _check_cancel("references")
-        print("[7/8] Generating references...", flush=True)
+        log.info("[7/8] Generating references...")
         references = _generate_references(
             outline, sections, style,
             _api_key, _base_url, _model,
@@ -896,11 +896,11 @@ def generate_paper_json_chunked(
         _checkpoint("references", 90)
     else:
         references = partial.get("references") or []
-        print("[7/8] references already done — skipping", flush=True)
+        log.info("[7/8] references already done — skipping")
 
     # ── Chunk 8: Combine ─────────────────────────────────────────────────────
     _check_cancel("combine")
-    print("[8/8] Combining...", flush=True)
+    log.info("[8/8] Combining...")
 
     section_titles = outline.get("section_titles") or {}
     sections_array = []
@@ -952,6 +952,6 @@ def generate_paper_json_chunked(
     _checkpoint("combine", 100)
 
     elapsed = time.time() - t_start
-    print(f"[generate_paper_json_chunked] Completed in {elapsed:.1f}s", flush=True)
+    log.info("[generate_paper_json_chunked] Completed in %.1fs", elapsed)
 
     return paper_json

@@ -642,10 +642,11 @@ def generate_paper_json_single(
         user_kb,
         SINGLE_SHOT_MODEL,
     )
-    print(
-        f"[generate_paper_json_single] starting "
-        f"(system={sys_kb:.1f}KB user={user_kb:.1f}KB model={SINGLE_SHOT_MODEL})",
-        flush=True,
+    log.info(
+        "[generate_paper_json_single] starting (system=%.1fKB user=%.1fKB model=%s)",
+        sys_kb,
+        user_kb,
+        SINGLE_SHOT_MODEL,
     )
 
     # Persist the EXACT request being sent to V-OPUS so we can inspect it
@@ -674,10 +675,10 @@ def generate_paper_json_single(
         messages, _api_key, _base_url, timeout=900.0, progress_cb=progress_cb
     )
     elapsed = time.time() - t_start
-    print(
-        f"[generate_paper_json_single] received {len(raw_content)} chars in "
-        f"{elapsed:.1f}s",
-        flush=True,
+    log.info(
+        "[generate_paper_json_single] received %d chars in %.1fs",
+        len(raw_content),
+        elapsed,
     )
 
     # Persist raw reply BEFORE parsing — if json parsing fails we still want

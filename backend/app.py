@@ -287,7 +287,7 @@ limiter.limit("10 per minute")(auth_bp)
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 LOG_FILE = Path(__file__).parent / "data" / "logs" / "app.log"
-from observability import init_observability  # noqa: E402  (after app + db ready)
+from observability_v2 import init_observability  # noqa: E402  (after app + db ready)
 init_observability(app, db, log_file=LOG_FILE)
 log = logging.getLogger(__name__)
 
@@ -1125,5 +1125,5 @@ if __name__ == "__main__":
     debug = os.getenv("FLASK_DEBUG", "true").lower() == "true"
     log.info("=" * 60)
     log.info("PaperFull API starting on port %d", port)
-    print(f"🚀 PaperFull API running on http://localhost:{port}")
+    log.info("🚀 PaperFull API running on http://localhost:%d", port)
     app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False, threaded=True)

@@ -210,6 +210,7 @@ def _send_prompt(page, prompt: str, *, timeout_s: int = 30) -> None:
 def _wait_download_button(page, *, timeout_s: int) -> object:
     deadline = time.monotonic() + timeout_s
     next_log = time.monotonic() + 15
+    log = logging.getLogger("gemini.wait")
     while time.monotonic() < deadline:
         cnt = page.locator(
             'button[aria-label="Download gambar ukuran penuh"], '
@@ -221,10 +222,8 @@ def _wait_download_button(page, *, timeout_s: int) -> object:
                 'button[aria-label*="Download full-size image"]'
             ).last
         if time.monotonic() >= next_log:
-            print(
-                f"      … menunggu image (elapsed {int(time.monotonic() - (deadline - timeout_s))}s/{timeout_s}s)",
-                flush=True,
-            )
+            elapsed = int(time.monotonic() - (deadline - timeout_s))
+            log.debug("waiting for image download button (elapsed %ds/%ds)", elapsed, timeout_s)
             next_log = time.monotonic() + 15
         page.wait_for_timeout(2500)
     raise RuntimeError("Tombol download tidak muncul dalam batas waktu")
@@ -449,11 +448,12 @@ class GeminiPool:
         names_env = os.environ.get("GEMINI_PROFILES", "account1,account2,account3,account4")
         names = [n.strip() for n in names_env.split(",") if n.strip()]
         accounts: list[GeminiAccount] = []
+        log = logging.getLogger("gemini.pool")
         for n in names:
             try:
                 accounts.append(GeminiAccount.from_env(n))
             except Exception as e:
-                print(f"! skip {n}: {e}", file=sys.stderr)
+                log.warning("skip account %s: %s", n, e)
         if not accounts:
             raise RuntimeError("Tidak ada akun valid. Jalankan GeminiCookies.py.")
         pool = cls(accounts=accounts)
@@ -518,14 +518,14 @@ class GeminiPool:
                         compress_image(out_path, max_size_mb=max_size_mb)
                         res["size_after_compress"] = out_path.stat().st_size
                     except Exception as e:
-                        print(f"  ! compress error (kept raw): {e}")
+                        _get_account_logger(acc.name).warning("compress error (kept raw): %s", e)
                 if self.cooldown_s > 0:
                     time.sleep(self.cooldown_s)
                 return res
             except Exception as e:
                 last_err = e
                 _get_account_logger(acc.name).exception("job failed: %s", e)
-                print(f"  ! {acc.name} gagal: {e} → coba akun berikutnya", flush=True)
+                _get_account_logger(acc.name).warning("%s failed: %s → trying next account", acc.name, e)
                 # close akun ini supaya browser baru kalau retry
                 acc.close()
                 continue
