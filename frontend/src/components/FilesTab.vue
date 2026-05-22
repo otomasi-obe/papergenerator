@@ -120,18 +120,6 @@
             <template v-else>{{ previewText }}</template>
           </div>
         </div>
-          </div>
-          <!-- TXT / MD -->
-          <pre
-            v-else-if="['.txt', '.md'].includes(activeFile.ext)"
-            class="px-5 py-4 text-xs leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap font-mono"
-          >{{ previewText || '(kosong)' }}</pre>
-          <!-- DOCX / DOC: show extracted text -->
-          <div v-else class="px-5 py-4 text-xs leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap font-mono">
-            <div v-if="!previewText" class="text-ink-500 dark:text-ink-300">(tidak bisa di-preview di browser)</div>
-            <template v-else>{{ previewText }}</template>
-          </div>
-        </div>
       </section>
     </div>
 

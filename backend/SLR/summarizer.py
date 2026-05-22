@@ -29,16 +29,27 @@ from .text_cleaner import clean_abstract
 log = logging.getLogger(__name__)
 
 _SBERT = None
+_SBERT_UNAVAILABLE = False
 
 _SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z(])")
 _MIN_LEN = 25
 
 
 def _sbert():
-    global _SBERT
+    """Return SBERT model or None if unavailable. Cached per-process."""
+    global _SBERT, _SBERT_UNAVAILABLE
+    if _SBERT_UNAVAILABLE:
+        return None
     if _SBERT is None:
-        from sentence_transformers import SentenceTransformer
-        _SBERT = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        try:
+            from sentence_transformers import SentenceTransformer
+            _SBERT = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        except Exception as e:
+            log.warning(
+                "sentence_transformers unavailable, extractive summarization disabled: %s", e
+            )
+            _SBERT_UNAVAILABLE = True
+            return None
     return _SBERT
 
 
@@ -63,6 +74,9 @@ def summarize(text: str | None, query: str | None = None,
 
     try:
         model = _sbert()
+        if model is None:
+            # sentence_transformers unavailable, use simple fallback
+            return " ".join(sents[:n_sentences])
         embs = model.encode(sents, normalize_embeddings=True, show_progress_bar=False,
                             convert_to_numpy=True)
         doc_emb = embs.mean(axis=0, keepdims=True)

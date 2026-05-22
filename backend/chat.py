@@ -803,13 +803,13 @@ def send_message(conv_id):
                             and result.startswith("Error:")
                             and tool_name in {"GenerateFullPaper", "RunSLR"}):
                         log.warning(f"[TOOL_VALIDATION_ERROR] {tool_name}: {result[:500]}")
-                        yield _sse("tool_result", {"name": tool_name, "result": result[:2000]})
+                        yield _sse("tool_result", {"name": tool_name, "result": str(result)[:2000]})
                         yield _sse("error", {"message": result})
                         return
 
                     # Forward the raw result to the frontend so it can route
                     # proposals through the diff/apply flow.
-                    yield _sse("tool_result", {"name": tool_name, "result": result[:2000]})
+                    yield _sse("tool_result", {"name": tool_name, "result": str(result)[:2000]})
 
                     # Emit a typed open_tab event for RunSLR so the frontend
                     # has a canonical signal (no parsing of the result string).
@@ -887,7 +887,12 @@ def send_message(conv_id):
                 # The model now has the mode-specific prompt + tool subset.
                 if mode_changed:
                     sysprompt, selected_tools = _select_tools(conv, content)
-                    messages = _build_messages(conv, sysprompt, content)
+                    # Update system message in-place to preserve tool results from current iteration
+                    if messages and messages[0].get("role") == "system":
+                        messages[0]["content"] = sysprompt
+                    else:
+                        # Fallback: prepend system message if not found
+                        messages.insert(0, {"role": "system", "content": sysprompt})
 
             assistant_msg = ChatMessage(
                 conversation_id=conv_id,

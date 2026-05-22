@@ -31,7 +31,13 @@ MAX_INFLIGHT_PER_USER = 12
 @image_jobs_bp.route("", methods=["POST"])
 @jwt_required()
 def create_image_job():
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     data = request.get_json(silent=True) or {}
     paper_id = (data.get("paper_id") or "").strip()
     prompt = (data.get("prompt") or "").strip()
@@ -78,7 +84,13 @@ def create_image_job():
 @image_jobs_bp.route("", methods=["GET"])
 @jwt_required()
 def list_image_jobs():
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     # Return active jobs + the 30 most recent finished ones, so the frontend can
     # reattach UI on reload without paging.
     active = (
@@ -102,7 +114,13 @@ def list_image_jobs():
 @image_jobs_bp.route("/<job_id>", methods=["GET"])
 @jwt_required()
 def get_image_job(job_id: str):
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = ImageGenJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
@@ -116,7 +134,13 @@ def cancel_image_job(job_id: str):
     writing the final 'done' or 'error' state, so a cancelled job will not
     end up creating a stray PaperImage row even if the generation actually
     completes a moment later."""
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = ImageGenJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404

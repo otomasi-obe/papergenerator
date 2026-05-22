@@ -389,13 +389,26 @@ def _extract_metadata(pdf_path: str) -> str:
 
 def extract_text_from_pdf(stream) -> str:
     """Extract plain text from a PDF file-like stream (for API use)."""
+    # BUG FIX: Add size validation to prevent memory exhaustion
+    MAX_PDF_SIZE = 50 * 1024 * 1024  # 50MB limit for PDF extraction
+    
     data = stream.read() if hasattr(stream, "read") else stream
-    doc = fitz.open(stream=data, filetype="pdf")
-    texts = []
-    for page in doc:
-        texts.append(page.get_text("text"))
-    doc.close()
-    return "\n".join(texts)
+    
+    if len(data) > MAX_PDF_SIZE:
+        return f"[PDF too large for extraction: {len(data) // (1024*1024)}MB, limit is 50MB]"
+    
+    if len(data) == 0:
+        return "[Empty PDF file]"
+    
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+        texts = []
+        for page in doc:
+            texts.append(page.get_text("text"))
+        doc.close()
+        return "\n".join(texts)
+    except Exception as e:
+        return f"[PDF extraction error: {str(e)[:100]}]"
 
 
 def extract_pdfs_from_directory(input_path, output_dir):
@@ -486,7 +499,8 @@ if __name__ == "__main__":
         if os.path.exists(referensi_dir):
             input_path = referensi_dir
         else:
-            input_path = r"D:\PROGRAM\paper\PaperFOC Steering\Referensi"
+            # BUG FIX: Removed hardcoded Windows path - use current directory instead
+            input_path = os.path.join(current_dir, "referensi")
 
     # Resolve output directory
     if args.output_dir:

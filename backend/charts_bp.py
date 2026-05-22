@@ -37,7 +37,13 @@ def create_chart(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return _err("Invalid paper id", "BAD_REQUEST", 400)
     try:
-        user_id = int(get_jwt_identity())
+        try:
+
+            user_id = int(get_jwt_identity())
+
+        except (ValueError, TypeError):
+
+            return jsonify({"error": "Invalid user identity"}), 401
     except (TypeError, ValueError):
         return _err("Unauthorized", "UNAUTHORIZED", 401)
 

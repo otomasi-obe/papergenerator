@@ -47,7 +47,11 @@ ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
 def upload_paper_image(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+    
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -62,6 +66,13 @@ def upload_paper_image(paper_id: str):
     if ext not in ALLOWED_IMAGE_EXTS:
         return jsonify({"error": "Invalid image format"}), 400
 
+    # BUG FIX #1: Add size check (was missing in original)
+    file.stream.seek(0, 2)
+    size = file.stream.tell()
+    file.stream.seek(0)
+    if size > 10 * 1024 * 1024:
+        return jsonify({"error": "Ukuran file > 10 MB"}), 413
+
     head = file.stream.read(16)
     file.stream.seek(0)
     if not is_image_bytes(head, ext):
@@ -75,14 +86,25 @@ def upload_paper_image(paper_id: str):
     filepath = paper_dir / filename
     file.save(str(filepath))
 
-    img = PaperImage(
-        paper_id=paper_id, user_id=user_id,
-        filename=filename, original_name=file.filename[:255],
-        file_path=f"{paper_id}/{filename}",
-    )
-    db.session.add(img)
-    db.session.commit()
-    return jsonify({"success": True, "image": img.to_dict()})
+    # BUG FIX #2: Add cleanup on DB failure to prevent orphaned files
+    try:
+        img = PaperImage(
+            paper_id=paper_id, user_id=user_id,
+            filename=filename, original_name=file.filename[:255],
+            file_path=f"{paper_id}/{filename}",
+        )
+        db.session.add(img)
+        db.session.commit()
+        return jsonify({"success": True, "image": img.to_dict()})
+    except Exception:
+        # Clean up orphaned file if DB commit fails
+        try:
+            if filepath.exists():
+                filepath.unlink()
+        except Exception:
+            log.warning("upload_paper_image: could not clean up %s", filepath)
+        db.session.rollback()
+        raise
 
 
 @paper_images_bp.route("/<paper_id>/images/upload", methods=["POST"])
@@ -103,7 +125,11 @@ def upload_user_image(paper_id: str):
     """
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+    
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -140,23 +166,34 @@ def upload_user_image(paper_id: str):
     filepath = paper_dir / filename
     file.save(str(filepath))
 
-    img = PaperImage(
-        paper_id=paper_id, user_id=user_id,
-        filename=filename, original_name=file.filename[:255],
-        file_path=f"{paper_id}/{filename}",
-    )
-    db.session.add(img)
-    db.session.commit()
+    # BUG FIX: Add cleanup on DB failure to prevent orphaned files
+    try:
+        img = PaperImage(
+            paper_id=paper_id, user_id=user_id,
+            filename=filename, original_name=file.filename[:255],
+            file_path=f"{paper_id}/{filename}",
+        )
+        db.session.add(img)
+        db.session.commit()
 
-    d = img.to_dict()
-    return jsonify({
-        "id": d["id"],
-        "filename": d["filename"],
-        "original_name": d["original_name"],
-        "url": d["url"],
-        "kind": "uploaded",
-        "paper_id": paper_id,
-    })
+        d = img.to_dict()
+        return jsonify({
+            "id": d["id"],
+            "filename": d["filename"],
+            "original_name": d["original_name"],
+            "url": d["url"],
+            "kind": "uploaded",
+            "paper_id": paper_id,
+        })
+    except Exception:
+        # Clean up orphaned file if DB commit fails
+        try:
+            if filepath.exists():
+                filepath.unlink()
+        except Exception:
+            log.warning("upload_user_image: could not clean up %s", filepath)
+        db.session.rollback()
+        raise
 
 
 @paper_images_bp.route("/<paper_id>/images", methods=["GET"])
@@ -164,7 +201,11 @@ def upload_user_image(paper_id: str):
 def list_paper_images(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+    
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -206,7 +247,11 @@ def sign_paper_resource(paper_id: str):
     """
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+    
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -254,11 +299,17 @@ def get_paper_image(paper_id: str, filename: str):
             verify_jwt_in_request()
         except Exception:
             return jsonify({"error": "Unauthorized"}), 401
-        user_id = int(get_jwt_identity())
+        try:
+            user_id = int(get_jwt_identity())
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid user identity"}), 401
 
-    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-    if not paper:
+    # Verify both paper ownership AND image belongs to that paper (security fix)
+    img = PaperImage.query.filter_by(paper_id=paper_id, filename=filename).first()
+    if not img:
         return jsonify({"error": "Image not found"}), 404
+    if img.user_id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
 
     paper_dir = safe_paper_dir(paper_id)
     if not paper_dir:

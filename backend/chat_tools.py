@@ -871,7 +871,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
 
     allowed, reason = _check_paper_lock(paper_id, 'generate')
     if not allowed:
-        return {"error": reason}
+        return f"Error: {reason}"
 
     api_key = os.getenv("AIOTOMASI_APIKEY")
     if not api_key:
@@ -996,6 +996,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
             },
             daemon=True,
         )
+        _set_paper_lock(paper_id, "generating", job_id)
         thread.start()
         logger.info("paper.generate prompt=%s", prompt[:80])
     except Exception as e:
@@ -1010,6 +1011,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
                     db.session.commit()
         except Exception:
             pass
+        _clear_paper_lock(paper_id)
         return f"Error: starting job failed ({e})"
 
     # Best-effort: tell the chat blueprint that this paper now has an

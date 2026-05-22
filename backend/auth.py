@@ -7,11 +7,12 @@ JWT is delivered via httpOnly cookies with double-submit CSRF protection.
 
 import os
 import re
+import secrets
 import logging
 from datetime import datetime, timedelta, timezone
 
 import requests
-from flask import Blueprint, redirect, request, jsonify, url_for, current_app
+from flask import Blueprint, redirect, request, jsonify, url_for, current_app, session
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -233,21 +234,39 @@ def login_email():
 
 @auth_bp.route('/google/login')
 def google_login():
-    """Redirect user to Google OAuth consent screen."""
+    """Redirect user to Google OAuth consent screen with CSRF protection."""
     if not os.getenv('GOOGLE_CLIENT_ID') or 'your-google-client-id' in os.getenv('GOOGLE_CLIENT_ID', ''):
         return jsonify({
             'error': 'Google OAuth not configured',
             'message': 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env and restart backend'
         }), 503
+    
+    # Generate CSRF state token (OAuth CSRF vulnerability fix)
+    state = secrets.token_urlsafe(32)
+    session['oauth_state'] = state
+    
     domain = os.getenv('DOMAIN', 'paperfull.app')
     redirect_uri = f"https://{domain}/api/auth/google/callback"
-    return oauth.google.authorize_redirect(redirect_uri)
+    return oauth.google.authorize_redirect(redirect_uri, state=state)
 
 
 @auth_bp.route('/google/callback')
 def google_callback():
-    """Handle Google OAuth callback, set httpOnly cookies, redirect to frontend."""
+    """Handle Google OAuth callback with CSRF validation, set httpOnly cookies, redirect to frontend."""
     frontend_url = _allowed_frontend_url(os.getenv('FRONTEND_URL', 'http://localhost:1000'))
+    
+    # Validate CSRF state token (OAuth CSRF vulnerability fix)
+    state_from_request = request.args.get('state')
+    state_from_session = session.pop('oauth_state', None)
+    
+    if not state_from_request or not state_from_session:
+        log.warning("OAuth callback missing state parameter")
+        return redirect(f"{frontend_url}/login?error=invalid_state")
+    
+    if not secrets.compare_digest(state_from_request, state_from_session):
+        log.warning("OAuth callback state mismatch - possible CSRF attack")
+        return redirect(f"{frontend_url}/login?error=csrf_detected")
+    
     try:
         token = oauth.google.authorize_access_token()
         userinfo = token.get('userinfo')
@@ -296,11 +315,14 @@ def google_callback():
 @jwt_required(refresh=True)
 def refresh():
     """Issue a new access token (and rotate refresh token) using the refresh cookie."""
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid user identity'}), 401
+    
     user = User.query.get(user_id)
     if not user:
-        resp = jsonify({'error': 'User not found'}), 404
-        return resp
+        return jsonify({'error': 'User not found'}), 404
     access, new_refresh = _issue_tokens_for(user)
     resp = jsonify({'user': user.to_dict()})
     set_access_cookies(resp, access)
@@ -312,7 +334,11 @@ def refresh():
 @jwt_required()
 def get_me():
     """Return current authenticated user info."""
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid user identity'}), 401
+    
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -320,8 +346,9 @@ def get_me():
 
 
 @auth_bp.route('/logout', methods=['POST'])
+@jwt_required(optional=True)
 def logout():
-    """Clear auth cookies. CSRF-protected via the access cookie when present."""
+    """Clear auth cookies. Protected to prevent CSRF."""
     resp = jsonify({'success': True, 'message': 'Logged out successfully'})
     unset_jwt_cookies(resp)
     return resp

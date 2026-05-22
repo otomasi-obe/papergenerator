@@ -60,7 +60,7 @@ except Exception:
     pass
 
 try:
-    from compress import compress_image
+    from imageGenerator.compress import compress_image
 except Exception:
     compress_image = None  # type: ignore
 
@@ -302,6 +302,9 @@ class GeminiAccount:
     def _on_response(self, resp) -> None:
         try:
             url = resp.url
+            # Early filter: only process Gemini download URLs
+            if "/rd-gg-dl/" not in url and "/gg-dl/" not in url:
+                return
             ct = resp.headers.get("content-type", "")
             if "/rd-gg-dl/" in url and ct.startswith("image/"):
                 with suppress(Exception):
@@ -468,8 +471,10 @@ class GeminiPool:
         self.close()
 
     def close(self) -> None:
+        # Close all accounts even if some fail
         for a in self.accounts:
-            a.close()
+            with suppress(Exception):
+                a.close()
         if self._pw_cm is not None:
             with suppress(Exception):
                 self._pw_cm.__exit__(None, None, None)

@@ -420,7 +420,7 @@ def _compress_and_verify(path: Path, max_size_mb: float) -> tuple[bool, int]:
     # Import lazily so this script can still "just open" Gemini
     # even if Pillow isn't installed.
     try:
-        from Paper.PaperMediaPipePLC.paperReview.judul3.compress import compress_image  # type: ignore
+        from imageGenerator.compress import compress_image  # type: ignore
     except Exception as e:
         raise RuntimeError(
             "Gagal import compress.py. Pastikan dependensi terpasang (Pillow). "

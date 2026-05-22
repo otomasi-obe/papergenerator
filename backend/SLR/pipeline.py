@@ -109,19 +109,35 @@ def run(query: str,
     """
     sources = sources or pick_sources_for_topic(query)
 
+    # Build filters dict to pass year_from to fetchers that support it
+    filters = {}
+    if year_from:
+        filters["year_from"] = year_from
+
     # 1. FETCH (titles + whatever metadata source returns for free)
     # When year_from is set, fetch 2x then filter so we don't end up below max_total.
+
+    # Build filters dict to pass year_from to fetchers that support it (IEEE, S2, etc.)
+    filters = {}
+    if year_from:
+        filters['year_from'] = year_from
+    
+    # (some fetchers don't support year filtering at API level)
     fetch_max = max_total
     if year_from and max_total:
         fetch_max = max_total * 2
+    
     raw_papers = fetch_titles(
         query=query,
         sources=sources,
         limit_per_source=per_source,
+        filters=filters if filters else None,
         max_total=fetch_max,
         skip_predatory=skip_predatory,
         progress_cb=progress_cb,
     )
+    
+    # Post-filter for fetchers that don't support year filtering at API level
     if year_from:
         raw_papers = [p for p in raw_papers if p.year and p.year >= year_from]
         if max_total:

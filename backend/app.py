@@ -905,7 +905,13 @@ def generate_full():
 @app.route("/api/job/<job_id>", methods=["GET"])
 @jwt_required()
 def get_job_status(job_id):
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = _job_get(job_id, user_id)
     if job is None:
         return jsonify({"error": "Job not found or already retrieved"}), 404
@@ -976,9 +982,20 @@ def upload_pdfs():
     # Read bytes synchronously (cheap), then extract in parallel.
     payloads = []
     warnings = []
+    MAX_PDF_SIZE = 30 * 1024 * 1024  # 30MB per file
     for f in files:
         filename = (f.filename or "").lower()
         try:
+            # BUG FIX: Add size check before reading entire file
+            f.stream.seek(0, 2)
+            size = f.stream.tell()
+            f.stream.seek(0)
+            if size > MAX_PDF_SIZE:
+                warnings.append(f"{f.filename}: file terlalu besar (max 30MB)")
+                continue
+            if size == 0:
+                warnings.append(f"{f.filename}: file kosong")
+                continue
             data = f.stream.read()
         except Exception as e:
             warnings.append(f"{f.filename}: gagal baca stream ({e})")
@@ -1052,6 +1069,13 @@ def upload_image_legacy():
         allowed_image_exts = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
         if ext not in allowed_image_exts:
             return jsonify({"error": "Invalid image format"}), 400
+        # BUG FIX: Add size check before processing
+        file.stream.seek(0, 2)
+        size = file.stream.tell()
+        file.stream.seek(0)
+        if size > 10 * 1024 * 1024:
+            return jsonify({"error": "Ukuran file > 10 MB"}), 413
+        
         head = file.stream.read(16)
         file.stream.seek(0)
         if not _is_image_bytes(head, ext):

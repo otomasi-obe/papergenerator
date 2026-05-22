@@ -205,6 +205,9 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
             return "\n".join(out)[:MAX_PREVIEW_CHARS]
 
         if ext == ".csv":
+            # BUG FIX: Add size check before reading CSV to prevent memory exhaustion
+            if filepath.stat().st_size > MAX_FILE_BYTES:
+                return f"[CSV file too large: {filepath.stat().st_size // (1024*1024)}MB, preview skipped]"
             return filepath.read_text(encoding="utf-8", errors="replace")[:MAX_PREVIEW_CHARS]
 
         if ext in (".txt", ".md"):
@@ -220,7 +223,13 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
 def list_paper_files(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -237,7 +246,13 @@ def list_paper_files(paper_id: str):
 def upload_paper_files(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -329,6 +344,13 @@ def upload_paper_files(paper_id: str):
         return jsonify({"success": True, "files": saved, "warnings": warnings})
     except Exception:
         db.session.rollback()
+        # BUG FIX: Clean up orphaned files if DB commit fails
+        for item in accepted:
+            try:
+                if item["filepath"].exists():
+                    item["filepath"].unlink()
+            except Exception:
+                log.warning("upload_paper_files: could not clean up %s", item["filepath"])
         log.exception("upload_paper_files failed (rolled back)",
                       extra={"paper_id": paper_id})
         return jsonify({"error": "Upload failed"}), 500
@@ -339,7 +361,13 @@ def upload_paper_files(paper_id: str):
 def delete_paper_file(paper_id: str, file_id: int):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     entry = PaperFile.query.filter_by(
         id=file_id, paper_id=paper_id, user_id=user_id
     ).first()
@@ -377,7 +405,13 @@ def serve_paper_file(paper_id: str, file_id: int):
             verify_jwt_in_request()
         except Exception:
             return jsonify({"error": "Unauthorized"}), 401
-        user_id = int(get_jwt_identity())
+        try:
+
+            user_id = int(get_jwt_identity())
+
+        except (ValueError, TypeError):
+
+            return jsonify({"error": "Invalid user identity"}), 401
 
     entry = PaperFile.query.filter_by(
         id=file_id, paper_id=paper_id, user_id=user_id
@@ -400,6 +434,10 @@ def serve_paper_file(paper_id: str, file_id: int):
         ".pdf": "application/pdf",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ".doc": "application/msword",
+        # BUG FIX: Add missing MIME types for Excel and CSV
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".xls": "application/vnd.ms-excel",
+        ".csv": "text/csv; charset=utf-8",
         ".txt": "text/plain; charset=utf-8",
         ".md": "text/markdown; charset=utf-8",
     }
@@ -417,7 +455,13 @@ def serve_paper_file(paper_id: str, file_id: int):
 def preview_paper_file(paper_id: str, file_id: int):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     entry = PaperFile.query.filter_by(
         id=file_id, paper_id=paper_id, user_id=user_id
     ).first()

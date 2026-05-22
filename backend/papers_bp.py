@@ -37,7 +37,13 @@ papers_bp = Blueprint("papers", __name__, url_prefix="/api/papers")
 @papers_bp.route("", methods=["GET"])
 @jwt_required()
 def list_papers():
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     try:
         limit = max(1, min(int(request.args.get("limit", 20)), 100))
     except (TypeError, ValueError):
@@ -64,7 +70,13 @@ def list_papers():
 @papers_bp.route("", methods=["POST"])
 @jwt_required()
 def save_paper():
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -92,7 +104,13 @@ def save_paper():
 def load_paper(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -104,7 +122,13 @@ def load_paper(paper_id: str):
 def update_paper(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -122,7 +146,13 @@ def update_paper(paper_id: str):
 def delete_paper(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -194,7 +224,13 @@ def _validate_patch_ops(ops):
 def patch_paper(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404

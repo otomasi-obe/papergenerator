@@ -83,165 +83,180 @@ class _Worker(threading.Thread):
                               self.account_name, job_id)
 
     def _process(self, job_id: str):
-        from sqlalchemy import update  # noqa: PLC0415
-
-        from models import ImageGenJob, PaperImage, db  # noqa: PLC0415
-        from paper_utils import safe_paper_dir  # noqa: PLC0415
-
-        with self.app.app_context():
-            # Atomic claim: only the FIRST worker that flips status from
-            # 'queued' to 'running' actually proceeds. This is the single
-            # source of truth that defends against (a) the dispatcher
-            # double-dispatching (window between check and submit) and
-            # (b) a user cancelling between our read and write.
-            now = datetime.now(timezone.utc)
-            result = db.session.execute(
-                update(ImageGenJob)
-                .where(ImageGenJob.id == job_id, ImageGenJob.status == 'queued')
-                .values(status='running', worker=self.account_name, started_at=now)
-            )
-            db.session.commit()
-            if result.rowcount == 0:
-                # Lost the race or job is cancelled/done/missing.
-                return
-
-            job = db.session.get(ImageGenJob, job_id)
-            if job is None:
-                return
-            paper_id = job.paper_id
-            user_id = job.user_id
-            prompt = job.prompt
-
-            # Resolve paper dir under app_context (safe_paper_dir uses
-            # current_app.root_path).
-            paper_dir = safe_paper_dir(paper_id)
-
-        if paper_dir is None:
-            with self.app.app_context():
-                from models import ImageGenJob, db  # noqa: PLC0415
-                job2 = db.session.get(ImageGenJob, job_id)
-                if job2:
-                    job2.status = 'error'
-                    job2.error = 'Invalid paper_id (path resolution failed)'
-                    job2.finished_at = datetime.now(timezone.utc)
-                    db.session.commit()
-            return
-
-        # Long-running work outside DB transaction (no app_context needed).
-        out_path: Optional[Path] = None
-        ext = ".jpg"
+        # Watchdog timeout: fail job if processing takes > 10 minutes
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError(f"Job {job_id} exceeded 10-minute timeout")
+        
+        # Set 10-minute timeout (600 seconds)
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(600)
+        
         try:
-            paper_dir.mkdir(parents=True, exist_ok=True)
-            filename = f"{uuid.uuid4().hex}{ext}"
-            out_path = paper_dir / filename
+            from sqlalchemy import update  # noqa: PLC0415
 
-            pool = _get_pool()
-            # Use only THIS account on the pool. The simplest way is to call the
-            # account directly (skipping pool's round-robin), so two workers
-            # never race on the same browser profile.
-            acc = next((a for a in pool.accounts if a.name == self.account_name), None)
-            if acc is None:
-                raise RuntimeError(f"Account {self.account_name} tidak ada di pool")
+            from models import ImageGenJob, PaperImage, db  # noqa: PLC0415
+            from paper_utils import safe_paper_dir  # noqa: PLC0415
+
+            with self.app.app_context():
+                # Atomic claim: only the FIRST worker that flips status from
+                # 'queued' to 'running' actually proceeds. This is the single
+                # source of truth that defends against (a) the dispatcher
+                # double-dispatching (window between check and submit) and
+                # (b) a user cancelling between our read and write.
+                now = datetime.now(timezone.utc)
+                result = db.session.execute(
+                    update(ImageGenJob)
+                    .where(ImageGenJob.id == job_id, ImageGenJob.status == 'queued')
+                    .values(status='running', worker=self.account_name, started_at=now)
+                )
+                db.session.commit()
+                if result.rowcount == 0:
+                    # Lost the race or job is cancelled/done/missing.
+                    return
+
+                job = db.session.get(ImageGenJob, job_id)
+                if job is None:
+                    return
+                paper_id = job.paper_id
+                user_id = job.user_id
+                prompt = job.prompt
+
+                # Resolve paper dir under app_context (safe_paper_dir uses
+                # current_app.root_path).
+                paper_dir = safe_paper_dir(paper_id)
+
+            if paper_dir is None:
+                with self.app.app_context():
+                    from models import ImageGenJob, db  # noqa: PLC0415
+                    job2 = db.session.get(ImageGenJob, job_id)
+                    if job2:
+                        job2.status = 'error'
+                        job2.error = 'Invalid paper_id (path resolution failed)'
+                        job2.finished_at = datetime.now(timezone.utc)
+                        db.session.commit()
+                return
+
+            # Long-running work outside DB transaction (no app_context needed).
+            out_path: Optional[Path] = None
+            ext = ".jpg"
+            try:
+                paper_dir.mkdir(parents=True, exist_ok=True)
+                filename = f"{uuid.uuid4().hex}{ext}"
+                out_path = paper_dir / filename
+
+                pool = _get_pool()
+                # Use only THIS account on the pool. The simplest way is to call the
+                # account directly (skipping pool's round-robin), so two workers
+                # never race on the same browser profile.
+                acc = next((a for a in pool.accounts if a.name == self.account_name), None)
+                if acc is None:
+                    raise RuntimeError(f"Account {self.account_name} tidak ada di pool")
             
-            # Retry browser launch up to 3 times with exponential backoff
-            launch_attempts = 3
-            for attempt in range(1, launch_attempts + 1):
-                try:
-                    acc.launch(pool._pw)
-                    break
-                except Exception as launch_err:
-                    if attempt == launch_attempts:
-                        raise RuntimeError(
-                            f"Browser launch gagal setelah {launch_attempts} percobaan: {launch_err}"
-                        )
-                    log.warning(
-                        "Browser launch attempt %d/%d failed: %s. Retrying...",
-                        attempt, launch_attempts, launch_err
-                    )
-                    # Close and cleanup before retry
+                # Retry browser launch up to 3 times with exponential backoff
+                launch_attempts = 3
+                for attempt in range(1, launch_attempts + 1):
                     try:
-                        acc.close()
+                        acc.launch(pool._pw)
+                        break
+                    except Exception as launch_err:
+                        if attempt == launch_attempts:
+                            raise RuntimeError(
+                                f"Browser launch gagal setelah {launch_attempts} percobaan: {launch_err}"
+                            )
+                        log.warning(
+                            "Browser launch attempt %d/%d failed: %s. Retrying...",
+                            attempt, launch_attempts, launch_err
+                        )
+                        # Close and cleanup before retry
+                        try:
+                            acc.close()
+                        except Exception:
+                            pass
+                        # Exponential backoff: 2s, 4s
+                        time.sleep(2 ** attempt)
+            
+                res = acc.generate_image(prompt, out_path, generate_timeout_s=240)
+
+                # Compression is critical: large images cause upload/display failures.
+                # If compression fails, we must fail the job rather than storing
+                # a 10MB+ image that will break the frontend.
+                try:
+                    from imageGenerator.compress import compress_image  # noqa: PLC0415
+                    if not compress_image(out_path, max_size_mb=1.0):
+                        raise RuntimeError(
+                            f"Image compression failed: could not reduce {out_path.name} to <1MB. "
+                            f"Original size: {out_path.stat().st_size // 1024}KB"
+                        )
+                    log.info("Image compressed successfully: %s -> %dKB", 
+                             out_path.name, out_path.stat().st_size // 1024)
+                except Exception as compress_err:
+                    log.error("Compression failed for %s: %s", out_path, compress_err, exc_info=True)
+                    # Delete the uncompressed image
+                    try:
+                        if out_path and out_path.exists():
+                            out_path.unlink()
                     except Exception:
                         pass
-                    # Exponential backoff: 2s, 4s
-                    import time as time_module
-                    time_module.sleep(2 ** attempt)
-            
-            res = acc.generate_image(prompt, out_path, generate_timeout_s=240)
+                    raise RuntimeError(f"Image compression failed: {compress_err}")
 
-            # Compression is critical: large images cause upload/display failures.
-            # If compression fails, we must fail the job rather than storing
-            # a 10MB+ image that will break the frontend.
-            try:
-                from imageGenerator.compress import compress_image  # noqa: PLC0415
-                if not compress_image(out_path, max_size_mb=1.0):
-                    raise RuntimeError(
-                        f"Image compression failed: could not reduce {out_path.name} to <1MB. "
-                        f"Original size: {out_path.stat().st_size // 1024}KB"
+                with self.app.app_context():
+                    img = PaperImage(
+                        paper_id=paper_id,
+                        user_id=user_id,
+                        filename=filename,
+                        original_name=f"generated_{filename}",
+                        file_path=f"{paper_id}/{filename}",
                     )
-                log.info("Image compressed successfully: %s -> %dKB", 
-                         out_path.name, out_path.stat().st_size // 1024)
-            except Exception as compress_err:
-                log.error("Compression failed for %s: %s", out_path, compress_err, exc_info=True)
-                # Delete the uncompressed image
+                    db.session.add(img)
+                    db.session.flush()
+
+                    job2 = db.session.get(ImageGenJob, job_id)
+                    if job2:
+                        # Respect a concurrent cancel: if the job was cancelled
+                        # while we were generating, don't overwrite that status.
+                        if job2.status == 'cancelled':
+                            # Drop the freshly-created image (orphaned) and the
+                            # file on disk.
+                            try:
+                                db.session.delete(img)
+                            except Exception:
+                                pass
+                            try:
+                                if out_path and out_path.exists():
+                                    out_path.unlink()
+                            except Exception:
+                                pass
+                        else:
+                            job2.status = 'done'
+                            job2.image_id = img.id
+                            job2.finished_at = datetime.now(timezone.utc)
+                    db.session.commit()
+
+                log.info("img-worker %s: done job=%s file=%s size=%s",
+                         self.account_name, job_id, filename, res.get('size'))
+            except Exception as e:
+                log.exception("img-worker %s: failed job=%s", self.account_name, job_id)
                 try:
                     if out_path and out_path.exists():
                         out_path.unlink()
                 except Exception:
                     pass
-                raise RuntimeError(f"Image compression failed: {compress_err}")
-
-            with self.app.app_context():
-                img = PaperImage(
-                    paper_id=paper_id,
-                    user_id=user_id,
-                    filename=filename,
-                    original_name=f"generated_{filename}",
-                    file_path=f"{paper_id}/{filename}",
-                )
-                db.session.add(img)
-                db.session.flush()
-
-                job2 = db.session.get(ImageGenJob, job_id)
-                if job2:
-                    # Respect a concurrent cancel: if the job was cancelled
-                    # while we were generating, don't overwrite that status.
-                    if job2.status == 'cancelled':
-                        # Drop the freshly-created image (orphaned) and the
-                        # file on disk.
-                        try:
-                            db.session.delete(img)
-                        except Exception:
-                            pass
-                        try:
-                            if out_path and out_path.exists():
-                                out_path.unlink()
-                        except Exception:
-                            pass
-                    else:
-                        job2.status = 'done'
-                        job2.image_id = img.id
+                with self.app.app_context():
+                    from models import ImageGenJob, db  # noqa: PLC0415
+                    job2 = db.session.get(ImageGenJob, job_id)
+                    if job2 and job2.status != 'cancelled':
+                        job2.status = 'error'
+                        job2.error = str(e)[:500]
                         job2.finished_at = datetime.now(timezone.utc)
-                db.session.commit()
+                        db.session.commit()
 
-            log.info("img-worker %s: done job=%s file=%s size=%s",
-                     self.account_name, job_id, filename, res.get('size'))
-        except Exception as e:
-            log.exception("img-worker %s: failed job=%s", self.account_name, job_id)
-            try:
-                if out_path and out_path.exists():
-                    out_path.unlink()
-            except Exception:
-                pass
-            with self.app.app_context():
-                from models import ImageGenJob, db  # noqa: PLC0415
-                job2 = db.session.get(ImageGenJob, job_id)
-                if job2 and job2.status != 'cancelled':
-                    job2.status = 'error'
-                    job2.error = str(e)[:500]
-                    job2.finished_at = datetime.now(timezone.utc)
-                    db.session.commit()
 
+        finally:
+            # Restore signal handler and cancel alarm
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
 
 class _Dispatcher(threading.Thread):
     """Picks up newly-queued jobs from the DB and routes them to the worker

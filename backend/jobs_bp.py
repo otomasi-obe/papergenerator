@@ -88,7 +88,13 @@ def publish_progress(job_id: str, payload: dict) -> None:
 @jobs_bp.route("/api/papers/<paper_id>/generate", methods=["POST"])
 @jwt_required()
 def enqueue_generate(paper_id: str):
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "paper not found"}), 404
@@ -133,7 +139,13 @@ def enqueue_generate(paper_id: str):
 @jobs_bp.route("/api/jobs/<job_id>", methods=["GET"])
 @jwt_required()
 def get_job(job_id: str):
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job: Optional[AiJob] = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "not found"}), 404
@@ -143,7 +155,13 @@ def get_job(job_id: str):
 @jobs_bp.route("/api/jobs/<job_id>/cancel", methods=["POST"])
 @jwt_required()
 def cancel_job(job_id: str):
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "not found"}), 404
@@ -160,7 +178,13 @@ def cancel_job(job_id: str):
 @jwt_required()
 def active_jobs(paper_id: str):
     """Used by the UI on paper-load to resume any in-flight generation."""
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     rows = (
         AiJob.query
         .filter_by(user_id=user_id, paper_id=paper_id)
@@ -177,7 +201,13 @@ def active_jobs(paper_id: str):
 def stream_job(job_id: str):
     """SSE stream. Pumps a snapshot first (so late subscribers catch up), then
     pubsub events until the job terminates or the client disconnects."""
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "not found"}), 404
@@ -311,7 +341,13 @@ def ai_jobs_active(paper_id: str):
     Used by the chat surface on paper-load to re-attach a progress bubble.
     Returns ``{"job": {...}}`` or ``{"job": null}``.
     """
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "paper not found"}), 404
@@ -330,7 +366,13 @@ def ai_jobs_active(paper_id: str):
 @jwt_required()
 def ai_jobs_cancel(job_id: str):
     """Mirror of /api/jobs/<job_id>/cancel under the new path prefix."""
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "not found"}), 404
@@ -356,7 +398,13 @@ def ai_jobs_cancel(job_id: str):
 @jwt_required()
 def ai_jobs_resume(job_id: str):
     """Resume a paused/cancelled/errored job from its last checkpoint."""
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "not found"}), 404
@@ -397,7 +445,13 @@ def ai_jobs_retry_section(job_id: str):
     drops the matching entry from ``partial_paper.sections`` so the resumed
     run regenerates it cleanly. Other chunks stay cached.
     """
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "not found"}), 404
@@ -464,7 +518,13 @@ def ai_jobs_recent():
       - since:  ISO 8601 timestamp; only jobs with started_at >= since
       - limit:  default 20, max 50
     """
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     status = (request.args.get("status") or "done").strip()
     since_raw = request.args.get("since")
     try:

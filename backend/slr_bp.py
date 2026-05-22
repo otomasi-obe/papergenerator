@@ -71,6 +71,12 @@ def _check_rate_limit(user_id: int, endpoint: str,
     # drop expired timestamps
     while bucket and bucket[0] < cutoff:
         bucket.pop(0)
+    
+    # Cleanup: remove empty buckets to prevent memory leak
+    if not bucket and key in _RATE_BUCKETS:
+        del _RATE_BUCKETS[key]
+        return True, 0
+    
     if len(bucket) >= max_requests:
         retry_after = max(1, int(window_sec - (now - bucket[0])) + 1)
         return False, retry_after

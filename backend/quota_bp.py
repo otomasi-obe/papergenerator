@@ -18,7 +18,13 @@ quota_bp = Blueprint("quota", __name__, url_prefix="/api/me")
 @quota_bp.route("/quota", methods=["GET"])
 @jwt_required()
 def my_quota():
-    user_id = int(get_jwt_identity())
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404

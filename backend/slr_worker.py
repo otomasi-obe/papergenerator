@@ -302,8 +302,8 @@ def _run_job(app, job_id: str):
             payload = run_slr_pipeline(
                 query=job.query,
                 sources=(job.sources or None),
-                per_source=int(job.per_source or 60),
-                top_k=int(job.top_k or 50),
+                per_source=int(job.per_source) if job.per_source is not None else 60,
+                top_k=int(job.top_k) if job.top_k is not None else 50,
                 year_from=job.year_from,
                 ai_summarize=bool(job.ai_summarize),
                 ai_model=job.ai_model or None,
