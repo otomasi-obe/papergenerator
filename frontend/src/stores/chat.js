@@ -43,6 +43,84 @@ function _safeErrorMessage(raw) {
   return s
 }
 
+/**
+ * Convert a PROPOSAL payload into a user-friendly message for display in the
+ * chat. The structured data is already handled (stored in msg.metadata or
+ * routed to the paper store), so this is just a confirmation message.
+ */
+function _getFriendlyProposalMessage(proposal) {
+  const kind = proposal.kind || ''
+  
+  switch (kind) {
+    case 'paper_progress':
+    case 'generate_full':
+      return `✓ Paper generation started (job: ${proposal.job_id || 'unknown'}). Editor akan auto-load hasilnya.`
+    
+    case 'slr_job':
+      return `✓ Literature search started for "${proposal.query || 'query'}". Check Literature tab untuk hasilnya.`
+    
+    case 'journal':
+      return `✓ Journal template switched to: ${proposal.value || 'unknown'}`
+    
+    case 'export_docx':
+      return `✓ DOCX export started. File akan tersedia di tab Export.`
+    
+    case 'title':
+      return `✓ Title proposal: "${(proposal.value || '').slice(0, 80)}${(proposal.value || '').length > 80 ? '...' : ''}"`
+    
+    case 'abstract':
+      return `✓ Abstract proposal (${(proposal.value || '').length} chars)`
+    
+    case 'keywords':
+      const kw = Array.isArray(proposal.value) ? proposal.value : []
+      return `✓ Keywords proposal: ${kw.slice(0, 3).join(', ')}${kw.length > 3 ? ` +${kw.length - 3} more` : ''}`
+    
+    case 'section':
+      return `✓ Section ${proposal.section_index != null ? proposal.section_index + 1 : '?'} proposal: "${(proposal.title || '').slice(0, 50)}"`
+    
+    case 'reference':
+      return `✓ Reference [${proposal.ref_index != null ? proposal.ref_index + 1 : '?'}] proposal`
+    
+    case 'propose_revisi':
+      return `✓ ${proposal.tool || 'Revision'} proposal ready (scope: ${proposal.scope || 'paragraph'})`
+    
+    case 'chart_proposal':
+      return `✓ Chart generated: "${(proposal.title || 'Untitled').slice(0, 50)}"`
+    
+    case 'file_review':
+      return `✓ File review: ${proposal.filename || 'unknown'} (${proposal.word_count || 0} words)`
+    
+    case 'validation_error':
+      return `⚠ ${proposal.message || 'Validation error'}`
+    
+    case 'multi_question':
+      const qCount = Array.isArray(proposal.questions) ? proposal.questions.length : 0
+      return `✓ ${qCount} question${qCount !== 1 ? 's' : ''} ready`
+    
+    case 'review_plan':
+      return `✓ Review plan: ${proposal.directive || 'starting review'}`
+    
+    case 'revise_data':
+      return `✓ Data revision: ${proposal.directive || 'updating Section 4'}`
+    
+    case 'chips':
+      return `✓ Suggestion chips ready`
+    
+    case 'setting_saved':
+      return `✓ Setting saved: ${proposal.key || 'unknown'} = ${proposal.value || ''}`
+    
+    case 'file_classified':
+      return `✓ File classified: ${proposal.original_name || 'unknown'} as ${proposal.file_kind || 'other'}`
+    
+    case 'file_classified_error':
+      return `✗ File classification failed: ${proposal.error || 'unknown error'}`
+    
+    default:
+      // Generic fallback for unknown proposal types
+      return `✓ Action completed (${kind || 'unknown'})`
+  }
+}
+
 export const useChatStore = defineStore('chat', () => {
   // Sidebar — one row per paper
   const paperChats = ref([])
@@ -745,6 +823,12 @@ export const useChatStore = defineStore('chat', () => {
               }
             } else {
               paperStore.pushProposal(proposal)
+            }
+            // Replace raw PROPOSAL JSON with user-friendly message so the chat
+            // doesn't display the full payload. The structured data is already
+            // in msg.metadata or handled by the paper store.
+            if (tc) {
+              tc.result = _getFriendlyProposalMessage(proposal)
             }
           } catch { /* malformed proposal — ignore */ }
         }

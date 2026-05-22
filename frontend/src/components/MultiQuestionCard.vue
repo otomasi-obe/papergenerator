@@ -2,41 +2,73 @@
   <div class="multi-question-card">
     <div class="header">
       <span class="header-icon">📋</span>
-      <span class="header-title">{{ questions.length }} pertanyaan singkat</span>
+      <span class="header-title">
+        Pertanyaan {{ currentIndex + 1 }} / {{ questions.length }}
+      </span>
+      <div class="progress" aria-hidden="true">
+        <span
+          v-for="(q, i) in questions"
+          :key="q.key + ':' + i"
+          class="progress-dot"
+          :class="{
+            done: !!answers[q.key],
+            active: i === currentIndex,
+          }"
+        />
+      </div>
     </div>
-    <div
-      v-for="(q, idx) in questions"
-      :key="q.key"
-      class="question-row"
-      :class="{ answered: !!answers[q.key] }"
-    >
-      <div class="question-label">{{ idx + 1 }}. {{ q.label }}</div>
+
+    <div v-if="currentQuestion" class="question-row">
+      <div class="question-label">
+        {{ currentIndex + 1 }}. {{ currentQuestion.label }}
+      </div>
       <div class="chips">
         <button
-          v-for="opt in (q.options || [])"
+          v-for="opt in (currentQuestion.options || [])"
           :key="opt.value"
           type="button"
           class="chip"
-          :class="{ selected: answers[q.key] === opt.value }"
-          @click="setAnswer(q.key, opt.value)"
+          :class="{ selected: answers[currentQuestion.key] === opt.value }"
+          @click="setAnswer(currentQuestion.key, opt.value)"
         >{{ opt.label }}</button>
       </div>
       <input
-        v-model="customAnswers[q.key]"
+        v-model="customAnswers[currentQuestion.key]"
         class="custom-input"
         :placeholder="`Atau ketik jawaban sendiri…`"
-        @input="onCustomInput(q.key)"
+        @input="onCustomInput(currentQuestion.key)"
+        @keyup.enter="onEnterAdvance"
       />
-      <span v-if="answers[q.key]" class="check" aria-label="answered">✓</span>
     </div>
-    <button
-      type="button"
-      class="submit"
-      :disabled="!hasAnyAnswer || submitting"
-      @click="submit"
-    >
-      {{ submitting ? 'Mengirim…' : 'Kirim jawaban' }}
-    </button>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="btn-secondary"
+        :disabled="currentIndex === 0 || submitting"
+        @click="prev"
+      >← Sebelumnya</button>
+
+      <button
+        v-if="!isLast"
+        type="button"
+        class="btn-primary"
+        :disabled="!hasCurrentAnswer || submitting"
+        @click="next"
+      >Lanjut →</button>
+
+      <button
+        v-else
+        type="button"
+        class="btn-primary"
+        :disabled="!hasAnyAnswer || submitting"
+        @click="submit"
+      >{{ submitting ? 'Mengirim…' : 'Kirim jawaban' }}</button>
+    </div>
+
+    <p class="hint">
+      Tekan <kbd>Enter</kbd> di kolom jawaban bebas untuk lanjut ke pertanyaan berikutnya.
+    </p>
   </div>
 </template>
 
@@ -51,7 +83,16 @@ const emit = defineEmits(['multi-question-submit'])
 const answers = reactive({})
 const customAnswers = reactive({})
 const submitting = ref(false)
+const currentIndex = ref(0)
 
+const currentQuestion = computed(() => props.questions[currentIndex.value] || null)
+const isLast = computed(() => currentIndex.value >= props.questions.length - 1)
+const hasCurrentAnswer = computed(() => {
+  const q = currentQuestion.value
+  if (!q) return false
+  const v = answers[q.key]
+  return !!(v && String(v).trim())
+})
 const hasAnyAnswer = computed(() =>
   Object.values(answers).some(v => v && String(v).trim())
 )
@@ -70,6 +111,23 @@ function onCustomInput(key) {
   }
 }
 
+function next() {
+  if (!hasCurrentAnswer.value) return
+  if (currentIndex.value < props.questions.length - 1) {
+    currentIndex.value += 1
+  }
+}
+
+function prev() {
+  if (currentIndex.value > 0) currentIndex.value -= 1
+}
+
+function onEnterAdvance() {
+  if (!hasCurrentAnswer.value) return
+  if (isLast.value) submit()
+  else next()
+}
+
 async function submit() {
   if (!hasAnyAnswer.value || submitting.value) return
   submitting.value = true
@@ -86,108 +144,142 @@ async function submit() {
   border-radius: 8px;
   padding: 12px;
   background: var(--surface-ai, #fafafa);
+  color: var(--text-strong, #111);
   margin: 8px 0;
 }
 .header {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   font-size: 13px;
-  color: var(--text-soft, #6b7280);
-  margin-bottom: 8px;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 10px;
 }
 .header-icon { font-size: 14px; }
+.header-title { font-weight: 500; color: var(--text-strong, inherit); }
+.progress {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 4px;
+}
+.progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-soft, #d1d5db);
+  transition: background 0.15s, transform 0.15s;
+}
+.progress-dot.done {
+  background: #16a34a;
+}
+.progress-dot.active {
+  background: var(--accent, #2563eb);
+  transform: scale(1.25);
+}
 .question-row {
-  padding: 10px 0;
-  border-top: 1px solid var(--border-soft, #f3f4f6);
+  padding: 6px 0 10px;
   position: relative;
 }
-.question-row:first-of-type { border-top: 0; }
-.question-row.answered { opacity: 0.85; }
 .question-label {
   font-weight: 500;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-size: 14px;
   color: var(--text-strong, inherit);
-  padding-right: 18px;
+  line-height: 1.45;
 }
 .chips {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .chip {
-  padding: 4px 10px;
+  padding: 5px 12px;
   border: 1px solid var(--border-strong, #d1d5db);
   border-radius: 16px;
-  background: white;
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-strong, #111);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
-  color: inherit;
 }
-.chip:hover { background: #f3f4f6; }
+.chip:hover { background: var(--bg-elev, #f3f4f6); }
 .chip.selected {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
+  background: var(--accent, #2563eb);
+  color: #ffffff;
+  border-color: var(--accent, #2563eb);
 }
 .custom-input {
   width: 100%;
   border: 1px solid var(--border-strong, #d1d5db);
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: 6px;
+  padding: 6px 10px;
   font-size: 13px;
-  background: white;
-  color: inherit;
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-strong, #111);
   box-sizing: border-box;
+}
+.custom-input::placeholder {
+  color: var(--text-muted, #9ca3af);
+  opacity: 1;
 }
 .custom-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
 }
-.check {
-  position: absolute;
-  right: 4px;
-  top: 10px;
-  color: #16a34a;
-  font-weight: 600;
-}
-.submit {
+.actions {
   margin-top: 12px;
-  width: 100%;
-  padding: 8px;
-  border-radius: 6px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.15s;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
-.submit:hover:not(:disabled) { background: #1d4ed8; }
-.submit:disabled {
-  background: #9ca3af;
+.btn-primary,
+.btn-secondary {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.btn-primary {
+  background: var(--accent, #2563eb);
+  color: #ffffff;
+  border: 1px solid var(--accent, #2563eb);
+  margin-left: auto;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.btn-primary:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
-
-:global(html.dark) .multi-question-card {
-  background: var(--surface-ai, #2a2825);
-  border-color: var(--border-soft, #3f3c35);
+.btn-secondary {
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-strong, #111);
+  border: 1px solid var(--border-strong, #d1d5db);
 }
-:global(html.dark) .chip {
-  background: #2a2825;
-  border-color: #3f3c35;
-  color: #eddbac;
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-elev, #f3f4f6);
 }
-:global(html.dark) .chip:hover { background: #3a3833; }
-:global(html.dark) .custom-input {
-  background: #2a2825;
-  border-color: #3f3c35;
-  color: #eddbac;
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
-:global(html.dark) .question-row { border-top-color: #3f3c35; }
+.hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-muted, #6b7280);
+}
+.hint kbd {
+  background: var(--bg-elev, #f3f4f6);
+  border: 1px solid var(--border-soft, #e5e7eb);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-strong, inherit);
+}
 </style>

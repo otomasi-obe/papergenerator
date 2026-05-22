@@ -1,0 +1,10 @@
+{
+  "ts": "2026-05-22T02:40:49.751204Z",
+  "kind": "send",
+  "user_id": 7,
+  "paper_id": "1394e4e0a25e",
+  "conv_id": "63f78bad402a4f78",
+  "model": "V-DEEPSEEK",
+  "content": "Kondisi pembebanan yang dipakai adalah kombinasi beban+temperatur.  Model material nya adalah untuk aspal viscoelastic. untuk material lain bisa menyesuaikan. model material untuk CTB bisa tentukan yang paling baik seperti apa. struktur perkerasan adalah AC-WC, AC-BC, CTB, Subbase, dan Subgrade. Aspek novelty Belum banyak studi yang mengkaji range tebal CTB 20–30 cm khusus pada respons di surface course, Analisis komparatif displacement/tegangan/regangan yang lebih detail dari studi sebelumnya, Optimasi tebal CTB berdasarkan kriteria mekanik. Target jurnal internasional budownictwo i architektura / civil and architectural engineering",
+  "len": 641
+}

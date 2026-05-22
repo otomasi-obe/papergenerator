@@ -1,0 +1,33 @@
+{
+  "ts": "2026-05-22T06:08:10.404306Z",
+  "kind": "recv",
+  "user_id": 28,
+  "paper_id": "d5cd38e26869",
+  "conv_id": "d479b1a0ab8748fa",
+  "model": "V-DEEPSEEK",
+  "content": "Sebelum generate, saya cek dulu hasil SLR-nya ya. Dua-duanya sudah selesai sepertinya.SLR sudah selesai dan tab Literatur sudah terisi! 📚 Total sekarang kamu punya **4 file upload + puluhan paper SLR** — kombinasi yang solid.\n\nSekarang langsung generate full paper!## 🎉 Generate Full Paper Dimulai!\n\nJob ID: **`5ff653115bd2`** — editor kamu akan auto-load hasilnya dalam **3–10 menit**.\n\n---\n\n### 📊 Rangkuman Akhir Sebelum Paper Jadi:\n\n| Komponen | Detail |\n|----------|--------|\n| **Topik** | Hyperparameter Tuning in YOLO Training Data for Fruit Ripeness Detection: An OFAT Approach |\n| **Metode** | OFAT (*One Factor At a Time*) |\n| **Data** | Dataset gabungan (publik + sendiri) |\n| **Bahasa** | English |\n| **Sitasi** | Vancouver |\n| **Template** | Artificial Intelligence in Agriculture |\n\n---\n\n### 📚 Kombinasi Literatur:\n\n| Sumber | Jumlah |\n|--------|--------|\n| **File Upload Kamu** | 4 paper (full extraction) |\n| **SLR #1** (OFAT + YOLO + ripeness) | ~25 paper |\n| **SLR #2** (hyperparameter optimization + agriculture) | ~25 paper |\n| **Total** | **~50+ paper** di tab Literatur |\n\n---\n\n### 🔥 Highlight Literatur Paling Relevan dari SLR:\n- *YOLO advances to its genesis: a decadal review (YOLOv1–YOLOv12)* — Artificial Intelligence Review 2025\n- *Crop Detection and Maturity Classification Using a YOLOv5-Based Image Analysis* — Emerging Science Journal 2024\n- *Analysis of Fruit Images With Deep Learning: A Systematic Literature Review* — IEEE Access 2023\n- *The YOLO Framework: A Comprehensive Review of Evolution, Applications, and Benchmarks* — Computers 2024\n\n---\n\nSambil nunggu... ngopi dulu aja ☕ atau ada yang mau diobrolin?",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "GetLiterature",
+      "arguments": {
+        "limit": 100
+      },
+      "result": "[\n  {\n    \"id\": 1073,\n    \"title\": \"Real-Time Monitoring Method of Strawberry Fruit Growth State Based on YOLO Improved Model\",\n    \"year\": 2022,\n    \"authors\": \"Qilin An, Kai Wang, Zhongyang Li, Chengyuan Song\",\n    \"venue\": \"IEEE Access\",\n    \"doi\": \"10.1109/access.2022.3220234\",\n    \"summary\": \"A key challenge for automated orchard management robots is the rapid and accurate identification of crop growth and maturity conditions for subsequent operations, such as automatic pollination, fertilization, and picking. In particular, strawberries have a short ripening period and the fruits are heavily overlapped and shaded by each other, which is time-consuming and inefficient under traditional\",\n    \"must_read\": false,\n    \"score\": 0.3875\n  },\n  {\n    \"id\": 1074,\n    \"title\": \"Analysis of Fruit Images With Deep Learning: A Systematic Literature Review and Future Directions\",\n    \"year\": 2023,\n    \"authors\": \"Sebastián Espinoza, Cristhian Aguilera, Luis Rojas, Pedro G. Campos\",\n    \"venue\": \"IEEE Access\",\n    \"doi\": \"10.1109/access.2023.3345789\",\n    \"summary\": \"The application of Deep Learning models in fruit analysis has garnered significant attention due to its potential to revolutionize the agricultural sector and enhance crop monitoring. This paper presents a comprehensive review of recent research efforts in fruit analysis using Deep Learning techniques. The study delves into model selection, dataset characteristics, evaluation metrics, challenges, \",\n    \"must_read\": false,\n    \"score\": 0.3804\n  },\n  {\n    \"id\": 1075,\n    \"title\": \"LoRa-enabled GPU-based CubeSat Yolo Object Detection with Hyperparameter Optimization\",\n    \"year\": 2022,\n    \"authors\": \"Ziad El Khatib, Adel Ben Mnaouer, Sherif Moussa, Mohd Azman Bin Abas\",\n    \"venue\": \"2022 International Symposium on Networks, Computers and Communications (ISNCC)\",\n    \"doi\": \"10.1109/isncc55209.2022.9851761\",\n    \"summary\": \"LoRa-enabled GPU-based CubeSat Yolo Object Detection with Hyperparameter Optimization\",\n "
+    },
+    {
+      "name": "GenerateFullPaper",
+      "arguments": {
+        "prompt": "Hyperparameter Tuning in YOLO Training Data for Fruit Ripeness Detection: An OFAT (One Factor At A Time) Approach",
+        "use_attached_files": true
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"paper_progress\", \"job_id\": \"5ff653115bd2\", \"prompt\": \"Hyperparameter Tuning in YOLO Training Data for Fruit Ripeness Detection: An OFAT (One Factor At A Time) Approach\", \"topic\": null, \"style\": \"Vancouver\", \"attached_files_used\": 4, \"outlined\": true}"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 23390,
+    "completion_tokens": 770,
+    "total_tokens": 24160
+  },
+  "status": "ok"
+}

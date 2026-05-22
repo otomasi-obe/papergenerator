@@ -1,0 +1,43 @@
+# Load Testing - Command Cheat Sheet
+
+## Quick Start
+cd frontend
+./run-load-tests.sh
+
+## Run Tests
+npm run test:load              # All tests
+npm run test:load:concurrent   # 10 concurrent users
+npm run test:load:race         # Race conditions
+npm run test:load:queue        # Queue management
+
+## View Reports
+npm run test:load:report       # HTML report (interactive)
+npm run test:load:analyze      # Analysis report (console)
+cat system-monitor.log         # System monitor log
+
+## Debug
+npm run test:load:ui           # Interactive UI mode
+npx playwright test --config=playwright.config.load.js --headed
+npx playwright test --config=playwright.config.load.js --debug
+
+## Verify Setup
+./verify-load-test-setup.sh
+
+## Direct Playwright
+npx playwright test --config=playwright.config.load.js
+npx playwright test --config=playwright.config.load.js e2e/load/concurrent-users.spec.js
+npx playwright show-report playwright-report-load
+
+## Monitor System
+node e2e/load/system-monitor.js
+
+## Analyze Results
+node e2e/load/analyzer.js
+
+## Configuration
+# Edit playwright.config.load.js to change:
+# - workers: 10 (concurrency)
+# - timeout: 300_000 (test timeout)
+
+## Environment
+E2E_BASE_URL=http://localhost:8000 npm run test:load

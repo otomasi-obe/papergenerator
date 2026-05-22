@@ -1,0 +1,10 @@
+{
+  "ts": "2026-05-22T04:23:52.801563Z",
+  "kind": "send",
+  "user_id": 7,
+  "paper_id": "f591c8711bbf",
+  "conv_id": "3eb9f816d16f49b8",
+  "model": "V-DEEPSEEK",
+  "content": "Efek pengaruh variasi ketebalan CTB terhadap displacement 3D di surface course pada semi rigid pavement. Menggunakan FEM Abaqus model 3D. data yang dipunya adalah hasil displacement abaqus pada perkerasan dengan CTB 200 mm, 250 mm dan 300 mm.",
+  "len": 242
+}

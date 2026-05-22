@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T05:37:24.174963Z",
+  "kind": "recv",
+  "user_id": 28,
+  "paper_id": "d5cd38e26869",
+  "conv_id": "d479b1a0ab8748fa",
+  "model": "V-DEEPSEEK",
+  "content": "Maaf, maksud saya tadi pertanyaannya harus saya tulis langsung! 🤦‍♂️\n\nBaik, ini dia 5 pertanyaan pertama untuk mulai paper kamu:\n\n---\n\n**1. Apa topik atau judul sementara paper kamu?**\n> *Contoh: \"Pengaruh media sosial terhadap kesehatan mental remaja\" atau \"Segmentasi citra medis menggunakan CNN\"*\n\n**2. Apa jenis paper-nya?**\n> - Skripsi / Tugas Akhir\n> - Tesis S2\n> - Disertasi S3\n> - Paper jurnal / conference\n> - Laporan penelitian\n> - Review paper (SLR)\n\n**3. Apa bidang ilmu atau jurusan kamu?**\n> *Contoh: Ilmu Komputer, Psikologi, Manajemen, Teknik Elektro, dll.*\n\n**4. Siapa target audience-nya?**\n> - Dosen pembimbing / penguji\n> - Reviewer jurnal\n> - Umum / pembaca awam\n> - Akademisi di bidang yang sama\n\n**5. Ada aturan khusus dari kampus/jurnal?**\n> - Template tertentu (sebutkan)\n> - Batas halaman (maks. berapa?)\n> - Gaya sitasi (APA, IEEE, Harvard, dll.)\n> - Atau belum tahu / bebas\n\n---\n\nNah, sekarang bisa langsung dijawab satu-satu ya! Bisa singkat aja atau langsung semua sekaligus. Siap bantu! 🚀",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2732,
+    "completion_tokens": 410,
+    "total_tokens": 3142
+  },
+  "status": "ok"
+}

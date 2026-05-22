@@ -1,0 +1,10 @@
+{
+  "ts": "2026-05-22T02:08:47.826087Z",
+  "kind": "send",
+  "user_id": 1,
+  "paper_id": "2f8729437482",
+  "conv_id": "f283880e289f444a",
+  "model": "V-DEEPSEEK",
+  "content": "Generate paper lengkap robot AGV navigasi indoor",
+  "len": 48
+}

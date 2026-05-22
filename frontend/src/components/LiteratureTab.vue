@@ -548,8 +548,11 @@ function stageBadgeClass(job) {
 
 function toast(msg, type = 'info') {
   if (typeof store.showToast === 'function') store.showToast(msg, type)
-  else if (type === 'error') console.error(msg)
-  else console.info(msg)
+  else {
+    if (type === 'error') console.error(msg)
+    else console.info(msg)
+    alert(msg)
+  }
 }
 
 function safeUrl(u) {

@@ -99,27 +99,17 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
     try:
         now = datetime.now(timezone.utc)
         timeout_cutoff = now - timedelta(seconds=JOB_TIMEOUT)
-        boot_cutoff = now - timedelta(minutes=30)
-        cutoff = max(timeout_cutoff, boot_cutoff) if reason != "Worker restart" else boot_cutoff
-        # On boot, sweep anything 'running' for >30min OR with no started_at.
-        # On periodic sweep, also kill jobs running past JOB_TIMEOUT.
-        if reason == "Worker restart":
-            q = db.session.query(SlrJob).filter(
-                SlrJob.status == "running",
-                or_(SlrJob.started_at.is_(None), SlrJob.started_at < cutoff),
-            )
-        else:
-            q = db.session.query(SlrJob).filter(
-                SlrJob.status == "running",
-                or_(SlrJob.started_at.is_(None),
-                    SlrJob.started_at < timeout_cutoff),
-            )
+        q = db.session.query(SlrJob).filter(
+            SlrJob.status == "running",
+            or_(SlrJob.started_at.is_(None),
+                SlrJob.started_at < timeout_cutoff),
+        )
         n = q.update(
-            {"status": "error", "error": reason, "finished_at": now},
+            {"status": "error", "error": f"Job timeout ({reason})", "finished_at": now},
             synchronize_session=False,
         )
         if n:
-            log.info("slr.sweep killed %d dead 'running' job(s) reason=%s", n, reason)
+            log.warning("slr.sweep killed %d dead 'running' job(s) reason=%s", n, reason)
             _safe_commit(where=f"sweep:{reason}")
         else:
             # keep the txn clean even if no rows touched
@@ -277,15 +267,17 @@ def _run_job(app, job_id: str):
             # pipeline by raising WorkerCancelled when the user cancelled.
             try:
                 with app.app_context():
-                    j = db.session.query(SlrJob).filter_by(id=job_id).first()
+                    if cancel_event.is_set():
+                        try:
+                            info["cancelled"] = True
+                        except Exception:
+                            pass
+                        raise WorkerCancelled()
+                    j = db.session.query(SlrJob).filter_by(id=job_id).with_for_update(skip_locked=True).first()
                     if not j:
                         return
                     if j.status == "cancelled":
                         cancel_event.set()
-                        # Expose the cancel signal to the pipeline so fetchers
-                        # running in their own ThreadPoolExecutor can poll it
-                        # between source completions instead of stalling on
-                        # in-flight HTTP requests.
                         try:
                             info["cancelled"] = True
                         except Exception:
@@ -297,14 +289,9 @@ def _run_job(app, job_id: str):
                         info["cancelled"] = cancel_event.is_set()
                     except Exception:
                         pass
-                    stmt = (sa_update(SlrJob)
-                            .where(SlrJob.id == job_id,
-                                   SlrJob.status == "running")
-                            .values(stage=stage[:40],
-                                    progress_message=_stage_message(
-                                        stage, info)[:200],
-                                    progress=_stage_to_pct(stage, info)))
-                    db.session.execute(stmt)
+                    j.stage = stage[:40]
+                    j.progress_message = _stage_message(stage, info)[:200]
+                    j.progress = _stage_to_pct(stage, info)
                     _safe_commit(job_id, where="progress")
             except WorkerCancelled:
                 raise

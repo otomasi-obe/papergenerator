@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T15:19:08.684519Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "4323baff3113",
+  "conv_id": "71056bb971dd4480",
+  "model": "V-DEEPSEEK",
+  "content": "Baik, terima kasih! Tinggal 2 hal lagi sebelum saya generate full paper.\n\n**1. Bahasa** — pilih:\n\n**2. Kesimpulan target** — kira-kira kesimpulan apa yang ingin Anda tonjolkan di paper ini?\n\nDan karena Anda memilih **data otomatis**, saya siapkan **data simulasi AGV** yang akan dipakai di paper. Silakan cek tabel di bawah — setuju atau perlu diubah?\n\n### 📊 Data Simulasi AGV (Estimasi)\n\n| Parameter | Nilai |\n|---|---|\n| Kecepatan maksimum | 1.2 m/s |\n| Jumlah waypoint | 4 titik (L-shape) |\n| Radius belokan | 0.3 m |\n| Beban muatan | 50 kg |\n| Kontroler | PID (Kp=2.5, Ki=0.1, Kd=0.8) |\n| Waktu simulasi | 30 detik |\n| Error tracking rata-rata | 0.042 m |\n| Settling time | 2.3 detik |\n\nApakah data ini ok? Atau ada parameter yang ingin disesuaikan?",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 5935,
+    "completion_tokens": 735,
+    "total_tokens": 6670
+  },
+  "status": "ok"
+}

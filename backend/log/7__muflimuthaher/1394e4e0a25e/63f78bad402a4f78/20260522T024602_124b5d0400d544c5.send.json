@@ -1,0 +1,10 @@
+{
+  "ts": "2026-05-22T02:46:02.577019Z",
+  "kind": "send",
+  "user_id": 7,
+  "paper_id": "1394e4e0a25e",
+  "conv_id": "63f78bad402a4f78",
+  "model": "V-DEEPSEEK",
+  "content": "Jawaban saya:\ndata_parameter: belum_ada_parameter\nkesimpulan_target: tegangan_menurun\ncitation_style: APA\npaper_language: en",
+  "len": 124
+}

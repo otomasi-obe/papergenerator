@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T03:25:27.800037Z",
+  "kind": "recv",
+  "user_id": 33,
+  "paper_id": "b32bad34f3ec",
+  "conv_id": "0d11de3323b844da",
+  "model": "V-DEEPSEEK",
+  "content": "Di platform chat ini, biasanya ada **ikon klip kertas (📎) / tombol lampiran** di area tempat kamu mengetik pesan. Klik ikon itu, lalu pilih file dari komputermu (CSV, Excel, PDF, gambar, dll).\n\nKalau tidak muncul opsi upload, kamu bisa pakai alternatif ini:\n\n- **Copy-paste ringkasan data** langsung di chat — misalnya beberapa baris pertama data kamu\n- **Screenshot** tampilan data (lalu upload sebagai gambar)\n- **Copy-paste tabel** dari Excel/Spreadsheet langsung ke sini\n\nFormat yang paling enak buat saya olah: **CSV**, **Excel (.xlsx)**, atau **teks tabular** yang di-copy-paste.\n\nCoba dicek dulu, ada ikon lampiran di sekitar kotak chat? 👆",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2643,
+    "completion_tokens": 358,
+    "total_tokens": 3001
+  },
+  "status": "ok"
+}

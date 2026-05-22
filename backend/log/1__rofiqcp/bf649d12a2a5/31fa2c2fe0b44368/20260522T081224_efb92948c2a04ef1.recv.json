@@ -1,0 +1,26 @@
+{
+  "ts": "2026-05-22T08:12:29.677795Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "bf649d12a2a5",
+  "conv_id": "31fa2c2fe0b44368",
+  "model": "V-DEEPSEEK",
+  "content": "",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RouteIntent",
+      "arguments": {
+        "mode": "casual",
+        "reasoning": "User menyapa dengan 'halo' (casual greeting), tidak ada permintaan spesifik terkait paper."
+      },
+      "result": "routed -> casual"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 4930,
+    "completion_tokens": 183,
+    "total_tokens": 5113
+  },
+  "status": "ok"
+}

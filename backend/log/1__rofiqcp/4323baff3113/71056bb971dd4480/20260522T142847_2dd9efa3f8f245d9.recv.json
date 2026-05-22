@@ -1,0 +1,26 @@
+{
+  "ts": "2026-05-22T14:28:52.184528Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "4323baff3113",
+  "conv_id": "71056bb971dd4480",
+  "model": "V-DEEPSEEK",
+  "content": "{\"intent\": \"greeting\"}",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RouteIntent",
+      "arguments": {
+        "mode": "casual",
+        "reasoning": "User greeted with \"halo\" — this is a casual conversation, not related to paper planning or editing."
+      },
+      "result": "routed -> casual"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 4926,
+    "completion_tokens": 204,
+    "total_tokens": 5130
+  },
+  "status": "ok"
+}

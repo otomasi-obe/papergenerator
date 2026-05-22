@@ -83,7 +83,7 @@
     <!-- Split layout: left tab pane (collapsible) + right chat panel.
          When no tab is selected, the left pane collapses and the chat goes
          full-width — useful for distraction-free conversation. -->
-    <div ref="splitRoot" class="flex h-[calc(100vh-105px)] overflow-hidden relative">
+    <div ref="splitRoot" class="flex overflow-hidden relative" :style="{ height: mainContentHeight }">
       <!-- LEFT: editor / journal / figures / preview.
            NOTE: we use v-show (not v-if) on the outer wrapper so all panels
            — including LiteratureTab — stay mounted from the very first paint.
@@ -381,6 +381,12 @@ const savedRelative = computed(() => lastSavedAt.value ? 'just now' : 'just now'
 const aiElapsedSeconds = computed(() => aiStartedAt.value ? Math.floor((nowTick.value - aiStartedAt.value) / 1000) : 0)
 const aiElapsedLabel = computed(() => aiElapsedSeconds.value < 60 ? `0:${String(aiElapsedSeconds.value).padStart(2, '0')}` : `${Math.floor(aiElapsedSeconds.value / 60)}m ${aiElapsedSeconds.value % 60}s`)
 const canCancelAi = computed(() => typeof chatStore.stopStreaming === 'function')
+
+const mainContentHeight = computed(() => {
+  const baseHeaderHeight = 57 + 48
+  const bannerHeight = store.aiLoading ? 48 : 0
+  return `calc(100vh - ${baseHeaderHeight + bannerHeight}px)`
+})
 
 watch(() => store.aiLoading, (v) => {
   aiStartedAt.value = v ? Date.now() : null

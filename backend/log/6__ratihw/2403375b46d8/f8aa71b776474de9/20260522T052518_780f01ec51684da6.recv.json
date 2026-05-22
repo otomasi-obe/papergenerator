@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T05:25:23.758595Z",
+  "kind": "recv",
+  "user_id": 6,
+  "paper_id": "2403375b46d8",
+  "conv_id": "f8aa71b776474de9",
+  "model": "V-DEEPSEEK",
+  "content": "Baik, sampai jumpa nanti! 👋\n\nKalau sudah nyala lagi dan mau lanjut — tinggal bilang. Draft-nya aman, tinggal klik **Accept** atau lanjut bahas bagian lain. Selamat istirahat! 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 6094,
+    "completion_tokens": 96,
+    "total_tokens": 6190
+  },
+  "status": "ok"
+}

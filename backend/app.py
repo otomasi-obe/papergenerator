@@ -142,7 +142,26 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Lax (not Strict) so OAuth callb
 # recommended to set a dedicated rotating value.
 app.config['SIGNED_URL_SECRET'] = os.getenv('SIGNED_URL_SECRET') or _secret_key
 
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max upload
+# Per-request body cap. Each PaperFile is capped at 10 MB by files_bp itself,
+# but multipart uploads bundle all selected files in one POST so 4 PDFs of
+# ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
+# can ride the same multipart payload (form overhead included).
+app.config['MAX_CONTENT_LENGTH'] = 60 * 1024 * 1024  # 60MB max upload
+
+
+# Friendlier 413 — Werkzeug's default returns an HTML page that the chat
+# upload code treats as a generic network error. Serve JSON so the frontend
+# can show "file terlalu besar" instead of "Network error".
+@app.errorhandler(413)
+def _on_413(_e):
+    return jsonify({
+        "error": "Payload terlalu besar",
+        "hint": (
+            f"Total upload melebihi {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB. "
+            "Coba upload file lebih sedikit atau pisah jadi beberapa kali upload."
+        ),
+        "code": "PAYLOAD_TOO_LARGE",
+    }), 413
 
 # ─── Extensions ───────────────────────────────────────────────────────────────
 CORS(app, supports_credentials=True, origins=[
@@ -651,6 +670,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             paper_id=paper_id,
             conv_id=conv_id,
             job_id=job_id,
+            user_id=user_id,
         )
 
         # Validate that the model returned a complete paper before persisting.

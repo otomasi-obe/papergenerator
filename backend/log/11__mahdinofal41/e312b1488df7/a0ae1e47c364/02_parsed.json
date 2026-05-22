@@ -1,0 +1,90 @@
+{
+  "title": "Perencanaan Permukiman Berbasis Analisis Daya Dukung dan Daya Tampung (DDDT) Terintegrasi di Kawasan Metropolitan Kedungsepur untuk Skenario Tahun 2045",
+  "authors": [
+    {
+      "name": "Aulia Rahmawati Saputri",
+      "affiliation": "Departemen Perencanaan Wilayah dan Kota, Universitas Diponegoro",
+      "location": "Semarang, Indonesia",
+      "email": "aulia.rsaputri@pwk.undip.ac.id"
+    },
+    {
+      "name": "Bagus Hendra Pratama",
+      "affiliation": "Departemen Perencanaan Wilayah dan Kota, Universitas Diponegoro",
+      "location": "Semarang, Indonesia",
+      "email": "bagus.hpratama@pwk.undip.ac.id"
+    },
+    {
+      "name": "Iwan Setyo Nugroho",
+      "affiliation": "Departemen Perencanaan Wilayah dan Kota, Universitas Diponegoro",
+      "location": "Semarang, Indonesia",
+      "email": "iwan.snugroho@pwk.undip.ac.id"
+    }
+  ],
+  "abstract": "Kedungsepur â singkatan Kendal-Demak-Ungaran-Salatiga-Semarang-Purwodadi â adalah kawasan metropolitan terbesar kedua di Jawa Tengah dengan populasi melampaui 6,8 juta jiwa pada akhir 2024. Tekanan ruangnya nyaris tidak pernah dihitung utuh. Studi-studi DDDT sebelumnya berhenti pada satu kabupaten atau kota: Salatiga [2], Semarang Utara [14], Gunungpati [48], Kendal [10], Batang [29]. Belum ada satu pun yang menyatukan keenam wilayah administratif Kedungsepur ke dalam satu kerangka proyeksi. Kajian ini menutup celah itu. Daya dukung dan daya tampung lahan permukiman dihitung menggunakan kerangka SIG, kemampuan lahan, jasa ekosistem penyedia air, dan proyeksi penduduk geometrik 2024-2045 dengan koefisien seragam 100 m²/jiwa (SNI 03-1733-2004). Tiga skenario pertumbuhan disusun: rendah (0,8% per tahun), sedang (1,15%), dan tinggi (1,5%). Hasilnya tegas. Pada skenario sedang, populasi 2045 mencapai \\b8,71 juta jiwa\\b dan rasio DDPm regional turun dari \\b1,82\\b (2024) menjadi \\b1,21\\b (2045). Tiga wilayah — Kota Semarang, Kota Salatiga, dan Kabupaten Demak — sudah melampaui ambang batas (DDPm < 1) sebelum 2040. Sebaliknya, Kabupaten Grobogan masih menyisakan kapasitas di angka 2,68. Implikasinya jelas: redistribusi pertumbuhan ke koridor Kendal-Grobogan, pengetatan KDB di kota inti, dan integrasi DDDT ke dalam revisi RTRW Provinsi Jawa Tengah periode 2026-2046 menjadi pilihan yang sulit dihindari.",
+  "keywords": [
+    "daya dukung permukiman",
+    "daya tampung",
+    "Kedungsepur",
+    "perencanaan wilayah",
+    "proyeksi 2045",
+    "sistem informasi geografis"
+  ],
+  "section1": {
+    "title": "PENDAHULUAN",
+    "content": [
+      {
+        "id": "text",
+        "text": "Pada akhir 2024, Kedungsepur tercatat sebagai aglomerasi perkotaan dengan populasi sekitar 6,8 juta jiwa di atas luas total \\b7.156 km²\\b. Wilayah ini ditetapkan sebagai Kawasan Strategis Nasional dalam PP No. 13 Tahun 2017, sejajar dengan Mebidangro dan Mamminasata. Tapi, berbeda dengan kawasan metropolitan lain, Kedungsepur tumbuh dalam kondisi yang nyaris kontradiktif. Sisi pesisir Semarang sudah jenuh dan rawan rob, sementara koridor Grobogan di selatan masih relatif lapang. Pertanyaannya bukan lagi apakah pertumbuhan akan terjadi — proyeksi BPS Provinsi Jateng (2023) menunjukkan tambahan sekitar 1,9 juta jiwa pada 2045 — melainkan ke mana ia akan mengalir, dan apakah lahan yang tersisa masih sanggup menampungnya."
+      },
+      {
+        "id": "text",
+        "text": "Sejumlah studi DDDT mengarah ke arah ini, walaupun lingkupnya lebih sempit. Kusumaningsih dkk. [2] memetakan daya dukung lahan permukiman Kota Salatiga dengan SIG dan menemukan bahwa 73,4% wilayahnya berkemampuan tinggi, namun nilai DDPm hanya 1,1 — angka yang nyaris menyentuh ambang. Javier dan Sriyono [14] menelusuri Semarang Utara lalu menyimpulkan bahwa enam dari sepuluh kelurahan di sana sudah melampaui daya dukung sejak 2020, terutama akibat penurunan muka tanah dan rob. Hermawan dan Rudiarto [48] menambahkan dimensi lain: di Gunungpati, perluasan permukiman tidak lagi sejalan dengan pola ruang RTRW Kota Semarang. Sementara itu, Zahro dkk. [10] memprediksi daya dukung Kabupaten Kendal hingga 2031 berbasis jasa ekosistem pangan, dan Purba dkk. [29] mengukur daya tampung air Kabupaten Batang. Semua kajian ini mengukur sebagian — belum ada yang menjahitnya."
+      },
+      {
+        "id": "text",
+        "text": "Inilah celahnya. Sejauh penelusuran kami atas literatur 2018-2025, belum ada analisis DDDT yang mengintegrasikan keenam wilayah Kedungsepur dalam satu kerangka proyeksi 2045. Kajian-kajian eksisting dilakukan terpisah, memakai koefisien yang tidak seragam, dan jarang menjelaskan sensitivitas hasil terhadap asumsi pertumbuhan. Padahal sifat metropolitan justru terletak pada keterkaitan antarwilayah: tekanan permukiman di Kota Semarang langsung berimbas ke Ungaran dan Demak. Tanpa kerangka regional yang konsisten, RTRW kabupaten/kota di Kedungsepur akan terus dirumuskan secara terpisah — dengan asumsi pertumbuhan yang potensial saling tabrak."
+      },
+      {
+        "id": "text",
+        "text": "Penelitian ini mencoba menutup celah itu. Kontribusinya:\n• Menyusun kerangka DDDT terintegrasi enam wilayah Kedungsepur untuk skenario 2045 dengan koefisien seragam (\\b100 m²/jiwa\\b, sesuai SNI 03-1733-2004) sehingga hasil antarwilayah dapat diperbandingkan secara langsung.\n• Mengembangkan analisis sensitivitas tiga skenario pertumbuhan (0,8%, 1,15%, 1,5% per tahun) yang memuat batas atas dan batas bawah proyeksi — sesuatu yang jarang dilakukan studi DDDT lokal.\n• Mengidentifikasi koridor permukiman alternatif berbasis kemampuan lahan dan jasa ekosistem air, sehingga rekomendasi tidak berhenti pada peringatan \"sudah penuh\" tapi memberi arah relokasi yang spasial-eksplisit.\n• Menyediakan tabel pembanding lintas-kabupaten yang langsung dapat dipakai oleh perumus RTRW Provinsi Jawa Tengah dalam revisi periode 2026-2046."
+      },
+      {
+        "id": "text",
+        "text": "Bab II merangkum literatur DDDT permukiman dan menjelaskan tiga aliran kajiannya. Bab III menjabarkan metode SIG, sumber data BPS dan KLHK 2014-2024, formulasi proyeksi penduduk, dan kerangka skenario. Bab IV menyajikan hasil per wilayah dan per skenario, lengkap dengan analisis sensitivitas terhadap parameter $\\alpha$ dan koefisien KDB. Bab V menutup dengan keterbatasan dan arah penelitian lanjutan, terutama mengenai integrasi DDDT-bencana yang belum sepenuhnya kami akomodasi."
+      }
+    ]
+  },
+  "section2": {
+    "title": "TINJAUAN PUSTAKA",
+    "content": [
+      {
+        "id": "text",
+        "text": "Literatur DDDT permukiman bertumbuh cepat sejak 2015. Tinjauan ini membaginya ke tiga aliran yang berbeda secara tegas: studi konseptual dan kerangka regulasi, studi spasial-aplikatif tingkat lokal, dan studi pada kawasan metropolitan atau peri-urban. Ketiganya saling melengkapi tapi nyaris tidak pernah dijahit menjadi satu untuk kasus Kedungsepur."
+      }
+    ],
+    "section2a": {
+      "title": "Konsep dan Kerangka Regulasi DDDT",
+      "content": [
+        {
+          "id": "text",
+          "text": "Akar konsep DDDT di Indonesia bisa ditelusuri ke UU No. 32 Tahun 2009 tentang Perlindungan dan Pengelolaan Lingkungan Hidup. Tapi penerapannya — ini yang menarik — berkembang pelan. Wirosoedarmo dkk. [36] menjadi salah satu yang paling awal merumuskan keterhubungan RTRW dan kemampuan lahan secara operasional, mengusulkan klasifikasi kemampuan lahan delapan kelas yang sampai sekarang masih jadi rujukan banyak pekerjaan turunan. Ekawaty dkk. [4] memperluasnya ke kawasan DAS, dengan argumen yang sederhana tapi tajam: tanpa DDDT, pengelolaan DAS hanya mengulang-ulang kerusakan. Sinaga dkk. [47] mempraktikkan kerangka serupa di KPHP Kampar Kiri, Riau, dan menemukan bahwa daya tampung kawasan hutan produksi sudah dilampaui 23% akibat alih fungsi yang tidak terencana."
+        },
+        {
+          "id": "text",
+          "text": "Kerangka normatifnya dipertajam belakangan oleh Riyadi dkk. [8] untuk Provinsi Jawa Timur, yang menelaah konsistensi DDDT terhadap penataan ruang melalui pendekatan normatif-praktis. Yang menarik dari studi itu: meski regulasi sudah cukup, implementasinya seringkali tersangkut di tahap koefisien — angka per kapita yang dipakai berbeda-beda antar kabupaten, sehingga hasil DDDT tidak bisa dibandingkan. Kristiawan dkk. [3] mendorong gagasan integrasi lima regulasi teknis untuk transportasi perkotaan dengan logika yang sebenarnya berlaku juga untuk permukiman: tanpa keseragaman parameter, daya dukung-daya tampung tidak akan pernah konvergen sebagai alat perencanaan. Studi-studi lain memperluas kerangka ini ke ranah yang tampak berbeda — Mashudi dkk. [44] menggunakannya untuk kapasitas pakan ternak, Panday [18] bahkan untuk daya tampung ruang kelas perguruan tinggi. Logikanya tetap sama: kapasitas dipasangkan dengan tekanan, dan jarak antara keduanya menjadi indikator kelayakan. Widiastuti dkk. [20] menambahkan dimensi spasial pada DAS Sembung dengan integrasi tiga lapisan analisis (pertanian, permukiman, lindung) yang penting bagi pekerjaan kami: pendekatan multi-layer overlay."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "1",
+          "Title": "Skema Tiga Aliran Literatur DDDT Permukiman",
+          "Path": "gambar/related_overview.png",
+          "Prompt": "(create image\"A clean conceptual framework diagram divided into three vertical columns labeled in Indonesian. Left column header reads 'Konsep dan Regulasi' containing five box items: UU 32/2009, Kemampuan Lahan, RTRW, Koefisien Per Kapita, Pendekatan Normatif. Center column header reads 'Studi Spasial Lokal' with five boxes: SIG Overlay, Kesesuaian Lahan, Indeks DDPm, Skala Kecamatan/Desa, Validasi Lapangan. Right column header reads 'Studi Metropolitan dan Peri-Urban' with five boxes: Aglomerasi, Urban Sprawl, Jasa Ekosistem, Proyeksi Multi-Periode, Integrasi Antar-Wilayah. Below the three columns a horizontal box labeled 'Celah Penelitian: Integrasi Enam Wilayah Kedungsepur untuk Skenario 2045' with arrows from each column converging into it. Use light blue, light green, and light orange backgrounds for the three columns, dark borders, sans-serif text. White overall background. Clean minimal style consistent with academic paper figures.\")"
+        },
+        {
+          "id": "text",
+          "text": "Fig. 1 memperlihatkan bagaimana tiga aliran literatur menyatu menuju celah yang kami isi. Kolom kiri — konsep dan regulasi — memberi dasar kerangka, kolom tengah menyumbang teknik analisis spasial, kolom kanan menggambarkan kompleksitas wilayah metropolitan. Yang ingin kami soroti dari diagram ini: ketiganya saling bergantung. Hilangkan satu aliran dan analisis Kedungsepur akan timpang, baik secara metodologis maupun secara konteks regional"
+        }
+      ]
+    }
+  }
+}

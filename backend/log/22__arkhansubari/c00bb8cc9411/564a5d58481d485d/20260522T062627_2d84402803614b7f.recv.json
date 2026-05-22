@@ -1,0 +1,59 @@
+{
+  "ts": "2026-05-22T06:27:22.099805Z",
+  "kind": "recv",
+  "user_id": 22,
+  "paper_id": "c00bb8cc9411",
+  "conv_id": "564a5d58481d485d",
+  "model": "V-DEEPSEEK",
+  "content": "Saya lihat kondisi paper sekarang, Kak. 🔍Saya cek kondisi terbaru paper-nya, Kak. 🔍Paper-nya terpotong. Saya cek section dan referensi satu per satu, Kak.Masih kurang, Kak. Saya cek lengkap dulu.**Status sekarang, Kak:**\n\n| Komponen | Kondisi |\n|----------|---------|\n| Title | ✅ OK |\n| Abstract | ✅ OK |\n| Keywords | ✅ OK (6 kata kunci) |\n| Section 1 — Introduction | ✅ OK |\n| Section 2 — Methodology (PRISMA 2020) | ✅ OK |\n| Section 3 — Results | ❌ **Label-nya \"Discussion\", isinya masih pendek (bukan Results)** |\n| Section 4 — Discussion | ❌ **Label-nya \"Conclusion\", isinya pendek** |\n| Section 5 — Conclusion | ✅ OK (ada sub 5.1, 5.2, 5.3) |\n| References | ❌ **Baru 25 — masih kurang 83 lagi** |\n| PRISMA Flowchart | ❌ **Belum ada** |\n\n---\n\n**Yang harus diselesaikan:**\n\n1. **Section 3 → ganti judul \"Results\" + isi 8 sub-bagian lengkap** (seperti yang sudah diajukan sebelumnya)\n2. **Section 4 → ganti judul \"Discussion\" + isi lebih panjang**\n3. **Referensi → lanjut tambah 83 lagi ke 108**\n4. **PRISMA Flowchart → generate chart**\n\n---\n\nMau saya kerjakan semuanya sekarang, Kak? 🔥",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RouteIntent",
+      "arguments": {
+        "mode": "edit",
+        "reasoning": "User ingin tahu status paper dan melanjutkan penambahan referensi + PRISMA flowchart"
+      },
+      "result": "routed -> edit"
+    },
+    {
+      "name": "GetPaperContent",
+      "arguments": {},
+      "result": "{\n  \"id\": \"c00bb8cc9411\",\n  \"title\": \"Solar Photovoltaic Power Production Forecasting Using Machine Learning and Deep Learning: A Systematic Literature Review\",\n  \"authors\": [\n    {\n      \"name\": \"\",\n      \"email\": \"\",\n      \"location\": \"\",\n      \"affiliation\": \"\"\n    }\n  ],\n  \"journal\": \"IEEE\",\n  \"abstract\": \"Background: The integration of solar photovoltaic (PV) systems into power grids presents challenges due to the intermittent nature of solar irradiance. Accurate solar power forecasting is critical for grid stability, energy trading, and operational planning. Machine learning (ML) and deep learning (DL) have emerged as dominant approaches for PV power prediction, but the literature lacks a structured synthesis of methods, performance, and gaps. Objective: This systematic literature review (SLR) aims to synthesize ML/DL-based solar PV power forecasting studies from 2021–2025, identify best-performing models, evaluate common datasets and metrics, and highlight research gaps. Method: Following PRISMA 2020 guidelines, 87 studies were retrieved from Scopus, IEEE Xplore, and ScienceDirect. After duplication removal (n=12), title/abstract screening (n=75 screened; 43 excluded), and full-text eligibility assessment (n=32 assessed; 14 excluded), 18 studies were included for final synthesis. Results: Hybrid models (CNN-LSTM, Transformer-based) consistently outperform standalone ML models. RMSE and MAE are the dominant evaluation metrics. Public datasets (NREL, DKASC) are underutilized compared to proprietary data. Conclusion: Key gaps include limited generalization across geographic regions, lack of uncertainty quantification, and insufficient multi-horizon benchmark studies. Future work should prioritize transfer learning and probabilistic forecasting.\",\n  \"keywords\": [\n    \"Solar PV forecasting\",\n    \"machine learning\",\n    \"deep learning\",\n    \"systematic literature review\",\n    \"PRISMA 2020\",\n    \"renewable energy\"\n  ],\n  \"section1\": {\n    \"title\": \"Introduction\",\n  "
+    },
+    {
+      "name": "GetPaperSection",
+      "arguments": {
+        "section": "references"
+      },
+      "result": "{\n  \"title\": \"REFERENCES\",\n  \"number\": \"VI\",\n  \"content\": [\n    \"IEA, \\\"Solar PV Global Status Report,\\\" International Energy Agency, 2023.\",\n    \"Y. Zhang et al., \\\"GCTrafo: Graph Convolution Transformer for Multi-Site Solar Power Forecasting,\\\" IEEE Trans. Sustain. Energy, vol. 15, no. 2, pp. 834–846, 2024.\",\n    \"S. Ahmed et al., \\\"A Review on Solar Power Forecasting Using Machine Learning and Deep Learning,\\\" Renew. Sustain. Energy Rev., vol. 120, p. 109656, 2020.\",\n    \"M. Q. Raza et al., \\\"Solar Photovoltaic Power Forecasting: A Review of State-of-the-Art Methods,\\\" Renewable Energy Focus, vol. 35, pp. 84–96, 2020.\",\n    \"U. K. Das et al., \\\"Forecasting of Photovoltaic Power Generation and Model Optimization: A Review,\\\" Renew. Sustain. Energy Rev., vol. 81, pp. 912–928, 2018.\",\n    \"Kumari, P., & Toshniwal, D. (2021). Long short term memory–convolutional neural network based deep hybrid approach for solar irradiance forecasting. Energy Conversion and Management, 228, 113660. https://doi.org/10.1016/j.enconman.2020.113660\",\n    \"Sharma, N., Sharma, P., Irwin, D., & Shenoy, P. (2021). Predicting solar generation from weather forecasts using machine learning. Proceedings of the 2011 IEEE International Conference on Smart Grid Communications (SmartGridComm), 528–533. https://doi.org/10.1109/SmartGridComm.2011.6102379\",\n    \"Mellit, A., & Kalogirou, S. A. (2008). Artificial intelligence techniques for photovoltaic applications: A review. Progress in Energy and Combustion Science, 34(5), 574–632. https://doi.org/10.1016/j.pecs.2008.01.001\",\n    \"Kalogirou, S. A. (2001). Artificial neural networks in renewable energy systems applications: A review. Renewable and Sustainable Energy Reviews, 5(4), 373–401. https://doi.org/10.1016/S1364-0321(01)00006-5\",\n    \"Inman, R. H., Pedro, H. T. C., & Coimbra, C. F. M. (2013). Solar forecasting methods for renewable energy integration. Progress in Energy and Combustion Science, 39(6), 535–576. https://doi.org/10.1016/j.pecs.2013"
+    },
+    {
+      "name": "GetPaperSection",
+      "arguments": {
+        "section": "section3"
+      },
+      "result": "{\n  \"title\": \"Discussion\",\n  \"content\": [\n    {\n      \"id\": \"text\",\n      \"text\": \"The dominance of hybrid CNN-LSTM models reflects a broader trend: combining spatial and temporal learners yields complementary benefits. However, Transformer-based architectures (GCTrafo) show emerging superiority, particularly for multi-site forecasting.\\n\\nA critical limitation is geographic overfitting — models validated on one location may fail in different climate zones (tropical, arid, temperate). Only one included study performed cross-location validation. Transfer learning and domain adaptation remain underexplored.\\n\\nUncertainty quantification is another gap. Deterministic point forecasts dominate; probabilistic forecasts (quantile regression, Bayesian neural networks, conformal prediction) appear in fewer than 15% of studies. Grid operators increasingly demand prediction intervals, not just point estimates.\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "GetPaperSection",
+      "arguments": {
+        "section": "section4"
+      },
+      "result": "{\n  \"title\": \"Conclusion\",\n  \"content\": [\n    {\n      \"id\": \"text\",\n      \"text\": \"This SLR synthesized 18 high-quality studies on ML/DL-based solar PV power forecasting (2021–2025). Hybrid CNN-LSTM architectures dominate and achieve strong performance (R² > 0.90), but Transformer-based models are gaining ground. Key gaps include limited geographic generalization, insufficient uncertainty quantification, and lack of standardized benchmarks. We recommend: (1) developing open benchmark datasets across climate zones, (2) prioritizing probabilistic forecasting, and (3) advancing transfer learning methods for cross-location generalization.\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "GetPaperSection",
+      "arguments": {
+        "section": "section5"
+      },
+      "result": "{\n  \"title\": \"Conclusion\",\n  \"content\": [\n    {\n      \"id\": \"text\",\n      \"text\": \"### 5.1 Summary\\n\\nThis PRISMA 2020-guided SLR synthesized 18 high-quality studies on ML/DL-based solar PV power forecasting published between 2021 and 2025. Three key findings emerge:\\n\\n1. **Hybrid CNN-LSTM architectures dominate** (55.6% of studies), but Transformer-based models (GCTrafo) achieve the best reported performance (RMSE = 12.7 W/m², R² = 0.95).\\n2. **Validation practices are insufficient.** 88.9% of studies validate on a single location, and 83.3% lack uncertainty quantification — both critical for operational deployment.\\n3. **Public datasets remain underutilized.** 72.2% of studies rely on proprietary data, limiting reproducibility and cross-study comparison.\\n\\n### 5.2 Recommendations\\n\\n| Stakeholder | Recommendation |\\n|-------------|---------------|\\n| Researchers | Adopt multi-location validation, report persistence skill scores, and include uncertainty estimates |\\n| Data providers | Develop open-access benchmark datasets spanning diverse climate zones |\\n| Grid operators | Prioritize probabilistic forecasts with prediction intervals over deterministic point forecasts |\\n| Journal editors | Require standardized reporting of computational cost and seasonal performance breakdowns |\\n\\n### 5.3 Future Directions\\n\\nThree research priorities are identified: (1) **Transfer learning and domain adaptation** to bridge the geographic generalization gap, (2) **Probabilistic and conformal forecasting** to quantify prediction uncertainty, and (3) **Multi-horizon benchmark studies** using shared public datasets with standardized metrics. The field must shift from incremental architecture improvements toward robust, deployable, and generalizable forecasting systems.\"\n    }\n  ]\n}"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 28088,
+    "completion_tokens": 1266,
+    "total_tokens": 29354
+  },
+  "status": "ok"
+}

@@ -1,0 +1,56 @@
+{
+  "ts": "2026-05-22T03:02:10.220871Z",
+  "kind": "recv",
+  "user_id": 14,
+  "paper_id": "965356aaf4ab",
+  "conv_id": "60e8b3bcc71c424a",
+  "model": "V-DEEPSEEK",
+  "content": "Sip! Style APA dan Bahasa Indonesia sudah dicatat. Satu lagi sebelum kita finalisasi:Hampir lengkap! Satu lagi sebelum kita finalisasi — tentang data:Literatur sudah siap! Berikut hasil SLR yang relevan dengan topik kamu:\n\n---\n\n### 📚 Hasil Literatur — Top 8 Paling Relevan\n\n| # | Judul | Tahun | Skor |\n|---|-------|------|------|\n| 1 | **Analisis Perubahan Zona Nilai Tanah serta Permintaan dan Penawaran... Kec. Tawangmangu** | 2023 | ⭐⭐⭐ |\n| 2 | **Pengaruh Sarana dan Prasarana terhadap ZNT berdasarkan Harga Pasar di Lowokwaru, Kota Malang** | 2024 | ⭐⭐⭐ |\n| 3 | **Analisis Nilai Tanah Pertanian dan Permukiman di Kec. Magelang Selatan** | 2022 | ⭐⭐⭐ |\n| 4 | **Tingkat Kesesuaian Fisik Spasial Kawasan Strategis Sektor Perdagangan dan Jasa — Nusukan, Surakarta** | 2023 | ⭐⭐⭐ |\n| 5 | **Faktor-Faktor yang Mempengaruhi Perubahan Lahan Kawasan Perumahan → Perdagangan dan Jasa** | 2024 | ⭐⭐ |\n| 6 | **Evaluasi Penggunaan Lahan — IPL & Kesesuaian RTRW di Wonosobo** | 2023 | ⭐⭐ |\n| 7 | **Analisis Perubahan ZNT Kawasan Permukiman — Kec. Rembang 2019-2023** | 2024 | ⭐⭐ |\n| 8 | **Pengaruh Perubahan Penggunaan Lahan akibat Fasilitas Umum terhadap ZNT — Banyudono, Boyolali** | 2023 | ⭐⭐ |\n\n---\n\n### 📋 Ringkasan Final sebelum Generate:\n\n- **Jurusan**: Perencanaan Tata Ruang dan Pertanahan\n- **Topik**: Pola Perubahan Zona Nilai Tanah di Kawasan Perdagangan dan Jasa\n- **Latar Belakang**: Belum ada solusi yang efisien\n- **Metode**: Kuantitatif — analisis spasial & statistik\n- **Data Asli**: Zonasi dari BPN/ATR\n- **Data Estimasi**: Regresi nilai tanah\n- **Kesimpulan Target**: Identifikasi pola perubahan\n- **Sitasi**: APA\n- **Bahasa**: Indonesia\n\n---\n\nTinggal satu lagi:",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "SetCitationStyle",
+      "arguments": {
+        "style": "APA"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"setting_saved\", \"key\": \"citation_style\", \"value\": \"APA\"}"
+    },
+    {
+      "name": "SetLanguage",
+      "arguments": {
+        "language": "id"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"setting_saved\", \"key\": \"paper_language\", \"value\": \"id\"}"
+    },
+    {
+      "name": "ProposeChips",
+      "arguments": {
+        "chips": [
+          {
+            "label": "Ya, gunakan",
+            "value": "Ya, gunakan data review"
+          },
+          {
+            "label": "Tidak",
+            "value": "Tidak pakai data review"
+          }
+        ],
+        "context_hint": "Mau pakai data hasil review/tinjauan sebagai tambahan di paper?"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"chips\", \"chips\": [{\"label\": \"Ya, gunakan\", \"value\": \"Ya, gunakan data review\"}, {\"label\": \"Tidak\", \"value\": \"Tidak pakai data review\"}], \"context_hint\": \"Mau pakai data hasil review/tinjauan sebagai tambahan di paper?\"}"
+    },
+    {
+      "name": "GetLiterature",
+      "arguments": {
+        "limit": 10
+      },
+      "result": "[\n  {\n    \"id\": 576,\n    \"title\": \"Analisis Perubahan Zona Nilai Tanah serta Permintaan dan Penawaran Terhadap Harga Tanah di Kecamatan Tawangmangu dengan Sistem Informasi Geografis\",\n    \"year\": 2023,\n    \"authors\": \"Arwan Putra Wijaya, Sarah Magdauli Manik, Fauzi Janu Ammarohman\",\n    \"venue\": \"JGISE: Journal of Geospatial Information Science and Engineering\",\n    \"doi\": \"10.22146/jgise.88249\",\n    \"summary\": \"Nilai tanah dapat ditentukan dari banyak aspek, mulai dari fisik maupun non fisik. Penelitian ini didasari dari Kecamatan Tawangmangu yang merupakan sebuah kawasan wisata yang banyak terdapat lahan ekonomi. Penelitian ini menggunakan Peta Zona Nilai Tanah 2016, 2022 dan 2023.\",\n    \"must_read\": false,\n    \"score\": 0.3622\n  },\n  {\n    \"id\": 577,\n    \"title\": \"Pengaruh Sarana dan Prasarana terhadap Penentuan Zona Nilai Tanah (ZNT) berdasarkan Harga Pasar di Kecamatan Lowokwaru, Kota Malang\",\n    \"year\": 2024,\n    \"authors\": \"Primastia Risang Narindra, Khoirul Fanani, Faris Daffa Dzulfiqar, Andre Setiawan\",\n    \"venue\": \"Journal of Architecture and Human Experience\",\n    \"doi\": \"10.59810/archimane.v2i2.44\",\n    \"summary\": \"Perbedaan nilai harga tanah menghasilkan ketidakseimbangan harga yang berdampak pada selisih harga yang signifikan dalam lingkup wilayah yang berdekatan. Oleh karena itu, diperlukan peninjauan harga untuk mengatasi hal tersebut. Metode yang digunakan dalam penelitian ini meliputi analisis spasial berupa analisis interpolasi, analisis proximity sarana dan prasarana, dan analisis zonal statistik.\",\n    \"must_read\": false,\n    \"score\": 0.3325\n  },\n  {\n    \"id\": 578,\n    \"title\": \"Analisis Nilai Tanah Pertanian dan Permukiman di Kecamatan Magelang Selatan\",\n    \"year\": 2022,\n    \"authors\": \"Prijono Nugroho Djojomartono, Djurdjani Djurdjani, Marselia Dora Sanjaya\",\n    \"venue\": \"JGISE Journal of Geospatial Information Science and Engineering\",\n    \"doi\": \"10.22146/jgise.73713\",\n    \"summary\": \"Kebutuhan masyarakat akan ruang untuk memenuhi kegiata"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 19684,
+    "completion_tokens": 1643,
+    "total_tokens": 21327
+  },
+  "status": "ok"
+}

@@ -68,6 +68,9 @@ class Paper(db.Model):
     data = db.Column(JSONB, nullable=False, default=dict)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    active_operation = db.Column(db.String(50), nullable=True)
+    active_operation_job_id = db.Column(db.String(50), nullable=True)
+    active_operation_started_at = db.Column(db.DateTime, nullable=True)
 
     images = db.relationship('PaperImage', backref='paper', lazy=True, cascade='all, delete-orphan')
     files = db.relationship('PaperFile', backref='paper', lazy=True, cascade='all, delete-orphan')
@@ -459,13 +462,13 @@ class ImageGenJob(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     paper_id = db.Column(db.String(20), db.ForeignKey('papers.id'), nullable=False, index=True)
     prompt = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='queued')  # queued|running|done|error
-    worker = db.Column(db.String(40), nullable=True)  # which account picked it up
+    status = db.Column(db.String(20), nullable=False, default='queued')  # queued|running|done|error|cancelled
+    worker = db.Column(db.String(40), nullable=True)  # which account picked it up (account1..account4)
     image_id = db.Column(db.Integer, db.ForeignKey('paper_images.id'), nullable=True)
-    error = db.Column(db.Text, nullable=True)
+    error = db.Column(db.Text, nullable=True)  # error message if status=error
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
-    started_at = db.Column(db.DateTime, nullable=True)
-    finished_at = db.Column(db.DateTime, nullable=True)
+    started_at = db.Column(db.DateTime, nullable=True)  # when worker claimed the job
+    finished_at = db.Column(db.DateTime, nullable=True)  # when job reached terminal state
 
     image = db.relationship('PaperImage', foreign_keys=[image_id])
 

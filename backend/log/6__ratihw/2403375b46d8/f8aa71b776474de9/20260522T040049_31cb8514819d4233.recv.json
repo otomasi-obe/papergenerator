@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T04:01:03.066010Z",
+  "kind": "recv",
+  "user_id": 6,
+  "paper_id": "2403375b46d8",
+  "conv_id": "f8aa71b776474de9",
+  "model": "V-DEEPSEEK",
+  "content": "Betul, gambar memang **belum muncul** di draft. Itu wajar karena proses generate awal biasanya fokus ke **teks + tabel + referensi** dulu, sementara gambar/figur perlu ditangani terpisah.\n\n---\n\n**Opsi yang bisa kamu lakukan:**\n\n| Opsi | Caranya |\n|---|---|\n| 🖼️ **Upload manual** | Ambil gambar dari paper asli (tab Literatur), lalu upload ke Editor |\n| 🤖 **Minta saya generate** | Saya bisa bantu buatkan diagram PRISMA, conceptual framework, atau grafik hasil meta-analysis |\n| 📊 **Generate dari data** | Kalau ada data kuantitatif di draft (efek suhu, penghematan energi, dll), saya bisa bantu sarankan grafik |\n\n---\n\n**Gambar yang biasanya perlu ada di SLR paper:**\n\n1. **PRISMA Flow Diagram** — alur screening literatur\n2. **Conceptual Framework** — kerangka konseptual\n3. **Meta-analysis plots** — forest plot, funnel plot, dll\n4. **Summary charts** — bar chart distribusi studi per tahun/negara\n\n---\n\nMau saya bantu generate yang mana dulu? Atau kamu mau upload gambar sendiri? 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 3792,
+    "completion_tokens": 309,
+    "total_tokens": 4101
+  },
+  "status": "ok"
+}

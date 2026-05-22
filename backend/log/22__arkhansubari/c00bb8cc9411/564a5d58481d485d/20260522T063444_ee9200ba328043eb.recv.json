@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T06:34:50.305837Z",
+  "kind": "recv",
+  "user_id": 22,
+  "paper_id": "c00bb8cc9411",
+  "conv_id": "564a5d58481d485d",
+  "model": "V-DEEPSEEK",
+  "content": "Saya cek dulu, Kak. 🔍",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 3292,
+    "completion_tokens": 128,
+    "total_tokens": 3420
+  },
+  "status": "ok"
+}

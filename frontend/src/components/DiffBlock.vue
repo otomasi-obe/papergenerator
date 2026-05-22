@@ -11,14 +11,18 @@
         <span class="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold">+ Added / Sesudah</span>
         <div class="flex items-center gap-1.5 shrink-0">
           <button
-            @click="store.acceptProposal(change.id)"
-            class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white"
+            @click="handleAccept"
+            :disabled="processing"
+            class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             title="Accept this change"
+            aria-label="Accept change"
           >✓ Terima</button>
           <button
-            @click="store.rejectProposal(change.id)"
-            class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200"
+            @click="handleReject"
+            :disabled="processing"
+            class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             title="Reject this change"
+            aria-label="Reject change"
           >✕ Tolak</button>
         </div>
       </div>
@@ -28,9 +32,33 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref } from 'vue'
+
+const props = defineProps({
   change: { type: Object, required: true },
   store: { type: Object, required: true },
   align: { type: String, default: '' },
 })
+
+const processing = ref(false)
+
+async function handleAccept() {
+  if (processing.value) return
+  processing.value = true
+  try {
+    await props.store.acceptProposal(props.change.id)
+  } finally {
+    processing.value = false
+  }
+}
+
+async function handleReject() {
+  if (processing.value) return
+  processing.value = true
+  try {
+    await props.store.rejectProposal(props.change.id)
+  } finally {
+    processing.value = false
+  }
+}
 </script>

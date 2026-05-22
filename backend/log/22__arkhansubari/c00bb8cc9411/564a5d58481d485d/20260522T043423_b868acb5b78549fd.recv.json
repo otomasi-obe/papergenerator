@@ -1,0 +1,98 @@
+{
+  "ts": "2026-05-22T04:35:36.311281Z",
+  "kind": "recv",
+  "user_id": 22,
+  "paper_id": "c00bb8cc9411",
+  "conv_id": "564a5d58481d485d",
+  "model": "V-DEEPSEEK",
+  "content": "Saya bersihkan dulu semua referensi yang tidak relevan dan ganti dengan artikel solar PV forecasting murni. 🔥\n\nMulai dari referensi inti dulu:Oke, saya lihat reference index 0-15 sudah bersih solar PV. Lanjut ganti reference 16 ke atas yang masih campur AI di HE. Saya ganti satu per satu:Lanjut ganti reference 17:Lanjut ganti reference 22 ke atas:",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 16,
+        "value": "Kumari, P., & Toshniwal, D. (2021). Long short term memory–convolutional neural network based deep hybrid approach for solar irradiance forecasting. Energy Conversion and Management, 228, 113660. https://doi.org/10.1016/j.enconman.2020.113660"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 16, \"value\": \"Kumari, P., & Toshniwal, D. (2021). Long short term memory–convolutional neural network based deep hybrid approach for solar irradiance forecasting. Energy Conversion and Management, 228, 113660. https://doi.org/10.1016/j.enconman.2020.113660\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 17,
+        "value": "Sharma, N., Sharma, P., Irwin, D., & Shenoy, P. (2021). Predicting solar generation from weather forecasts using machine learning. Proceedings of the 2011 IEEE International Conference on Smart Grid Communications (SmartGridComm), 528–533. https://doi.org/10.1109/SmartGridComm.2011.6102379"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 17, \"value\": \"Sharma, N., Sharma, P., Irwin, D., & Shenoy, P. (2021). Predicting solar generation from weather forecasts using machine learning. Proceedings of the 2011 IEEE International Conference on Smart Grid Communications (SmartGridComm), 528–533. https://doi.org/10.1109/SmartGridComm.2011.6102379\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 18,
+        "value": "Mellit, A., & Kalogirou, S. A. (2008). Artificial intelligence techniques for photovoltaic applications: A review. Progress in Energy and Combustion Science, 34(5), 574–632. https://doi.org/10.1016/j.pecs.2008.01.001"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 18, \"value\": \"Mellit, A., & Kalogirou, S. A. (2008). Artificial intelligence techniques for photovoltaic applications: A review. Progress in Energy and Combustion Science, 34(5), 574–632. https://doi.org/10.1016/j.pecs.2008.01.001\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 19,
+        "value": "Kalogirou, S. A. (2001). Artificial neural networks in renewable energy systems applications: A review. Renewable and Sustainable Energy Reviews, 5(4), 373–401. https://doi.org/10.1016/S1364-0321(01)00006-5"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 19, \"value\": \"Kalogirou, S. A. (2001). Artificial neural networks in renewable energy systems applications: A review. Renewable and Sustainable Energy Reviews, 5(4), 373–401. https://doi.org/10.1016/S1364-0321(01)00006-5\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 20,
+        "value": "Inman, R. H., Pedro, H. T. C., & Coimbra, C. F. M. (2013). Solar forecasting methods for renewable energy integration. Progress in Energy and Combustion Science, 39(6), 535–576. https://doi.org/10.1016/j.pecs.2013.06.002"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 20, \"value\": \"Inman, R. H., Pedro, H. T. C., & Coimbra, C. F. M. (2013). Solar forecasting methods for renewable energy integration. Progress in Energy and Combustion Science, 39(6), 535–576. https://doi.org/10.1016/j.pecs.2013.06.002\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 21,
+        "value": "Goodfellow, I., Bengio, Y., & Courville, A. (2016). Deep Learning. MIT Press."
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 21, \"value\": \"Goodfellow, I., Bengio, Y., & Courville, A. (2016). Deep Learning. MIT Press.\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 22,
+        "value": "Kuhn, M., & Johnson, K. (2013). Applied Predictive Modeling. Springer. https://doi.org/10.1007/978-1-4614-6849-3"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 22, \"value\": \"Kuhn, M., & Johnson, K. (2013). Applied Predictive Modeling. Springer. https://doi.org/10.1007/978-1-4614-6849-3\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 23,
+        "value": "Sobri, S., Koohi-Kamali, S., & Rahim, N. A. (2018). Solar photovoltaic generation forecasting methods: A review. Energy Conversion and Management, 156, 459–497. https://doi.org/10.1016/j.enconman.2017.11.019"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 23, \"value\": \"Sobri, S., Koohi-Kamali, S., & Rahim, N. A. (2018). Solar photovoltaic generation forecasting methods: A review. Energy Conversion and Management, 156, 459–497. https://doi.org/10.1016/j.enconman.2017.11.019\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 24,
+        "value": "Das, U. K., Tey, K. S., Seyedmahmoudian, M., Mekhilef, S., Idris, M. Y. I., Van Deventer, W., Horan, B., & Stojcevski, A. (2018). Forecasting of photovoltaic power generation and model optimization: A review. Renewable and Sustainable Energy Reviews, 81, 912–928. https://doi.org/10.1016/j.rser.2017.08.017"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 24, \"value\": \"Das, U. K., Tey, K. S., Seyedmahmoudian, M., Mekhilef, S., Idris, M. Y. I., Van Deventer, W., Horan, B., & Stojcevski, A. (2018). Forecasting of photovoltaic power generation and model optimization: A review. Renewable and Sustainable Energy Reviews, 81, 912–928. https://doi.org/10.1016/j.rser.2017.08.017\"}"
+    },
+    {
+      "name": "ProposeReference",
+      "arguments": {
+        "ref_index": 25,
+        "value": "Sengupta, M., Habte, A., Wilbert, S., Gueymard, C., & Remund, J. (2021). Best practices handbook for the collection and use of solar resource data for solar energy applications (3rd ed.). National Renewable Energy Laboratory (NREL). https://doi.org/10.2172/1813312"
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"reference\", \"ref_index\": 25, \"value\": \"Sengupta, M., Habte, A., Wilbert, S., Gueymard, C., & Remund, J. (2021). Best practices handbook for the collection and use of solar resource data for solar energy applications (3rd ed.). National Renewable Energy Laboratory (NREL). https://doi.org/10.2172/1813312\"}"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 62728,
+    "completion_tokens": 1606,
+    "total_tokens": 64334
+  },
+  "status": "ok"
+}

@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T06:40:31.850677Z",
+  "kind": "recv",
+  "user_id": 38,
+  "paper_id": "ea546a83ef64",
+  "conv_id": "f1959d50cd554498",
+  "model": "V-DEEPSEEK",
+  "content": "Sepertinya ada kendala teknis. Saya coba baca file yang mungkin masih tersimpan di sesi ini.",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 5625,
+    "completion_tokens": 71,
+    "total_tokens": 5696
+  },
+  "status": "ok"
+}

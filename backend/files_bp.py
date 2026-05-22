@@ -31,13 +31,73 @@ log = logging.getLogger(__name__)
 files_bp = Blueprint("paper_files", __name__, url_prefix="/api/papers")
 
 ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv"}
-MAX_FILE_BYTES = 10 * 1024 * 1024
+# Per-file size cap. Reference papers (esp. scanned PDFs from journals) easily
+# breach 10 MB; cap raised to 30 MB so users don't get rejected for normal
+# academic PDFs. The whole multipart payload is still bounded by Flask's
+# MAX_CONTENT_LENGTH (60 MB by default).
+MAX_FILE_BYTES = 30 * 1024 * 1024
 MAX_PREVIEW_CHARS = 20_000
+
+# Magic bytes for file type validation (first few bytes of file)
+FILE_SIGNATURES = {
+    ".pdf": [b"%PDF"],
+    ".docx": [b"PK\x03\x04"],  # ZIP format
+    ".doc": [b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"],  # OLE2 format
+    ".xlsx": [b"PK\x03\x04"],  # ZIP format
+    ".xls": [b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"],  # OLE2 format
+    ".txt": None,  # No signature check for plain text
+    ".md": None,
+    ".csv": None,
+}
 
 # Shared extraction pool. Capped at 20 — fitz/openpyxl/python-docx are CPU-bound
 # but release the GIL on heavy work, and we never want a single user to spawn
 # more than 20 simultaneous extractions across the whole process.
 _EXTRACT_POOL = ThreadPoolExecutor(max_workers=20, thread_name_prefix="pdf-extract")
+
+
+def _validate_file_content(data: bytes, ext: str) -> bool:
+    """Validate file content matches expected type using magic bytes.
+    Returns True if valid, False if content doesn't match extension.
+    """
+    signatures = FILE_SIGNATURES.get(ext)
+    if signatures is None:
+        return True
+    
+    if not data:
+        return False
+    
+    for sig in signatures:
+        if data.startswith(sig):
+            return True
+    
+    return False
+
+
+def _read_file_with_limit(stream, max_bytes: int) -> tuple[bytes | None, str | None]:
+    """Read file stream with size limit. Returns (data, error_msg).
+    Prevents memory exhaustion by checking size before reading entire file.
+    """
+    chunk_size = 8192
+    chunks = []
+    total_size = 0
+    
+    try:
+        while True:
+            chunk = stream.read(chunk_size)
+            if not chunk:
+                break
+            
+            total_size += len(chunk)
+            if total_size > max_bytes:
+                return None, f"File exceeds {max_bytes // (1024 * 1024)}MB limit"
+            
+            chunks.append(chunk)
+        
+        return b"".join(chunks), None
+    except Exception as e:
+        log.warning("file_read_error", extra={"err": str(e)})
+        return None, "Failed to read file"
 
 
 def _extract_text_for_preview(filepath: Path, ext: str) -> str:
@@ -67,18 +127,61 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
             return txt[:MAX_PREVIEW_CHARS]
 
         if ext in (".docx", ".doc"):
-            from docx import Document
-            doc = Document(str(filepath))
-            chunks: list[str] = []
-            for p in doc.paragraphs:
-                if p.text.strip():
-                    chunks.append(p.text)
-            for tbl in doc.tables:
-                for row in tbl.rows:
-                    cells = [c.text.strip() for c in row.cells]
-                    if any(cells):
-                        chunks.append(" | ".join(cells))
-            return "\n".join(chunks)[:MAX_PREVIEW_CHARS]
+            try:
+                from docx import Document
+                doc = Document(str(filepath))
+                chunks: list[str] = []
+                for p in doc.paragraphs:
+                    if p.text.strip():
+                        chunks.append(p.text)
+                for tbl in doc.tables:
+                    for row in tbl.rows:
+                        cells = [c.text.strip() for c in row.cells]
+                        if any(cells):
+                            chunks.append(" | ".join(cells))
+                txt = "\n".join(chunks).strip()
+                if txt:
+                    return txt[:MAX_PREVIEW_CHARS]
+            except Exception as e:
+                # python-docx fails on .docx files with missing/extra relationships
+                # (we've seen this with files exported by Pages, LibreOffice, and
+                # some Word web variants). Fallback: parse word/document.xml from
+                # the zip directly. Loses table structure but keeps paragraph
+                # text, which is what the AI actually consumes.
+                log.info(
+                    "docx_fallback",
+                    extra={"file": str(filepath), "err": str(e)[:200]},
+                )
+            try:
+                import zipfile
+                import xml.etree.ElementTree as ET
+
+                ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+                with zipfile.ZipFile(str(filepath)) as zf:
+                    candidates = [
+                        n for n in zf.namelist()
+                        if n.endswith("/document.xml") or n == "word/document.xml"
+                    ]
+                    if not candidates:
+                        return ""
+                    with zf.open(candidates[0]) as raw:
+                        tree = ET.parse(raw)
+                lines: list[str] = []
+                for para in tree.iter(f"{{{ns['w']}}}p"):
+                    parts = [
+                        (t.text or "")
+                        for t in para.iter(f"{{{ns['w']}}}t")
+                    ]
+                    line = "".join(parts).strip()
+                    if line:
+                        lines.append(line)
+                return "\n".join(lines)[:MAX_PREVIEW_CHARS]
+            except Exception as e2:
+                log.info(
+                    "docx_zip_fallback_failed",
+                    extra={"file": str(filepath), "err": str(e2)[:200]},
+                )
+                return ""
 
         if ext in (".xlsx", ".xls"):
             from openpyxl import load_workbook
@@ -159,9 +262,21 @@ def upload_paper_files(paper_id: str):
             warnings.append(f"{f.filename}: format tidak didukung")
             continue
 
-        data = f.stream.read()
-        if len(data) > MAX_FILE_BYTES:
-            warnings.append(f"{f.filename}: lebih dari 10MB, dilewati")
+        # Read with size limit to prevent memory exhaustion
+        data, error = _read_file_with_limit(f.stream, MAX_FILE_BYTES)
+        if error:
+            warnings.append(f"{f.filename}: {error}")
+            continue
+        
+        if not data:
+            warnings.append(f"{f.filename}: file kosong")
+            continue
+
+        # Validate file content matches extension (magic bytes check)
+        if not _validate_file_content(data, ext):
+            warnings.append(
+                f"{f.filename}: konten file tidak sesuai dengan ekstensi (kemungkinan file berbahaya)"
+            )
             continue
 
         name = f"{uuid.uuid4().hex}{ext}"
@@ -189,7 +304,7 @@ def upload_paper_files(paper_id: str):
     try:
         for item, fut in futures:
             try:
-                extracted = fut.result(timeout=120)
+                extracted = fut.result(timeout=30)
             except Exception as e:
                 log.info("extract_failed", extra={"file": item["name"], "err": str(e)})
                 extracted = ""

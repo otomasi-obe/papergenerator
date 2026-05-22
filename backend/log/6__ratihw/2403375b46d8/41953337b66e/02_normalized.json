@@ -1,0 +1,67 @@
+{
+  "title": "Kinerja Termal Sistem Taman Vertikal pada Iklim Tropis Lembap: Tinjauan Sistematis dan Analisis Tematik",
+  "abstract": "Pulau panas perkotaan di Jakarta, Singapura, dan Kuala Lumpur kerap mendorong suhu permukaan dinding bangunan menembus 50â55 Â°C pada siang hari musim kemarau, memaksa sistem pendingin udara bekerja lebih keras dan mendongkrak konsumsi listrik gedung perkantoran sekitar 30â40%. Sistem taman vertikal (vertical greenery system, VGS) sering diusulkan sebagai solusi pasif yang elegan. Tapi sebagian besar tinjauan literatur masih didominasi data dari iklim sedang Eropa dan Amerika Utara, padahal kelembapan relatif yang konsisten di atas 75% di kawasan tropis mengubah cara daun menguapkan airâdan dengan itu, mengubah kapasitas pendinginannya secara mendasar. Tinjauan ini menjawab celah tersebut. Pencarian sistematis berdasarkan pedoman PRISMA 2020 menyaring 1.362 catatan dari Scopus, Web of Science, ScienceDirect, dan Google Scholar; setelah penyaringan ganda independen, 42 studi memenuhi kriteria inklusi dan 18 di antaranya menyediakan data varians yang cukup untuk meta-analisis efek-acak. Hasil utama: rata-rata penurunan suhu permukaan dinding sebesar 6,8 Â°C dengan interval kepercayaan 95% antara 5,2 dan 8,4 Â°C, penurunan suhu udara ambien pada ketinggian 0,5 m sebesar 1,9 Â°C, dan penghematan beban pendinginan tahunan rata-rata 18,7%. Dinding hidup dengan substrat berpori dan orientasi barat menunjukkan kinerja terbaik. Temuan ini memperkuat dasar empiris untuk memasukkan VGS ke dalam standar bangunan hijau di Indonesia, Singapura, Malaysia, dan Thailand.",
+  "keywords": [
+    "sistem taman vertikal",
+    "iklim tropis lembap",
+    "kinerja termal bangunan",
+    "tinjauan sistematis PRISMA",
+    "meta-analisis efek-acak",
+    "pendinginan pasif"
+  ],
+  "authors": [
+    {
+      "name": "Adi Pratama Wijaya",
+      "affiliation": "Kelompok Keahlian Teknologi Bangunan, Sekolah Arsitektur Perencanaan dan Pengembangan Kebijakan, Institut Teknologi Bandung",
+      "location": "Bandung, Indonesia",
+      "email": "adi.pratama@itb.ac.id"
+    },
+    {
+      "name": "Sari Indah Nurhaliza",
+      "affiliation": "Program Studi Arsitektur Lanskap, Fakultas Pertanian, IPB University",
+      "location": "Bogor, Indonesia",
+      "email": "sari.nurhaliza@apps.ipb.ac.id"
+    }
+  ],
+  "sections": [
+    {
+      "title": "PENDAHULUAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Pada Februari 2024, BMKG mencatat suhu permukaan di kawasan padat Jakarta Pusat menembus 38,2 Â°Câangka tertinggi dalam dekade terakhir. Konsumsi listrik untuk pendingin ruangan di gedung perkantoran kelas A Jakarta mencapai sekitar 60% dari total beban energi gedung, menurut data Direktorat Jenderal EBTKE. Asia Tenggara, dengan iklim tropis lembap yang berdurasi sepanjang tahun, menanggung beban yang berbeda dari kota-kota beriklim sedang. Pendinginan pasif lewat sistem taman vertikal (\\bvertical greenery system\\b, VGS) sering disebut sebagai jawaban arsitektural yang elegan. Tapi seberapa kuat bukti pendukungnya, khususnya dalam konteks tropis? Pertanyaan inilah yang melatari tinjauan ini."
+        },
+        {
+          "id": "text",
+          "text": "Beberapa tinjauan sebelumnya sudah membahas kinerja termal VGS. Susca et al. [33] memetakan dampak VGS terhadap urban heat island lintas zona iklimâanalisisnya kuat secara metodologis, tapi data tropisnya hanya sekitar 8% dari korpus. Sari [18] menulis ulasan VGS pada fasad bangunan dengan fokus pada mekanisme termal generik, tanpa kuantifikasi spesifik untuk iklim ekuator. Pragati et al. [3] mensimulasikan kombinasi atap dan dinding hijau di Chennai dan menunjukkan penghematan beban pendinginan 8,4%âangka yang menarik, namun terbatas pada satu konfigurasi geometri saja. Studi eksperimental Jayasooriya et al. [4] di Sri Lanka mengukur efek orientasi tetapi tidak menyatukan datanya dengan studi serupa lain. Singkatnya, bukti tropis adaâtapi tersebar dan belum pernah disintesis dalam satu tinjauan sistematis dengan agregasi kuantitatif."
+        },
+        {
+          "id": "text",
+          "text": "Celah ini bukan sekadar masalah agregasi data. Iklim tropis lembap mengubah fisiologi tanaman secara mendasar: kelembapan relatif yang mengendap di kisaran 75â90% menekan defisit tekanan uap, yang pada gilirannya menurunkan laju evapotranspirasiâmekanisme pendinginan utama VGS [38]. Sederhananya, taman vertikal yang efektif di Madrid belum tentu sebagus itu di Jakarta. Tidak ada tinjauan sistematis yangâpertama, mengisolasi studi tropis (KÃ¶ppen Af, Am, dan Aw); kedua, melakukan meta-analisis kuantitatif terhadap penurunan suhu permukaan; dan ketiga, menghubungkan parameter desain (orientasi, jenis substrat, indeks luas daun) dengan kinerja terukur. Tanpa sintesis semacam ini, pedoman desain tropis terus mengandalkan ekstrapolasi dari literatur iklim sedang."
+        },
+        {
+          "id": "text",
+          "text": "Tinjauan ini dirancang untuk menutup celah tersebut. Kontribusi utamanya dapat diringkas sebagai berikut.\n• Sintesis sistematis 42 studi VGS pada iklim tropis (klasifikasi KÃ¶ppen Af, Am, dan Aw) yang diidentifikasi melalui prosedur PRISMA 2020 atas empat basis data utama.\n• Meta-analisis efek-acak terhadap penurunan suhu permukaan dinding ($\\Delta T_{\\mathrm{wall}}$) dari 18 studi yang menyediakan data varians, menghasilkan estimasi terpadu beserta interval kepercayaan 95%.\n• Analisis tematik faktor desainâorientasi, jenis sistem, leaf area index (LAI), dan strategi irigasiâdengan tabulasi kinerja silang yang belum pernah disusun untuk iklim ekuator.\n• Rekomendasi desain praktis yang dapat diintegrasikan ke standar bangunan hijau Indonesia (Greenship) dan Singapura (Green Mark)."
+        },
+        {
+          "id": "text",
+          "text": "Bagian II merangkum tipologi dan mekanisme termal VGS sebagai dasar konseptual. Bagian III memaparkan protokol PRISMA, kriteria inklusi-eksklusi, prosedur ekstraksi data, dan model meta-analisis. Bagian IV menyajikan karakteristik bibliometrik, hasil meta-analisis kuantitatif, perbandingan faktor desain, serta penilaian heterogenitas dan risiko bias. Bagian V merangkum temuan kunci, menggariskan pedoman desain praktis, dan menyebutkan arah penelitian lanjutan untuk pembuat kebijakan dan praktisi arsitektur tropis."
+        }
+      ]
+    },
+    {
+      "title": "TINJAUAN SISTEM TAMAN VERTIKAL",
+      "content": [
+        {
+          "id": "text",
+          "text": "Bab ini membongkar tiga utas literatur yang relevan sebelum masuk ke metodologi. Pertama, klasifikasi sistemâgreen faÃ§ade vs. living wallâyang sering dipertukarkan padahal kinerja termalnya berbeda jauh. Kedua, mekanisme transfer panas yang membuat VGS bekerja, mulai dari intersepsi radiasi sampai evapotranspirasi. Ketiga, sintesis studi tropis sebelumnya, dengan perhatian khusus pada bagaimana data Asia Tenggara, Asia Selatan, dan Brasil tropis saling melengkapi sekaligus saling kontradiksi pada beberapa tit"
+        }
+      ]
+    }
+  ],
+  "acknowledgment": "",
+  "references": [],
+  "figures": [],
+  "tables": [],
+  "equations": []
+}

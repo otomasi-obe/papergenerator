@@ -3,25 +3,34 @@
     <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
       <div>
         <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Files</h2>
-        <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD — max 10MB per file. Bisa upload banyak file sekaligus.</p>
+        <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD / XLSX / XLS / CSV — max 30MB per file. Bisa upload banyak file sekaligus.</p>
       </div>
       <div class="flex items-center gap-2">
         <input
           ref="fileInput"
           type="file"
-          accept=".pdf,.docx,.doc,.txt,.md"
+          accept=".pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv"
           multiple
           class="hidden"
           @change="onFileChange"
         />
         <button
+          v-if="!uploading"
           @click="fileInput?.click()"
-          :disabled="!store.currentPaperId || uploading"
+          :disabled="!store.currentPaperId"
           class="px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
         >
-          <span v-if="uploading">Uploading… ({{ uploadProgress }})</span>
-          <span v-else>＋ Upload file</span>
+          ＋ Upload file
         </button>
+        <div v-else class="flex items-center gap-2">
+          <span class="text-xs text-ink-600 dark:text-ink-300">{{ uploadProgress }}</span>
+          <button
+            @click="cancelUpload"
+            class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-medium transition-colors"
+          >
+            ✕ Cancel
+          </button>
+        </div>
       </div>
     </div>
 
@@ -74,12 +83,19 @@
             </div>
             <div class="text-[11px] text-ink-500 dark:text-ink-300">{{ humanSize(activeFile.size_bytes) }}</div>
           </div>
-          <a
-            :href="rawUrl(activeFile)"
-            target="_blank"
-            rel="noopener"
-            class="text-xs text-ink-700 dark:text-ink-100 hover:text-ink-900 dark:hover:text-ink-50 font-medium px-2 py-1 rounded hover:bg-cream-200 dark:hover:bg-ash-700"
-          >Buka di tab baru ↗</a>
+          <div class="flex items-center gap-2">
+            <a
+              :href="rawUrl(activeFile)"
+              download
+              class="text-xs text-ink-700 dark:text-ink-100 hover:text-ink-900 dark:hover:text-ink-50 font-medium px-2 py-1 rounded hover:bg-cream-200 dark:hover:bg-ash-700"
+            >Download ↓</a>
+            <a
+              :href="rawUrl(activeFile)"
+              target="_blank"
+              rel="noopener"
+              class="text-xs text-ink-700 dark:text-ink-100 hover:text-ink-900 dark:hover:text-ink-50 font-medium px-2 py-1 rounded hover:bg-cream-200 dark:hover:bg-ash-700"
+            >Buka di tab baru ↗</a>
+          </div>
         </header>
 
         <div v-if="!activeFile" class="flex-1 flex items-center justify-center text-xs text-ink-500 dark:text-ink-300">
@@ -93,6 +109,18 @@
             :src="rawUrl(activeFile)"
             class="w-full h-full min-h-[60vh] border-0 bg-white"
           />
+          <!-- TXT / MD / CSV -->
+          <pre
+            v-else-if="['.txt', '.md', '.csv'].includes(activeFile.ext)"
+            class="px-5 py-4 text-xs leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap font-mono"
+          >{{ previewText || '(kosong)' }}</pre>
+          <!-- DOCX / DOC / XLSX / XLS: show extracted text -->
+          <div v-else class="px-5 py-4 text-xs leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap font-mono">
+            <div v-if="!previewText" class="text-ink-500 dark:text-ink-300">(tidak bisa di-preview di browser)</div>
+            <template v-else>{{ previewText }}</template>
+          </div>
+        </div>
+          </div>
           <!-- TXT / MD -->
           <pre
             v-else-if="['.txt', '.md'].includes(activeFile.ext)"
@@ -125,11 +153,14 @@ import AppDialog from './AppDialog.vue'
 
 const store = usePaperStore()
 
+const MAX_FILE_SIZE = 30 * 1024 * 1024 // 30MB
+
 const files = ref([])
 const loading = ref(false)
 const uploading = ref(false)
 const uploadProgress = ref('')
 const warning = ref('')
+const uploadAbortController = ref(null)
 
 const fileInput = ref(null)
 const activeFileId = ref(null)
@@ -137,6 +168,7 @@ const previewText = ref('')
 const deleteFileTarget = ref(null)
 
 const activeFile = computed(() => files.value.find(f => f.id === activeFileId.value))
+const pdfError = ref(false)
 
 async function load() {
   if (!store.currentPaperId) return
@@ -180,21 +212,34 @@ async function onFileChange(e) {
   if (fileInput.value) fileInput.value.value = ''
   if (!list.length || !store.currentPaperId) return
 
+  // Frontend validation: check file sizes before upload
+  const oversized = list.filter(f => f.size > MAX_FILE_SIZE)
+  if (oversized.length > 0) {
+    const names = oversized.map(f => f.name).join(', ')
+    warning.value = `File terlalu besar (max 30MB): ${names}`
+    if (oversized.length === list.length) return
+  }
+
+  const validFiles = list.filter(f => f.size <= MAX_FILE_SIZE)
+  if (!validFiles.length) return
+
   uploading.value = true
   warning.value = ''
-  // Backend has a 20-worker extraction pool — we send the whole batch and let
-  // the server queue. The progress label is just a hint, real concurrency is
-  // server-side.
-  uploadProgress.value = `0/${list.length}`
+  uploadProgress.value = `0/${validFiles.length} files - 0%`
+  
+  // Create AbortController for cancellation support
+  uploadAbortController.value = new AbortController()
+  
   try {
     const fd = new FormData()
-    list.forEach(f => fd.append('files', f))
+    validFiles.forEach(f => fd.append('files', f))
     const res = await api.post(`/api/papers/${store.currentPaperId}/files`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      signal: uploadAbortController.value.signal,
       onUploadProgress: (evt) => {
         if (evt.total) {
           const pct = Math.round((evt.loaded / evt.total) * 100)
-          uploadProgress.value = `${pct}%`
+          uploadProgress.value = `${validFiles.length} files - ${pct}%`
         }
       },
     })
@@ -203,10 +248,21 @@ async function onFileChange(e) {
     if (newFiles.length) selectFile(newFiles[0])
     if (res.data.warnings?.length) warning.value = res.data.warnings.join('; ')
   } catch (e) {
-    warning.value = 'Upload gagal: ' + (e.response?.data?.error || e.message)
+    if (e.name === 'CanceledError' || e.code === 'ERR_CANCELED') {
+      warning.value = 'Upload dibatalkan'
+    } else {
+      warning.value = 'Upload gagal: ' + (e.response?.data?.error || e.message)
+    }
   } finally {
     uploading.value = false
     uploadProgress.value = ''
+    uploadAbortController.value = null
+  }
+}
+
+function cancelUpload() {
+  if (uploadAbortController.value) {
+    uploadAbortController.value.abort()
   }
 }
 
@@ -242,6 +298,9 @@ function extIcon(ext) {
     case '.pdf': return '📕'
     case '.docx':
     case '.doc': return '📘'
+    case '.xlsx':
+    case '.xls': return '📊'
+    case '.csv': return '📈'
     case '.txt': return '📄'
     case '.md': return '📝'
     default: return '📁'

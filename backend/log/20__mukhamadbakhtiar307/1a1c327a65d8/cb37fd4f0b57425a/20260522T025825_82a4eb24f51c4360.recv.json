@@ -1,0 +1,25 @@
+{
+  "ts": "2026-05-22T02:59:16.647487Z",
+  "kind": "recv",
+  "user_id": 20,
+  "paper_id": "1a1c327a65d8",
+  "conv_id": "cb37fd4f0b57425a",
+  "model": "V-DEEPSEEK",
+  "content": "Hasil SLR sudah masuk! 📚 Berikut **10 paper paling relevan** untuk topik kamu:\n\n---\n\n### 🔥 Top Literatur — Smart System Kandang Ayam\n\n| # | ID | Judul | Tahun | Skor | \n|---|---|---|---|---|\n| 1 | 403 | **IoT Based Smart Monitoring System for Efficient Poultry Farming** | 2022 | ⭐0.34 |\n| 2 | 303 | Automatic Temperature Control System on Smart Poultry Farm Using PID Method | 2021 | ⭐0.34 |\n| 3 | 304 | Smart Chicken Coop Control and Monitoring System Design Automatically with Smartphone Notifications | 2021 | 0.27 |\n| 4 | 404 | **Analisis Sistem Otomatisasi Kandang Ayam Broiler Berbasis IoT** 🇮🇩 | 2022 | 0.27 |\n| 5 | 305 | **Prototipe Alat Pakan Ayam Otomatis dan Monitoring Suhu Kandang Berbasis IoT** 🇮🇩 | 2024 | 0.27 |\n| 6 | 405 | Smart Monitoring Berbasis IoT Suhu & Kelembaban Kandang Ayam Broiler | 2021 | 0.26 |\n| 7 | 406 | **Smart System Monitoring Produksi Telur Ayam** 🇮🇩 | 2024 | 0.26 |\n| 8 | 306 | Implementation of Light Control System in Chicken Egg Incubator (DHT11 + Arduino) | 2025 | 0.26 |\n| 9 | 407 | Sistem Monitoring Kualitas Udara & Otomatisasi P... | — | 0.26 |\n| 10 | 408 | Rancang Bangun Sistem Kontrol & Monitoring Kandang Ayam Cerdas | — | 0.25 |\n\n---\n\n### 💡 Rekomendasi Pinning:\n\nBerdasarkan topik kamu — **pemberian pakan + distribusi telur + efisiensi pekerja** — aku rekomendasikan wajib baca:\n\n| Prioritas | ID | Alasan |\n|---|---|---|\n| ⭐⭐⭐ | **305** | Pakan ayam otomatis + IoT — paling nyambung ke topikmu! |\n| ⭐⭐⭐ | **406** | Monitoring produksi telur — langsung relevan ke distribusi telur |\n| ⭐⭐ | **404** | Otomatisasi kandang broiler, Bahasa Indonesia, konteks lokal |\n| ⭐⭐ | **403** | IoT monitoring efisiensi peternakan — framework umum |\n| ⭐ | **303** | Kontrol PID suhu — relevan untuk sistem kontrol otomasi |\n\n---\n\nMau pin yang mana saja sebagai **must-read**? Ketik nomor ID-nya ya, bisa lebih dari satu. Contoh: `305, 406, 404` 😊",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "GetLiterature",
+      "arguments": {
+        "limit": 50
+      },
+      "result": "[\n  {\n    \"id\": 403,\n    \"title\": \"IoT Based Smart Monitoring System for Efficient Poultry Farming\",\n    \"year\": 2022,\n    \"authors\": \"Stella Ifeoma Orakwue, Hamza Mohammed Ridha Al-Khafaji, Mays Zahid Chabuk\",\n    \"venue\": \"Webology\",\n    \"doi\": \"10.14704/web/v19i1/web19270\",\n    \"summary\": \"This paper presents a smart system using Internet of things (IoT) for monitoring and controlling environmental conditions of poultry farming. Environmental parameters such as temperature, humidity, and air quality in a poultry house which are vital for the survival of poultry birds were monitored in order to adequately nurture poultry birds, reduce mortality rate and improve production. The system\",\n    \"must_read\": false,\n    \"score\": 0.3421\n  },\n  {\n    \"id\": 303,\n    \"title\": \"Automatic Temperature Control System on Smart Poultry Farm Using PID Method\",\n    \"year\": 2021,\n    \"authors\": \"Agung Enriko, Ryan Anugrah Putra, Estananto\",\n    \"venue\": \"Green Intelligent Systems and Applications\",\n    \"doi\": \"10.53623/gisa.v1i1.40\",\n    \"summary\": \"Chicken farmers in Indonesia are facing a problem as a result of the country's harsh weather conditions. Poultry species are very susceptible to temperature and humidity fluctuations. As a result, an intelligent poultry farm is necessary to intelligently adjust the temperature in the chicken coop.\",\n    \"must_read\": false,\n    \"score\": 0.3355\n  },\n  {\n    \"id\": 304,\n    \"title\": \"Smart Chicken Coop Control and Monitoring System Design Automatically with Smartphone Notifications\",\n    \"year\": 2021,\n    \"authors\": \"Sri Novida Sari, Romulo Aritonang, Sumarlin Sumarlin\",\n    \"venue\": \"Brilliance: Research of Artificial Intelligence\",\n    \"doi\": \"10.47709/brilliance.v1i2.1193\",\n    \"summary\": \"Technological developments and industrial automation encourage humans to meet their needs quickly. So that robotics technology was developed to help ease human work in the future. The chicken breeder is a business that has great profit prospects because "
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 13219,
+    "completion_tokens": 1371,
+    "total_tokens": 14590
+  },
+  "status": "ok"
+}

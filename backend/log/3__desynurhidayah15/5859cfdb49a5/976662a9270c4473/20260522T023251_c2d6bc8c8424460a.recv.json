@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T02:33:09.863464Z",
+  "kind": "recv",
+  "user_id": 3,
+  "paper_id": "5859cfdb49a5",
+  "conv_id": "976662a9270c4473",
+  "model": "V-DEEPSEEK",
+  "content": "Oke, tidak masalah! Kita bisa atur dua jalur:\n\n1. 📤 **Kamu upload sendiri** file referensi (PDF/DOCX) nanti, atau\n2. 🔍 **Aku bantu carikan** lewat pencarian systematic literature review (SLR).\n\nSebelum lanjut, satu lagi — untuk gaya sitasi dan bahasa, kamu ada preferensi? \n\n- **Gaya sitasi:** APA 7th, IEEE, Harvard, atau lainnya?\n- **Bahasa paper:** Bahasa Indonesia atau Inggris?",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2782,
+    "completion_tokens": 477,
+    "total_tokens": 3259
+  },
+  "status": "ok"
+}

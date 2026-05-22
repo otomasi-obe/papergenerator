@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T17:33:45.139271Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "753c6d8679e2",
+  "conv_id": "100c71dbe0164ad3",
+  "model": "V-DEEPSEEK",
+  "content": "Halo lagi! 👋\n\nKalau Anda masih tertarik untuk **generate full paper**, silakan pilih satu dari 3 opsi ini:\n\n| No | Topik |\n|----|-------|\n| 1️⃣ | Dampak AI terhadap Pasar Kerja di Indonesia |\n| 2️⃣ | Teknologi Blockchain & Transparansi Pemilu |\n| 3️⃣ | Media Sosial & Kesehatan Mental Remaja |\n\nCukup balas dengan angka **1**, **2**, atau **3**. Atau beri tahu topik sendiri beserta bidang studi dan format referensinya. Saya siap menuliskan makalah lengkapnya! 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 3027,
+    "completion_tokens": 311,
+    "total_tokens": 3338
+  },
+  "status": "ok"
+}

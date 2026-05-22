@@ -77,6 +77,23 @@ _LLM_SYSTEM = (
     "No prose, no markdown, no explanation. Cap value 200 chars."
 )
 
+BULK_EXTRACT_PROMPT = """
+Extract research paper planning information from this user message.
+
+Return JSON with these keys (only include if clearly stated):
+- jurusan: academic department/major
+- topik: research topic
+- latar_belakang: background/motivation
+- literatur_status: "belum" | "sudah" | "sebagian"
+- metode: research method/approach
+- data_status: "belum" | "sudah" | "estimasi"
+- kesimpulan_target: expected conclusion/findings
+
+Return {{}} if no clear information extractable.
+
+User message: {user_msg}
+"""
+
 
 @dataclass
 class ExtractedFact:
@@ -271,6 +288,86 @@ def _llm_fallback_layer(
         return None
 
 
+# ── bulk extraction ───────────────────────────────────────────────────
+
+def extract_bulk_info(user_msg: str, paper_id: str, user_id: int) -> dict[str, str]:
+    """Extract multiple research paper planning facts from a single user message."""
+    if not user_msg or not user_msg.strip():
+        return {}
+    
+    base = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
+    api_key = os.getenv("AIOTOMASI_APIKEY") or ""
+    if not base or not api_key:
+        log.warning("extract_bulk_info: API credentials not configured")
+        return {}
+    
+    url = base + "/chat/completions"
+    prompt = BULK_EXTRACT_PROMPT.format(user_msg=user_msg.strip())
+    payload = {
+        "model": _LLM_MODEL,
+        "messages": [
+            {"role": "user", "content": prompt},
+        ],
+        "max_tokens": 256,
+        "temperature": 0.0,
+        "stream": False,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=15.0)
+        if resp.status_code != 200:
+            log.warning("extract_bulk_info: HTTP %s", resp.status_code)
+            return {}
+        
+        data = resp.json()
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+        
+        if not content:
+            return {}
+        
+        if content.startswith("```"):
+            content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE)
+        
+        parsed = json.loads(content)
+        if not isinstance(parsed, dict):
+            log.warning("extract_bulk_info: response not a dict")
+            return {}
+        
+        result = {}
+        valid_keys = {
+            "jurusan", "topik", "latar_belakang", "literatur_status",
+            "metode", "data_status", "kesimpulan_target"
+        }
+        
+        for key, value in parsed.items():
+            if key in valid_keys and value and isinstance(value, str):
+                result[key] = value.strip()
+        
+        if result:
+            log.info("extract_bulk_info: extracted %d facts from first message", len(result))
+        
+        return result
+        
+    except json.JSONDecodeError as exc:
+        log.warning("extract_bulk_info: JSON parse error: %s", exc)
+        return {}
+    except requests.RequestException as exc:
+        log.warning("extract_bulk_info: request failed: %s", exc)
+        return {}
+    except Exception as exc:
+        log.warning("extract_bulk_info: unexpected error: %s", exc)
+        return {}
+
+
 # ── persistence ───────────────────────────────────────────────────────────
 
 def _persist(paper_id: str, user_id: int, fact: ExtractedFact) -> bool:
@@ -332,4 +429,4 @@ def extract_facts(
         return []
 
 
-__all__ = ["ExtractedFact", "extract_facts"]
+__all__ = ["ExtractedFact", "extract_facts", "extract_bulk_info"]

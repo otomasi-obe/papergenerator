@@ -286,7 +286,11 @@ def _login_one_slot(p, slot: int, *, headless: bool, timeout_s: int) -> dict:
         # PSIDTS sering nyusul beberapa detik setelah PSID. Tunggu sampai
         # benar2 lengkap supaya cookies file langsung pakai-an oleh CreateImageGemini.py.
         if not _wait_for_required_cookies(page, timeout_s=90):
-            print("  ! WARNING: PSIDTS belum muncul setelah 90s; cookies tetap disimpan tapi mungkin perlu refresh ulang.", flush=True)
+            raise RuntimeError(
+                "Cookie penting (__Secure-1PSIDTS) tidak muncul setelah 90s. "
+                "Gemini tidak akan bisa dipakai tanpa cookie ini. "
+                "Coba login ulang atau tunggu beberapa menit lalu refresh."
+            )
 
         email = _grab_email(page) or ""
         info = _save_cookies(context, slot)
@@ -294,7 +298,10 @@ def _login_one_slot(p, slot: int, *, headless: bool, timeout_s: int) -> dict:
         print(f"  ✓ login: {email or label or 'tidak ketahuan'}", flush=True)
         print(f"  ✓ cookies disimpan: {info['path']} ({info['count']} cookie)", flush=True)
         if info["missing"]:
-            print(f"  ! WARNING: cookie penting belum lengkap: {info['missing']}", flush=True)
+            raise RuntimeError(
+                f"Cookie penting belum lengkap: {info['missing']}. "
+                "Login tidak valid, tidak bisa dipakai untuk generate image."
+            )
         return {"slot": slot, "email": email, "label": label, **info}
     finally:
         try:

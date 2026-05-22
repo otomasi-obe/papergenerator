@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T03:03:02.336348Z",
+  "kind": "recv",
+  "user_id": 7,
+  "paper_id": "1394e4e0a25e",
+  "conv_id": "63f78bad402a4f78",
+  "model": "V-DEEPSEEK",
+  "content": "Baik, silakan. Saya siap menerima permintaan kamu kapan saja. 👌",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 5605,
+    "completion_tokens": 65,
+    "total_tokens": 5670
+  },
+  "status": "ok"
+}

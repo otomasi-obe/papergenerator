@@ -1,0 +1,26 @@
+{
+  "ts": "2026-05-22T03:44:33.538750Z",
+  "kind": "recv",
+  "user_id": 33,
+  "paper_id": "50086254ef37",
+  "conv_id": "9d50178be3904ca2",
+  "model": "V-DEEPSEEK",
+  "content": "Draft paper Anda saat ini belum memiliki konten. Silakan isi judul, abstrak, kata kunci, atau bagian-bagian paper terlebih dahulu.",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RouteIntent",
+      "arguments": {
+        "mode": "casual",
+        "reasoning": "User wants to view their current draft paper — a display/view request, not editing or planning."
+      },
+      "result": "routed -> casual"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 4932,
+    "completion_tokens": 785,
+    "total_tokens": 5717
+  },
+  "status": "ok"
+}

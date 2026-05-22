@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T04:01:17.263433Z",
+  "kind": "recv",
+  "user_id": 22,
+  "paper_id": "c00bb8cc9411",
+  "conv_id": "564a5d58481d485d",
+  "model": "V-DEEPSEEK",
+  "content": "Oke, Kak! Saya save dulu Paper 1, lalu switch ke Paper 2 (Bibliometric Review) dan isi full. Gas! 🔥",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 10868,
+    "completion_tokens": 68,
+    "total_tokens": 10936
+  },
+  "status": "ok"
+}

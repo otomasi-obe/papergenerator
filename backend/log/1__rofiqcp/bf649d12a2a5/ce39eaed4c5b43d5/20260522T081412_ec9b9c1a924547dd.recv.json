@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T08:14:19.186772Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "bf649d12a2a5",
+  "conv_id": "ce39eaed4c5b43d5",
+  "model": "V-DEEPSEEK",
+  "content": "Hai juga! 👋 Ada yang bisa saya bantu hari ini?",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2613,
+    "completion_tokens": 54,
+    "total_tokens": 2667
+  },
+  "status": "ok"
+}

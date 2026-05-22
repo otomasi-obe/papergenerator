@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T02:51:51.314921Z",
+  "kind": "recv",
+  "user_id": 3,
+  "paper_id": "5859cfdb49a5",
+  "conv_id": "976662a9270c4473",
+  "model": "V-DEEPSEEK",
+  "content": "Maaf, saya cek dulu — di tools yang tersedia saat ini saya tidak memiliki fungsi `GenerateFullPaper` atau `SendToEditor`. Tools saya:\n\n- `RunSLR` — menjalankan pencarian literatur\n- `GetLiterature` — membaca hasil literatur\n- `SearchPapers` — pencarian inline\n- `ListAttachedFiles` / `ReadAttachedFile` — membaca file terlampir\n\n---\n\n**Tapi paper lengkap SUDAH ada di chat di atas** — dari **Abstrak** sampai **Daftar Pustaka** + **Lampiran**, full dengan:\n\n- ✅ Abstrak + kata kunci\n- ✅ Pendahuluan (latar belakang, rumusan masalah, tujuan, kontribusi)\n- ✅ Metode SLR PRISMA (tabel, kriteria inklusi/eksklusi, boolean string)\n- ✅ Hasil & Pembahasan (6 komponen + kerangka konseptual + gambar)\n- ✅ Kesimpulan, implikasi, keterbatasan, rekomendasi\n- ✅ Daftar Pustaka (17 referensi, Harvard)\n- ✅ Lampiran\n\n---\n\n**Saran:** Kamu bisa **copy-paste langsung** dari chat ke editor platform. Atau kalau ada tombol \"Generate Full Paper\" / \"Kirim ke Editor\" di UI aplikasi ini, silakan klik — itu di luar jangkauan tools AI saya.\n\nMau saya bantu apa lagi? Revisi bagian tertentu? Tambah sitasi? Parafrase? 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 10766,
+    "completion_tokens": 686,
+    "total_tokens": 11452
+  },
+  "status": "ok"
+}

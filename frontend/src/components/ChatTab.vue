@@ -71,9 +71,10 @@
           <button
             @click="memoryOpen = !memoryOpen"
             class="w-full flex items-center justify-between text-xs font-medium text-slate-600 hover:text-slate-800"
+            :title="`Project memory (${memory.length} items)`"
           >
             <span class="flex items-center gap-1.5">
-              🧠 Project memory
+              🧠
               <span
                 v-if="memory.length"
                 class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-semibold"
@@ -290,19 +291,27 @@
                 @click="toggleAttachMenu"
                 :disabled="isStreaming || uploadingFiles"
                 class="h-9 w-9 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 rounded-xl transition-colors flex items-center justify-center disabled:opacity-40"
-                :title="uploadingFiles ? 'Uploading…' : 'Lampirkan'"
+                :title="uploadingFiles ? `Uploading ${uploadFileCount.current}/${uploadFileCount.total}…` : 'Lampirkan'"
+                :aria-label="uploadingFiles ? `Uploading ${uploadFileCount.current} of ${uploadFileCount.total} files` : 'Attach files'"
               >
                 <span v-if="uploadingFiles" class="w-4 h-4 border-2 border-ink-500 dark:border-ink-300 border-t-transparent rounded-full animate-spin"></span>
                 <span v-else class="text-base leading-none">＋</span>
               </button>
               <div v-if="attachMenuOpen"
-                class="absolute bottom-full left-0 mb-2 z-30 w-44 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-lg overflow-hidden">
+                class="absolute bottom-full left-0 mb-2 z-30 w-48 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-lg overflow-hidden">
                 <button
                   type="button"
                   @click="pickUpload"
                   class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2"
                 >
-                  <span>📤</span><span>Upload baru</span>
+                  <span>📤</span><span>Upload file (PDF/DOCX)</span>
+                </button>
+                <button
+                  type="button"
+                  @click="openPasteText"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600"
+                >
+                  <span>📋</span><span>Paste teks</span>
                 </button>
                 <button
                   type="button"
@@ -318,7 +327,7 @@
               v-model="inputText"
               @keydown="handleKeydown"
               :disabled="activeJob && activeJob.active"
-              :placeholder="(activeJob && activeJob.active) ? 'Chat terkunci sampai generate paper selesai…' : (isStreaming ? 'Sedang menjawab… bisa ketik draft berikutnya' : 'Ketik pesan… (Shift+Enter untuk baris baru)')"
+              :placeholder="(activeJob && activeJob.active) ? 'Terkunci saat generate…' : (isStreaming ? 'AI mengetik…' : 'Ketik pesan… (Shift+Enter baris baru)')"
               rows="1"
               class="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-ink-900 dark:text-ink-50 focus:outline-none disabled:opacity-50 max-h-32 overflow-y-auto placeholder-ink-500 dark:placeholder-ink-300"
             ></textarea>
@@ -390,6 +399,42 @@
         </button>
       </template>
     </AppDialog>
+    <!-- Paste-text dialog: lampirkan blok teks bebas (mis. salinan abstract / catatan
+         dari Word) tanpa harus upload file. Diserahkan ke chat sebagai "file" semu
+         dengan nama yang user beri. -->
+    <AppDialog v-if="pasteTextOpen" :open="pasteTextOpen" title="Paste teks" @close="pasteTextOpen = false">
+      <div class="space-y-2">
+        <label class="block text-xs text-ink-700 dark:text-ink-200">
+          Nama (opsional)
+          <input
+            v-model="pasteTextName"
+            type="text"
+            placeholder="e.g. Catatan metode, Outline bab 2"
+            class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-brown-300 dark:focus:ring-cream-400"
+          />
+        </label>
+        <label class="block text-xs text-ink-700 dark:text-ink-200">
+          Isi teks
+          <textarea
+            v-model="pasteTextContent"
+            rows="10"
+            placeholder="Tempel teks di sini… (max ~50.000 karakter)"
+            class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-brown-300 dark:focus:ring-cream-400 font-mono"
+          ></textarea>
+        </label>
+        <p class="text-[10px] text-ink-500 dark:text-ink-300">
+          Teks akan ikut dikirim ke AI sebagai "lampiran" pada pesan berikutnya.
+        </p>
+      </div>
+      <template #actions>
+        <button @click="pasteTextOpen = false" class="px-3 py-1.5 text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
+        <button
+          @click="confirmPasteText"
+          :disabled="!pasteTextContent.trim()"
+          class="px-3 py-1.5 text-sm rounded-lg bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40"
+        >Lampirkan</button>
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -443,6 +488,7 @@ const fileInput = ref(null)
 const attachedFiles = ref([])
 const attachWarning = ref('')
 const uploadingFiles = ref(false)
+const uploadFileCount = ref({ current: 0, total: 0 })
 const messagesContainer = ref(null)
 const deleteTarget = ref(null)
 const creatingChat = ref(false)
@@ -467,6 +513,36 @@ const filePickerOpen = ref(false)
 const paperFiles = ref([])
 const paperFilesLoading = ref(false)
 const pickedFileIds = ref(new Set())
+
+// Paste-text dialog state — lets the user attach a free-form text block as if
+// it were an extracted file. Goes through the same `attachedFiles` array as
+// real uploads via the __preExtracted flag.
+const pasteTextOpen = ref(false)
+const pasteTextName = ref('')
+const pasteTextContent = ref('')
+
+function openPasteText() {
+  attachMenuOpen.value = false
+  pasteTextName.value = ''
+  pasteTextContent.value = ''
+  pasteTextOpen.value = true
+}
+
+function confirmPasteText() {
+  const text = pasteTextContent.value.trim()
+  if (!text) return
+  // Cap to ~50k chars so a runaway paste doesn't blow the prompt budget.
+  const trimmed = text.slice(0, 50_000)
+  const name = (pasteTextName.value.trim() || 'pasted-text.txt').slice(0, 120)
+  attachedFiles.value = [...attachedFiles.value, {
+    name,
+    __preExtracted: true,
+    __text: trimmed,
+    __fileId: null,
+    __isPaste: true,
+  }].slice(0, 10)
+  pasteTextOpen.value = false
+}
 
 async function openExistingFiles() {
   attachMenuOpen.value = false
@@ -720,9 +796,10 @@ async function createNewChat() {
       currentConversationId.value = conv.id
       messages.value = []
     }
-  } finally {
-    creatingChat.value = false
-  }
+    } finally {
+      uploadingFiles.value = false
+      uploadFileCount.value = { current: 0, total: 0 }
+    }
 }
 
 function goBack() {
@@ -779,6 +856,7 @@ async function handleSend() {
 
   if (realFiles.length || preExtracted.length) {
     uploadingFiles.value = true
+    uploadFileCount.value = { current: 0, total: realFiles.length }
     try {
       const fileEntries = []
       let warnings = []
@@ -788,12 +866,21 @@ async function handleSend() {
       // when the chat has no paper context.
       if (realFiles.length) {
         if (currentPaperId.value) {
+          uploadFileCount.value.current = 0
           const fd = new FormData()
           realFiles.forEach(f => fd.append('files', f))
           const res = await api.post(
             `/api/papers/${currentPaperId.value}/files`,
             fd,
-            { headers: { 'Content-Type': 'multipart/form-data' } },
+            { 
+              headers: { 'Content-Type': 'multipart/form-data' },
+              onUploadProgress: (evt) => {
+                if (evt.total) {
+                  const pct = Math.round((evt.loaded / evt.total) * 100)
+                  uploadFileCount.value.current = Math.floor((pct / 100) * realFiles.length)
+                }
+              }
+            },
           )
           const saved = res?.data?.files || []
           warnings = res?.data?.warnings || []
@@ -824,6 +911,9 @@ async function handleSend() {
       }
 
       attachWarning.value = warnings.join('; ')
+      if (attachWarning.value) {
+        setTimeout(() => { attachWarning.value = '' }, 5000)
+      }
       const names = attachedFiles.value.map(f => f.name).join(', ')
       const blocks = fileEntries.map(e => {
         const header = e.id != null
@@ -846,7 +936,19 @@ async function handleSend() {
         + fileBlock
       attachedFiles.value = []
     } catch (e) {
-      attachWarning.value = 'Upload gagal: ' + (e.message || e)
+      const status = e?.response?.status
+      const data = e?.response?.data || {}
+      let msg
+      if (status === 413) {
+        msg = data.hint || 'Upload terlalu besar. Coba upload satu-satu atau kompres dulu.'
+      } else if (status === 401) {
+        msg = 'Sesi habis. Silakan login ulang.'
+      } else if (data.error) {
+        msg = `${data.error}${data.hint ? ' — ' + data.hint : ''}`
+      } else {
+        msg = e.message || String(e)
+      }
+      attachWarning.value = 'Upload gagal: ' + msg
       uploadingFiles.value = false
       return
     }

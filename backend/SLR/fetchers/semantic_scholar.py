@@ -50,7 +50,7 @@ def search(client, query: str, limit: int = 25,
            filters: dict | None = None) -> Iterable[Paper]:
     """Free tier rate limit ketat (~1 req/sec). Set S2_API_KEY untuk lebih tinggi."""
     api_key = os.getenv("S2_API_KEY")
-    rl = RateLimiter(0.1 if api_key else 1.1)
+    rl = RateLimiter(0.1 if api_key else 1.5)
     headers = {"x-api-key": api_key} if api_key else None
     per_page = min(limit, 100)
     fetched = 0

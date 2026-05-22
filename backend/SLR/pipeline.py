@@ -185,7 +185,8 @@ def run(query: str,
                 # Re-raise progress-callback-driven cancels (e.g. WorkerCancelled
                 # in slr_worker) so the worker can mark the job cancelled.
                 # Generic AI errors are swallowed and we continue with extractive.
-                if e.__class__.__name__ in ("WorkerCancelled", "CancelledByCaller"):
+                exc_name = e.__class__.__name__
+                if exc_name in ("WorkerCancelled", "CancelledByCaller") or "cancel" in exc_name.lower():
                     raise
                 log.warning("AI summarize failed: %s", e)
                 if not isinstance(partial, dict):

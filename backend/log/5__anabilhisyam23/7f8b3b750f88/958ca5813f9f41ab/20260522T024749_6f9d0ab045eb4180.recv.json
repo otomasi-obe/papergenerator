@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T02:48:07.228589Z",
+  "kind": "recv",
+  "user_id": 5,
+  "paper_id": "7f8b3b750f88",
+  "conv_id": "958ca5813f9f41ab",
+  "model": "V-DEEPSEEK",
+  "content": "Ada **38 template jurnal** yang tersedia dan bisa Anda pakai di sini, yaitu:\n\n1. AEJ\n2. AMORI\n3. CCJ\n4. CERiMRE\n5. DJLIT\n6. EASR\n7. El-Usrah\n8. ELCTRICES\n9. ELKOLIND\n10. ENERGIUPM\n11. ICET\n12. ICIMECE\n13. ICONIE\n14. ICOSEG\n15. IEEE\n16. IJB\n17. IJECE\n18. IJEECS\n19. IJIMS\n20. IJITEE\n21. IJRED\n22. IJT\n23. JAMRIS\n24. JAT\n25. JCEF\n26. JEEMECS\n27. JIEB\n28. JMEM\n29. JNTETI\n30. JOKI\n31. JRC\n32. JTMM\n33. JTRANSIENT\n34. JTUNDIP\n35. KKCK\n36. MEV\n37. ROTASI\n38. UITM\n39. ULTIMACOMP\n\n---\n\nMaaf, izin saya hitung ulang — totalnya **39 template jurnal** yang siap digunakan. Apakah Anda ingin mulai menulis paper dengan salah satu template tersebut?",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2712,
+    "completion_tokens": 487,
+    "total_tokens": 3199
+  },
+  "status": "ok"
+}

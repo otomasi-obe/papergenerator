@@ -142,14 +142,54 @@ class _Worker(threading.Thread):
             acc = next((a for a in pool.accounts if a.name == self.account_name), None)
             if acc is None:
                 raise RuntimeError(f"Account {self.account_name} tidak ada di pool")
-            acc.launch(pool._pw)
+            
+            # Retry browser launch up to 3 times with exponential backoff
+            launch_attempts = 3
+            for attempt in range(1, launch_attempts + 1):
+                try:
+                    acc.launch(pool._pw)
+                    break
+                except Exception as launch_err:
+                    if attempt == launch_attempts:
+                        raise RuntimeError(
+                            f"Browser launch gagal setelah {launch_attempts} percobaan: {launch_err}"
+                        )
+                    log.warning(
+                        "Browser launch attempt %d/%d failed: %s. Retrying...",
+                        attempt, launch_attempts, launch_err
+                    )
+                    # Close and cleanup before retry
+                    try:
+                        acc.close()
+                    except Exception:
+                        pass
+                    # Exponential backoff: 2s, 4s
+                    import time as time_module
+                    time_module.sleep(2 ** attempt)
+            
             res = acc.generate_image(prompt, out_path, generate_timeout_s=240)
 
+            # Compression is critical: large images cause upload/display failures.
+            # If compression fails, we must fail the job rather than storing
+            # a 10MB+ image that will break the frontend.
             try:
                 from imageGenerator.compress import compress_image  # noqa: PLC0415
-                compress_image(out_path, max_size_mb=1.0)
-            except Exception:
-                log.warning("compress_image skipped for %s", out_path, exc_info=True)
+                if not compress_image(out_path, max_size_mb=1.0):
+                    raise RuntimeError(
+                        f"Image compression failed: could not reduce {out_path.name} to <1MB. "
+                        f"Original size: {out_path.stat().st_size // 1024}KB"
+                    )
+                log.info("Image compressed successfully: %s -> %dKB", 
+                         out_path.name, out_path.stat().st_size // 1024)
+            except Exception as compress_err:
+                log.error("Compression failed for %s: %s", out_path, compress_err, exc_info=True)
+                # Delete the uncompressed image
+                try:
+                    if out_path and out_path.exists():
+                        out_path.unlink()
+                except Exception:
+                    pass
+                raise RuntimeError(f"Image compression failed: {compress_err}")
 
             with self.app.app_context():
                 img = PaperImage(

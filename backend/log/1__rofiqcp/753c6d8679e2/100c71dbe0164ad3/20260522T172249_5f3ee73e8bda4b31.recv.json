@@ -1,0 +1,26 @@
+{
+  "ts": "2026-05-22T17:23:09.304278Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "753c6d8679e2",
+  "conv_id": "100c71dbe0164ad3",
+  "model": "V-DEEPSEEK",
+  "content": "",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RouteIntent",
+      "arguments": {
+        "mode": "casual",
+        "reasoning": "User greeted with \"halo\" – a casual greeting, no academic workflow intent."
+      },
+      "result": "routed -> casual"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 4930,
+    "completion_tokens": 143,
+    "total_tokens": 5073
+  },
+  "status": "ok"
+}

@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T02:05:39.932504Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "c84451df1f20",
+  "conv_id": "3273c53cf65e43d6",
+  "model": "V-DEEPSEEK",
+  "content": "Baik! Sebelum langsung generate, saya perlu pahami dulu arah dan fokus paper kamu. Isi beberapa pertanyaan ini ya — tinggal pilih atau ketik bebas:",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 5045,
+    "completion_tokens": 232,
+    "total_tokens": 5277
+  },
+  "status": "ok"
+}

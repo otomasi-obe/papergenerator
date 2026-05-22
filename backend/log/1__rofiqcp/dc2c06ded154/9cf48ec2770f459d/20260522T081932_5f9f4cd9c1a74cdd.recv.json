@@ -1,0 +1,26 @@
+{
+  "ts": "2026-05-22T08:19:36.723402Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "dc2c06ded154",
+  "conv_id": "9cf48ec2770f459d",
+  "model": "V-DEEPSEEK",
+  "content": "Halo! Ada yang bisa saya bantu terkait paper akademik Anda? Silakan sampaikan kebutuhan Anda—apakah ingin menulis, mencari template jurnal, atau yang lainnya.",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RouteIntent",
+      "arguments": {
+        "mode": "casual",
+        "reasoning": "User greeted casually with \"halo\", no paper-related task requested."
+      },
+      "result": "routed -> casual"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 4926,
+    "completion_tokens": 200,
+    "total_tokens": 5126
+  },
+  "status": "ok"
+}

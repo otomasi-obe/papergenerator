@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T03:25:10.191296Z",
+  "kind": "recv",
+  "user_id": 14,
+  "paper_id": "965356aaf4ab",
+  "conv_id": "60e8b3bcc71c424a",
+  "model": "V-DEEPSEEK",
+  "content": "Paper kamu masih dalam proses generate, Kak! ⏳\n\n---\n\n### 🔄 Status Job\n\n| Detail | |\n|--------|---|\n| **Job ID** | `a6a491c95690` |\n| **Status** | Sedang diproses |\n| **Estimasi** | 3–10 menit |\n\n---\n\n### Kenapa belum muncul?\n\nPipeline AI-nya lagi menyusun paper secara utuh — dari **Judul**, **Abstrak**, **Pendahuluan**, **Tinjauan Pustaka** (dengan 8 literatur SLR kamu), **Metodologi**, **Hasil & Pembahasan**, sampai **Kesimpulan** dan **Daftar Pustaka** (APA).\n\nBegitu selesai, hasilnya bakal otomatis muncul di **tab Editor** kamu. Sabar sebentar ya, ini bukan paper asal jadi — semua bagian disusun pakai data & literatur yang sudah kita sepakati 👌\n\n---\n\nSambil nunggu, ada yang mau ditanyakan atau ditambahin dulu?",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 4159,
+    "completion_tokens": 733,
+    "total_tokens": 4892
+  },
+  "status": "ok"
+}

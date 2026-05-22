@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T05:51:34.017746Z",
+  "kind": "recv",
+  "user_id": 28,
+  "paper_id": "d5cd38e26869",
+  "conv_id": "d479b1a0ab8748fa",
+  "model": "V-DEEPSEEK",
+  "content": "Oke, outline sudah fix! Sekarang kita lengkapi beberapa detail terakhir sebelum generate. \n\nPertama, untuk referensi — kamu bilang sudah punya. Bisa upload file referensinya sekarang? (PDF, DOCX, dll.)\n\nSambil nunggu upload, saya tanya 3 hal terakhir dulu:",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 7121,
+    "completion_tokens": 598,
+    "total_tokens": 7719
+  },
+  "status": "ok"
+}

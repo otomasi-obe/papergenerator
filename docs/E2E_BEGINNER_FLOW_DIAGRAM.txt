@@ -1,0 +1,178 @@
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│                    TEST FLOW VISUALIZATION                       │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  BEGINNER USER FIRST-TIME EXPERIENCE TEST FLOW                  │
+│                                                                 │
+│  Persona: Mahasiswa semester 3, pertama kali bikin paper       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+                         ┌──────────────┐
+                         │  TEST START  │
+                         └──────┬───────┘
+                                │
+                    ┌───────────▼────────────┐
+                    │  Clear Cookies/Storage │
+                    │  (Simulate First Visit)│
+                    └───────────┬────────────┘
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 1: LANDING PAGE CLARITY            ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Navigate to https://paperfull.app          ║
+        ║  • Verify page title                          ║
+        ║  • Check hero/headline presence               ║
+        ║  • Identify CTA buttons                       ║
+        ║  • Validate value proposition                 ║
+        ║  ⏱️  Measure: Landing page load time           ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+                    ┌───────────▼────────────┐
+                    │  Click "Mulai Gratis"  │
+                    │  or similar CTA        │
+                    └───────────┬────────────┘
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 2: REGISTRATION FLOW               ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Fill email, password, name                 ║
+        ║  • Submit registration form                   ║
+        ║  • Verify auth cookies set                    ║
+        ║  • Check success feedback                     ║
+        ║  ⏱️  Measure: Registration completion time     ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 3: ONBOARDING EXPERIENCE           ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Detect onboarding modal/tour               ║
+        ║  • Check welcome messages                     ║
+        ║  • Verify guidance provided                   ║
+        ║  • Test skip/next navigation                  ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+                    ┌───────────▼────────────┐
+                    │  Navigate to Paper     │
+                    │  Creation              │
+                    └───────────┬────────────┘
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 4: AI GUIDANCE QUALITY             ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Enter vague input: "saya bingung..."       ║
+        ║  • Check for AI suggestions                   ║
+        ║  • Verify help text visible                   ║
+        ║  • Test AI assistance button                  ║
+        ║  • Evaluate response quality                  ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 5: ERROR HANDLING                  ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Submit with missing fields                 ║
+        ║  • Verify error messages shown                ║
+        ║  • Check message helpfulness                  ║
+        ║  • Test validation feedback                   ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 6: HELP/DOCUMENTATION              ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Locate help buttons                        ║
+        ║  • Verify accessibility                       ║
+        ║  • Check tooltips/aria-labels                 ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+                    ┌───────────▼────────────┐
+                    │  Fill Valid Data       │
+                    │  Submit Paper          │
+                    └───────────┬────────────┘
+                                │
+        ╔═══════════════════════▼════════════════════════╗
+        ║  CHECKPOINT 7: SUCCESSFUL COMPLETION           ║
+        ╠════════════════════════════════════════════════╣
+        ║  • Verify success message                     ║
+        ║  • Check redirect to paper page               ║
+        ║  ⏱️  Measure: Total time to first paper        ║
+        ║  📊 Target: < 120 seconds                     ║
+        ╚═══════════════════════════════════════════════╝
+                                │
+                    ┌───────────▼────────────┐
+                    │  Generate Report       │
+                    │  • Timing metrics      │
+                    │  • UX issues list      │
+                    │  • Pass/Fail status    │
+                    └───────────┬────────────┘
+                                │
+                         ┌──────▼───────┐
+                         │  TEST END    │
+                         └──────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  PARALLEL TEST SCENARIOS                                        │
+└─────────────────────────────────────────────────────────────────┘
+
+  Test 2: ERROR RECOVERY
+  ┌─────────────────────────────────────────┐
+  │  Invalid Email → Error → Correction     │
+  │  Weak Password → Error → Correction     │
+  │  Success → Auth Cookies Set             │
+  └─────────────────────────────────────────┘
+
+  Test 3: CANCEL OPERATIONS
+  ┌─────────────────────────────────────────┐
+  │  Start Creation → Click Cancel          │
+  │  Verify Return to Dashboard             │
+  │  No Data Loss                           │
+  └─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  METRICS COLLECTED                                              │
+└─────────────────────────────────────────────────────────────────┘
+
+  ⏱️  TIMING METRICS
+  ├─ Landing page load time
+  ├─ CTA to registration time
+  ├─ Registration completion time
+  ├─ Time to paper creation page
+  └─ Total time to first paper (TARGET: < 120s)
+
+  🔍 UX QUALITY CHECKS (13 total)
+  ├─ Hero/headline presence
+  ├─ CTA button visibility
+  ├─ Value proposition clarity
+  ├─ Registration flow smoothness
+  ├─ Auth cookie setting
+  ├─ Onboarding flow presence
+  ├─ AI guidance availability
+  ├─ AI response quality
+  ├─ Error message presence
+  ├─ Error message helpfulness
+  ├─ Help button presence
+  ├─ Help button visibility
+  └─ Success feedback clarity
+
+┌─────────────────────────────────────────────────────────────────┐
+│  SUCCESS CRITERIA                                               │
+└─────────────────────────────────────────────────────────────────┘
+
+  ✅ MUST PASS
+  • All 3 test scenarios pass
+  • Time to first paper < 120 seconds
+  • UX issues < 5
+  • No critical errors
+
+  ⭐ SHOULD ACHIEVE
+  • Time to first paper < 60 seconds
+  • UX issues < 3
+  • All timing metrics within targets
+
+  🎯 STRETCH GOALS
+  • Time to first paper < 30 seconds
+  • Zero UX issues
+  • Perfect onboarding flow

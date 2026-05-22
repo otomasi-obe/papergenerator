@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T03:03:29.815092Z",
+  "kind": "recv",
+  "user_id": 14,
+  "paper_id": "965356aaf4ab",
+  "conv_id": "60e8b3bcc71c424a",
+  "model": "V-DEEPSEEK",
+  "content": "Sebelum saya generate, konfirmasi dulu ya:\n\n---\n\n### 📋 Ringkasan Final\n\n- 🏫 **Jurusan**: Perencanaan Tata Ruang dan Pertanahan\n- 📝 **Topik**: Pola Perubahan Zona Nilai Tanah di Kawasan Perdagangan dan Jasa\n- 🔍 **Masalah**: Belum ada solusi efisien untuk identifikasi pola perubahan nilai tanah\n- 📊 **Metode**: Kuantitatif — analisis spasial & statistik\n- 🗺️ **Data Asli**: Zonasi dari BPN/ATR\n- 📈 **Data Estimasi**: Regresi nilai tanah\n- 🎯 **Target**: Identifikasi pola perubahan\n- 📚 **Sitasi**: APA | **Bahasa**: Indonesia\n- ✅ **Literatur**: 8 referensi siap",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 6561,
+    "completion_tokens": 223,
+    "total_tokens": 6784
+  },
+  "status": "ok"
+}

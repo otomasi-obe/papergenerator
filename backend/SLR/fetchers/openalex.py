@@ -16,7 +16,8 @@ def _reconstruct_abstract(inv_index: dict | None) -> str | None:
             pos_map[p] = word
     if not pos_map:
         return None
-    return " ".join(pos_map[i] for i in sorted(pos_map))
+    max_pos = max(pos_map.keys())
+    return " ".join(pos_map.get(i, "") for i in range(max_pos + 1)).strip()
 
 
 def _parse_work(w: dict) -> Paper | None:

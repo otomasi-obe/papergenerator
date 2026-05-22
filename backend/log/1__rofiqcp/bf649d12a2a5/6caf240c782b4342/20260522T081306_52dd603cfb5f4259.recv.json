@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T08:13:09.614627Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "bf649d12a2a5",
+  "conv_id": "6caf240c782b4342",
+  "model": "V-DEEPSEEK",
+  "content": "Hai",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2040,
+    "completion_tokens": 103,
+    "total_tokens": 2143
+  },
+  "status": "ok"
+}

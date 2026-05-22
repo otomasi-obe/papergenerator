@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T05:38:38.986251Z",
+  "kind": "recv",
+  "user_id": 28,
+  "paper_id": "d5cd38e26869",
+  "conv_id": "d479b1a0ab8748fa",
+  "model": "V-DEEPSEEK",
+  "content": "Bagus, topiknya sudah tercatat! Sekarang lanjut ke pertanyaan berikutnya ya:\n\n---\n\n✅ **1. Topik:** *Hyperparameter in Training data of YOLO for ripeness detection*\n\n---\n\n**2. Apa jenis paper-nya?**\n> - Skripsi / Tugas Akhir\n> - Tesis S2\n> - Disertasi S3\n> - Paper jurnal / conference\n> - Laporan penelitian\n> - Review paper (SLR)\n\n**3. Apa bidang ilmu atau jurusan kamu?**\n> *Ilmu Komputer, Teknik Informatika, Teknologi Pangan, Pertanian, atau yang lain?*\n\n**4. Siapa target audience-nya?**\n> - Dosen pembimbing / penguji\n> - Reviewer jurnal\n> - Umum\n> - Akademisi bidang terkait\n\n**5. Ada aturan khusus?**\n> - Template tertentu?\n> - Gaya sitasi (APA, IEEE, Harvard)?\n> - Batas halaman?\n> - Atau belum tahu / bebas?\n\n---\n\nLangsung lanjut aja ya! 🙌",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 3076,
+    "completion_tokens": 425,
+    "total_tokens": 3501
+  },
+  "status": "ok"
+}

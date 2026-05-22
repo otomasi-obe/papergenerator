@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T02:53:26.467011Z",
+  "kind": "recv",
+  "user_id": 22,
+  "paper_id": "c00bb8cc9411",
+  "conv_id": "564a5d58481d485d",
+  "model": "V-DEEPSEEK",
+  "content": "Berikut pilihan **citation style** yang umum dipakai:\n\n| # | Style | Cocok untuk |\n|---|-------|-------------|\n| 1 | **IEEE** (numeric) | Teknik, Informatika, Elektro — paling umum untuk topik kamu |\n| 2 | **APA 7th** (author-date) | SLR, ilmu sosial, pendidikan, interdisipliner |\n| 3 | **Harvard** (author-date) | Umum, mirip APA tapi beda format detail |\n| 4 | **Vancouver** (numeric) | Kedokteran, kesehatan, beberapa jurnal sains |\n| 5 | **Chicago** (footnote / author-date) | Humaniora, beberapa jurnal multidisiplin |\n| 6 | **MLA 8th/9th** (author-page) | Humaniora, sastra |\n\n---\n\n### 🎯 Rekomendasi Saya:\n\n| Topik Kamu | Rekomendasi |\n|------------|-------------|\n| SLR ML/DL untuk Solar Forecasting (Teknik Informatika) | 🥇 **IEEE** — paling pas buat teknik & CS |\n| | 🥈 **APA 7th** — juga sering dipakai jurnal SLR |\n\n---\n\nMau pilih yang mana, Kak? 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 4874,
+    "completion_tokens": 466,
+    "total_tokens": 5340
+  },
+  "status": "ok"
+}

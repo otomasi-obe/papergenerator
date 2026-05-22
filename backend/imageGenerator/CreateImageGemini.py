@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import queue
 import re
@@ -71,6 +72,41 @@ DEFAULT_VIEWPORT = (1536, 864)
 DOWNLOAD_BTN_RE = re.compile(
     r"^(Download|Unduh)\b.*\b(gambar|image)\b", re.IGNORECASE
 )
+
+# ── Per-account logging ────────────────────────────────────────────────
+# Each Gemini account gets its own log file under logs/generator/<name>.log so
+# we can audit round-robin and isolate failures per slot. The directory is
+# created lazily on first launch().
+LOG_DIR_ENV = os.environ.get("GEMINI_LOG_DIR")
+if LOG_DIR_ENV:
+    LOG_DIR = Path(LOG_DIR_ENV)
+else:
+    LOG_DIR = REPO_DIR.parent.parent / "logs" / "generator"
+
+_LOGGERS: dict[str, logging.Logger] = {}
+
+
+def _get_account_logger(name: str) -> logging.Logger:
+    if name in _LOGGERS:
+        return _LOGGERS[name]
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(f"gemini.{name}")
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    fh = logging.FileHandler(LOG_DIR / f"{name}.log", encoding="utf-8")
+    fh.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    )
+    logger.addHandler(fh)
+    _LOGGERS[name] = logger
+    return logger
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    v = os.environ.get(name)
+    if v is None:
+        return default
+    return str(v).strip().lower() in ("1", "true", "yes", "on")
 
 
 # ─────────────────────────────────────────────────────────────── helpers
@@ -112,17 +148,28 @@ def _click_via_js(page, aria_labels: list[str]) -> bool:
     )
 
 
-def _open_image_tool(page) -> None:
+def _open_image_tool(page, *, timeout_s: int = 30) -> None:
     """Buka menu 'Upload & alat' lalu pilih item 'Gambar'."""
+    deadline = time.monotonic() + timeout_s
+    
     # cek apakah mode image sudah aktif
-    if page.locator(
-        'button[aria-label*="Buat Gambar"], button[aria-label*="Create image"]'
-    ).count() > 0:
-        return
+    try:
+        if page.locator(
+            'button[aria-label*="Buat Gambar"], button[aria-label*="Create image"]'
+        ).count() > 0:
+            return
+    except Exception:
+        pass
 
     if not _click_via_js(page, ["Upload & alat", "Upload & tools"]):
-        raise RuntimeError("Tidak bisa membuka menu 'Upload & alat'")
+        raise RuntimeError(
+            f"Tidak bisa membuka menu 'Upload & alat' dalam {timeout_s}s. "
+            "Kemungkinan: UI Gemini berubah, network lambat, atau page belum load."
+        )
     page.wait_for_timeout(800)
+
+    if time.monotonic() > deadline:
+        raise RuntimeError(f"Timeout {timeout_s}s saat membuka image tool")
 
     selected = page.evaluate(
         """() => {
@@ -137,18 +184,27 @@ def _open_image_tool(page) -> None:
         }"""
     )
     if not selected:
-        raise RuntimeError("Tidak menemukan menu item 'Gambar' di Upload & alat")
+        raise RuntimeError(
+            "Tidak menemukan menu item 'Gambar' di Upload & alat. "
+            "Kemungkinan: UI Gemini berubah atau menu tidak muncul."
+        )
     page.wait_for_timeout(1500)
 
 
-def _send_prompt(page, prompt: str) -> None:
-    box = page.locator('div[contenteditable="true"]').first
-    box.click(timeout=15_000)
-    box.fill(prompt)
-    page.wait_for_timeout(500)
-    if not _click_via_js(page, ["Kirim pesan", "Send message"]):
-        # fallback: keyboard Enter
-        box.press("Enter")
+def _send_prompt(page, prompt: str, *, timeout_s: int = 30) -> None:
+    try:
+        box = page.locator('div[contenteditable="true"]').first
+        box.click(timeout=timeout_s * 1000)
+        box.fill(prompt)
+        page.wait_for_timeout(500)
+        if not _click_via_js(page, ["Kirim pesan", "Send message"]):
+            # fallback: keyboard Enter
+            box.press("Enter")
+    except PlaywrightTimeoutError:
+        raise RuntimeError(
+            f"Timeout {timeout_s}s saat mengirim prompt. "
+            "Composer box tidak ditemukan atau tidak bisa diklik."
+        )
 
 
 def _wait_download_button(page, *, timeout_s: int) -> object:
@@ -209,20 +265,32 @@ class GeminiAccount:
         if self.context is not None:
             return
         _cleanup_singleton(self.user_data_dir)
+        # Default headless=True for server/CI use; set GEMINI_HEADLESS=0 only
+        # if you need to debug visually. Persistent profile keeps Chrome
+        # logged in across runs, so headless launch works fine.
+        headless = _env_bool("GEMINI_HEADLESS", True)
+        log = _get_account_logger(self.name)
+        log.info("launching browser (headless=%s, profile=%s)", headless, self.user_data_dir)
+        launch_args = [
+            "--profile-directory=Default",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--no-sandbox",
+            "--disable-blink-features=AutomationControlled",
+            "--lang=en-US,en",
+        ]
+        if headless:
+            # New headless mode renders a real Chromium pipeline; the legacy
+            # one breaks Gemini's WebGL/canvas detection.
+            launch_args.append("--headless=new")
+            launch_args.append("--disable-gpu")
         self.context = p.chromium.launch_persistent_context(
             user_data_dir=str(self.user_data_dir),
             channel="chrome",
-            headless=False,
+            headless=headless,
             accept_downloads=True,
             viewport={"width": DEFAULT_VIEWPORT[0], "height": DEFAULT_VIEWPORT[1]},
-            args=[
-                "--profile-directory=Default",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--no-sandbox",
-                "--disable-blink-features=AutomationControlled",
-                "--lang=en-US,en",
-            ],
+            args=launch_args,
             ignore_default_args=["--enable-automation"],
             timezone_id="Asia/Bangkok",
         )
@@ -230,6 +298,7 @@ class GeminiAccount:
         self.page.on("response", self._on_response)
         self.page.goto(GEMINI_URL, wait_until="domcontentloaded")
         self.page.wait_for_timeout(4000)
+        log.info("browser ready")
 
     def _on_response(self, resp) -> None:
         try:
@@ -277,6 +346,9 @@ class GeminiAccount:
         if self.page is None:
             raise RuntimeError(f"{self.name}: launch() belum dipanggil")
         page = self.page
+        log = _get_account_logger(self.name)
+        t0 = time.time()
+        log.info("job start: out=%s prompt_len=%d", out_path, len(prompt or ""))
 
         # Reset ke chat baru supaya hanya ada 1 image yang baru di-generate.
         if self.requests_made > 0:
@@ -309,8 +381,11 @@ class GeminiAccount:
             img_bytes = download_path.read_bytes()
 
         # Tunggu image bytes / redirect URL (dari intercept).
+        # Timeout harus lebih lama dari generate_timeout_s karena download button
+        # bisa muncul di detik terakhir, lalu butuh waktu extra untuk intercept.
+        intercept_timeout = generate_timeout_s + 30
         if img_bytes is None or not _looks_like_image(img_bytes):
-            deadline = time.time() + 60
+            deadline = time.time() + intercept_timeout
             collected_redirect: str | None = None
             while time.time() < deadline and (img_bytes is None or not _looks_like_image(img_bytes)):
                 try:
@@ -343,11 +418,20 @@ class GeminiAccount:
                     break
 
         if img_bytes is None or not _looks_like_image(img_bytes):
-            raise RuntimeError("Gagal capture image bytes (intercept timeout)")
+            raise RuntimeError(
+                f"Gagal capture image bytes setelah {intercept_timeout}s. "
+                f"Download button muncul tapi image tidak ter-intercept. "
+                f"Kemungkinan: network issue, Gemini API berubah, atau rate limit."
+            )
 
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_bytes(img_bytes)
         self.requests_made += 1
+        elapsed = time.time() - t0
+        log.info(
+            "job done: out=%s size=%d bytes in %.1fs (req#%d)",
+            out_path, len(img_bytes), elapsed, self.requests_made,
+        )
         return {"path": str(out_path), "account": self.name, "email": self.email, "size": len(img_bytes)}
 
 
@@ -404,6 +488,11 @@ class GeminiPool:
             self.state_path.write_text(
                 json.dumps({"next": nxt, "updated_at": time.time()}), encoding="utf-8"
             )
+        chosen = self.accounts[idx].name
+        with suppress(Exception):
+            _get_account_logger(chosen).info(
+                "round-robin pick: idx=%d/%d (next=%d)", idx, len(self.accounts), nxt
+            )
         return idx
 
     def generate_image(
@@ -435,6 +524,7 @@ class GeminiPool:
                 return res
             except Exception as e:
                 last_err = e
+                _get_account_logger(acc.name).exception("job failed: %s", e)
                 print(f"  ! {acc.name} gagal: {e} → coba akun berikutnya", flush=True)
                 # close akun ini supaya browser baru kalau retry
                 acc.close()

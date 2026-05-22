@@ -24,6 +24,44 @@ from models import Paper, ProjectMemory, PaperFile, PaperImage, db
 logger = logging.getLogger(__name__)
 
 
+def _check_paper_lock(paper_id: str, operation_type: str) -> tuple[bool, str | None]:
+    """Check if paper is locked by another operation.
+    
+    Args:
+        paper_id: Paper ID to check
+        operation_type: 'generate' | 'edit_apply' | 'slr' | 'chat'
+    
+    Returns:
+        (allowed, reason): (True, None) if allowed, (False, reason) if blocked
+    """
+    paper = Paper.query.get(paper_id)
+    if not paper or not paper.active_operation:
+        return True, None
+    
+    if paper.active_operation == 'generating':
+        if operation_type in ['generate', 'edit_apply']:
+            return False, "Paper sedang di-generate. Tunggu selesai atau cancel dulu."
+    
+    return True, None
+
+def _set_paper_lock(paper_id: str, operation: str, job_id: str = None):
+    """Set paper lock."""
+    from datetime import datetime
+    paper = Paper.query.get(paper_id)
+    paper.active_operation = operation
+    paper.active_operation_job_id = job_id
+    paper.active_operation_started_at = datetime.utcnow()
+    db.session.commit()
+
+def _clear_paper_lock(paper_id: str):
+    """Clear paper lock."""
+    paper = Paper.query.get(paper_id)
+    paper.active_operation = None
+    paper.active_operation_job_id = None
+    paper.active_operation_started_at = None
+    db.session.commit()
+
+
 SAFE_BASH_COMMANDS = {'grep', 'find', 'wc', 'cat', 'head', 'tail', 'ls', 'echo', 'date', 'pwd'}
 
 MAX_RESULT_LENGTH = 6000
@@ -830,6 +868,10 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     prompt = (prompt or "").strip()
     if not prompt:
         return "Error: prompt is required (the paper title or topic)."
+
+    allowed, reason = _check_paper_lock(paper_id, 'generate')
+    if not allowed:
+        return {"error": reason}
 
     api_key = os.getenv("AIOTOMASI_APIKEY")
     if not api_key:

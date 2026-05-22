@@ -80,4 +80,8 @@ def search(client, query: str, limit: int = 25,
         next_cursor = data.get("nextCursorMark")
         if not next_cursor or next_cursor == cursor:
             return
+        if cursor != "*" and next_cursor == cursor:
+            import logging
+            logging.getLogger(__name__).warning("europepmc cursor stuck at %s, breaking", cursor)
+            return
         cursor = next_cursor

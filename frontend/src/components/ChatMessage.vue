@@ -282,6 +282,48 @@
         </div>
       </div>
 
+      <!-- Tool call errors (only show errors, hidden by default) -->
+      <div
+        v-if="errorToolCalls.length && message.role === 'assistant'"
+        class="mt-3 space-y-2"
+      >
+        <div
+          v-for="(tc, idx) in errorToolCalls"
+          :key="idx"
+          class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 overflow-hidden"
+        >
+          <div class="px-3 py-2 flex items-center gap-2 bg-red-100 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            <span class="text-xs font-medium text-red-900 dark:text-red-200">Tool Error: {{ tc.name }}</span>
+          </div>
+          <div class="px-3 py-2">
+            <button
+              @click="toggleToolError(idx)"
+              class="flex items-center gap-1.5 text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 font-medium"
+            >
+              <svg
+                :class="['w-3 h-3 transition-transform', toolErrorsOpen[idx] ? 'rotate-90' : '']"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M6 4l8 6-8 6V4z"/>
+              </svg>
+              Show Details
+            </button>
+            <div v-show="toolErrorsOpen[idx]" class="mt-2 space-y-2">
+              <div v-if="tc.error" class="text-xs text-red-800 dark:text-red-200 bg-white dark:bg-red-950/30 rounded p-2 border border-red-200 dark:border-red-800">
+                <div class="font-medium mb-1">Error:</div>
+                <pre class="whitespace-pre-wrap break-words font-mono text-[11px]">{{ tc.error }}</pre>
+              </div>
+              <div v-if="tc.result" class="text-xs text-red-800 dark:text-red-200 bg-white dark:bg-red-950/30 rounded p-2 border border-red-200 dark:border-red-800">
+                <div class="font-medium mb-1">Result:</div>
+                <pre class="whitespace-pre-wrap break-words font-mono text-[11px]">{{ tc.result }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Streaming cursor -->
       <span
         v-if="isStreaming && message.role === 'assistant' && !message.content && !message.thinking"
@@ -303,7 +345,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js/lib/core'
@@ -332,6 +374,16 @@ const currentPaperId = computed(() => paperStore.currentPaperId || '')
 // becomes a no-op because the dynamic import will resolve.
 const PaperProgressBubble = defineAsyncComponent({
   loader: () => import('./PaperProgressBubble.vue'),
+  loadingComponent: {
+    template: `
+      <div class="mt-2 p-3 rounded-lg border border-cream-300 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 text-xs">
+        <div class="flex items-center gap-2">
+          <div class="w-4 h-4 border-2 border-ink-300 dark:border-ink-500 border-t-transparent rounded-full animate-spin"></div>
+          <span class="text-ink-700 dark:text-ink-200">Memuat progress…</span>
+        </div>
+      </div>
+    `,
+  },
   errorComponent: {
     props: ['jobId'],
     template: `
@@ -341,7 +393,7 @@ const PaperProgressBubble = defineAsyncComponent({
       </div>
     `,
   },
-  delay: 0,
+  delay: 200,
   timeout: 8000,
 })
 
@@ -369,6 +421,20 @@ defineEmits([
   'multi-question-submit',
   'review-cancel',
 ])
+
+// Tool error display state
+const toolErrorsOpen = ref({})
+
+// Filter tool calls to only show errors
+const errorToolCalls = computed(() => {
+  const calls = props.message.tool_calls || []
+  return calls.filter(tc => tc.status === 'error' || tc.error)
+})
+
+// Toggle tool error details visibility
+function toggleToolError(idx) {
+  toolErrorsOpen.value[idx] = !toolErrorsOpen.value[idx]
+}
 
 // Convenience accessors for typed-message metadata. Backend writes:
 //   metadata.kind === 'chips'           -> render ActionChips below content

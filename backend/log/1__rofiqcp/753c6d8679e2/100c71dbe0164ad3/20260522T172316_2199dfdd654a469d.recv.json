@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T17:23:21.149309Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "753c6d8679e2",
+  "conv_id": "100c71dbe0164ad3",
+  "model": "V-DEEPSEEK",
+  "content": "Tentu! Saya di sini untuk membantu Anda dengan makalah akademis. Ada yang bisa saya bantu?",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2041,
+    "completion_tokens": 88,
+    "total_tokens": 2129
+  },
+  "status": "ok"
+}

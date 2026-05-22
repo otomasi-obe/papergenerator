@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T06:40:07.580366Z",
+  "kind": "recv",
+  "user_id": 38,
+  "paper_id": "ea546a83ef64",
+  "conv_id": "f1959d50cd554498",
+  "model": "V-DEEPSEEK",
+  "content": "Siap, saya di sini. Silakan upload file paper-nya, saya tunggu.",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 6110,
+    "completion_tokens": 49,
+    "total_tokens": 6159
+  },
+  "status": "ok"
+}

@@ -93,7 +93,9 @@ def search(client, query: str, limit: int = 25,
             return
         try:
             root = ET.fromstring(text)
-        except ET.ParseError:
+        except ET.ParseError as e:
+            import logging
+            logging.getLogger(__name__).warning("arxiv parse error at start=%d: %s", start, e)
             return
 
         entries = root.findall("atom:entry", NS)

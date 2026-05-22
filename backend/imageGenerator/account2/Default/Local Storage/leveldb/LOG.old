@@ -1,3 +1,3 @@
-2026/05/20-21:36:12.985 4f00f Reusing MANIFEST /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/Local Storage/leveldb/MANIFEST-000001
-2026/05/20-21:36:12.992 4f00f Recovering log #3
-2026/05/20-21:36:12.992 4f00f Reusing old log /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/Local Storage/leveldb/000003.log 
+2026/05/20-21:42:00.137 4ff0a Reusing MANIFEST /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/Local Storage/leveldb/MANIFEST-000001
+2026/05/20-21:42:00.145 4ff0a Recovering log #3
+2026/05/20-21:42:00.145 4ff0a Reusing old log /home/sirobo/papergenerator/backend/imageGenerator/account2/Default/Local Storage/leveldb/000003.log 

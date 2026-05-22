@@ -8,7 +8,15 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:load": "playwright test --config=playwright.config.load.js",
+    "test:load:concurrent": "playwright test --config=playwright.config.load.js e2e/load/concurrent-users.spec.js",
+    "test:load:race": "playwright test --config=playwright.config.load.js e2e/load/race-conditions.spec.js",
+    "test:load:queue": "playwright test --config=playwright.config.load.js e2e/load/queue-management.spec.js",
+    "test:load:ui": "playwright test --config=playwright.config.load.js --ui",
+    "test:load:report": "playwright show-report playwright-report-load",
+    "test:load:analyze": "node e2e/load/analyzer.js",
+    "test:load:monitor": "node e2e/load/system-monitor.js"
   },
   "dependencies": {
     "axios": "^1.7.9",

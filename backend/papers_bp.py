@@ -15,12 +15,16 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from models import (
+    AiJob,
     ChatMessage,
     Conversation,
+    ImageGenJob,
+    LiteratureItem,
     Paper,
     PaperFile,
     PaperImage,
     ProjectMemory,
+    SlrJob,
     db,
 )
 from paper_utils import PAPER_ID_RE, safe_paper_dir
@@ -133,6 +137,13 @@ def delete_paper(paper_id: str):
         ProjectMemory.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         PaperFile.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         PaperImage.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
+        AiJob.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
+        # SlrJob has a column literally named `query` which shadows the
+        # Flask-SQLAlchemy `Model.query` attribute, so we must reach for
+        # the session-level API here.
+        db.session.query(SlrJob).filter_by(paper_id=paper_id).delete(synchronize_session=False)
+        LiteratureItem.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
+        ImageGenJob.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
 
         paper_img_dir = safe_paper_dir(paper_id)
         if paper_img_dir and paper_img_dir.exists():

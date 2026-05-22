@@ -141,7 +141,7 @@ FIELD ADAPTATIONS:
       "title": "Experimental Setup  [or: Data Analysis | Research Setting | Study Environment]",
       "content": [
         {"id": "text", "text": "150–250 words. Describe the evaluation environment precisely: conditions, instruments, software versions, number of repetitions or respondents, validation procedure. Reproducible level of detail."},
-        {"id": "tabel", "TableNumber": "II", "Title": "Experimental Configuration / Study Parameters", "Headers": ["Parameter", "Value", "Unit / Note"], "Rows": [["Sample / Trials", "50", "—"], ["Duration", "300", "seconds"], ["Metric", "Accuracy", "%"], ["Baseline method", "Method A [5]", "for comparison"]]},
+        {"id": "tabel", "TableNumber": "II", "Title": "Experimental Configuration / Study Parameters", "Headers": ["Parameter", "Value", "Unit / Note"], "Rows": [["Sample / Trials", "50", "—"], ["Duration", "300", "seconds"], ["Metric", "Accuracy", "%"], ["Baseline method", "Method A (Smith, 2022)", "for comparison"]]},
         {"id": "text", "text": "60–100 words. Reference Table II. Explain WHY these parameters — why this sample size, why these conditions, what each represents."},
         {"id": "gambar", "ImageNumber": "6", "Title": "Experimental Setup / Research Environment", "Path": "gambar/test_setup.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — annotated photograph, diagram, or schematic of the test environment. Label every instrument, sensor, station, or component. Note measurement points. White background, academic style.\")"}
       ]
@@ -162,7 +162,7 @@ FIELD ADAPTATIONS:
       "title": "Comparison with Related Methods  [or: Comparative Analysis | Discussion | Interpretation]",
       "content": [
         {"id": "text", "text": "200–300 words. Compare to at least 3 prior works. Use COMPARISON PATTERN from PART B7: explain WHY the gap exists — which specific design/methodological choice produced the difference. Honestly note where prior work performs comparably."},
-        {"id": "tabel", "TableNumber": "IV", "Title": "Comparison with Related Work", "Headers": ["Method / Study", "Key Metric", "Platform / Context", "Year"], "Rows": [["Method A [5]", "89.2%", "GPU-based", "2022"], ["Method B [8]", "91.7%", "CPU-based", "2023"], ["Method C [12]", "88.5%", "FPGA", "2021"], ["\\bProposed\\b", "\\b95.4%\\b", "\\bEmbedded MCU\\b", "\\b2025\\b"]]},
+        {"id": "tabel", "TableNumber": "IV", "Title": "Comparison with Related Work", "Headers": ["Method / Study", "Key Metric", "Platform / Context", "Year"], "Rows": [["Method A (Smith, 2022)", "89.2%", "GPU-based", "2022"], ["Method B (Chen et al., 2023)", "91.7%", "CPU-based", "2023"], ["Method C (Patel & Liu, 2021)", "88.5%", "FPGA", "2021"], ["\\bProposed\\b", "\\b95.4%\\b", "\\bEmbedded MCU\\b", "\\b2025\\b"]]},
         {"id": "text", "text": "100–180 words. Reference Table IV. Interpret the comparison substantively — what accounts for the difference? Why does one method beat another?"},
         {"id": "gambar", "ImageNumber": "8", "Title": "Comparative Analysis Chart", "Path": "gambar/comparison_chart.png", "Prompt": "(create image\"WRITE THE ACTUAL 150+ WORD IMAGE DESCRIPTION HERE — grouped bar chart or radar chart comparing 4+ methods/studies on 2–3 metrics. Each group is one method. Each metric has a distinct color. Value labels on bars. Legend shown. Proposed/current method highlighted. White background, academic style.\")"}
       ]
@@ -291,7 +291,7 @@ For every cited paper, follow this precise 4-step pattern:
   4. YOUR LINK       — connect that specific limitation to your contribution
 
 GOOD EXAMPLE (use this pattern):
-  "Chen et al. [4] trained a VGG16 classifier on 10 hand gestures using a Raspberry Pi 4B,
+  "Chen et al. (2022) trained a VGG16 classifier on 10 hand gestures using a Raspberry Pi 4B,
   achieving 93.8% accuracy on their in-lab dataset of 1,200 images per class. The system
   performed well under controlled illumination — but their own ablation test shows accuracy
   falling to 81.2% when the background subtraction step is disabled, which reveals a
@@ -300,7 +300,7 @@ GOOD EXAMPLE (use this pattern):
   features, so background become irrelevant to the classifier."
 
 BAD EXAMPLE (never write like this):
-  "Chen et al. [4] proposed a novel approach for gesture recognition using deep learning.
+  "Chen et al. (2022) proposed a novel approach for gesture recognition using deep learning.
   Their system achieved good accuracy results. However, there were some limitations in
   their method that needed to be addressed."
 

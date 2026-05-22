@@ -1,0 +1,26 @@
+{
+  "ts": "2026-05-22T03:05:33.382396Z",
+  "kind": "recv",
+  "user_id": 14,
+  "paper_id": "965356aaf4ab",
+  "conv_id": "60e8b3bcc71c424a",
+  "model": "V-DEEPSEEK",
+  "content": "Siap! Paper langsung saya generate sekarang ⚡Job berhasil dimulai! 🚀\n\n---\n\n### ⏳ Status: **Paper sedang digenerate**\n\n| Detail | |\n|--------|---|\n| **Job ID** | `a6a491c95690` |\n| **Estimasi** | 3–10 menit |\n\n---\n\n### Apa yang terjadi sekarang?\n\nAI pipeline sedang menyusun paper lengkap kamu — mulai dari **Pendahuluan** sampai **Daftar Pustaka** — dengan struktur:\n\n1. **Pendahuluan** — latar belakang & rumusan masalah\n2. **Tinjauan Pustaka** — 8 referensi SLR terpilih\n3. **Metodologi** — kuantitatif, analisis spasial + statistik\n4. **Hasil & Pembahasan** — data zonasi BPN + regresi nilai tanah\n5. **Kesimpulan** — identifikasi pola perubahan\n\nBegitu selesai, hasilnya akan otomatis muncul di **editor** kamu. Sambil nunggu, kamu bisa ngopi dulu atau lanjut ngobrol di sini ya ☕",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "GenerateFullPaper",
+      "arguments": {
+        "prompt": "Pola Perubahan Zona Nilai Tanah di Kawasan Perdagangan dan Jasa: Analisis Spasial dan Statistik",
+        "use_attached_files": true
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"paper_progress\", \"job_id\": \"a6a491c95690\", \"prompt\": \"Pola Perubahan Zona Nilai Tanah di Kawasan Perdagangan dan Jasa: Analisis Spasial dan Statistik\", \"topic\": null, \"style\": \"APA\", \"attached_files_used\": 0, \"outlined\": true}"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 13360,
+    "completion_tokens": 397,
+    "total_tokens": 13757
+  },
+  "status": "ok"
+}

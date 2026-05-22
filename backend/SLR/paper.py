@@ -21,7 +21,9 @@ class Paper:
 
     def dedup_key(self) -> str:
         if self.doi:
-            return f"doi:{self.doi.lower()}"
+            normalized = self.doi.strip().lower()
+            normalized = normalized.removeprefix("https://doi.org/").removeprefix("http://doi.org/")
+            return f"doi:{normalized}"
         return f"{self.source}:{self.source_id}"
 
     def to_dict(self) -> dict:

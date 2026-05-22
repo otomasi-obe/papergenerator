@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T04:00:11.840854Z",
+  "kind": "recv",
+  "user_id": 6,
+  "paper_id": "2403375b46d8",
+  "conv_id": "f8aa71b776474de9",
+  "model": "V-DEEPSEEK",
+  "content": "Betul banget. List references yang baru **11** itu artinya **belum semua literatur terpakai** di draft paper. Dari 100+ literatur yang ada di tab, hanya 11 yang sudah di-sitasi dan masuk daftar referensi.\n\n---\n\n**Kenapa bisa begitu?**\n\nAda beberapa kemungkinan:\n\n| Kemungkinan | Penjelasan |\n|---|---|\n| 🔄 **Generate belum optimal** | Proses generate mungkin hanya mengambil sebagian dari literatur |\n| 📊 **Screening otomatis** | Sistem mungkin memfilter literatur yang paling relevan saja |\n| ⚠️ **Belum full-text** | Beberapa paper mungkin belum terbaca full-text-nya |\n\n---\n\n**Apa yang bisa dilakukan?**\n\n1. **Cek dulu di tab Literatur** — apakah 100+ paper sudah benar-benar tervalidasi/relevan?\n2. **Minta saya revisi** — contoh:\n   - *\"Tolong tambahkan lebih banyak referensi dari tab Literatur ke draft\"*\n   - *\"Revisi bagian Results/Literature Review dengan mensitasi lebih banyak paper dari tab\"*\n3. **Re-generate** — kalau perlu, kita generate ulang dengan prompting lebih spesifik\n\n---\n\nMau saya bantu tambahin sitasi dari 100+ literatur ke draft yang sekarang? 😊",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 3538,
+    "completion_tokens": 332,
+    "total_tokens": 3870
+  },
+  "status": "ok"
+}

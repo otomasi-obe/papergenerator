@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T02:48:36.627589Z",
+  "kind": "recv",
+  "user_id": 21,
+  "paper_id": "e4ae6cead037",
+  "conv_id": "127f0cdaa4474f69",
+  "model": "V-DEEPSEEK",
+  "content": "Baik, tidak masalah! Kita bisa bantu cari referensi yang relevan. Sekarang, untuk mengarahkan pencarian literatur dengan tepat, saya perlu tahu:\n\n**Apa fokus spesifik yang kamu inginkan?** Beberapa contoh arah riset untuk topik *ML/AI di bidang Informasi & Humas*:\n\n- 📊 **Analisis sentimen** media sosial untuk PR/Humas\n- 📰 **Deteksi hoaks / misinformasi** otomatis\n- 🎯 **Personalisasi konten** informasi publik\n- 🤖 **Chatbot layanan informasi** publik\n- 📈 **Prediksi tren isu publik**\n- 🖼️ **Computer vision** untuk branding visual\n- 🏛️ **AI dalam keterbukaan informasi publik**\n- 🧠 **NLP untuk pengelolaan arsip berita**\n\nAtau kamu punya ide lain? Silakan ketik fokus yang kamu inginkan, ya! 👆",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2826,
+    "completion_tokens": 293,
+    "total_tokens": 3119
+  },
+  "status": "ok"
+}

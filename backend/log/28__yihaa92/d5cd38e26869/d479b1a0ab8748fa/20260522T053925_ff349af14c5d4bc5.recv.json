@@ -1,0 +1,17 @@
+{
+  "ts": "2026-05-22T05:39:38.570500Z",
+  "kind": "recv",
+  "user_id": 28,
+  "paper_id": "d5cd38e26869",
+  "conv_id": "d479b1a0ab8748fa",
+  "model": "V-DEEPSEEK",
+  "content": "Mantap! Jurnal internasional Q2 — ambisius, saya suka itu! 👏\n\nProgress kita:\n- ✅ **Topik:** Hyperparameter in Training data of YOLO for ripeness detection\n- ✅ **Jenis paper:** Jurnal internasional bereputasi Q2\n\n---\n\nLanjut 3 pertanyaan terakhir ya:\n\n**3. Bidang ilmu / jurusan kamu apa?**\n> *Ilmu Komputer, Teknik Informatika, Teknik Elektro, Teknologi Pangan, Agroteknologi, atau lainnya?*\n\n**4. Target audience-nya?**\n> - Reviewer jurnal (standar internasional)\n> - Dosen pembimbing\n> - Lainnya\n\n**5. Ada aturan khusus dari jurnal target?**\n> - Template tertentu? (misal: Elsevier, Springer, IEEE)\n> - Gaya sitasi? (APA, IEEE, Harvard, Vancouver, dll.)\n> - Batas halaman?\n> - Atau masih fleksibel / belum tahu?\n\n---\n\nLangsung lanjut ya! 🚀",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 5767,
+    "completion_tokens": 364,
+    "total_tokens": 6131
+  },
+  "status": "ok"
+}
