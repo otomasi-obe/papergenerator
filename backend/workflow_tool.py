@@ -5,7 +5,7 @@ Integrates workflow_engine with chat system.
 """
 
 import json
-from models import ProjectMemory, db
+from database.models import ProjectMemory, db
 from workflow_engine import (
     get_phase_questions,
     get_next_phase,

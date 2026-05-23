@@ -30,7 +30,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import defer
 
-from models import LiteratureItem, Paper, PaperFile, SlrJob, db
+from database.models import LiteratureItem, Paper, PaperFile, SlrJob, db
 from paper_utils import PAPER_ID_RE
 from slr_worker import enqueue_slr_job
 

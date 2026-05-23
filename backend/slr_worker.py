@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_, update as sa_update
 from sqlalchemy.exc import DBAPIError, OperationalError
 
-from models import LiteratureItem, SlrJob, db
+from database.models import LiteratureItem, SlrJob, db
 from SLR.pipeline import run as run_slr_pipeline
 
 log = logging.getLogger(__name__)

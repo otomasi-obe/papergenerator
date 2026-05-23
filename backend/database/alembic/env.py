@@ -19,7 +19,7 @@ try:
 except ImportError:
     pass
 
-from models import db  # noqa: E402
+from database.models import db  # noqa: E402
 
 config = context.config
 

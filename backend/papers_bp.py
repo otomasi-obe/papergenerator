@@ -14,7 +14,7 @@ import jsonpatch
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from models import (
+from database.models import (
     AiJob,
     ChatMessage,
     Conversation,

@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from app import app, db
-from models import User, ApiUsageLog
+from database.models import User, ApiUsageLog
 
 
 @pytest.fixture

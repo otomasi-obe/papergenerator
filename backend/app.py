@@ -25,7 +25,7 @@ from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 
-from models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
+from database.models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
 from auth import auth_bp, init_oauth
 from admin import admin_bp
 from chat import chat_bp

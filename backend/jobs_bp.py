@@ -47,7 +47,7 @@ import redis
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from models import AiJob, Paper, db
+from database.models import AiJob, Paper, db
 
 
 jobs_bp = Blueprint("jobs_bp", __name__)

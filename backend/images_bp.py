@@ -20,7 +20,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
 )
 
-from models import Paper, PaperImage, db
+from database.models import Paper, PaperImage, db
 from paper_utils import (
     FILENAME_RE,
     PAPER_ID_RE,

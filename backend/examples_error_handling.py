@@ -10,7 +10,7 @@ from core.errors import (
     ValidationError, AuthError, NotFoundError, ConflictError,
     RateLimitError, ExternalError, ErrorCode, ErrorCategory
 )
-from models import db, Paper, User
+from database.models import db, Paper, User
 
 examples_bp = Blueprint('examples', __name__)
 

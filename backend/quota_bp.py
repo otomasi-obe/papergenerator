@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 
-from models import ApiUsageLog, User, db
+from database.models import ApiUsageLog, User, db
 
 quota_bp = Blueprint("quota", __name__, url_prefix="/api/me")
 

@@ -19,7 +19,7 @@ import datetime
 import requests
 from flask import Blueprint, request, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Conversation, ChatMessage, Paper, ProjectMemory, User
+from database.models import db, Conversation, ChatMessage, Paper, ProjectMemory, User
 from chat_tools import execute_tool, CHAT_TOOLS, get_memory_summary
 try:
     from chat_tools import _log_chat_call  # type: ignore

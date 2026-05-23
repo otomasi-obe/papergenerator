@@ -18,7 +18,7 @@ import datetime
 from urllib.parse import urlparse
 
 import requests
-from models import Paper, ProjectMemory, PaperFile, PaperImage, db
+from database.models import Paper, ProjectMemory, PaperFile, PaperImage, db
 
 
 logger = logging.getLogger(__name__)

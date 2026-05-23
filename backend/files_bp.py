@@ -18,7 +18,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
 )
 
-from models import Paper, PaperFile, db
+from database.models import Paper, PaperFile, db
 from paper_utils import (
     PAPER_ID_RE,
     safe_paper_dir,

@@ -24,7 +24,7 @@ from flask_jwt_extended import (
 )
 from authlib.integrations.flask_client import OAuth
 
-from models import db, User
+from database.models import db, User
 
 log = logging.getLogger(__name__)
 
