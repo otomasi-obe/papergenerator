@@ -15,13 +15,13 @@
       </header>
 
       <div class="flex-1 overflow-y-auto p-3">
-        <p class="text-[11px] text-slate-500 mb-2 px-1">
+        <p class="text-[11px] text-[var(--text-muted)] mb-2 px-1">
           Pilih chat yang sudah ada, atau buat chat baru.
         </p>
-        <div v-if="!currentPaperId" class="px-3 py-6 text-center text-xs text-slate-400">
-          Memuat paper…
+        <div v-if="!currentPaperId" class="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
+          Pilih paper di dashboard untuk melihat chat history.
         </div>
-        <div v-else-if="conversations.length === 0" class="px-3 py-12 text-center text-xs text-slate-400">
+        <div v-else-if="conversations.length === 0" class="px-3 py-12 text-center text-xs text-[var(--text-muted)]">
           Belum ada chat. Klik <strong>+ New chat</strong> untuk memulai.
         </div>
 
@@ -29,7 +29,7 @@
           <div
             v-for="conv in conversations"
             :key="conv.id"
-            class="group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all"
+            class="group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-[var(--bg-surface)] hover:shadow-sm border border-transparent hover:border-[var(--border-soft)] transition-all"
             @click="handleSelectConversation(conv.id)"
           >
             <span class="text-base leading-none">💬</span>
@@ -41,36 +41,36 @@
                 @keyup.enter="commitRename(conv)"
                 @keyup.escape="cancelRename"
                 @blur="commitRename(conv)"
-                class="w-full text-xs px-1.5 py-0.5 border border-indigo-300 rounded outline-none focus:ring-1 focus:ring-indigo-300"
+                class="w-full text-xs px-1.5 py-0.5 border border-indigo-300 dark:border-indigo-600 bg-[var(--bg-surface)] text-[var(--text-strong)] rounded outline-none focus:ring-1 focus:ring-indigo-300 dark:focus:ring-indigo-600"
                 :ref="el => (renameInput = el)"
               />
-              <div v-else class="text-sm text-slate-700 truncate leading-snug">
+              <div v-else class="text-sm text-[var(--text-strong)] truncate leading-snug">
                 {{ conv.title || 'Untitled chat' }}
               </div>
-              <div class="text-[10px] text-slate-400 mt-0.5">
+              <div class="text-[10px] text-[var(--text-muted)] mt-0.5">
                 {{ conv.message_count || 0 }} msg · {{ formatDate(conv.updated_at) }}
               </div>
             </div>
             <button
               v-if="renamingId !== conv.id"
               @click.stop="startRename(conv)"
-              class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 text-xs px-1"
+              class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-strong)] text-xs px-1"
               title="Rename"
             >✎</button>
             <button
               v-if="renamingId !== conv.id"
               @click.stop="confirmDeleteChat(conv)"
-              class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 text-xs px-1"
+              class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 text-xs px-1"
               title="Delete"
             >🗑</button>
           </div>
         </div>
 
         <!-- Memory section (collapsible) -->
-        <div v-if="currentPaperId" class="mt-5 border-t border-slate-200 pt-3">
+        <div v-if="currentPaperId" class="mt-5 border-t border-[var(--border-soft)] pt-3">
           <button
             @click="memoryOpen = !memoryOpen"
-            class="w-full flex items-center justify-between text-xs font-medium text-slate-600 hover:text-slate-800"
+            class="w-full flex items-center justify-between text-xs font-medium text-[var(--text-base)] hover:text-[var(--text-strong)]"
             :title="`Project memory (${memory.length} items)`"
           >
             <span class="flex items-center gap-1.5">
@@ -80,27 +80,27 @@
                 class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-semibold"
               >{{ memory.length }}</span>
             </span>
-            <span class="text-slate-400">{{ memoryOpen ? '▾' : '▸' }}</span>
+            <span class="text-[var(--text-muted)]">{{ memoryOpen ? '▾' : '▸' }}</span>
           </button>
           <div v-if="memoryOpen" class="mt-2 space-y-1.5">
-            <div v-if="memory.length === 0" class="text-[11px] text-slate-400 px-1">
+            <div v-if="memory.length === 0" class="text-[11px] text-[var(--text-muted)] px-1">
               Empty. AI akan menyimpan fakta penting paper ini secara otomatis.
             </div>
             <div
               v-for="m in memory"
               :key="m.id"
-              class="bg-white border border-slate-200 rounded-md px-2 py-1.5 text-[11px] flex items-start gap-1.5 group/mem"
+              class="bg-[var(--bg-surface)] border border-[var(--border-soft)] rounded-md px-2 py-1.5 text-[11px] flex items-start gap-1.5 group/mem"
             >
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1.5 mb-0.5">
-                  <span class="text-slate-400 text-[10px] uppercase tracking-wide">{{ m.kind }}</span>
-                  <span class="text-slate-700 font-medium truncate">{{ m.key }}</span>
+                  <span class="text-[var(--text-muted)] text-[10px] uppercase tracking-wide">{{ m.kind }}</span>
+                  <span class="text-[var(--text-strong)] font-medium truncate">{{ m.key }}</span>
                 </div>
-                <div class="text-slate-600 leading-snug">{{ m.value }}</div>
+                <div class="text-[var(--text-base)] leading-snug">{{ m.value }}</div>
               </div>
               <button
                 @click="chatStore.deleteMemoryEntry(m.id)"
-                class="opacity-0 group-hover/mem:opacity-100 text-slate-400 hover:text-red-500"
+                class="opacity-0 group-hover/mem:opacity-100 text-[var(--text-muted)] hover:text-red-500"
                 title="Forget"
               >✕</button>
             </div>
@@ -143,7 +143,7 @@
       </header>
 
       <!-- Messages -->
-      <div ref="messagesContainer" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref="messagesContainer" @scroll="checkScrollPosition" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <!-- Empty-state hero: no messages yet. Offers entry chips + quick
              prompts to seed a focused first turn instead of staring at a
              blank textarea. -->
@@ -737,7 +737,27 @@ watch(
   }
 )
 
-watch(messages, () => nextTick(scrollToBottom), { deep: true })
+const userIsNearBottom = ref(true)
+const lastScrollTop = ref(0)
+
+function checkScrollPosition() {
+  if (!messagesContainer.value) return
+  const container = messagesContainer.value
+  const scrollTop = container.scrollTop
+  const scrollHeight = container.scrollHeight
+  const clientHeight = container.clientHeight
+  const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+  userIsNearBottom.value = distanceFromBottom < 100
+  lastScrollTop.value = scrollTop
+}
+
+watch(messages, () => {
+  nextTick(() => {
+    if (userIsNearBottom.value) {
+      scrollToBottom()
+    }
+  })
+}, { deep: true })
 
 watch(inputText, () => {
   if (inputText.value.length > 0) showSuggestions.value = false
@@ -762,6 +782,7 @@ watch(currentChat, (chat) => {
 function scrollToBottom() {
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    userIsNearBottom.value = true
   }
 }
 
@@ -797,7 +818,7 @@ async function createNewChat() {
       messages.value = []
     }
     } finally {
-      uploadingFiles.value = false
+      creatingChat.value = false
       uploadFileCount.value = { current: 0, total: 0 }
     }
 }

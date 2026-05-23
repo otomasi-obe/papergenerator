@@ -36,6 +36,7 @@ from pathlib import Path
 import requests
 from env_loader import load_app_env
 from json_repair import repair_json
+from storage_helper import get_generation_log_path, _get_username_from_user_id
 
 # GenerationCancelled is re-exported via app._run_generate_full_job; this module
 # does not raise it itself but the caller imports it from generate_paper_chunked.
@@ -45,59 +46,21 @@ log = logging.getLogger(__name__)
 # ── Generator turn-log helpers ───────────────────────────────────────────────
 # We persist the actual prompt sent to V-OPUS and the raw reply (plus parsed
 # shape + validation) under
-#   backend/data/logs/<user_slug>/<paper_id>/<job_id>/
-# alongside the chat logs (which use the same `<user_slug>/<paper_id>/<chat_id>`
-# layout). Both share the same per-user folder so an account's generator job
-# and the chat that spawned it can be inspected in one place.
+#   backend/data/<username>/<paper_id>/generation/<job_id>/
+# using the new storage structure from storage_helper.py
 import datetime as _dt
 import json as _json
-
-_LOG_ROOT = Path(__file__).parent / "data" / "logs"
-_SAFE_NAME_RE_GEN = re.compile(r"[^A-Za-z0-9._-]+")
-
-
-def _safe_seg(value, fallback: str) -> str:
-    s = _SAFE_NAME_RE_GEN.sub("_", str(value or "")).strip("._-")
-    return s or fallback
-
-
-def _user_slug_for_log(user_id) -> str:
-    """Map ``user_id`` to ``<id>__<email-local>`` (or ``<id>`` / ``anon``).
-
-    Mirrors ``chat._user_dir_slug`` so generator logs and chat logs share the
-    same per-user folder. DB access errors collapse to a safe fallback — log
-    writes must never crash a generator job.
-    """
-    if user_id in (None, ""):
-        return "anon"
-    try:
-        from models import User  # local import: avoid app-context at import
-        uid = int(user_id)
-        u = User.query.get(uid)
-        if u and u.email:
-            local = u.email.split("@", 1)[0]
-            return f"{uid}__{_safe_seg(local, 'user')}"
-        return f"{uid}"
-    except Exception:
-        return _safe_seg(user_id, "anon")
 
 
 def _gen_log_dir(user_id, paper_id, job_id) -> Path | None:
     """Build (and create) the per-job log directory.
 
-    Layout: ``backend/data/logs/<user_slug>/<paper_id>/<job_id>/``. Job filenames
-    (``00_request.json``, ``01_raw_response.txt`` etc) never collide with
-    chat turn filenames (``<turn-id>.{send,recv}.json``), so generator and
-    chat logs can safely share the same per-paper folder.
+    Layout: ``backend/data/<username>/<paper_id>/generation/<job_id>/``. 
+    Uses the new storage structure from storage_helper.py.
     """
     try:
-        d = (
-            _LOG_ROOT
-            / _user_slug_for_log(user_id)
-            / _safe_seg(paper_id, "_no-paper")
-            / _safe_seg(job_id, "_no-job")
-        )
-        d.mkdir(parents=True, exist_ok=True)
+        username = _get_username_from_user_id(user_id)
+        d = get_generation_log_path(username, paper_id, job_id)
         return d
     except Exception as e:
         log.warning("[generator-log] mkdir failed: %s", e)

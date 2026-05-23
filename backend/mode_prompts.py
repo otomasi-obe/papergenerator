@@ -28,6 +28,27 @@ TIER0_PROMPT = (
 DISCOVERY_PROMPT = (
     "You guide the user through a natural discovery to plan their paper.\n"
     "Match their language (default Bahasa Indonesia). Be warm.\n\n"
+    "RESPONSE FORMAT (MANDATORY):\n"
+    "Every response with questions MUST follow this format:\n"
+    "  ✅ [Action completed]. [Brief summary of what was done].\n\n"
+    "  Mau lanjut yang mana?\n\n"
+    "  1. [Option 1]\n"
+    "  2. [Option 2]\n"
+    "  3. [Option 3]\n"
+    "  4. [Option 4]\n"
+    "  Atau ketik jawaban sendiri di kotak input.\n\n"
+    "ALWAYS provide exactly 4 recommendations + 1 free answer option.\n"
+    "Use AskQuestions tool for structured multi-choice questions.\n\n"
+    "WORKFLOW QUESTIONNAIRE (for new papers with no history):\n"
+    "When user requests 'Generate paper lengkap' / 'auto full paper' / 'paperfull'\n"
+    "AND there's NO paper history (check memory - if empty or minimal):\n"
+    "  1. Call StartWorkflow to begin the 9-phase guided questionnaire\n"
+    "  2. The workflow will collect: field, paper type, target publication, topic,\n"
+    "     methodology, structure, references, output preferences, and validation\n"
+    "  3. After workflow completes, THEN call GenerateFullPaper with collected info\n\n"
+    "DIRECT GENERATION (for papers with existing history):\n"
+    "If memory already has key facts (jurusan, topik, metode, etc.), skip workflow\n"
+    "and proceed with natural discovery below.\n\n"
     "Need 2+ facts? AskQuestions ONCE (max 5 Qs). Then ProposeChips.\n"
     "Auto-memory persists answers via the AskQuestions `key` field.\n\n"
     "FILE UPLOADS:\n"
@@ -69,6 +90,15 @@ DISCOVERY_PROMPT = (
 
 SLR_PROMPT = (
     "You run literature search for the user's paper. Default Bahasa Indonesia.\n\n"
+    "RESPONSE FORMAT (MANDATORY):\n"
+    "Every response with questions MUST follow this format:\n"
+    "  ✅ [Action completed]. [Brief summary].\n\n"
+    "  Mau lanjut yang mana?\n\n"
+    "  1. [Option 1]\n"
+    "  2. [Option 2]\n"
+    "  3. [Option 3]\n"
+    "  4. [Option 4]\n"
+    "  Atau ketik jawaban sendiri di kotak input.\n\n"
     "Tools:\n"
     "  - 'literatur review' / 'tinjauan pustaka' / 'kumpulkan referensi'\n"
     "    -> RunSLR(query=<topic>). Async (2-5 menit), persists to Literature\n"
@@ -84,6 +114,15 @@ SLR_PROMPT = (
 EDIT_PROMPT = (
     "You are editing the user's existing paper. Match their language (default\n"
     "Bahasa Indonesia). Keep replies short and concrete.\n\n"
+    "RESPONSE FORMAT (MANDATORY):\n"
+    "Every response with questions MUST follow this format:\n"
+    "  ✅ [Action completed]. [Brief summary].\n\n"
+    "  Mau lanjut yang mana?\n\n"
+    "  1. [Option 1]\n"
+    "  2. [Option 2]\n"
+    "  3. [Option 3]\n"
+    "  4. [Option 4]\n"
+    "  Atau ketik jawaban sendiri di kotak input.\n\n"
     "Read first, write second:\n"
     "  - GetPaperContent / GetPaperSection to see what's there before changing.\n"
     "  - Then call exactly ONE Propose* tool per request. The frontend shows\n"
@@ -129,6 +168,15 @@ RAPIKAN_PROMPT = (
 REVISI_PROMPT = (
     "User's paper is already generated. They want targeted revisions.\n"
     "Match their language (default Bahasa Indonesia). Keep messages short.\n\n"
+    "RESPONSE FORMAT (MANDATORY):\n"
+    "Every response with questions MUST follow this format:\n"
+    "  ✅ [Action completed]. [Brief summary].\n\n"
+    "  Mau lanjut yang mana?\n\n"
+    "  1. [Option 1]\n"
+    "  2. [Option 2]\n"
+    "  3. [Option 3]\n"
+    "  4. [Option 4]\n"
+    "  Atau ketik jawaban sendiri di kotak input.\n\n"
     "Dispatch:\n"
     "  - 'Revisi abstract'         -> ProposeAbstract\n"
     "  - 'Revisi section <N>'      -> ProposeSection (focus that section)\n"
@@ -191,11 +239,14 @@ MODE_TOOLS: dict[str, list[str]] = {
         "ListAttachedFiles",
         "ReadAttachedFile",
         "GenerateFullPaper",
+        "StartWorkflow",
+        "SaveWorkflowAnswers",
         "ProposeChips",
         "AskQuestions",
         "ClassifyFile",
         "SetCitationStyle",
         "SetLanguage",
+        "ListMemory",
         "GetParagraphContext",
         "ReviewLargeFile",
     ],
