@@ -1,0 +1,63 @@
+--- a/backend/slr_bp.py
++++ b/backend/slr_bp.py
+@@ -268,33 +268,44 @@ def wait_slr_jobs(paper_id: str):
+ 
+     deadline = time.monotonic() + 30.0
+     poll_step = 2.0
++    
+     try:
+         while time.monotonic() < deadline:
+             try:
++                # Query with explicit connection management
+                 latest = (db.session.query(db.func.max(SlrJob.updated_at))
+                           .filter_by(paper_id=paper_id, user_id=user_id)
+                           .scalar())
++                
++                ts = latest.timestamp() if latest else 0.0
++                
++                # CRITICAL FIX: Close connection immediately after query
++                # This prevents holding connections during sleep
++                db.session.close()
++                
+             except (OperationalError, DBAPIError) as e:
+                 db.session.rollback()
++                db.session.close()
+                 log.warning("slr.wait_jobs probe DB busy paper=%s: %s",
+                             paper_id, e)
+                 return jsonify({"error": "DB busy, retry",
+                                 "code": "DB_BUSY"}), 503
+ 
+-            ts = latest.timestamp() if latest else 0.0
+             if ts > after:
+-                jobs = (db.session.query(SlrJob)
+-                        .options(defer(SlrJob.result))
+-                        .filter_by(paper_id=paper_id, user_id=user_id)
+-                        .order_by(SlrJob.queued_at.desc())
+-                        .limit(30)
+-                        .all())
+-                # Close the read txn so we don't pin a snapshot across the
+-                # caller's polling cycle. Rollback is enough for read-only.
+-                db.session.rollback()
+-                return jsonify({
+-                    "jobs": [j.to_dict() for j in jobs],
+-                    "ts": ts,
+-                })
++                try:
++                    # Re-acquire connection only when we have results to return
++                    jobs = (db.session.query(SlrJob)
++                            .options(defer(SlrJob.result))
++                            .filter_by(paper_id=paper_id, user_id=user_id)
++                            .order_by(SlrJob.queued_at.desc())
++                            .limit(30)
++                            .all())
++                    db.session.close()
++                    return jsonify({
++                        "jobs": [j.to_dict() for j in jobs],
++                        "ts": ts,
++                    })
++                except Exception:
++                    db.session.close()
++                    raise
++                    
+             # Release the implicit read txn between polls so other writers
+             # (the worker pool) don't block waiting on us.

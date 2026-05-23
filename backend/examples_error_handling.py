@@ -6,7 +6,7 @@ Examples showing how to use the new error handling system.
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from errors import (
+from core.errors import (
     ValidationError, AuthError, NotFoundError, ConflictError,
     RateLimitError, ExternalError, ErrorCode, ErrorCategory
 )
@@ -174,7 +174,7 @@ def example_external_error():
 @jwt_required()
 def example_database_error():
     """Example: Database error handling."""
-    from errors import AppError
+    from core.errors import AppError
     
     try:
         papers = Paper.query.all()
@@ -198,7 +198,7 @@ def example_database_error():
 @jwt_required()
 def example_custom_error():
     """Example: Custom error class."""
-    from errors import AppError
+    from core.errors import AppError
     
     class FileProcessingError(AppError):
         def __init__(self, filename: str, reason: str):

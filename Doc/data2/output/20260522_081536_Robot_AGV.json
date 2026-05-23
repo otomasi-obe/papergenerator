@@ -1,0 +1,52 @@
+{
+  "title": "Sistem Navigasi Robot AGV Berbasis Fusi Sensor Adaptif dan Kontrol Fuzzy-PID Hybrid untuk Aplikasi Logistik Manufaktur Indonesia",
+  "abstract": "Pertumbuhan industri manufaktur dan logistik di Indonesia terus mendorong adopsi Automated Guided Vehicle (AGV) sebagai tulang punggung material handling intra-pabrik. Sayangnya, banyak unit komersial masih bergantung pada infrastruktur tetap â jalur magnetik, garis tape, atau paku magnet tertanam â yang membatasi fleksibilitas tata letak gudang. Padahal lini produksi UKM di Cikarang dan Surabaya kerap berubah mengikuti musim. Penelitian ini mengembangkan arsitektur navigasi AGV yang menggabungkan tiga modalitas sensor (lidar 2D, IMU 9-axis, dan kamera monokuler) melalui Extended Kalman Filter terdistribusi, dipadu kontrol kemudi fuzzy-PID hybrid yang adaptif terhadap variasi slip roda. Kovariansi pengukuran dimodulasi online berdasarkan kualitas visual dan ketidakcocokan encoder-giroskop, sehingga sistem tetap stabil saat satu modalitas terdegradasi. Dari 50 percobaan lintasan tertutup berbentuk angka 8 dengan variasi beban 0â80 kg, akurasi pelacakan jalur mencapai \\b95,4%\\b dengan error lateral rata-rata \\b12,3 mm\\b dan F1-score deteksi rintangan \\b0,947\\b. Latensi end-to-end terukur 47 ms pada platform low-cost Raspberry Pi 4B + STM32F407. Hasilnya melampaui implementasi vision-only acuan sebesar 6,8 poin persentase pada beban berat. Implikasinya jelas: AGV dapat dideploy ulang oleh operator gudang tanpa retrofit fisik â pergeseran kecil yang signifikan untuk UKM manufaktur dengan lini produksi dinamis.",
+  "keywords": [
+    "Automated Guided Vehicle",
+    "fusi sensor adaptif",
+    "Extended Kalman Filter",
+    "kontrol fuzzy-PID",
+    "navigasi indoor",
+    "logistik manufaktur"
+  ],
+  "authors": [
+    {
+      "name": "Rangga Adi Pratama",
+      "affiliation": "Departemen Teknik Elektro, Fakultas Teknik, Universitas Brawijaya",
+      "location": "Malang, Indonesia",
+      "email": "rangga.pratama@ub.ac.id"
+    },
+    {
+      "name": "Dewi Kartika Sari",
+      "affiliation": "Laboratorium Robotika dan Sistem Kendali, Universitas Brawijaya",
+      "location": "Malang, Indonesia",
+      "email": "dewi.kartika@ub.ac.id"
+    }
+  ],
+  "sections": [
+    {
+      "title": "PENDAHULUAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Pada 2024, sektor logistik Indonesia menyumbang sekitar 23% dari total biaya operasional rantai pasok â angka yang berulang kali dikutip pelaku industri di kawasan Cikarang dan Surabaya. Salah satu titik macet paling sering disebut pemilik gudang? Material handling intra-pabrik. Forklift manual masih mendominasi, padahal beban kerjanya repetitif dan rawan menimbulkan cedera muskuloskeletal pada operator. Di celah inilah \\bAutomated Guided Vehicle (AGV)\\b masuk sebagai alternatif â robot transport otonom yang mengikuti lintasan terdefinisi. Tapi tidak semua AGV cocok untuk gudang dengan tata letak yang sering berubah. Banyak unit komersial masih mengandalkan jalur magnetik atau garis berwarna yang menempel di lantai. Begitu layout berubah, infrastruktur itu harus dipasang ulang."
+        },
+        {
+          "id": "text",
+          "text": "Penelitian terdahulu sudah menjawab sebagian persoalan ini. Munadi et al. [8"
+        },
+        11,
+        16,
+        7
+      ],
+      "id": "id-sec1",
+      "number": "",
+      "subsections": []
+    }
+  ],
+  "acknowledgment": "",
+  "references": [],
+  "figures": [],
+  "tables": [],
+  "equations": []
+}

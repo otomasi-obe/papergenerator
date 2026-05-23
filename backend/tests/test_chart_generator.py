@@ -10,7 +10,7 @@ BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-from chart_generator import generate_chart, parse_data_file, ChartSpec, CHARTS_DIR  # noqa: E402
+from core.chart_generator import generate_chart, parse_data_file, ChartSpec, CHARTS_DIR  # noqa: E402
 
 
 PAPER_ID = "test"

@@ -16,7 +16,7 @@ from pathlib import Path
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from chart_generator import ChartSpec, generate_chart
+from core.chart_generator import ChartSpec, generate_chart
 from models import Paper, PaperImage, db
 from paper_utils import PAPER_ID_RE, safe_paper_dir
 

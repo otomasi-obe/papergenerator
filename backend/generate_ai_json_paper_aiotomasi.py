@@ -10,7 +10,7 @@ streaming endpoint in ``app.py``.
 import os
 import json
 from pathlib import Path
-from env_loader import load_app_env
+from core.env_loader import load_app_env
 import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────

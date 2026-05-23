@@ -18,7 +18,7 @@ import json
 import time
 import logging
 from pathlib import Path
-from env_loader import load_app_env
+from core.env_loader import load_app_env
 from json_repair import repair_json
 
 # Reuse existing API caller with fallback

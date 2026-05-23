@@ -1,0 +1,28 @@
+--- a/backend/chat.py
++++ b/backend/chat.py
+@@ -199,11 +199,13 @@ def _call_upstream(messages, tools, model="V-DEEPSEEK", _allow_no_thinking=True
+         "model": model,
+     }
+ 
+-    if not _upstream_sem.acquire(timeout=_CHAT_UPSTREAM_TIMEOUT):
++    # Track whether we successfully acquired the semaphore
++    acquired = _upstream_sem.acquire(timeout=_CHAT_UPSTREAM_TIMEOUT)
++    if not acquired:
+         log.warning("_call_upstream: semaphore acquire timeout")
+         return None
+ 
+-    try:
++    try:  # Only enter try block if we acquired the semaphore
+         last = None
+         for attempt in range(3):
+             try:
+@@ -256,7 +258,8 @@ def _call_upstream(messages, tools, model="V-DEEPSEEK", _allow_no_thinking=True
+ 
+         return last
+     finally:
+-        _upstream_sem.release()
++        if acquired:  # Only release if we acquired
++            _upstream_sem.release()
+ 
+ 
+ # ─── Active-generation registry ───────────────────────────────────────────

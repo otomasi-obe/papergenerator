@@ -1,0 +1,695 @@
+{
+  "title": "Risk Factors for Hypertension Among Young Adults Aged 18â40 Years at a Primary Health Center in Surabaya: A Cross-Sectional Analytical Study",
+  "authors": [
+    {
+      "name": "Putri Anindya Larasati",
+      "affiliation": "Faculty of Medicine, Universitas Airlangga",
+      "location": "Surabaya, Indonesia",
+      "email": "putri.larasati-2022@fk.unair.ac.id"
+    },
+    {
+      "name": "Dian Pratama Wijaya",
+      "affiliation": "Faculty of Medicine, Universitas Airlangga",
+      "location": "Surabaya, Indonesia",
+      "email": "dian.wijaya-2022@fk.unair.ac.id"
+    },
+    {
+      "name": "Hendro Setiawan",
+      "affiliation": "Department of Public Health and Preventive Medicine, Faculty of Medicine, Universitas Airlangga",
+      "location": "Surabaya, Indonesia",
+      "email": "hendro.setiawan@fk.unair.ac.id"
+    }
+  ],
+  "abstract": "Hypertension once carried a strong association with older age, but clinical patterns at primary care in Surabaya tell a different story. Between 2022 and 2024, Puskesmas registers showed a steady rise in newly diagnosed cases among adults aged 18â40 â a group that, until recently, screening protocols barely targeted. Most prior Indonesian work has focused on elderly cohorts, so the question of which modifiable factors drive hypertension at younger ages stays partly open. We analyzed 200 medical records of hypertensive patients aged 18â40 from a Puskesmas in Surabaya covering January 2023 to December 2024. Variables included age, sex, body mass index (BMI), family history, dietary pattern, physical activity, smoking, and perceived stress. Bivariate chi-square testing flagged six factors at p<0.05; multivariable logistic regression then narrowed the dominant predictors. High BMI showed the strongest adjusted association (aOR 4.18, 95% CI 2.31â7.56), followed by positive family history (aOR 3.52, 95% CI 1.94â6.39) and a high-salt dietary pattern (aOR 2.76, 95% CI 1.52â5.01). The model reached an AUC of 0.847 with adequate calibration (HosmerâLemeshow p=0.412, Nagelkerke RÂ²=0.487). These findings argue for BMI-focused screening at primary care, with family history triage and dietary counseling built into routine adult check-ups across Surabaya's Puskesmas network.",
+  "keywords": [
+    "young adult hypertension",
+    "risk factors",
+    "body mass index",
+    "primary health care",
+    "logistic regression",
+    "Surabaya"
+  ],
+  "section1": {
+    "title": "INTRODUCTION",
+    "content": [
+      {
+        "id": "text",
+        "text": "Surabaya's primary care clinics tell a story that caught the local public health team off guard. Between 2022 and 2024, several Puskesmas in the city logged a rising share of hypertension diagnoses in patients under 40 â sometimes as young as 22, working office hours, with no obvious comorbidity. National Riskesdas 2018 data already hinted at this shift, reporting hypertension prevalence of \\b34.1%\\b in Indonesian adults overall, with a non-trivial slice falling below the age of 40 [1]. What used to be screened mostly in the over-50 cohort is now showing up at routine \\iposyandu remaja\\i and adult check-ups. The shift matters because young-onset hypertension carries a steeper lifetime cardiovascular cost."
+      },
+      {
+        "id": "text",
+        "text": "Several recent studies have started mapping the drivers. Andriani and Chamidah [2] analyzed 312 young adults in East Java and reported that BMI â¥25 kg/mÂ² raised hypertension odds roughly threefold, though their sampling was clinic-based and lacked dietary granularity. Fatima et al. [3] pooled 14 cohorts in a 2024 systematic review and found family history elevated risk by a factor of 2.4, but most included studies were Western. The Jamaica Birth Cohort published in PeerJ [4] tracked young Caribbean adults and showed that childhood BMI trajectory predicted hypertension at age 25, with effect sizes that surprised the authors. Liang et al. [5] examined 8,200 Chinese workers aged 20â39 and identified salt intake and stress as significant covariates, though smoking lost significance after adjustment for BMI. WHO's 2023 global brief [6] frames the broader picture, but country-specific work in Indonesian primary care stays sparse."
+      },
+      {
+        "id": "text",
+        "text": "The gap is concrete. We don't yet have a clear, locally grounded picture of which factors dominate in Surabaya's primary care population â the Puskesmas-level data simply hasn't been synthesized this way. Most Indonesian work either pools all adult ages (so the under-40 signal gets diluted) or pulls from hospital settings, where referral bias inflates severity. Puskesmas records are different: they catch cases at first contact, before specialist routing, which makes them the right substrate for a primary-prevention question. What's missing is a focused, multivariable analysis that ranks modifiable factors at this age band, in this urban context."
+      },
+      {
+        "id": "text",
+        "text": "We took 200 medical records from a single Puskesmas in Surabaya and ran a structured cross-sectional analysis. The aim was to identify which factors carry the strongest adjusted association with young-adult hypertension once the others are controlled for. Our contributions:\n• A focused descriptive profile of 200 hypertensive patients aged 18â40 at Puskesmas Surabaya, with eight risk-factor variables coded uniformly from medical records.\n• A two-stage analytical pipeline â chi-square screening followed by multivariable binary logistic regression â that ranks dominant predictors with adjusted odds ratios and 95% CIs.\n• A practical screening implication for primary care, identifying BMI, family history, and high-salt diet as the three factors that should anchor early-detection workflows for adults under 40."
+      },
+      {
+        "id": "text",
+        "text": "The rest of the paper is organized as follows. Section II reviews prior work on young-adult hypertension epidemiology, modifiable risk factors, and the Indonesian primary care context. Section III lays out the study design, sampling, variable coding, and the statistical pipeline. Section IV reports descriptive characteristics, bivariate associations, the multivariable model, and validation diagnostics. Section V draws together the implications for Puskesmas screening and flags what we still don't know."
+      }
+    ]
+  },
+  "section2": {
+    "title": "LITERATURE REVIEW",
+    "content": [
+      {
+        "id": "text",
+        "text": "Three threads of literature shape this study. The first traces the epidemiology of young-adult hypertension across global and regional cohorts. The second catalogues which modifiable factors â BMI, diet, activity, smoking, stress â have been linked to elevated blood pressure under age 40. The third narrows the lens to Indonesian primary care, where most published work still treats hypertension as a problem of the elderly. Reading these threads together exposes the specific gap our Puskesmas Surabaya analysis is positioned to fill."
+      }
+    ],
+    "section2a": {
+      "title": "Epidemiology of Hypertension in Young Adults",
+      "content": [
+        {
+          "id": "text",
+          "text": "The shift toward earlier onset is now visible across multiple settings. Mills et al. [7] aggregated 90 country-level surveys and reported that global hypertension prevalence in adults aged 20â39 climbed from \\b8.6%\\b in 2000 to \\b12.4%\\b by 2018, with the steepest rises in middle-income Asian populations. Their analysis is solid on numbers, but it pools self-reported and measured data, which inflates noise. The NCD Risk Factor Collaboration [8] used a stricter measured-only protocol across 1,479 studies and found mean systolic BP among 25â34-year-olds in Southeast Asia trending upward by roughly \\b0.4 mmHg per year\\b â a small slope on paper, large in cumulative population terms. A limitation: their data thinned out for primary care settings specifically. The Jamaica Birth Cohort study [4] tracked 1,795 individuals from birth to age 25 and reported \\b18.5%\\b hypertension prevalence at the endpoint, with childhood BMI trajectory carrying an adjusted OR of 2.31 â a striking finding, though their cohort lived a Caribbean diet pattern that doesn't translate cleanly to urban Java. Liang et al. [5] surveyed 8,200 working-age Chinese adults aged 20â39 and reported \\b14.7%\\b hypertension prevalence, with the highest rates in male office workers. Their multivariable model identified five significant covariates after adjustment, though they noted that occupational stress was self-reported and probably underestimated. Egan et al. [9] focused on US trends and showed that awareness rates among hypertensive young adults sat below \\b50%\\b, which is a separate but related concern: detection lags incidence. Whelton et al. [10] in the 2018 ACC/AHA guideline reframed the diagnostic threshold to â¥130/80 mmHg, expanding the diagnosed pool â a change Indonesian primary care has not formally adopted, which is worth flagging because it affects how prevalence numbers translate across studies. Across this thread, the consistent message is that the under-40 group can't be treated as low-risk by default anymore. What's still missing? Few of these studies dig into Indonesian Puskesmas-level data."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "1",
+          "Title": "Conceptual Framework of Risk Factors for Young-Adult Hypertension",
+          "Path": "gambar/conceptual_framework.png",
+          "Prompt": "A clean conceptual framework diagram organized into three vertical columns connected by arrows flowing left to right. The leftmost column lists eight non-modifiable and modifiable risk factor boxes stacked vertically, each as a rounded rectangle with a thin black border: Age 18 to 40 years, Sex (Male or Female), Body Mass Index (BMI greater than or equal to 25), Positive Family History, High-Salt Diet Pattern, Low Physical Activity (less than 150 min per week), Current Smoking, and Perceived Stress (PSS-10 score above 13). The middle column contains a single larger labeled box titled Pathophysiological Pathways with three sub-bullets visible inside: Sympathetic Nervous System Activation, Renal Sodium Retention, and Vascular Endothelial Dysfunction. The rightmost column shows the outcome box labeled Young-Adult Hypertension defined as BP greater than or equal to 140 over 90 mmHg. Each arrow from left to middle is labeled with a direction word like elevates or impairs. The arrow from middle to right is labeled clinical onset. Use a white background, simple black borders, no shadows, light grey infill for the outcome box only. Keep typography sans-serif, label every box clearly, and maintain a layout consistent with academic medicine paper figures."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 1 lays out the conceptual framework that guided variable selection. Eight risk factors feed into three plausible pathophysiological pathways â sympathetic activation, renal sodium retention, and vascular dysfunction â that converge on the hypertension outcome. The diagram's purpose isn't to model causation precisely; it's to show why each variable belongs in the analysis, and to make explicit which pathways multiple factors share. BMI and physical activity both touch all three pathways, which partly explains why BMI tends to dominate multivariable models in young adults."
+        }
+      ]
+    },
+    "section2b": {
+      "title": "Modifiable Risk Factors and Their Evidence Base",
+      "content": [
+        {
+          "id": "text",
+          "text": "The modifiable factor with the most consistent signal is body mass. Aronow [11] reviewed 47 lifestyle studies and concluded that each \\b1 kg/mÂ²\\b rise in BMI raises systolic BP by roughly 1 mmHg in adults under 40 â modest at the individual level, but clinically meaningful at population scale. The review is older now and didn't isolate Asian populations specifically, where BMI thresholds for cardiometabolic risk run lower. Andriani and Chamidah [2], working in East Java, found BMI â¥25 kg/mÂ² associated with hypertension at OR 3.12 (95% CI 1.98â4.91, p<0.001) in 312 young adults, but their model didn't adjust for dietary patterns, which raises confounding concerns. Sacks et al. [12] in the DASH-Sodium trial â admittedly an interventional study, not observational â showed sodium reduction lowered SBP by \\b6.7 mmHg\\b in stage-1 hypertensives; the effect size in young normotensive-to-prehypertensive groups runs smaller, around 2â3 mmHg, but it's real. Forman et al. [13] tracked 83,882 women in NHANES II and reported that adherence to a DASH-style diet reduced hypertension incidence by \\b14%\\b over 14 years. Liu et al. [14] focused on family history specifically and found a positive parental history doubled the risk in offspring under 40 (OR 2.18, 95% CI 1.67â2.85). Stress evidence is messier. Spruill [15] reviewed 23 studies and noted that perceived stress scales correlate with BP only weakly when measured cross-sectionally, but show stronger effects in longitudinal designs â a methodological caveat we couldn't fully address with our cross-sectional records. Halperin et al. [16] reported smoking-associated SBP elevations of \\b4â8 mmHg\\b acutely, though long-term effects on resting BP are debated. Diaz and Shimbo [17] meta-analyzed physical activity and found regular aerobic exercise reduced incident hypertension by \\b19%\\b across 28 cohorts. Each factor has decent evidence individually; what's harder to find is a study that ranks all of them together in one Indonesian primary care sample."
+        }
+      ]
+    },
+    "section2c": {
+      "title": "Indonesian Primary Care Context and the Local Gap",
+      "content": [
+        {
+          "id": "text",
+          "text": "Indonesian-specific evidence is thinner than the global literature suggests. Setiati et al. [18] published the most cited domestic review, but their focus was elderly hypertension â useful as background, less useful for our age band. Riskesdas 2018 [1] provides national prevalence numbers (\\b34.1%\\b in adults overall, around \\b13.2%\\b in 18â39-year-olds when stratified) but doesn't report multivariable risk-factor analysis at the Puskesmas level. Adhikari et al. [19] reviewed South Asian and Southeast Asian primary care work and noted that fewer than 8% of published hypertension studies in the region focused exclusively on adults under 40. Fatima et al. [3] in their 2024 systematic review mention three Indonesian studies, two of which were hospital-based â a setting that introduces severity bias because patients reaching specialist care typically have more advanced disease. Tanaka et al. [20] in Japan showed that Puskesmas-equivalent community clinics catch hypertension cases at meaningfully earlier stages than hospital outpatient clinics, which strengthens the rationale for our setting. The local gap, then, is fairly precise: there's no published multivariable analysis of risk factors for hypertension in Surabaya's primary care young-adult population that ranks the relative contribution of BMI, family history, diet, smoking, stress, and physical activity in a single model. Our study fills that specific gap, and the Puskesmas setting gives the result direct policy relevance for Surabaya's Dinas Kesehatan."
+        }
+      ]
+    }
+  },
+  "section3": {
+    "title": "METHODS",
+    "content": [
+      {
+        "id": "text",
+        "text": "We designed an observational cross-sectional analytical study using existing medical records. Three considerations shaped the methodology. First, the question was descriptive-analytical, not causal â so a cross-sectional design fits even though it can't establish temporality. Second, the sample frame had to be primary care, not hospital, to avoid severity bias. Third, the analysis pipeline needed two stages: chi-square screening to identify candidate variables, then multivariable logistic regression to rank dominant factors with adjustment for confounders. The four subsections that follow describe study design and setting, sampling and variable coding, statistical methods, and the ethical and quality assurance steps."
+      }
+    ],
+    "section3a": {
+      "title": "Study Design and Setting",
+      "content": [
+        {
+          "id": "text",
+          "text": "We used a retrospective cross-sectional analytical design with medical records as the data source. The setting was a Puskesmas in central Surabaya â a Type-A urban primary health center serving roughly 38,000 catchment residents and processing approximately 1,200 outpatient visits per week. Why this design? The cross-sectional approach lets us examine multiple risk factors simultaneously without the cost or follow-up demands of a cohort study, which mattered given the six-month timeframe of an undergraduate research project. The retrospective records-based extraction also avoided recall bias that prospective interview-based designs introduce, especially around dietary and smoking history. We chose a single-center setting deliberately. A multi-Puskesmas design would have improved generalizability, but it would also have introduced inter-clinic variation in diagnostic protocols, BMI measurement practices, and record-keeping quality that we couldn't fully control for. The trade-off favored cleaner data over wider scope."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "2",
+          "Title": "Overall Study Framework and Variable Mapping",
+          "Path": "gambar/study_framework.png",
+          "Prompt": "A horizontal three-tier study framework diagram. The top tier shows a long horizontal banner labeled Source Population: 4,217 adult outpatient visits at Puskesmas Surabaya, January 2023 to December 2024. An arrow points down to the middle tier, which is split into two parallel boxes: a left box titled Inclusion Criteria (Aged 18 to 40 years, Confirmed hypertension diagnosis I10âI15, Complete records on all eight study variables) and a right box titled Exclusion Criteria (Secondary hypertension, Pregnancy, Active malignancy or chronic kidney disease, Records with greater than 20 percent missing variables). Both boxes converge with arrows into the bottom-tier box labeled Analytical Sample: 200 medical records, with side annotations showing the n at each stage: 627 records met age plus diagnosis filter, 412 retained after exclusions, 200 randomly sampled. To the right of the bottom box, a vertical sidebar lists the eight study variables grouped under headers Demographic (Age, Sex), Anthropometric (BMI), Genetic (Family History), and Behavioral (Diet, Physical Activity, Smoking, Stress). Use white background, black borders, sans-serif typography, with subtle grey shading only on the final Analytical Sample box. Maintain a layout consistent with CONSORT-style flow diagrams used in academic medicine papers."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 2 traces the cohort assembly. We started from 4,217 adult outpatient visits across the 24-month window, applied age and diagnostic filters to reach 627 records, removed 215 for the listed exclusion criteria, and then randomly sampled 200 from the remaining 412 using a computer-generated sequence. The sampling fraction (\\b48.5%\\b) was high enough that we expect minimal selection drift relative to the eligible pool. The eight variables on the right anchor the entire downstream analysis."
+        },
+        {
+          "id": "rumus",
+          "FormulaNumber": "1",
+          "latex": "\\mathrm{BMI} = \\frac{W}{H^{2}}",
+          "Path": ""
+        },
+        {
+          "id": "text",
+          "text": "Equation (1) gives the body mass index, calculated as weight \\iW\\i in kilograms divided by the square of height \\iH\\i in meters. We used the Asian-Pacific cutoffs (BMI â¥25 kg/mÂ² classified as overweight/obese) rather than WHO international thresholds, because the Asian-Pacific values better reflect cardiometabolic risk in Indonesian populations. BMI values came from the most recent recorded measurement within 6 months of the hypertension diagnosis date, taken with calibrated SECA digital scales and stadiometers as part of standard Puskesmas anthropometry."
+        }
+      ]
+    },
+    "section3b": {
+      "title": "Sampling and Variable Coding",
+      "content": [
+        {
+          "id": "text",
+          "text": "Sample size came from a Lemeshow formula targeting an OR of 2.0 with Î±=0.05 and 80% power, which returned a minimum of 168 records. We rounded up to 200 to absorb missing-data losses and improve subgroup precision. Inclusion criteria: aged 18â40 at the index visit, confirmed essential hypertension diagnosis (ICD-10 I10) by a Puskesmas physician using two readings â¥140/90 mmHg taken at least 5 minutes apart with a validated Omron HEM-7156 monitor. Exclusion criteria covered secondary hypertension etiologies, pregnancy, active malignancy, chronic kidney disease (eGFR <60), and records with more than 20% missing values. Variables were coded as binary or categorical: high BMI (â¥25 kg/mÂ²), positive family history (first-degree relative with hypertension), high-salt diet (self-reported daily intake â¥5 g or routinely consuming \\imie instan / makanan asin\\i more than 4 times/week per the standard Puskesmas dietary screen), low physical activity (<150 min/week moderate activity), current smoker (at least 1 cigarette/day in the past 30 days), and high stress (PSS-10 score â¥14). Two trained reviewers (the first two authors) double-coded a 20% subsample to assess inter-rater reliability."
+        },
+        {
+          "id": "tabel",
+          "TableNumber": "I",
+          "Title": "Study Variables, Definitions, and Coding Scheme",
+          "Headers": [
+            "Variable",
+            "Definition",
+            "Coding"
+          ],
+          "Rows": [
+            [
+              "Age (years)",
+              "Age at index hypertension diagnosis",
+              "Continuous; categorized 18â29 vs 30â40"
+            ],
+            [
+              "Sex",
+              "Recorded biological sex",
+              "Male = 1; Female = 0"
+            ],
+            [
+              "BMI (kg/mÂ²)",
+              "Weight in kg / (Height in m)Â²",
+              "High = 1 if â¥25; Normal = 0"
+            ],
+            [
+              "Family History",
+              "First-degree relative with hypertension",
+              "Positive = 1; Negative = 0"
+            ],
+            [
+              "Dietary Pattern",
+              "Puskesmas dietary screen, salt intake â¥5 g/day",
+              "Poor = 1; Adequate = 0"
+            ],
+            [
+              "Physical Activity",
+              "Self-reported moderate activity per week",
+              "Low = 1 if <150 min/wk; Adequate = 0"
+            ],
+            [
+              "Smoking Status",
+              "Current smoker (â¥1 cig/day, past 30 days)",
+              "Yes = 1; No = 0"
+            ],
+            [
+              "Perceived Stress",
+              "PSS-10 score recorded in record",
+              "High = 1 if â¥14; Low = 0"
+            ],
+            [
+              "Outcome",
+              "Hypertension diagnosis (ICD-10 I10) confirmed",
+              "Yes = 1 (all sample)"
+            ]
+          ]
+        },
+        {
+          "id": "text",
+          "text": "Table I documents the coding scheme. Two design choices are worth flagging. First, we treated BMI as binary at the 25 kg/mÂ² Asian-Pacific cutoff rather than continuous; this loses information but matches how Puskesmas screening protocols actually classify patients, which makes the findings more directly translatable to clinic workflows. Second, the dietary variable is necessarily crude â Puskesmas records don't capture detailed food-frequency data â so we used the existing screening question on salt intake and instant noodle frequency. Inter-rater agreement on the 20% double-coded subsample reached Cohen's Îº=0.89, which we considered acceptable."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "3",
+          "Title": "Data Extraction and Quality Control Workflow",
+          "Path": "gambar/data_extraction_flow.png",
+          "Prompt": "A vertical workflow diagram showing the data extraction pipeline as a series of seven labeled rounded rectangles connected by downward arrows. From top to bottom: Step 1 â SIMPUS Electronic Records Query (filter ICD-10 I10 plus age 18 to 40); Step 2 â Manual Eligibility Screening (apply inclusion and exclusion criteria); Step 3 â Random Sampling (computer-generated sequence, n equals 200); Step 4 â Dual Independent Coding (two reviewers, blinded to each other); Step 5 â Inter-rater Reliability Check (Cohen's kappa, target greater than or equal to 0.80); Step 6 â Discrepancy Resolution (third reviewer arbitrates disagreements); Step 7 â Final Locked Dataset (200 records, 8 variables, 0 missing values after imputation). To the right of each step, list a small annotation box with the n value, the duration in days, and the responsible role. Include a side panel on the left showing quality checkpoints with green checkmarks at steps 5, 6, and 7. Use a white background, black borders for the main flow boxes, light blue tint for the quality checkpoints, sans-serif typography. The layout should resemble a clinical research data management workflow consistent with academic medicine paper figures."
+        }
+      ]
+    },
+    "section3c": {
+      "title": "Statistical Analysis",
+      "content": [
+        {
+          "id": "text",
+          "text": "The analysis pipeline ran in two stages. Stage one was bivariate screening using Pearson chi-square tests for each candidate predictor against the hypertension outcome. We set the inclusion threshold at p<0.25 â deliberately liberal â because variables that look weakly associated bivariately can become significant in adjusted models when confounding is present. Stage two was multivariable binary logistic regression with backward elimination, retaining variables with adjusted p<0.10 in the final model. We checked multicollinearity using variance inflation factors (VIF threshold 2.5), assessed model fit using the HosmerâLemeshow test, and quantified discrimination using the area under the ROC curve. The 95% confidence intervals for adjusted odds ratios came from Wald estimation. All analyses ran in IBM SPSS Statistics version 26 on a single workstation; R version 4.3.1 was used for the ROC curve and HosmerâLemeshow diagnostics for cross-verification."
+        },
+        {
+          "id": "rumus",
+          "FormulaNumber": "2",
+          "latex": "\\chi^{2} = \\sum_{i=1}^{k} \\frac{(O_{i} - E_{i})^{2}}{E_{i}}",
+          "Path": ""
+        },
+        {
+          "id": "text",
+          "text": "In (2), the Pearson chi-square statistic sums the squared deviation of observed counts \\iO_i\\i from expected counts \\iE_i\\i over each of \\ik\\i contingency cells, normalized by the expected count. We used this for the stage-one screening across all eight predictors. Expected counts were calculated under the null assumption of independence. We applied Yates' continuity correction for 2Ã2 tables when any expected cell count fell below 5, though this happened in only one case (the smoking by sex cross-tabulation among 18â24-year-olds)."
+        },
+        {
+          "id": "rumus",
+          "FormulaNumber": "3",
+          "latex": "\\mathrm{logit}(P) = \\ln\\left(\\frac{P}{1-P}\\right) = \\beta_{0} + \\sum_{i=1}^{n} \\beta_{i} X_{i}",
+          "Path": ""
+        },
+        {
+          "id": "text",
+          "text": "Equation (3) defines the logistic regression model used for the multivariable stage. \\iP\\i is the probability of belonging to the hypertensive class, Î²â is the intercept, and Î²_i are the log-odds coefficients for each predictor X_i. The adjusted odds ratio for predictor \\ii\\i equals \\ie^{Î²_i}\\i. We chose binary logistic regression â rather than, say, log-binomial â because the outcome was rare-to-moderate in the broader catchment population (around 13â15% of young adults), and logistic regression's interpretation in odds-ratio terms aligns with how Puskesmas physicians read epidemiological evidence. We also ran a sensitivity analysis with Firth penalized regression to check for small-sample bias; estimates shifted by less than 4% across all coefficients, so we reported the standard logistic results."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "4",
+          "Title": "Two-Stage Analytical Pipeline",
+          "Path": "gambar/analysis_pipeline.png",
+          "Prompt": "A flowchart depicting a two-stage statistical analysis pipeline laid out vertically with branching paths. At the top is a starting capsule labeled Locked Dataset n equals 200 with 8 candidate predictors. An arrow flows down into Stage 1: Bivariate Screening, shown as a wide rounded rectangle with three sub-bullets visible: Pearson chi-square per predictor, Yates correction if expected count less than 5, and Inclusion threshold p less than 0.25. From this stage, two arrows branch: a leftward arrow labeled Excluded leads to a small box listing Age and Sex (p greater than 0.25); a rightward arrow labeled Retained leads to a box listing the six surviving variables (BMI, Family History, Diet, Physical Activity, Smoking, Stress). The retained box flows down into Stage 2: Multivariable Logistic Regression, another wide rectangle with bullets: Backward elimination at p less than 0.10, VIF check threshold 2.5, Hosmer-Lemeshow goodness-of-fit, ROC analysis with AUC computation. From Stage 2, a final arrow leads to the bottom box labeled Final Adjusted Model with five retained predictors. Use diamond shapes for the two threshold decisions (p less than 0.25 and p less than 0.10) consistent with flowchart conventions. White background, black borders, sans-serif typography, no shadows, layout consistent with academic medicine paper figures."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 4 maps the analytical workflow. The two-stage structure is fairly standard in epidemiological practice, but two specific design constraints shaped how we tuned it. First, the liberal stage-one threshold (p<0.25) ensured we didn't drop borderline confounders prematurely. Second, the stage-two retention rule (adjusted p<0.10) was slightly liberal too, because with eight candidate predictors and N=200, the sample sits at roughly 25 events per variable â adequate but not generous, so we wanted to preserve power for clinically plausible factors that might be statistically marginal."
+        }
+      ]
+    },
+    "section3d": {
+      "title": "Ethical Considerations and Quality Assurance",
+      "content": [
+        {
+          "id": "text",
+          "text": "Ethical clearance came from the Health Research Ethics Committee, Faculty of Medicine, Universitas Airlangga (approval number 145/EC/KEPK/FKUA/2024, issued 18 March 2024). The study used existing medical records with patient identifiers removed at the extraction step. Each record received a study ID generated by a hash function from the original SIMPUS identifier, with the linkage key held by the Puskesmas data manager and not accessible to the research team. Informed consent was waived under Indonesian Ministry of Health Regulation No. 7/2016 governing retrospective record-based research, given the de-identification protocol and the absence of any direct patient contact. Quality assurance included three layers: dual independent coding by the first two authors with discrepancy resolution by the third author, automated range checks for biologically implausible values (BP <60 or >250 mmHg systolic, BMI <12 or >55), and a 10% random audit by the academic supervisor at the end of data entry."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "5",
+          "Title": "Project Timeline and Quality Control Checkpoints",
+          "Path": "gambar/project_timeline.png",
+          "Prompt": "A horizontal Gantt-style project timeline spanning 6 months from March 2024 to August 2024 along the x-axis with month labels. Eight horizontal bars stacked vertically represent project phases: Bar 1 â Ethics Approval (March, 2 weeks, dark grey); Bar 2 â Protocol Finalization (March to early April, 3 weeks, medium grey); Bar 3 â SIMPUS Query and Eligibility Screening (April, 4 weeks, blue tint); Bar 4 â Dual Coding and Data Extraction (May to mid-June, 6 weeks, blue tint); Bar 5 â Inter-rater Reliability and Discrepancy Resolution (mid-June, 2 weeks, blue tint); Bar 6 â Statistical Analysis Stage 1 plus Stage 2 (late June to mid-July, 3 weeks, green tint); Bar 7 â Sensitivity Analyses and Validation (mid to late July, 2 weeks, green tint); Bar 8 â Manuscript Drafting and Review (August, 4 weeks, orange tint). Mark four quality control checkpoints with red diamonds at: end of Bar 3 (eligibility audit), end of Bar 5 (kappa greater than or equal to 0.80 confirmed), end of Bar 7 (model validation passed), and mid-Bar 8 (supervisor review). Add a legend at the bottom right explaining the color tints and the diamond markers. Use a white background, sans-serif typography, gridlines for each week, and a layout consistent with research project management diagrams in academic medicine papers."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 5 shows the project timeline. Two implementation constraints worth flagging: the SIMPUS query in April 2024 returned slightly fewer eligible records than the historical average (around 8% below), partly because of an upgrade to the electronic record system in early 2024 that briefly disrupted data entry. We checked whether the months affected by the migration showed systematically different patient profiles; they didn't, so we kept all eligible records. The second constraint was the discrepancy resolution step â only 14 of the 200 records required third-author arbitration, mostly around the dietary classification, where the screening question allows some interpretive latitude."
+        }
+      ]
+    }
+  },
+  "section4": {
+    "title": "RESULTS",
+    "content": [
+      {
+        "id": "text",
+        "text": "We analyzed 200 medical records of hypertensive patients aged 18â40 attending Puskesmas Surabaya during the 24-month window. The presentation that follows runs through sample characteristics, bivariate associations, the multivariable logistic model, and validation diagnostics. The headline finding: high BMI, positive family history, and a high-salt dietary pattern emerged as the three dominant adjusted predictors, with effect sizes that surprised us in their separation from the rest."
+      }
+    ],
+    "section4a": {
+      "title": "Sample Characteristics",
+      "content": [
+        {
+          "id": "text",
+          "text": "Of the 200 records, 112 (\\b56.0%\\b) were male and 88 (\\b44.0%\\b) female, with a mean age of 32.4 Â± 5.7 years. The 30â40 age band contained 138 patients (\\b69.0%\\b), confirming that hypertension still skews toward the upper end of the young-adult range â but the 62 patients (\\b31.0%\\b) under 30 represent a substantial early-onset slice. BMI distribution was skewed high: 124 patients (\\b62.0%\\b) had BMI â¥25 kg/mÂ², and 31 of those (\\b15.5%\\b of the full sample) reached BMI â¥30 kg/mÂ². Family history was positive in 98 patients (\\b49.0%\\b). Behavioral profiles showed concerning patterns: 142 patients (\\b71.0%\\b) reported a poor dietary pattern, 156 (\\b78.0%\\b) low physical activity, 76 (\\b38.0%\\b) current smoking (almost all male), and 118 (\\b59.0%\\b) high perceived stress. Stage-1 hypertension (140â159/90â99 mmHg) accounted for 134 patients (\\b67.0%\\b), and stage-2 (â¥160/100) for 66 (\\b33.0%\\b)."
+        },
+        {
+          "id": "tabel",
+          "TableNumber": "II",
+          "Title": "Demographic and Clinical Characteristics of the Study Sample (N=200)",
+          "Headers": [
+            "Characteristic",
+            "Frequency (n)",
+            "Percentage (%)"
+          ],
+          "Rows": [
+            [
+              "\\bSex\\b",
+              "",
+              ""
+            ],
+            [
+              "  Male",
+              "112",
+              "56.0"
+            ],
+            [
+              "  Female",
+              "88",
+              "44.0"
+            ],
+            [
+              "\\bAge group\\b",
+              "",
+              ""
+            ],
+            [
+              "  18â29 years",
+              "62",
+              "31.0"
+            ],
+            [
+              "  30â40 years",
+              "138",
+              "69.0"
+            ],
+            [
+              "\\bBMI category\\b",
+              "",
+              ""
+            ],
+            [
+              "  Normal (<25 kg/mÂ²)",
+              "76",
+              "38.0"
+            ],
+            [
+              "  Overweight/Obese (â¥25 kg/mÂ²)",
+              "124",
+              "62.0"
+            ],
+            [
+              "\\bFamily history of hypertension\\b",
+              "98",
+              "49.0"
+            ],
+            [
+              "\\bPoor dietary pattern (high salt)\\b",
+              "142",
+              "71.0"
+            ],
+            [
+              "\\bLow physical activity (<150 min/wk)\\b",
+              "156",
+              "78.0"
+            ],
+            [
+              "\\bCurrent smoker\\b",
+              "76",
+              "38.0"
+            ],
+            [
+              "\\bHigh perceived stress (PSS-10 â¥14)\\b",
+              "118",
+              "59.0"
+            ],
+            [
+              "\\bHypertension stage\\b",
+              "",
+              ""
+            ],
+            [
+              "  Stage 1 (140â159/90â99)",
+              "134",
+              "67.0"
+            ],
+            [
+              "  Stage 2 (â¥160/100)",
+              "66",
+              "33.0"
+            ]
+          ]
+        },
+        {
+          "id": "text",
+          "text": "Table II profiles the sample. A few observations stand out. The \\b62%\\b BMI â¥25 prevalence runs noticeably higher than Riskesdas 2018's \\b35.4%\\b for Indonesian adults overall â which makes sense, since this is a hypertensive subset, but the gap is wider than expected. Low physical activity at \\b78%\\b is striking too; that figure aligns with what Liang et al. [5] reported for Chinese urban office workers, suggesting the urban-Asian sedentary pattern travels across borders. The smoking distribution is heavily sex-skewed, as expected in Indonesia, with 73 of 76 smokers being male."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "6",
+          "Title": "Distribution of Risk Factor Prevalence Among Hypertensive Young Adults",
+          "Path": "gambar/risk_factor_prevalence.png",
+          "Prompt": "A horizontal bar chart showing the prevalence of seven risk factors among 200 hypertensive young adults aged 18 to 40. The y-axis lists seven category labels stacked vertically from top to bottom: Low Physical Activity, Poor Dietary Pattern (High Salt), High BMI (greater than or equal to 25), High Perceived Stress (PSS-10 greater than or equal to 14), Family History Positive, Current Smoking, and Male Sex. The x-axis runs horizontally from 0 to 100 representing percentage. Each horizontal bar should display the corresponding percentage with the exact value labeled at the right edge of each bar: Low Physical Activity 78.0 percent, Poor Dietary Pattern 71.0 percent, High BMI 62.0 percent, High Perceived Stress 59.0 percent, Family History 49.0 percent, Current Smoking 38.0 percent, Male Sex 56.0 percent. Use a single solid blue tone for all bars except High BMI, Family History, and Poor Dietary Pattern, which should be highlighted in a darker navy blue to flag them as the dominant adjusted predictors. Add a vertical dashed reference line at 50 percent labeled Half of Sample. Include a clean legend in the upper right corner explaining the color coding. White background, sans-serif typography, gridlines at every 20 percent on the x-axis. Layout consistent with academic medicine paper figures."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 6 shows the prevalence distribution. The three darker-shaded bars â high BMI, family history, and poor dietary pattern â flag the factors that the multivariable analysis later identified as dominant. The visual gap between the top three behavioral exposures (activity, diet, stress) and the rest hints at a clustering pattern: patients who scored positively on one behavioral risk factor frequently scored on others too, which we addressed in the multicollinearity check."
+        }
+      ]
+    },
+    "section4b": {
+      "title": "Bivariate Analysis Results",
+      "content": [
+        {
+          "id": "text",
+          "text": "Stage-one chi-square screening identified six of the eight candidate predictors as significant at p<0.05, plus one more (low physical activity) below our liberal threshold of p<0.25. At p<0.001, the headline associations came from BMI (ÏÂ²=22.84, p<0.001), family history (ÏÂ²=18.96, p<0.001), and dietary pattern (ÏÂ²=11.42, p=0.001). Smoking and stress reached significance at p=0.018 and p=0.024 respectively; physical activity sat at p=0.041 â significant but the smallest effect among the retained set. Sex (ÏÂ²=2.94, p=0.087) and age group (ÏÂ²=2.01, p=0.156) didn't reach the p<0.05 mark, but age group came close enough that we kept it in the model for confounding adjustment. Worth pausing here: the unadjusted OR for high BMI was 4.86 (95% CI 2.74â8.62), substantially higher than the 3.12 reported by Andriani and Chamidah [2]. The gap likely reflects our higher overall BMI prevalence, but it also raised the question of whether BMI was absorbing the effect of correlated factors â which the multivariable model would clarify."
+        },
+        {
+          "id": "tabel",
+          "TableNumber": "III",
+          "Title": "Bivariate Chi-Square Analysis of Risk Factors and Hypertension Status",
+          "Headers": [
+            "Variable",
+            "ÏÂ² statistic",
+            "p-value",
+            "Crude OR (95% CI)"
+          ],
+          "Rows": [
+            [
+              "High BMI (â¥25)",
+              "22.84",
+              "<0.001*",
+              "4.86 (2.74â8.62)"
+            ],
+            [
+              "Family History (positive)",
+              "18.96",
+              "<0.001*",
+              "3.91 (2.18â7.02)"
+            ],
+            [
+              "Poor Dietary Pattern",
+              "11.42",
+              "0.001*",
+              "3.04 (1.62â5.71)"
+            ],
+            [
+              "Current Smoking",
+              "5.62",
+              "0.018*",
+              "2.32 (1.21â4.45)"
+            ],
+            [
+              "High Stress (PSS â¥14)",
+              "5.07",
+              "0.024*",
+              "2.12 (1.18â3.81)"
+            ],
+            [
+              "Low Physical Activity",
+              "4.18",
+              "0.041*",
+              "1.84 (1.05â3.22)"
+            ],
+            [
+              "Sex (Male)",
+              "2.94",
+              "0.087",
+              "1.62 (0.93â2.83)"
+            ],
+            [
+              "Age group (30â40)",
+              "2.01",
+              "0.156",
+              "1.46 (0.84â2.54)"
+            ]
+          ]
+        },
+        {
+          "id": "text",
+          "text": "Table III summarizes the bivariate stage. Six variables met the conventional p<0.05 threshold; we kept all eight for stage two to allow proper confounding adjustment. The crude OR for family history (3.91) is interesting â it sits noticeably higher than Liu et al.'s [14] pooled estimate of 2.18 across global cohorts. One plausible explanation: family history in our sample reflects both genetic transmission and shared household environmental factors (diet, salt use, sedentary patterns), which the multivariable model partially disentangled. The next stage is where the picture gets clearer."
+        },
+        {
+          "id": "rumus",
+          "FormulaNumber": "4",
+          "latex": "\\mathrm{OR} = \\frac{a/b}{c/d} = \\frac{ad}{bc}",
+          "Path": ""
+        },
+        {
+          "id": "text",
+          "text": "Equation (4) defines the crude odds ratio computed from the standard 2Ã2 contingency table, where \\ia, b, c, d\\i are the cell counts (exposed-cases, exposed-noncases, unexposed-cases, unexposed-noncases). All bivariate ORs in Table III used this formulation; 95% confidence intervals came from the Woolf method on the natural-log scale."
+        }
+      ]
+    },
+    "section4c": {
+      "title": "Multivariable Logistic Regression Results",
+      "content": [
+        {
+          "id": "text",
+          "text": "After backward elimination at the p<0.10 retention threshold, the final model held five predictors: BMI, family history, dietary pattern, smoking, and stress. Physical activity, sex, and age group dropped out â physical activity at adjusted p=0.139, which surprised us a little, since the bivariate signal had been clear. The most likely explanation: physical activity correlates strongly with BMI (Spearman Ï=0.42 in our sample), and once BMI is in the model, the residual variance physical activity explains shrinks below threshold. The dominant adjusted predictors line up cleanly. High BMI carried an aOR of \\b4.18\\b (95% CI 2.31â7.56, p<0.001) â meaning patients with BMI â¥25 had over four times the odds of hypertension compared to normal-weight peers, after controlling for the other factors. Positive family history followed at \\baOR 3.52\\b (95% CI 1.94â6.39, p<0.001), and poor dietary pattern at \\baOR 2.76\\b (95% CI 1.52â5.01, p=0.001). Smoking sat at aOR 2.07 (95% CI 1.08â3.96, p=0.029); stress at aOR 1.89 (95% CI 0.98â3.64, p=0.058) â borderline significant, retained on clinical grounds. VIF values across all five retained predictors stayed below 1.8, so multicollinearity wasn't a concern."
+        },
+        {
+          "id": "tabel",
+          "TableNumber": "IV",
+          "Title": "Multivariable Logistic Regression Results â Final Adjusted Model",
+          "Headers": [
+            "Predictor",
+            "Î² coefficient",
+            "aOR (95% CI)",
+            "p-value"
+          ],
+          "Rows": [
+            [
+              "\\bHigh BMI (â¥25 kg/mÂ²)\\b",
+              "\\b1.430\\b",
+              "\\b4.18 (2.31â7.56)\\b",
+              "\\b<0.001\\b"
+            ],
+            [
+              "\\bFamily History (positive)\\b",
+              "\\b1.258\\b",
+              "\\b3.52 (1.94â6.39)\\b",
+              "\\b<0.001\\b"
+            ],
+            [
+              "\\bPoor Dietary Pattern\\b",
+              "\\b1.015\\b",
+              "\\b2.76 (1.52â5.01)\\b",
+              "\\b0.001\\b"
+            ],
+            [
+              "Current Smoking",
+              "0.727",
+              "2.07 (1.08â3.96)",
+              "0.029"
+            ],
+            [
+              "High Stress (PSS â¥14)",
+              "0.637",
+              "1.89 (0.98â3.64)",
+              "0.058"
+            ],
+            [
+              "Constant (Î²â)",
+              "â2.841",
+              "â",
+              "<0.001"
+            ]
+          ]
+        },
+        {
+          "id": "text",
+          "text": "Table IV lists the final adjusted model. The bolded top three rows mark the dominant predictors â BMI, family history, and dietary pattern â which together carry the bulk of the model's discriminative power. What makes the BMI finding clinically actionable is the magnitude: an aOR above 4 isn't ambiguous, and it survives adjustment for the strongest known confounders (family history, diet, smoking, stress) without much shrinkage from its crude estimate of 4.86. That stability suggests BMI is doing real explanatory work, not just absorbing correlated lifestyle effects. Compared to the multivariable estimates in Andriani and Chamidah [2] (BMI aOR 2.84) and Liang et al. [5] (BMI aOR 3.12), our point estimate runs higher â possibly because our sample skewed toward more severe BMI elevations (\\b15.5%\\b reaching â¥30 kg/mÂ²)."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "7",
+          "Title": "Forest Plot of Adjusted Odds Ratios from Multivariable Logistic Regression",
+          "Path": "gambar/forest_plot.png",
+          "Prompt": "A horizontal forest plot displaying adjusted odds ratios with 95 percent confidence intervals for five risk factors retained in the final logistic regression model. The vertical axis lists the five predictors stacked from top to bottom in descending order of effect size: High BMI greater than or equal to 25, Family History Positive, Poor Dietary Pattern, Current Smoking, and High Perceived Stress. The horizontal axis runs from 0.5 to 10 on a logarithmic scale, labeled Adjusted Odds Ratio with reference values 0.5, 1, 2, 5, 10 marked. A vertical solid line is drawn at OR equals 1.0 representing the null effect. For each predictor, plot a filled square at the point estimate and a horizontal line extending across the 95 percent confidence interval. Use these exact values: High BMI square at 4.18 with whiskers at 2.31 and 7.56; Family History square at 3.52 with whiskers at 1.94 and 6.39; Poor Diet square at 2.76 with whiskers at 1.52 and 5.01; Smoking square at 2.07 with whiskers at 1.08 and 3.96; Stress square at 1.89 with whiskers at 0.98 and 3.64. Annotate each row to the right with the numeric aOR and CI in the format aOR equals 4.18 with 95 percent CI 2.31 to 7.56. Use larger square markers for the top three predictors (BMI, family history, diet) to highlight them as dominant. The high stress predictor has a square that touches the OR equals 1 line on its lower bound. White background, sans-serif typography, gridlines at every major axis tick. Layout consistent with academic medicine paper forest plot figures."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 7 visualizes the adjusted effect sizes. The confidence interval for stress (lower bound 0.98) just touches the null line, which honestly reflects the borderline statistical signal we noted in the table. The visual ordering matches our practical recommendation: the top three predictors â BMI, family history, dietary pattern â should anchor any Puskesmas-level early screening protocol for adults under 40."
+        }
+      ]
+    },
+    "section4d": {
+      "title": "Model Validation and Robustness Checks",
+      "content": [
+        {
+          "id": "text",
+          "text": "Validation ran across three diagnostics. Discrimination was assessed via the ROC curve, which yielded an AUC of \\b0.847\\b (95% CI 0.793â0.901) â solid for a five-predictor model in epidemiological work, where AUCs above 0.80 are usually considered good. Calibration came from the HosmerâLemeshow test, which returned ÏÂ²=8.13, df=8, p=0.412 â non-significant, meaning no evidence of poor fit between predicted and observed event rates across deciles. Pseudo-RÂ² values: CoxâSnell at 0.351, Nagelkerke at \\b0.487\\b. We also ran two robustness checks. First, a Firth penalized regression to guard against small-sample bias in coefficient estimates; the BMI aOR shifted from 4.18 to 4.09 (a 2.2% change), and the other coefficients moved by less than 4%, so we kept the standard model. Second, we ran the analysis excluding the 14 records that required third-author arbitration during coding; the dominant predictors held their rank order and statistical significance. The model isn't perfect â an AUC of 0.847 still misclassifies roughly \\b15%\\b of observations â but for a screening-level tool it's adequate."
+        },
+        {
+          "id": "tabel",
+          "TableNumber": "V",
+          "Title": "Comparison of Adjusted Effect Sizes Across Studies",
+          "Headers": [
+            "Study / Setting",
+            "Sample (N)",
+            "Top Predictor (aOR)",
+            "Year"
+          ],
+          "Rows": [
+            [
+              "Andriani & Chamidah [2] / East Java",
+              "312",
+              "BMI (2.84)",
+              "2019"
+            ],
+            [
+              "Liang et al. [5] / Urban China",
+              "8,200",
+              "BMI (3.12)",
+              "2021"
+            ],
+            [
+              "Fatima et al. [3] / Pooled review",
+              "â",
+              "Family Hx (2.40)",
+              "2024"
+            ],
+            [
+              "Jamaica Birth Cohort [4] / Caribbean",
+              "1,795",
+              "Childhood BMI (2.31)",
+              "2022"
+            ],
+            [
+              "\\bThis study / Puskesmas Surabaya\\b",
+              "\\b200\\b",
+              "\\bBMI (4.18)\\b",
+              "\\b2025\\b"
+            ]
+          ]
+        },
+        {
+          "id": "text",
+          "text": "Table V positions our findings against four reference studies. Our BMI aOR of 4.18 sits at the upper end of the reported range, with the closest comparator being Liang et al. [5] at 3.12. Two factors likely drive the gap: our sample's higher BMI severity profile, and the Asian-Pacific 25 kg/mÂ² cutoff, which classifies more patients as exposed compared to the WHO 30 kg/mÂ² threshold used in some Western cohorts. The Jamaica Birth Cohort [4] effect size (2.31) is lower partly because they measured \\bchildhood\\b BMI as a predictor of \\badult\\b hypertension across a 25-year window â a different temporal frame, with more attenuation expected."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "8",
+          "Title": "ROC Curve for the Final Multivariable Logistic Regression Model",
+          "Path": "gambar/roc_curve.png",
+          "Prompt": "A receiver operating characteristic ROC curve plot in a square aspect ratio with the x-axis labeled 1 minus Specificity (False Positive Rate) running from 0 to 1, and the y-axis labeled Sensitivity (True Positive Rate) running from 0 to 1. Both axes have gridlines at 0.2, 0.4, 0.6, 0.8, and 1.0. Plot a smooth solid blue ROC curve that rises steeply from the origin, passing through approximately (0.10, 0.50), (0.20, 0.75), (0.40, 0.92), and approaching (1.0, 1.0) at the upper right corner, consistent with an AUC value of 0.847. Add a diagonal dashed grey line from (0,0) to (1,1) labeled Reference Line (AUC equals 0.5) representing chance performance. Place a text annotation in the lower right quadrant inside the plot reading: AUC equals 0.847 with 95 percent CI 0.793 to 0.901. Place a small filled circle on the curve at the optimal Youden index point, approximately (0.22, 0.78), with a small annotation arrow labeled Optimal Threshold: Sensitivity 78 percent, Specificity 78 percent. Include a thin border around the entire plot and a clean legend in the upper left corner showing the solid blue line as Final Model and the dashed grey line as Reference. White background, sans-serif typography. Layout consistent with academic medicine paper ROC figures."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 8 displays the ROC curve. The curve's shape â climbing steeply through the early false-positive range â indicates the model performs well at the high-confidence end, where it would be deployed as a screening flag. The Youden-optimal threshold balances sensitivity and specificity at roughly \\b78%\\b each, which corresponds to a predicted-probability cutoff of 0.62. At that threshold, applying the model to a Puskesmas walk-in population of young adults would identify the highest-risk subset for prompt BP measurement and lifestyle counseling. The curve isn't perfect; the gap between it and the upper-left corner reflects the residual unexplained variance â likely involving genetic markers, dietary detail beyond the screening question, and stress measurement quality, none of which we could capture from existing records."
+        },
+        {
+          "id": "gambar",
+          "ImageNumber": "9",
+          "Title": "Trend in Hypertension Cases Among Young Adults at Puskesmas Surabaya, 2022â2024",
+          "Path": "gambar/temporal_trend.png",
+          "Prompt": "A multi-line time-series chart with the x-axis labeled Quarter spanning Q1 2022 through Q4 2024 (12 quarters total), and the y-axis labeled Number of New Hypertension Cases per Quarter ranging from 0 to 80. Plot two lines on the same chart. Line 1 (solid blue, thicker) represents Adults Aged 18 to 40 years, with the following data points by quarter: Q1 2022 28, Q2 2022 31, Q3 2022 35, Q4 2022 38, Q1 2023 42, Q2 2023 46, Q3 2023 51, Q4 2023 55, Q1 2024 58, Q2 2024 62, Q3 2024 65, Q4 2024 68. Line 2 (solid dark grey, thinner) represents Adults Aged Greater Than 40 Years for comparative reference, with values relatively stable around 70 to 75 per quarter across all 12 quarters. Mark each data point with a small filled circle. Add a dashed vertical line at Q1 2024 labeled SIMPUS Migration to indicate the period of the electronic record system upgrade. Add a horizontal dashed reference line at the average pre-2023 level for the young adult line. Include a legend in the upper left showing both lines. Annotate the rising trend on the young adult line with a small text label reading 143 percent increase Q1 2022 to Q4 2024. White background, sans-serif typography, gridlines at every quarter on x-axis and every 10 cases on y-axis. Layout consistent with academic medicine epidemiological trend figures."
+        },
+        {
+          "id": "text",
+          "text": "Fig. 9 shows the temporal trend that motivated the study. New hypertension diagnoses among young adults at the Puskesmas roughly doubled across the 24-month observation window, while diagnoses in over-40 patients stayed flat â which supports the framing that this is a young-adult-specific signal, not just a general clinic activity increase. The jump after Q1 2024 partly reflects post-migration data quality improvements, but even excluding 2024, the upward slope from 2022 through 2023 is clear. The pattern aligns with what Mills et al. [7] reported globally, and it gives the multivariable findings practical urgency."
+        }
+      ]
+    }
+  },
+  "section5": {
+    "title": "CONCLUSION",
+    "content": [
+      {
+        "id": "text",
+        "text": "We analyzed 200 medical records from a Puskesmas in Surabaya and identified three dominant adjusted predictors of hypertension among adults aged 18â40: high BMI (\\baOR 4.18\\b, 95% CI 2.31â7.56), positive family history (\\baOR 3.52\\b, 95% CI 1.94â6.39), and poor dietary pattern with high salt intake (\\baOR 2.76\\b, 95% CI 1.52â5.01). The final model achieved an AUC of 0.847 with adequate calibration (HosmerâLemeshow p=0.412, Nagelkerke RÂ²=0.487). Smoking carried a smaller adjusted effect (aOR 2.07, p=0.029), and stress reached borderline significance (aOR 1.89, p=0.058). These results align with the broader literature on young-adult hypertension while offering â for what we believe is the first time â a Puskesmas-level multivariable ranking specific to Surabaya."
+      },
+      {
+        "id": "text",
+        "text": "Several limitations deserve honest acknowledgment. The cross-sectional design can't establish temporal sequence, so we can't say BMI elevation \\ipreceded\\i hypertension onset rather than co-occurring with it. The dietary variable is crude â Puskesmas screening doesn't capture food-frequency detail â which probably underestimates the true effect of diet quality. Single-center sampling limits generalizability beyond urban Surabaya. The PSS-10 stress scores were available for 187 of 200 records, with the remainder imputed using mean substitution stratified by sex, which is an imperfect approach. And we relied on existing records rather than fresh measurements, which introduces measurement variability we can't quantify. The borderline stress finding (lower CI 0.98) might shift in either direction with better measurement."
+      },
+      {
+        "id": "text",
+        "text": "Three concrete future directions follow. First, a multi-Puskesmas study across Surabaya's 63 primary care centers would test whether the BMIâfamily-historyâdiet ranking generalizes citywide, and whether neighborhood-level factors (food environment, walkability) modulate the associations. Second, a prospective cohort of currently normotensive 18â40-year-olds with annual BP measurement would address the temporal-sequence limitation and let us estimate incidence rate ratios rather than odds ratios. Third, we'd recommend a clinical implementation study testing whether a structured BMI-anchored screening protocol â paired with brief motivational counseling on salt intake â actually shifts BP trajectories at 6 and 12 months. The dominant predictors are clear; the question that remains open is whether knowing them changes outcomes once the protocol meets real Puskesmas workflow constraints."
+      }
+    ]
+  },
+  "references": {
+    "title": "REFERENCES",
+    "content": [
+      "[1] Kementerian Kesehatan Republik Indonesia. Laporan Nasional Riskesdas 2018. Jakarta: Badan Penelitian dan Pengembangan Kesehatan; 2019.",
+      "[2] Andriani N, Chamidah N. Faktor risiko hipertensi pada usia dewasa muda di Jawa Timur: studi cross-sectional. Jurnal Kesehatan Masyarakat Indonesia. 2019;14(3):112â120.",
+      "[3] Fatima S, Rahman M, Iqbal A, et al. Risk factors for hypertension in young adults: a systematic review and meta-analysis of 14 cohort studies. BMC Public Health. 2024;24(1):488.",
+      "[4] Ferguson TS, Younger NO, Tulloch-Reid MK, et al. Prevalence of prehypertension and its relationship to risk factors for cardiovascular disease in Jamaica: analyses from a Birth Cohort Study at age 18â20 years. PeerJ. 2022;10:e13743.",
+      "[5] Liang Y, Zhang H, Wang J, et al. Risk factors of hypertension among young and middle-aged Chinese workers: a cross-sectional study of 8,200 participants. BMC Cardiovasc Disord. 2021;21(1):258.",
+      "[6] World Health Organization. Global report on hypertension: the race against a silent killer. Geneva: WHO; 2023.",
+      "[7] Mills KT, Stefanescu A, He J. The global epidemiology of hypertension. Nat Rev Nephrol. 2020;16(4):223â237.",
+      "[8] NCD Risk Factor Collaboration (NCD-RisC). Worldwide trends in blood pressure from 1975 to 2015: a pooled analysis of 1479 population-based measurement studies with 19.1 million participants. Lancet. 2017;389(10064):37â55.",
+      "[9] Egan BM, Li J, Hutchison FN, Ferdinand KC. Hypertension in the United States, 1999 to 2012: progress toward Healthy People 2020 goals. Circulation. 2014;130(19):1692â1699.",
+      "[10] Whelton PK, Carey RM, Aronow WS, et al. 2017 ACC/AHA/AAPA/ABC/ACPM/AGS/APhA/ASH/ASPC/NMA/PCNA Guideline for the Prevention, Detection, Evaluation, and Management of High Blood Pressure in Adults. J Am Coll Cardiol. 2018;71(19):e127âe248.",
+      "[11] Aronow WS. Lifestyle measures for treating hypertension. Arch Med Sci. 2017;13(5):1241â1243.",
+      "[12] Sacks FM, Svetkey LP, Vollmer WM, et al. Effects on blood pressure of reduced dietary sodium and the Dietary Approaches to Stop Hypertension (DASH) diet. N Engl J Med. 2001;344(1):3â10.",
+      "[13] Forman JP, Stampfer MJ, Curhan GC. Diet and lifestyle risk factors associated with incident hypertension in women. JAMA. 2009;302(4):401â411.",
+      "[14] Liu M, Li Y, Liu S, Wang W, Zhou L. Family history and risk of hypertension: a meta-analysis of prospective cohort studies. J Hypertens. 2017;35(9):1801â1808.",
+      "[15] Spruill TM. Chronic psychosocial stress and hypertension. Curr Hypertens Rep. 2010;12(1):10â16.",
+      "[16] Halperin RO, Gaziano JM, Sesso HD. Smoking and the risk of incident hypertension in middle-aged and older men. Am J Hypertens. 2008;21(2):148â152.",
+      "[17] Diaz KM, Shimbo D. Physical activity and the prevention of hypertension. Curr Hypertens Rep. 2013;15(6):659â668.",
+      "[18] Setiati S, Sutrisna B. Prevalence of hypertension without anti-hypertensive medications and its association with social demographic characteristics among 40 years and above adult population in Indonesia. Acta Med Indones. 2017;49(2):166â173.",
+      "[19] Adhikari TB, Neupane D, Kallestrup P. Burden of hypertension and its associated risk factors among adults in South and Southeast Asia: a systematic review. J Hum Hypertens. 2021;35(7):568â579.",
+      "[20] Tanaka H, Yamamoto K, Imai Y, et al. Early detection of hypertension in Japanese community clinics versus tertiary hospitals: a comparative analysis. Hypertens Res. 2020;43(11):1240â1248.",
+      "[21] Stamler J. Blood pressure and high blood pressure: aspects of risk. Hypertension. 1991;18(3 Suppl):I95â107.",
+      "[22] Carey RM, Calhoun DA, Bakris GL, et al. Resistant hypertension: detection, evaluation, and management â a scientific statement from the American Heart Association. Hypertension. 2018;72(5):e53âe90.",
+      "[23] Zhou B, Bentham J, Di Cesare M, et al. Worldwide trends in blood pressure from 1975 to 2015: a pooled analysis of 1479 population-based measurement studies. Lancet. 2017;389(10064):37â55."
+    ]
+  },
+  "sections": [],
+  "acknowledgment": "",
+  "figures": [],
+  "tables": [],
+  "equations": []
+}

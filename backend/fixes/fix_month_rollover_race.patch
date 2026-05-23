@@ -1,0 +1,35 @@
+--- a/backend/quota_bp.py
++++ b/backend/quota_bp.py
+@@ -8,6 +8,7 @@ from datetime import datetime, timezone
+ 
+ from flask import Blueprint, jsonify
+ from flask_jwt_extended import get_jwt_identity, jwt_required
++from sqlalchemy import update
+ from sqlalchemy import func
+ 
+ from models import ApiUsageLog, User, db
+@@ -32,11 +33,19 @@ def my_quota():
+     now = datetime.now(timezone.utc)
+     month_key = now.strftime("%Y-%m")
+ 
+-    # Auto-roll if month changed since last write.
+-    if (user.usage_month_key or "") != month_key:
+-        user.usage_month_key = month_key
+-        user.token_used_month = 0
+-        db.session.commit()
++    # Auto-roll if month changed since last write (atomic to prevent race condition)
++    # Only one request will successfully update when month changes
++    reset_stmt = (
++        update(User)
++        .where(User.id == user_id, User.usage_month_key != month_key)
++        .values(usage_month_key=month_key, token_used_month=0)
++    )
++    result = db.session.execute(reset_stmt)
++    if result.rowcount > 0:
++        db.session.commit()
++        # Refresh user object to get updated values
++        db.session.refresh(user)
++    db.session.rollback()  # Close read transaction
+ 
+     # Today's usage from logs (cheap aggregate; index on user_id+created_at).
+     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
