@@ -58,7 +58,7 @@ except Exception:
     pass
 from paper_generation.chunked import GenerationCancelled
 from paper_generation.single import generate_paper_json_single
-from template.IEEEgen import build_document as build_ieee_docx
+from templates.IEEEgen import build_document as build_ieee_docx
 
 # Load environment variables.
 #
