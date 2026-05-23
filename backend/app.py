@@ -26,7 +26,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 
 from database.models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
-from auth import auth_bp, init_oauth
+from api.auth_bp import auth_bp, init_oauth
 from admin import admin_bp
 from chat import chat_bp
 from papers_bp import papers_bp
