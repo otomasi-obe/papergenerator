@@ -27,16 +27,16 @@ from dotenv import load_dotenv
 
 from database.models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
 from api.auth_bp import auth_bp, init_oauth
-from admin import admin_bp
+from api.admin_bp import admin_bp
 from api.chat_bp import chat_bp
-from papers_bp import papers_bp
-from files_bp import files_bp
-from images_bp import paper_images_bp, image_serve_bp
-from charts_bp import charts_bp
-from jobs_bp import jobs_bp
-from image_jobs_bp import image_jobs_bp
-from slr_bp import slr_bp
-from quota_bp import quota_bp
+from api.papers_bp import papers_bp
+from api.files_bp import files_bp
+from api.images_bp import paper_images_bp, image_serve_bp
+from api.charts_bp import charts_bp
+from api.jobs_bp import jobs_bp
+from api.image_jobs_bp import image_jobs_bp
+from api.slr_bp import slr_bp
+from api.quota_bp import quota_bp
 
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
 try:
