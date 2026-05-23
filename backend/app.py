@@ -287,7 +287,7 @@ limiter.limit("10 per minute")(auth_bp)
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 LOG_FILE = Path(__file__).parent / "data" / "logs" / "app.log"
-from observability_v2 import init_observability  # noqa: E402  (after app + db ready)
+from monitoring.observability_v2 import init_observability  # noqa: E402  (after app + db ready)
 init_observability(app, db, log_file=LOG_FILE)
 log = logging.getLogger(__name__)
 
