@@ -34,7 +34,7 @@ from typing import Optional
 import requests
 
 try:
-    from chat_tools import _save_memory  # type: ignore
+    from chat.tools import _save_memory  # type: ignore
 except Exception:  # pragma: no cover — defensive import for tests
     _save_memory = None  # type: ignore
 

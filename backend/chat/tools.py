@@ -1019,7 +1019,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     # Only registered AFTER thread.start() so the registry stays consistent
     # with worker state.
     try:
-        from chat import register_active_job
+        from api.chat_bp import register_active_job
         register_active_job(paper_id, job_id)
     except Exception:
         pass  # registry not available — non-fatal

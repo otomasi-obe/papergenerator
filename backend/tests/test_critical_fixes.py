@@ -149,7 +149,7 @@ class TestSemaphoreLeak:
     
     def test_semaphore_released_on_timeout(self, client):
         """Verify semaphore is not leaked when acquire times out."""
-        from chat import _upstream_sem, _call_upstream
+        from api.chat_bp import _upstream_sem, _call_upstream
         
         # Record initial semaphore count
         initial_value = _upstream_sem._value
@@ -176,7 +176,7 @@ class TestSemaphoreLeak:
     
     def test_semaphore_released_on_exception(self, client):
         """Verify semaphore is released even when exception occurs."""
-        from chat import _upstream_sem, _call_upstream
+        from api.chat_bp import _upstream_sem, _call_upstream
         
         initial_value = _upstream_sem._value
         

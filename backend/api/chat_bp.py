@@ -20,15 +20,15 @@ import requests
 from flask import Blueprint, request, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from database.models import db, Conversation, ChatMessage, Paper, ProjectMemory, User
-from chat_tools import execute_tool, CHAT_TOOLS, get_memory_summary
+from chat.tools import execute_tool, CHAT_TOOLS, get_memory_summary
 try:
     from chat_tools import _log_chat_call  # type: ignore
 except ImportError:
     def _log_chat_call(*_args, **_kwargs):  # noqa: D401 — placeholder
         """No-op when chat_tools._log_chat_call hasn't landed yet (Agent 2)."""
         return None
-from mode_prompts import get_mode_bundle, list_modes
-from auto_memory import extract_facts
+from chat.mode_prompts import get_mode_bundle, list_modes
+from chat.auto_memory import extract_facts
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -16,7 +16,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-not-real-and-not-short"
 os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
 
 import auto_memory  # noqa: E402
-from auto_memory import (  # noqa: E402
+from chat.auto_memory import (  # noqa: E402
     ExtractedFact,
     _confidence_ok,
     _llm_fallback_layer,

@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import mode_prompts  # noqa: E402
-from mode_prompts import (  # noqa: E402
+from chat.mode_prompts import (  # noqa: E402
     MODE_PROMPTS,
     MODE_TOOLS,
     TIER0_PROMPT,

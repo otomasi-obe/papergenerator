@@ -28,7 +28,7 @@ from dotenv import load_dotenv
 from database.models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
 from api.auth_bp import auth_bp, init_oauth
 from admin import admin_bp
-from chat import chat_bp
+from api.chat_bp import chat_bp
 from papers_bp import papers_bp
 from files_bp import files_bp
 from images_bp import paper_images_bp, image_serve_bp
@@ -818,7 +818,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         # /active-job endpoint stops reporting an in-flight job whether
         # generation succeeded or failed.
         try:
-            from chat import clear_active_job
+            from api.chat_bp import clear_active_job
             if paper_id:
                 clear_active_job(paper_id)
         except Exception:
@@ -836,7 +836,7 @@ def get_paper_active_job(paper_id):
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
     try:
-        from chat import _active_jobs_by_paper
+        from api.chat_bp import _active_jobs_by_paper
         job_id = _active_jobs_by_paper.get(paper_id)
         if not job_id:
             return jsonify({"active": False})
