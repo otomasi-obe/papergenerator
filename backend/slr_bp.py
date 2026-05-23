@@ -31,7 +31,7 @@ from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import defer
 
 from database.models import LiteratureItem, Paper, PaperFile, SlrJob, db
-from paper_utils import PAPER_ID_RE
+from paper_generation.utils import PAPER_ID_RE
 from slr_worker import enqueue_slr_job
 
 log = logging.getLogger(__name__)

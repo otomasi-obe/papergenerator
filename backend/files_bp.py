@@ -19,7 +19,7 @@ from flask_jwt_extended import (
 )
 
 from database.models import Paper, PaperFile, db
-from paper_utils import (
+from paper_generation.utils import (
     PAPER_ID_RE,
     safe_paper_dir,
     upload_folder,
@@ -121,7 +121,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
                     return txt[:MAX_PREVIEW_CHARS]
             except Exception:
                 pass
-            from extract_pdfs import extract_text_from_pdf
+            from paper_generation.extract_pdfs import extract_text_from_pdf
             with open(filepath, "rb") as f:
                 txt = extract_text_from_pdf(f)
             return txt[:MAX_PREVIEW_CHARS]

@@ -27,7 +27,7 @@ from database.models import (
     SlrJob,
     db,
 )
-from paper_utils import PAPER_ID_RE, safe_paper_dir
+from paper_generation.utils import PAPER_ID_RE, safe_paper_dir
 
 log = logging.getLogger(__name__)
 

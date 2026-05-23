@@ -1420,7 +1420,7 @@ def _generate_chart_tool(paper_id, user_id, args):
 
     try:
         from core.chart_generator import generate_chart, ChartSpec
-        from paper_utils import safe_paper_dir
+        from paper_generation.utils import safe_paper_dir
     except Exception as e:
         return f"Error: chart generator unavailable ({e})"
 

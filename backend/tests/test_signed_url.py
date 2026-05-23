@@ -23,7 +23,7 @@ def _app_ctx():
 
 
 def _import_helpers():
-    from paper_utils import sign_resource_token, verify_resource_token
+    from paper_generation.utils import sign_resource_token, verify_resource_token
     return sign_resource_token, verify_resource_token
 
 

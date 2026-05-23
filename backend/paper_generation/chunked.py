@@ -22,7 +22,7 @@ from core.env_loader import load_app_env
 from json_repair import repair_json
 
 # Reuse existing API caller with fallback
-from generate_ai_json_paper_aiotomasi import _call_aiotomasi_with_fallback
+from paper_generation.api_client import _call_aiotomasi_with_fallback
 
 log = logging.getLogger(__name__)
 

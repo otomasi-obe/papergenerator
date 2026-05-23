@@ -28,7 +28,7 @@ os.environ.setdefault("AIOTOMASI_API", "https://example.invalid/api")
 os.environ.setdefault("AIOTOMASI_APIKEY", "test-key-not-real")
 
 import generate_paper_chunked as gpc  # noqa: E402
-from generate_paper_chunked import (  # noqa: E402
+from paper_generation.chunked import (  # noqa: E402
     GenerationCancelled,
     generate_paper_json_chunked,
 )

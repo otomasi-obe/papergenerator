@@ -21,7 +21,7 @@ from flask_jwt_extended import (
 )
 
 from database.models import Paper, PaperImage, db
-from paper_utils import (
+from paper_generation.utils import (
     FILENAME_RE,
     PAPER_ID_RE,
     is_image_bytes,

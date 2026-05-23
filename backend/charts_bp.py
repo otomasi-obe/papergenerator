@@ -18,7 +18,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from core.chart_generator import ChartSpec, generate_chart
 from database.models import Paper, PaperImage, db
-from paper_utils import PAPER_ID_RE, safe_paper_dir
+from paper_generation.utils import PAPER_ID_RE, safe_paper_dir
 
 log = logging.getLogger(__name__)
 

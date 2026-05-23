@@ -110,7 +110,7 @@ def run_generate_paper(job_id: str, user_id: int, paper_id: str,
     # Build a Flask app context inside the worker so SQLAlchemy can talk to the DB.
     from app import app  # noqa: F401  (boots the global Flask app + DB binding)
     from models import AiJob, Paper, db
-    from generate_paper_chunked import (
+    from paper_generation.chunked import (
         generate_paper_json_chunked,
         GenerationCancelled,
     )

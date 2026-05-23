@@ -56,8 +56,8 @@ try:
         )
 except Exception:
     pass
-from generate_paper_chunked import GenerationCancelled
-from generate_paper_single import generate_paper_json_single
+from paper_generation.chunked import GenerationCancelled
+from paper_generation.single import generate_paper_json_single
 from template.IEEEgen import build_document as build_ieee_docx
 
 # Load environment variables.
@@ -564,7 +564,7 @@ def generate():
             messages.append({"role": "assistant", "content": "I understand the context. What would you like me to do?"})
         messages.append({"role": "user", "content": prompt})
 
-        from generate_ai_json_paper_aiotomasi import _call_aiotomasi_with_fallback  # noqa: PLC0415
+        from paper_generation.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
         result, model_used = _call_aiotomasi_with_fallback(
             messages, api_key, base_url, AIOTOMASI_MODEL,
         )
@@ -677,7 +677,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         # Without this, an upstream truncation (e.g. the model stopped at
         # section1 because of `max_tokens`) silently produces a stub paper that
         # only the user discovers after waiting 5–10 minutes.
-        from generate_paper_single import _validate_paper_shape as _vps
+        from paper_generation.single import _validate_paper_shape as _vps
         validation = _vps(paper_data)
         if not validation["ok"]:
             log.warning(
@@ -968,7 +968,7 @@ def upload_pdfs():
     Routes through the shared 20-worker extraction pool in files_bp so a chat
     upload doesn't block a Files-tab upload (and vice versa).
     """
-    from extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
+    from paper_generation.extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
     from docx import Document  # noqa: PLC0415
     from files_bp import _EXTRACT_POOL  # noqa: PLC0415
     import io  # noqa: PLC0415

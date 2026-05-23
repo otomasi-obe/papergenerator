@@ -97,7 +97,7 @@ class _Worker(threading.Thread):
             from sqlalchemy import update  # noqa: PLC0415
 
             from models import ImageGenJob, PaperImage, db  # noqa: PLC0415
-            from paper_utils import safe_paper_dir  # noqa: PLC0415
+            from paper_generation.utils import safe_paper_dir  # noqa: PLC0415
 
             with self.app.app_context():
                 # Atomic claim: only the FIRST worker that flips status from
