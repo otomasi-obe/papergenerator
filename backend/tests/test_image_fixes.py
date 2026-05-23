@@ -23,7 +23,7 @@ class TestCookieValidation:
     
     def test_missing_psidts_raises_error(self):
         """Should raise RuntimeError if PSIDTS cookie missing after 90s"""
-        from imageGenerator.GeminiCookies import _wait_for_required_cookies
+        from image_generation.GeminiCookies import _wait_for_required_cookies
         
         mock_page = Mock()
         mock_context = Mock()
@@ -40,7 +40,7 @@ class TestCookieValidation:
     
     def test_complete_cookies_returns_true(self):
         """Should return True when all required cookies present"""
-        from imageGenerator.GeminiCookies import _has_required_cookies
+        from image_generation.GeminiCookies import _has_required_cookies
         
         mock_context = Mock()
         mock_context.cookies.return_value = [

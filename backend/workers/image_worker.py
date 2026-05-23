@@ -43,7 +43,7 @@ def _get_pool():
     global _pool
     with _pool_lock:
         if _pool is None:
-            from imageGenerator.CreateImageGemini import GeminiPool  # noqa: PLC0415
+            from image_generation.CreateImageGemini import GeminiPool  # noqa: PLC0415
             _pool = GeminiPool.from_env()
         return _pool
 
@@ -183,7 +183,7 @@ class _Worker(threading.Thread):
                 # If compression fails, we must fail the job rather than storing
                 # a 10MB+ image that will break the frontend.
                 try:
-                    from imageGenerator.compress import compress_image  # noqa: PLC0415
+                    from image_generation.compress import compress_image  # noqa: PLC0415
                     if not compress_image(out_path, max_size_mb=1.0):
                         raise RuntimeError(
                             f"Image compression failed: could not reduce {out_path.name} to <1MB. "

@@ -1,0 +1,810 @@
+{
+   "checksum": "43198c89e36111fd3eca2a621876d925",
+   "roots": {
+      "bookmark_bar": {
+         "children": [ {
+            "date_added": "13051348238769133",
+            "date_last_used": "0",
+            "guid": "c4094e63-93b4-f644-b020-d46166cb9c67",
+            "id": "11",
+            "name": "Analisa Rangkaian Dioda Zener - Elka Asik",
+            "type": "url",
+            "url": "http://elkaasik.com/analisa-rangkaian-dioda-zener/"
+         }, {
+            "date_added": "13182422157125647",
+            "date_last_used": "13377233735105016",
+            "guid": "b38ecbba-72f6-ff64-9761-a6a4138a95f8",
+            "id": "12",
+            "name": "Bloggoto Tandanio: LISTRIK DAN MAGNET (HUKUM COULOMB DAN INTENSITAS MEDAN LISTRIK)",
+            "type": "url",
+            "url": "http://sudarmonorasyid.blogspot.com/2011/04/listrik-dan-magnet-hukum-coulomb-dan.html?m=1"
+         }, {
+            "date_added": "13035342085124940",
+            "date_last_used": "13380293652782905",
+            "guid": "70fba129-4d01-f61a-b9a6-17c928de13d6",
+            "id": "13",
+            "name": "Jual Perlengkapan dan Robot (Line tracer/Follower Analog/Micro) | Kaskus - The Largest Indonesian Community",
+            "type": "url",
+            "url": "http://www.kaskus.co.id/post/50b590975b2acf2237000079#post50b590975b2acf2237000079"
+         }, {
+            "date_added": "13036112522445818",
+            "date_last_used": "0",
+            "guid": "3cf1f4f6-a048-f2ef-b9b4-5085dee922bd",
+            "id": "14",
+            "name": "arduino-info - Brick-4ChannelPowerFetSwitch",
+            "type": "url",
+            "url": "http://arduino-info.wikispaces.com/Brick-4ChannelPowerFetSwitch"
+         }, {
+            "date_added": "13036115842769229",
+            "date_last_used": "0",
+            "guid": "4abeae17-a003-ff51-96b0-78948ae4b029",
+            "id": "15",
+            "name": "bildr » Muxing Around With The CD74HC4067 + Arduino",
+            "type": "url",
+            "url": "http://bildr.org/2011/02/cd74hc4067-arduino/"
+         }, {
+            "date_added": "13179609711945522",
+            "date_last_used": "0",
+            "guid": "07882cd3-2715-4572-bf9f-7d04456064fc",
+            "id": "16",
+            "name": "www.oddguitars.com",
+            "type": "url",
+            "url": "https://www.oddguitars.com/concrete.html"
+         }, {
+            "date_added": "13180207718181679",
+            "date_last_used": "0",
+            "guid": "89ff1e34-1ca0-46a2-bd64-434ae0a8016b",
+            "id": "17",
+            "name": "TIMER — ESP-IDF Programming Guide v3.2-dev-692-g4cd1643 documentation",
+            "type": "url",
+            "url": "https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/peripherals/timer.html"
+         }, {
+            "date_added": "13186549838855605",
+            "date_last_used": "0",
+            "guid": "11ab6d4f-fda8-47b2-bdc2-9f3d4aa9c1be",
+            "id": "18",
+            "name": "小R讲堂-WuLi Bot桌面型机器人",
+            "type": "url",
+            "url": "http://www.xiao-r.com/index.php/Study/catalog/cid/18"
+         }, {
+            "date_added": "13192555481544178",
+            "date_last_used": "0",
+            "guid": "694b997f-a9a4-4f53-a83d-ac6ae497d100",
+            "id": "19",
+            "name": "About PredatorUFO - Thingiverse",
+            "type": "url",
+            "url": "https://www.thingiverse.com/PredatorUFO/designs"
+         }, {
+            "date_added": "13192555677827594",
+            "date_last_used": "0",
+            "guid": "1a686a76-5f59-454e-a61a-085a3800a7ed",
+            "id": "20",
+            "name": "About OBUQ - Thingiverse",
+            "type": "url",
+            "url": "https://www.thingiverse.com/OBUQ/designs"
+         }, {
+            "date_added": "13192556790228263",
+            "date_last_used": "0",
+            "guid": "51e2fdd3-6b6d-442d-8f6c-b9833d4821ec",
+            "id": "21",
+            "name": "About juewei - Thingiverse",
+            "type": "url",
+            "url": "https://www.thingiverse.com/juewei/designs"
+         }, {
+            "date_added": "13192557190996903",
+            "date_last_used": "0",
+            "guid": "3f692cce-2187-495a-a756-70557dcbdec3",
+            "id": "22",
+            "name": "RepRapable Recyclebot by jpearce - Thingiverse",
+            "type": "url",
+            "url": "https://www.thingiverse.com/thing:2937584"
+         }, {
+            "date_added": "13192557531550608",
+            "date_last_used": "0",
+            "guid": "ba4877b6-b104-4021-a59d-e92754c66416",
+            "id": "23",
+            "name": "Department of Mechanical Engineering: 404-notfound",
+            "type": "url",
+            "url": "https://www.mw.tum.de/lpl/fileadmin/w00bft/www/zip/Konstruktionszeichnungen_Extruder.7z"
+         }, {
+            "date_added": "13192557537476669",
+            "date_last_used": "0",
+            "guid": "3c98a2a0-5e78-40ba-88b4-71b32dfef50f",
+            "id": "24",
+            "name": "OSF | RepRapable Recyclebot",
+            "type": "url",
+            "url": "https://osf.io/9hsmb/"
+         }, {
+            "date_added": "13192557540322405",
+            "date_last_used": "0",
+            "guid": "07b8af06-f8e1-4ba5-9943-e706378de56c",
+            "id": "25",
+            "name": "RepRapable Recyclebot: Open source 3-D printable extruder for converting plastic to 3-D printing filament | Joshua Pearce - Academia.edu",
+            "type": "url",
+            "url": "https://www.academia.edu/36721604/RepRapable_Recyclebot_Open_source_3-D_printable_extruder_for_converting_plastic_to_3-D_printing_filament"
+         }, {
+            "date_added": "13192557548602388",
+            "date_last_used": "0",
+            "guid": "1592216b-4d9f-4ca6-88e6-4b7879490342",
+            "id": "26",
+            "name": "About JoeSnuffie - Thingiverse",
+            "type": "url",
+            "url": "https://www.thingiverse.com/JoeSnuffie/designs"
+         }, {
+            "date_added": "13192557552796987",
+            "date_last_used": "0",
+            "guid": "b2811cca-28d6-4d0f-a69e-37d4fa8b4b2d",
+            "id": "27",
+            "name": "About Yngel - Thingiverse",
+            "type": "url",
+            "url": "https://www.thingiverse.com/Yngel/designs"
+         }, {
+            "date_added": "13193123944465249",
+            "date_last_used": "0",
+            "guid": "2d15f5fa-37b2-429a-9097-c59d2646623e",
+            "id": "28",
+            "name": "Most Popular Fonts · 1001 Fonts",
+            "type": "url",
+            "url": "https://www.1001fonts.com/most-popular-fonts.html?page=5&items=10"
+         }, {
+            "date_added": "13243228778943653",
+            "date_last_used": "0",
+            "guid": "8f81ea41-43d5-47e2-9a89-f8442e40e383",
+            "id": "29",
+            "name": "Circuit design Multiple LEDs | Tinkercad",
+            "type": "url",
+            "url": "https://www.tinkercad.com/things/jKyqcqOHNlG-multiple-leds-/editel?lessonid=ELB4FYAJD0K8TZV&projectid=OMOZACHJ9IR8LRE&collectionid=OMOZACHJ9IR8LRE#/lesson-viewer"
+         }, {
+            "date_added": "13246463360656307",
+            "date_last_used": "0",
+            "guid": "9f916ad2-0bc5-4083-8660-d59b64e1649d",
+            "id": "30",
+            "name": "Document Sharing Free Instantly",
+            "type": "url",
+            "url": "https://dlscrib.com/"
+         }, {
+            "date_added": "13246463379688098",
+            "date_last_used": "0",
+            "guid": "172a4581-2653-48e7-9f65-e6dcac80dd3a",
+            "id": "31",
+            "name": "Scribd Downloader, Issuu Downloader",
+            "type": "url",
+            "url": "https://docdownloader.com/"
+         }, {
+            "date_added": "13251779386385304",
+            "date_last_used": "0",
+            "guid": "76a26936-9e6a-4d11-8ab3-d7e97f8a7011",
+            "id": "32",
+            "name": "LEDfx",
+            "type": "url",
+            "url": "https://www.champlainsystems.com/ledfx/app/device/-1"
+         }, {
+            "date_added": "13251780026129310",
+            "date_last_used": "0",
+            "guid": "57c13141-3240-46d9-b9e4-f6724c4248aa",
+            "id": "33",
+            "name": "LEDfx",
+            "type": "url",
+            "url": "https://www.champlainsystems.com/ledfx/app/device/0"
+         }, {
+            "date_added": "13254637013826602",
+            "date_last_used": "0",
+            "guid": "58b3842b-41e3-4fed-aacc-8f19acf36931",
+            "id": "34",
+            "name": "Inilah Daftar Ukuran,Jenis dan Type Ball Bearing (Klaher) - Belajar Mesin Bubut",
+            "type": "url",
+            "url": "https://an-tika.blogspot.com/2016/07/inilah-daftar-ukuranjenis-dan-type-ball.html"
+         }, {
+            "date_added": "13255243698491813",
+            "date_last_used": "0",
+            "guid": "0e16c7cb-4d64-49c4-a118-6f0f40cd9c5e",
+            "id": "35",
+            "name": "(32) WhatsApp",
+            "type": "url",
+            "url": "https://web.whatsapp.com/"
+         }, {
+            "date_added": "13298629652604496",
+            "date_last_used": "0",
+            "guid": "0641e561-4f23-429f-841e-156d7fa3a57b",
+            "id": "36",
+            "name": "Gmail",
+            "type": "url",
+            "url": "https://accounts.google.com/b/0/AddMailService"
+         }, {
+            "date_added": "13298629652605152",
+            "date_last_used": "0",
+            "guid": "ab44334d-e275-4ff6-9738-b8b5110b97b9",
+            "id": "37",
+            "name": "YouTube",
+            "type": "url",
+            "url": "https://youtube.com/"
+         }, {
+            "date_added": "13298629668564216",
+            "date_last_used": "0",
+            "guid": "64f30b72-5079-460d-b817-af2f8ded4dae",
+            "id": "38",
+            "name": "Translate",
+            "type": "url",
+            "url": "https://translate.google.com/"
+         }, {
+            "date_added": "13346689990798272",
+            "date_last_used": "0",
+            "guid": "d4d3e7d2-cdf9-4163-bb68-73a465fc09dc",
+            "id": "39",
+            "name": "Adobe Acrobat",
+            "type": "url",
+            "url": "https://acrobat.adobe.com/?x_api_client_id=bookmark&x_api_client_location=Acrobat"
+         } ],
+         "date_added": "13423756559124153",
+         "date_last_used": "0",
+         "date_modified": "13346689990798272",
+         "guid": "0bc5d13f-2cba-5d74-951f-3f233fe6c908",
+         "id": "1",
+         "name": "Bookmarks bar",
+         "type": "folder"
+      },
+      "other": {
+         "children": [ {
+            "date_added": "13346238356697603",
+            "date_last_used": "0",
+            "guid": "63bd433c-4902-4ba5-971f-3cbb3c069de1",
+            "id": "40",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Roadmap - ERC Handbook",
+            "type": "url",
+            "url": "https://erc-bpgc.github.io/handbook/roadmap/"
+         }, {
+            "date_added": "13346475248879987",
+            "date_last_used": "0",
+            "guid": "7521ee00-8a8e-4866-8227-83dac60b8f25",
+            "id": "41",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Sekolah Vokasi - Universitas Diponegoro",
+            "type": "url",
+            "url": "https://www.undip.ac.id/fakultas/sekolah-vokasi"
+         }, {
+            "date_added": "13374762037139962",
+            "date_last_used": "0",
+            "guid": "f8caf1a7-6084-4405-97f7-f986476b99bf",
+            "id": "42",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "New Tab",
+            "type": "url",
+            "url": "chrome://newtab/"
+         }, {
+            "date_added": "13375204808274625",
+            "date_last_used": "0",
+            "guid": "858026b2-9ad4-449a-858f-d75202aad7de",
+            "id": "43",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "ChatGPT",
+            "type": "url",
+            "url": "https://chatgpt.com/c/6728daa2-6d8c-8000-a078-6a96c4cdb3f3"
+         }, {
+            "date_added": "13375380819870029",
+            "date_last_used": "0",
+            "guid": "1c6fe83a-3e3e-4bcd-872e-78cabbeeaba4",
+            "id": "44",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Arduino and LabVIEW : 5 Steps - Instructables",
+            "type": "url",
+            "url": "https://www.instructables.com/Arduino-and-LabVIEW/"
+         }, {
+            "date_added": "13377749856980195",
+            "date_last_used": "0",
+            "guid": "9e394a32-dc66-47b2-be8f-41a752ed7e48",
+            "id": "45",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Kuisioner Pedoman Tugas Akhir",
+            "type": "url",
+            "url": "https://docs.google.com/forms/d/e/1FAIpQLScOFKPKuIVe4aENoUbfXEljyJ5hAsq4U8Y1B2bU8GkoJ0qHjQ/viewform"
+         }, {
+            "date_added": "13399995431861836",
+            "date_last_used": "0",
+            "guid": "4181e0dc-304d-4ecf-9264-e822dc965656",
+            "id": "46",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Email Verification Required - please verify your email to get started! - Temp Gmail - MailTicking",
+            "type": "url",
+            "url": "https://www.temporary-mail.net/mail/view/d1686a56e1fa177374a1947b1749b9ef/gmail"
+         }, {
+            "date_added": "13400151730138358",
+            "date_last_used": "0",
+            "guid": "80132878-fe96-4a88-839e-f5b0c1f178e9",
+            "id": "47",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "tmhd99/power-electronics-studymaterials: Study Materials, Lecture Notes, Free PDFs, PPTs, Codes & Videos",
+            "type": "url",
+            "url": "https://github.com/tmhd99/power-electronics-studymaterials/tree/main"
+         }, {
+            "date_added": "13400151913486189",
+            "date_last_used": "0",
+            "guid": "82970f24-427a-4b79-af64-2ac88da9cf7c",
+            "id": "48",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "GaetanoLongo/PowerElectronics: List of free power electronics resources",
+            "type": "url",
+            "url": "https://github.com/GaetanoLongo/PowerElectronics"
+         }, {
+            "date_added": "13400155407790756",
+            "date_last_used": "0",
+            "guid": "368d58bd-7a0d-440b-b9c3-3cd98fa9799f",
+            "id": "49",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "GaetanoLongo/PowerElectronics: List of free power electronics resources",
+            "type": "url",
+            "url": "https://github.com/GaetanoLongo/PowerElectronics?tab=readme-ov-file"
+         }, {
+            "date_added": "13400156202954827",
+            "date_last_used": "0",
+            "guid": "e1949cd1-f435-4dba-a18e-a50562f0058f",
+            "id": "50",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Aalto-Electric-Drives/digital-control-power-conversion: PhD Course: Advanced Control in Electrical Energy Conversion (Politecnico di Torino 2017)",
+            "type": "url",
+            "url": "https://github.com/Aalto-Electric-Drives/digital-control-power-conversion/tree/main"
+         }, {
+            "date_added": "13400156232571910",
+            "date_last_used": "0",
+            "guid": "4aba5d26-23c8-4157-b84d-0737090446f9",
+            "id": "51",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "dTmC0945/L-MCI-MSc-Drive-Systems: Lecture materials for M.Sc Electric Drives",
+            "type": "url",
+            "url": "https://github.com/dTmC0945/L-MCI-MSc-Drive-Systems/tree/main"
+         }, {
+            "date_added": "13400272168357466",
+            "date_last_used": "0",
+            "guid": "d8ba870e-2c73-4315-b030-7bf3fc9ca64f",
+            "id": "52",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Modelling, Dynamics and Control - Chapter eight: Predictive control",
+            "type": "url",
+            "url": "https://sites.google.com/sheffield.ac.uk/controleducation/introtompcbook?authuser=0"
+         }, {
+            "date_added": "13400272173539081",
+            "date_last_used": "0",
+            "guid": "e86d695f-6710-48dd-a846-cf0917c1c815",
+            "id": "53",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "(211) Video 3 on MATLAB for a 1st course in control - app files - YouTube",
+            "type": "url",
+            "url": "https://www.youtube.com/watch?v=kaIr3ALOhDc&list=PLs7mcKy_nInHEjth9P3m_bxd6D24IVSzz&index=24"
+         }, {
+            "date_added": "13401122264204913",
+            "date_last_used": "0",
+            "guid": "2eca8e81-15aa-4ad9-97fa-bc2b6dd48d38",
+            "id": "54",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Course: Crash Course Arduino and Microcontroller Development | Udemy",
+            "type": "url",
+            "url": "https://www.udemy.com/course/crash-course-arduino-and-microcontroller-development/learn/lecture/44171082#overview"
+         }, {
+            "date_added": "13401223426487483",
+            "date_last_used": "0",
+            "guid": "7d253fcf-ba45-496a-99ad-13dc698afbe8",
+            "id": "55",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "TRAE - Collaborate with Intelligence",
+            "type": "url",
+            "url": "https://www.trae.ai/?utm_source=ads&utm_medium=gg_pmax_pur&utm_campaign=22881824621_simple_p22_id_en_&gad_source=2&gad_campaignid=22876138203&gclid=CjwKCAjwiNXFBhBKEiwAPSaPCXmfjck5pyuApveBgpOn6yoOHqRXLD3-E7vz7bucF9S-Jvu1-mvnixoCCScQAvD_BwE"
+         }, {
+            "date_added": "13408896644615393",
+            "date_last_used": "0",
+            "guid": "660f16b4-dff3-4b5f-af39-c58b9248e30e",
+            "id": "56",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "corb3000/hover_diffdrive: ros2 control driver for Hoverboard Diffbot",
+            "type": "url",
+            "url": "https://github.com/corb3000/hover_diffdrive/tree/main"
+         }, {
+            "date_added": "13410558126839974",
+            "date_last_used": "0",
+            "guid": "78b9f220-d01d-4fd4-bf99-8d77de8c0078",
+            "id": "57",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Speedybot: Speedybot Outdoor Delivery Intelligent Office Museum Interactive Automatic Navigation Guide Service Delivery Robot - Buy Intelligent Robot\\ Interactive Robot\\ Automatic Navigation Robot \\museum Reception Robot\\ Company Office Reception Robot \\exhibition Hall Welcome Reception Robot\\ Restaurant Reception Robot \\programmable Open Sdk Intelligent Reception Greeting Robot\\ Service Robot\\ Delivery Robot\\ Speedybot Outdoor Delivery Product on Alibaba.com",
+            "type": "url",
+            "url": "https://www.alibaba.com/product-detail/Speedybot-Speedybot-Outdoor-Delivery-Intelligent-Office_1601592089618.html?spm=a2700.galleryofferlist.normal_offer.d_image.144013a03DMkge&priceId=037771cd4b794a4e806df2cabbeaa7c7"
+         }, {
+            "date_added": "13417605882914674",
+            "date_last_used": "0",
+            "guid": "bbf5bab2-2f8e-40d8-b13d-61b403b6439b",
+            "id": "58",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Apollo开发者社区",
+            "type": "url",
+            "url": "https://apollo.baidu.com/"
+         }, {
+            "date_added": "13417631437121638",
+            "date_last_used": "0",
+            "guid": "5d870054-5611-427f-8996-dfd0c5c6f6db",
+            "id": "59",
+            "meta_info": {
+               "power_bookmark_meta": ""
+            },
+            "name": "Web.Auto Documentation",
+            "type": "url",
+            "url": "https://docs.web.auto/"
+         }, {
+            "children": [ {
+               "date_added": "13419055669048194",
+               "date_last_used": "0",
+               "guid": "4d2e2d72-ede7-4df5-812a-214580011f2f",
+               "id": "61",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "| Jurnal Nasional Aplikasi Mekatronika, Otomasi dan Robot Industri (AMORI)",
+               "type": "url",
+               "url": "https://journal.its.ac.id/index.php/amori/user/activateUser/rofiqcp/WH3tax573WY4"
+            }, {
+               "date_added": "13419065729660318",
+               "date_last_used": "0",
+               "guid": "969223c6-0440-481d-9800-7a30462d6cd2",
+               "id": "62",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Energy : Jurnal Ilmiah Ilmu-ilmu Teknik",
+               "type": "url",
+               "url": "https://ejournal.upm.ac.id/index.php/energy"
+            }, {
+               "date_added": "13419065733799246",
+               "date_last_used": "0",
+               "guid": "26fa2234-8040-4fdf-8d8c-0ffc4c8aca76",
+               "id": "63",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Vol. 12 No. 3 (2025): Jurnal Elkolind Vol 12 No 3 (September 2025) | Jurnal Elektronika dan Otomasi Industri",
+               "type": "url",
+               "url": "https://jurnal.polinema.ac.id/index.php/elkolind/issue/view/483"
+            }, {
+               "date_added": "13419065736986333",
+               "date_last_used": "0",
+               "guid": "9079e086-f0a1-4fc9-8ba5-9213d420e9ce",
+               "id": "64",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Jurnal Teknologi dan Sistem Komputer",
+               "type": "url",
+               "url": "https://jtsiskom.undip.ac.id/"
+            }, {
+               "date_added": "13419065740504616",
+               "date_last_used": "0",
+               "guid": "7b52eb39-e43b-4f95-b054-781dab60ead3",
+               "id": "65",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Indonesian Journal of Electrical Engineering and Computer Science",
+               "type": "url",
+               "url": "https://ijeecs.iaescore.com/index.php/IJEECS"
+            }, {
+               "date_added": "13419065743340175",
+               "date_last_used": "0",
+               "guid": "dfb84380-76f7-48de-a8c2-b27d7a7e6800",
+               "id": "66",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Jurnal Nasional Teknik Elektro dan Teknologi Informasi",
+               "type": "url",
+               "url": "https://journal.ugm.ac.id/v3/JNTETI"
+            }, {
+               "date_added": "13419231864394707",
+               "date_last_used": "0",
+               "guid": "d3400182-9f63-48d9-8463-91b66522964d",
+               "id": "67",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Jurnal Teknik Mesin dan Mekatronika (Journal of Mechanical Engineering and Mechatronics)",
+               "type": "url",
+               "url": "https://e-journal.president.ac.id/index.php/JMEM"
+            }, {
+               "date_added": "13419231868295489",
+               "date_last_used": "0",
+               "guid": "3d9628b8-a20c-423c-acde-3cdcaa2a98dd",
+               "id": "68",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Journal of Mechatronics, Electrical Power, and Vehicular Technology",
+               "type": "url",
+               "url": "https://mev.brin.go.id/mev"
+            }, {
+               "date_added": "13419231870995278",
+               "date_last_used": "0",
+               "guid": "81e95e67-115d-41cc-90c9-1dfa606362cf",
+               "id": "69",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "JEEMECS (Journal of Electrical Engineering, Mechatronic and Computer Science)",
+               "type": "url",
+               "url": "https://jurnal.unmer.ac.id/index.php/jeemecs/index"
+            }, {
+               "date_added": "13419236881479936",
+               "date_last_used": "0",
+               "guid": "eedb1f53-3c5c-4e98-9d0d-bf33a1055aa3",
+               "id": "70",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Electrices",
+               "type": "url",
+               "url": "https://jurnal.pnj.ac.id/index.php/electrices"
+            }, {
+               "date_added": "13419236905704996",
+               "date_last_used": "0",
+               "guid": "d2d013be-6ba3-4c0b-8b23-027aad950616",
+               "id": "71",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Jurnal Otomasi Kontrol dan Instrumentasi",
+               "type": "url",
+               "url": "https://journals.itb.ac.id/index.php/joki"
+            }, {
+               "date_added": "13419236938241569",
+               "date_last_used": "0",
+               "guid": "839af6e1-7446-4bc8-bdb3-3e543e5bc823",
+               "id": "72",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "TEKNIK",
+               "type": "url",
+               "url": "https://ejournal.undip.ac.id/index.php/teknik"
+            }, {
+               "date_added": "13419237002181886",
+               "date_last_used": "0",
+               "guid": "d9ee4eb5-af0a-404d-8612-c0e83175242d",
+               "id": "73",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Journal Contact",
+               "type": "url",
+               "url": "https://ejournal3.undip.ac.id/index.php/transient/about/contact"
+            }, {
+               "date_added": "13419237029423520",
+               "date_last_used": "0",
+               "guid": "799d2cbc-ded2-4657-8997-b9c9d9b6e009",
+               "id": "74",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Submissions",
+               "type": "url",
+               "url": "https://e-journal.president.ac.id/index.php/JMEM/about/submissions#onlineSubmissions"
+            }, {
+               "date_added": "13419275694511472",
+               "date_last_used": "0",
+               "guid": "8d104f20-6711-4540-89f5-feb3671a58bb",
+               "id": "75",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Sistem Identifikasi Beban Angkutan Barang yang Terintegrasi pada Jembatan Timbang Menggunakan Kartu RFID | Techno (Jurnal Fakultas Teknik, Universitas Muhammadiyah Purwokerto)",
+               "type": "url",
+               "url": "https://jurnalnasional.ump.ac.id/index.php/Techno/article/view/1958"
+            }, {
+               "date_added": "13419435466339696",
+               "date_last_used": "0",
+               "guid": "750a5062-2e07-448e-8098-0e942cae337c",
+               "id": "76",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "SINTA - Science and Technology Index",
+               "type": "url",
+               "url": "https://sinta.kemdiktisaintek.go.id/journals/?q=mekatronika"
+            }, {
+               "date_added": "13419436362043666",
+               "date_last_used": "0",
+               "guid": "71a0cfef-cb87-4e03-be69-1a7ef7c7679c",
+               "id": "77",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "JAMRIS Layout template | Journal of Automation, Mobile Robotics and Intelligent Systems",
+               "type": "url",
+               "url": "https://www.jamris.org/index.php/JAMRIS/JAMRIS-Layout-template"
+            }, {
+               "date_added": "13419491737447761",
+               "date_last_used": "0",
+               "guid": "5b738bab-4ce9-44dd-b981-c5e4a6db0b39",
+               "id": "78",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Login",
+               "type": "url",
+               "url": "https://ejournals.umn.ac.id/index.php/index/login"
+            }, {
+               "date_added": "13419602148216400",
+               "date_last_used": "0",
+               "guid": "bd1e07c6-1ca7-438a-9a68-66f3457cb034",
+               "id": "79",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Journal of Robotics and Control (JRC)",
+               "type": "url",
+               "url": "https://journal.umy.ac.id/index.php/jrc"
+            }, {
+               "date_added": "13420137533260386",
+               "date_last_used": "0",
+               "guid": "23bccf33-2766-4f87-b243-0f3829e2cf69",
+               "id": "80",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Download - International Journal Of Innovative Technology And Exploring Engineering (IJITEE) -",
+               "type": "url",
+               "url": "https://www.ijitee.org/download/"
+            }, {
+               "date_added": "13420407147895141",
+               "date_last_used": "0",
+               "guid": "2e7b22c7-7d03-4def-a161-c9e3051e4943",
+               "id": "81",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Neliti - Liberate Knowledge",
+               "type": "url",
+               "url": "https://www.neliti.com/"
+            }, {
+               "date_added": "13420700529988094",
+               "date_last_used": "0",
+               "guid": "c2520960-ba12-46ef-99b4-bfdfceff09d7",
+               "id": "82",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "CERiMRE",
+               "type": "url",
+               "url": "https://cerimre.journal.unej.ac.id/"
+            }, {
+               "date_added": "13421517457522272",
+               "date_last_used": "0",
+               "guid": "7cc67341-4a0d-4e03-95fa-6bb82147c8e8",
+               "id": "83",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Buku Kurikulum 2024 Program Studi Sarjana Terapan Teknologi Rekayasa Otomasi.pdf",
+               "type": "url",
+               "url": "file:///C:/github/VIOLA/Doc/Buku%20Kurikulum%202024%20Program%20Studi%20Sarjana%20Terapan%20Teknologi%20Rekayasa%20Otomasi.pdf"
+            }, {
+               "date_added": "13422556688975885",
+               "date_last_used": "0",
+               "guid": "b17d2d59-9a56-4551-833c-a6c783acb5ca",
+               "id": "84",
+               "meta_info": {
+                  "power_bookmark_meta": ""
+               },
+               "name": "Andreas Geiger",
+               "type": "url",
+               "url": "https://www.cvlibs.net/"
+            } ],
+            "date_added": "13419055691875249",
+            "date_last_used": "0",
+            "date_modified": "13422556688975885",
+            "guid": "44cfd46c-e734-4281-aac5-1a6fb433a694",
+            "id": "60",
+            "name": "jurnal",
+            "type": "folder"
+         } ],
+         "date_added": "13423756559124153",
+         "date_last_used": "0",
+         "date_modified": "13417631437121638",
+         "guid": "82b081ec-3dd3-529c-8475-ab6c344590dd",
+         "id": "2",
+         "name": "Other bookmarks",
+         "type": "folder"
+      },
+      "synced": {
+         "children": [ {
+            "date_added": "13115707513487467",
+            "date_last_used": "0",
+            "guid": "217eb3a7-d0fc-45d6-9422-02245a935e13",
+            "id": "5",
+            "name": "snorlax - Penelusuran Google",
+            "type": "url",
+            "url": "https://www.google.co.id/search?q=snorlax&client=ms-unknown&prmd=inv&source=lnms&tbm=isch&sa=X&ved=0ahUKEwjK586558DOAhWLOI8KHYZUALwQ_AUIBygB&biw=360&bih=559"
+         }, {
+            "date_added": "13243673358084287",
+            "date_last_used": "0",
+            "guid": "129001de-9b8c-4fae-9e95-00558e48d8b8",
+            "id": "6",
+            "name": "EarPro - OrderOnline",
+            "type": "url",
+            "url": "https://magicroller.orderonline.id/earpro"
+         }, {
+            "date_added": "13244262111045546",
+            "date_last_used": "0",
+            "guid": "2871de74-4989-457b-881d-ad8f8f5261df",
+            "id": "7",
+            "name": "How do I interface Arduino UNO with Logitech 3D Pro Extreme Joystick?",
+            "type": "url",
+            "url": "https://forum.arduino.cc/index.php?topic=331035.0"
+         }, {
+            "date_added": "13245686396915575",
+            "date_last_used": "0",
+            "guid": "b7a005c2-6ce4-4ac6-8c5e-b565de015880",
+            "id": "8",
+            "name": "Reverse Engineering of HobbyKing ESC Programming Card - Hackster.io",
+            "type": "url",
+            "url": "https://www.hackster.io/vincenzo-g/reverse-engineering-of-hobbyking-esc-programming-card-66396c"
+         }, {
+            "date_added": "13258882938385443",
+            "date_last_used": "0",
+            "guid": "990e8d12-a51e-4ece-a196-c127898e3657",
+            "id": "9",
+            "name": "GitHub - mriscoc/Marlin_Ender3v2 at 2.0.7.3-bugfix-manualmesh",
+            "type": "url",
+            "url": "https://github.com/mriscoc/Marlin_Ender3v2/tree/2.0.7.3-bugfix-manualmesh"
+         }, {
+            "date_added": "13259519400601954",
+            "date_last_used": "0",
+            "guid": "61fb02c0-5b8a-4182-ac36-66ef938ad659",
+            "id": "10",
+            "name": "PCB Prototype & PCB Fabrication Manufacturer - JLCPCB",
+            "type": "url",
+            "url": "https://jlcpcb.com/"
+         } ],
+         "date_added": "13423756559124153",
+         "date_last_used": "0",
+         "date_modified": "13259519400601954",
+         "guid": "4cf2e351-0e85-532b-bb37-df045d8f8d0f",
+         "id": "3",
+         "name": "Mobile bookmarks",
+         "type": "folder"
+      }
+   },
+   "sync_metadata": "CpACCu8BCIiBAhLoASAAkgHTAQrQAQoOY2hyb21lX3N5bmNfYm0SBTUxIWJtGhIJ9Kbs32JSBgAR9Kbs32JSBgAiMgn5BdzfYlIGABABGUIzfLy8KhBGIAEqGjUxIWJtOjEyMTAzOTkwMjUxNzUzODg1ODc1IjIJ2tlP32JSBgAQARmBHQSNWjncwCABKho1MSFibToxMjEwMzk5MDI1MTc1Mzg4NTg3NSIyCdrZT99iUgYAEAEZgR0EjVo53MAgASoaNTEhYm06MTIxMDM5OTAyNTE3NTM4ODU4NzUpF5rt32JSBgDqAQwI7YfA0AYQ6OCgoAESACoYZUU4ZkNjNGt6bzVwSTN2Ny9YRE9zdz09SAMS7gEIUxLpAQocTnBJVTlqMTVHMGdJVjAwVTFPS2VDU0J1QzVjPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxTVFsQ3hMV0lVTGxsZXF5OGVwaGgvTTAvNDFya1FYZGpCSUJRMndpUGtjcUFGMnl2MGc5d211SEtDOFh0ajF6WUdzTFB0dz09GAAgACgAMMSIjKDkhpQDOPjAxYDcM0D4wMWA3DNKHENqMG9VUXErdWg2NnJ2c25peE8yb2dWOGlMaz1aISIf///tcllzaVhzckxNa2RCVU9CUlN0dC9ibmhVTW9zPWUAAAAAEu0BCFAS6AEKHENwSkpLTWRDcjRxcldKc2oxYjhYVFJORGxjaz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcXVSWGs2OVIxM1UybVZ0c25HTmNOTHNXY0l2UXdRdE5iaml0MURVRkVIekNFMU8xV0RxbWhmWVorajkwMFVHQkZlTW9yL1E9PRgAIAAoADCp7a/Qz96TAzjMzsXu1jNAzM7F7tYzShxUVGlVL0JBeExmOEloYUR6a3oxbW9xQ0twSzg9WiAiHv//akdzMTI4bjZmUVROdURsMWJBVmY1QnR5a3FNPWUNBltlEu0BCDUS6AEKHFNaeHUvcXo2QVkyRVlpTWNGcC8xek9FNGRDWT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcXBMaDA1SjQ4V1kvWmV3bHk2ZmN5cDFtOXVCNWptZSt1bCt6ZkltbVlMeW95Y016dWxTMkYzdmFuU3RtbnVhT1lxUWp0Rmc9PRgAIAAoADDst+Czu5yPAzjjo4DujDNA46OA7owzShxHRU1iM1lxbzNvOFI0MXdRVyt2WVlqR0VIa1E9WiAiHv/7ejhFSkhZd0prMjFCNVB4YU43SysrYy9pZUo4PWVD+G2AEu0BCDgS6AEKHGM2Q29oSEFiZW8zTmpsOGxrTDRLN2FNZEZzWT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcVloaU9kcVE1bFdWZ1k1UXVyZHROSmw0S0FPc2pJYXp6VGhmWjlKTXVHbkk2QnpRK2p0VzJYMGo0bE9IaEtFQXJoTVljZkE9PRgAIAAoADCvh6OEvJeRAziKnLz+rDNAipy8/qwzShxVbFJWQWpKSkQ1cmsyTElwbGs5MEFIandmT0k9WiAiHv//dkkwbjNjMytwT0lvbnZpVEwvNi93ZmU3UTdjPWWFZ+0PEu0BCE8S6AEKHENmMHFsUmJ6WUlEaHVCL0o0cStqUDA2MFdDOD0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcUxaRHFodW1rZ3VGSlhjdkgwdi9NS0RKOU1XcTdXYnlGWDJ1N2RYdE1SQXJhUktrMWRpeUlmUkk4K01sZjRrUlIwaXRmR2c9PRgAIAAoADCLy/GXhc+TAzj4pqDv1DNA+Kag79QzShxRTHliRXF2QlBsSHh2UGg1N1Y3ZGJqTnExRmc9WiAiHv//VENLeCtlNzJ3eGs4dFp0V3VOakJ0WGJnRGZZPWUUqSODEu0BCEwS6AEKHFUxNVRiZUlDbkd0WVB1VXdWNTJzUFh1aENKaz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcTVpV3Y3bU10b3lqVXZKbm41SmpUV3ZyZ1Voa3lkVlVoY3VqTFdXMVpHSlF3RWIrWWZvaktNRWNrcWVvQ0ZCc3UwRTM3b0E9PRgAIAAoADDT5pCdmMqTAzjk7OKf1DNA5Ozin9QzShwzdzJuWWJHcUJCTzVQZVg2SVRoTHVFYUhzRjA9WiAiHv/7ZUM5eWhOYWd3K09pQkpTUExPOGJLeStKeGZJPWVvUJb6Eu0BCDIS6AEKHGZ4QjZuTERkQ0FYaVBGaE9sZTlETEtxbkRmTT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcUdHV0NjcE40NjRrOVdZR0Y2U0VjbVRjb2t6VTc0Y2tGOUZWWUI0ZG9nUE5UZENMeVdPY1lacEpnZDQzR1IwYnFpa1p0Q1E9PRgAIAAoADDbzeDt6caQAzjL/9m2jDNAy//ZtowzShxZdDcvaUJEK2M4cU5qVFFGNUIzUlJ3YW90a3M9WiAiHv/eRENBU3ZWeXlTaXFZSkpGVGYweTlFWXFCc05RPWWFZ+0PEu4BCFES6QEKHHBYak8rSjh4My9LVHc3WnQvQkNNU0lscy9JND0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcXBVaVZpZW55WEZVVGRRWFBRYmo0RTVnOGFmc2Rvajg1T0tVcjdFWHhaa2NNQlFXSDI4YXNuWm9TMmlYSEx3c2plZEpyZkE9PRgAIAAoADCn2/aCvOaTAzj7yo3v1zNA+8qN79czShx4MmUrSTJDSkptdk9kd041Znc2dHB6eVJkOXc9WiEiH///tWJDa3lWeThUN3J4VHZXSzNOWlYrMlBjcXpzbz1lKJUQcxKuAgghEqkCChw0SytLQ0Vqc2U1REZyVE8vdDlleVgrZ1Y4WHc9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BYVlWM3hvS0pUUzd5YzNXaEovN3hQSVlwcFp0YTJuekhxUncxUkxzTTU5aVZzNTZUWms2NDV6ZngxZEZuS2RtZFRTZFdDY0lITjk3T2xYSlk4RWFZZDZxQjNoRnMxUTBLall3bUFKL0VNbWJqNFdjWHdWc2lVV0FIcmlWeTNIUmE2MmU3Q0E9PRgAIAAoADDU9fKH6Iz4AjjJ1uPCnC9AydbjwpwvShxkQkkxdzhMQ2FFUktlV2JrN0tRU2ZBR1BQUHM9WiAiHv//VSswa1gxTzR0dlozNGQ3b1VmUDM4S2xQeGJRPWU5wmr8EusBCCgS5gEKHEE1UkpVR1VZaXBsSVdNZWljWmVIek9XenZSZz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcUtVTHNqcmtQcmxUV09SeHRYc0ZxeTgwS3lVTEJBTnNubktoVmFlY3lDRElMQzlPN1lqVmNoRGF6RzcvRjJXZWhyZnFtRGc9PRgAIAAoADDw75bh7/eCAzjk6dXIwzFA5OnVyMMxShxuMTYyS2FDTWtZM05GM1Y5OWc2emFHeldONnM9Wh4iHE1BZTVWQ0sySnQ4K3IxQXZhOHpyQWtVUVRmWT1l8By3mBLsAQgpEucBChx4NkkybWpQRXdDZGxNdld5V2ZuKzZSL3FVZms9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFYUDhCQzY0VlBMWm83VVk2bDJxK0RZUVdlZjRXbm9NWWVWVCs5MzM5b0JIQWZZdTY5dHJNUnpSK1FWaU91a2ZieE5jSUVRPT0YACAAKAAwspneoOL+ggM48MnQucQxQPDJ0LnEMUocTlM3eGtsU3dZRzZ1bnZKN1pFTzdoc3NPYzZrPVofIh2mMk5BWkdJK0s3ejhmR0EvdVRnMVJJRUV0NHBVPWU9e0GGEu4BCDoS6QEKHDJzdjViTGFtQWxTakRYYWNsS2w1NVg5WUgxST0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcWtKc3RWUTZMNHVMWlZPRkpOcytJM2lnN0gwWDlTd0ViVFo1Z1VHbC9uNGowMk91cCtoUERpbUlLa1BXMlFtZHVNb3AyRmc9PRgAIAAoADCn75DB+JSTAzii+K23zTNAovitt80zShwrd2dBKzBzRlB5OXM3SGhMdTJDMmZvWXdUUDA9WiEiH///3VJPZ3hqWnZOSFlpSHJpSEZrR0JqL2FYNVBURT1lM2a2ABLsAQgsEucBChw0bld3SnJPMC9QY0ZuZzV5MFFZaUZvZ1BrUlk9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHF2YUVZY2s2YkpTVlZ0a2JVMThtRmNYOCtCZGU4WEhXenJ1OVQ4aXp0QzlWdGRzNCs4bTM0ZXdzRUk4aUdZUTBLV05lanJ3PT0YACAAKAAw0dyl9LW/kwM4ns/wkLAyQJ7P8JCwMkocbXFIdnpuenJzU2F2akliMklla280UWZrczlnPVofIh30K1BtMkI0bER2dUU5OXU5cExIRDlzK3BBZTdJPWVFdY44EuwBCEQS5wEKHDN4dkNFZEdENEJHdTNJT3VUK2VkbHYreUxVVT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcVlPb1pEcTZ4cCtQeG9qUTRSd0tCSFQ5Q3c1bEFySWRiN0NabFBLZ1U2TFc1OERkN3BWTFJkZ0p2bXFsTVY3U1Z5azl1NGc9PRgAIAAoADCjlLThocSTAziHm9i+0zNAh5vYvtMzShxuak5YckovL0NGMk15blBPZ255UDZjbi85UFk9Wh8iHftCVlhTK2xFY0pHMnlRZzg3VCtLcmd3eEFhVjQ9ZcRF6GYS7AEIRxLnAQocanZ2SWlEbkZ1cVlPcVZYdmowclBpM2pBN29vPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxMTR3MHBOdC9xaStodkJTbWZaRmlrSmRreDdqMVF4VnhCcEdEUmdIT1dCRkJCRG9rQjlwK00yb0E2YkFHZi9xY3hQWG02Zz09GAAgACgAMNnvusS0xJMDOOnVi8HTM0Dp1YvB0zNKHEgxZ09hdHloUHRXaSsyejRDQmVCYWhRNlI1OD1aHyId/3M5ZVMyMXVuNnlZN3NBcHBaV1RzaURJenM3OD1lAP4e5BLsAQhBEucBChxOaW9VNnZSb25XTjlBSVgxVWlROTR4RmNIQms9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHEzdUozdHowRDAxeS9QWXNHeDJLOEljNU5NN2NkaGkyRkh2UG96UkEzQkVYUkVqaHUzM0lKMVN4WDgzQmlOMXQxVmcxaWFnPT0YACAAKAAwq82Q8ra/kwM42Mm879IzQNjJvO/SM0ocaG5VdytZeERiZmQ0RDV3RzByODZQZjBiR3BBPVofIh3cVU55c1ZLMHZ4QjFJbmFwV0FkeVcvcXl6Wm40PWXD08R6Eu0BCDMS6AEKHFN4L21LZTlKOFlwbzZidC9pYXh2bFVMUElFMD0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcVZPVTYveEkyVU5VRzBuam1wV0NQcCtCclhuNHFRdk9JOW1wcUNNL0lWR29sYXFHbjZOOFlwSk54V2hwNUNPMlR0RDIyb0E9PRgAIAAoADDbzeDt6caQAzj85tu2jDNA/ObbtowzShxHaDhra0hEdkp6a1VxbDNUaW5SekVOdFZKRkU9WiAiHv/vdTluaUhMclBtM0lTV2JqYnA4RkFqbzQwc0drPWWFZ+0PEu0BCEgS6AEKHHZZL3IrdlVaSHY1MklQUzFMS3o4dGpXSDRyQT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcWhqWGEwK3NhdWVLejVtOGZWRzVSdGQ5Mk9RRHZXT3dxNUYwYkE2RTNGZ1N1akU1SXlEaHNwdWxNcXhvbEgxSFBYVnNWTXc9PRgAIAAoADDSgdzTtMSTAziB1I3B0zNAgdSNwdMzShxPeU1GT3ZKelAzMWp2UTFGclp3WnViZ3lwSGs9WiAiHv+5Z21PMzI3VGdZb2RmaU9iam9KanphdTF1ZW1VPWX/dOK1EuwBCEAS5wEKHGkwMURocm52dThJV1dzYUN1K0pucklCUTloZz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcWszdlhSUTJjSVNMQ1ZiRDRpLytocG43MFViMm5pSkdzQ2ZTdnFlMjBNTFBJNmpndXliS2R5Y3FGZVVibUJYd1U5bUZ6TEE9PRgAIAAoADDMsbnwtr+TAziarrzv0jNAmq6879IzShxwdHVJay8vQkMwRWpWSXdhWUw4WElocXBPNzg9Wh8iHblMSVRuTGtLUlFUbThBN3V2WWpWbU5jNXFSSUE9ZfvLYKwS7AEILxLnAQocNDRCdGE3c003Z1ZNRzZGdjdFd3NzR1JsVXRJPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxS2JhVlJURHRRNjFUVzZlNjdVbFBxRkJlTHpUK3Y4SWVka21EZG9Kd3RRN3JFazhYZVExd0JWN2NyaUNORDlRU0JjTUkxQT09GAAgACgAMNvN4O3pxpADONr/yLSMM0Da/8i0jDNKHC85K2MvZUV6MitUWGhnQ0RDOTJOamFNUEpTVT1aHyId/kkzQlo3azZuYVI5dXNJb2hDUG93ckV1aHc3ST1lhWftDxLrAQg/EuYBChxFREF1aDBrbHFVOHBCL2xKNkNkT00ya21hak09EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFsc0pLbjlYVEk4VkxFTTY2K0F4ZjZYQjBtSVllRjVBUm13dWlXTlltZU9jaTJpRi9NMmY5TXlXSWdNd2FRNDZwYVNIemVRPT0YACAAKAAwjp/27ra/kwM4p5W879IzQKeVvO/SM0ocNWhOMEF3a1R0cDZxR3BPUnZ5K3BpSEhORm5JPVoeIhxyVUZtSVFOcEZkS0d4RHVLVjltdFVrMWdCVTQ9ZfB8tQES7AEIQhLnAQocVXZ3a21BaXR1cDVxcWF4UVY4bTFvNVY4UkdJPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxTWFBSUoyOUVtcmRVSzZxWE80ckRIL0tpOGtKekxsL29XRmNydjlDa0xieHdRTnoyZ2oya1ZaV3VsbExONVdPMjFoTmRpZz09GAAgACgAMM+PvPO2v5MDOOzfvO/SM0Ds37zv0jNKHENxZ0hIVktJcUtJcTFwRDZQc3BoMlI0VFJVOD1aHyId7jJ3ak8xUU00aE4ybTQ3ekdzUkF6ZjRKcVVTZz1lvXrjOxLtAQgxEugBChxMVGJRdlFhYitiNXVsVC9BdHNZYzBTZzdQS3c9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFyNTdqRVNTYTlFeklTTzdCTnoyamJNajFNSVZLUXBEY2RhQTMwZlVCYlZxeW9RYXZ0WWVqY0xFc0xiSjA3NUdpbDR5OUJBPT0YACAAKAAw283g7enGkAM4r7uptowzQK+7qbaMM0ocdkl4M0NFaU8rL0ZLNXBIYnh3QkJEMC9ZMGtNPVogIh7/vHc4OXBGL3EzMjE3Rkd2TDB4ZGwvWDlrUS9Saz1lhWftDxLuAQg8EukBChxRLzRMZEpiUW9HRmdGcHpOQWdJYlU5azlYQms9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFDMFhsZkluWkUvUXk4V2sxVk1lbkx6bnFOVUtDdi9TeTAvYnNQMC9DM1YwampjazVhdTNQMEJOVnd2T3V3enNOZGtvdkVBPT0YACAAKAAwgZTRupG/kwM446DX6tIzQOOg1+rSM0ocZFZQbFlyRS9lRWtTRmJPb1c5aHpWV2ViUnVFPVohIh////sva1krQ2luM3FhWUt0bzVsNFMwZDRtcnFQbDQ9ZQAAAAAS7QEINhLoAQocS20va0xyeDdHR2sxY0p3N2d5WGVEdzJXanBBPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxYUtna1VIQml6a1EyWUlHWDVkSmpUQ0QxTzhsMUdrVlJkSVI5VTVaWGxYSmw2czlBN0U1M21VL0tENnhBZEdMVXpXcnZxUT09GAAgACgAMJb24Z6atY8DOI3ZrYOQM0CN2a2DkDNKHEtXTGFhUUw1ZnhRcThVcWVNcHA1azEvUnpQUT1aICIe//1tNWRkeFNud2JVa0hXT1lBVEpxcjY5OVBWN0k9Zb7dSacS7AEIRRLnAQocSWpKMTlndU43WitQeVVtem9CSFNJblYxQVJRPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxZzk1NGpoUUNKK1MybU4vR1N4NDh6aDdiMHdUUXUvY3k4emwwM3pLVTV2OXExMFU3d1cwRWhqbktLVnJhR1JicnNxN2YyZz09GAAgACgAMPCs2eKhxJMDOJOw2L7TM0CTsNi+0zNKHFF0NERCUWR5ak1mT2tZVmZNSHVMaG4vek81Zz1aHyId/U1iMndPNGhXL2xpbS9mQ3A0TzNFY0g3VjBWND1lAvy2QRKuAggdEqkCChwxWEVZd2VXU3VnOENrRmN3dkVadmMrU1Zucmc9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BSXltbjlFNE1DdjVHYmp3bzdOeDE0a1lkbmhhS2tiSUh4RzdvMEk4WkVwNFJmbnpKMm9ENC84aUd4bkZHQTMrUHZUeUZBeEtnTjJVeXMvK0ZsYkpyOTM4blBCdkNnT09WSXh5SUkyNVRtZjZOeGNxZ2NZWkdGdXJjU0t4L05TNXdSajROdUE9PRgAIAAoADCF8+anlKSJAzi/k/Dpwy5Av5Pw6cMuShxkN0hGYkdmS1orMVBBbHgyUDZHTlhJUWxBU0U9WiAiHv/9RjBjOHBnMEZuOENFVlgwbTBBWjNEVk1lbmdFPWWejsy6Eu4BCFIS6QEKHGxBQXVWajgwNWFnaFhURUhOOGVwa0JXL0Vqcz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcUViRnlvVFVOSWJPK0RvcEp2T2hJRHBTa0J2L1crYzN3a21NT2hzNERHZTdrSTNvMzhNK1JJclZkZiswellucmVFU0xyVEE9PRgAIAAoADCD07P5gO+TAzjGmoD72DNAxpqA+9gzShw0WGxHSkFreSsxSmx2akZ1bzhWUlVQdW5PbHM9WiEiH///2ng4b1daaXQwZm5jcGZsN1FEWjZzVnFmdWt1OD1lhSBfIBLuAQgmEukBChxRN1dGTWJQeDl5THEyRERRVWhETEdxTDFYTXc9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFZK1hoazUzTXcybFcyaFpKL3dvUWtsTU5RSTdRYkNIYmRHdWh5M2ZlcVFER0hzaGVMT1hnRUVMaFVJUThLQzk1djZ2SzJRPT0YACAAKAAwjMiXm7zpjgM4xrSNm5IwQMa0jZuSMEoccXAzelNJb3VKMzJtNDhyblV2c1hhS012bGEwPVohIh////ovODZ1Qi9EbXNtMzk1UmE5TGJSdzE5UHBQNTQ9ZeEtAX8S7gEIOxLpAQocTW5ON3Rubjc0UjRsb09BN1QzQjJWODZvbTRBPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxN2daNFNsWFkrOVlsRjhMek52WnpUMmRMWkI4TVVKRHA5dGZmNkU5QTQ0blZ5TTlLbjc5TmZORmFsTWVUcGtzQW4wNUZ3Zz09GAAgACgAMMrt0tjXlZMDOMHSxcPNM0DB0sXDzTNKHHV3K3FMTGU0RTl2STRQNm1mbGtNejdqY1p2dz1aISIf///uZ2JCVzkyOXV2dm0zTEs5bGFiaSs5WTZZTEw0PWVmR0iXEu4BCDkS6QEKHE1GWm9UdnRBbDRyYU5vV2FoK3lnSlhBR28wYz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcUNieUpucjRnangzTGVSWVptSmVieldpdi83T0ZVbTVvb1IzUHFUMGY0Tzk1VUt4UlZsckRDbEhJSTlSWGorRkI1V3JkTVE9PRgAIAAoADClwvfH6ceRAzj4hd2WszNA+IXdlrMzShxCUklJUUdMRGRqaEE1WlpBVVFQY2tCRnIreFU9WiEiH///u0x5SDlvbHdSVjNWZXprN21USnErZUs5am52MD1ljSDP/xLsAQgqEucBChxpN0lyWHcxQ29ENktNTnJNd0RyR1JMRCtkOHc9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFJTkM0bmJXbzVwUFNRdnpDV0Uva2lxMW9KOFgzRGFaYVFuc0k5TVZudG5YVy9mRHRKMHhQUFpTWkU3U1JaekZXZ3FxQ3dnPT0YACAAKAAw0dyl9LW/kwM4lI/p6a0yQJSP6emtMkocaGR4M3ZsK2x6dE43dWRxVkg3dGMvZlQ3anQwPVofIh3TaW00UEUreW5ZTkRlZnR6YkpCMFNuVHlGZUFBPWU0dp+gEu4BCCcS6QEKHE1jYmpPNlR0VFcyaUlEa3pFWG9neWdjY2xSZz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcWl5UjdrMExLQndYdEJKNTI3RXgwZHJBdUN4a3AxaHlTYzNWa1JJVVkrRHR0ZU55VHUxNkoweHNWVmhuLy9WY2ZTYVRMenc9PRgAIAAoADCwytL2qZKKAziswpLSuTJArMKS0rkyShxRbzhOZm5MMTFOTjVxU3BVcGJRSnBQRm4vY3M9WiEiH////XdEWndOa21GOGVZWVMyQ2hYWk11dUJuVGRGWT1lAAAAABLuAQgkEukBChxGTHR4Z2ttd0lnSFAwSHVFdk9oZWI4V1FlS3c9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHF1TjhtTjNzZlJlVS8wTU5rVDlRVi9jRm9pckZQMWtXN2ZvRTBQdDJCU0ZWLzE4SnhhZ2VwckF5T1lTQnhXWWljcnhIeUpRPT0YACAAKAAwjMiXm7zpjgM4xrSNm5IwQMa0jZuSMEocMytqTHZsRmdvVnkzcUtyazh5bHVjVDBObFE4PVohIh///+pJdjYvbktUSUs0SllxZ084b1FTTDZ1ZE9Tb1U9ZVOwKpYS7QEISRLoAQocczJlblBiTDA3R1VucDZoYVZrN2VrK3N1NEdvPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxS1dzL0tyQjlqRi9pRjlidE51bURkd281ekhhdFQzZ3RadU4zbEt5ZzNEbThlYkxRZFg3bDZ2TzE5MGZIVmdhOU53YkhMQT09GAAgACgAMNXxlfK0xJMDOMbHkcHTM0DGx5HB0zNKHE1mc3ZFeThXSkI1dmJPdVZnT3VKd1hhTjFuYz1aICIe/9wyMzZhVk1iSlVqS2wwaWo1WEE5bGFlNnN5Zm89Zf904rUSrgIIGhKpAgoccVRwV1k4L2lJcVBqZG1XTnMrL0RTbWQrQVhNPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTF1SmJOVndFcHdhbUNNdFc2U1QvRy9ZVktSYTdlZklkOC9CczJtMTFBc1M0MUJrYmswakkvNUdpZVRiQ08vN3ZsZk14OEthSjVVaFhLNU83Mk11OVd0RlR2MHF3cVM3bkVrb29rcy9wc2I0WmNPS1RHL2ZadUtqd1crZndNcXl0eUlKaHlRPT0YACAAKAAw1PXyh+iM+AI4utj5h4ctQLrY+YeHLUocU1ZtTTdhNXB6SHJFUlpIVjN4aDJrT0psK2FFPVogIh7/72xYSGdBTGtac2VVNFErVEtUVmRCL1J0MWFBOD1lKtaUEBKvAggjEqoCChxZa3ZSZzZGR3ZnaXhFVkF4c09OWEJDaUNocGM9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BYVlWM3hvS0pUUzd5YzNXaEovN3hQQStnb3FSKzByNU9Jd3gzc1g3eHJrYXh5bEF0VDRvUjRrVE5UQkoveitlQXp0TVR5VmoyY1ZFK0pJRUhNTDZCRWFETkQxeWhkZGlmNHNtemxoV25NQjNNRG5aa0VxRFI1cUM1b0NON1c3ODZmdmEydEE9PRgAIAAoADD5i/D+rcyUAzjJ1uPCnC9A86W99OQzShxhUkhVZExVV0hiTGJSVUJhZmVodHNzMTEzSUk9WiEiH///1WVVQ2ZhODhnQzg3eElacUVvemNFWGN4OHRvcz1l28MD9xLrAQg9EuYBChxUZ3NpNEhpYWhZZmV0NEZtN3ZTTUlENHI2VG89EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFrazdaNlUrSlBsQlRtR2F5UEJaeUVvcFVJQjBZUENyMDNkZ1BvbmdSMUdIVFdzVllJazN5ZnpQZyt4OXMzNWdrQ1c1WTZBPT0YACAAKAAwgZTRupG/kwM4ue7V6tIzQLnu1erSM0ocMG1HTXFMc1YvTzBrVkwzZFlXMTVoSHduaDlVPVoeIhxTMmJsd0FvODM4dnhTK1FqK0YyQUxFZmprNlk9Zbgm4OQSrgIIHxKpAgocallNODhGZE5yaXhQdXVjWmJCRXJQSDQrQnFjPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQW8vMjVJVzVlT2duK2gyTjB1TlkxU0U2SFBqY1JYcHE3Skg3dXZpRy95eHE4ekdBZGU2bUFrY2JRbEI4dHdvdGp3TFRCcFBjNkNBVVFrdEhkQmdsQ09WM2ZHZ3ZxREpZV1dRZlhFSWIwOURpQjV1emdMalF5NVlmWUpWSGoweUtyeWQ3VEZnPT0YACAAKAAwjMiXm7zpjgM46MGg8M8uQOjBoPDPLkocRHlVeTlneU0rTmxXeXZyZmtDSDBHRUlGSVdRPVogIh7//0p4RklCTG9VR21hVVNpSkVlUEsxNWhEOEQvbz1lnQOCURLuAQhUEukBChxHby9yb3V2WDFFTUF5TXNSVTBMbmFxaWJZVVE9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFLT3ZqZ3N0VW9GbTNDdHoxY1pPV3ZMR3UxdjNKTzN5MEF0YmhMUXFlZzhFS1FIQ2VhTHRhT296UzZpRGZRWWFGc0ovQU93PT0YACAAKAAwje3k1oOllAM40JSL8N8zQNCUi/DfM0ocemJMd3R0VGhFNXM0cUc5eU5iTGFGS1o0M2NjPVohIh////ZqMFVhOUE1c25pNEtkSDBXZGx6NTFkb0FkU2c9ZbL0LSgS7QEISxLoAQocWVloYUkwZktBZ0o5L0M4aDA0UkN3WS8zdHRnPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxaWhaQVNTUWV3QW9xeWVrYnJ1SU83bTRrd2tMYVo5akNqanFRNWV6aHRBOU00cVNUQThIVGYvUEl2bUJFZDdEMERZTGhnUT09GAAgACgAMMrK64PFxZMDOK+Ty9PTM0Cvk8vT0zNKHDRVY1YyeVlhcVR6aTNGYlBUaGtYUmFGU1Yxbz1aICIe//dyVmpLNkZ5U1pHYkdjZnBiV0l1TFVyTXlZZFU9Zbgm4OQSwwEIAhK+AQocWWNTVG9udkVTUHdxQ3M0TDJjclZodjY4TDk4PRJmWjpBRHF0QVp6U2JDbUNVZVBDWUhSMlh4Wi9FSGdQb1M5TE5FMmhoRHhUbGQ4WlNXcmxRY2lXM1ZjeEs3ZmRCNzFYN1NLaEhmMXdYbGJwWFBJY01qVjJ5Q2QwRXBTTFNBdGIzdz09GAAgACgAMP64psb5x5QDOABAAEocb1BWa2h3QlJiVjY1S0NXUjIrSU9OSFdvT3U4PVoAZQAAAAASrwIIIhKqAgocc2lFUDV6ZTVOZjBIMGRyeFAyb3JTdEl1NDRFPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQWFZVjN4b0tKVFM3eWMzV2hKLzd4UEk2NVJIblJyTnJocVJIdXQ5U1ErV3dRME9tOG1yS2tYcW1qWStIS0xDNFBoTU5rVUZBUnprYTBDcmNXaW9LVEtUbFVZOExsaUVzMXRMS3dwejM1dWNwL2NHakN4b0padE52cW0xZUFTdEQvTnY0RUJBPT0YACAAKAAw1PXyh+iM+AI4ydbjwpwvQMnW48KcL0ocK2UxZ0lJdEIvREdjUmtQS2YraHZHNW1va1FnPVohIh///6pTbnlFRG14NmhWc1VYd0VkekIwRTBOdk1aek09Zdm+aHASrQIIFBKoAgocT0RzQWFvY05lMFlVNjdrNWF1c2QveVh5b2s0PRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTF1SmJOVndFcHdhbUNNdFc2U1QvR3owMHYvaVk3dDFKK1VZakpJNEhIU0tJczIzMUQ4NkJWNERLTU9aaktnUEp4OC9Ncyt5TmN0MjNMd3FDZElra0VNNjNhMTFHaURMT2tzam9QSFh5SjJOMGVhTC9ZQTE4ZGxaQlIvdEFrbGE4OVRJT293PT0YACAAKAAwk7+kjMSTjwM4g8GHh4ctQIPBh4eHLUocOVU0T2JtVzdla1BQeUM0T0o0Nm56dCs3eGp3PVofIh3+NGsyd2ZrK29nVjNVK2NRR3NnRTRXLy8vbGdZPWWJfAj6Eq4CCB4SqQIKHFBWT1pjMGJsQk41eXVGRHNhazNFbE9IRnI0Yz0SpgFaOkFEcXRBWnphbkJOeExMamZVd21KRFl1ZGtBTkFvLzI1SVc1ZU9nbitoMk4wdU5ZMVNFczRpVyt4UUpWbVhWRHJuM3JWckUrZjMxR25RcS9BQ0VCL2JMMU9vdTA1MVQ3aVlEL0hSVEhRcXV1b3pwT1pkQkJTWkxXeXRvZUdQaEdSalBtYmlhbFBIN3ljOFQ0LzRKYUpwMVRCSGIzemovWTVKZz09GAAgACgAMNT18ofojPgCOJCtn/DPLkCQrZ/wzy5KHHpUdUNyWmVNTEVHem0yZDZGS2JvNm9MN3FCcz1aICIe//5LQmtiT3ZEVUxZZC83M0pTNnBRY3I4aGowUkk9ZXxHpQASrgIIGRKpAgocUU1LZTB5TXFHWGVpRWZMb25RVk1TUlZwTUNRPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTF1SmJOVndFcHdhbUNNdFc2U1QvRy9aU0VYRjdJU0hkdGZpNFhJOTdPdEhiUTRLaTQzZUFqRzJ6U1EvV1k3YW8zQ2htMWNVUGFST25lc0dRMFJCTVhxUDM2ckhqOERBdHgyMmxOd3hId1hxYjJROUNKU3dUTlFVRGtqeGZ2dEZmWEgrTnNRPT0YACAAKAAw1PXyh+iM+AI44pf5h4ctQOKX+YeHLUocaXV3dFR0Um5zSlpNa1NsWEN0OW5mc2FRZDRBPVogIh7/3ndnSXl3d0EvV0NyUXk1QUxiWUhQMEF0bHRXST1l2FW0NBKtAggTEqgCChw1amd6MXB1Ums0RkU2VS9QOTl3NHl4NGhTeUE9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BMXVKYk5Wd0Vwd2FtQ010VzZTVC9HM0NRQVVxb2NYN3EzSUtQWjBxU04vRmFQSVNpbkNLNHhiZ1hJcXUzbElYaS9hclVPTXlWNVoyTXhtRzlaOWdGUDJuall6YXBFVUhRM3hFci90a0lsZkcraURxQUJUem1BVm1acmMzZXpwbG83Vm5LSUE9PRgAIAAoADDU9fKH6Iz4AjjIw/uGhy1AyMP7hoctShx4VWF4NDJMcUE0NFRFY29nYjM5Zy84Mi8xOTQ9Wh8iHf1QOCsxbXN4TGQ4b3lMVFdrUWlUZ0Y2eVhLNDQ9ZSrWlBAS7AEILRLnAQocNTJTSlZCOWVkejJkRXJEWThNRHhWaU5sc2dFPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxUFlwTVIzUzFZRVlYS3dxYXgyTHA5akc3SGxIeCtDRHJDL2Z0MG5VQ0s1OThMUk9Ya25sQkJXYlRBUnhxWEp6clhoRHVUUT09GAAgACgAMNHcpfS1v5MDONSVw/q4MkDUlcP6uDJKHGtrVlVMM1BEdE14bWQ1SmpHTVFVaVRZaFJlbz1aHyId+m1heFZHN2J0Vk5YcDY5ODB5d2NFT2VFVFRDbz1lqrlBzhKtAggXEqgCChxvSUNWemorQnJXNkg5d21HWkpMTnNGUVhHcDg9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BMXVKYk5Wd0Vwd2FtQ010VzZTVC9HN2QxZFZDdWl3Snd4eFlHSlA3c3BtS2EwTzRaTTVlY044bmdFcDJHVkcxU0hCUFVmblpPVmhCZFYzRTI0NFVHckdzKzd6Y0VXL0NxNDBLR2FWZkJHa2Rwdy9Va3BXRi93SU9Sd2t6aEJPUm1wTi81enc9PRgAIAAoADDU9fKH6Iz4Ajie0/iHhy1AntP4h4ctShxNWGNFWExvcnBTUGRwZ2g1VWYxMWxqNTVTcUE9Wh8iHf95N01NckVJYkJzbHRSblpSMndTNnAzYlBaU009ZSd2gOsSrQIIERKoAgoccW84bWpISWduMWloY3FJOEhVYnpyMThlanZJPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTF1SmJOVndFcHdhbUNNdFc2U1QvRytZNTZpRWZObXg0bkUrWmIxNmdubzJPSDJPTmkvRUVBYmNXTzMwcTh2UE5rWEJSdGVmbTNqWklkVlJGL3MwejlPRW1LRnlRWXBOVTRpSktROWdhQmx4bnliZ1hlNCt4TC9MQW5pdTVnOXgxaWNtQlB3PT0YACAAKAAw4/3Cvcz89QI4h8CCp+EsQIfAgqfhLEocZmxjcUxWM0l4VDF3Nm5hTU5RbVhsVWU3bzkwPVofIh30N1N5VjJCYmc5OHhIUEhhdHlYeVBFdFI4OEFRPWUAAAAAEq0CCBASqAIKHEkvcjdVZXcwUmxaaTNwRVlaTGluYmt1WkJDUT0SpgFaOkFEcXRBWnphbkJOeExMamZVd21KRFl1ZGtBTkExdUpiTlZ3RXB3YW1DTXRXNlNUL0c3eGlnVjZSOVFCZDc5bEZNSVFxeHgzK2xNRVRtblBhQzdjd3ZoWHhSMUtFTldqN1JmNnF0VUpzSEoxbHFYUU0xNWY5K2kyTHlWOEFKQWNEVDJESU5OWWZKOU9VWnB0alFhb3B6MVRjYndEQU1XdDRqdz09GAAgACgAMOP9wr3M/PUCOIbAgqfhLECGwIKn4SxKHGsvYlIzbEc0d3IvWURacmNocVJIWkN0QTZmST1aHyId6GIydmc4NUhXV2pxQzlIMGNvbGQzb1ZlN2ZCMD1lAAAAABKrAQgBEqYBChx5eEovNmZ2a2VjcjdrcDVFUXpCNHRXTHBkYkU9Ek5aOkFEcXRBWnhVZDYvZjhJTGpDdVBrWCsxUVdLeFVrRFpkVElsVnc4d2RGdTcySTIva2pFd09jZ21xSHJITHRxRnhpbGN0aDY0K0NqRjkYACAAKAAw/rimxvnHlAM4AEAAShxhUkNXTGdoRjliNUlucUtJRHZ1Si9qdlFrRmM9WgBlAAAAABKAAggPEvsBChxsTjlua3hpQ0NiaDlMVjFNeDZRNnFxdWxVTnc9EnpaOkFEcXRBWnphbkJOeExMamZVd21KRFl1ZGtBTkE5YndjSGVIOUJ5SUdzaSs4QU52c3Frb3NHV1hPT09NUGdYNjJrTVhOUEdoVUNibVJPckx0cmMyUU1ibjdKSU1aWXd6Mk8zaGVtK2orZ09XMjNraUM4WGFZMWdJPRgAIAAoADDU9fKH6Iz4AjjR3d2iwChA0d3dosAoShxSMk5qaEFLTE1QOHNSV21URk84bHNzSGJ3Wkk9Wh8iHdByMlpNRTFZT2gxQWczbDhZS2FjVUVmUDBRUTQ9ZV0yufISgAIIDhL7AQocdUpYV3JPdVpxc3dYcmd6eStGV1h6UXp1OHljPRJ6WjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BOWJ3Y0hlSDlCeUlHc2krOEFOdnNxa29zR1dYT09PTVBnWDYya01YTlBHaWhheWdDaXFoajh3Q3B5ZHpESVRTNzFNbWhBcExiK0dhTERCRno5LzRLSy9RY01mND0YACAAKAAw1PXyh+iM+AI4zYmTocAoQM2Jk6HAKEocWmhRV3UzVW9seHpJdnRyeDhpYTZsVjN6VXA4PVofIh2hQi94MHhEQmtQZk5ORWx2N1BrbzJDN090Nm9vPWXR6gzxEuwBCC4S5wEKHHBDM25sVHhUa1Z1bHVzaVJRMkt4a1c5akpHaz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcVlIOU9lZFBpTmlYZkxMaDVvR01xR3lIK3pyUDV3MkZLUEhCZklrV2hwWXFNWTNxZlJ6T0h4b2dLQkM0aVpnditiTURBRkE9PRgAIAAoADD0mty6tJSPAzi2p4XqizNAtqeF6oszShwzSDhvalNydnNxSFlTRHRWTHh6SUlaMUhhUzQ9Wh8iHf1DejZONzFwYU5QWC9IcFBGOFlPSUJxd2grM3M9ZR1/NRMSrgIIHBKpAgocVyswNjBybndaME9XRjdQVkcva1NGc1pQNHpNPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTF1SmJOVndFcHdhbUNNdFc2U1QvRzdVcWFJTFJLa0ZOK2luS0tjN2dLV3BQNFkvU2tjczBHSmJtZ2JnOEM2UnQxZlgwOWcrMVVhTnVYU0JmS0tXUG43Q3pxWVBTZUx2Qi8ySVRCdGVzTjI3aHV4clFYTVh2cUxjeU1mb1paTXpJaVl2RVF3PT0YACAAKAAw1PXyh+iM+AI4keCDloktQJHgg5aJLUocVTVxZGpwc2FiMnc4Z29KSEVUSEYvWktaSXFZPVogIh7/+1lYd3JWdDdxdURiL0Zkb3ZQOVBOL1BkRmlvdz1lpAGw7xKtAggSEqgCChw3UkJaSURjTXJtRG9KNnRpay9RVkxzWUpicEU9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BMXVKYk5Wd0Vwd2FtQ010VzZTVC9HNmMxQ1RYQVJxODJFMlJkUll2ZzVTSWd2YXZjVnRyaEQzSzN5SHJ5MEN2USsrd0Fld0VVc1NQdFlSa1Q4TWJGeG1MMWFveEs5NDZ5dDl1VGdiNFBZc2NtVW1ZRkNveDVhcXRLcGluK2FUOEZMSTBTOHc9PRgAIAAoADDU9fKH6Iz4AjifmKDX8CxAn5ig1/AsShxKRkZWMU50RFBZa29tOGRnWjhSS0haK0hrNTA9Wh8iHfpuQUlLVXI4V09MZW5ZTWJmdFJ5ZUV3TW9pV2M9ZbfP37MSrgIIIBKpAgocaXZlc0Q4K2hDV2xBM3p2UHhTSnNuaGlVWUVrPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQWFZVjN4b0tKVFM3eWMzV2hKLzd4UEVuTzgwMzQxQkdNNzVROE5ISEphWERIL1JjLzlHa1A4ZmtJTWZoS3UxR3dnUDdFd2VhSlNNWU82K3kzcVZHSkgvSE5LaXhDZndDRTE5MlVpSkM4ZWlVTUVpcy9CRGhVS2NxekxGbDdMR0wxalZFY053PT0YACAAKAAw1PXyh+iM+AI4ydbjwpwvQMnW48KcL0ocV1NLVEZlL213ZTl3YXZSUEtFNWloVkcrODM4PVogIh7//1NHU2hDdHNldXZzL2JSeVBpeDd3cStMTUZOZz1lOcJq/BLtAQhKEugBChxGNWJ6UFFrTXNISmhpdDhhR2dMOFhlRC80Y3c9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFuQWNpRmtOOUhib2o3YVdvZlpjVDRTdUNqY0Z5aGJ1YTBYZUtNZWQ5Vy94dzJxVEF4S0x3eVZsTDFYWkxEeWhXQVJacWlRPT0YACAAKAAw2c6V/7TEkwM4r5yTwdMzQK+ck8HTM0ocNEwwZ1pGaWo2K0NEakxBZzlOcm04UzF3aTRJPVogIh7/7nRNcit6V09xVDl0Q0I2QTA5S2dhSGhPVkVvTT1lAAAAABKtAggHEqgCChxheklJODNVZnhPcTd0WDV4SDJvWTdLaVUvUm89EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BSXltbjlFNE1DdjVHYmp3bzdOeDE0dGtHckhtUmVEZnBQUmppdCsxdVYyaVpTQVVveHoybVhEbjlVQ3JYS0VRR0VHRU9xSXlITUw5VUM2bTQ1N0x6d2VscWM4SHZseXJXWmphVG5tQ25qVllMMVBRRTJDaDUxUmxMczhSM1FzQVFlNG14aVE9PRgAIAAoADDKura+zPz1AjjF3s3Wxy5Axd7N1scuShxKMlRmTXhsdy9qRnpvTHZtU2gxRWVrUmZMK009Wh8iHdxqanJkS0plYWlGaHZtamhKT0U0MlZyR0xCYVk9ZXQ7NkUShwIIDBKCAgocR1FkTkU2WXBJdDV4SzZXWTY4RFJkRGRleTBRPRJ6WjpBRHF0QVp5TDgrdjVrRkVIeDc5cEhycmRONzYzWjFkZTczcHhDZlM1MEtsa0xqVVlxYjVTWHhBL0RoNFpiUmRYV3loVjU5Yy9zTXJrVHBVa0NvRlpMN1pVOUd2WitCa29USjFkM0svTm04WlE0Z3R5U3RTUm5POD0YACAAKAAwpZvwxPr9iQM4nevV69YoQJ3r1evWKEocSy8raTJxZE9WVDYwUTJQYjNsSnBwWkZLcWQ4PVomIiQ0T3JkeVxHNUNKTHE2SU9lWjNrTkpiTmU1MGNHTHY0YkdXTT1l/NqR+xLsAQgwEucBChxPaXhKRzdjV0VyTDhqVDF0dTU1OFQ5d0tMV2c9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHF0ZFpGMWNvMlRoT2h2NGU5VElzT2E0Mk9NQm1nQUd6UFNlN0hWdDRZbCtCNVNESmppMDB1R2ZTM2R0VVE5aVJZOVZqbWR3PT0YACAAKAAw283g7enGkAM4jpjUtIwzQI6Y1LSMM0ocUUpoS2svamVvc2tKdG02NWlGS08rRm5jSlpRPVofIh3/eW9vTVFxbmVJLzVVNVUwTmhWZFRuUmxINDdRPWWFZ+0PEu0BCDQS6AEKHE1Ba3RrYURvU2pBcy9URHBPaVlnenNZRGVjZz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcU1Udmw0dWdVQVZqbFZ5Tko0TWxFbkdQb2JGaUhRM1VPMXg1WUw3OThabVpEelhRVk1SUkdZTWxVUzhON2tLdUM5Q0RBMXc9PRgAIAAoADCz86Sxu5yPAzil+//tjDNApfv/7YwzShx1WXBkS1J4dXQ2ZjB5cys5SXNtTTdPZGc0TXM9WiAiHv/3U3U0ZkJZeFEvNUtPcjF4RTBmajl3dUZRQUpvPWW0RHdyEu0BCE4S6AEKHHNxQmFiZmxMRVdQeFQ4dkdhT1BtSWFaajVBWT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcVBDUTFWWFdBdGgwVmJYSnlWcmhoaDVla25qYlBmTHVHdkl4NDBEelZBdXVIZHI3VmhGYTNZQ1o0TTNReDRGdlRmQ2RMeGc9PRgAIAAoADCHl6Pt6cuTAzjors261DNA6K7NutQzShw4c2xpajg4cjV4eHo4UkxIT1VtTzF2ZW5HMDQ9WiAiHv/+WjVjOCtjcTdBUXNuOXVBbS9hM0VWTkZZYTRnPWUAAAAAEq0CCBUSqAIKHHkybXZtRFdTWkt0ZktIdXd3c0hxWHp3dkxGWT0SpgFaOkFEcXRBWnphbkJOeExMamZVd21KRFl1ZGtBTkExdUpiTlZ3RXB3YW1DTXRXNlNUL0d5U0pkVzVaRktvMUlERzNIMWxFYmJ6enBSeG9hVXZUbDJnSmplc2pDbEx2STc2UkorWHNDV1JKZGtxc011QktwWm9wM3hITHIvSmdCMzA4Vjh4UVFqWnBBbktCV0VVYXN4eWpBaHFlSDVUNXlPWmdSdz09GAAgACgAMNT18ofojPgCONSzy4eHLUDUs8uHhy1KHGV4UFdPbjJOYUIzM2ExUThBS09QOGVaVUVxUT1aHyId/05HemtSZXAvOTdmc1B2SjkxZkd2OTZ6dXFROD1lKtaUEBKsAggFEqcCChxyVW0wSEh5L205dGMyRkl3NDFoNXZBRGZFWU09EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BblJ5WDF2akVreHRhUldXWTVlSW5UV1p3SVRyL1BNYVVPRlNyYkZJSmMyUkNRaFluUTQ4YWpoRDdod2dpTDZUdXBvdkRpWWdFZTMzWUlDQzF4cGpYMUxJUHBmYUYyaGdRK0pYaTlVRWVSczFwa1RHZ3VEOHBOM253WWVrVE03cXBUUmZLbVE9PRgAIAAoADDSo5qn6MaQAziS5f/i6CpAkuX/4ugqShxkcUJaWXJtS2NGcE56NlZodkhWaGEwQ0RsaDg9Wh4iHHNIVUE4bzFvSE5sNG81Q21Wc2FmSCtBajREdz1lYumySRKHAggLEoICChxJMUVXMHpmdzVjVW9lT0J4QmhHejh3d0h3Z2c9EnpaOkFEcXRBWnlMOCt2NWtGRUh4NzlwSHJyZE43NjNaMWRlNzNweENmUzUwS2xrTGpVWXFiNVNYeEEvRGg0WmJSZFhXeWhWNTlmL3dVZHhmaEZoTkNGVlBXOWRZVVM4aXAxVHdMQkVKaGF1OXNpUGE1am5DcEVrUCtZPRgAIAAoADDU9fKH6Iz4AjiCq7PU9ihAgquz1PYoShwvZUV2S1RwRDdpZXErSjhoZGgvNm1kN2Fvdzg9WiYiJDRPcmR5TEc1QzZ3QWF1WFJOQVBUdENjTmt6QkVlNzFaVTE4PWVeZuEVEuwBCEMS5wEKHEpTSHMwRmZTeFkwUXdjbk5SOW1pOUFkQVpFcz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcVZRODBWOUFJclhtdE5sTHl1bU1GZi81YzI0L1J6aHVnSDgxbDY0K1h4ZGMrbk45NndCZi9XWmplanRnZ3FIa05NUHpWTWc9PRgAIAAoADCqlMbfocSTAzjK/Ne+0zNAyvzXvtMzShxISGNndEI4a2t2QlRVazltWUVkajdja2ZBVDg9Wh8iHfdLZURDdU9qYTBQSFp3TjVncGkyYWlGQmpJQnM9ZQAAAAASrQIIChKoAgocT3lrcDZ0V0JBUGVNR09RbDYwQzl5NHgxbFprPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQUdERS9UelhYRFZENXZLc3A2SHpjcGh6WFRyanVTb2RYd0d2NlcxbnRmZGppVml5bEZsUEExNzQ4clJJcm1hWHhySlNLNDc4aGs3bVVqTlRwQ2U5UVJ4WDdhdUZTYmJsVWtGRDJ1NTQwRzBOVFBHWW1vVXFKWFdjK3luaXVzQmZDOTFFZnJBPT0YACAAKAAwjafo0+6AkwM4neXswYAvQJ3l7MGAL0ocalNKcXd0b2lhWE9HdXRHQ010U0RCSCtzWDFvPVofIh37TzlFSVh0dnN2TWw4UE42U0MzbG04ejdYOFFJPWX6C+vGEv8BCA0S+gEKHFIyK3FPY284Znd3QTVOdlhKY1JYVXBwRnFiYz0Selo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTlid2NIZUg5QnlJR3NpKzhBTnZzcXY3QU44cmJrL0tPQlowU3V2YWxkK3J4bklXSmFxcHVkc0pQeWFXN2Z4MjVUckwvak1ZUmVxVUlrSk1iZWlaZWtzbS9yUE09GAAgACgAMJzPsc+B14oDOIWo47G9KECFqOOxvShKHFd5TTVhU1lNamwvWFdyckVqbUFtclpuTS80Yz1aHiIcQmhJNU00cFpJVEpHSlZVL3ZMUGRFSkJ3TGZvPWWalhCPEq4CCBgSqQIKHDgyR3FOUFVnZ0NZOVdzaFZpMnI3cnJ3eE1SND0SpgFaOkFEcXRBWnphbkJOeExMamZVd21KRFl1ZGtBTkExdUpiTlZ3RXB3YW1DTXRXNlNUL0c4Ni80UXhBM1F3TWZsdWdRdTJwRW1qclNiSSt4aFhEOEVRUVdCSzR5YmF1clNDcWllKzh5b09Janl4MzVZMHhMM1Jja0RlMFFyOHg0WUhCMjhZZmRHTFl2a0ZwOHdqZnJmdVdLdDRFMUxvdlN2MTl3UT09GAAgACgAMNT18ofojPgCOMSB+YeHLUDEgfmHhy1KHDFueFRrRmRibDcyODdycm05anBCVCswSHFzdz1aICIe/7w2NFJwVHdrKzFnaDNpdjFVU0tyd3lVWjJpajg9ZVYGCfsSrQIIFhKoAgocNVJzaVBoRTdrcjVXblBWSWlhcWRHM29VRlFZPRKmAVo6QURxdEFaemFuQk54TExqZlV3bUpEWXVka0FOQTF1SmJOVndFcHdhbUNNdFc2U1QvR3d4R09Yc052ZGwrWlp1QUpJcVdDUWQ4QVluUWZtVCsrbWlGNExtb3FqNlExamM5dk9Sd0xXMEx6MS9nRjJhS01nOWZXaG9NbUsvR2Y0c2dGaC9ncTRJVGhOakg2TGU4dDBacnFWRnRRRGFQbExXWjZ3PT0YACAAKAAw1PXyh+iM+AI41e7jh4ctQNXu44eHLUocRU1WelNtblBxOVdqSzY3N0FyNmRHU3FKNlkwPVofIh3/b1YwT1pLN2ZlWHBiLzkyN296eHdVTVBCakE4PWUq1pQQEsMBCAMSvgEKHG5qZ0R1ODhlQ3J2WHA4NnBEN2ZIR2NxRnA4OD0SZlo6QURxdEFaeUtkNVRNeXVHN3E2MFNVVnRudzdqeWlWeWRmd1hNdVVuV3VmNFBMTWNyaXdVeStWN0pwYkQxTTJMc2Mra2taN29ybUZ0YnVLTU1ZTGFFcThyZFFaUVhLZGttVGc9PRgAIAAoADD+uKbG+ceUAzgAQABKHHl6TkIwMWNuNTRBN2NSVTB1VCsvUGdtVHRVbz1aAGUAAAAAEuwBCEYS5wEKHDlpUVdobHRnMUdYNk05WmU3K0lmbE9udlVUaz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcWJZc1plcHI5M1hVZzB2Umh3UGxrNlYwN0RDRmM1d1ltOXZjdDROL1Y0WG5VeHRUVU5TZEVBSFJFVHZtbUx6MnN5WnE4bEE9PRgAIAAoADDy8s64tMSTAzjImIrB0zNAyJiKwdMzShxJNjNuS1huaGhyR3dXTlJSbEFrYUIyL3ZENVk9Wh8iHf51aldxZ2NCTnRnbGVxT0kyc3FDYXhZZ0FSOUU9ZZgrXIMS6wEIPhLmAQocTHlJck5NdnZ1N0VJemlqVEF1SFRVOC9sUjlvPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxUFBoZTBSSXI3SHBaaTBSM0o3S2wwSVd3OVFPTXovbDBxOGF2Yy9KSE0wN0hYRGhiYkw2TnhzVW15WEhzMkdwMGtmTldyZz09GAAgACgAMLCd+uy2v5MDOPz0u+/SM0D89Lvv0jNKHDNNVTEzcDZrR1FYdnhOSUtjUHdRZVNCUUdFQT1aHiIcWDk2NzdyNHlRZGlac1pFOExhLzV3WHJaczZjPWUfUrwXEq0CCAgSqAIKHFpQNFVQZkx3WVQyVzFpRmZJRWhnZDczOC9kbz0SpgFaOkFEcXRBWnphbkJOeExMamZVd21KRFl1ZGtBTkFJeW1uOUU0TUN2NUdiandvN054MTR0QkVFc3NKSnRXUlZ3S3grckdGN0F0R25SbWUrS2VqREhzdHlxM0crWnZiQmg3Z0NhbmpGV1JzMlNna1dzaHpESmkxV25ZcTVBa1VYdG5RdnNlMUdjRzFYbGE5K0NPK2hYQTNsN0UrclpSZkt4Uy9MQT09GAAgACgAMMq6tr7M/PUCOPOf4f3MLkDzn+H9zC5KHGV6dHl4VHdjQnpzam5ta0VSc0lSNk9rZ284cz1aHyId7m51emptZkg5Tld3MDNNMVhmMkw5RlNCVHNQaz1lWiv7rxLtAQhNEugBChxOQldlVDY3NlBsd0VuYjdtMGVRbWZnY1g0ZzQ9EmZaOkFEcXRBWnh3R0lpSUMyUlZIb3hkY0lXRkkvUHFIUm9STzZ0RHMzcWkyMHJWb0VPM2pydVRqMG0rakZFenBPUjlDQkNsWUhNZ2dXbmdxd2FYMFU4R1V5dFQrUGNDWVFDN0pBPT0YACAAKAAwusqbyJvKkwM4u8KZoNQzQLvCmaDUM0ocWkJsZWFnOVlMeUNBalZ3TUgzdjZiTS9OSTFBPVogIh7//XJYNjNqaGxkaE8vZE1YWFVQbk0wcFJZczJ4UT1lNvFdsBKuAggbEqkCChxVU2lSTmFHWnRleG1KZVFCU3ZOSWZGVmJmbDA9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BMXVKYk5Wd0Vwd2FtQ010VzZTVC9HL0RzUFBoYnJ0RXo4MWY4bXdqSnBmUGE4T3RuZjlDcms0Z1hLVlMvZnVjSmVYVStUT1I4a1RPb0ZoY3JVeGo3QkRpUSs3QzdLMmZwbjZobGZnWTFyZlpNMEc5aFNTWEVGZ1l5QWRmcU5yVDBtWlgxRUE9PRgAIAAoADDU9fKH6Iz4Ajid+fmHhy1Anfn5h4ctShxxSm9FMzlDRzRyRnhXaEJIT1g0RjZFNGxVMk09WiAiHv/3andMd3JQOTVyd1NhV2E4MEVrN1FYU3lkUjZRPWUq1pQQEu0BCDcS6AEKHG1LS3F3KzhscURFM21HN21UUHJYOXN5dWxSZz0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcWtjQ3NjMlBCUGNBK0MvMVhWZlRDY2lXSTVhWEorb2JFYmhCdFVEZ3RhaVpNUnBvMWN0cTd5bEtNOFA0SXJVNkRwZm9UcEE9PRgAIAAoADCDuPyLk7iPAzi5k8yzkDNAuZPMs5AzShxCclhieDZkZG1lQ1J5OHRrMVFDZFk4R1V5N3c9WiAiHv/+Uys0T0IyMWlGRDVWQmwyc3VwWXBzdGR2TFI4PWWttE/WEu4BCCUS6QEKHHZWWHJmYjZPd3RrTHZ2bEhyeWxkejJTQ214QT0SZlo6QURxdEFaeHdHSWlJQzJSVkhveGRjSVdGSS9QcW4yYWNxQ2ROeTdDSVArK3ZpaW90YUw1YUoveVArZWc0Wmw1TDdjcVVWdnJYcTFFbDB5dGNjTEs1djNaRjRXOUJyQ25yUFE9PRgAIAAoADD7wvi9/eWTAzjGtI2bkjBAxrSNm5IwShxFejViZ2hTVmluOW10UFBwbzgwYXRwVFJmNGs9WiEiH///9URGSFFzeENndytWbWdpZDVVNzJaY2tRajUyMD1lUELD0hKtAggJEqgCChxZTEliUk9TMzFlUENoMlJrc0N2UllUVHlpaXc9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BR0RFL1R6WFhEVkQ1dktzcDZIemNwcmhweGpmVHRpeklhSGZHdlBMN3IveEtpbFMxYWVLcjNBUFFEZzRWMlYvY2FoYzZ2SHBxNHVmSmhzeUpvWlBtUU12Q1Y3WG5HTWY4NmVlTnVYL1l5SytBWnFndU4xMGpIMGxwSmE4MXJFRFk3V1M5a2c9PRgAIAAoADDKura+zPz1AjiUnK6S/i5AlJyukv4uShxjS2pxUWlHZlp4aDFSdmlvU2MybDZiTWVaWUE9Wh8iHfdYNzBMUzhEUXdjWmVyQTd6dkVtbjNVL2ZNU2M9ZdPNDwAS7AEIKxLnAQocME5sN1Qwa1ZZakVreWdsd01RbjFWdVFhZDRZPRJmWjpBRHF0QVp4d0dJaUlDMlJWSG94ZGNJV0ZJL1BxbTRydEtrdkdKZmhReTFoYmVXVWs3cTZXYzR3RFo5Vko2UFhhQk5PdHQrMVJjbXcxTm1iRG9Wa3U2cE5odGl0bHVSbHpQZz09GAAgACgAMIeI/+OAvI8DONLc+byvMkDS3Pm8rzJKHHdZa1pTU2FVS0tENVBhczZHcndXZXFXU2VEUT1aHyId6XIrUkl3T255VklHa3RxL2QyY0taNkpKSGdEYz1l+JID1RKtAggGEqgCChxmbEZqc2NsTG9tZEZWL1VveWRzSmVlUDBySVk9EqYBWjpBRHF0QVp6YW5CTnhMTGpmVXdtSkRZdWRrQU5BR0RFL1R6WFhEVkQ1dktzcDZIemNwbCtSWk0yR0NVQmxNcFZ6dWhDQUJTQXZWQnBXUHpyK21rUkFXdmUrTXFLZysrWHlCaVd1dnZ5ZjNUZ0JmWURwQlJYZzJHWVRlaGdjbUorTFZ3VU83L2UrMW9NVldiMmg1QjhDcWZFRUxaR1dVTDVIaGc9PRgAIAAoADDKura+zPz1Aji7gvC9xS5Au4LwvcUuShx3ZGhvK0FHK0dOODhuNFdadTIzMEEzMmx3VkE9Wh8iHbk1eXVFN0FmYm9RMXpZMU4waitmZ2U1b0ZHbEk9ZUwpMlYwATgA",
+   "version": 1
+}
