@@ -32,7 +32,7 @@ from sqlalchemy.orm import defer
 
 from database.models import LiteratureItem, Paper, PaperFile, SlrJob, db
 from paper_generation.utils import PAPER_ID_RE
-from slr_worker import enqueue_slr_job
+from workers.slr_worker import enqueue_slr_job
 
 log = logging.getLogger(__name__)
 slr_bp = Blueprint("slr", __name__)

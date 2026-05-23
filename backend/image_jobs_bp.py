@@ -73,7 +73,7 @@ def create_image_job():
     # Hand off to dispatcher immediately for lower latency. If the worker pool
     # isn't started yet, the dispatcher's DB poll will pick it up next tick.
     try:
-        from image_worker import submit_now  # noqa: PLC0415
+        from workers.image_worker import submit_now  # noqa: PLC0415
         submit_now(job.id)
     except Exception:
         log.exception("submit_now failed (job will still run via dispatcher poll)")

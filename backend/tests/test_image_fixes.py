@@ -80,7 +80,7 @@ class TestBrowserLaunchRetry:
     @patch('image_worker._get_pool')
     def test_browser_launch_retries_on_failure(self, mock_get_pool):
         """Should retry browser launch up to 3 times"""
-        from image_worker import _Worker
+        from workers.image_worker import _Worker
         
         mock_app = Mock()
         mock_app.app_context.return_value.__enter__ = Mock()

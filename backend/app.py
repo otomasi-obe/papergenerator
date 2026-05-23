@@ -485,7 +485,7 @@ threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").st
 # Lazy-started so the import-only path (CLI / tests / migrations) doesn't try
 # to spin up Playwright. Started here on app boot.
 try:
-    from image_worker import start_image_workers as _start_image_workers  # noqa: PLC0415
+    from workers.image_worker import start_image_workers as _start_image_workers  # noqa: PLC0415
     _start_image_workers(app)
 except Exception:
     log.exception("Failed to start image worker pool — generate-image will not work")
@@ -496,7 +496,7 @@ except Exception:
 # Skipped under TESTING so unit tests don't spin up the executor / pump.
 if not app.config.get("TESTING"):
     try:
-        from slr_worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
+        from workers.slr_worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
         _start_slr_workers(app)
     except Exception:
         log.exception("Failed to start SLR worker pool — Literature/SLR jobs will queue but not run")

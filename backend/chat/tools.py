@@ -784,7 +784,7 @@ def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
         return "Error: query is required (the literature topic)."
 
     try:
-        from slr_worker import enqueue_slr_job
+        from workers.slr_worker import enqueue_slr_job
     except Exception as e:
         return f"Error: SLR worker unavailable ({e})"
 
