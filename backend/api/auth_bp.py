@@ -92,6 +92,31 @@ def _strong_password(password: str) -> str | None:
     return None
 
 
+def _make_signed_state() -> str:
+    """Generate a CSRF state token signed with HMAC. No session dependency."""
+    state = secrets.token_urlsafe(32)
+    sig = hmac.new(
+        current_app.config["SECRET_KEY"].encode(), state.encode(), hashlib.sha256
+    ).digest()
+    return base64.urlsafe_b64encode(state.encode() + b"." + sig).decode().rstrip("=")
+
+
+def _verify_signed_state(signed_state: str) -> str | None:
+    """Verify HMAC signature, return the raw state or None if invalid."""
+    try:
+        padded = signed_state + "=" * (-len(signed_state) % 4)
+        decoded = base64.urlsafe_b64decode(padded)
+        state_bytes, signature = decoded.rsplit(b".", 1)
+        expected = hmac.new(
+            current_app.config["SECRET_KEY"].encode(), state_bytes, hashlib.sha256
+        ).digest()
+        if secrets.compare_digest(signature, expected):
+            return state_bytes.decode()
+    except Exception:
+        pass
+    return None
+
+
 def init_oauth(app):
     """Initialize OAuth with the Flask app."""
     oauth.init_app(app)
@@ -263,16 +288,8 @@ def google_login():
             503,
         )
 
-    # Generate CSRF state token and sign it to avoid session dependency
-    state = secrets.token_urlsafe(32)
-    # Create a signed state: state + "." + signature
-    signature = hmac.new(
-        current_app.config["SECRET_KEY"].encode(),
-        state.encode(),
-        hashlib.sha256
-    ).digest()
-    signed_state = base64.urlsafe_b64encode(state.encode() + b"." + signature).decode().rstrip("=")
-    
+    # Generate signed CSRF state token (no session dependency)
+    signed_state = _make_signed_state()
     log.info("OAuth login - Generated signed state (length=%d)", len(signed_state))
 
     # Use GOOGLE_CALLBACK_URL from .env, with fallback construction for production
@@ -291,35 +308,23 @@ def google_callback():
     """Handle Google OAuth callback with CSRF validation, set httpOnly cookies, redirect to frontend."""
     frontend_url = _allowed_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:1000"))
 
-    # Validate signed CSRF state token (no session dependency)
-    state_from_request = request.args.get("state")
-    
-    if not state_from_request:
-        log.warning("OAuth callback - Missing state parameter in request")
+    # Verify signed CSRF state token (no session dependency)
+    signed_state = request.args.get("state")
+    if not signed_state:
+        log.warning("OAuth callback - Missing state parameter")
         return redirect(f"{frontend_url}/login?error=invalid_state")
-    
-    # Verify the signed state
-    try:
-        padded = state_from_request + "=" * (4 - len(state_from_request) % 4)
-        decoded = base64.urlsafe_b64decode(padded)
-        state_bytes, signature = decoded.rsplit(b".", 1)
-        state = state_bytes.decode()
-        
-        expected_sig = hmac.new(
-            current_app.config["SECRET_KEY"].encode(),
-            state.encode(),
-            hashlib.sha256
-        ).digest()
-        
-        if not secrets.compare_digest(signature, expected_sig):
-            log.warning("OAuth callback - Invalid state signature")
-            return redirect(f"{frontend_url}/login?error=csrf_detected")
-        
-        log.info("OAuth callback - State signature valid")
-        
-    except Exception as e:
-        log.warning("OAuth callback - Failed to decode/verify state: %s", e)
-        return redirect(f"{frontend_url}/login?error=invalid_state")
+
+    raw_state = _verify_signed_state(signed_state)
+    if not raw_state:
+        log.warning("OAuth callback - Invalid state signature")
+        return redirect(f"{frontend_url}/login?error=csrf_detected")
+
+    log.info("OAuth callback - State signature verified OK")
+
+    # authlib's authorize_access_token looks up _state_google_<state> in Flask session,
+    # where <state> is request.args.get("state"). Since we use signed state in the URL,
+    # populate session with the signed state key so authlib's lookup succeeds.
+    session[f"_state_google_{signed_state}"] = {}
 
     try:
         token = oauth.google.authorize_access_token()
@@ -353,7 +358,6 @@ def google_callback():
 
         db.session.commit()
 
-        # Set cookies on the redirect response so the SPA picks them up automatically.
         access, refresh = _issue_tokens_for(user)
         resp = redirect(f"{frontend_url}/auth/callback")
         set_access_cookies(resp, access)
