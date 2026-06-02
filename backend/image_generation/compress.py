@@ -4,6 +4,7 @@ Run this after downloading images to the `gambar/` folder.
 """
 
 from __future__ import annotations
+
 from io import BytesIO
 from pathlib import Path
 
@@ -60,7 +61,9 @@ def _try_png_save(img: Image.Image, *, colors: int | None, compress_level: int) 
     save_img = img
     if colors is not None:
         rgb = _to_rgb_with_white_bg(img)
-        save_img = rgb.quantize(colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+        save_img = rgb.quantize(
+            colors=colors, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE
+        )
 
     save_img.save(out, format="PNG", optimize=True, compress_level=compress_level)
     return out.getvalue()
@@ -137,27 +140,27 @@ def compress_image(image_path: str | Path, max_size_mb: float = 1.0) -> bool:
 
 def main():
     gambar_dir = Path("gambar")
-    
+
     if not gambar_dir.exists():
         print(f"✗ Direktori {gambar_dir}/ tidak ditemukan")
         return
-    
-    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
-    images = [f for f in gambar_dir.glob('*') if f.suffix.lower() in image_extensions]
-    
+
+    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+    images = [f for f in gambar_dir.glob("*") if f.suffix.lower() in image_extensions]
+
     if not images:
-        print(f"✗ Tidak ada gambar di gambar/ folder")
+        print("✗ Tidak ada gambar di gambar/ folder")
         return
-    
+
     print(f"{'='*70}")
-    print(f"COMPRESS IMAGES FROM GEMINI")
+    print("COMPRESS IMAGES FROM GEMINI")
     print(f"{'='*70}")
     print(f"Found {len(images)} images\n")
-    
+
     for image_path in images:
         print(f"Processing: {image_path.name}")
         compress_image(str(image_path))
-    
+
     print(f"\n{'='*70}")
     print(f"✓ Done! {len(images)} images diproses")
     print(f"{'='*70}")

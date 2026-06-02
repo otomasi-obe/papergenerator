@@ -7,7 +7,7 @@
         <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium ml-1">Multi-Journal</span>
       </div>
       <router-link to="/login"
-        class="flex items-center gap-2 px-5 py-2.5 bg-cream-100 text-brown-800 rounded-full font-medium hover:bg-cream-50 transition-colors shadow-lg text-sm"
+        class="flex items-center gap-2 px-5 py-2.5 bg-cream-100 text-brown-800 rounded-full font-medium hover:bg-cream-50 transition-colors shadow-lg text-sm active:scale-95 transition-transform"
       >
         Sign In
       </router-link>
@@ -32,7 +32,7 @@
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <router-link to="/login"
-              class="flex items-center justify-center gap-3 px-8 py-4 bg-cream-100 text-brown-800 rounded-xl font-semibold hover:bg-cream-50 transition-all shadow-2xl text-base"
+              class="flex items-center justify-center gap-3 px-8 py-4 bg-cream-100 text-brown-800 rounded-xl font-semibold hover:bg-cream-50 transition-all shadow-2xl text-base active:scale-95 transition-transform"
             >
               Get Started
             </router-link>
@@ -183,7 +183,7 @@
         <h2 class="text-3xl font-bold mb-4">Ready to write your paper?</h2>
         <p class="text-slate-400 mb-8">Join researchers using AI to accelerate their academic writing.</p>
         <router-link to="/login"
-          class="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors shadow-lg"
+          class="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors shadow-lg active:scale-95 transition-transform"
         >
           Start Writing for Free
         </router-link>

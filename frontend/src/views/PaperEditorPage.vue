@@ -1,21 +1,25 @@
 <template>
-  <div class="min-h-screen bg-cream-50 dark:bg-ash-850 transition-colors">
+  <div class="h-screen flex flex-col bg-cream-50 dark:bg-ash-850 transition-colors">
     <AppHeader />
 
-    <!-- Sticky Toolbar -->
-    <div class="bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur border-b border-cream-300 dark:border-ash-700 sticky top-[57px] z-30 shadow-[0_1px_0_rgba(15,14,11,0.05)]">
-      <div class="px-4 lg:px-8 py-2 flex items-center justify-between gap-2 flex-wrap">
-        <!-- Left: breadcrumb + editable title + DOCX button -->
-        <div class="flex items-center gap-2 min-w-0 flex-1">
-          <router-link to="/dashboard"
-            class="flex items-center gap-1 text-sm text-ink-700 dark:text-ink-200 hover:text-ink-900 dark:hover:text-ink-50 px-2 py-1.5 rounded hover:bg-cream-200 dark:hover:bg-ash-700 shrink-0 transition-colors">
+    <!-- Toolbar (natural height; never overlaps the header or content) -->
+    <div class="bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur border-b border-cream-300 dark:border-ash-700 z-30 shrink-0 shadow-[0_1px_0_rgba(15,14,11,0.05)]">
+      <div class="px-4 lg:px-8 py-2">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0">
+          <!-- Group A: navigation + title + save status (fills line 1 when wrapped) -->
+          <div class="flex items-center gap-2 min-w-0 flex-[1_1_20rem]">
+          <button
+            type="button"
+            @click="handlePapersBack"
+            class="flex items-center gap-1 text-sm text-ink-700 dark:text-ink-200 hover:text-ink-900 dark:hover:text-ink-50 px-2 py-1.5 rounded hover:bg-cream-200 dark:hover:bg-ash-700 shrink-0 transition-colors"
+          >
             ← Papers
-          </router-link>
-          <span class="text-cream-400 dark:text-ash-600">|</span>
+          </button>
+          <span class="text-cream-400 dark:text-ash-600 shrink-0">|</span>
           <input
             v-model="store.paper.title"
             placeholder="Untitled Paper"
-            class="text-sm text-ink-900 dark:text-ink-50 font-medium bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-brown-500 dark:focus:border-cream-400 focus:bg-cream-50 dark:focus:bg-ash-800 focus:outline-none focus:ring-2 focus:ring-cream-200 dark:focus:ring-ash-700 rounded px-2 py-1 truncate min-w-0 flex-1 max-w-md transition-colors"
+            class="text-sm text-ink-900 dark:text-ink-50 font-medium bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-brown-500 dark:focus:border-cream-400 focus:bg-cream-50 dark:focus:bg-ash-800 focus:outline-none focus:ring-2 focus:ring-cream-200 dark:focus:ring-ash-700 rounded px-2 py-1 truncate min-w-[8rem] w-0 flex-[1_1_12rem] max-w-none transition-colors"
             title="Klik untuk mengubah judul paper"
             aria-label="Paper title"
           />
@@ -23,50 +27,65 @@
           <button v-else-if="saveStatus === 'saving'" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0" type="button">Saving…</button>
           <button v-else-if="saveStatus === 'saved'" class="text-[11px] text-emerald-700 dark:text-emerald-300 shrink-0" type="button">Saved · {{ savedRelative }}</button>
           <button v-else-if="saveStatus === 'error'" @click="retrySave" class="text-[11px] text-red-600 dark:text-red-300 hover:underline shrink-0" type="button">Save failed</button>
-          <button @click="store.exportDocx()" :disabled="store.loading"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0"
-            title="Export DOCX">
-            📄 DOCX
-          </button>
-          <span v-if="store.pendingCount > 0"
-            class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shrink-0">
-            {{ store.pendingCount }} pending
-          </span>
-        </div>
-
-        <!-- Right: tabs + chat toggle -->
-        <div class="flex items-center gap-1 flex-wrap">
-          <div role="tablist" class="flex items-center gap-1 flex-wrap" @keydown="onTabKeydown">
-          <button v-for="tab in leftTabs" :key="tab.id"
-            @click="toggleTab(tab.id)"
-            role="tab"
-            :id="`tab-${tab.id}`"
-            :aria-selected="activeTab === tab.id"
-            :aria-controls="`panel-${tab.id}`"
-            :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              activeTab === tab.id
-                ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
-                : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
-            {{ tab.label }}
-            <span v-if="tab.id === 'preview' && store.pendingCount > 0"
-              class="ml-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold">{{ store.pendingCount }}</span>
-          </button>
           </div>
-          <button @click="toggleChat"
-            :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1',
-              chatOpen
-                ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
-                : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
-            :title="chatOpen ? 'Tutup AI Chat' : 'Buka AI Chat'">
-            💬 AI Chat
-          </button>
+
+          <!-- Group B: actions + tabs + AI chat. Wraps to its own line when it no longer fits beside the title group -->
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0 flex-[0_1_auto]">
+            <div class="flex items-center gap-1 shrink-0">
+              <button @click="store.exportDocx()" :disabled="store.loading"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0"
+                title="Export DOCX">
+                📄 DOCX
+              </button>
+              <button @click="store.undo()" :disabled="!store.canUndo"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0"
+                title="Undo (Ctrl/Cmd+Z)">
+                ↶ Undo
+              </button>
+              <button @click="store.redo()" :disabled="!store.canRedo"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0"
+                title="Redo (Ctrl/Cmd+Shift+Z)">
+                ↷ Redo
+              </button>
+              <span v-if="store.pendingCount > 0"
+                class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shrink-0">
+                {{ store.pendingCount }} pending
+              </span>
+            </div>
+
+            <div role="tablist" class="flex items-center gap-1 shrink-0" @keydown="onTabKeydown">
+              <button v-for="tab in leftTabs" :key="tab.id"
+                @click="toggleTab(tab.id)"
+                role="tab"
+                :id="`tab-${tab.id}`"
+                :aria-selected="activeTab === tab.id"
+                :aria-controls="`panel-${tab.id}`"
+                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
+                  activeTab === tab.id
+                    ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
+                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
+                {{ tab.label }}
+                <span v-if="tab.id === 'preview' && store.pendingCount > 0"
+                  class="ml-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold">{{ store.pendingCount }}</span>
+              </button>
+            </div>
+
+            <button @click="toggleChat"
+              :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap',
+                chatOpen
+                  ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
+                  : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
+              :title="chatOpen ? 'Tutup AI Chat' : 'Buka AI Chat'">
+              💬 AI Chat
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Generation status banner (non-blocking) -->
     <div v-if="store.aiLoading"
-         class="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-300 dark:border-amber-700 px-4 lg:px-8 py-2.5 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-sm">
+         class="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-300 dark:border-amber-700 px-4 lg:px-8 py-2.5 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-sm shrink-0">
       <div class="relative w-6 h-6 shrink-0">
         <div class="absolute inset-0 rounded-full border-2 border-amber-200 dark:border-amber-700"></div>
         <div class="absolute inset-0 rounded-full border-2 border-t-amber-600 dark:border-t-amber-300 animate-spin"></div>
@@ -83,7 +102,7 @@
     <!-- Split layout: left tab pane (collapsible) + right chat panel.
          When no tab is selected, the left pane collapses and the chat goes
          full-width — useful for distraction-free conversation. -->
-    <div ref="splitRoot" class="flex overflow-hidden relative" :style="{ height: mainContentHeight }">
+    <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
       <!-- LEFT: editor / journal / figures / preview.
            NOTE: we use v-show (not v-if) on the outer wrapper so all panels
            — including LiteratureTab — stay mounted from the very first paint.
@@ -146,9 +165,9 @@
         <div class="card border-l-4 border-l-cream-500">
           <label class="label">Keywords</label>
           <div class="flex flex-wrap gap-1.5 mb-2">
-            <span v-for="(kw, i) in store.paper.keywords" :key="i"
+            <span v-for="(_kw, i) in store.paper.keywords" :key="i"
               class="bg-cream-200 text-brown-800 px-2 py-0.5 rounded text-sm flex items-center gap-1">
-              {{ kw }}
+              {{ _kw }}
               <button @click="store.removeKeyword(i)" class="text-brown-400 hover:text-brown-700 text-xs">✕</button>
             </span>
           </div>
@@ -176,7 +195,7 @@
                   <input v-model="section.title" class="input-sm flex-1 text-base font-semibold min-w-0"
                     placeholder="Section Title (e.g. INTRODUCTION)" />
                 </div>
-                <button @click="store.removeSection(sIdx)"
+                <button @click="confirmDeleteSection(sIdx)"
                   class="text-xs text-red-400 hover:text-red-600 px-2 py-1 ml-2 shrink-0">✕</button>
               </div>
 
@@ -205,7 +224,7 @@
                         <input v-model="sub.title" class="input-sm flex-1 text-base font-semibold min-w-0"
                           placeholder="Subsection Title" />
                       </div>
-                      <button @click="store.removeSubsection(sIdx, subIdx)"
+                      <button @click="confirmDeleteSubsection(sIdx, subIdx)"
                         class="text-xs text-red-400 hover:text-red-600 px-2 py-1 ml-2 shrink-0">✕</button>
                     </div>
                     <ContentList :items="sub.content" :store="store" />
@@ -274,6 +293,11 @@
         <FilesTab />
       </div>
 
+      <!-- TAB: DATA (tables + charts from one source) -->
+      <div v-show="activeTab === 'data'" role="tabpanel" id="panel-data" aria-labelledby="tab-data">
+        <DataTab />
+      </div>
+
       <!-- TAB: PREVIEW -->
       <div v-show="activeTab === 'preview'" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview">
         <PreviewTab />
@@ -290,7 +314,7 @@
 
     <!-- Toast -->
     <Teleport to="body">
-      <div v-if="store.toast.show" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999]">
+      <div v-if="store.toast.show" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
         <div :class="['px-4 py-2.5 rounded-lg shadow-lg text-white text-sm font-medium',
           store.toast.type === 'success' ? 'bg-green-600' :
           store.toast.type === 'error' ? 'bg-red-600' : 'bg-blue-600']">
@@ -298,10 +322,43 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Delete Confirmation Dialog -->
+    <AppDialog
+      :open="!!deleteTarget"
+      :title="deleteTarget?.type === 'section' ? 'Hapus Section?' : 'Hapus Subsection?'"
+      @close="cancelDelete"
+    >
+      <p class="text-sm text-ink-700 dark:text-ink-200">
+        <span class="font-semibold">"{{ deleteTarget?.title }}"</span> dan semua kontennya akan dihapus permanen.
+      </p>
+      <template #actions>
+        <button
+          @click="cancelDelete"
+          class="px-4 py-2 rounded-lg text-sm font-medium text-ink-700 dark:text-ink-200 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors"
+        >
+          Batal
+        </button>
+        <button
+          @click="doDelete"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+        >
+          Hapus
+        </button>
+      </template>
+    </AppDialog>
+
+    <!-- Keyboard Shortcuts Help -->
+    <ShortcutsHelp
+      :open="showShortcutsHelp"
+      :shortcuts="shortcuts"
+      @close="showShortcutsHelp = false"
+    />
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
@@ -309,14 +366,18 @@ import { usePaperStore } from '../stores/paper.js'
 import { useUiStore } from '../stores/ui.js'
 import { useChatStore } from '../stores/chat.js'
 import AppHeader from '../components/AppHeader.vue'
+import AppDialog from '../components/AppDialog.vue'
+import ShortcutsHelp from '../components/ShortcutsHelp.vue'
 import ContentList from '../components/ContentList.vue'
 import FilesTab from '../components/FilesTab.vue'
 import JournalTab from '../components/JournalTab.vue'
 import LiteratureTab from '../components/LiteratureTab.vue'
 import PreviewTab from '../components/PreviewTab.vue'
 import ChatTab from '../components/ChatTab.vue'
+import DataTab from '../components/DataTab.vue'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
+import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useKeyboardShortcuts'
 
 const store = usePaperStore()
 const ui = useUiStore()
@@ -339,21 +400,141 @@ const activeTab = computed({
 // Force a re-read whenever something external bumps the signal — even when
 // the new tab id is the same as the old one.
 watch(() => ui.tabSwitchSignal, () => { /* computed re-evaluates via getTab */ })
+
+// Delete confirmation state
+interface DeleteTarget {
+  type: 'section' | 'subsection'
+  sectionIndex: number
+  subsectionIndex?: number
+  title: string
+}
+const deleteTarget = ref<DeleteTarget | null>(null)
 const newKeyword = ref('')
-const abstractRef = ref(null)
+const abstractRef = ref<HTMLTextAreaElement | null>(null)
 const saveStatus = ref('saved')
-const lastSavedAt = ref(null)
+const lastSavedAt = ref<number | null>(null)
 const nowTick = ref(Date.now())
-const aiStartedAt = ref(null)
+const aiStartedAt = ref<number | null>(null)
 
 // ─── Split layout state ───────────────────────────────────────────────────
-const splitRoot = ref(null)
 const chatOpen = ref(true)
 
 function toggleChat() {
   chatOpen.value = !chatOpen.value
-  if (store.currentPaperId) ui.setChatOpen(store.currentPaperId, chatOpen.value)
 }
+
+function handlePapersBack() {
+  const onPaperChatHome = chatOpen.value && !chatStore.currentConversationId && !activeTab.value
+  if (!onPaperChatHome && store.currentPaperId) {
+    chatOpen.value = true
+    activeTab.value = ''
+    chatStore.currentConversationId = null
+    return
+  }
+  router.push({ name: 'dashboard' })
+}
+const showShortcutsHelp = ref(false)
+
+const shortcuts: KeyboardShortcut[] = [
+  {
+    key: 'k',
+    ctrl: true,
+    handler: () => toggleChat(),
+    description: 'Toggle AI Chat panel'
+  },
+  {
+    key: 'z',
+    ctrl: true,
+    handler: () => {
+      store.undo()
+    },
+    description: 'Undo last change'
+  },
+  {
+    key: 'z',
+    ctrl: true,
+    shift: true,
+    handler: () => {
+      store.redo()
+    },
+    description: 'Redo last undone change'
+  },
+  {
+    key: 's',
+    ctrl: true,
+    handler: async () => {
+      if (!store.loading) {
+        saveStatus.value = 'saving'
+        try {
+          await store.savePaperToDb(true)
+          lastSavedAt.value = Date.now()
+          saveStatus.value = 'saved'
+        } catch (e) {
+          saveStatus.value = 'error'
+        }
+      }
+    },
+    description: 'Save paper manually'
+  },
+  {
+    key: 'e',
+    ctrl: true,
+    handler: () => {
+      if (!store.loading) {
+        store.exportDocx()
+      }
+    },
+    description: 'Export paper to DOCX'
+  },
+  {
+    key: '1',
+    ctrl: true,
+    handler: () => { activeTab.value = leftTabs[0].id },
+    description: 'Switch to Editor tab'
+  },
+  {
+    key: '2',
+    ctrl: true,
+    handler: () => { activeTab.value = leftTabs[1].id },
+    description: 'Switch to Journal tab'
+  },
+  {
+    key: '3',
+    ctrl: true,
+    handler: () => { activeTab.value = leftTabs[2].id },
+    description: 'Switch to Literature tab'
+  },
+  {
+    key: '4',
+    ctrl: true,
+    handler: () => { activeTab.value = leftTabs[3].id },
+    description: 'Switch to Files tab'
+  },
+  {
+    key: '5',
+    ctrl: true,
+    handler: () => { activeTab.value = leftTabs[4].id },
+    description: 'Switch to Data tab'
+  },
+  {
+    key: 'n',
+    ctrl: true,
+    handler: () => {
+      store.addSection()
+    },
+    description: 'Add new section'
+  },
+  {
+    key: '/',
+    ctrl: true,
+    handler: () => {
+      showShortcutsHelp.value = true
+    },
+    description: 'Show keyboard shortcuts help'
+  }
+]
+
+useKeyboardShortcuts(shortcuts)
 
 // ─── Topic / Style / PDF state (used by chat for file attach) ─────────────
 const availableTopics = ref([])
@@ -364,29 +545,24 @@ const leftTabs = [
   { id: 'journal', label: '📚 Journal' },
   { id: 'literature', label: '📖 Literatur' },
   { id: 'files', label: '📂 Files' },
+  { id: 'data', label: '📊 Data' },
   { id: 'preview', label: '👁 Preview' },
 ]
 
 const keyMap = new WeakMap()
 let __kc = 0
-function stableKey(obj) {
+function stableKey(obj: any) {
   if (typeof obj !== 'object' || !obj) return String(obj)
   if (!keyMap.has(obj)) keyMap.set(obj, String(++__kc))
   return keyMap.get(obj)
 }
 
-let autoSaveTimer = null
-let tickTimer = null
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+let tickTimer: ReturnType<typeof setInterval> | null = null
 const savedRelative = computed(() => lastSavedAt.value ? 'just now' : 'just now')
 const aiElapsedSeconds = computed(() => aiStartedAt.value ? Math.floor((nowTick.value - aiStartedAt.value) / 1000) : 0)
 const aiElapsedLabel = computed(() => aiElapsedSeconds.value < 60 ? `0:${String(aiElapsedSeconds.value).padStart(2, '0')}` : `${Math.floor(aiElapsedSeconds.value / 60)}m ${aiElapsedSeconds.value % 60}s`)
 const canCancelAi = computed(() => typeof chatStore.stopStreaming === 'function')
-
-const mainContentHeight = computed(() => {
-  const baseHeaderHeight = 57 + 48
-  const bannerHeight = store.aiLoading ? 48 : 0
-  return `calc(100vh - ${baseHeaderHeight + bannerHeight}px)`
-})
 
 watch(() => store.aiLoading, (v) => {
   aiStartedAt.value = v ? Date.now() : null
@@ -415,6 +591,7 @@ onUnmounted(() => {
   clearInterval(tickTimer)
   window.removeEventListener('resize', resizeAbstract)
   paperJobsStore.stopPolling()
+  chatStore.stopActiveJobPolling()
 })
 
 onMounted(async () => {
@@ -424,16 +601,17 @@ onMounted(async () => {
   // Global recent-done poller (10s); guarded so multiple mounts don't stack.
   paperJobsStore.startGlobalPolling()
   const paperId = route.params.paperId
-  if (paperId) {
-    await store.loadPaperFromDb(paperId)
-    chatOpen.value = ui.getChatOpen(paperId)
+  if (paperId && paperId !== 'null' && paperId !== 'undefined') {
+    const paperIdStr = Array.isArray(paperId) ? paperId[0] : paperId
+    await store.loadPaperFromDb(paperIdStr)
+    chatOpen.value = ui.getChatOpen(paperIdStr)
   } else {
     store.newPaper()
-    store.paper.title = ''
+    chatOpen.value = true
     const newId = await store.savePaperToDb(true)
     if (newId) {
       router.replace({ name: 'editor', params: { paperId: newId } })
-      chatOpen.value = ui.getChatOpen(newId)
+      chatOpen.value = ui.getChatOpen(newId) ?? true
     }
   }
   // Start active-job poller for whichever paper we ended up on.
@@ -449,18 +627,27 @@ onMounted(async () => {
     availableStyles.value = sRes?.data?.styles || []
   } catch (e) { /* non-critical */ }
 
+  if (route.query.tab) {
+    activeTab.value = String(route.query.tab)
+  }
+
   nextTick(() => {
     resizeAbstract()
   })
 })
 
+watch(activeTab, (newTab) => {
+  router.replace({ query: { ...route.query, tab: newTab || undefined } })
+}, { immediate: false })
+
 watch(() => store.paper.abstract, () => resizeAbstract())
 watch(() => chatOpen.value, () => resizeAbstract())
 
 watch(() => route.params.paperId, async (newId, oldId) => {
-  if (newId && newId !== oldId && newId !== store.currentPaperId) {
-    await store.loadPaperFromDb(newId)
-    chatOpen.value = ui.getChatOpen(newId)
+  if (newId && newId !== 'null' && newId !== 'undefined' && newId !== oldId && newId !== store.currentPaperId) {
+    const newIdStr = Array.isArray(newId) ? newId[0] : newId
+    await store.loadPaperFromDb(newIdStr)
+    chatOpen.value = ui.getChatOpen(newIdStr)
     resizeAbstract()
   }
 })
@@ -474,17 +661,17 @@ watch(() => store.currentPaperId, (newId, oldId) => {
   }
 })
 
-function toRoman(num) { return store.toRoman(num) }
-function toggleTab(id) {
+function toRoman(num: number) { return store.toRoman(num) }
+function toggleTab(id: string) {
   activeTab.value = activeTab.value === id ? '' : id
 }
-function onTabKeydown(e) {
+function onTabKeydown(e: KeyboardEvent) {
   if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return
   const idx = leftTabs.findIndex(t => t.id === activeTab.value)
   const next = e.key === 'ArrowRight' ? (idx + 1) % leftTabs.length : (idx - 1 + leftTabs.length) % leftTabs.length
   activeTab.value = leftTabs[next].id
 }
-function moveItem(list, from, to) {
+function moveItem(list: any[], from: number, to: number) {
   if (!Array.isArray(list) || to < 0 || to >= list.length || from === to) return
   const [item] = list.splice(from, 1)
   list.splice(to, 0, item)
@@ -499,8 +686,8 @@ async function retrySave() {
     saveStatus.value = 'error'
   }
 }
-function autoResize(e) {
-  const el = e.target
+function autoResize(e: Event) {
+  const el = e.target as HTMLTextAreaElement
   el.style.height = 'auto'
   el.style.height = el.scrollHeight + 'px'
 }
@@ -515,6 +702,42 @@ function resizeAbstract() {
 function addKw() {
   if (newKeyword.value.trim()) { store.addKeyword(newKeyword.value.trim()); newKeyword.value = '' }
 }
+
+function confirmDeleteSection(sIdx: number) {
+  const section = store.paper.sections[sIdx]
+  deleteTarget.value = {
+    type: 'section',
+    sectionIndex: sIdx,
+    title: section?.title || 'Untitled Section'
+  }
+}
+
+function confirmDeleteSubsection(sIdx: number, subIdx: number) {
+  const subsection = store.paper.sections[sIdx]?.subsections?.[subIdx]
+  deleteTarget.value = {
+    type: 'subsection',
+    sectionIndex: sIdx,
+    subsectionIndex: subIdx,
+    title: subsection?.title || 'Untitled Subsection'
+  }
+}
+
+function doDelete() {
+  if (!deleteTarget.value) return
+  
+  if (deleteTarget.value.type === 'section') {
+    store.removeSection(deleteTarget.value.sectionIndex)
+  } else if (deleteTarget.value.type === 'subsection') {
+    store.removeSubsection(deleteTarget.value.sectionIndex, deleteTarget.value.subsectionIndex)
+  }
+  
+  deleteTarget.value = null
+}
+
+function cancelDelete() {
+  deleteTarget.value = null
+}
+
 </script>
 
 <style scoped>

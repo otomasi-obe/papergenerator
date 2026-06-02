@@ -43,18 +43,17 @@ import logging
 import os
 import queue
 import re
-import sys
 import time
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
-from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 except Exception:
     pass
@@ -69,9 +68,10 @@ REPO_DIR = Path(__file__).resolve().parent
 RR_STATE_PATH = REPO_DIR / ".rr-state.json"
 GEMINI_URL = "https://gemini.google.com/app"
 DEFAULT_VIEWPORT = (1536, 864)
-DOWNLOAD_BTN_RE = re.compile(
-    r"^(Download|Unduh)\b.*\b(gambar|image)\b", re.IGNORECASE
-)
+DOWNLOAD_BTN_RE = re.compile(r"^(Download|Unduh)\b.*\b(gambar|image)\b", re.IGNORECASE)
+
+# Module-level logger for CLI output
+log = logging.getLogger(__name__)
 
 # ── Per-account logging ────────────────────────────────────────────────
 # Each Gemini account gets its own log file under logs/generator/<name>.log so
@@ -94,9 +94,7 @@ def _get_account_logger(name: str) -> logging.Logger:
     logger.setLevel(logging.INFO)
     logger.propagate = False
     fh = logging.FileHandler(LOG_DIR / f"{name}.log", encoding="utf-8")
-    fh.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    )
+    fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(fh)
     _LOGGERS[name] = logger
     return logger
@@ -138,11 +136,11 @@ def _click_via_js(page, aria_labels: list[str]) -> bool:
     sel = ", ".join(f'button[aria-label="{a}"]' for a in aria_labels)
     return bool(
         page.evaluate(
-            f"""(sel) => {{
+            """(sel) => {
                 const b = [...document.querySelectorAll(sel)].find(x => !x.disabled);
-                if (b) {{ b.click(); return true; }}
+                if (b) { b.click(); return true; }
                 return false;
-            }}""",
+            }""",
             sel,
         )
     )
@@ -151,12 +149,15 @@ def _click_via_js(page, aria_labels: list[str]) -> bool:
 def _open_image_tool(page, *, timeout_s: int = 30) -> None:
     """Buka menu 'Upload & alat' lalu pilih item 'Gambar'."""
     deadline = time.monotonic() + timeout_s
-    
+
     # cek apakah mode image sudah aktif
     try:
-        if page.locator(
-            'button[aria-label*="Buat Gambar"], button[aria-label*="Create image"]'
-        ).count() > 0:
+        if (
+            page.locator(
+                'button[aria-label*="Buat Gambar"], button[aria-label*="Create image"]'
+            ).count()
+            > 0
+        ):
             return
     except Exception:
         pass
@@ -389,7 +390,9 @@ class GeminiAccount:
         if img_bytes is None or not _looks_like_image(img_bytes):
             deadline = time.time() + intercept_timeout
             collected_redirect: str | None = None
-            while time.time() < deadline and (img_bytes is None or not _looks_like_image(img_bytes)):
+            while time.time() < deadline and (
+                img_bytes is None or not _looks_like_image(img_bytes)
+            ):
                 try:
                     candidate = self.img_q.get(timeout=1)
                     if _looks_like_image(candidate):
@@ -432,9 +435,17 @@ class GeminiAccount:
         elapsed = time.time() - t0
         log.info(
             "job done: out=%s size=%d bytes in %.1fs (req#%d)",
-            out_path, len(img_bytes), elapsed, self.requests_made,
+            out_path,
+            len(img_bytes),
+            elapsed,
+            self.requests_made,
         )
-        return {"path": str(out_path), "account": self.name, "email": self.email, "size": len(img_bytes)}
+        return {
+            "path": str(out_path),
+            "account": self.name,
+            "email": self.email,
+            "size": len(img_bytes),
+        }
 
 
 @dataclass
@@ -530,7 +541,9 @@ class GeminiPool:
             except Exception as e:
                 last_err = e
                 _get_account_logger(acc.name).exception("job failed: %s", e)
-                _get_account_logger(acc.name).warning("%s failed: %s → trying next account", acc.name, e)
+                _get_account_logger(acc.name).warning(
+                    "%s failed: %s → trying next account", acc.name, e
+                )
                 # close akun ini supaya browser baru kalau retry
                 acc.close()
                 continue
@@ -549,38 +562,53 @@ def _cmd_check(pool: GeminiPool) -> int:
     for a in pool.accounts:
         try:
             a.launch(pool._pw)
-            print(f"  ✓ {a.name} ({a.email or '-'}) – siap")
+            log.info(f"  ✓ {a.name} ({a.email or '-'}) – siap")
         except Exception as e:
-            print(f"  ✗ {a.name}: {e}")
+            log.error(f"  ✗ {a.name}: {e}")
     return 0
 
 
 def _cmd_single(pool: GeminiPool, prompt: str, out: Path, *, compress: bool, max_mb: float) -> int:
-    print(f"Generate: {out}")
+    log.info(f"Generate: {out}")
     res = pool.generate_image(prompt, out, compress=compress, max_size_mb=max_mb)
-    print(f"  ✓ via {res['account']} ({res.get('email') or '-'}) – {res['size']//1024} KB")
+    log.info(f"  ✓ via {res['account']} ({res.get('email') or '-'}) – {res['size']//1024} KB")
     return 0
 
 
-def _cmd_batch(pool: GeminiPool, prompts: list[dict], out_dir: Path, *, compress: bool, max_mb: float, overwrite: bool) -> int:
+def _cmd_batch(
+    pool: GeminiPool,
+    prompts: list[dict],
+    out_dir: Path,
+    *,
+    compress: bool,
+    max_mb: float,
+    overwrite: bool,
+) -> int:
     ok = fail = 0
     out_dir.mkdir(parents=True, exist_ok=True)
     for i, item in enumerate(prompts, 1):
         name = item.get("name") or f"image-{i:02d}.png"
         prompt = item.get("prompt") or ""
         if not prompt:
-            print(f"[{i}] skip — prompt kosong"); fail += 1; continue
+            log.warning(f"[{i}] skip — prompt kosong")
+            fail += 1
+            continue
         out = out_dir / name
-        print(f"\n[{i}/{len(prompts)}] {name}")
+        log.info(f"\n[{i}/{len(prompts)}] {name}")
         if out.exists() and not overwrite:
-            print("  • file sudah ada – skip"); ok += 1; continue
+            log.info("  • file sudah ada – skip")
+            ok += 1
+            continue
         try:
             res = pool.generate_image(prompt, out, compress=compress, max_size_mb=max_mb)
-            print(f"  ✓ via {res['account']} ({res.get('email') or '-'}) – {out.stat().st_size//1024} KB")
+            log.info(
+                f"  ✓ via {res['account']} ({res.get('email') or '-'}) – {out.stat().st_size//1024} KB"
+            )
             ok += 1
         except Exception as e:
-            print(f"  ✗ {e}"); fail += 1
-    print(f"\nSummary: OK={ok} FAIL={fail}")
+            log.error(f"  ✗ {e}")
+            fail += 1
+    log.info(f"\nSummary: OK={ok} FAIL={fail}")
     return 0 if fail == 0 else 3
 
 
@@ -589,24 +617,44 @@ def main() -> int:
     parser.add_argument("--prompt", help="Prompt single-shot")
     parser.add_argument("--out", help="Output path (untuk --prompt)")
     parser.add_argument("--prompts-json", help="JSON file: [{name, prompt}, …]")
-    parser.add_argument("--out-dir", default=str(REPO_DIR.parent / "data" / "image"), help="Output directory untuk --prompts-json")
+    parser.add_argument(
+        "--out-dir",
+        default=str(REPO_DIR.parent / "data" / "image"),
+        help="Output directory untuk --prompts-json",
+    )
     parser.add_argument("--check", action="store_true", help="Cek pool akun lalu exit")
     parser.add_argument("--no-compress", action="store_true", help="Jangan compress hasil")
     parser.add_argument("--max-size-mb", type=float, default=1.0)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
+    # Configure logging for CLI usage
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
     with GeminiPool.from_env() as pool:
-        print(f"Pool: {len(pool.accounts)} akun → {[a.name for a in pool.accounts]}")
+        log.info(f"Pool: {len(pool.accounts)} akun → {[a.name for a in pool.accounts]}")
         if args.check:
             return _cmd_check(pool)
         if args.prompt:
             if not args.out:
                 raise SystemExit("--prompt butuh --out")
-            return _cmd_single(pool, args.prompt, _resolve_path(args.out), compress=not args.no_compress, max_mb=args.max_size_mb)
+            return _cmd_single(
+                pool,
+                args.prompt,
+                _resolve_path(args.out),
+                compress=not args.no_compress,
+                max_mb=args.max_size_mb,
+            )
         if args.prompts_json:
             data = json.loads(_resolve_path(args.prompts_json).read_text(encoding="utf-8"))
-            return _cmd_batch(pool, data, _resolve_path(args.out_dir), compress=not args.no_compress, max_mb=args.max_size_mb, overwrite=args.overwrite)
+            return _cmd_batch(
+                pool,
+                data,
+                _resolve_path(args.out_dir),
+                compress=not args.no_compress,
+                max_mb=args.max_size_mb,
+                overwrite=args.overwrite,
+            )
         parser.print_help()
         return 0
 

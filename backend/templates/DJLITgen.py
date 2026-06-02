@@ -3,6 +3,7 @@ DJLITgen.py - Generator DOCX untuk jurnal DJLIT (Defence Science Journal Article
 Menggunakan DJLIT.docx sebagai base template (paste keep formatting),
 data dari _template.json. Output: DJLIT_output.docx.
 """
+
 from __future__ import annotations
 
 import json
@@ -10,7 +11,6 @@ import os
 import re
 import shutil
 import zipfile
-from io import BytesIO
 from pathlib import Path
 
 from docx import Document
@@ -28,7 +28,10 @@ TEMPLATE_JSON = BASE / "_template.json"
 OUTPUT_DOCX = BASE / "DJLIT_output.docx"
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-def w(tag): return f"{{{W_NS}}}{tag}"
+
+
+def w(tag):
+    return f"{{{W_NS}}}{tag}"
 
 
 # =============================================================================
@@ -36,8 +39,8 @@ def w(tag): return f"{{{W_NS}}}{tag}"
 # =============================================================================
 CFG = {
     # ---- Page size & margin (sectPr inline #0 == #1 == final) ----
-    "page_w_tw": 12240,        # 612.00pt, US Letter
-    "page_h_tw": 15840,        # 792.00pt
+    "page_w_tw": 12240,  # 612.00pt, US Letter
+    "page_h_tw": 15840,  # 792.00pt
     "mar_top_tw": 1037,
     "mar_bottom_tw": 533,
     "mar_left_tw": 743,
@@ -61,9 +64,9 @@ CFG = {
     "size_reference": 11.0,
     "size_keywords": 11.0,
     # ---- Line spacing (twip) ----
-    "line_body_tw": 240,        # single
+    "line_body_tw": 240,  # single
     # ---- Indent ----
-    "first_line_indent_tw": 426,    # ~21pt
+    "first_line_indent_tw": 426,  # ~21pt
     "ref_left_tw": 426,
     "ref_hanging_tw": 426,
     # ---- Spacing minimum (pt) ----
@@ -89,8 +92,16 @@ def _pt2tw(pt: float) -> int:
     return int(round(pt * 20))
 
 
-def _set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None,
-                  color=None, underline=None, vert_align=None):
+def _set_run_font(
+    run,
+    font_name=None,
+    size_pt=None,
+    bold=None,
+    italic=None,
+    color=None,
+    underline=None,
+    vert_align=None,
+):
     rPr = run._element.get_or_add_rPr()
     if font_name:
         rFonts = rPr.find(qn("w:rFonts"))
@@ -142,13 +153,19 @@ def _set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None,
         va.set(qn("w:val"), vert_align)
 
 
-def _set_para_format(paragraph,
-                     align=None,
-                     sp_before_tw=None, sp_after_tw=None,
-                     line_tw=None, line_rule="auto",
-                     ind_left_tw=None, ind_right_tw=None,
-                     ind_first_tw=None, ind_hanging_tw=None,
-                     keep_next=False):
+def _set_para_format(
+    paragraph,
+    align=None,
+    sp_before_tw=None,
+    sp_after_tw=None,
+    line_tw=None,
+    line_rule="auto",
+    ind_left_tw=None,
+    ind_right_tw=None,
+    ind_first_tw=None,
+    ind_hanging_tw=None,
+    keep_next=False,
+):
     pPr = paragraph._p.get_or_add_pPr()
 
     if align is not None:
@@ -191,13 +208,28 @@ def _set_para_format(paragraph,
             pPr.append(OxmlElement("w:keepNext"))
 
 
-def _add_run(paragraph, text, font_name=None, size_pt=None, bold=False,
-             italic=False, color=None, underline=None, vert_align=None):
+def _add_run(
+    paragraph,
+    text,
+    font_name=None,
+    size_pt=None,
+    bold=False,
+    italic=False,
+    color=None,
+    underline=None,
+    vert_align=None,
+):
     run = paragraph.add_run(text)
-    _set_run_font(run,
-                  font_name=font_name or CFG["font_main"],
-                  size_pt=size_pt, bold=bold, italic=italic,
-                  color=color, underline=underline, vert_align=vert_align)
+    _set_run_font(
+        run,
+        font_name=font_name or CFG["font_main"],
+        size_pt=size_pt,
+        bold=bold,
+        italic=italic,
+        color=color,
+        underline=underline,
+        vert_align=vert_align,
+    )
     return run
 
 
@@ -371,8 +403,7 @@ def _patch_styles_bytes(xml_bytes: bytes) -> bytes:
     jadi inherited numPr hanya menimbulkan duplikasi dan memaksa kita
     menyisipkan numId=0 override yang di-flag QA sebagai unknown_numid."""
     root = etree.fromstring(xml_bytes)
-    target_styles = {"Heading1", "Heading2", "Heading3",
-                     "heading 1", "heading 2", "heading 3"}
+    target_styles = {"Heading1", "Heading2", "Heading3", "heading 1", "heading 2", "heading 3"}
     for style in root.findall(f"{{{W_NS}}}style"):
         sid = style.get(f"{{{W_NS}}}styleId") or ""
         name_el = style.find(f"{{{W_NS}}}name")
@@ -383,12 +414,10 @@ def _patch_styles_bytes(xml_bytes: bytes) -> bytes:
                 numPr = pPr.find(f"{{{W_NS}}}numPr")
                 if numPr is not None:
                     pPr.remove(numPr)
-    return etree.tostring(root, xml_declaration=True, encoding="UTF-8",
-                          standalone=True)
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
 
 
 def _patch_numbering_bytes(xml_bytes: bytes) -> bytes:
-    nsmap = {"w": W_NS}
     root = etree.fromstring(xml_bytes)
 
     # Cari abstractNum dengan abstractNumId tertentu yang dipakai num[1].
@@ -459,8 +488,7 @@ def _patch_numbering_bytes(xml_bytes: bytes) -> bytes:
     _build_lvl(7, "%8.", 720, 360)
     _build_lvl(8, "%9.", 720, 360)
 
-    return etree.tostring(root, xml_declaration=True, encoding="UTF-8",
-                          standalone=True)
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
 
 
 # =============================================================================
@@ -471,34 +499,82 @@ def clean_inline_text(text: str) -> str:
     if not text:
         return ""
     text = re.sub(r"\$([^$]+)\$", r"\1", text)
-    text = re.sub(r"\\(?:mathrm|mathbf|mathit|text|textit|textbf)\{([^}]*)\}",
-                  r"\1", text)
+    text = re.sub(r"\\(?:mathrm|mathbf|mathit|text|textit|textbf)\{([^}]*)\}", r"\1", text)
     LATEX_SYMBOLS = {
-        r"\\approx": "≈", r"\\times": "×", r"\\cdot": "·",
-        r"\\pm": "±", r"\\leq": "≤", r"\\geq": "≥",
-        r"\\neq": "≠", r"\\infty": "∞", r"\\rightarrow": "→",
-        r"\\leftarrow": "←", r"\\circ": "°",
-        r"\\alpha": "α", r"\\beta": "β", r"\\gamma": "γ",
-        r"\\delta": "δ", r"\\theta": "θ", r"\\lambda": "λ",
-        r"\\mu": "μ", r"\\sigma": "σ", r"\\pi": "π",
-        r"\\omega": "ω", r"\\Delta": "Δ", r"\\Sigma": "Σ",
-        r"\\Omega": "Ω", r"\\Phi": "Φ", r"\\phi": "φ",
-        r"\\nabla": "∇", r"\\partial": "∂",
-        r"\\quad": "  ", r"\\qquad": "    ",
+        r"\\approx": "≈",
+        r"\\times": "×",
+        r"\\cdot": "·",
+        r"\\pm": "±",
+        r"\\leq": "≤",
+        r"\\geq": "≥",
+        r"\\neq": "≠",
+        r"\\infty": "∞",
+        r"\\rightarrow": "→",
+        r"\\leftarrow": "←",
+        r"\\circ": "°",
+        r"\\alpha": "α",
+        r"\\beta": "β",
+        r"\\gamma": "γ",
+        r"\\delta": "δ",
+        r"\\theta": "θ",
+        r"\\lambda": "λ",
+        r"\\mu": "μ",
+        r"\\sigma": "σ",
+        r"\\pi": "π",
+        r"\\omega": "ω",
+        r"\\Delta": "Δ",
+        r"\\Sigma": "Σ",
+        r"\\Omega": "Ω",
+        r"\\Phi": "Φ",
+        r"\\phi": "φ",
+        r"\\nabla": "∇",
+        r"\\partial": "∂",
+        r"\\quad": "  ",
+        r"\\qquad": "    ",
     }
     for pat, repl in LATEX_SYMBOLS.items():
         text = re.sub(pat, repl, text)
-    sup_map = str.maketrans({"0": "⁰", "1": "¹", "2": "²", "3": "³",
-                              "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷",
-                              "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻",
-                              "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ"})
-    sub_map = str.maketrans({"0": "₀", "1": "₁", "2": "₂", "3": "₃",
-                              "4": "₄", "5": "₅", "6": "₆", "7": "₇",
-                              "8": "₈", "9": "₉"})
+    sup_map = str.maketrans(
+        {
+            "0": "⁰",
+            "1": "¹",
+            "2": "²",
+            "3": "³",
+            "4": "⁴",
+            "5": "⁵",
+            "6": "⁶",
+            "7": "⁷",
+            "8": "⁸",
+            "9": "⁹",
+            "+": "⁺",
+            "-": "⁻",
+            "=": "⁼",
+            "(": "⁽",
+            ")": "⁾",
+            "n": "ⁿ",
+        }
+    )
+    sub_map = str.maketrans(
+        {
+            "0": "₀",
+            "1": "₁",
+            "2": "₂",
+            "3": "₃",
+            "4": "₄",
+            "5": "₅",
+            "6": "₆",
+            "7": "₇",
+            "8": "₈",
+            "9": "₉",
+        }
+    )
     text = re.sub(r"\^\{([^}]*)\}", lambda m: m.group(1).translate(sup_map), text)
     text = re.sub(r"\^(\w)", lambda m: m.group(1).translate(sup_map), text)
-    text = re.sub(r"_\{([^}]*)\}", lambda m: (m.group(1).translate(sub_map)
-                  if m.group(1).isdigit() else m.group(1)), text)
+    text = re.sub(
+        r"_\{([^}]*)\}",
+        lambda m: (m.group(1).translate(sub_map) if m.group(1).isdigit() else m.group(1)),
+        text,
+    )
     text = re.sub(r"_(\w)", lambda m: m.group(1), text)
     text = re.sub(r"\\[A-Za-z]+", "", text)
     return text
@@ -530,150 +606,182 @@ def add_decoration_top(doc):
     Title (idx 3) — ini diperlukan agar audit-unik checker melihat Title
     di idx yang sama dengan template asli."""
     p = doc.add_paragraph()
-    _set_para_format(p, align="center",
-                     line_tw=240, line_rule="auto",
-                     ind_left_tw=110, ind_right_tw=0)
-    _add_run(p, "TEMPLATE FOR SUBMITTING THE MANUSCRIPT",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             bold=True, underline="single",
-             color=CFG["color_main"])
+    _set_para_format(
+        p, align="center", line_tw=240, line_rule="auto", ind_left_tw=110, ind_right_tw=0
+    )
+    _add_run(
+        p,
+        "TEMPLATE FOR SUBMITTING THE MANUSCRIPT",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_body"],
+        bold=True,
+        underline="single",
+        color=CFG["color_main"],
+    )
 
     # 2 spacer (idx 1, 2 di original) — menjaga Title tetap di idx 3.
     for _ in range(2):
         sp = doc.add_paragraph()
-        _set_para_format(sp, line_tw=240, line_rule="auto",
-                         ind_left_tw=110, ind_right_tw=0)
+        _set_para_format(sp, line_tw=240, line_rule="auto", ind_left_tw=110, ind_right_tw=0)
 
 
 def add_title(doc, data):
     title = (data.get("title") or "Title of Paper in Title Case").strip()
     p = doc.add_paragraph()
     _set_para_style(p, "Title")
-    _set_para_format(p, align="center",
-                     sp_before_tw=0, sp_after_tw=0,
-                     line_tw=240, line_rule="auto",
-                     ind_right_tw=340,
-                     keep_next=True)
-    _add_run(p, title,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_title"],
-             bold=True,
-             color=CFG["color_main"])
+    _set_para_format(
+        p,
+        align="center",
+        sp_before_tw=0,
+        sp_after_tw=0,
+        line_tw=240,
+        line_rule="auto",
+        ind_right_tw=340,
+        keep_next=True,
+    )
+    _add_run(
+        p,
+        title,
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_title"],
+        bold=True,
+        color=CFG["color_main"],
+    )
 
     # subtitle / hint line
     p2 = doc.add_paragraph()
     _set_para_style(p2, "Title")
-    _set_para_format(p2, align="center",
-                     sp_before_tw=0, sp_after_tw=0,
-                     line_tw=240, line_rule="auto",
-                     ind_right_tw=340)
-    _add_run(p2,
-             "(The first letter of each word in the title should be capitalised)",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_title_sub"],
-             italic=True,
-             color=CFG["color_main"])
+    _set_para_format(
+        p2,
+        align="center",
+        sp_before_tw=0,
+        sp_after_tw=0,
+        line_tw=240,
+        line_rule="auto",
+        ind_right_tw=340,
+    )
+    _add_run(
+        p2,
+        "(The first letter of each word in the title should be capitalised)",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_title_sub"],
+        italic=True,
+        color=CFG["color_main"],
+    )
 
 
 def add_authors(doc, data):
-    authors = data.get("authors") or [{"name": "Author Name",
-                                       "affiliation": "Department, University",
-                                       "email": "author@email.ac.id"}]
+    authors = data.get("authors") or [
+        {
+            "name": "Author Name",
+            "affiliation": "Department, University",
+            "email": "author@email.ac.id",
+        }
+    ]
 
     # Spacer kosong
     sp = doc.add_paragraph()
-    _set_para_format(sp, align="center",
-                     line_tw=240, line_rule="auto",
-                     ind_left_tw=245, ind_right_tw=284)
+    _set_para_format(
+        sp, align="center", line_tw=240, line_rule="auto", ind_left_tw=245, ind_right_tw=284
+    )
 
     # Nama-nama author dengan superscript marker
     markers = ["#", "$", "&", "!", "*"]
     p = doc.add_paragraph()
-    _set_para_format(p, align="center",
-                     line_tw=240, line_rule="auto",
-                     ind_left_tw=245, ind_right_tw=284)
+    _set_para_format(
+        p, align="center", line_tw=240, line_rule="auto", ind_left_tw=245, ind_right_tw=284
+    )
     for i, a in enumerate(authors):
         if i:
             sep = ", " if i < len(authors) - 1 else ", and "
-            _add_run(p, sep,
-                     font_name=CFG["font_main"],
-                     size_pt=CFG["size_body"],
-                     color=CFG["color_main"])
-        _add_run(p, (a.get("name") or "Author Name").strip(),
-                 font_name=CFG["font_main"],
-                 size_pt=CFG["size_body"],
-                 color=CFG["color_main"])
+            _add_run(
+                p,
+                sep,
+                font_name=CFG["font_main"],
+                size_pt=CFG["size_body"],
+                color=CFG["color_main"],
+            )
+        _add_run(
+            p,
+            (a.get("name") or "Author Name").strip(),
+            font_name=CFG["font_main"],
+            size_pt=CFG["size_body"],
+            color=CFG["color_main"],
+        )
         marker = markers[i % len(markers)]
-        _add_run(p, marker,
-                 font_name=CFG["font_main"],
-                 size_pt=CFG["size_body"],
-                 color=CFG["color_main"],
-                 vert_align="superscript")
+        _add_run(
+            p,
+            marker,
+            font_name=CFG["font_main"],
+            size_pt=CFG["size_body"],
+            color=CFG["color_main"],
+            vert_align="superscript",
+        )
         if i == 0:
-            _add_run(p, "*",
-                     font_name=CFG["font_main"],
-                     size_pt=CFG["size_body"],
-                     color=CFG["color_main"],
-                     vert_align="superscript")
+            _add_run(
+                p,
+                "*",
+                font_name=CFG["font_main"],
+                size_pt=CFG["size_body"],
+                color=CFG["color_main"],
+                vert_align="superscript",
+            )
 
     # Affiliations per author
     for i, a in enumerate(authors):
         marker = markers[i % len(markers)]
         ap = doc.add_paragraph()
-        _set_para_format(ap, align="center",
-                         line_tw=240, line_rule="auto",
-                         ind_left_tw=245, ind_right_tw=284)
+        _set_para_format(
+            ap, align="center", line_tw=240, line_rule="auto", ind_left_tw=245, ind_right_tw=284
+        )
         aff = (a.get("affiliation") or "Department, University").strip()
         loc = (a.get("location") or "").strip()
         text_aff = aff + (f", {loc}" if loc else "")
-        _add_run(ap, f"{marker}{text_aff}",
-                 font_name=CFG["font_main"],
-                 size_pt=CFG["size_body"],
-                 color=CFG["color_main"])
+        _add_run(
+            ap,
+            f"{marker}{text_aff}",
+            font_name=CFG["font_main"],
+            size_pt=CFG["size_body"],
+            color=CFG["color_main"],
+        )
 
     # Corresponding author email
     em = (authors[0].get("email") if authors else None) or "author@email.ac.id"
     ep = doc.add_paragraph()
-    _set_para_format(ep, align="center",
-                     line_tw=240, line_rule="auto",
-                     ind_left_tw=245, ind_right_tw=284)
-    _add_run(ep, f"*Corresponding Author's E-mail: {em}",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             color=CFG["color_main"])
+    _set_para_format(
+        ep, align="center", line_tw=240, line_rule="auto", ind_left_tw=245, ind_right_tw=284
+    )
+    _add_run(
+        ep,
+        f"*Corresponding Author's E-mail: {em}",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_body"],
+        color=CFG["color_main"],
+    )
 
     # spacer
     sp2 = doc.add_paragraph()
-    _set_para_format(sp2, align="center",
-                     line_tw=240, line_rule="auto")
+    _set_para_format(sp2, align="center", line_tw=240, line_rule="auto")
 
 
 def add_abstract(doc, data):
     label = doc.add_paragraph()
-    _set_para_format(label, align="center",
-                     line_tw=240, line_rule="auto",
-                     keep_next=True)
-    _add_run(label, "ABSTRACT",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             bold=True)
+    _set_para_format(label, align="center", line_tw=240, line_rule="auto", keep_next=True)
+    _add_run(label, "ABSTRACT", font_name=CFG["font_main"], size_pt=CFG["size_body"], bold=True)
 
     sp = doc.add_paragraph()
     _set_para_format(sp, line_tw=240, line_rule="auto")
 
     body = doc.add_paragraph()
-    _set_para_format(body, align="both",
-                     line_tw=240, line_rule="auto",
-                     ind_left_tw=1134, ind_right_tw=1191)
+    _set_para_format(
+        body, align="both", line_tw=240, line_rule="auto", ind_left_tw=1134, ind_right_tw=1191
+    )
     abstract_text = clean_inline_text(
-        data.get("abstract") or
-        "An abstract of about 150-200 words for research & review articles "
+        data.get("abstract")
+        or "An abstract of about 150-200 words for research & review articles "
         "summarising the paper."
     )
-    _add_run(body, abstract_text,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"])
+    _add_run(body, abstract_text, font_name=CFG["font_main"], size_pt=CFG["size_body"])
 
     # Trailing spacer agar idx Keywords sejajar dengan template asli
     # (original: idx 14 abstract body, idx 15 spacer, idx 16 Keywords).
@@ -684,24 +792,38 @@ def add_abstract(doc, data):
 def add_keywords(doc, data):
     keywords = data.get("keywords") or ["keyword1", "keyword2", "keyword3"]
     p = doc.add_paragraph()
-    _set_para_format(p, align="both",
-                     line_tw=240, line_rule="auto",
-                     ind_left_tw=2410, ind_right_tw=840,
-                     ind_hanging_tw=1224)
-    _add_run(p, "Keywords:",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             bold=True,
-             color=CFG["color_main"])
-    _add_run(p, " ",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             bold=True,
-             color=CFG["color_main"])
-    _add_run(p, "; ".join(str(k).strip() for k in keywords),
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_keywords"],
-             color=CFG["color_main"])
+    _set_para_format(
+        p,
+        align="both",
+        line_tw=240,
+        line_rule="auto",
+        ind_left_tw=2410,
+        ind_right_tw=840,
+        ind_hanging_tw=1224,
+    )
+    _add_run(
+        p,
+        "Keywords:",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_body"],
+        bold=True,
+        color=CFG["color_main"],
+    )
+    _add_run(
+        p,
+        " ",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_body"],
+        bold=True,
+        color=CFG["color_main"],
+    )
+    _add_run(
+        p,
+        "; ".join(str(k).strip() for k in keywords),
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_keywords"],
+        color=CFG["color_main"],
+    )
 
     # Catatan: trailing spacer paragraf SENGAJA TIDAK ditambahkan di sini.
     # Section break (Heading1 styled, lihat generate()) akan menempati idx
@@ -723,16 +845,23 @@ def add_section_heading(doc, title, number=None):
     p = doc.add_paragraph()
     _set_para_style(p, "Heading1")
     _clear_para_numpr(p)  # matikan auto-numbering dari styles.xml
-    _set_para_format(p, align="left",
-                     sp_before_tw=_pt2tw(CFG["min_sp_section_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_section_after"]),
-                     line_tw=240, line_rule="auto",
-                     keep_next=True)
-    _add_run(p, title,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_heading1"],
-             bold=True,
-             color=CFG["color_main"])
+    _set_para_format(
+        p,
+        align="left",
+        sp_before_tw=_pt2tw(CFG["min_sp_section_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_section_after"]),
+        line_tw=240,
+        line_rule="auto",
+        keep_next=True,
+    )
+    _add_run(
+        p,
+        title,
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_heading1"],
+        bold=True,
+        color=CFG["color_main"],
+    )
 
 
 def add_subsection_heading(doc, title, number=None):
@@ -747,15 +876,16 @@ def add_subsection_heading(doc, title, number=None):
     p = doc.add_paragraph()
     _set_para_style(p, "Heading2")
     _clear_para_numpr(p)  # matikan auto-numbering dari styles.xml
-    _set_para_format(p, align="left",
-                     sp_before_tw=_pt2tw(CFG["min_sp_subsection_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_subsection_after"]),
-                     line_tw=240, line_rule="auto",
-                     keep_next=True)
-    _add_run(p, title,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_heading2"],
-             bold=True)
+    _set_para_format(
+        p,
+        align="left",
+        sp_before_tw=_pt2tw(CFG["min_sp_subsection_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_subsection_after"]),
+        line_tw=240,
+        line_rule="auto",
+        keep_next=True,
+    )
+    _add_run(p, title, font_name=CFG["font_main"], size_pt=CFG["size_heading2"], bold=True)
 
 
 def add_body_text(doc, text, first_paragraph=False):
@@ -763,48 +893,63 @@ def add_body_text(doc, text, first_paragraph=False):
     p = doc.add_paragraph()
     _set_para_style(p, "BodyText")
     _set_para_format(
-        p, align="both",
-        sp_before_tw=0, sp_after_tw=0,
-        line_tw=CFG["line_body_tw"], line_rule="auto",
+        p,
+        align="both",
+        sp_before_tw=0,
+        sp_after_tw=0,
+        line_tw=CFG["line_body_tw"],
+        line_rule="auto",
         ind_first_tw=0 if first_paragraph else CFG["first_line_indent_tw"],
     )
-    _add_run(p, text,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"])
+    _add_run(p, text, font_name=CFG["font_main"], size_pt=CFG["size_body"])
 
 
 def add_figure_placeholder(doc, fig):
     """Image placeholder dengan format AI prompt + caption Figure N. Title."""
     num = str(fig.get("ImageNumber") or "?")
     title = (fig.get("Title") or "Figure title goes here").strip()
-    prompt = (fig.get("Prompt") or
-              "Generate a clean academic figure suitable for a journal paper.").strip()
+    prompt = (
+        fig.get("Prompt") or "Generate a clean academic figure suitable for a journal paper."
+    ).strip()
 
     img_p = doc.add_paragraph()
     _set_para_style(img_p, "BodyText")
-    _set_para_format(img_p, align="center",
-                     sp_before_tw=_pt2tw(CFG["min_sp_figure_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_figure_after"]),
-                     line_tw=CFG["line_body_tw"], line_rule="auto",
-                     keep_next=True)
-    _add_run(img_p, f"[PROMPT UNTUK AI GAMBAR: {title} -- {prompt}]",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_caption"],
-             italic=True)
+    _set_para_format(
+        img_p,
+        align="center",
+        sp_before_tw=_pt2tw(CFG["min_sp_figure_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_figure_after"]),
+        line_tw=CFG["line_body_tw"],
+        line_rule="auto",
+        keep_next=True,
+    )
+    _add_run(
+        img_p,
+        f"[PROMPT UNTUK AI GAMBAR: {title} -- {prompt}]",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_caption"],
+        italic=True,
+    )
 
     cap_p = doc.add_paragraph()
     _set_para_style(cap_p, "BodyText")
-    _set_para_format(cap_p, align="center",
-                     sp_before_tw=_pt2tw(CFG["min_sp_caption_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_caption_after"]),
-                     line_tw=CFG["line_body_tw"], line_rule="auto")
-    _add_run(cap_p, f"Figure {num}. ",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_caption"],
-             bold=True)
-    _add_run(cap_p, clean_inline_text(title) + ".",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_caption"])
+    _set_para_format(
+        cap_p,
+        align="center",
+        sp_before_tw=_pt2tw(CFG["min_sp_caption_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_caption_after"]),
+        line_tw=CFG["line_body_tw"],
+        line_rule="auto",
+    )
+    _add_run(
+        cap_p, f"Figure {num}. ", font_name=CFG["font_main"], size_pt=CFG["size_caption"], bold=True
+    )
+    _add_run(
+        cap_p,
+        clean_inline_text(title) + ".",
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_caption"],
+    )
 
 
 def add_formula(doc, formula):
@@ -814,21 +959,19 @@ def add_formula(doc, formula):
 
     p = doc.add_paragraph()
     _set_para_style(p, "BodyText")
-    _set_para_format(p, align="center",
-                     sp_before_tw=_pt2tw(CFG["min_sp_formula_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_formula_after"]),
-                     line_tw=240, line_rule="auto")
-    _add_run(p, body,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             italic=True)
-    _add_run(p, f"     ({num})",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"])
+    _set_para_format(
+        p,
+        align="center",
+        sp_before_tw=_pt2tw(CFG["min_sp_formula_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_formula_after"]),
+        line_tw=240,
+        line_rule="auto",
+    )
+    _add_run(p, body, font_name=CFG["font_main"], size_pt=CFG["size_body"], italic=True)
+    _add_run(p, f"     ({num})", font_name=CFG["font_main"], size_pt=CFG["size_body"])
 
 
-def _set_cell_borders_3line(cell, is_first_row=False, is_last_row=False,
-                            is_header_under=False):
+def _set_cell_borders_3line(cell, is_first_row=False, is_last_row=False, is_header_under=False):
     tcPr = cell._tc.get_or_add_tcPr()
     tcBorders = tcPr.find(qn("w:tcBorders"))
     if tcBorders is not None:
@@ -868,18 +1011,21 @@ def add_table_block(doc, table_data):
     # Caption
     cap = doc.add_paragraph()
     _set_para_style(cap, "BodyText")
-    _set_para_format(cap, align="center",
-                     sp_before_tw=_pt2tw(CFG["min_sp_table_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_table_after"]),
-                     line_tw=240, line_rule="auto",
-                     keep_next=True)
-    _add_run(cap, f"Table {num}. ",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_caption"],
-             bold=True)
-    _add_run(cap, clean_inline_text(title) + ".",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_caption"])
+    _set_para_format(
+        cap,
+        align="center",
+        sp_before_tw=_pt2tw(CFG["min_sp_table_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_table_after"]),
+        line_tw=240,
+        line_rule="auto",
+        keep_next=True,
+    )
+    _add_run(
+        cap, f"Table {num}. ", font_name=CFG["font_main"], size_pt=CFG["size_caption"], bold=True
+    )
+    _add_run(
+        cap, clean_inline_text(title) + ".", font_name=CFG["font_main"], size_pt=CFG["size_caption"]
+    )
 
     # Emit <w:tbl> proper
     table = doc.add_table(rows=1 + len(rows), cols=len(headers))
@@ -890,24 +1036,25 @@ def add_table_block(doc, table_data):
         cell = table.rows[0].cells[column_index]
         cell.text = ""
         paragraph = cell.paragraphs[0]
-        _set_para_format(paragraph, align="center",
-                         line_tw=240, line_rule="auto")
-        _add_run(paragraph, str(header),
-                 font_name=CFG["font_main"],
-                 size_pt=CFG["size_table_body"],
-                 bold=True)
+        _set_para_format(paragraph, align="center", line_tw=240, line_rule="auto")
+        _add_run(
+            paragraph,
+            str(header),
+            font_name=CFG["font_main"],
+            size_pt=CFG["size_table_body"],
+            bold=True,
+        )
 
     # Data rows
     for row_index, row_data in enumerate(rows, start=1):
-        for column_index, value in enumerate(row_data[:len(headers)]):
+        for column_index, value in enumerate(row_data[: len(headers)]):
             cell = table.rows[row_index].cells[column_index]
             cell.text = ""
             paragraph = cell.paragraphs[0]
-            _set_para_format(paragraph, align="center",
-                             line_tw=240, line_rule="auto")
-            _add_run(paragraph, str(value),
-                     font_name=CFG["font_main"],
-                     size_pt=CFG["size_table_body"])
+            _set_para_format(paragraph, align="center", line_tw=240, line_rule="auto")
+            _add_run(
+                paragraph, str(value), font_name=CFG["font_main"], size_pt=CFG["size_table_body"]
+            )
 
 
 def add_references(doc, data):
@@ -917,54 +1064,72 @@ def add_references(doc, data):
 
     p_title = doc.add_paragraph()
     _set_para_style(p_title, "BodyText")
-    _set_para_format(p_title, align="left",
-                     sp_before_tw=_pt2tw(CFG["min_sp_section_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_section_after"]),
-                     line_tw=240, line_rule="auto",
-                     keep_next=True)
-    _add_run(p_title, title.upper() if not title.isupper() else title,
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             bold=True,
-             color=CFG["color_main"])
+    _set_para_format(
+        p_title,
+        align="left",
+        sp_before_tw=_pt2tw(CFG["min_sp_section_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_section_after"]),
+        line_tw=240,
+        line_rule="auto",
+        keep_next=True,
+    )
+    _add_run(
+        p_title,
+        title.upper() if not title.isupper() else title,
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_body"],
+        bold=True,
+        color=CFG["color_main"],
+    )
 
     for ref in items:
         ref_str = clean_inline_text(str(ref).strip())
         rp = doc.add_paragraph()
         _set_para_style(rp, "BodyText")
-        _set_para_format(rp, align="both",
-                         sp_before_tw=0, sp_after_tw=0,
-                         line_tw=240, line_rule="auto",
-                         ind_left_tw=CFG["ref_left_tw"],
-                         ind_hanging_tw=CFG["ref_hanging_tw"])
-        _add_run(rp, ref_str,
-                 font_name=CFG["font_main"],
-                 size_pt=CFG["size_reference"])
+        _set_para_format(
+            rp,
+            align="both",
+            sp_before_tw=0,
+            sp_after_tw=0,
+            line_tw=240,
+            line_rule="auto",
+            ind_left_tw=CFG["ref_left_tw"],
+            ind_hanging_tw=CFG["ref_hanging_tw"],
+        )
+        _add_run(rp, ref_str, font_name=CFG["font_main"], size_pt=CFG["size_reference"])
 
 
 def add_acknowledgement(doc, text=None):
     p_title = doc.add_paragraph()
     _set_para_style(p_title, "BodyText")
-    _set_para_format(p_title, align="left",
-                     sp_before_tw=_pt2tw(CFG["min_sp_section_before"]),
-                     sp_after_tw=_pt2tw(CFG["min_sp_section_after"]),
-                     line_tw=240, line_rule="auto",
-                     keep_next=True)
-    _add_run(p_title, "ACKNOWLEDGEMENT",
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"],
-             bold=True)
+    _set_para_format(
+        p_title,
+        align="left",
+        sp_before_tw=_pt2tw(CFG["min_sp_section_before"]),
+        sp_after_tw=_pt2tw(CFG["min_sp_section_after"]),
+        line_tw=240,
+        line_rule="auto",
+        keep_next=True,
+    )
+    _add_run(
+        p_title, "ACKNOWLEDGEMENT", font_name=CFG["font_main"], size_pt=CFG["size_body"], bold=True
+    )
 
     p = doc.add_paragraph()
     _set_para_style(p, "BodyText")
-    _set_para_format(p, align="both",
-                     line_tw=240, line_rule="auto",
-                     ind_first_tw=CFG["first_line_indent_tw"])
-    _add_run(p, clean_inline_text(text or
-             "Due credit should be given to Funding Agency and other "
-             "associated organisations for their support."),
-             font_name=CFG["font_main"],
-             size_pt=CFG["size_body"])
+    _set_para_format(
+        p, align="both", line_tw=240, line_rule="auto", ind_first_tw=CFG["first_line_indent_tw"]
+    )
+    _add_run(
+        p,
+        clean_inline_text(
+            text
+            or "Due credit should be given to Funding Agency and other "
+            "associated organisations for their support."
+        ),
+        font_name=CFG["font_main"],
+        size_pt=CFG["size_body"],
+    )
 
 
 # =============================================================================
@@ -974,14 +1139,14 @@ def process_content_list(doc, content_list, parent_first=True):
     first_text_done = False
     for item in content_list:
         if isinstance(item, str):
-            add_body_text(doc, item,
-                          first_paragraph=(parent_first and not first_text_done))
+            add_body_text(doc, item, first_paragraph=(parent_first and not first_text_done))
             first_text_done = True
             continue
         kind = (item.get("id") or "").lower()
         if kind == "text":
-            add_body_text(doc, item.get("text", ""),
-                          first_paragraph=(parent_first and not first_text_done))
+            add_body_text(
+                doc, item.get("text", ""), first_paragraph=(parent_first and not first_text_done)
+            )
             first_text_done = True
         elif kind in ("gambar", "image"):
             add_figure_placeholder(doc, item)
@@ -1006,15 +1171,16 @@ def process_section(doc, section_data, section_label="", section_number=None):
         else:
             process_content_list(doc, direct_content, parent_first=True)
 
-    sub_keys = [k for k in section_data.keys()
-                if isinstance(section_data.get(k), dict)
-                and re.match(r"^section\d+[a-z]+$", k)]
+    sub_keys = [
+        k
+        for k in section_data.keys()
+        if isinstance(section_data.get(k), dict) and re.match(r"^section\d+[a-z]+$", k)
+    ]
     sub_keys.sort()
     for sub_idx, sk in enumerate(sub_keys, start=1):
         sub = section_data[sk]
         sub_title = sub.get("title") or sk
-        sub_number = (f"{section_number}.{sub_idx}."
-                      if section_number is not None else None)
+        sub_number = f"{section_number}.{sub_idx}." if section_number is not None else None
         add_subsection_heading(doc, sub_title, number=sub_number)
         sub_content = sub.get("content") or []
         if sub_content and isinstance(sub_content[0], str):
@@ -1075,8 +1241,7 @@ def generate():
 
     # ── Phase 3 (Section 3, 1-col continuous final / trailer) ──────────────
     trailer = doc.add_paragraph()
-    _set_para_format(trailer, line_tw=240, line_rule="auto",
-                     ind_first_tw=426)
+    _set_para_format(trailer, line_tw=240, line_rule="auto", ind_first_tw=426)
 
     # Final sectPr (Section 3): 1-col continuous
     _set_final_sectpr(final_sectpr, num_cols=1, sec_type="continuous")

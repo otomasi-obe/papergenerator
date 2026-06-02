@@ -17,6 +17,7 @@ Paragraph styles used:
   BodyText, bulletlist, Equation0,
   figurecaption, tablehead, tablecolhead, tablecopy, references.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,28 +25,34 @@ import sys
 from pathlib import Path
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Pt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _docx_base import (
-    open_template, finalize_doc,
-    build_sectpr, embed_sectpr, setup_main_sectpr,
-    para, set_para_style, append_rich_text, body_paragraphs,
+    append_rich_text,
+    build_sectpr,
+    embed_sectpr,
+    finalize_doc,
+    open_template,
+    para,
     render_sections,
-    append_line_break, append_text_run,
-    run_generator, roman,
+    run_generator,
+    setup_main_sectpr,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATE_PATH = BASE_DIR / "ULTIMACOMP.docx"
 
 # ── Page dimensions (pt) ──────────────────────────────────────────────────────
-PAGE_W = 595.45; PAGE_H = 841.70
-TOP = 85.05; BOTTOM = 56.70; LEFT = 85.05; RIGHT = 56.70
-HEADER = 36.00; FOOTER = 36.00
+PAGE_W = 595.45
+PAGE_H = 841.70
+TOP = 85.05
+BOTTOM = 56.70
+LEFT = 85.05
+RIGHT = 56.70
+HEADER = 36.00
+FOOTER = 36.00
 COL_SPACE = 18.00
 
 # Body column width for the 2-column section
@@ -70,19 +77,20 @@ CFG = {
     # Heading1 style has numId=5 (upperRoman auto-numbering) and
     # Heading2 has numId=5 ilvl=1 (upperLetter auto-numbering),
     # so we must NOT add any prefix in the paragraph text.
-    "section_heading_format": "plain_upper",   # Word’s list adds “I.”
-    "subsection_no_prefix": True,              # Word’s list adds “A.”
+    "section_heading_format": "plain_upper",  # Word’s list adds “I.”
+    "subsection_no_prefix": True,  # Word’s list adds “A.”
     # tablehead numId=9 → “TABLE %1. ”, figurecaption numId=2 → “Fig. %1.”
     # — style already provides the label, so don’t write it in text.
     "table_auto_label": True,
     "figure_auto_label": True,
     # Heading2 rPr has italic=True; using bare add_run preserves that.
     "subsection_bare_run": True,
-    "full_borders": True,   # All-border thin box for tables
+    "full_borders": True,  # All-border thin box for tables
 }
 
 
 # ── Front-matter builders ─────────────────────────────────────────────────────
+
 
 def _add_title(doc: Document, config: dict) -> None:
     title = config.get("title", "Untitled")
@@ -179,8 +187,8 @@ def _add_abstract(doc: Document, config: dict) -> None:
         # bold=False explicitly on each run, overriding the style.  We
         # build all runs manually so every character is bold.
         p = para(doc, style_id="Abstract")
-        _bold_run(p, "Abstract\u2014")   # em-dash, bold
-        _bold_run(p, abstract)            # body text, also bold
+        _bold_run(p, "Abstract\u2014")  # em-dash, bold
+        _bold_run(p, abstract)  # body text, also bold
 
     if keywords:
         # Normalize and sort keywords, join with semicolons.
@@ -198,6 +206,7 @@ def _add_abstract(doc: Document, config: dict) -> None:
 
 # ── References ───────────────────────────────────────────────────────────────
 
+
 def _add_references(doc: Document, config: dict) -> None:
     """Add references section.
 
@@ -207,6 +216,7 @@ def _add_references(doc: Document, config: dict) -> None:
     Just write the bare reference text; the style numbering handles the label.
     """
     import re as _re
+
     refs_cfg = config.get("references", {})
     if isinstance(refs_cfg, dict):
         content = refs_cfg.get("content", [])
@@ -227,7 +237,7 @@ def _add_references(doc: Document, config: dict) -> None:
         else:
             text = str(ref)
         # Strip leading "[n]" or "[n] " if caller already embedded it
-        text = _re.sub(r'^\s*\[\d+\]\s*', '', text).strip()
+        text = _re.sub(r"^\s*\[\d+\]\s*", "", text).strip()
         if not text:
             continue
         p = para(doc, style_id="references")
@@ -235,6 +245,7 @@ def _add_references(doc: Document, config: dict) -> None:
 
 
 # ── Main document builder ─────────────────────────────────────────────────────
+
 
 def build_document(json_path: Path, output_path: Path | None = None) -> Path:
     config = json.loads(json_path.read_text(encoding="utf-8"))
@@ -246,27 +257,62 @@ def build_document(json_path: Path, output_path: Path | None = None) -> Path:
 
     # ── Section 1: Title (1-col, no section-type) ─────────────────────────────
     _add_title(doc, config)
-    embed_sectpr(doc, build_sectpr(
-        1, 36.0, TOP, BOTTOM, LEFT, RIGHT,
-        section_type=None,
-        w_pt=PAGE_W, h_pt=PAGE_H, header_pt=HEADER, footer_pt=FOOTER,
-    ), style_id="Author")
+    embed_sectpr(
+        doc,
+        build_sectpr(
+            1,
+            36.0,
+            TOP,
+            BOTTOM,
+            LEFT,
+            RIGHT,
+            section_type=None,
+            w_pt=PAGE_W,
+            h_pt=PAGE_H,
+            header_pt=HEADER,
+            footer_pt=FOOTER,
+        ),
+        style_id="Author",
+    )
 
     # ── Section 2: Authors & affiliations (1-col, continuous) ─────────────────
     _add_authors(doc, config)
-    embed_sectpr(doc, build_sectpr(
-        1, 36.0, TOP, BOTTOM, LEFT, RIGHT,
-        section_type="continuous",
-        w_pt=PAGE_W, h_pt=PAGE_H, header_pt=HEADER, footer_pt=FOOTER,
-    ), style_id="Affiliation")
+    embed_sectpr(
+        doc,
+        build_sectpr(
+            1,
+            36.0,
+            TOP,
+            BOTTOM,
+            LEFT,
+            RIGHT,
+            section_type="continuous",
+            w_pt=PAGE_W,
+            h_pt=PAGE_H,
+            header_pt=HEADER,
+            footer_pt=FOOTER,
+        ),
+        style_id="Affiliation",
+    )
 
     # ── Section 3: Dates (1-col, continuous) ──────────────────────────────────
     _add_dates(doc, config)
-    embed_sectpr(doc, build_sectpr(
-        1, 36.0, TOP, BOTTOM, LEFT, RIGHT,
-        section_type="continuous",
-        w_pt=PAGE_W, h_pt=PAGE_H, header_pt=HEADER, footer_pt=FOOTER,
-    ))
+    embed_sectpr(
+        doc,
+        build_sectpr(
+            1,
+            36.0,
+            TOP,
+            BOTTOM,
+            LEFT,
+            RIGHT,
+            section_type="continuous",
+            w_pt=PAGE_W,
+            h_pt=PAGE_H,
+            header_pt=HEADER,
+            footer_pt=FOOTER,
+        ),
+    )
 
     # ── Section 4: Body + References (2-col, continuous) ──────────────────────
     _add_abstract(doc, config)
@@ -274,19 +320,36 @@ def build_document(json_path: Path, output_path: Path | None = None) -> Path:
     _add_references(doc, config)
 
     # Close the 2-col section
-    embed_sectpr(doc, build_sectpr(
-        2, COL_SPACE, TOP, BOTTOM, LEFT, RIGHT,
-        section_type="continuous",
-        w_pt=PAGE_W, h_pt=PAGE_H, header_pt=HEADER, footer_pt=FOOTER,
-    ))
+    embed_sectpr(
+        doc,
+        build_sectpr(
+            2,
+            COL_SPACE,
+            TOP,
+            BOTTOM,
+            LEFT,
+            RIGHT,
+            section_type="continuous",
+            w_pt=PAGE_W,
+            h_pt=PAGE_H,
+            header_pt=HEADER,
+            footer_pt=FOOTER,
+        ),
+    )
 
     # ── Final section: 1-col (document-level sectPr) ──────────────────────────
     setup_main_sectpr(
         doc,
-        w_pt=PAGE_W, h_pt=PAGE_H,
-        top_pt=TOP, bottom_pt=BOTTOM, left_pt=LEFT, right_pt=RIGHT,
-        header_pt=HEADER, footer_pt=FOOTER,
-        col_space_pt=36.0, num_cols=1,
+        w_pt=PAGE_W,
+        h_pt=PAGE_H,
+        top_pt=TOP,
+        bottom_pt=BOTTOM,
+        left_pt=LEFT,
+        right_pt=RIGHT,
+        header_pt=HEADER,
+        footer_pt=FOOTER,
+        col_space_pt=36.0,
+        num_cols=1,
         section_type="continuous",
     )
 

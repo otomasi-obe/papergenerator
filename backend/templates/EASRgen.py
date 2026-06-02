@@ -3,6 +3,7 @@ EASRgen.py - Generator DOCX untuk jurnal Engineering and Applied Science Researc
 Menggunakan dokumen asli EASR.docx sebagai base template (paste keep formatting).
 Data diambil dari _template.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,8 +16,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt, Twips
-from lxml import etree
+from docx.shared import Cm, Pt
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_DOCX = BASE / "EASR.docx"
@@ -45,7 +45,6 @@ CFG = {
     "footer_distance_tw": 1440,
     "columns": 1,
     "col_space_tw": 274,
-
     "font_default": "Times New Roman",
     "size_title_pt": 12,
     "size_body_pt": 12,
@@ -54,14 +53,11 @@ CFG = {
     "size_reference_pt": 12,
     "size_header_pt": 12,
     "size_footer_pt": 12,
-
     "line_spacing_tw": 480,
     "line_spacing_rule": "auto",
-
     "first_line_indent_tw": 284,
     "ref_left_indent_tw": 420,
     "ref_hanging_indent_tw": 420,
-
     "fig_prefix": "Figure",
     "tbl_prefix": "Table",
     "tbl_number_format": "roman",
@@ -71,21 +67,23 @@ CFG = {
 _XSLT = None
 
 
-
 def _set_run_font(run, *, name=None, size_pt=None, bold=None, italic=None, color=None):
     if name is not None:
         run.font.name = name
         from docx.oxml.ns import qn
+
         rPr = run._element.get_or_add_rPr()
         rfonts = rPr.find(qn("w:rFonts"))
         if rfonts is None:
             from docx.oxml import OxmlElement
+
             rfonts = OxmlElement("w:rFonts")
             rPr.insert(0, rfonts)
-        for attr in ("ascii","hAnsi","eastAsia","cs"):
+        for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
             rfonts.set(qn(f"w:{attr}"), name)
     if size_pt is not None:
         from docx.shared import Pt
+
         run.font.size = Pt(size_pt)
     if bold is not None:
         run.bold = bool(bold)
@@ -95,23 +93,49 @@ def _set_run_font(run, *, name=None, size_pt=None, bold=None, italic=None, color
 
 def _sanitize_inline_latex(t):
     """Convert inline LaTeX commands di body text jadi unicode/text plain.
-    Menghilangkan kebocoran $...$, \mathrm{}, _{}, ^{}, \frac{}{}, dst di body."""
+    Menghilangkan kebocoran $...$, \\mathrm{}, _{}, ^{}, \frac{}{}, dst di body."""
     if not t:
         return t
     s = str(t)
     if "\\" not in s and "_{" not in s and "^{" not in s and "$" not in s:
         return s
     import re as _re
+
     SYMBOLS = {
-        r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
-        r"\epsilon": "ε", r"\theta": "θ", r"\lambda": "λ", r"\mu": "μ",
-        r"\pi": "π", r"\sigma": "σ", r"\tau": "τ", r"\phi": "φ",
-        r"\omega": "ω", r"\sum": "∑", r"\prod": "∏", r"\int": "∫",
-        r"\infty": "∞", r"\pm": "±", r"\times": "×", r"\cdot": "·",
-        r"\leq": "≤", r"\geq": "≥", r"\neq": "≠", r"\approx": "≈",
-        r"\to": "→", r"\dots": "…", r"\ldots": "…",
-        r"\quad": " ", r"\,": " ", r"\;": " ", r"\:": " ", r"\!": "",
-        r"\left": "", r"\right": "",
+        r"\alpha": "α",
+        r"\beta": "β",
+        r"\gamma": "γ",
+        r"\delta": "δ",
+        r"\epsilon": "ε",
+        r"\theta": "θ",
+        r"\lambda": "λ",
+        r"\mu": "μ",
+        r"\pi": "π",
+        r"\sigma": "σ",
+        r"\tau": "τ",
+        r"\phi": "φ",
+        r"\omega": "ω",
+        r"\sum": "∑",
+        r"\prod": "∏",
+        r"\int": "∫",
+        r"\infty": "∞",
+        r"\pm": "±",
+        r"\times": "×",
+        r"\cdot": "·",
+        r"\leq": "≤",
+        r"\geq": "≥",
+        r"\neq": "≠",
+        r"\approx": "≈",
+        r"\to": "→",
+        r"\dots": "…",
+        r"\ldots": "…",
+        r"\quad": " ",
+        r"\,": " ",
+        r"\;": " ",
+        r"\:": " ",
+        r"\!": "",
+        r"\left": "",
+        r"\right": "",
     }
     for k, v in SYMBOLS.items():
         s = s.replace(k, v)
@@ -145,17 +169,43 @@ def _append_inline_math(paragraph, latex):
     if not latex:
         return False
     import re as _re
+
     s = str(latex).strip()
     SYMBOLS = {
-        r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
-        r"\epsilon": "ε", r"\theta": "θ", r"\lambda": "λ", r"\mu": "μ",
-        r"\pi": "π", r"\sigma": "σ", r"\tau": "τ", r"\phi": "φ",
-        r"\omega": "ω", r"\sum": "∑", r"\prod": "∏", r"\int": "∫",
-        r"\infty": "∞", r"\pm": "±", r"\times": "×", r"\cdot": "·",
-        r"\leq": "≤", r"\geq": "≥", r"\neq": "≠", r"\approx": "≈",
-        r"\to": "→", r"\dots": "…", r"\ldots": "…",
-        r"\quad": " ", r"\,": " ", r"\;": " ", r"\:": " ", r"\!": "",
-        r"\left": "", r"\right": "",
+        r"\alpha": "α",
+        r"\beta": "β",
+        r"\gamma": "γ",
+        r"\delta": "δ",
+        r"\epsilon": "ε",
+        r"\theta": "θ",
+        r"\lambda": "λ",
+        r"\mu": "μ",
+        r"\pi": "π",
+        r"\sigma": "σ",
+        r"\tau": "τ",
+        r"\phi": "φ",
+        r"\omega": "ω",
+        r"\sum": "∑",
+        r"\prod": "∏",
+        r"\int": "∫",
+        r"\infty": "∞",
+        r"\pm": "±",
+        r"\times": "×",
+        r"\cdot": "·",
+        r"\leq": "≤",
+        r"\geq": "≥",
+        r"\neq": "≠",
+        r"\approx": "≈",
+        r"\to": "→",
+        r"\dots": "…",
+        r"\ldots": "…",
+        r"\quad": " ",
+        r"\,": " ",
+        r"\;": " ",
+        r"\:": " ",
+        r"\!": "",
+        r"\left": "",
+        r"\right": "",
     }
     for k, v in SYMBOLS.items():
         s = s.replace(k, v)
@@ -176,34 +226,51 @@ def _append_inline_math(paragraph, latex):
 
 def _clear_pstyle(paragraph):
     from docx.oxml.ns import qn
+
     pPr = paragraph._element.find(qn("w:pPr"))
-    if pPr is None: return
+    if pPr is None:
+        return
     pStyle = pPr.find(qn("w:pStyle"))
-    if pStyle is not None: pPr.remove(pStyle)
+    if pStyle is not None:
+        pPr.remove(pStyle)
 
 
-def _set_paragraph_format(paragraph, *, align=None, space_before=None, space_after=None,
-                            line_spacing_tw=None, line_rule=None, keep_next=None,
-                            first_line_indent_tw=None, first_line_tw=None,
-                            left_indent_tw=None, left_tw=None,
-                            hanging_indent_tw=None, hanging_tw=None,
-                            **_kwargs):
+def _set_paragraph_format(
+    paragraph,
+    *,
+    align=None,
+    space_before=None,
+    space_after=None,
+    line_spacing_tw=None,
+    line_rule=None,
+    keep_next=None,
+    first_line_indent_tw=None,
+    first_line_tw=None,
+    left_indent_tw=None,
+    left_tw=None,
+    hanging_indent_tw=None,
+    hanging_tw=None,
+    **_kwargs,
+):
     if first_line_tw is not None and first_line_indent_tw is None:
         first_line_indent_tw = first_line_tw
     if left_tw is not None and left_indent_tw is None:
         left_indent_tw = left_tw
     if hanging_tw is not None and hanging_indent_tw is None:
         hanging_indent_tw = hanging_tw
-    from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
     if align is not None:
         paragraph.alignment = align
     pf = paragraph.paragraph_format
     if space_before is not None:
         from docx.shared import Pt, Twips
+
         pf.space_before = Pt(space_before) if space_before < 100 else Twips(space_before)
     if space_after is not None:
         from docx.shared import Pt, Twips
+
         pf.space_after = Pt(space_after) if space_after < 100 else Twips(space_after)
     pPr = paragraph._element.get_or_add_pPr()
     if line_spacing_tw is not None:
@@ -219,7 +286,11 @@ def _set_paragraph_format(paragraph, *, align=None, space_before=None, space_aft
         if kn is None:
             kn = OxmlElement("w:keepNext")
             pPr.append(kn)
-    if first_line_indent_tw is not None or left_indent_tw is not None or hanging_indent_tw is not None:
+    if (
+        first_line_indent_tw is not None
+        or left_indent_tw is not None
+        or hanging_indent_tw is not None
+    ):
         ind = pPr.find(qn("w:ind"))
         if ind is None:
             ind = OxmlElement("w:ind")
@@ -238,8 +309,7 @@ def _set_ai_prompt_color_red(doc):
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
     from docx.shared import RGBColor
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -260,7 +330,6 @@ def _set_ai_prompt_color_red(doc):
                     _color_prompt(p)
 
     # DISABLED: template NO_BORDERS, jangan force border
-
 
     # Set border tabel data:
     # for t in doc.tables:
@@ -289,6 +358,7 @@ def _set_ai_prompt_color_red(doc):
     # el.set(qn("w:space"), "0")
     # el.set(qn("w:color"), "000000")
 
+
 def load_json():
     return json.loads(TEMPLATE_JSON.read_text(encoding="utf-8"))
 
@@ -312,25 +382,31 @@ def add_title(doc, data):
     _set_paragraph_format(
         p,
         align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
-    _add_plain(p, "Research Article or Review Article",
-               size_pt=CFG["size_title_pt"], bold=True)
+    _add_plain(p, "Research Article or Review Article", size_pt=CFG["size_title_pt"], bold=True)
 
     p2 = _new_paragraph(doc)
     _set_paragraph_format(
-        p2, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p2,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
 
     p3 = _new_paragraph(doc)
     _set_paragraph_format(
         p3,
         align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
     _add_rich(p3, title, size_pt=CFG["size_title_pt"], bold=True, italic=True)
 
@@ -338,8 +414,14 @@ def add_title(doc, data):
 def add_authors(doc, data):
     authors = data.get("authors") or []
     if not authors:
-        authors = [{"name": "Author Name", "affiliation": "Department, University",
-                    "location": "City, Country", "email": "author@email.ac.id"}]
+        authors = [
+            {
+                "name": "Author Name",
+                "affiliation": "Department, University",
+                "location": "City, Country",
+                "email": "author@email.ac.id",
+            }
+        ]
 
     names = [a.get("name", "") for a in authors if a.get("name")]
     if not names:
@@ -353,9 +435,12 @@ def add_authors(doc, data):
 
     p = _new_paragraph(doc)
     _set_paragraph_format(
-        p, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
     _add_plain(p, name_line, size_pt=CFG["size_title_pt"])
 
@@ -370,9 +455,12 @@ def add_authors(doc, data):
     for aff_idx, aff in enumerate(affiliations):
         ap = _new_paragraph(doc)
         _set_paragraph_format(
-            ap, align=WD_ALIGN_PARAGRAPH.LEFT,
-            space_before=0, space_after=0,
-            line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+            ap,
+            align=WD_ALIGN_PARAGRAPH.LEFT,
+            space_before=0,
+            space_after=0,
+            line_spacing_tw=CFG["line_spacing_tw"],
+            line_rule="auto",
         )
         # Affiliation pertama: bold; affiliation kedua dst: italic
         if aff_idx == 0:
@@ -382,9 +470,12 @@ def add_authors(doc, data):
 
     cp = _new_paragraph(doc)
     _set_paragraph_format(
-        cp, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        cp,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
     primary_email = ""
     for a in authors:
@@ -393,39 +484,48 @@ def add_authors(doc, data):
             break
     if not primary_email:
         primary_email = "author@email.ac.id"
-    _add_plain(cp, "*Corresponding author. Tel.: +00-0000-0000",
-               size_pt=CFG["size_body_pt"])
-    _add_plain(cp, f"; Email address: {primary_email}",
-               size_pt=CFG["size_body_pt"])
+    _add_plain(cp, "*Corresponding author. Tel.: +00-0000-0000", size_pt=CFG["size_body_pt"])
+    _add_plain(cp, f"; Email address: {primary_email}", size_pt=CFG["size_body_pt"])
 
     sp = _new_paragraph(doc)
     _set_paragraph_format(
-        sp, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        sp,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
 
 
 def add_abstract(doc, data):
     abstract = (data.get("abstract") or "").strip()
     if not abstract:
-        abstract = ("Abstract text goes here. This section should contain "
-                    "150-250 words summarizing the paper.")
+        abstract = (
+            "Abstract text goes here. This section should contain "
+            "150-250 words summarizing the paper."
+        )
 
     head = _new_paragraph(doc)
     _set_paragraph_format(
-        head, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        head,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         keep_next=True,
     )
     _add_plain(head, "Abstract", size_pt=CFG["size_body_pt"], bold=True)
 
     body = _new_paragraph(doc)
     _set_paragraph_format(
-        body, align=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        body,
+        align=WD_ALIGN_PARAGRAPH.JUSTIFY,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         first_line_tw=CFG["first_line_indent_tw"],
     )
     _add_rich(body, abstract, size_pt=CFG["size_body_pt"])
@@ -439,9 +539,12 @@ def add_keywords(doc, data):
 
     p = _new_paragraph(doc)
     _set_paragraph_format(
-        p, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
     _add_plain(p, "Keywords:", size_pt=CFG["size_body_pt"], bold=True)
     _add_plain(p, " ", size_pt=CFG["size_body_pt"])
@@ -449,9 +552,12 @@ def add_keywords(doc, data):
 
     blank = _new_paragraph(doc)
     _set_paragraph_format(
-        blank, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        blank,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
 
 
@@ -460,9 +566,12 @@ def add_section_heading(doc, number, title):
     text = f"{number}. {title}"
     p = _new_paragraph(doc)
     _set_paragraph_format(
-        p, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=6, space_after=3,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=6,
+        space_after=3,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         keep_next=True,
     )
     _add_plain(p, text, size_pt=CFG["size_heading_pt"], bold=True)
@@ -473,9 +582,12 @@ def add_subsection_heading(doc, number, title):
     text = f"{number} {title}"
     p = _new_paragraph(doc)
     _set_paragraph_format(
-        p, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=6, space_after=3,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=6,
+        space_after=3,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         keep_next=True,
     )
     _add_plain(p, text, size_pt=CFG["size_heading_pt"], italic=True)
@@ -484,9 +596,12 @@ def add_subsection_heading(doc, number, title):
 def add_body_text(doc, text, *, indent=True):
     p = _new_paragraph(doc)
     _set_paragraph_format(
-        p, align=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p,
+        align=WD_ALIGN_PARAGRAPH.JUSTIFY,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         first_line_tw=CFG["first_line_indent_tw"] if indent else 0,
     )
     _add_rich(p, text, size_pt=CFG["size_body_pt"])
@@ -522,9 +637,12 @@ def add_figure(doc, fig_data):
 
     img_p = _new_paragraph(doc)
     _set_paragraph_format(
-        img_p, align=WD_ALIGN_PARAGRAPH.CENTER,
-        space_before=6, space_after=3,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        img_p,
+        align=WD_ALIGN_PARAGRAPH.CENTER,
+        space_before=6,
+        space_after=3,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         first_line_tw=0,
         keep_next=True,
     )
@@ -539,9 +657,12 @@ def add_figure(doc, fig_data):
 
     cap = _new_paragraph(doc)
     _set_paragraph_format(
-        cap, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=3, space_after=6,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        cap,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=3,
+        space_after=6,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
     _add_plain(cap, f"Figure {number}", size_pt=CFG["size_caption_pt"], bold=True)
     _add_plain(cap, " ", size_pt=CFG["size_caption_pt"])
@@ -580,9 +701,19 @@ def _to_roman(n):
     if v <= 0:
         return str(n).strip()
     table = [
-        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
-        (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
-        (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
     ]
     out = []
     for arabic, roman in table:
@@ -612,9 +743,12 @@ def add_table(doc, tbl_data):
 
     cap = _new_paragraph(doc)
     _set_paragraph_format(
-        cap, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=6, space_after=3,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        cap,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=6,
+        space_after=3,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         keep_next=True,
     )
     _add_plain(cap, f"Table {num_label}", size_pt=CFG["size_caption_pt"], bold=True)
@@ -637,9 +771,12 @@ def add_table(doc, tbl_data):
         cp = cell.paragraphs[0]
         _clear_pstyle(cp)
         _set_paragraph_format(
-            cp, align=WD_ALIGN_PARAGRAPH.CENTER,
-            space_before=0, space_after=0,
-            line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+            cp,
+            align=WD_ALIGN_PARAGRAPH.CENTER,
+            space_before=0,
+            space_after=0,
+            line_spacing_tw=CFG["line_spacing_tw"],
+            line_rule="auto",
         )
         _add_rich(cp, str(h), size_pt=CFG["size_caption_pt"], bold=True)
 
@@ -651,17 +788,23 @@ def add_table(doc, tbl_data):
             cp = cell.paragraphs[0]
             _clear_pstyle(cp)
             _set_paragraph_format(
-                cp, align=WD_ALIGN_PARAGRAPH.CENTER,
-                space_before=0, space_after=0,
-                line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+                cp,
+                align=WD_ALIGN_PARAGRAPH.CENTER,
+                space_before=0,
+                space_after=0,
+                line_spacing_tw=CFG["line_spacing_tw"],
+                line_rule="auto",
             )
             _add_rich(cp, str(value), size_pt=CFG["size_caption_pt"])
 
     after = _new_paragraph(doc)
     _set_paragraph_format(
-        after, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=0, space_after=0,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        after,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=0,
+        space_after=0,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
     )
 
 
@@ -695,7 +838,10 @@ def _set_cell_borders(cell, *, top=False, bottom=False, left=False, right=False)
         tcPr.append(tcBorders)
 
     spec = {
-        "top": top, "bottom": bottom, "left": left, "right": right,
+        "top": top,
+        "bottom": bottom,
+        "left": left,
+        "right": right,
     }
     for edge, on in spec.items():
         el = tcBorders.find(qn(f"w:{edge}"))
@@ -720,9 +866,12 @@ def add_formula(doc, formula_data):
 
     p = _new_paragraph(doc)
     _set_paragraph_format(
-        p, align=WD_ALIGN_PARAGRAPH.LEFT,
-        space_before=3, space_after=3,
-        line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+        p,
+        align=WD_ALIGN_PARAGRAPH.LEFT,
+        space_before=3,
+        space_after=3,
+        line_spacing_tw=CFG["line_spacing_tw"],
+        line_rule="auto",
         first_line_tw=0,
     )
 
@@ -767,9 +916,12 @@ def add_references(doc, data, *, ref_section_num: int = 8):
 
         p = _new_paragraph(doc)
         _set_paragraph_format(
-            p, align=WD_ALIGN_PARAGRAPH.JUSTIFY,
-            space_before=0, space_after=0,
-            line_spacing_tw=CFG["line_spacing_tw"], line_rule="auto",
+            p,
+            align=WD_ALIGN_PARAGRAPH.JUSTIFY,
+            space_before=0,
+            space_after=0,
+            line_spacing_tw=CFG["line_spacing_tw"],
+            line_rule="auto",
             left_tw=CFG["ref_left_indent_tw"],
             hanging_tw=CFG["ref_hanging_indent_tw"],
         )
@@ -807,7 +959,7 @@ def _process_section(doc, sec_data, section_num: int):
 
     sub_keys = sorted(
         [k for k in sec_data.keys() if re.match(rf"^section{section_num}[a-z]+$", k)],
-        key=lambda x: x
+        key=lambda x: x,
     )
     for sub_idx, sub_key in enumerate(sub_keys, start=1):
         sub = sec_data.get(sub_key) or {}
@@ -848,9 +1000,7 @@ def generate():
         _process_section(doc, data[sk], sn)
 
     # References numbered as next section after the last data section
-    last_section_num = max(
-        (int(k.replace("section", "")) for k in section_keys), default=0
-    )
+    last_section_num = max((int(k.replace("section", "")) for k in section_keys), default=0)
     add_references(doc, data, ref_section_num=last_section_num + 1)
 
     _set_ai_prompt_color_red(doc)

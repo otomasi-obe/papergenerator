@@ -2,18 +2,19 @@
 Authentication helper functions for secure user identity extraction.
 Created by Bug Hunting Agent 4 - Security Audit.
 """
-from flask_jwt_extended import get_jwt_identity
+
 from flask import jsonify
+from flask_jwt_extended import get_jwt_identity
 
 
 def get_user_id_from_jwt() -> tuple[int | None, tuple | None]:
     """
     Safely extract user_id from JWT identity.
-    
+
     Returns:
         (user_id, error_response) where error_response is None on success
         or a Flask response tuple on error.
-    
+
     Example:
         user_id, error = get_user_id_from_jwt()
         if error:

@@ -1,5 +1,7 @@
 """Fetcher untuk DBLP - https://dblp.org/search/publ/api (CS-focused)"""
+
 from typing import Iterable
+
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
@@ -42,6 +44,27 @@ def _parse_hit(hit: dict) -> Paper | None:
         elif "journal" in pl:
             venue_type = "journal"
 
+    # Build PDF URL: prioritize DOI, then ee (electronic edition) link
+    doi = info.get("doi")
+    pdf_url = None
+    
+    if doi:
+        # DOI resolver - may redirect to publisher PDF
+        pdf_url = f"https://doi.org/{doi}"
+    else:
+        # DBLP's "ee" field often points to publisher page or PDF
+        ee = info.get("ee")
+        if ee:
+            # If it's arxiv, convert to PDF link
+            if "arxiv.org/abs/" in ee:
+                arxiv_id = ee.split("/abs/")[-1]
+                pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+            else:
+                pdf_url = ee
+        else:
+            # Fallback to DBLP record page
+            pdf_url = info.get("url")
+
     return Paper(
         source="dblp",
         source_id=hit.get("@id") or info.get("key", ""),
@@ -51,14 +74,13 @@ def _parse_hit(hit: dict) -> Paper | None:
         year=year,
         venue=venue,
         venue_type=venue_type,
-        doi=info.get("doi"),
-        url=info.get("url") or info.get("ee"),
+        doi=doi,
+        url=pdf_url,
         type=pub_type,
     )
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     rl = RateLimiter(0.5)
     per_page = min(limit, 1000)
     fetched = 0
@@ -75,8 +97,8 @@ def search(client, query: str, limit: int = 25,
         data = fetch_json(client, BASE, params=params)
         if not data:
             return
-        result = (data.get("result") or {})
-        hits_block = (result.get("hits") or {})
+        result = data.get("result") or {}
+        hits_block = result.get("hits") or {}
         hits = hits_block.get("hit") or []
         if not hits:
             return

@@ -5,6 +5,7 @@ Port dari PROMPTHEUS/cleaner.py (MDPI Information 2025) dengan tambahan:
 - penghapusan boilerplate "we / our / in this paper" yang bikin
   cosine similarity bias ke kalimat self-reference, bukan substansi.
 """
+
 from __future__ import annotations
 
 import re

@@ -30,13 +30,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import type { ThinkingBlockProps } from '../types/components'
 
-defineProps({
-  content: { type: String, default: '' },
-  isStreaming: { type: Boolean, default: false }
-})
+defineProps<ThinkingBlockProps>()
 
-const isOpen = ref(false)
+const isOpen = ref<boolean>(false)
 </script>

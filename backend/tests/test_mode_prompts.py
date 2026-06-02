@@ -1,4 +1,5 @@
 """Tests for the mode prompt + tool registry."""
+
 from __future__ import annotations
 
 import os
@@ -6,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import mode_prompts  # noqa: E402
+from chat import mode_prompts  # noqa: E402
 from chat.mode_prompts import (  # noqa: E402
     MODE_PROMPTS,
     MODE_TOOLS,
@@ -15,11 +16,11 @@ from chat.mode_prompts import (  # noqa: E402
     list_modes,
 )
 
-
 EXPECTED_MODES = {"tier0", "discovery", "slr", "edit", "rapikan", "memory", "casual"}
 
 
 # ── basic shape ────────────────────────────────────────────────────────────
+
 
 def test_list_modes_contains_expected():
     modes = set(list_modes())
@@ -66,6 +67,7 @@ def test_get_mode_bundle_returns_copy_of_tools():
 
 # ── prompt size constraint ────────────────────────────────────────────────
 
+
 def test_each_prompt_under_2kb():
     for mode, prompt in MODE_PROMPTS.items():
         size = len(prompt.encode("utf-8"))
@@ -81,6 +83,7 @@ def test_memory_prompt_is_short():
 
 
 # ── tool list constraints ─────────────────────────────────────────────────
+
 
 def test_tool_lists_unique_within_mode():
     for mode, tools in MODE_TOOLS.items():
@@ -146,6 +149,7 @@ def test_save_memory_not_in_any_mode():
 
 
 # ── prompt content sanity checks ──────────────────────────────────────────
+
 
 def test_discovery_prompt_mentions_key_markers():
     p = MODE_PROMPTS["discovery"]

@@ -7,6 +7,7 @@ Image serving accepts (priority order):
     2. ?s=<signed-token> for <img src> use cases
     3. ?t=<jwt> legacy fallback (kept for older clients)
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,7 +52,7 @@ def upload_paper_image(paper_id: str):
         user_id = int(get_jwt_identity())
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
-    
+
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -89,8 +90,10 @@ def upload_paper_image(paper_id: str):
     # BUG FIX #2: Add cleanup on DB failure to prevent orphaned files
     try:
         img = PaperImage(
-            paper_id=paper_id, user_id=user_id,
-            filename=filename, original_name=file.filename[:255],
+            paper_id=paper_id,
+            user_id=user_id,
+            filename=filename,
+            original_name=file.filename[:255],
             file_path=f"{paper_id}/{filename}",
         )
         db.session.add(img)
@@ -129,7 +132,7 @@ def upload_user_image(paper_id: str):
         user_id = int(get_jwt_identity())
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
-    
+
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -169,22 +172,26 @@ def upload_user_image(paper_id: str):
     # BUG FIX: Add cleanup on DB failure to prevent orphaned files
     try:
         img = PaperImage(
-            paper_id=paper_id, user_id=user_id,
-            filename=filename, original_name=file.filename[:255],
+            paper_id=paper_id,
+            user_id=user_id,
+            filename=filename,
+            original_name=file.filename[:255],
             file_path=f"{paper_id}/{filename}",
         )
         db.session.add(img)
         db.session.commit()
 
         d = img.to_dict()
-        return jsonify({
-            "id": d["id"],
-            "filename": d["filename"],
-            "original_name": d["original_name"],
-            "url": d["url"],
-            "kind": "uploaded",
-            "paper_id": paper_id,
-        })
+        return jsonify(
+            {
+                "id": d["id"],
+                "filename": d["filename"],
+                "original_name": d["original_name"],
+                "url": d["url"],
+                "kind": "uploaded",
+                "paper_id": paper_id,
+            }
+        )
     except Exception:
         # Clean up orphaned file if DB commit fails
         try:
@@ -205,15 +212,11 @@ def list_paper_images(paper_id: str):
         user_id = int(get_jwt_identity())
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
-    
+
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
-    images = (
-        PaperImage.query.filter_by(paper_id=paper_id)
-        .order_by(PaperImage.created_at)
-        .all()
-    )
+    images = PaperImage.query.filter_by(paper_id=paper_id).order_by(PaperImage.created_at).all()
     return jsonify({"images": [img.to_dict() for img in images]})
 
 
@@ -223,9 +226,7 @@ def delete_paper_image(paper_id: str, image_id: int):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
     user_id = int(get_jwt_identity())
-    img = PaperImage.query.filter_by(
-        id=image_id, paper_id=paper_id, user_id=user_id
-    ).first()
+    img = PaperImage.query.filter_by(id=image_id, paper_id=paper_id, user_id=user_id).first()
     if not img:
         return jsonify({"error": "Image not found"}), 404
     filepath = upload_folder() / img.file_path
@@ -251,7 +252,7 @@ def sign_paper_resource(paper_id: str):
         user_id = int(get_jwt_identity())
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
-    
+
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
@@ -264,9 +265,10 @@ def sign_paper_resource(paper_id: str):
     except (TypeError, ValueError):
         ttl = 600
     if scope not in ("image", "file") or not resource_id:
-        return jsonify({
-            "error": "scope must be 'image' or 'file' and resource_id is required"
-        }), 400
+        return (
+            jsonify({"error": "scope must be 'image' or 'file' and resource_id is required"}),
+            400,
+        )
 
     rid = str(resource_id)
     token = sign_resource_token(f"{scope}:{paper_id}", rid, user_id, ttl)

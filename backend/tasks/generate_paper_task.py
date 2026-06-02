@@ -14,9 +14,9 @@ threaded path in app.py (_run_generate_full_job). Both paths now share the
 same checkpoint shape so resume works regardless of which worker ran the
 original generation.
 """
+
 from __future__ import annotations
 
-import os
 import sys
 import time
 import traceback
@@ -29,16 +29,22 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 
-def _checkpoint(job_id: str, stage: str, percent: int, status: str | None = None,
-                partial: dict | None = None, **extra) -> None:
+def _checkpoint(
+    job_id: str,
+    stage: str,
+    percent: int,
+    status: str | None = None,
+    partial: dict | None = None,
+    **extra,
+) -> None:
     """Persist progress to DB + publish to Redis for SSE subscribers.
 
     When ``partial`` is provided, the canonical resume shape
     (``{chunks_done, partial_paper}``) is written to AiJob.result so /resume
     can re-feed it to generate_paper_json_chunked(resume_state=...).
     """
-    from jobs_bp import publish_progress
-    from models import AiJob, db
+    from api.jobs_bp import publish_progress
+    from database.models import AiJob, db
 
     payload = {"stage": stage, "percent": percent, **extra}
     if status:
@@ -80,8 +86,8 @@ def _is_cancelled(job_id: str) -> bool:
     flips the DB status, the SSE-fronted /jobs/<id>/cancel sets the Redis key.
     Either signal aborts the run.
     """
-    from jobs_bp import _REDIS, cancel_key
-    from models import AiJob
+    from api.jobs_bp import _REDIS, cancel_key
+    from database.models import AiJob
 
     try:
         if _REDIS.exists(cancel_key(job_id)):
@@ -95,12 +101,18 @@ def _is_cancelled(job_id: str) -> bool:
         return False
 
 
-def run_generate_paper(job_id: str, user_id: int, paper_id: str,
-                       prompt: str, topic: str | None = None,
-                       style: str | None = None,
-                       *, resume_state: dict | None = None,
-                       custom_prompt: str | None = None,
-                       model: str | None = None) -> dict:
+def run_generate_paper(
+    job_id: str,
+    user_id: int,
+    paper_id: str,
+    prompt: str,
+    topic: str | None = None,
+    style: str | None = None,
+    *,
+    resume_state: dict | None = None,
+    custom_prompt: str | None = None,
+    model: str | None = None,
+) -> dict:
     """Worker entrypoint — runs the chunked orchestrator with checkpoint hooks.
 
     ``resume_state`` (when provided) is a dict with ``chunks_done`` +
@@ -109,10 +121,10 @@ def run_generate_paper(job_id: str, user_id: int, paper_id: str,
     """
     # Build a Flask app context inside the worker so SQLAlchemy can talk to the DB.
     from app import app  # noqa: F401  (boots the global Flask app + DB binding)
-    from models import AiJob, Paper, db
+    from database.models import AiJob, Paper, db
     from paper_generation.chunked import (
-        generate_paper_json_chunked,
         GenerationCancelled,
+        generate_paper_json_chunked,
     )
 
     with app.app_context():
@@ -132,13 +144,22 @@ def run_generate_paper(job_id: str, user_id: int, paper_id: str,
                 checkpoint_cb=_checkpoint_cb,
                 cancel_check=lambda: _is_cancelled(job_id),
                 resume_state=resume_state,
+                paper_id=paper_id,
+                user_id=user_id,
             )
 
             # Defensive defaults (mirror app.py post-processing).
-            paper_data.setdefault("authors", [{
-                "name": "Author Name", "affiliation": "Department, University",
-                "location": "City, Country", "email": "author@example.com",
-            }])
+            paper_data.setdefault(
+                "authors",
+                [
+                    {
+                        "name": "Author Name",
+                        "affiliation": "Department, University",
+                        "location": "City, Country",
+                        "email": "author@example.com",
+                    }
+                ],
+            )
             paper_data.setdefault("keywords", [])
             paper_data.setdefault("sections", [])
             paper_data.setdefault("references", [])
@@ -153,26 +174,48 @@ def run_generate_paper(job_id: str, user_id: int, paper_id: str,
                 if paper:
                     paper.data = paper_data
                     paper.title = (
-                        paper_data.get("title")
-                        or (paper_data.get("data") or {}).get("title")
+                        (paper_data.get("title") or "").strip()
                         or paper.title
                         or "Untitled"
                     )
                     paper.updated_at = datetime.now(timezone.utc)
                     db.session.commit()
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"[run_generate_paper] Paper.data updated successfully: paper_id={paper_id}, user_id={user_id}, sections={len(paper_data.get('sections', []))}")
+                else:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"[run_generate_paper] Paper NOT FOUND with id={paper_id}, user_id={user_id}")
+                    paper_any = Paper.query.filter_by(id=paper_id).first()
+                    if paper_any:
+                        logger.warning(f"[run_generate_paper] Paper EXISTS but user_id mismatch: paper_id={paper_id}, expected_user_id={user_id}, actual_user_id={paper_any.user_id}")
+                    else:
+                        logger.warning(f"[run_generate_paper] Paper does NOT exist in database: paper_id={paper_id}")
 
             # Final checkpoint stores the canonical paper under partial_paper
             # so GET /api/job/<id> can serve it directly without a separate
             # column. status='done' marks the row terminal for /recent.
-            _checkpoint(job_id, "done", 100, status="done",
-                        partial=paper_data, paper_id=paper_id,
-                        elapsed=int(time.time() - t0))
+            _checkpoint(
+                job_id,
+                "done",
+                100,
+                status="done",
+                partial=paper_data,
+                paper_id=paper_id,
+                elapsed=int(time.time() - t0),
+            )
             return {"status": "done", "paper_id": paper_id}
 
         except GenerationCancelled as gc:
-            _checkpoint(job_id, gc.stage, 0, status="cancelled",
-                        cancelled_at_stage=gc.stage,
-                        elapsed=int(time.time() - t0))
+            _checkpoint(
+                job_id,
+                gc.stage,
+                0,
+                status="cancelled",
+                cancelled_at_stage=gc.stage,
+                elapsed=int(time.time() - t0),
+            )
             return {"status": "cancelled", "stage": gc.stage}
 
         except Exception as e:

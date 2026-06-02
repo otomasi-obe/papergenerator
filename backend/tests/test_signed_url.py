@@ -1,29 +1,32 @@
 """HMAC signed-URL token tests."""
+
 import os
 import sys
 import time
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Set required env BEFORE importing app
-os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
-os.environ.setdefault('JWT_SECRET_KEY', 'test-jwt-secret-not-real-and-not-short')
-os.environ.setdefault('SECRET_KEY', 'test-secret-not-real-and-not-default')
-os.environ.setdefault('SIGNED_URL_SECRET', 'test-signed-url-secret')
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-not-real-and-not-short")
+os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
+os.environ.setdefault("SIGNED_URL_SECRET", "test-signed-url-secret")
 
 
 @pytest.fixture(autouse=True)
 def _app_ctx():
     """All sign/verify calls touch current_app — push a context once."""
     from app import app
+
     with app.app_context():
         yield
 
 
 def _import_helpers():
     from paper_generation.utils import sign_resource_token, verify_resource_token
+
     return sign_resource_token, verify_resource_token
 
 

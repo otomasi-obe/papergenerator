@@ -17,6 +17,7 @@ Persistence
 - On startup, any `queued` or `running` jobs are re-queued into worker queues
   (running ones are demoted to queued: their browser session is gone).
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,6 +45,7 @@ def _get_pool():
     with _pool_lock:
         if _pool is None:
             from image_generation.CreateImageGemini import GeminiPool  # noqa: PLC0415
+
             _pool = GeminiPool.from_env()
         return _pool
 
@@ -79,24 +81,31 @@ class _Worker(threading.Thread):
             try:
                 self._process(job_id)
             except Exception:
-                log.exception("img-worker %s: unhandled error processing %s",
-                              self.account_name, job_id)
+                log.exception(
+                    "img-worker %s: unhandled error processing %s", self.account_name, job_id
+                )
 
     def _process(self, job_id: str):
         # Watchdog timeout: fail job if processing takes > 10 minutes
         import signal
-        
+        import threading
+
+        _timeout_active = False
+
         def timeout_handler(signum, frame):
             raise TimeoutError(f"Job {job_id} exceeded 10-minute timeout")
-        
-        # Set 10-minute timeout (600 seconds)
-        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(600)
-        
+
+        # Set 10-minute timeout (600 seconds) - only works in main thread
+        old_handler = None
+        if threading.current_thread() is threading.main_thread():
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(600)
+            _timeout_active = True
+
         try:
             from sqlalchemy import update  # noqa: PLC0415
 
-            from models import ImageGenJob, PaperImage, db  # noqa: PLC0415
+            from database.models import ImageGenJob, PaperImage, db  # noqa: PLC0415
             from paper_generation.utils import safe_paper_dir  # noqa: PLC0415
 
             with self.app.app_context():
@@ -108,8 +117,8 @@ class _Worker(threading.Thread):
                 now = datetime.now(timezone.utc)
                 result = db.session.execute(
                     update(ImageGenJob)
-                    .where(ImageGenJob.id == job_id, ImageGenJob.status == 'queued')
-                    .values(status='running', worker=self.account_name, started_at=now)
+                    .where(ImageGenJob.id == job_id, ImageGenJob.status == "queued")
+                    .values(status="running", worker=self.account_name, started_at=now)
                 )
                 db.session.commit()
                 if result.rowcount == 0:
@@ -129,11 +138,12 @@ class _Worker(threading.Thread):
 
             if paper_dir is None:
                 with self.app.app_context():
-                    from models import ImageGenJob, db  # noqa: PLC0415
+                    from database.models import ImageGenJob, db  # noqa: PLC0415
+
                     job2 = db.session.get(ImageGenJob, job_id)
                     if job2:
-                        job2.status = 'error'
-                        job2.error = 'Invalid paper_id (path resolution failed)'
+                        job2.status = "error"
+                        job2.error = "Invalid paper_id (path resolution failed)"
                         job2.finished_at = datetime.now(timezone.utc)
                         db.session.commit()
                 return
@@ -153,7 +163,7 @@ class _Worker(threading.Thread):
                 acc = next((a for a in pool.accounts if a.name == self.account_name), None)
                 if acc is None:
                     raise RuntimeError(f"Account {self.account_name} tidak ada di pool")
-            
+
                 # Retry browser launch up to 3 times with exponential backoff
                 launch_attempts = 3
                 for attempt in range(1, launch_attempts + 1):
@@ -167,7 +177,9 @@ class _Worker(threading.Thread):
                             )
                         log.warning(
                             "Browser launch attempt %d/%d failed: %s. Retrying...",
-                            attempt, launch_attempts, launch_err
+                            attempt,
+                            launch_attempts,
+                            launch_err,
                         )
                         # Close and cleanup before retry
                         try:
@@ -175,8 +187,8 @@ class _Worker(threading.Thread):
                         except Exception:
                             pass
                         # Exponential backoff: 2s, 4s
-                        time.sleep(2 ** attempt)
-            
+                        time.sleep(2**attempt)
+
                 res = acc.generate_image(prompt, out_path, generate_timeout_s=240)
 
                 # Compression is critical: large images cause upload/display failures.
@@ -184,15 +196,21 @@ class _Worker(threading.Thread):
                 # a 10MB+ image that will break the frontend.
                 try:
                     from image_generation.compress import compress_image  # noqa: PLC0415
+
                     if not compress_image(out_path, max_size_mb=1.0):
                         raise RuntimeError(
                             f"Image compression failed: could not reduce {out_path.name} to <1MB. "
                             f"Original size: {out_path.stat().st_size // 1024}KB"
                         )
-                    log.info("Image compressed successfully: %s -> %dKB", 
-                             out_path.name, out_path.stat().st_size // 1024)
+                    log.info(
+                        "Image compressed successfully: %s -> %dKB",
+                        out_path.name,
+                        out_path.stat().st_size // 1024,
+                    )
                 except Exception as compress_err:
-                    log.error("Compression failed for %s: %s", out_path, compress_err, exc_info=True)
+                    log.error(
+                        "Compression failed for %s: %s", out_path, compress_err, exc_info=True
+                    )
                     # Delete the uncompressed image
                     try:
                         if out_path and out_path.exists():
@@ -216,7 +234,7 @@ class _Worker(threading.Thread):
                     if job2:
                         # Respect a concurrent cancel: if the job was cancelled
                         # while we were generating, don't overwrite that status.
-                        if job2.status == 'cancelled':
+                        if job2.status == "cancelled":
                             # Drop the freshly-created image (orphaned) and the
                             # file on disk.
                             try:
@@ -229,13 +247,18 @@ class _Worker(threading.Thread):
                             except Exception:
                                 pass
                         else:
-                            job2.status = 'done'
+                            job2.status = "done"
                             job2.image_id = img.id
                             job2.finished_at = datetime.now(timezone.utc)
                     db.session.commit()
 
-                log.info("img-worker %s: done job=%s file=%s size=%s",
-                         self.account_name, job_id, filename, res.get('size'))
+                log.info(
+                    "img-worker %s: done job=%s file=%s size=%s",
+                    self.account_name,
+                    job_id,
+                    filename,
+                    res.get("size"),
+                )
             except Exception as e:
                 log.exception("img-worker %s: failed job=%s", self.account_name, job_id)
                 try:
@@ -244,19 +267,21 @@ class _Worker(threading.Thread):
                 except Exception:
                     pass
                 with self.app.app_context():
-                    from models import ImageGenJob, db  # noqa: PLC0415
+                    from database.models import ImageGenJob, db  # noqa: PLC0415
+
                     job2 = db.session.get(ImageGenJob, job_id)
-                    if job2 and job2.status != 'cancelled':
-                        job2.status = 'error'
+                    if job2 and job2.status != "cancelled":
+                        job2.status = "error"
                         job2.error = str(e)[:500]
                         job2.finished_at = datetime.now(timezone.utc)
                         db.session.commit()
 
-
         finally:
             # Restore signal handler and cancel alarm
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
+            if _timeout_active and old_handler is not None:
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, old_handler)
+
 
 class _Dispatcher(threading.Thread):
     """Picks up newly-queued jobs from the DB and routes them to the worker
@@ -285,15 +310,16 @@ class _Dispatcher(threading.Thread):
         return min(self.workers, key=lambda w: w.qsize())
 
     def run(self):
-        from models import ImageGenJob, db  # noqa: PLC0415
+        from database.models import ImageGenJob, db  # noqa: PLC0415
+
         # On startup: requeue any queued/running jobs that were left behind by a
         # previous process. Running ones are demoted because their browser
         # session is gone.
         with self.app.app_context():
-            stale = ImageGenJob.query.filter(ImageGenJob.status.in_(['queued', 'running'])).all()
+            stale = ImageGenJob.query.filter(ImageGenJob.status.in_(["queued", "running"])).all()
             for j in stale:
-                if j.status == 'running':
-                    j.status = 'queued'
+                if j.status == "running":
+                    j.status = "queued"
                     j.worker = None
             db.session.commit()
 
@@ -301,8 +327,7 @@ class _Dispatcher(threading.Thread):
             try:
                 with self.app.app_context():
                     queued = (
-                        ImageGenJob.query
-                        .filter_by(status='queued')
+                        ImageGenJob.query.filter_by(status="queued")
                         .order_by(ImageGenJob.created_at.asc())
                         .limit(20)
                         .all()
@@ -326,8 +351,9 @@ class _Dispatcher(threading.Thread):
                 if len(self._dispatched) > 256:
                     with self.app.app_context():
                         active = {
-                            r[0] for r in db.session.query(ImageGenJob.id)
-                            .filter(ImageGenJob.status.in_(['queued', 'running']))
+                            r[0]
+                            for r in db.session.query(ImageGenJob.id)
+                            .filter(ImageGenJob.status.in_(["queued", "running"]))
                             .all()
                         }
                     with self._lock:

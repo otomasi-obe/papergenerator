@@ -7,24 +7,41 @@ transient errors). Used by ``generate_paper_chunked`` and the chat
 streaming endpoint in ``app.py``.
 """
 
-import os
 import json
+import logging
+import os
 from pathlib import Path
-from core.env_loader import load_app_env
+
 import requests
+
+from core.env_loader import load_app_env
+
+log = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
 
 load_app_env()
 
-AIOTOMASI_API    = os.getenv("AIOTOMASI_API")
+AIOTOMASI_API = os.getenv("AIOTOMASI_API")
 AIOTOMASI_APIKEY = os.getenv("AIOTOMASI_APIKEY")
-AIOTOMASI_MODEL  = os.getenv("AIOTOMASI_MODEL", "V-OPUS")
+AIOTOMASI_MODEL = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
 
 
-def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, timeout: float = 900.0, progress_cb=None) -> str:
+def _call_aiotomasi(
+    messages: list,
+    api_key: str,
+    base_url: str,
+    model: str,
+    timeout: float | None = None,
+    progress_cb=None,
+) -> str:
     """Call AIOTOMASI API via requests with SSE streaming."""
+    from core.retry_helper import get_retry_config
+    
+    if timeout is None:
+        _, timeout = get_retry_config()
+    
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -78,18 +95,39 @@ def _call_aiotomasi(messages: list, api_key: str, base_url: str, model: str, tim
 # ── Fallback model chain ──────────────────────────────────────────────────────
 # Order: try the primary model first, then walk down the list. Each entry is
 # attempted independently; if all fail the last exception is re-raised.
-FALLBACK_MODELS = ["V-OPUS", "V-DEEPSEEK"]
+FALLBACK_MODELS = [os.getenv("MODELGENERATE") or "VIOLA-GENERATE", os.getenv("MODELCHAT") or "VIOLA-CHAT"]
 
 
-def _call_aiotomasi_with_fallback(messages: list, api_key: str, base_url: str, primary_model: str, timeout: float = 900.0, progress_cb=None) -> tuple:
+def _call_aiotomasi_with_fallback(
+    messages: list,
+    api_key: str,
+    base_url: str,
+    primary_model: str,
+    timeout: float | None = None,
+    progress_cb=None,
+) -> tuple:
     """Try primary_model first, then walk FALLBACK_MODELS on transient errors.
     Returns (content, model_used). Raises the last exception if everything fails.
     """
+    from core.retry_helper import get_retry_config, retry_with_backoff
+    
+    if timeout is None:
+        _, timeout = get_retry_config()
+    
     chain = [primary_model] + [m for m in FALLBACK_MODELS if m != primary_model]
     last_err = None
+    
     for idx, m in enumerate(chain):
         try:
-            content = _call_aiotomasi(messages, api_key, base_url, m, timeout=timeout, progress_cb=progress_cb)
+            # Wrap each model call with retry logic
+            call_fn = retry_with_backoff(
+                _call_aiotomasi,
+                max_retries=3,  # 3 retries per model in the chain
+                retryable_exceptions=(requests.exceptions.RequestException, ValueError)
+            )
+            content = call_fn(
+                messages, api_key, base_url, m, timeout=timeout, progress_cb=progress_cb
+            )
             return content, m
         except Exception as e:
             last_err = e
@@ -97,6 +135,6 @@ def _call_aiotomasi_with_fallback(messages: list, api_key: str, base_url: str, p
             err_str = str(e)
             if "401" in err_str or "403" in err_str:
                 raise
-            print(f"[fallback] model={m} failed ({err_str[:120]}); trying next…", flush=True)
+            log.warning("fallback_model_failed", extra={"model": m, "error": err_str[:120]})
             continue
     raise last_err if last_err else RuntimeError("All fallback models failed")

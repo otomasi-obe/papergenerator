@@ -1,0 +1,40 @@
+================================================================================
+FETCHER TEST RESULTS - MASTER SUMMARY
+================================================================================
+
+Test Run: 2026-05-29T23:12:11.823910
+Total Fetchers: 26
+Groups Tested: 9
+
+OVERALL SUMMARY:
+--------------------------------------------------------------------------------
+✓ Success: 5
+⚠ Partial Success: 0
+○ No Results: 14
+✗ Error: 1
+
+Total Papers Found: 23
+Total Valid PDF Links: 22
+
+FETCHER DETAILS:
+--------------------------------------------------------------------------------
+? arxiv                | Papers:   0 | Valid Links:   0 | Group: 1
+○ asce                 | Papers:   0 | Valid Links:   0 | Group: 1
+○ cambridge            | Papers:   0 | Valid Links:   0 | Group: 1
+○ clinicalkey          | Papers:   0 | Valid Links:   0 | Group: 2
+✓ crossref             | Papers:   5 | Valid Links:   5 | Group: 2
+✓ dblp                 | Papers:   5 | Valid Links:   5 | Group: 2
+○ ebscohost            | Papers:   0 | Valid Links:   0 | Group: 3
+○ embase               | Papers:   0 | Valid Links:   0 | Group: 3
+○ emerald              | Papers:   0 | Valid Links:   0 | Group: 3
+✓ europepmc            | Papers:   5 | Valid Links:   5 | Group: 4
+○ ieee                 | Papers:   0 | Valid Links:   0 | Group: 4
+○ igi_global           | Papers:   0 | Valid Links:   0 | Group: 4
+○ oxford               | Papers:   0 | Valid Links:   0 | Group: 6
+○ proquest             | Papers:   0 | Valid Links:   0 | Group: 6
+✓ pubmed               | Papers:   3 | Valid Links:   2 | Group: 6
+✓ sinta                | Papers:   5 | Valid Links:   5 | Group: 8
+○ springer             | Papers:   0 | Valid Links:   0 | Group: 8
+○ taylor_francis       | Papers:   0 | Valid Links:   0 | Group: 8
+○ westlaw              | Papers:   0 | Valid Links:   0 | Group: 9
+○ wiley                | Papers:   0 | Valid Links:   0 | Group: 9

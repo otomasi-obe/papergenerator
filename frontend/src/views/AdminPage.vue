@@ -228,7 +228,7 @@
       </template>
     </AppDialog>
 
-    <Teleport to="body"><div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div></Teleport>
+    <Teleport to="body"><div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div></Teleport>
   </div>
 </template>
 

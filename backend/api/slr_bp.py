@@ -17,9 +17,11 @@ The legacy `POST /api/papers/<paper_id>/slr` is now async-only: it enqueues
 a job and returns 202 + job_id immediately. Callers must poll
 `GET /api/slr/jobs/<job_id>` for status and results.
 """
+
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from collections import defaultdict
@@ -60,9 +62,12 @@ def _err(message: str, code: str, status: int):
     return jsonify({"error": message, "code": code}), status
 
 
-def _check_rate_limit(user_id: int, endpoint: str,
-                      max_requests: int = _RATE_MAX_REQUESTS,
-                      window_sec: float = _RATE_WINDOW_SEC):
+def _check_rate_limit(
+    user_id: int,
+    endpoint: str,
+    max_requests: int = _RATE_MAX_REQUESTS,
+    window_sec: float = _RATE_WINDOW_SEC,
+):
     """Simple per-user token bucket. Returns (ok, retry_after_seconds)."""
     now = time.monotonic()
     key = (user_id, endpoint)
@@ -71,12 +76,12 @@ def _check_rate_limit(user_id: int, endpoint: str,
     # drop expired timestamps
     while bucket and bucket[0] < cutoff:
         bucket.pop(0)
-    
+
     # Cleanup: remove empty buckets to prevent memory leak
     if not bucket and key in _RATE_BUCKETS:
         del _RATE_BUCKETS[key]
         return True, 0
-    
+
     if len(bucket) >= max_requests:
         retry_after = max(1, int(window_sec - (now - bucket[0])) + 1)
         return False, retry_after
@@ -100,7 +105,8 @@ def _validate_year(value):
     if y < 1500 or y > current_year + 1:
         return None, _err(
             f"year out of range: must be between 1500 and {current_year + 1}",
-            "YEAR_OUT_OF_RANGE", 400,
+            "YEAR_OUT_OF_RANGE",
+            400,
         )
     return y, None
 
@@ -139,6 +145,7 @@ def _paper_or_404(paper_id: str, user_id: int):
 
 # ─── SLR JOBS ─────────────────────────────────────────────────────────────
 
+
 @slr_bp.route("/api/papers/<paper_id>/slr/jobs", methods=["POST"])
 @jwt_required()
 def create_slr_job(paper_id: str):
@@ -149,11 +156,16 @@ def create_slr_job(paper_id: str):
     # F-28: simple per-user in-memory rate limit (10 jobs/minute).
     ok, retry_after = _check_rate_limit(user_id, "create_slr_job")
     if not ok:
-        return jsonify({
-            "error": "Rate limit: max 10 SLR jobs/minute",
-            "code": "RATE_LIMITED",
-            "retry_after": retry_after,
-        }), 429
+        return (
+            jsonify(
+                {
+                    "error": "Rate limit: max 10 SLR jobs/minute",
+                    "code": "RATE_LIMITED",
+                    "retry_after": retry_after,
+                }
+            ),
+            429,
+        )
 
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
@@ -175,23 +187,32 @@ def create_slr_job(paper_id: str):
         return year_err
 
     ai_summarize = bool(body.get("ai_summarize", True))
-    ai_model = (body.get("ai_model") or "V-DEEPSEEK").strip()
-    if ai_model not in {"V-OPUS", "V-DEEPSEEK"}:
-        ai_model = "V-DEEPSEEK"
+    ai_model = (body.get("ai_model") or os.getenv("MODELGENERATE") or "VIOLA-GENERATE").strip()
+    if ai_model not in {"VIOLA-CHAT", "VIOLA-GENERATE"}:
+        ai_model = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
 
     conv_id = body.get("conversation_id") or None
 
     log.info(
         "slr.create user=%d paper=%s query=%s top_k=%d ai_model=%s",
-        user_id, paper_id, query[:60], top_k, ai_model,
+        user_id,
+        paper_id,
+        query[:60],
+        top_k,
+        ai_model,
     )
 
     job = enqueue_slr_job(
-        paper_id=paper_id, user_id=user_id,
+        paper_id=paper_id,
+        user_id=user_id,
         conversation_id=conv_id,
-        query=query, sources=sources,
-        per_source=per_source, top_k=top_k, year_from=year_from,
-        ai_summarize=ai_summarize, ai_model=ai_model,
+        query=query,
+        sources=sources,
+        per_source=per_source,
+        top_k=top_k,
+        year_from=year_from,
+        ai_summarize=ai_summarize,
+        ai_model=ai_model,
     )
     return jsonify(job.to_dict()), 202
 
@@ -215,7 +236,8 @@ def list_slr_jobs(paper_id: str):
         if invalid:
             return _err(
                 f"invalid status value(s): {sorted(invalid)}",
-                "STATUS_INVALID", 400,
+                "STATUS_INVALID",
+                400,
             )
         statuses = requested
 
@@ -229,9 +251,11 @@ def list_slr_jobs(paper_id: str):
         # Defer the large `result` JSON column so each poll only ships the
         # status fields. Callers that need the full payload hit
         # `GET /api/slr/jobs/<job_id>?include_result=true`.
-        q = (db.session.query(SlrJob)
-             .options(defer(SlrJob.result))
-             .filter_by(paper_id=paper_id, user_id=user_id))
+        q = (
+            db.session.query(SlrJob)
+            .options(defer(SlrJob.result))
+            .filter_by(paper_id=paper_id, user_id=user_id)
+        )
         if statuses:
             q = q.filter(SlrJob.status.in_(statuses))
         jobs = q.order_by(SlrJob.queued_at.desc()).limit(limit).all()
@@ -271,31 +295,35 @@ def wait_slr_jobs(paper_id: str):
     try:
         while time.monotonic() < deadline:
             try:
-                latest = (db.session.query(db.func.max(SlrJob.updated_at))
-                          .filter_by(paper_id=paper_id, user_id=user_id)
-                          .scalar())
+                latest = (
+                    db.session.query(db.func.max(SlrJob.updated_at))
+                    .filter_by(paper_id=paper_id, user_id=user_id)
+                    .scalar()
+                )
             except (OperationalError, DBAPIError) as e:
                 db.session.rollback()
-                log.warning("slr.wait_jobs probe DB busy paper=%s: %s",
-                            paper_id, e)
-                return jsonify({"error": "DB busy, retry",
-                                "code": "DB_BUSY"}), 503
+                log.warning("slr.wait_jobs probe DB busy paper=%s: %s", paper_id, e)
+                return jsonify({"error": "DB busy, retry", "code": "DB_BUSY"}), 503
 
             ts = latest.timestamp() if latest else 0.0
             if ts > after:
-                jobs = (db.session.query(SlrJob)
-                        .options(defer(SlrJob.result))
-                        .filter_by(paper_id=paper_id, user_id=user_id)
-                        .order_by(SlrJob.queued_at.desc())
-                        .limit(30)
-                        .all())
+                jobs = (
+                    db.session.query(SlrJob)
+                    .options(defer(SlrJob.result))
+                    .filter_by(paper_id=paper_id, user_id=user_id)
+                    .order_by(SlrJob.queued_at.desc())
+                    .limit(30)
+                    .all()
+                )
                 # Close the read txn so we don't pin a snapshot across the
                 # caller's polling cycle. Rollback is enough for read-only.
                 db.session.rollback()
-                return jsonify({
-                    "jobs": [j.to_dict() for j in jobs],
-                    "ts": ts,
-                })
+                return jsonify(
+                    {
+                        "jobs": [j.to_dict() for j in jobs],
+                        "ts": ts,
+                    }
+                )
             # Release the implicit read txn between polls so other writers
             # (the worker pool) don't block waiting on us.
             db.session.rollback()
@@ -349,8 +377,9 @@ def cancel_slr_job(job_id: str):
     elif job.status in ("done", "error", "cancelled"):
         kids = db.session.query(LiteratureItem).filter_by(slr_job_id=job.id).count()
         if kids:
-            db.session.query(LiteratureItem).filter_by(slr_job_id=job.id)\
-                .update({"slr_job_id": None}, synchronize_session=False)
+            db.session.query(LiteratureItem).filter_by(slr_job_id=job.id).update(
+                {"slr_job_id": None}, synchronize_session=False
+            )
         try:
             db.session.delete(job)
             db.session.commit()
@@ -363,6 +392,7 @@ def cancel_slr_job(job_id: str):
 
 # ─── LITERATURE ITEMS ─────────────────────────────────────────────────────
 
+
 @slr_bp.route("/api/papers/<paper_id>/literature", methods=["GET"])
 @jwt_required()
 def list_literature(paper_id: str):
@@ -373,11 +403,15 @@ def list_literature(paper_id: str):
     if err:
         return err
 
-    base_q = (db.session.query(LiteratureItem)
-              .filter_by(paper_id=paper_id, user_id=user_id)
-              .order_by(LiteratureItem.pinned.desc(),
-                        LiteratureItem.score_total.desc(),
-                        LiteratureItem.created_at.desc()))
+    base_q = (
+        db.session.query(LiteratureItem)
+        .filter_by(paper_id=paper_id, user_id=user_id)
+        .order_by(
+            LiteratureItem.pinned.desc(),
+            LiteratureItem.score_total.desc(),
+            LiteratureItem.created_at.desc(),
+        )
+    )
 
     # Backward-compat: only switch to paginated wrapper when caller actually
     # passes `page` or `page_size`. Otherwise return the original flat list.
@@ -399,12 +433,14 @@ def list_literature(paper_id: str):
 
     total = base_q.count()
     items = base_q.offset((page - 1) * page_size).limit(page_size).all()
-    return jsonify({
-        "items": [i.to_dict() for i in items],
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-    })
+    return jsonify(
+        {
+            "items": [i.to_dict() for i in items],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+    )
 
 
 @slr_bp.route("/api/papers/<paper_id>/literature", methods=["POST"])
@@ -432,15 +468,20 @@ def create_literature(paper_id: str):
     # Dedup: same DOI on the same paper can't exist twice (DB has a partial
     # unique index but we want a friendly 409 instead of an IntegrityError).
     if doi_norm is not None:
-        existing = (db.session.query(LiteratureItem)
-                    .filter_by(paper_id=paper_id, doi=doi_norm)
-                    .first())
+        existing = (
+            db.session.query(LiteratureItem).filter_by(paper_id=paper_id, doi=doi_norm).first()
+        )
         if existing is not None:
-            return jsonify({
-                "error": f"literature with DOI {doi_norm} already exists",
-                "code": "DOI_DUPLICATE",
-                "existing_id": existing.id,
-            }), 409
+            return (
+                jsonify(
+                    {
+                        "error": f"literature with DOI {doi_norm} already exists",
+                        "code": "DOI_DUPLICATE",
+                        "existing_id": existing.id,
+                    }
+                ),
+                409,
+            )
 
     raw_url = body.get("url")
     if raw_url:
@@ -448,7 +489,8 @@ def create_literature(paper_id: str):
         if url_norm is None:
             return _err(
                 "invalid url: must be http(s):// or relative path",
-                "URL_INVALID", 400,
+                "URL_INVALID",
+                400,
             )
     else:
         url_norm = None
@@ -462,7 +504,8 @@ def create_literature(paper_id: str):
         return _err(
             f"invalid source_kind: {source_kind!r}; must be one of "
             f"{sorted(_VALID_SOURCE_KINDS)}",
-            "SOURCE_KIND_INVALID", 400,
+            "SOURCE_KIND_INVALID",
+            400,
         )
 
     item = LiteratureItem(
@@ -501,15 +544,32 @@ def update_literature(paper_id: str, item_id: int):
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
         return err
-    item = db.session.query(LiteratureItem).filter_by(id=item_id, paper_id=paper_id, user_id=user_id).first()
+    item = (
+        db.session.query(LiteratureItem)
+        .filter_by(id=item_id, paper_id=paper_id, user_id=user_id)
+        .first()
+    )
     if not item:
         return _err("Literature item not found", "LITERATURE_NOT_FOUND", 404)
 
     body = request.get_json(silent=True) or {}
     editable = {
-        "title", "authors", "year", "venue", "publisher", "doi", "url",
-        "abstract", "summary", "citations", "must_read", "is_relevant",
-        "notes", "pinned", "source", "source_kind",
+        "title",
+        "authors",
+        "year",
+        "venue",
+        "publisher",
+        "doi",
+        "url",
+        "abstract",
+        "summary",
+        "citations",
+        "must_read",
+        "is_relevant",
+        "notes",
+        "pinned",
+        "source",
+        "source_kind",
     }
     for k, v in body.items():
         if k not in editable:
@@ -529,9 +589,9 @@ def update_literature(paper_id: str, item_id: int):
         elif k == "source_kind":
             if v not in _VALID_SOURCE_KINDS:
                 return _err(
-                    f"invalid source_kind: {v!r}; must be one of "
-                    f"{sorted(_VALID_SOURCE_KINDS)}",
-                    "SOURCE_KIND_INVALID", 400,
+                    f"invalid source_kind: {v!r}; must be one of " f"{sorted(_VALID_SOURCE_KINDS)}",
+                    "SOURCE_KIND_INVALID",
+                    400,
                 )
         elif k == "doi":
             if v in (None, ""):
@@ -549,7 +609,8 @@ def update_literature(paper_id: str, item_id: int):
                 if safe is None:
                     return _err(
                         "invalid url: must be http(s):// or relative path",
-                        "URL_INVALID", 400,
+                        "URL_INVALID",
+                        400,
                     )
                 v = safe
         setattr(item, k, v)
@@ -566,7 +627,11 @@ def delete_literature(paper_id: str, item_id: int):
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
         return err
-    item = db.session.query(LiteratureItem).filter_by(id=item_id, paper_id=paper_id, user_id=user_id).first()
+    item = (
+        db.session.query(LiteratureItem)
+        .filter_by(id=item_id, paper_id=paper_id, user_id=user_id)
+        .first()
+    )
     if not item:
         return _err("Literature item not found", "LITERATURE_NOT_FOUND", 404)
     db.session.delete(item)
@@ -595,14 +660,17 @@ def bulk_delete_literature(paper_id: str):
         except (TypeError, ValueError):
             return _err(f"invalid id: {v!r}", "IDS_INVALID", 400)
 
-    log.info("slr.literature.bulk_delete user=%d paper=%s ids=%d",
-             user_id, paper_id, len(ids))
+    log.info("slr.literature.bulk_delete user=%d paper=%s ids=%d", user_id, paper_id, len(ids))
 
-    rows = (db.session.query(LiteratureItem)
-            .filter(LiteratureItem.paper_id == paper_id,
-                    LiteratureItem.user_id == user_id,
-                    LiteratureItem.id.in_(ids))
-            .all())
+    rows = (
+        db.session.query(LiteratureItem)
+        .filter(
+            LiteratureItem.paper_id == paper_id,
+            LiteratureItem.user_id == user_id,
+            LiteratureItem.id.in_(ids),
+        )
+        .all()
+    )
     deleted = 0
     try:
         for r in rows:
@@ -647,19 +715,29 @@ def bulk_patch_literature(paper_id: str):
         return _err(
             f"invalid patch field(s): {sorted(invalid_fields)}; "
             f"only {sorted(allowed_fields)} are allowed",
-            "PATCH_FIELD_INVALID", 400,
+            "PATCH_FIELD_INVALID",
+            400,
         )
     normalized_patch = {k: bool(v) for k, v in patch.items()}
 
-    log.info("slr.literature.bulk_patch user=%d paper=%s ids=%d patch=%s",
-             user_id, paper_id, len(ids), normalized_patch)
+    log.info(
+        "slr.literature.bulk_patch user=%d paper=%s ids=%d patch=%s",
+        user_id,
+        paper_id,
+        len(ids),
+        normalized_patch,
+    )
 
     try:
-        updated = (db.session.query(LiteratureItem)
-                   .filter(LiteratureItem.paper_id == paper_id,
-                           LiteratureItem.user_id == user_id,
-                           LiteratureItem.id.in_(ids))
-                   .update(normalized_patch, synchronize_session=False))
+        updated = (
+            db.session.query(LiteratureItem)
+            .filter(
+                LiteratureItem.paper_id == paper_id,
+                LiteratureItem.user_id == user_id,
+                LiteratureItem.id.in_(ids),
+            )
+            .update(normalized_patch, synchronize_session=False)
+        )
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -681,13 +759,16 @@ def import_from_files(paper_id: str):
     if err:
         return err
 
-    files = (PaperFile.query
-             .filter_by(paper_id=paper_id, user_id=user_id)
-             .order_by(PaperFile.created_at.desc())
-             .all())
+    files = (
+        PaperFile.query.filter_by(paper_id=paper_id, user_id=user_id)
+        .order_by(PaperFile.created_at.desc())
+        .all()
+    )
     existing_file_ids = {
-        i.file_id for i in db.session.query(LiteratureItem)
-        .filter_by(paper_id=paper_id).filter(LiteratureItem.file_id.isnot(None))
+        i.file_id
+        for i in db.session.query(LiteratureItem)
+        .filter_by(paper_id=paper_id)
+        .filter(LiteratureItem.file_id.isnot(None))
         .all()
     }
     created = []
@@ -696,7 +777,7 @@ def import_from_files(paper_id: str):
             continue
         excerpt = (f.extracted_text or "").strip()
         # Use first non-empty line as title; cap.
-        title = (excerpt.split("\n", 1)[0] if excerpt else f.original_name)
+        title = excerpt.split("\n", 1)[0] if excerpt else f.original_name
         title = (title or f.original_name)[:300]
         item = LiteratureItem(
             paper_id=paper_id,
@@ -723,6 +804,7 @@ def import_from_files(paper_id: str):
 
 # ─── Legacy /slr endpoint (now async-only) ────────────────────────────────
 
+
 @slr_bp.route("/api/papers/<paper_id>/slr", methods=["POST"])
 @jwt_required()
 def run_slr_legacy(paper_id: str):
@@ -738,11 +820,16 @@ def run_slr_legacy(paper_id: str):
     # same bucket so legacy clients can't bypass it.
     ok, retry_after = _check_rate_limit(user_id, "create_slr_job")
     if not ok:
-        return jsonify({
-            "error": "Rate limit: max 10 SLR jobs/minute",
-            "code": "RATE_LIMITED",
-            "retry_after": retry_after,
-        }), 429
+        return (
+            jsonify(
+                {
+                    "error": "Rate limit: max 10 SLR jobs/minute",
+                    "code": "RATE_LIMITED",
+                    "retry_after": retry_after,
+                }
+            ),
+            429,
+        )
 
     paper, err = _paper_or_404(paper_id, user_id)
     if err:
@@ -762,16 +849,21 @@ def run_slr_legacy(paper_id: str):
     if year_err:
         return year_err
 
-    ai_model = (body.get("ai_model") or "V-DEEPSEEK").strip()
-    if ai_model not in {"V-OPUS", "V-DEEPSEEK"}:
-        ai_model = "V-DEEPSEEK"
+    ai_model = (body.get("ai_model") or os.getenv("MODELGENERATE") or "VIOLA-GENERATE").strip()
+    if ai_model not in {"VIOLA-CHAT", "VIOLA-GENERATE"}:
+        ai_model = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
     log.info(
         "slr.create user=%d paper=%s query=%s top_k=%d ai_model=%s",
-        user_id, paper.id, query[:60], top_k, ai_model,
+        user_id,
+        paper.id,
+        query[:60],
+        top_k,
+        ai_model,
     )
 
     job = enqueue_slr_job(
-        paper_id=paper.id, user_id=user_id,
+        paper_id=paper.id,
+        user_id=user_id,
         query=query,
         sources=body.get("sources"),
         per_source=per_source,
@@ -784,6 +876,7 @@ def run_slr_legacy(paper_id: str):
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────
+
 
 def _safe_int(v):
     if v is None or v == "":

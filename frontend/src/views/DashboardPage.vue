@@ -10,7 +10,7 @@
           <p class="text-ink-700 dark:text-ink-300 text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
         </div>
         <router-link to="/editor"
-          class="flex items-center gap-2 px-5 py-2.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition-colors shadow-sm">
+          class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition-colors shadow-sm active:scale-95 transition-transform">
           + New Paper
         </router-link>
       </div>
@@ -27,7 +27,7 @@
             <div class="text-6xl mb-4" aria-hidden="true">📄</div>
             <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
             <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
-            <router-link to="/editor" class="px-6 py-3 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition-colors">
+            <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition-colors active:scale-95 transition-transform">
               Create First Paper
             </router-link>
           </div>
@@ -49,18 +49,18 @@
               </div>
             </router-link>
 
-            <div class="flex items-center gap-1 px-4 pb-4">
+            <div class="flex items-center gap-2 px-4 pb-4">
               <button @click="openPaper(paper)"
-                class="flex-1 px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-xs rounded-lg transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                class="flex-1 px-3 py-1.5 min-h-[44px] bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-xs rounded-lg transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                 Open
               </button>
               <button @click="copyPaper(paper)" :disabled="copying === paper.id"
-                class="px-3 py-1.5 bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                class="px-3 py-1.5 min-h-[44px] min-w-[44px] bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                 title="Copy paper">
                 {{ copying === paper.id ? '...' : 'Copy' }}
               </button>
               <button @click="confirmDelete(paper)"
-                class="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-xs rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                class="px-3 py-1.5 min-h-[44px] min-w-[44px] bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-xs rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                 title="Delete paper">
                 Delete
               </button>
@@ -76,24 +76,24 @@
       </p>
       <template #actions>
         <button @click="deleteTarget = null"
-          class="px-4 py-2.5 border border-cream-400 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">
+          class="px-4 py-2.5 min-h-[44px] border border-cream-400 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">
           Cancel
         </button>
         <button @click="doDelete()"
-          class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
+          class="px-4 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
           Delete
         </button>
       </template>
     </AppDialog>
 
     <Teleport to="body">
-      <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div>
+      <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div>
     </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api/index.js'
 import AppHeader from '../components/AppHeader.vue'
@@ -190,4 +190,8 @@ function formatDate(iso) {
 }
 
 onMounted(loadPapers)
+
+onUnmounted(() => {
+  clearTimeout(toastTimer)
+})
 </script>

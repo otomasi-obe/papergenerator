@@ -3,6 +3,7 @@ Observability primitives: structured JSON logging, request-id correlation,
 Prometheus metrics, and a deeper /api/healthz check.
 Wire into the Flask app via init_observability(app).
 """
+
 from __future__ import annotations
 
 import json
@@ -13,7 +14,7 @@ import time
 import uuid
 from pathlib import Path
 
-from flask import Flask, Response, g, request, jsonify
+from flask import Flask, Response, g, jsonify, request
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
@@ -22,7 +23,6 @@ from prometheus_client import (
     generate_latest,
 )
 from sqlalchemy import text
-
 
 # ── Metrics (process-wide, registered once at import) ───────────────────────
 REQ_COUNT = Counter(
@@ -43,7 +43,7 @@ REQ_IN_FLIGHT = Gauge(
 AI_GENERATION_COUNT = Counter(
     "ai_generation_total",
     "AI paper-generation jobs by terminal status.",
-    ["status"],   # done | error | timeout
+    ["status"],  # done | error | timeout
 )
 
 
@@ -54,10 +54,27 @@ class JSONFormatter(logging.Formatter):
     """
 
     _RESERVED = {
-        "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
-        "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
-        "created", "msecs", "relativeCreated", "thread", "threadName",
-        "processName", "process", "message",
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "message",
     }
 
     def format(self, record: logging.LogRecord) -> str:

@@ -1,0 +1,43 @@
+Test Report: sinta
+============================================================
+
+Test Time: 2026-05-29T12:54:59.940080
+Test Query: indonesian research
+Status: success
+
+Results:
+  Papers found: 3
+  Papers with URLs: 3
+  Valid download links: 3
+  Invalid download links: 0
+
+Papers:
+
+  1. The flower characteristics of a plant is one of the important traits correlated to its productivity.
+     Year: 2009, DOI: None
+     URL: https://garuda.kemdiktisaintek.go.id/documents/detail/1308052
+
+  2. Perceived Research Environment and Research Burnout in Indonesian Academics: The Moderator Role of R
+     Year: None, DOI: None
+     URL: https://garuda.kemdiktisaintek.go.id/documents/detail/1701712
+
+  3. INTRODUCTION IN INDONESIAN SOCIAL SCIENCES AND HUMANITIES RESEARCH ARTICLES: HOW INDONESIAN WRITERS 
+     Year: 2014, DOI: None
+     URL: https://garuda.kemdiktisaintek.go.id/documents/detail/950117
+
+Download Link Checks:
+
+  - The flower characteristics of a plant is one of the important traits correlated 
+    URL: https://garuda.kemdiktisaintek.go.id/documents/detail/1308052
+    Status: accessible (Code: 200)
+    Accessible: ✓
+
+  - Perceived Research Environment and Research Burnout in Indonesian Academics: The
+    URL: https://garuda.kemdiktisaintek.go.id/documents/detail/1701712
+    Status: accessible (Code: 200)
+    Accessible: ✓
+
+  - INTRODUCTION IN INDONESIAN SOCIAL SCIENCES AND HUMANITIES RESEARCH ARTICLES: HOW
+    URL: https://garuda.kemdiktisaintek.go.id/documents/detail/950117
+    Status: accessible (Code: 200)
+    Accessible: ✓

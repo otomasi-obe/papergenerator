@@ -10,6 +10,7 @@ The tool inspects an attached PaperFile and either:
 If Agent G hasn't landed `_review_large_file` yet, the module skips with a
 clear reason.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,10 +29,11 @@ os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
 os.environ.setdefault("SIGNED_URL_SECRET", "test-signed-url-secret")
 
 try:
-    from flask import Flask
-    from sqlalchemy import JSON
     import chat_tools
+    from flask import Flask
     from models import Paper, PaperFile, User, db
+    from sqlalchemy import JSON
+
     Paper.__table__.c.data.type = JSON()
 except Exception as e:  # pragma: no cover
     pytest.skip(f"chat_tools bootstrap failed: {e}", allow_module_level=True)
@@ -100,7 +102,7 @@ def _payload(out):
     """If the tool returned a PROPOSAL_PREFIX payload, parse the trailing JSON."""
     assert isinstance(out, str)
     if out.startswith(chat_tools.PROPOSAL_PREFIX):
-        return json.loads(out[len(chat_tools.PROPOSAL_PREFIX):])
+        return json.loads(out[len(chat_tools.PROPOSAL_PREFIX) :])
     return None
 
 
@@ -140,9 +142,9 @@ def test_small_file_returns_full_text(app):
 
     out = _call(paper.id, user.id, {"file_id": f.id})
     # No PROPOSAL_PREFIX — falls through to read_attached_file behaviour.
-    assert not out.startswith(chat_tools.PROPOSAL_PREFIX), (
-        f"small file should not produce a proposal: {out[:120]}"
-    )
+    assert not out.startswith(
+        chat_tools.PROPOSAL_PREFIX
+    ), f"small file should not produce a proposal: {out[:120]}"
     # The original text must show up in the output.
     assert small_text in out
     # Filename should be surfaced in the header (matches read_attached_file).
@@ -156,9 +158,9 @@ def test_borderline_under_threshold(app):
     f = _attach_file(paper, user, "border.pdf", text)
 
     out = _call(paper.id, user.id, {"file_id": f.id})
-    assert not out.startswith(chat_tools.PROPOSAL_PREFIX), (
-        "2999-word file should not trigger the proposal path"
-    )
+    assert not out.startswith(
+        chat_tools.PROPOSAL_PREFIX
+    ), "2999-word file should not trigger the proposal path"
 
 
 def test_borderline_over_threshold(app):

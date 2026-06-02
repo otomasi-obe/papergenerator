@@ -1,4 +1,5 @@
 """Tests for slr_worker pure helpers (no thread-boot)."""
+
 from __future__ import annotations
 
 import os
@@ -21,20 +22,22 @@ os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 
 # Pin started=True so importing app doesn't spin up the pump thread.
 try:
-    import slr_worker
+    from workers import slr_worker
+
     slr_worker._started = True
 except Exception:  # pragma: no cover
     pass
 try:
-    import image_worker
+    from workers import image_worker
+
     image_worker._started = True
 except Exception:
     pass
 
 try:
     from app import app as flask_app
-    from models import db, User, Paper, SlrJob
-    import slr_worker as sw
+    from database.models import Paper, SlrJob, User, db
+    from workers import slr_worker as sw
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed: {e}", allow_module_level=True)
 
@@ -84,12 +87,29 @@ def test_stage_to_pct_is_monotonic_non_decreasing():
 
 
 def test_stage_message_returns_non_empty_strings_for_known_stages():
-    known = ["fetching", "source_done", "dedup_done", "scoring", "scored",
-             "summarizing", "summarized", "complete"]
+    known = [
+        "fetching",
+        "source_done",
+        "dedup_done",
+        "scoring",
+        "scored",
+        "summarizing",
+        "summarized",
+        "complete",
+    ]
     for stage in known:
-        msg = sw._stage_message(stage, {"sources": ["a"], "total": 1, "count": 1,
-                                         "completed": 1, "done": 1, "top_k": 1,
-                                         "source": "openalex"})
+        msg = sw._stage_message(
+            stage,
+            {
+                "sources": ["a"],
+                "total": 1,
+                "count": 1,
+                "completed": 1,
+                "done": 1,
+                "top_k": 1,
+                "source": "openalex",
+            },
+        )
         assert isinstance(msg, str)
         assert msg.strip() != ""
 
@@ -104,9 +124,11 @@ def test_enqueue_slr_job_inserts_queued_row(app_ctx):
     db.session.commit()
 
     job = sw.enqueue_slr_job(
-        paper_id=paper.id, user_id=user.id,
+        paper_id=paper.id,
+        user_id=user.id,
         query="hello world",
-        top_k=20, per_source=30,
+        top_k=20,
+        per_source=30,
     )
     assert isinstance(job, SlrJob)
     assert isinstance(job.id, str) and len(job.id) == 12

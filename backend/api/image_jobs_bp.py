@@ -6,6 +6,7 @@ Endpoints:
   GET  /api/image-jobs           — list current user's recent jobs (active first)
   GET  /api/image-jobs/<id>      — poll a single job
 """
+
 from __future__ import annotations
 
 import logging
@@ -55,7 +56,7 @@ def create_image_job():
 
     inflight = ImageGenJob.query.filter(
         ImageGenJob.user_id == user_id,
-        ImageGenJob.status.in_(['queued', 'running']),
+        ImageGenJob.status.in_(["queued", "running"]),
     ).count()
     if inflight >= MAX_INFLIGHT_PER_USER:
         return jsonify({"error": f"Maks {MAX_INFLIGHT_PER_USER} job aktif. Tunggu dulu."}), 429
@@ -65,7 +66,7 @@ def create_image_job():
         user_id=user_id,
         paper_id=paper_id,
         prompt=prompt,
-        status='queued',
+        status="queued",
     )
     db.session.add(job)
     db.session.commit()
@@ -74,6 +75,7 @@ def create_image_job():
     # isn't started yet, the dispatcher's DB poll will pick it up next tick.
     try:
         from workers.image_worker import submit_now  # noqa: PLC0415
+
         submit_now(job.id)
     except Exception:
         log.exception("submit_now failed (job will still run via dispatcher poll)")
@@ -94,16 +96,16 @@ def list_image_jobs():
     # Return active jobs + the 30 most recent finished ones, so the frontend can
     # reattach UI on reload without paging.
     active = (
-        ImageGenJob.query
-        .filter(ImageGenJob.user_id == user_id,
-                ImageGenJob.status.in_(['queued', 'running']))
+        ImageGenJob.query.filter(
+            ImageGenJob.user_id == user_id, ImageGenJob.status.in_(["queued", "running"])
+        )
         .order_by(ImageGenJob.created_at.asc())
         .all()
     )
     recent_done = (
-        ImageGenJob.query
-        .filter(ImageGenJob.user_id == user_id,
-                ImageGenJob.status.in_(['done', 'error']))
+        ImageGenJob.query.filter(
+            ImageGenJob.user_id == user_id, ImageGenJob.status.in_(["done", "error"])
+        )
         .order_by(ImageGenJob.created_at.desc())
         .limit(30)
         .all()
@@ -144,10 +146,11 @@ def cancel_image_job(job_id: str):
     job = ImageGenJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
-    if job.status in ('done', 'error', 'cancelled'):
+    if job.status in ("done", "error", "cancelled"):
         return jsonify({"id": job.id, "status": job.status})
     from datetime import datetime, timezone  # noqa: PLC0415
-    job.status = 'cancelled'
+
+    job.status = "cancelled"
     job.finished_at = datetime.now(timezone.utc)
     db.session.commit()
     return jsonify({"id": job.id, "status": job.status})

@@ -3,14 +3,14 @@
     <div class="w-full px-4 lg:px-8 py-3 flex items-center justify-between">
       <!-- Logo + Nav + Token quota bar (rofiq.txt: kuota tampil kiri atas) -->
       <div class="flex items-center gap-4">
-        <router-link to="/dashboard" class="flex items-center gap-2 text-ink-900 dark:text-ink-50 hover:text-brown-700 dark:hover:text-cream-200 transition-colors">
+        <router-link to="/dashboard" class="flex items-center gap-2 min-h-[44px] min-w-[44px] text-ink-900 dark:text-ink-50 hover:text-brown-700 dark:hover:text-cream-200 transition-colors">
           <img :src="logoUrl" alt="PaperFull" class="h-7 w-7 rounded-md object-contain" />
           <span class="font-semibold">PaperFull</span>
         </router-link>
 
         <!-- Token quota bar -->
         <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
-          <button type="button" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
+          <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
             <div class="w-24 h-2 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
               <div
                 class="h-full transition-all"
@@ -36,22 +36,22 @@
           ∞ admin
         </div>
 
-        <nav class="hidden md:flex items-center gap-1 text-sm">
-          <router-link to="/dashboard" class="px-3 py-1.5 rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
+        <nav class="hidden md:flex items-center gap-2 text-sm">
+          <router-link to="/dashboard" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
             Papers
           </router-link>
-          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
+          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
             Admin
           </router-link>
         </nav>
       </div>
 
       <!-- User Menu -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <!-- Job inbox bell -->
         <div class="bell-wrap relative" ref="bellRef">
           <button @click="onBellClick"
-            class="p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative"
+            class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative"
             aria-haspopup="menu"
             :aria-expanded="bellOpen"
             :title="recentCount > 0 ? `${recentCount} paper baru selesai` : 'Belum ada paper baru selesai'">
@@ -87,7 +87,7 @@
 
         <div class="relative" ref="menuRef">
           <button @click="menuOpen = !menuOpen"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50"
+            class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50"
             aria-haspopup="menu"
             :aria-expanded="menuOpen">
             <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-7 h-7 rounded-full" alt="avatar" />
@@ -146,13 +146,15 @@
   </header>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+<script setup lang="ts">
+// @ts-nocheck
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth.js'
-import { useTheme } from '../stores/theme.js'
-import { usePaperJobsStore } from '../stores/paperJobs.js'
-import api from '../api/index.js'
+import { useAuthStore } from '../stores/auth'
+import { useTheme } from '../stores/theme'
+import { usePaperJobsStore } from '../stores/paperJobs'
+import { useQuotaStore } from '../stores/quota'
+
 const logoUrl = '/logo.png'
 
 const auth = useAuthStore()
@@ -160,9 +162,9 @@ const router = useRouter()
 const menuOpen = ref(false)
 const quotaOpen = ref(false)
 const bellOpen = ref(false)
-const menuRef = ref(null)
-const quotaRef = ref(null)
-const bellRef = ref(null)
+const menuRef = ref<HTMLElement | null>(null)
+const quotaRef = ref<HTMLElement | null>(null)
+const bellRef = ref<HTMLElement | null>(null)
 
 const { mode, setMode } = useTheme()
 
@@ -170,11 +172,14 @@ const jobsStore = usePaperJobsStore()
 const recentDone = computed(() => jobsStore.recentDone)
 const recentCount = computed(() => recentDone.value.length)
 
-function onBellClick() {
+const quotaStore = useQuotaStore()
+const quota = computed(() => quotaStore.quota)
+
+function onBellClick(): void {
   bellOpen.value = !bellOpen.value
 }
 
-function formatTime(iso) {
+function formatTime(iso: string | null | undefined): string {
   if (!iso) return ''
   try {
     const d = new Date(iso)
@@ -185,65 +190,49 @@ function formatTime(iso) {
   }
 }
 
-const themeOptions = [
+interface ThemeOption {
+  value: 'light' | 'dark' | 'system'
+  label: string
+  icon: string
+}
+
+const themeOptions: ThemeOption[] = [
   { value: 'light',  label: 'Light',  icon: '☀️' },
   { value: 'dark',   label: 'Dark',   icon: '🌙' },
   { value: 'system', label: 'System', icon: '🖥️' },
 ]
 
-// rofiq.txt: token bar di kiri, hover untuk detail.
-const quota = ref({
-  quota_monthly: 0,
-  used_month: 0,
-  used_today: 0,
-  remaining: 0,
-  percent: 0,
-  month_key: '',
-  breakdown_by_model: [],
-  is_unlimited: false,
-})
-
-let quotaTimer = null
-
-function formatNum(n) {
+function formatNum(n: number | string): string {
   if (typeof n !== 'number') n = Number(n) || 0
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k'
   return String(n)
 }
 
-async function loadQuota() {
-  try {
-    const res = await api.get('/api/me/quota')
-    if (res?.data) Object.assign(quota.value, res.data)
-  } catch { /* not signed in or backend cold */ }
-}
-
-function doLogout() {
+function doLogout(): void {
   auth.logout()
   router.push('/login')
 }
 
-function handleOutsideClick(e) {
-  if (menuRef.value && !menuRef.value.contains(e.target)) {
+function handleOutsideClick(e: MouseEvent): void {
+  const target = e.target as Node
+  if (menuRef.value && !menuRef.value.contains(target)) {
     menuOpen.value = false
   }
-  if (quotaRef.value && !quotaRef.value.contains(e.target)) {
+  if (quotaRef.value && !quotaRef.value.contains(target)) {
     quotaOpen.value = false
   }
-  if (bellRef.value && !bellRef.value.contains(e.target)) {
+  if (bellRef.value && !bellRef.value.contains(target)) {
     bellOpen.value = false
   }
 }
 
 onMounted(() => {
   document.addEventListener('click', handleOutsideClick)
-  loadQuota()
-  // Refresh tiap 30 detik supaya bar terupdate setelah generate.
-  quotaTimer = setInterval(loadQuota, 30_000)
+  quotaStore.startPolling(60_000)
 })
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
-  if (quotaTimer) clearInterval(quotaTimer)
+  quotaStore.stopPolling()
 })
 </script>

@@ -46,24 +46,8 @@
         v-html="renderedContent"
       ></div>
 
-      <!-- Multi-choice chips parsed from [OPSI] block in AI message -->
-      <div
-        v-if="mcOptions.length && message.role === 'assistant' && !isStreaming"
-        class="mt-3 flex flex-col gap-1.5"
-      >
-        <button
-          v-for="(opt, i) in mcOptions"
-          :key="i"
-          @click="$emit('pick-option', opt)"
-          class="text-left text-sm px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 hover:border-amber-400 dark:hover:border-amber-500 text-amber-900 dark:text-amber-200 transition-colors"
-        >
-          <span class="inline-block w-5 text-amber-700 dark:text-amber-300 font-semibold">{{ i + 1 }}.</span>
-          {{ opt }}
-        </button>
-        <p class="text-[11px] text-amber-900 dark:text-amber-200 mt-0.5 px-1">
-          Atau ketik jawaban sendiri di kotak input.
-        </p>
-      </div>
+      <!-- Multi-choice options are now handled exclusively by MultiQuestionCard
+           via the AskQuestions tool. No inline parsing needed. -->
 
       <!-- Structured chips proposed by ProposeChips tool (kind=chips). -->
       <ActionChips
@@ -97,10 +81,10 @@
            into the paper or ask for a regenerate. -->
       <ChartPreviewCard
         v-if="metaKind === 'chart_proposal' && message.role === 'assistant'"
-        :url="message.metadata.url"
-        :spec="message.metadata.spec"
-        :image-id="message.metadata.image_id"
-        :title="message.metadata.title"
+        :url="message.metadata?.url"
+        :spec="message.metadata?.spec"
+        :image-id="message.metadata?.image_id"
+        :title="message.metadata?.title"
         @accept="$emit('chart-accept', { ...message.metadata, ...$event })"
         @regenerate="$emit('chart-regenerate', { ...message.metadata, ...$event })"
       />
@@ -344,11 +328,12 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { marked } from 'marked'
-import DOMPurify from 'dompurify'
 import hljs from 'highlight.js/lib/core'
+import { useSanitize } from '../composables/useSanitize'
 import javascript from 'highlight.js/lib/languages/javascript'
 import python from 'highlight.js/lib/languages/python'
 import bash from 'highlight.js/lib/languages/bash'
@@ -361,17 +346,60 @@ import RevisiProposalCard from './RevisiProposalCard.vue'
 import ChartPreviewCard from './ChartPreviewCard.vue'
 import FileReviewCard from './FileReviewCard.vue'
 import MultiQuestionCard from './MultiQuestionCard.vue'
-import { usePaperStore } from '../stores/paper.js'
+import { usePaperStore } from '../stores/paper'
+
+interface ToolCall {
+  name: string
+  status?: string
+  error?: string
+  result?: string
+}
+
+interface MessageMetadata {
+  kind?: string
+  chips?: any[]
+  job_id?: string
+  error_code?: string
+  retry_prompt?: string
+  images?: Array<{ title?: string; prompt: string }>
+  [key: string]: any
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content?: string
+  thinking?: string
+  tool_calls?: ToolCall[]
+  metadata?: MessageMetadata
+}
+
+interface Props {
+  message: ChatMessage
+  isStreaming?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isStreaming: false
+})
+
+interface Emits {
+  (e: 'pick-option', text: string): void
+  (e: 'chip-select', value: string): void
+  (e: 'revisi-accepted', event: any): void
+  (e: 'revisi-rejected', event: any): void
+  (e: 'chart-accept', data: any): void
+  (e: 'chart-regenerate', data: any): void
+  (e: 'file-review-pick', value: any): void
+  (e: 'multi-question-submit', value: any): void
+  (e: 'review-cancel'): void
+}
+
+defineEmits<Emits>()
 
 const paperStore = usePaperStore()
 const currentPaperId = computed(() => paperStore.currentPaperId || '')
+const { sanitizeHtml } = useSanitize()
 
-// PaperProgressBubble.vue is owned by Agent G and may not exist on disk yet
-// when this file is built in parallel. Loading it asynchronously with a
-// graceful fallback keeps the build green and the runtime resilient if the
-// component is missing.
-// TODO(agent-g): once PaperProgressBubble.vue lands, the placeholder below
-// becomes a no-op because the dynamic import will resolve.
 const PaperProgressBubble = defineAsyncComponent({
   loader: () => import('./PaperProgressBubble.vue'),
   loadingComponent: {
@@ -405,40 +433,17 @@ hljs.registerLanguage('html', xml)
 hljs.registerLanguage('xml', xml)
 hljs.registerLanguage('css', css)
 
-const props = defineProps({
-  message: { type: Object, required: true },
-  isStreaming: { type: Boolean, default: false }
-})
+const toolErrorsOpen = ref<Record<number, boolean>>({})
 
-defineEmits([
-  'pick-option',
-  'chip-select',
-  'revisi-accepted',
-  'revisi-rejected',
-  'chart-accept',
-  'chart-regenerate',
-  'file-review-pick',
-  'multi-question-submit',
-  'review-cancel',
-])
-
-// Tool error display state
-const toolErrorsOpen = ref({})
-
-// Filter tool calls to only show errors
 const errorToolCalls = computed(() => {
   const calls = props.message.tool_calls || []
   return calls.filter(tc => tc.status === 'error' || tc.error)
 })
 
-// Toggle tool error details visibility
-function toggleToolError(idx) {
+function toggleToolError(idx: number): void {
   toolErrorsOpen.value[idx] = !toolErrorsOpen.value[idx]
 }
 
-// Convenience accessors for typed-message metadata. Backend writes:
-//   metadata.kind === 'chips'           -> render ActionChips below content
-//   metadata.kind === 'paper_progress'  -> render PaperProgressBubble below content
 const metaKind = computed(() => props.message?.metadata?.kind || null)
 const metaChips = computed(() => {
   const c = props.message?.metadata?.chips
@@ -446,70 +451,79 @@ const metaChips = computed(() => {
 })
 const metaJobId = computed(() => props.message?.metadata?.job_id || null)
 
-// Detect a full-paper generation tool call so we can render the in-chat
-// progress block. Only show spinner if:
-// 1. Tool call exists with name 'GenerateFullPaper'
-// 2. Tool call has completed (status === 'done')
-// 3. Result contains a valid job_id (indicating job was actually created)
-// This prevents showing spinner when AI hallucinates or tool execution fails.
 const generatingPaper = computed(() => {
   const tc = (props.message.tool_calls || []).find(
     tc => tc.name === 'GenerateFullPaper'
   )
   if (!tc) return false
 
-  // Only show spinner if tool completed successfully with a job_id
   if (tc.status !== 'done') return false
 
-  // Parse the result to check for job_id
   try {
     const result = tc.result || ''
-    // Result format: "<<PROPOSAL>>{...json...}" or error message
     if (result.startsWith('<<PROPOSAL>>')) {
       const jsonStr = result.substring('<<PROPOSAL>>'.length)
       const payload = JSON.parse(jsonStr)
       return payload.kind === 'generate_full' && !!payload.job_id
     }
   } catch (e) {
-    // If parsing fails, don't show spinner
     return false
   }
 
   return false
 })
 
-// Strip [OPSI]…[/OPSI] block from the visible content; we render those as
-// buttons below. Tolerates close-tag forgotten by the model.
-const OPSI_RE = /\[OPSI\]([\s\S]*?)(?:\[\/OPSI\]|$)/i
+// Leaked control-token scrubber (mirrors backend _scrub_control_tokens).
+// Some chat templates (DeepSeek/DSML-style) occasionally emit their tool-call /
+// role control tokens into the content stream. The backend strips these on new
+// turns, but messages persisted before that fix still carry them, so we also
+// scrub at render time. Fullwidth pipes (U+FF5C) never appear in real prose.
+const LEAKED_TOKENS = [
+  '<｜DSML｜function_calls',
+  '<｜DSML｜function▁calls',
+  '<|DSML|function_calls',
+  '<｜tool▁calls▁begin｜>',
+  '<｜tool▁call▁begin｜>',
+  '<｜tool▁calls▁end｜>',
+  '<｜tool▁call▁end｜>',
+  '<｜tool▁sep｜>',
+  '<｜tool▁outputs▁begin｜>',
+  '<｜tool▁output▁begin｜>',
+  '<｜tool▁outputs▁end｜>',
+  '<｜tool▁output▁end｜>',
+  '<｜begin▁of▁sentence｜>',
+  '<｜end▁of▁sentence｜>',
+  '<｜User｜>',
+  '<｜Assistant｜>',
+  '<｜System｜>',
+]
+const CTRL_CLOSED_RE = /<[｜|][^<>]{0,40}?[｜|]>/g
+
+function scrubControlTokens(text: string): string {
+  if (!text) return text
+  let out = text
+  for (const tok of LEAKED_TOKENS) {
+    if (out.includes(tok)) out = out.split(tok).join('')
+  }
+  if (out.includes('<｜') || out.includes('<|')) {
+    out = out.replace(CTRL_CLOSED_RE, '')
+  }
+  return out
+}
 
 const visibleContent = computed(() => {
-  const c = props.message.content || ''
-  return c.replace(OPSI_RE, '').trim()
-})
-
-const mcOptions = computed(() => {
-  const c = props.message.content || ''
-  const m = c.match(OPSI_RE)
-  if (!m) return []
-  const block = m[1] || ''
-  // Accept "1) foo", "1. foo", "- foo", "• foo"
-  const lines = block.split('\n')
-    .map(l => l.replace(/^\s*(?:\d+[\)\.\:]|[-•*])\s*/, '').trim())
-    .filter(Boolean)
-  return lines.slice(0, 4)
+  return scrubControlTokens(props.message.content || '').trim()
 })
 
 const messageClasses = computed(() => {
   if (props.message.role === 'user') {
-    // Light: putih dengan border tegas (rofiq.txt #1: user box harusnya putih saat tema light)
-    // Dark: warm dark anthracite, kontras cukup
     return 'chat-bubble-user'
   }
   return 'chat-bubble-ai'
 })
 
 marked.setOptions({
-  highlight(code, lang) {
+  highlight(code: string, lang: string) {
     if (lang && hljs.getLanguage(lang)) {
       return hljs.highlight(code, { language: lang }).value
     }
@@ -522,10 +536,10 @@ marked.setOptions({
 const renderedContent = computed(() => {
   if (!visibleContent.value) return ''
   try {
-    const raw = marked.parse(visibleContent.value)
-    return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } })
+    const raw = marked.parse(visibleContent.value) as string
+    return sanitizeHtml(raw, { USE_PROFILES: { html: true } })
   } catch {
-    return DOMPurify.sanitize(visibleContent.value, { USE_PROFILES: { html: true } })
+    return sanitizeHtml(visibleContent.value, { USE_PROFILES: { html: true } })
   }
 })
 </script>
@@ -577,7 +591,7 @@ const renderedContent = computed(() => {
   font-size: 0.8rem;
   color: #5b3d20;
 }
-:deep(html.dark) .prose :deep(code:not(pre code)) {
+.dark .prose :deep(code:not(pre code)) {
   background: #2a2825;
   color: #eddbac;
 }
@@ -609,7 +623,7 @@ const renderedContent = computed(() => {
   margin: 0.5rem 0;
   color: #5b3d20;
 }
-:deep(html.dark) .prose :deep(blockquote) {
+.dark .prose :deep(blockquote) {
   border-left-color: #cca97f;
   color: #cbc7ba;
 }
@@ -625,8 +639,8 @@ const renderedContent = computed(() => {
   border: 1px solid #cca97f;
   padding: 0.4rem 0.6rem;
 }
-:deep(html.dark) .prose :deep(th),
-:deep(html.dark) .prose :deep(td) {
+.dark .prose :deep(th),
+.dark .prose :deep(td) {
   border-color: #3f3c35;
 }
 
@@ -634,15 +648,20 @@ const renderedContent = computed(() => {
   background: #fbf5e9;
   font-weight: 600;
 }
-:deep(html.dark) .prose :deep(th) {
+.dark .prose :deep(th) {
   background: #2a2825;
+  color: #f5f3ee;
+}
+
+.dark .prose :deep(td) {
+  color: #f5f3ee;
 }
 
 .prose :deep(a) {
   color: #79522a;
   text-decoration: underline;
 }
-:deep(html.dark) .prose :deep(a) {
+.dark .prose :deep(a) {
   color: #eddbac;
 }
 

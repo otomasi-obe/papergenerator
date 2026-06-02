@@ -14,7 +14,7 @@ The extractor is a two-layer pipeline:
      option's text.
    * Explicit ``ingat: <text>`` / ``simpan: key=<k> value=<v>`` patterns.
 
-2. **LLM fallback (V-DEEPSEEK)** — only fired when an expected key is known
+2. **LLM fallback (MODELCHAT)** — only fired when an expected key is known
    but the regex layer came up empty. Tight prompt, strict JSON, 64-token
    cap, 10 s timeout. Any failure is swallowed (logged at warning level).
 
@@ -41,16 +41,37 @@ except Exception:  # pragma: no cover — defensive import for tests
 log = logging.getLogger(__name__)
 
 _STOPWORDS = {
-    "oke", "ok", "okay", "lanjut", "ya", "tidak", "yes", "no", "hmm",
-    "iya", "yep", "nope", "udah", "sudah", "ga", "gak", "engga",
+    "oke",
+    "ok",
+    "okay",
+    "lanjut",
+    "ya",
+    "tidak",
+    "yes",
+    "no",
+    "hmm",
+    "iya",
+    "yep",
+    "nope",
+    "udah",
+    "sudah",
+    "ga",
+    "gak",
+    "engga",
 }
 
 _ORDINAL_MAP = {
-    "pertama": 1, "kesatu": 1, "satu": 1,
-    "kedua": 2, "dua": 2,
-    "ketiga": 3, "tiga": 3,
-    "keempat": 4, "empat": 4,
-    "kelima": 5, "lima": 5,
+    "pertama": 1,
+    "kesatu": 1,
+    "satu": 1,
+    "kedua": 2,
+    "dua": 2,
+    "ketiga": 3,
+    "tiga": 3,
+    "keempat": 4,
+    "empat": 4,
+    "kelima": 5,
+    "lima": 5,
 }
 
 _OPSI_RE = re.compile(r"\[OPSI\](.*?)\[/OPSI\]", re.DOTALL | re.IGNORECASE)
@@ -70,7 +91,7 @@ _SIMPAN_RE = re.compile(
 
 _LLM_TIMEOUT_S = 10.0
 _LLM_MAX_TOKENS = 64
-_LLM_MODEL = "V-DEEPSEEK"
+_LLM_MODEL = os.getenv("MODELCHAT") or "VIOLA-CHAT"
 _LLM_SYSTEM = (
     "From this user reply to a question about <expected_key>, return strict JSON: "
     '{"value": "<extracted value>"} or null. '
@@ -113,6 +134,7 @@ class _ParsedAssistant:
 
 # ── parsers ────────────────────────────────────────────────────────────────
 
+
 def _parse_assistant(msg: Optional[str]) -> _ParsedAssistant:
     parsed = _ParsedAssistant()
     if not msg:
@@ -149,6 +171,7 @@ def _resolve_option_index(user_msg: str) -> Optional[int]:
 
 # ── confidence filter ─────────────────────────────────────────────────────
 
+
 def _confidence_ok(value: str, last_assistant_msg: Optional[str]) -> bool:
     v = (value or "").strip()
     if len(v) < 3:
@@ -164,6 +187,7 @@ def _confidence_ok(value: str, last_assistant_msg: Optional[str]) -> bool:
 
 
 # ── layer 1: regex ────────────────────────────────────────────────────────
+
 
 def _regex_layer(
     user_msg: str,
@@ -187,17 +211,13 @@ def _regex_layer(
     if im and parsed.expected_key:
         value = im.group(1).strip()
         if value:
-            facts.append(
-                ExtractedFact(key=parsed.expected_key, value=value, source="regex")
-            )
+            facts.append(ExtractedFact(key=parsed.expected_key, value=value, source="regex"))
             return facts
     if im and not parsed.expected_key:
         # Stash under a generic key so it's still preserved.
         value = im.group(1).strip()
         if value:
-            facts.append(
-                ExtractedFact(key="catatan", value=value, source="regex")
-            )
+            facts.append(ExtractedFact(key="catatan", value=value, source="regex"))
             return facts
 
     # 3. option-reply against [OPSI] block.
@@ -220,14 +240,13 @@ def _regex_layer(
         # Avoid treating "1) X 2) Y" style replies as the answer.
         if _NUMERIC_REPLY_RE.match(text):
             return facts
-        facts.append(
-            ExtractedFact(key=parsed.expected_key, value=text, source="regex")
-        )
+        facts.append(ExtractedFact(key=parsed.expected_key, value=text, source="regex"))
 
     return facts
 
 
 # ── layer 2: LLM fallback ─────────────────────────────────────────────────
+
 
 def _llm_fallback_layer(
     expected_key: str,
@@ -264,12 +283,7 @@ def _llm_fallback_layer(
             log.warning("auto_memory LLM fallback HTTP %s", resp.status_code)
             return None
         data = resp.json()
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
         if not content or content.lower() == "null":
             return None
         # Strip code fences if any.
@@ -290,17 +304,18 @@ def _llm_fallback_layer(
 
 # ── bulk extraction ───────────────────────────────────────────────────
 
+
 def extract_bulk_info(user_msg: str, paper_id: str, user_id: int) -> dict[str, str]:
     """Extract multiple research paper planning facts from a single user message."""
     if not user_msg or not user_msg.strip():
         return {}
-    
+
     base = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
     api_key = os.getenv("AIOTOMASI_APIKEY") or ""
     if not base or not api_key:
         log.warning("extract_bulk_info: API credentials not configured")
         return {}
-    
+
     url = base + "/chat/completions"
     prompt = BULK_EXTRACT_PROMPT.format(user_msg=user_msg.strip())
     payload = {
@@ -316,47 +331,47 @@ def extract_bulk_info(user_msg: str, paper_id: str, user_id: int) -> dict[str, s
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
-    
+
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=15.0)
         if resp.status_code != 200:
             log.warning("extract_bulk_info: HTTP %s", resp.status_code)
             return {}
-        
+
         data = resp.json()
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-        
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
         if not content:
             return {}
-        
+
         if content.startswith("```"):
             content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.IGNORECASE)
-        
+
         parsed = json.loads(content)
         if not isinstance(parsed, dict):
             log.warning("extract_bulk_info: response not a dict")
             return {}
-        
+
         result = {}
         valid_keys = {
-            "jurusan", "topik", "latar_belakang", "literatur_status",
-            "metode", "data_status", "kesimpulan_target"
+            "jurusan",
+            "topik",
+            "latar_belakang",
+            "literatur_status",
+            "metode",
+            "data_status",
+            "kesimpulan_target",
         }
-        
+
         for key, value in parsed.items():
             if key in valid_keys and value and isinstance(value, str):
                 result[key] = value.strip()
-        
+
         if result:
             log.info("extract_bulk_info: extracted %d facts from first message", len(result))
-        
+
         return result
-        
+
     except json.JSONDecodeError as exc:
         log.warning("extract_bulk_info: JSON parse error: %s", exc)
         return {}
@@ -369,6 +384,7 @@ def extract_bulk_info(user_msg: str, paper_id: str, user_id: int) -> dict[str, s
 
 
 # ── persistence ───────────────────────────────────────────────────────────
+
 
 def _persist(paper_id: str, user_id: int, fact: ExtractedFact) -> bool:
     if _save_memory is None:
@@ -390,6 +406,7 @@ def _persist(paper_id: str, user_id: int, fact: ExtractedFact) -> bool:
 
 
 # ── public API ────────────────────────────────────────────────────────────
+
 
 def extract_facts(
     paper_id: str,

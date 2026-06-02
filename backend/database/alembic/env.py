@@ -1,12 +1,10 @@
-from logging.config import fileConfig
 import os
 import sys
+from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Make project importable so we can grab models metadata
 HERE = Path(__file__).resolve().parent.parent
@@ -15,7 +13,8 @@ sys.path.insert(0, str(HERE))
 # Load .env so DATABASE_URL is available
 try:
     from dotenv import load_dotenv
-    load_dotenv(HERE / '.env')
+
+    load_dotenv(HERE / ".env")
 except ImportError:
     pass
 
@@ -24,9 +23,9 @@ from database.models import db  # noqa: E402
 config = context.config
 
 # Override sqlalchemy.url from .env
-db_url = os.getenv('DATABASE_URL', '')
+db_url = os.getenv("DATABASE_URL", "")
 if db_url:
-    config.set_main_option('sqlalchemy.url', db_url)
+    config.set_main_option("sqlalchemy.url", db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -77,9 +76,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

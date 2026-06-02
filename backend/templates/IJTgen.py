@@ -3,7 +3,9 @@ IJTgen.py — Generator DOCX untuk IJTech journal.
 Template pakai custom styles: IJTechTITLE, IJTechaffiliation, IJTECHAbstract,
 IJTechKeyword, IJTechHeadingSection, IJTechSubheading, IJTechText.
 """
+
 from __future__ import annotations
+
 import json
 import re
 import shutil
@@ -37,33 +39,57 @@ STYLE_AFFIL = "IJTechaffiliation"
 def _strip_latex(text: str) -> str:
     if not text:
         return text
-    text = re.sub(r'\$([^$]*)\$', r'\1', text)
-    text = re.sub(r'\\(mathrm|mathbf|mathit|text|mathsf|mathtt)\{([^}]*)\}', r'\2', text)
-    text = re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1)/(\2)', text)
-    text = re.sub(r'\\sqrt\{([^}]*)\}', r'√(\1)', text)
-    text = re.sub(r'_\{([^}]*)\}', r'_\1', text)
-    text = re.sub(r'\^\{([^}]*)\}', r'^\1', text)
+    text = re.sub(r"\$([^$]*)\$", r"\1", text)
+    text = re.sub(r"\\(mathrm|mathbf|mathit|text|mathsf|mathtt)\{([^}]*)\}", r"\2", text)
+    text = re.sub(r"\\frac\{([^}]*)\}\{([^}]*)\}", r"(\1)/(\2)", text)
+    text = re.sub(r"\\sqrt\{([^}]*)\}", r"√(\1)", text)
+    text = re.sub(r"_\{([^}]*)\}", r"_\1", text)
+    text = re.sub(r"\^\{([^}]*)\}", r"^\1", text)
     replacements = {
-        r'\\approx': '≈', r'\\times': '×', r'\\cdot': '·',
-        r'\\leq': '≤', r'\\geq': '≥', r'\\neq': '≠',
-        r'\\infty': '∞', r'\\pm': '±', r'\\circ': '°',
-        r'\\alpha': 'α', r'\\beta': 'β', r'\\gamma': 'γ',
-        r'\\theta': 'θ', r'\\lambda': 'λ', r'\\mu': 'μ',
-        r'\\pi': 'π', r'\\sigma': 'σ', r'\\omega': 'ω',
-        r'\\Delta': 'Δ', r'\\Sigma': 'Σ',
-        r'\\sum': 'Σ', r'\\int': '∫', r'\\partial': '∂',
-        r'\\quad': '  ', r'\\qquad': '    ',
-        r'\\dots': '...', r'\\ldots': '...',
-        r'\\left': '', r'\\right': '',
-        r'\\overline': '', r'\\underline': '', r'\\hat': '',
-        r'\\vec': '', r'\\bar': '', r'\\dot': '',
-        r'\\displaystyle': '', r'\\,': ' ',
-        r'\\begin\{[^}]*\}': '', r'\\end\{[^}]*\}': '',
+        r"\\approx": "≈",
+        r"\\times": "×",
+        r"\\cdot": "·",
+        r"\\leq": "≤",
+        r"\\geq": "≥",
+        r"\\neq": "≠",
+        r"\\infty": "∞",
+        r"\\pm": "±",
+        r"\\circ": "°",
+        r"\\alpha": "α",
+        r"\\beta": "β",
+        r"\\gamma": "γ",
+        r"\\theta": "θ",
+        r"\\lambda": "λ",
+        r"\\mu": "μ",
+        r"\\pi": "π",
+        r"\\sigma": "σ",
+        r"\\omega": "ω",
+        r"\\Delta": "Δ",
+        r"\\Sigma": "Σ",
+        r"\\sum": "Σ",
+        r"\\int": "∫",
+        r"\\partial": "∂",
+        r"\\quad": "  ",
+        r"\\qquad": "    ",
+        r"\\dots": "...",
+        r"\\ldots": "...",
+        r"\\left": "",
+        r"\\right": "",
+        r"\\overline": "",
+        r"\\underline": "",
+        r"\\hat": "",
+        r"\\vec": "",
+        r"\\bar": "",
+        r"\\dot": "",
+        r"\\displaystyle": "",
+        r"\\,": " ",
+        r"\\begin\{[^}]*\}": "",
+        r"\\end\{[^}]*\}": "",
     }
     for pat, repl in replacements.items():
         text = re.sub(pat, repl, text)
-    text = re.sub(r'\\[a-zA-Z]+', '', text)
-    text = re.sub(r'[{}]', '', text)
+    text = re.sub(r"\\[a-zA-Z]+", "", text)
+    text = re.sub(r"[{}]", "", text)
     return text
 
 
@@ -99,7 +125,6 @@ def clear_body_keep_sectprs(doc):
 
 def insert_before_sectpr(doc, sectpr_para):
     """Helper untuk insert paragraph baru SEBELUM paragraf yang punya sectPr inline."""
-    body = doc.element.body
     new_p = OxmlElement("w:p")
     sectpr_para.addprevious(new_p)
     return new_p
@@ -114,8 +139,16 @@ def _set_para_style(paragraph, style_name: str) -> None:
     ppr.insert(0, pstyle)
 
 
-def _add_run(paragraph, text: str, *, bold: bool = False, italic: bool = False,
-             superscript: bool = False, font: str = None, size_pt: float = None):
+def _add_run(
+    paragraph,
+    text: str,
+    *,
+    bold: bool = False,
+    italic: bool = False,
+    superscript: bool = False,
+    font: str = None,
+    size_pt: float = None,
+):
     run = paragraph.add_run(text)
     if bold:
         run.bold = True
@@ -174,7 +207,9 @@ def add_title(doc, data):
 
 
 def add_authors(doc, data):
-    authors = data.get("authors") or [{"name": "Author Name", "affiliation": "Department, University"}]
+    authors = data.get("authors") or [
+        {"name": "Author Name", "affiliation": "Department, University"}
+    ]
 
     affil_map = {}
     for author in authors:
@@ -283,7 +318,7 @@ def add_table(doc, table_data: dict):
         _add_run(para, str(header), bold=True)
 
     for row_idx, row_data in enumerate(rows, start=1):
-        for col_idx, value in enumerate(row_data[:len(headers)]):
+        for col_idx, value in enumerate(row_data[: len(headers)]):
             cell = table.rows[row_idx].cells[col_idx]
             cell.text = ""
             para = cell.paragraphs[0]
@@ -400,7 +435,7 @@ def generate():
     doc = Document(str(OUTPUT_DOCX))
 
     # Preserve inline sectPrs (yang punya headerReference/footerReference dari template)
-    preserved_sectprs = clear_body_keep_sectprs(doc)
+    clear_body_keep_sectprs(doc)
 
     data = load_json()
 

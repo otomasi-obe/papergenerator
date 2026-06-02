@@ -2,12 +2,11 @@
 Smoke-level: verifies routes exist, validation logic, and patch semantics.
 Doesn't talk to Redis or DB — pure validation/mocking.
 """
+
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
-import importlib.util
 
 # Ensure backend/ is on sys.path
 HERE = Path(__file__).resolve().parent.parent
@@ -39,10 +38,12 @@ def test_jsonpatch_validation_accepts_valid_replace():
 def test_jsonpatch_validation_accepts_array_index_path():
     from papers_bp import _validate_patch_ops
 
-    err = _validate_patch_ops([
-        {"op": "replace", "path": "/sections/0/title", "value": "Intro"},
-        {"op": "add", "path": "/keywords/-", "value": "ml"},
-    ])
+    err = _validate_patch_ops(
+        [
+            {"op": "replace", "path": "/sections/0/title", "value": "Intro"},
+            {"op": "add", "path": "/keywords/-", "value": "ml"},
+        ]
+    )
     assert err is None
 
 
@@ -72,8 +73,8 @@ def test_jsonpatch_apply_replace_section_text():
 
 def test_slr_safe_url_blocks_private_hosts():
     """SSRF allowlist must reject non-https + non-allowlisted host + private IP."""
+
     from searchPaper import _safe_get
-    import requests
 
     # http scheme — refused.
     try:

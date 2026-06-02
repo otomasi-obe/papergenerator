@@ -1,4 +1,4 @@
-"""Summarizer untuk SLR — extractive (gratis) + AI-augmented (V-OPUS).
+"""Summarizer untuk SLR — extractive (gratis) + AI-augmented (MODELGENERATE).
 
 Dua mode:
 
@@ -8,10 +8,11 @@ Dua mode:
    abstract yang gampang di-rangkum atau saat AI down.
 
 2. `summarize_with_ai(papers, query, model)` — batch summarization via upstream
-   chat-completions endpoint (default `V-OPUS`). Setiap batch berisi N paper;
+   chat-completions endpoint (uses MODELGENERATE from env). Setiap batch berisi N paper;
    model diminta keluarkan JSON array `[{"id":..,"summary":".."}]`. Kalau JSON
    gagal di-parse, fallback ke extractive untuk paper di batch tersebut.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,8 +24,6 @@ from typing import Iterable
 
 import numpy as np
 import requests
-
-from .text_cleaner import clean_abstract
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +42,7 @@ def _sbert():
     if _SBERT is None:
         try:
             from sentence_transformers import SentenceTransformer
+
             _SBERT = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
         except Exception as e:
             log.warning(
@@ -61,8 +61,7 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in raw if len(s.strip()) >= _MIN_LEN]
 
 
-def summarize(text: str | None, query: str | None = None,
-              n_sentences: int = 3) -> str:
+def summarize(text: str | None, query: str | None = None, n_sentences: int = 3) -> str:
     if not text:
         return ""
     cleaned = re.sub(r"\s+", " ", text).strip()
@@ -77,14 +76,16 @@ def summarize(text: str | None, query: str | None = None,
         if model is None:
             # sentence_transformers unavailable, use simple fallback
             return " ".join(sents[:n_sentences])
-        embs = model.encode(sents, normalize_embeddings=True, show_progress_bar=False,
-                            convert_to_numpy=True)
+        embs = model.encode(
+            sents, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True
+        )
         doc_emb = embs.mean(axis=0, keepdims=True)
         sims_doc = (embs @ doc_emb.T).flatten()
 
         if query:
-            q_emb = model.encode([query], normalize_embeddings=True,
-                                  show_progress_bar=False, convert_to_numpy=True)
+            q_emb = model.encode(
+                [query], normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True
+            )
             sims_q = (embs @ q_emb.T).flatten()
             scores = 0.6 * sims_doc + 0.4 * sims_q
         else:
@@ -100,8 +101,9 @@ def summarize(text: str | None, query: str | None = None,
         return " ".join(sents[:n_sentences])
 
 
-def batch_summarize(texts: Iterable[str | None], query: str | None = None,
-                     n_sentences: int = 3) -> list[str]:
+def batch_summarize(
+    texts: Iterable[str | None], query: str | None = None, n_sentences: int = 3
+) -> list[str]:
     return [summarize(t, query=query, n_sentences=n_sentences) for t in texts]
 
 
@@ -109,7 +111,7 @@ def batch_summarize(texts: Iterable[str | None], query: str | None = None,
 
 _AI_BASE = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
 _AI_KEY = os.getenv("AIOTOMASI_APIKEY") or ""
-_DEFAULT_MODEL = os.getenv("AIOTOMASI_MODEL") or "V-DEEPSEEK"
+_DEFAULT_MODEL = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
 
 _AI_MISSING_WARNED = False
 
@@ -125,8 +127,9 @@ def _warn_ai_missing_once():
     )
 
 
-def _ai_chat(messages, model: str | None = None,
-             max_tokens: int = 32000, timeout: int = 90) -> str | None:
+def _ai_chat(
+    messages, model: str | None = None, max_tokens: int = 32000, timeout: int = 90
+) -> str | None:
     """Synchronous, non-streaming chat completion. Returns content or None."""
     if not (_AI_BASE and _AI_KEY):
         _warn_ai_missing_once()
@@ -148,8 +151,7 @@ def _ai_chat(messages, model: str | None = None,
             timeout=timeout,
         )
         if resp.status_code != 200:
-            log.warning("summarizer.ai_chat status=%s body=%s",
-                        resp.status_code, resp.text[:200])
+            log.warning("summarizer.ai_chat status=%s body=%s", resp.status_code, resp.text[:200])
             return None
         data = resp.json()
         choices = data.get("choices") or []
@@ -218,11 +220,9 @@ def _parse_json_array(text: str):
     return None
 
 
-def summarize_with_ai(papers: list[dict],
-                      query: str,
-                      model: str | None = None,
-                      batch_size: int = 10,
-                      progress_cb=None) -> tuple[dict[int, str], bool]:
+def summarize_with_ai(
+    papers: list[dict], query: str, model: str | None = None, batch_size: int = 10, progress_cb=None
+) -> tuple[dict[int, str], bool]:
     """Batch-summarize a list of paper dicts via the upstream LLM.
 
     Each item must carry at least `id` and `title`; `abstract`, `year`
@@ -239,7 +239,7 @@ def summarize_with_ai(papers: list[dict],
 
     chosen_model = model or _DEFAULT_MODEL
     total = len(papers)
-    batches = [papers[i:i + batch_size] for i in range(0, total, batch_size)]
+    batches = [papers[i : i + batch_size] for i in range(0, total, batch_size)]
     consecutive_failures = 0
 
     for bi, batch in enumerate(batches):
@@ -248,12 +248,14 @@ def summarize_with_ai(papers: list[dict],
         for p in batch:
             if "id" not in p:
                 continue
-            body.append({
-                "id": p["id"],
-                "title": (p.get("title") or "")[:400],
-                "year": p.get("year"),
-                "abstract": (p.get("abstract") or "")[:1500],
-            })
+            body.append(
+                {
+                    "id": p["id"],
+                    "title": (p.get("title") or "")[:400],
+                    "year": p.get("year"),
+                    "abstract": (p.get("abstract") or "")[:1500],
+                }
+            )
         user = (
             f"Research query: {query}\n\n"
             f"Papers (JSON):\n{json.dumps(body, ensure_ascii=False)}\n\n"
@@ -266,8 +268,11 @@ def summarize_with_ai(papers: list[dict],
         content = _ai_chat(msgs, model=chosen_model, max_tokens=900)
         parsed = _parse_json_array(content) if content else None
         if not parsed:
-            log.warning("summarizer batch %d-%d: AI failed/parse error; extractive fallback",
-                        i, i + len(batch))
+            log.warning(
+                "summarizer batch %d-%d: AI failed/parse error; extractive fallback",
+                i,
+                i + len(batch),
+            )
             for p in batch:
                 if "id" not in p:
                     continue
@@ -300,8 +305,7 @@ def summarize_with_ai(papers: list[dict],
 
         if progress_cb:
             try:
-                progress_cb("summarized", {"done": min(i + batch_size, total),
-                                            "total": total})
+                progress_cb("summarized", {"done": min(i + batch_size, total), "total": total})
             except BaseException as e:
                 # Cancellation (or any progress_cb failure) — surface partial
                 # results to the caller so they aren't silently dropped.

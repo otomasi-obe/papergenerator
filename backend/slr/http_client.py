@@ -1,4 +1,5 @@
 import time
+
 import httpx
 
 DEFAULT_TIMEOUT = 30.0
@@ -22,11 +23,23 @@ class RateLimiter:
 
 
 def get_client() -> httpx.Client:
-    return httpx.Client(timeout=DEFAULT_TIMEOUT, headers=DEFAULT_HEADERS, follow_redirects=True)
+    timeout = httpx.Timeout(
+        timeout=10.0,  # Overall timeout
+        connect=5.0,   # Connection timeout
+        read=10.0,     # Read timeout
+        write=5.0,     # Write timeout
+        pool=5.0       # Pool timeout
+    )
+    return httpx.Client(timeout=timeout, headers=DEFAULT_HEADERS, follow_redirects=True)
 
 
-def fetch_json(client: httpx.Client, url: str, params: dict | None = None,
-               headers: dict | None = None, retries: int = 2) -> dict | None:
+def fetch_json(
+    client: httpx.Client,
+    url: str,
+    params: dict | None = None,
+    headers: dict | None = None,
+    retries: int = 2,
+) -> dict | None:
     for attempt in range(retries + 1):
         try:
             r = client.get(url, params=params, headers=headers)
@@ -36,7 +49,14 @@ def fetch_json(client: httpx.Client, url: str, params: dict | None = None,
                 time.sleep(2 * (attempt + 1))
                 continue
             return None
-        except (httpx.HTTPError, ValueError):
+        except httpx.TimeoutException:
+            print(f"⚠️  Timeout on attempt {attempt + 1}/{retries + 1}")
+            if attempt < retries:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            return None
+        except (httpx.HTTPError, ValueError) as e:
+            print(f"⚠️  Error on attempt {attempt + 1}/{retries + 1}: {e}")
             if attempt < retries:
                 time.sleep(1.5 * (attempt + 1))
                 continue
@@ -44,8 +64,9 @@ def fetch_json(client: httpx.Client, url: str, params: dict | None = None,
     return None
 
 
-def fetch_text(client: httpx.Client, url: str, params: dict | None = None,
-               retries: int = 2) -> str | None:
+def fetch_text(
+    client: httpx.Client, url: str, params: dict | None = None, retries: int = 2
+) -> str | None:
     for attempt in range(retries + 1):
         try:
             r = client.get(url, params=params)

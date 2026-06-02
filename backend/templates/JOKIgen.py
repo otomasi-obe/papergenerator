@@ -101,9 +101,15 @@ def _collect_prototypes(doc: Document) -> dict[str, object]:
     return {
         "title_primary": _clone_ppr(title_paragraphs[0]),
         "title_secondary": _clone_ppr(title_paragraphs[1]),
-        "author": _clone_ppr(_find_paragraph(paragraphs, "author", lambda p: _style_id(p) == "AuthorJOKI")),
-        "address": _clone_ppr(_find_paragraph(paragraphs, "address", lambda p: _style_id(p) == "AddressJOKI")),
-        "email": _clone_ppr(_find_paragraph(paragraphs, "email", lambda p: _style_id(p) == "Authoremail")),
+        "author": _clone_ppr(
+            _find_paragraph(paragraphs, "author", lambda p: _style_id(p) == "AuthorJOKI")
+        ),
+        "address": _clone_ppr(
+            _find_paragraph(paragraphs, "address", lambda p: _style_id(p) == "AddressJOKI")
+        ),
+        "email": _clone_ppr(
+            _find_paragraph(paragraphs, "email", lambda p: _style_id(p) == "Authoremail")
+        ),
         "abstract_heading_en": _clone_ppr(
             _find_paragraph(
                 paragraphs,
@@ -136,16 +142,30 @@ def _collect_prototypes(doc: Document) -> dict[str, object]:
                 lambda p: _paragraph_text(p).strip().lower().startswith("kata kunci:"),
             )
         ),
-        "heading1": _clone_ppr(_find_paragraph(paragraphs, "heading1", lambda p: _style_id(p) == "Heading1")),
-        "heading2": _clone_ppr(_find_paragraph(paragraphs, "heading2", lambda p: _style_id(p) == "Heading2")),
-        "heading3": _clone_ppr(_find_paragraph(paragraphs, "heading3", lambda p: _style_id(p) == "Heading3")),
-        "body": _clone_ppr(_find_paragraph(paragraphs, "body", lambda p: _style_id(p) == "bodytextJOKI")),
-        "figure": _clone_ppr(_find_paragraph(paragraphs, "figure", lambda p: _style_id(p) == "figureJOKI")),
+        "heading1": _clone_ppr(
+            _find_paragraph(paragraphs, "heading1", lambda p: _style_id(p) == "Heading1")
+        ),
+        "heading2": _clone_ppr(
+            _find_paragraph(paragraphs, "heading2", lambda p: _style_id(p) == "Heading2")
+        ),
+        "heading3": _clone_ppr(
+            _find_paragraph(paragraphs, "heading3", lambda p: _style_id(p) == "Heading3")
+        ),
+        "body": _clone_ppr(
+            _find_paragraph(paragraphs, "body", lambda p: _style_id(p) == "bodytextJOKI")
+        ),
+        "figure": _clone_ppr(
+            _find_paragraph(paragraphs, "figure", lambda p: _style_id(p) == "figureJOKI")
+        ),
         "figure_caption": _clone_ppr(
-            _find_paragraph(paragraphs, "figure_caption", lambda p: _style_id(p) == "CaptionFigureJOKI")
+            _find_paragraph(
+                paragraphs, "figure_caption", lambda p: _style_id(p) == "CaptionFigureJOKI"
+            )
         ),
         "table_caption": _clone_ppr(
-            _find_paragraph(paragraphs, "table_caption", lambda p: _style_id(p) == "CaptionTableJOKI")
+            _find_paragraph(
+                paragraphs, "table_caption", lambda p: _style_id(p) == "CaptionTableJOKI"
+            )
         ),
         "reference": _clone_ppr(
             _find_paragraph(
@@ -268,8 +288,9 @@ def _append_inline_math(paragraph, latex: str) -> bool:
     return True
 
 
-def _append_text_run(paragraph, text: str, bold: bool = False,
-                     italic: bool = False, underline: bool = False):
+def _append_text_run(
+    paragraph, text: str, bold: bool = False, italic: bool = False, underline: bool = False
+):
     if not text:
         return None
     run = paragraph.add_run(text)
@@ -289,8 +310,8 @@ def _append_line_break(paragraph):
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -347,7 +368,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -397,7 +418,9 @@ def _add_superscript_run(paragraph, text: str):
     return run
 
 
-def _keyword_paragraph(doc: Document, prototypes: dict[str, object], text: str, local: bool = False):
+def _keyword_paragraph(
+    doc: Document, prototypes: dict[str, object], text: str, local: bool = False
+):
     prototype_key = "keywords_id" if local else "keywords_en"
     paragraph = _add_proto_paragraph(doc, prototypes[prototype_key], style_id="keywordJOKI")
     run = paragraph.add_run(text)
@@ -466,14 +489,13 @@ def _configure_data_table(table: Table) -> None:
 
 
 def _add_title_block(doc: Document, prototypes: dict[str, object], config: dict) -> None:
-    title_primary = (
-        str(config.get("title_en") or config.get("title") or config.get("TitleBlock", {}).get("Title", "")).strip()
-    )
+    title_primary = str(
+        config.get("title_en")
+        or config.get("title")
+        or config.get("TitleBlock", {}).get("Title", "")
+    ).strip()
     title_secondary = str(
-        config.get("title_id")
-        or config.get("judul")
-        or config.get("title_local")
-        or title_primary
+        config.get("title_id") or config.get("judul") or config.get("title_local") or title_primary
     ).strip()
 
     paragraph = _add_proto_paragraph(doc, prototypes["title_primary"])
@@ -618,8 +640,9 @@ def _add_figure(doc: Document, prototypes: dict[str, object], item: dict, json_p
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -679,7 +702,9 @@ def _add_table(doc: Document, prototypes: dict[str, object], item: dict):
     _configure_data_table(table)
 
     for column_index, header in enumerate(headers):
-        _set_cell_text(table.rows[0].cells[column_index], str(header), "tablecenter", WD_ALIGN_PARAGRAPH.CENTER)
+        _set_cell_text(
+            table.rows[0].cells[column_index], str(header), "tablecenter", WD_ALIGN_PARAGRAPH.CENTER
+        )
 
     for row_index, row_values in enumerate(rows, start=1):
         for column_index in range(len(headers)):
@@ -728,7 +753,9 @@ def _render_content_item(doc: Document, prototypes: dict[str, object], item: dic
         _add_equation(doc, prototypes, item)
 
 
-def _render_subsubsection(doc: Document, prototypes: dict[str, object], section: dict, json_path: Path):
+def _render_subsubsection(
+    doc: Document, prototypes: dict[str, object], section: dict, json_path: Path
+):
     title = str(section.get("title", "")).strip()
     if title:
         _add_subsubsection_heading(doc, prototypes, title)
@@ -744,7 +771,9 @@ def _render_subsubsection(doc: Document, prototypes: dict[str, object], section:
             _body_paragraphs(doc, prototypes, item.strip())
 
 
-def _render_subsection(doc: Document, prototypes: dict[str, object], section: dict, json_path: Path, sub_key: str):
+def _render_subsection(
+    doc: Document, prototypes: dict[str, object], section: dict, json_path: Path, sub_key: str
+):
     title = str(section.get("title", "")).strip()
     if title:
         _add_subsection_heading(doc, prototypes, title)
@@ -761,10 +790,7 @@ def _render_subsection(doc: Document, prototypes: dict[str, object], section: di
                 _body_paragraphs(doc, prototypes, item.strip())
 
     nested_keys = sorted(
-        [
-            key for key in section.keys()
-            if re.fullmatch(rf"{re.escape(sub_key)}[a-z]+", key)
-        ]
+        [key for key in section.keys() if re.fullmatch(rf"{re.escape(sub_key)}[a-z]+", key)]
     )
     for nested_key in nested_keys:
         nested_section = section.get(nested_key)
@@ -830,14 +856,14 @@ def _add_references(doc: Document, prototypes: dict[str, object], config: dict):
         _append_rich_text(paragraph, text)
 
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
-        Path(output_path)
-        if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -873,8 +899,6 @@ def main():
     print(f"Selesai: {result}")
 
 
-
-
 def _set_table_full_borders(table) -> None:
     """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
 
@@ -883,6 +907,7 @@ def _set_table_full_borders(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

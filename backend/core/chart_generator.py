@@ -16,8 +16,9 @@ Usage:
     )
     out_path = generate_chart(paper_id, spec)
 """
-import os
+
 import logging
+import os
 import uuid
 from dataclasses import dataclass, field
 from typing import Literal, Optional
@@ -48,6 +49,7 @@ def generate_chart(paper_id: str, spec: ChartSpec) -> str:
     Raises ValueError on invalid spec.
     """
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -84,11 +86,14 @@ def generate_chart(paper_id: str, spec: ChartSpec) -> str:
                 ax.bar(cats, spec.data[0])
             else:
                 import numpy as np
+
                 x = np.arange(len(cats))
                 width = 0.8 / len(spec.data)
                 for i, ys in enumerate(spec.data):
                     offset = (i - len(spec.data) / 2) * width + width / 2
-                    label = spec.series_labels[i] if i < len(spec.series_labels) else f"Series {i+1}"
+                    label = (
+                        spec.series_labels[i] if i < len(spec.series_labels) else f"Series {i+1}"
+                    )
                     ax.bar(x + offset, ys, width, label=label)
                 ax.set_xticks(x)
                 ax.set_xticklabels(cats)
@@ -112,6 +117,7 @@ def generate_chart(paper_id: str, spec: ChartSpec) -> str:
             ax.boxplot(spec.data, labels=spec.series_labels or None)
         elif spec.kind == "heatmap":
             import numpy as np
+
             arr = np.array(spec.data)
             im = ax.imshow(arr, cmap="viridis", aspect="auto")
             plt.colorbar(im, ax=ax)
@@ -149,6 +155,7 @@ def parse_data_file(file_path: str) -> dict:
     ext = os.path.splitext(file_path)[1].lower()
     if ext in [".csv", ".tsv"]:
         import csv
+
         sep = "\t" if ext == ".tsv" else ","
         with open(file_path, encoding="utf-8") as f:
             reader = csv.reader(f, delimiter=sep)
@@ -179,7 +186,76 @@ def parse_data_file(file_path: str) -> dict:
             "columns": cols,
             "rows": data[:50],
             "n_rows": len(data),
-            "preview": "\n".join(["\t".join("" if c is None else str(c) for c in r) for r in rows[:10]]),
+            "preview": "\n".join(
+                ["\t".join("" if c is None else str(c) for c in r) for r in rows[:10]]
+            ),
         }
+    elif ext in [".docx", ".doc"]:
+        return _parse_docx_tables(file_path)
+    elif ext == ".pdf":
+        return _parse_pdf_tables(file_path)
     else:
         raise ValueError(f"unsupported file ext: {ext}")
+
+def _rows_to_result(rows: list) -> dict:
+    """Normalise a list-of-rows (first row = header) into the parse result dict."""
+    rows = [r for r in rows if r is not None]
+    if not rows:
+        return {"columns": [], "rows": [], "n_rows": 0, "preview": "(empty)"}
+    cols = ["" if c is None else str(c) for c in rows[0]]
+    data = [["" if c is None else str(c) for c in r] for r in rows[1:]]
+    return {
+        "columns": cols,
+        "rows": data[:50],
+        "n_rows": len(data),
+        "preview": "\n".join(
+            ["\t".join("" if c is None else str(c) for c in r) for r in rows[:10]]
+        ),
+    }
+
+def _parse_docx_tables(file_path: str) -> dict:
+    """Extract the first table found in a Word document.
+
+    Falls back to ValueError when the document has no tables so the caller can
+    surface a clear "no tabular data" error to the user.
+    """
+    try:
+        from docx import Document
+    except ImportError:
+        raise RuntimeError("python-docx not installed; cannot parse Word documents")
+
+    document = Document(file_path)
+    if not document.tables:
+        raise ValueError("no tables found in Word document")
+
+    table = document.tables[0]
+    rows = [[cell.text.strip() for cell in row.cells] for row in table.rows]
+    return _rows_to_result(rows)
+
+def _parse_pdf_tables(file_path: str) -> dict:
+    """Extract the first table found in a PDF using PyMuPDF's table finder.
+
+    PyMuPDF (fitz) >= 1.23 exposes Page.find_tables(). When no structured table
+    is detected we raise ValueError so the UI can prompt the user to paste data
+    manually instead of silently returning garbage.
+    """
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        raise RuntimeError("PyMuPDF not installed; cannot parse PDF documents")
+
+    doc = fitz.open(file_path)
+    try:
+        for page in doc:
+            finder = getattr(page, "find_tables", None)
+            if finder is None:
+                raise RuntimeError("PyMuPDF version too old for table extraction")
+            tables = finder()
+            for table in tables.tables:
+                rows = table.extract()
+                if rows and any(any(c not in (None, "") for c in r) for r in rows):
+                    return _rows_to_result(rows)
+    finally:
+        doc.close()
+
+    raise ValueError("no tables found in PDF document")

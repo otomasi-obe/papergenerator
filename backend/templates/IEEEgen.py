@@ -73,7 +73,8 @@ def _inject_template_styles(doc: Document, template_path: Path) -> None:
     for child in list(tmpl_styles):
         cur.append(child)
     ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    wq = lambda tag: f"{{{ns_w}}}{tag}"
+    def wq(tag):
+        return f"{{{ns_w}}}{tag}"
     for ppr in cur.findall(f".//{wq('pPr')}"):
         num_pr = ppr.find(wq("numPr"))
         if num_pr is None:
@@ -102,7 +103,15 @@ def _set_para_style(paragraph, style_name: str) -> None:
     pstyle.set(qn("w:val"), xml_id)
 
 
-def _para(doc: Document, style_id: str | None = None, align=None, sb: float | None = None, sa: float | None = None, fi: float | None = None, li: float | None = None):
+def _para(
+    doc: Document,
+    style_id: str | None = None,
+    align=None,
+    sb: float | None = None,
+    sa: float | None = None,
+    fi: float | None = None,
+    li: float | None = None,
+):
     paragraph = doc.add_paragraph()
     if style_id:
         _set_para_style(paragraph, style_id)
@@ -127,9 +136,23 @@ def _clear_document_body(doc: Document) -> None:
             body.remove(child)
 
 
-def _build_sectpr(num_cols: int, col_space_pt: float, top_pt: float, bottom_pt: float, left_pt: float, right_pt: float, section_type: str = "continuous", w_pt: float = 595.3, h_pt: float = 841.9, header_pt: float = 36.0, footer_pt: float = 36.0, title_pg: bool = False):
+def _build_sectpr(
+    num_cols: int,
+    col_space_pt: float,
+    top_pt: float,
+    bottom_pt: float,
+    left_pt: float,
+    right_pt: float,
+    section_type: str = "continuous",
+    w_pt: float = 595.3,
+    h_pt: float = 841.9,
+    header_pt: float = 36.0,
+    footer_pt: float = 36.0,
+    title_pg: bool = False,
+):
     ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    wq = lambda tag: f"{{{ns_w}}}{tag}"
+    def wq(tag):
+        return f"{{{ns_w}}}{tag}"
     sectpr = etree.Element(wq("sectPr"))
     sec_type = etree.SubElement(sectpr, wq("type"))
     sec_type.set(wq("val"), section_type)
@@ -237,7 +260,9 @@ def _append_inline_math(paragraph, latex: str) -> bool:
     return True
 
 
-def _append_text_run(paragraph, text: str, bold: bool = False, italic: bool = False, underline: bool = False):
+def _append_text_run(
+    paragraph, text: str, bold: bool = False, italic: bool = False, underline: bool = False
+):
     if not text:
         return
     run = paragraph.add_run(text)
@@ -253,8 +278,8 @@ def _append_line_break(paragraph):
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -271,7 +296,13 @@ def _iter_rich_tokens(text: str):
         content = "".join(buffer)
         buffer = []
         if content:
-            yield {"kind": "text", "value": content, "bold": bold, "italic": italic, "underline": underline}
+            yield {
+                "kind": "text",
+                "value": content,
+                "bold": bold,
+                "italic": italic,
+                "underline": underline,
+            }
 
     while index < len(normalized):
         char = normalized[index]
@@ -305,7 +336,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -402,7 +433,7 @@ def _add_title(doc: Document, config: dict):
     title = config.get("title", "")
     if not title:
         title = config.get("TitleBlock", {}).get("Title", "Untitled Paper")
-    
+
     paragraph = _para(doc, style_id="paper title")
     _append_rich_text(paragraph, title)
     run = paragraph.runs[0] if paragraph.runs else paragraph.add_run()
@@ -423,7 +454,7 @@ def _parse_author_entries(title_block: dict) -> list[dict]:
             affiliation = author.get("affiliation", "")
             location = author.get("location", "")
             email = author.get("email", "")
-            
+
             lines = []
             if affiliation:
                 lines.append(affiliation)
@@ -431,13 +462,15 @@ def _parse_author_entries(title_block: dict) -> list[dict]:
                 lines.append(location)
             if email:
                 lines.append(f"e-mail: {email}")
-            
+
             entries.append({"name": name, "lines": lines})
         return entries
-    
+
     # Legacy format: AuthorLine and AddressLines
     author_line = str(title_block.get("AuthorLine") or "").strip()
-    address_lines = [str(line).strip() for line in title_block.get("AddressLines", []) if str(line).strip()]
+    address_lines = [
+        str(line).strip() for line in title_block.get("AddressLines", []) if str(line).strip()
+    ]
     if not author_line and not address_lines:
         return []
     common_lines: list[str] = []
@@ -492,15 +525,15 @@ def _add_authors(doc: Document, config: dict):
     if not entries:
         return
     for entry in entries:
-        # SATU paragraf per penulis dengan style "Author" 
+        # SATU paragraf per penulis dengan style "Author"
         paragraph = _para(doc, style_id="Author")
-        
+
         # Nama penulis dengan font 9pt dan tidak bold
         if entry.get("name"):
             run = paragraph.add_run(entry["name"])
             run.font.size = Pt(9)  # IEEE author name size
             # run.bold = True  # Tidak bold
-        
+
         # Afiliasi dan email dengan font lebih kecil dan italic
         for line in entry.get("lines", []):
             _append_line_break(paragraph)
@@ -515,14 +548,14 @@ def _add_abstracts(doc: Document, config: dict):
     # Support both new format (abstract, keywords) and legacy format
     abstract = config.get("abstract", "")
     keywords = config.get("keywords", [])
-    
+
     # If new format not found, try legacy format
     if not abstract:
         abstract_block = config.get("Abstract", {})
         abstract = str(abstract_block.get("English") or "").strip()
         if not abstract:
             abstract = str(abstract_block.get("Indonesian") or "").strip()
-    
+
     if not keywords:
         abstract_block = config.get("Abstract", {})
         keywords_en = str(abstract_block.get("KeywordsEnglish") or "").strip()
@@ -531,21 +564,23 @@ def _add_abstracts(doc: Document, config: dict):
             keywords = [k.strip() for k in keywords_en.split(",")]
         elif keywords_id:
             keywords = [k.strip() for k in keywords_id.split(",")]
-    
+
     # Add abstract
     if abstract:
         paragraph = _para(doc, style_id="Abstract")
         paragraph.add_run("Abstract")
         paragraph.add_run("—")
         _append_rich_text(paragraph, abstract)
-    
+
     # Add keywords
     if keywords:
         keywords_text = ", ".join(keywords)
         paragraph = _para(doc, style_id="Keywords")
         paragraph.add_run("Index Terms")
         paragraph.add_run("—")
-        _append_rich_text(paragraph, keywords_text if keywords_text.endswith(".") else f"{keywords_text}.")
+        _append_rich_text(
+            paragraph, keywords_text if keywords_text.endswith(".") else f"{keywords_text}."
+        )
 
 
 def _section_heading_text(item: dict) -> str:
@@ -608,7 +643,9 @@ def _iter_point_entries(item: dict):
 
 
 def _add_point_list(doc: Document, item: dict):
-    list_type = str(item.get("ListType") or ("number" if item.get("Numbered") else "bullet")).lower()
+    list_type = str(
+        item.get("ListType") or ("number" if item.get("Numbered") else "bullet")
+    ).lower()
     start_at = int(item.get("StartAt", 1))
     for index, (text, custom_label) in enumerate(_iter_point_entries(item), start=start_at):
         paragraph = _para(doc, style_id="bullet list")
@@ -656,13 +693,17 @@ def _set_horizontal_cell_borders(cell, top=False, bottom=False):
     if tc_borders is None:
         tc_borders = OxmlElement("w:tcBorders")
         tc_pr.append(tc_borders)
-    
+
     border_spec = {}
-    border_spec["top"] = {"val": "single", "sz": "8", "space": "0", "color": "auto"} if top else {"val": "none"}
-    border_spec["bottom"] = {"val": "single", "sz": "8", "space": "0", "color": "auto"} if bottom else {"val": "none"}
+    border_spec["top"] = (
+        {"val": "single", "sz": "8", "space": "0", "color": "auto"} if top else {"val": "none"}
+    )
+    border_spec["bottom"] = (
+        {"val": "single", "sz": "8", "space": "0", "color": "auto"} if bottom else {"val": "none"}
+    )
     border_spec["left"] = {"val": "none"}
     border_spec["right"] = {"val": "none"}
-    
+
     for edge, values in border_spec.items():
         el = tc_borders.find(qn(f"w:{edge}"))
         if el is None:
@@ -751,7 +792,7 @@ def _add_table(doc: Document, item: dict):
         for run in paragraph.runs:
             run.bold = True
     for row_index, row_data in enumerate(rows, start=1):
-        is_last_row = (row_index == len(rows))
+        is_last_row = row_index == len(rows)
         for column_index, value in enumerate(row_data):
             if column_index >= len(headers):
                 break
@@ -798,13 +839,21 @@ def _reference_parts(reference_text: str, fallback_number: int):
 def _add_references(doc: Document, config: dict):
     # Support both new format (references section) and legacy format
     references = None
-    
+
     # Try new format - look for direct references key
     if "references" in config:
-        references = config["references"].get("content", [])
+        ref_data = config["references"]
+        if isinstance(ref_data, dict):
+            references = ref_data.get("content", [])
+        elif isinstance(ref_data, list):
+            references = ref_data
     # Also try section_references key
     elif "section_references" in config:
-        references = config["section_references"].get("content", [])
+        ref_data = config["section_references"]
+        if isinstance(ref_data, dict):
+            references = ref_data.get("content", [])
+        elif isinstance(ref_data, list):
+            references = ref_data
     # If not found, try legacy sections format
     else:
         sections = config.get("sections", [])
@@ -812,17 +861,17 @@ def _add_references(doc: Document, config: dict):
             if section.get("title", "").upper() == "REFERENCES":
                 references = section.get("content", [])
                 break
-    
+
     # If still not found, try legacy format
     if not references:
         references = config.get("References", [])
-    
+
     if not references:
         return
-    
+
     heading = _para(doc, style_id="heading 1")
     _append_rich_text(heading, "REFERENCES")
-    
+
     # Handle different reference formats
     if isinstance(references, list) and references and isinstance(references[0], dict):
         # New format: list of reference objects with id and text
@@ -856,18 +905,18 @@ def _add_references(doc: Document, config: dict):
 def _render_content_item(doc: Document, item: dict, json_path: Path):
     """Render a single content item from the new format"""
     item_id = str(item.get("id", "")).lower()
-    
+
     if item_id == "text":
         text = str(item.get("text", ""))
         if text:
             _body_paragraphs(doc, text)
-    
+
     elif item_id == "gambar" or item_id == "image":
         _add_figure_from_content(doc, item, json_path)
-    
+
     elif item_id == "rumus" or item_id == "formula":
         _add_equation_from_content(doc, item)
-    
+
     elif item_id == "tabel" or item_id == "table":
         _add_table_from_content(doc, item)
 
@@ -878,18 +927,18 @@ def _add_figure_from_content(doc: Document, item: dict, json_path: Path):
     path_text = str(item.get("Path", "")).strip()
     prompt = str(item.get("Prompt", "")).strip()
     title = str(item.get("Title", "")).strip()
-    
+
     # Use Caption if available, otherwise fall back to Title
     caption_text = item.get("Title", "").strip() or title
-    
+
     image_path = _resolve_path(path_text, json_path) if path_text else None
-    
+
     try:
         width_cm = float(item.get("WidthCm", MAX_FIGURE_WIDTH_CM))
     except Exception:
         width_cm = MAX_FIGURE_WIDTH_CM
     width_cm = max(1.0, min(width_cm, MAX_FIGURE_WIDTH_CM))
-    
+
     if image_path is not None and image_path.is_file():
         paragraph = _para(doc, align=WD_ALIGN_PARAGRAPH.CENTER, sb=6, sa=2)
         paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
@@ -902,7 +951,7 @@ def _add_figure_from_content(doc: Document, item: dict, json_path: Path):
         else:
             fallback_text = f"[PROMPT UNTUK AI GAMBAR: {prompt_body}]"
         _add_prompt_box_with_text(doc, fallback_text)
-    
+
     # Add caption using title or prompt
     if image_number and caption_text:
         caption = _para(doc, style_id="figure caption", align=WD_ALIGN_PARAGRAPH.CENTER)
@@ -914,7 +963,7 @@ def _add_equation_from_content(doc: Document, item: dict):
     formula_number = str(item.get("FormulaNumber", "")).strip()
     # Support both 'text' and 'latex' keys
     formula_text = str(item.get("text", "") or item.get("latex", "")).strip()
-    
+
     if formula_text:
         _add_equation_line(doc, formula_text, formula_number if formula_number else None)
 
@@ -925,23 +974,23 @@ def _add_table_from_content(doc: Document, item: dict):
     title = str(item.get("Title", "")).strip()
     headers = list(item.get("Headers", []))
     rows = list(item.get("Rows", []))
-    
+
     if not headers:
         return
-    
+
     # Add table caption
     caption = _para(doc, style_id="table head")
     label = f"TABLE {_roman(table_number)}" if table_number else "TABLE"
     text = f"{label}. {title}" if title else label
     _append_rich_text(caption, text)
-    
+
     # Create table
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
     table.style = "Normal Table"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
     _set_table_borders_match_template(table)
-    
+
     # Add headers
     for column_index, value in enumerate(headers):
         cell = table.rows[0].cells[column_index]
@@ -952,10 +1001,10 @@ def _add_table_from_content(doc: Document, item: dict):
         _append_rich_text(paragraph, str(value))
         for run in paragraph.runs:
             run.bold = True
-    
+
     # Add rows
     for row_index, row_data in enumerate(rows, start=1):
-        is_last_row = (row_index == len(rows))
+        is_last_row = row_index == len(rows)
         for column_index, value in enumerate(row_data):
             if column_index >= len(headers):
                 break
@@ -965,7 +1014,7 @@ def _add_table_from_content(doc: Document, item: dict):
             paragraph = cell.paragraphs[0]
             _style_cell_paragraph(paragraph, "table copy")
             _append_rich_text(paragraph, str(value))
-    
+
     _para(doc, sa=4)
 
 
@@ -990,19 +1039,19 @@ def _add_prompt_box_with_text(doc: Document, text: str):
 def _render_sections_legacy(doc: Document, config: dict, json_path: Path):
     """Render sections in the legacy sections array format"""
     sections = config.get("sections", [])
-    
+
     for section in sections:
         # Add section heading
         section_number = str(section.get("number", "")).strip()
         section_title = str(section.get("title", "")).strip().upper()
-        
+
         if section_number:
             heading_text = f"{_roman(section_number)}. {section_title}"
         else:
             heading_text = section_title
-        
+
         _add_section_heading(doc, heading_text)
-        
+
         # Add section content (handle both string and array)
         content = section.get("content", "")
         if isinstance(content, str) and content.strip():
@@ -1014,7 +1063,7 @@ def _render_sections_legacy(doc: Document, config: dict, json_path: Path):
                     _body_paragraphs(doc, item.strip())
                 elif isinstance(item, dict):
                     _render_content_item(doc, item, json_path)
-        
+
         # Add subsections
         subsections = section.get("subsections", [])
         for subsection in subsections:
@@ -1028,13 +1077,13 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
     for key in config.keys():
         if key.startswith("section") and key.replace("section", "").isdigit():
             section_keys.append(key)
-    
+
     # Sort section keys numerically
     section_keys.sort(key=lambda x: int(x.replace("section", "")))
-    
+
     for section_key in section_keys:
         section = config[section_key]
-        
+
         # Add section heading
         section_number = str(section.get("number", "")).strip()
         # Derive section number from key when "number" field is absent (e.g. "section1" -> "1")
@@ -1043,14 +1092,14 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
             if num_part.isdigit():
                 section_number = num_part
         section_title = str(section.get("title", "")).strip().upper()
-        
+
         if section_number:
             heading_text = f"{_roman(section_number)}. {section_title}"
         else:
             heading_text = section_title
-        
+
         _add_section_heading(doc, heading_text)
-        
+
         # Add section content (handle both string and array)
         content = section.get("content", "")
         if isinstance(content, str) and content.strip():
@@ -1062,14 +1111,15 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
                     _body_paragraphs(doc, item.strip())
                 elif isinstance(item, dict):
                     _render_content_item(doc, item, json_path)
-        
+
         # Collect subsection keys in insertion order.
         # Support old pattern: sub2a, sub3b  (starts with "sub", digits+alpha after)
         # Support new pattern: section2a, section3b  (starts with "section", ends digit+alpha)
         subsection_keys = [
-            key for key in section.keys()
+            key
+            for key in section.keys()
             if (key.startswith("sub") and len(key) > 3 and key[3:].isalnum())
-            or re.match(r'^section\d+[a-z]+$', key)
+            or re.match(r"^section\d+[a-z]+$", key)
         ]
         for key in subsection_keys:
             _render_subsection(doc, section[key], json_path, sub_key=key)
@@ -1081,11 +1131,11 @@ def _render_subsection(doc: Document, subsection: dict, json_path: Path, sub_key
     # Derive letter from sub_key when "letter" field is absent.
     # Handles both old style (sub2a -> A) and new style (section2a -> A).
     if not subsection_letter and sub_key:
-        m = re.match(r'^(?:sub|section)\d+([a-z]+)$', sub_key)
+        m = re.match(r"^(?:sub|section)\d+([a-z]+)$", sub_key)
         if m:
             subsection_letter = m.group(1).upper()
     subsection_title = str(subsection.get("title", "")).strip()
-    
+
     # Add subsection heading
     if subsection_letter and subsection_title:
         heading_text = f"{subsection_letter}. {subsection_title}"
@@ -1093,10 +1143,10 @@ def _render_subsection(doc: Document, subsection: dict, json_path: Path, sub_key
         heading_text = subsection_title
     else:
         heading_text = ""
-    
+
     if heading_text:
         _add_subsection_heading(doc, heading_text)
-    
+
     # Render content items
     content_items = subsection.get("content", [])
     if isinstance(content_items, list):
@@ -1112,26 +1162,36 @@ def _default_output_path(config: dict, json_path: Path) -> Path:
     return json_path.parent / f"{json_path.stem}.docx"
 
 
-def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None, template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    final_output = Path(output_path) if output_path else _default_output_path(config, Path(json_path))
+    final_output = (
+        Path(output_path) if output_path else _default_output_path(config, Path(json_path))
+    )
     doc = Document()
     _inject_template_styles(doc, Path(template_path))
     _clear_document_body(doc)
     _setup_main_sectpr(doc)
     _add_title(doc, config)
-    _embed_sectpr(doc, _build_sectpr(1, 36.0, 27.0, 72.0, 44.65, 44.65, title_pg=True), style_id="Author")
+    _embed_sectpr(
+        doc, _build_sectpr(1, 36.0, 27.0, 72.0, 44.65, 44.65, title_pg=True), style_id="Author"
+    )
     _add_authors(doc, config)
     _embed_sectpr(doc, _build_sectpr(3, 36.0, 22.5, 72.0, 44.65, 44.65))
     _embed_sectpr(doc, _build_sectpr(3, 36.0, 22.5, 72.0, 44.65, 44.65))
     _add_abstracts(doc, config)
-    
+
     # Detect format and render content accordingly
     # Check for new format with direct section keys (section1, section2, etc.)
-    has_direct_sections = any(key.startswith("section") and key.replace("section", "").isdigit() for key in config.keys())
+    has_direct_sections = any(
+        key.startswith("section") and key.replace("section", "").isdigit() for key in config.keys()
+    )
     # Also check for legacy sections array format
     has_sections_array = "sections" in config and isinstance(config["sections"], list)
-    
+
     if has_direct_sections:
         # New format with direct section keys
         _render_sections(doc, config, Path(json_path))
@@ -1142,7 +1202,7 @@ def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None,
         # Legacy JTM format
         for item in config.get("Items", []):
             _render_item(doc, item, Path(json_path))
-    
+
     _add_references(doc, config)
     _embed_sectpr(doc, _build_sectpr(2, 18.0, 54.0, 72.0, 45.35, 45.35))
 
@@ -1162,21 +1222,23 @@ def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None,
 def _run_part_scripts(base_dir: Path):
     """Run all part scripts to generate JSON files"""
     import subprocess
-    
+
     part_scripts = ["gen2jsonID.py", "gen2jsonEN.py"]
-    
+
     print("No JSON files found. Running part scripts to generate JSON...")
-    
+
     for script in part_scripts:
         script_path = base_dir / script
         if script_path.exists():
             print(f"Running {script}...")
             try:
-                result = subprocess.run([sys.executable, str(script_path)], 
-                                      cwd=str(base_dir), 
-                                      capture_output=True, 
-                                      text=True,
-                                      encoding='utf-8')
+                result = subprocess.run(
+                    [sys.executable, str(script_path)],
+                    cwd=str(base_dir),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                )
                 if result.returncode == 0:
                     print(f"[OK] {script} completed successfully")
                     if result.stdout.strip():
@@ -1187,51 +1249,51 @@ def _run_part_scripts(base_dir: Path):
                 print(f"[ERR] Error running {script}: {e}")
         else:
             print(f"[ERR] {script} not found")
-    
+
     print()
 
 
 def main():
     base_dir = Path(__file__).parent
-    
+
     if len(sys.argv) >= 2:
         # Mode: generate satu file
         json_arg = Path(sys.argv[1])
         output_arg = Path(sys.argv[2]) if len(sys.argv) >= 3 else None
         template_arg = Path(sys.argv[3]) if len(sys.argv) >= 4 else TEMPLATE_PATH
-        
+
         if not json_arg.exists():
             print(f"[ERR] File not found: {json_arg}")
             return
-        
+
         result = build_document(json_arg, output_arg, template_arg)
         print(f"[OK] Generated: {result.name}")
     else:
         # Mode: generate semua JSON di folder
         print("Generating all IEEE DOCX files...")
-        
+
         # Cari semua file .json di folder base
         json_files = list(base_dir.glob("*.json"))
-        
+
         if not json_files:
             # Auto-run part scripts if no JSON files found
             _run_part_scripts(base_dir)
-            
+
             # Check again for JSON files
             json_files = list(base_dir.glob("*.json"))
-            
+
             if not json_files:
                 print("[ERR] No JSON files found in directory after running part scripts")
                 return
-        
+
         for json_path in sorted(json_files):
             # Skip file yang bukan format JSON yang valid
             if json_path.name.lower() in ["package.json", "tsconfig.json", "settings.json"]:
                 continue
-                
+
             try:
                 # Validasi JSON dengan membaca sedikit content
-                with open(json_path, 'r', encoding='utf-8') as f:
+                with open(json_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
                 # Cek apakah JSON memiliki struktur yang diharapkan
@@ -1247,15 +1309,13 @@ def main():
                 else:
                     output_path = build_document(json_path)
                 print(f"[OK] Generated: {output_path.name}")
-                
+
             except json.JSONDecodeError as e:
                 print(f"[ERR] Skip: {json_path.name} - Invalid JSON: {e}")
             except Exception as e:
                 print(f"[ERR] Error: {json_path.name} - {e}")
-        
+
         print("\nDone!")
-
-
 
 
 def _set_table_borders_match_template(table) -> None:
@@ -1265,6 +1325,7 @@ def _set_table_borders_match_template(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:
@@ -1289,7 +1350,9 @@ def _set_table_borders_match_template(table) -> None:
             el.set(qn("w:val"), "nil")
             el.set(qn("w:sz"), "0")
 
+
 if __name__ == "__main__":
-    import sys
     import json
+    import sys
+
     main()

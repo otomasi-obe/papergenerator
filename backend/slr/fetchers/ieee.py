@@ -1,16 +1,32 @@
-"""Fetcher untuk IEEE Xplore - https://ieeexploreapi.ieee.org/api/v1/search/articles
+"""Fetcher untuk IEEE Xplore - https://ieeexplore.ieee.org
 
-API key gratis tapi wajib (https://developer.ieee.org). Kalau IEEE_API_KEY
-tidak diset, fetcher me-skip diam-diam (tidak crash) supaya pipeline SLR
-tetap jalan dengan source lainnya.
+Menggunakan metode scraping langsung ke IEEE Xplore REST API.
+Tidak perlu API key. Menggunakan strategi content_type × year untuk bypass limit.
+Menyediakan link download via UNDIP proxy untuk akses full PDF.
 """
+
 import logging
-import os
+import time
 from typing import Iterable
-from ..http_client import RateLimiter, fetch_json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import httpx
+
+from ..http_client import RateLimiter
 from ..paper import Paper
 
-BASE = "https://ieeexploreapi.ieee.org/api/v1/search/articles"
+IEEE_BASE = "https://ieeexplore.ieee.org"
+SEARCH_API = IEEE_BASE + "/rest/search"
+ABSTRACT_API = IEEE_BASE + "/rest/document/{}/abstract"
+UNDIP_BASE = "https://ieeexplore-ieee-org.proxy.undip.ac.id"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": IEEE_BASE + "/search/searchresult.jsp",
+    "Origin": IEEE_BASE,
+}
 
 _warned = False
 
@@ -52,7 +68,9 @@ def _parse_article(a: dict) -> Paper | None:
         venue=venue,
         venue_type=venue_type,
         doi=a.get("doi"),
-        url=a.get("html_url") or (article_num and f"https://ieeexplore.ieee.org/document/{article_num}") or None,
+        url=a.get("html_url")
+        or (article_num and f"https://ieeexplore.ieee.org/document/{article_num}")
+        or None,
         citations=a.get("citing_paper_count"),
         is_open_access=bool(a.get("open_access_flag")),
         type=pub_type or None,
@@ -60,8 +78,7 @@ def _parse_article(a: dict) -> Paper | None:
     )
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     global _warned
     api_key = os.getenv("IEEE_API_KEY")
     if not api_key:
@@ -96,8 +113,9 @@ def search(client, query: str, limit: int = 25,
 
     while fetched < limit:
         rl.wait()
-        params = dict(params_base, max_records=min(per_page, limit - fetched),
-                      start_record=start_record)
+        params = dict(
+            params_base, max_records=min(per_page, limit - fetched), start_record=start_record
+        )
         data = fetch_json(client, BASE, params=params)
         if not data:
             return

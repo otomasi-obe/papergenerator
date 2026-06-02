@@ -77,9 +77,10 @@ def _set_ai_prompt_color_red(doc):
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
-    from docx.shared import RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.shared import RGBColor
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -126,6 +127,7 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
 
+
 def _set_para_style(paragraph, style_id: str) -> None:
     ppr = paragraph._p.get_or_add_pPr()
     pstyle = ppr.find(qn("w:pStyle"))
@@ -146,8 +148,8 @@ def _normalize_text_commands(text: str) -> str:
     # JSON sering menyimpan newline sebagai literal "\\n"
     text = str(text).replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -164,7 +166,13 @@ def _iter_rich_tokens(text: str):
         content = "".join(buffer)
         buffer = []
         if content:
-            yield {"kind": "text", "value": content, "bold": bold, "italic": italic, "underline": underline}
+            yield {
+                "kind": "text",
+                "value": content,
+                "bold": bold,
+                "italic": italic,
+                "underline": underline,
+            }
 
     while index < len(normalized):
         ch = normalized[index]
@@ -202,7 +210,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -731,14 +739,19 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
             p = doc.add_paragraph()
             _set_para_style(p, STYLE_SECTION)
             p.add_run(title)
-            _render_text_block(doc, "Content is not provided in JSON. This paragraph is auto-filled.")
+            _render_text_block(
+                doc, "Content is not provided in JSON. This paragraph is auto-filled."
+            )
         return
 
     for section_key in keys:
         data = config.get(section_key) or {}
         if not isinstance(data, dict):
             continue
-        title = _title_case_if_upper(data.get("title", "")) or f"Section {section_key.replace('section', '')}"
+        title = (
+            _title_case_if_upper(data.get("title", ""))
+            or f"Section {section_key.replace('section', '')}"
+        )
         p = doc.add_paragraph()
         _set_para_style(p, STYLE_SECTION)
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
@@ -902,7 +915,9 @@ def verify_document(json_path: Path, docx_path: Path) -> list[str]:
 
         math_count = len(doc_xml.xpath(".//m:oMath | .//m:oMathPara", namespaces=ns))
         if wanted_eq_count and math_count < wanted_eq_count:
-            issues.append(f"Jumlah equation OMML kurang: found={math_count}, expected>={wanted_eq_count}")
+            issues.append(
+                f"Jumlah equation OMML kurang: found={math_count}, expected>={wanted_eq_count}"
+            )
 
         # Check table caption spacing: paragraphs starting with 'Table'
         table_caps = doc_xml.xpath(
@@ -912,7 +927,9 @@ def verify_document(json_path: Path, docx_path: Path) -> list[str]:
         if table_caps:
             p0 = table_caps[0]
             sp = p0.find("w:pPr/w:spacing", namespaces=ns)
-            before = int(sp.get(qn("w:before"), "0")) if sp is not None and sp.get(qn("w:before")) else 0
+            before = (
+                int(sp.get(qn("w:before"), "0")) if sp is not None and sp.get(qn("w:before")) else 0
+            )
             if before < 120:
                 issues.append(f"Spacing before Table caption < 6pt (tw={before})")
 
@@ -927,9 +944,7 @@ def build_document(
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
 
     final_output = (
-        Path(output_path)
-        if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 

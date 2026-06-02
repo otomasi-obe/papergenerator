@@ -22,7 +22,7 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt
+from docx.shared import Cm
 from lxml import etree
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,16 +37,11 @@ MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 MAX_FIGURE_WIDTH_CM = 13.5
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
-        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main":
-        b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
-        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 XSL_CANDIDATES = [
@@ -221,8 +216,8 @@ def _append_inline_math(paragraph, latex: str) -> bool:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -279,7 +274,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -474,7 +469,9 @@ def _title_texts(config: dict) -> tuple[str, str]:
 
 def _abstract_texts(config: dict) -> tuple[str, str]:
     block = config.get("Abstract", {}) if isinstance(config.get("Abstract"), dict) else {}
-    base = _pick_first(config, ("abstract",), str(block.get("Indonesian") or block.get("English") or "").strip())
+    base = _pick_first(
+        config, ("abstract",), str(block.get("Indonesian") or block.get("English") or "").strip()
+    )
     abstract_id = _pick_first(
         config,
         ("abstract_id", "abstract_indonesian", "abstrak"),
@@ -499,9 +496,25 @@ def _keyword_lists(config: dict) -> tuple[list[str], list[str]]:
             return []
         return [item.strip() for item in text.split(",") if item.strip()]
 
-    base = normalize(config.get("keywords") or block.get("KeywordsIndonesian") or block.get("KeywordsEnglish"))
-    keywords_id = normalize(config.get("keywords_id") or config.get("keywords_indonesian") or block.get("KeywordsIndonesian")) or base
-    keywords_en = normalize(config.get("keywords_en") or config.get("keywords_english") or block.get("KeywordsEnglish")) or base
+    base = normalize(
+        config.get("keywords") or block.get("KeywordsIndonesian") or block.get("KeywordsEnglish")
+    )
+    keywords_id = (
+        normalize(
+            config.get("keywords_id")
+            or config.get("keywords_indonesian")
+            or block.get("KeywordsIndonesian")
+        )
+        or base
+    )
+    keywords_en = (
+        normalize(
+            config.get("keywords_en")
+            or config.get("keywords_english")
+            or block.get("KeywordsEnglish")
+        )
+        or base
+    )
     return keywords_id, keywords_en
 
 
@@ -547,7 +560,9 @@ def _running_authors(config: dict) -> str:
     return _shorten_text(names, 80)
 
 
-def _render_title_block(doc: Document, config: dict, samples: dict[str, etree._Element | None]) -> None:
+def _render_title_block(
+    doc: Document, config: dict, samples: dict[str, etree._Element | None]
+) -> None:
     title_id, title_en = _title_texts(config)
     abstract_id, abstract_en = _abstract_texts(config)
     keywords_id, keywords_en = _keyword_lists(config)
@@ -573,9 +588,21 @@ def _render_title_block(doc: Document, config: dict, samples: dict[str, etree._E
 
         aff_items = list(affiliation_map.items())
         for aff_index, ((affiliation, location), numbers) in enumerate(aff_items):
-            sample_ppr = samples["affiliation_primary_ppr"] if aff_index == 0 else samples["affiliation_secondary_ppr"]
-            sample_sup = samples["affiliation_primary_sup_rpr"] if aff_index == 0 else samples["affiliation_secondary_sup_rpr"]
-            sample_txt = samples["affiliation_primary_text_rpr"] if aff_index == 0 else samples["affiliation_secondary_text_rpr"]
+            sample_ppr = (
+                samples["affiliation_primary_ppr"]
+                if aff_index == 0
+                else samples["affiliation_secondary_ppr"]
+            )
+            sample_sup = (
+                samples["affiliation_primary_sup_rpr"]
+                if aff_index == 0
+                else samples["affiliation_secondary_sup_rpr"]
+            )
+            sample_txt = (
+                samples["affiliation_primary_text_rpr"]
+                if aff_index == 0
+                else samples["affiliation_secondary_text_rpr"]
+            )
             paragraph = _new_paragraph(doc, sample_ppr)
             _add_sample_run(paragraph, ",".join(str(number) for number in numbers), sample_sup)
             _add_sample_run(paragraph, " ", sample_sup)
@@ -610,7 +637,9 @@ def _render_title_block(doc: Document, config: dict, samples: dict[str, etree._E
     _new_paragraph(doc, samples["blank_center_ppr"])
 
     abstract_en_heading = _new_paragraph(doc, samples["abstract_en_heading_ppr"])
-    _add_sample_run(abstract_en_heading, "ABSTRACT", samples["abstract_en_heading_rpr"], bold=True, italic=True)
+    _add_sample_run(
+        abstract_en_heading, "ABSTRACT", samples["abstract_en_heading_rpr"], bold=True, italic=True
+    )
     _new_paragraph(doc, samples["blank_center_ppr"])
 
     abstract_en_para = _new_paragraph(doc, samples["abstract_en_ppr"])
@@ -645,7 +674,9 @@ def _add_body_text(
             paragraph = _new_paragraph(doc, samples["subsection_body_ppr"])
             _append_rich_text(paragraph, block, samples["subsection_body_rpr"])
         else:
-            paragraph = _new_paragraph(doc, samples["body_first_ppr"] if first and index == 0 else samples["body_ppr"])
+            paragraph = _new_paragraph(
+                doc, samples["body_first_ppr"] if first and index == 0 else samples["body_ppr"]
+            )
             _append_rich_text(
                 paragraph,
                 block,
@@ -660,7 +691,9 @@ def _subsection_label(index: int) -> str:
     return str(index)
 
 
-def _add_section_heading(doc: Document, title: str, samples: dict[str, etree._Element | None]) -> None:
+def _add_section_heading(
+    doc: Document, title: str, samples: dict[str, etree._Element | None]
+) -> None:
     paragraph = _new_paragraph(doc, samples["section_heading_ppr"])
     _add_sample_run(paragraph, title.upper(), samples["section_heading_rpr"], bold=True)
 
@@ -817,22 +850,31 @@ def _next_figure_number(item: dict, state: RenderState) -> str:
 
 
 def _next_table_number(item: dict, state: RenderState) -> str:
-    raw = str(item.get("TableNumber") or item.get("NumberiOrLetter") or item.get("number") or "").strip()
+    raw = str(
+        item.get("TableNumber") or item.get("NumberiOrLetter") or item.get("number") or ""
+    ).strip()
     if raw:
         return raw
     state.table_count += 1
     return str(state.table_count)
 
 
-def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, etree._Element | None], state: RenderState) -> None:
+def _add_figure(
+    doc: Document,
+    item: dict,
+    json_path: Path,
+    samples: dict[str, etree._Element | None],
+    state: RenderState,
+) -> None:
 
     # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
     _ai_title = str(item.get("Title") or item.get("title") or "").strip()
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -842,7 +884,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, e
     path_text = str(item.get("Path") or item.get("path") or "").strip()
     prompt = str(item.get("Prompt") or "").strip()
     number = _next_figure_number(item, state)
-    state.figure_count = max(state.figure_count, int(number)) if number.isdigit() else state.figure_count
+    state.figure_count = (
+        max(state.figure_count, int(number)) if number.isdigit() else state.figure_count
+    )
 
     try:
         width_cm = float(item.get("WidthCm", MAX_FIGURE_WIDTH_CM))
@@ -864,7 +908,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, e
         _add_sample_run(caption, title, samples["figure_caption_text_rpr"])
 
 
-def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | None], state: RenderState) -> None:
+def _add_table(
+    doc: Document, item: dict, samples: dict[str, etree._Element | None], state: RenderState
+) -> None:
     headers = list(item.get("Headers") or item.get("headers") or [])
     rows = list(item.get("Rows") or item.get("rows") or [])
     if not headers:
@@ -907,7 +953,9 @@ def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | No
     doc.add_paragraph()
 
 
-def _add_equation_group(doc: Document, item: dict, samples: dict[str, etree._Element | None]) -> None:
+def _add_equation_group(
+    doc: Document, item: dict, samples: dict[str, etree._Element | None]
+) -> None:
     formulas = [str(value).strip() for value in item.get("Lines", []) if str(value).strip()]
     single = str(item.get("latex") or item.get("text") or "").strip()
     if not formulas and single:
@@ -945,15 +993,27 @@ def _iter_point_entries(item: dict):
         yield text, str(item.get("Label") or "").strip()
 
 
-def _add_point_list(doc: Document, item: dict, samples: dict[str, etree._Element | None], *, subsection: bool) -> None:
-    list_type = str(item.get("ListType") or ("number" if item.get("Numbered") else "bullet")).lower()
+def _add_point_list(
+    doc: Document, item: dict, samples: dict[str, etree._Element | None], *, subsection: bool
+) -> None:
+    list_type = str(
+        item.get("ListType") or ("number" if item.get("Numbered") else "bullet")
+    ).lower()
     for index, (text, label) in enumerate(_iter_point_entries(item), start=1):
         if not text:
             continue
-        paragraph = _new_paragraph(doc, samples["subsection_body_ppr"] if subsection else samples["body_ppr"])
-        prefix = label or (f"{index}. " if list_type in {"number", "numbering", "ordered"} else "- ")
-        _add_sample_run(paragraph, prefix, samples["subsection_body_rpr"] if subsection else samples["body_rpr"])
-        _append_rich_text(paragraph, text, samples["subsection_body_rpr"] if subsection else samples["body_rpr"])
+        paragraph = _new_paragraph(
+            doc, samples["subsection_body_ppr"] if subsection else samples["body_ppr"]
+        )
+        prefix = label or (
+            f"{index}. " if list_type in {"number", "numbering", "ordered"} else "- "
+        )
+        _add_sample_run(
+            paragraph, prefix, samples["subsection_body_rpr"] if subsection else samples["body_rpr"]
+        )
+        _append_rich_text(
+            paragraph, text, samples["subsection_body_rpr"] if subsection else samples["body_rpr"]
+        )
 
 
 def _render_content_item(
@@ -1021,7 +1081,9 @@ def _render_content_sequence(
                 first_text = False
 
 
-def _render_sections(doc: Document, config: dict, json_path: Path, samples: dict[str, etree._Element | None]) -> None:
+def _render_sections(
+    doc: Document, config: dict, json_path: Path, samples: dict[str, etree._Element | None]
+) -> None:
     state = RenderState()
     section_keys = sorted(
         [key for key in config.keys() if re.fullmatch(r"section\d+", key)],
@@ -1037,14 +1099,17 @@ def _render_sections(doc: Document, config: dict, json_path: Path, samples: dict
         if title:
             _add_section_heading(doc, title, samples)
 
-        _render_content_sequence(doc, section.get("content", []), json_path, samples, state, subsection=False)
+        _render_content_sequence(
+            doc, section.get("content", []), json_path, samples, state, subsection=False
+        )
 
         subsection_keys = sorted(
             [
-                key for key, value in section.items()
+                key
+                for key, value in section.items()
                 if isinstance(value, dict) and re.fullmatch(rf"{section_key}[a-z]+", key)
             ],
-            key=lambda key: key[len(section_key):],
+            key=lambda key: key[len(section_key) :],
         )
         for subsection_index, subsection_key in enumerate(subsection_keys, start=1):
             subsection_value = section[subsection_key]
@@ -1167,7 +1232,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     for json_file in json_files:

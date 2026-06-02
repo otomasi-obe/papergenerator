@@ -70,46 +70,53 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { usePaperStore } from '../stores/paper.js'
+import { usePaperStore } from '../stores/paper'
 
 const store = usePaperStore()
-const search = ref('')
-const open = ref(false)
-const wrapRef = ref(null)
-const highlightedIndex = ref(0)
+const search = ref<string>('')
+const open = ref<boolean>(false)
+const wrapRef = ref<HTMLElement | null>(null)
+const highlightedIndex = ref<number>(-1)
 
-const filtered = computed(() => {
-  const list = (store.availableJournals || [])
-  const q = search.value.trim().toLowerCase()
-  if (!q) return list
-  return list.filter(j => j.toLowerCase().includes(q))
+const filtered = computed<string[]>(() => {
+  if (!search.value.trim()) return store.availableJournals || []
+  const q = search.value.toLowerCase()
+  return (store.availableJournals || []).filter((j: string) => j.toLowerCase().includes(q))
 })
 
-function pick(j) {
-  store.paper.journal = j
-  search.value = ''
+function pick(journal: string): void {
+  store.paper.journal = journal
   open.value = false
+  search.value = ''
+  highlightedIndex.value = -1
 }
 
-function moveHighlight(delta) {
-  open.value = true
+function moveHighlight(delta: number): void {
   if (!filtered.value.length) return
-  highlightedIndex.value = (highlightedIndex.value + delta + filtered.value.length) % filtered.value.length
+  highlightedIndex.value = Math.max(0, Math.min(filtered.value.length - 1, highlightedIndex.value + delta))
 }
 
-function pickHighlighted() {
-  if (filtered.value.length) pick(filtered.value[highlightedIndex.value] || filtered.value[0])
+function pickHighlighted(): void {
+  if (highlightedIndex.value >= 0 && highlightedIndex.value < filtered.value.length) {
+    pick(filtered.value[highlightedIndex.value])
+  }
 }
 
-function onClickOutside(e) {
-  if (wrapRef.value && !wrapRef.value.contains(e.target)) open.value = false
+function handleClickOutside(e: MouseEvent): void {
+  if (wrapRef.value && !wrapRef.value.contains(e.target as Node)) {
+    open.value = false
+  }
 }
 
 onMounted(() => {
   store.fetchJournals()
-  document.addEventListener('mousedown', onClickOutside)
+  document.addEventListener('click', handleClickOutside)
 })
-onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>

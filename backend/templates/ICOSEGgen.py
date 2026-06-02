@@ -50,16 +50,11 @@ CENTER_TAB_PT = 235.0
 MAX_FIGURE_WIDTH_CM = 16.0
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
-        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main":
-        b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
-        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 XSL_CANDIDATES = [
@@ -219,7 +214,9 @@ def _append_body_element_before_sectpr(doc: Document, element: etree._Element) -
         body.append(deepcopy(element))
 
 
-def _set_spacing_min(paragraph, *, before_pt: float | None = None, after_pt: float | None = None) -> None:
+def _set_spacing_min(
+    paragraph, *, before_pt: float | None = None, after_pt: float | None = None
+) -> None:
     pf = paragraph.paragraph_format
     if before_pt is not None:
         cur = pf.space_before.pt if pf.space_before is not None else 0.0
@@ -234,8 +231,8 @@ def _set_spacing_min(paragraph, *, before_pt: float | None = None, after_pt: flo
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -294,7 +291,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -701,7 +698,9 @@ def _acknowledgment_text(config: dict) -> str:
     )
 
 
-def _add_front_matter(doc: Document, config: dict, samples: dict[str, etree._Element | None]) -> None:
+def _add_front_matter(
+    doc: Document, config: dict, samples: dict[str, etree._Element | None]
+) -> None:
     # Preserve ICOSEG logo paragraph from template if available.
     logo_p = samples.get("logo_paragraph")
     if logo_p is not None:
@@ -749,14 +748,21 @@ def _add_front_matter(doc: Document, config: dict, samples: dict[str, etree._Ele
         if i:
             _add_sample_run(author_para, ", ", samples["author_name_rpr"])
         _append_rich_text(author_para, author["name"], samples["author_name_rpr"], base_bold=True)
-        _add_sample_run(author_para, str(author_aff_nums[i]), samples["author_sup_rpr"], superscript=True)
+        _add_sample_run(
+            author_para, str(author_aff_nums[i]), samples["author_sup_rpr"], superscript=True
+        )
         if i == 0:
             _add_sample_run(author_para, "*", samples["author_sup_rpr"], superscript=True)
 
     for group in aff_groups:
         aff_para = _new_paragraph(doc, samples["affiliation_ppr"])
-        _add_sample_run(aff_para, str(group["num"]), samples["affiliation_sup_rpr"], superscript=True)
-        details = [str(group.get("affiliation") or "").strip(), str(group.get("location") or "").strip()]
+        _add_sample_run(
+            aff_para, str(group["num"]), samples["affiliation_sup_rpr"], superscript=True
+        )
+        details = [
+            str(group.get("affiliation") or "").strip(),
+            str(group.get("location") or "").strip(),
+        ]
         details = [d for d in details if d]
         aff_text = ", ".join(details) if details else "Afiliasi, Negara"
         _append_rich_text(aff_para, aff_text, samples["affiliation_text_rpr"])
@@ -776,7 +782,9 @@ def _add_front_matter(doc: Document, config: dict, samples: dict[str, etree._Ele
     # Abstract
     abs_para = _new_paragraph(doc, samples["abstract_ppr"])
     _append_rich_text(abs_para, "Abstract. ", samples["abstract_label_rpr"], base_bold=True)
-    _append_rich_text(abs_para, _abstract_text(config), samples["abstract_text_rpr"], base_bold=False)
+    _append_rich_text(
+        abs_para, _abstract_text(config), samples["abstract_text_rpr"], base_bold=False
+    )
 
     # Keywords
     kw_para = _new_paragraph(doc, samples["keywords_ppr"])
@@ -786,16 +794,22 @@ def _add_front_matter(doc: Document, config: dict, samples: dict[str, etree._Ele
     _append_rich_text(kw_para, kw_text, samples["keywords_text_rpr"], base_bold=False)
 
 
-def _add_section_heading(doc: Document, title: str, samples: dict[str, etree._Element | None]) -> None:
+def _add_section_heading(
+    doc: Document, title: str, samples: dict[str, etree._Element | None]
+) -> None:
     paragraph = _new_paragraph(doc, samples["section_heading_ppr"])
     _set_spacing_min(paragraph, before_pt=3.0, after_pt=3.0)
     _append_rich_text(paragraph, title, samples["section_heading_rpr"], base_bold=True)
 
 
-def _add_subsection_heading(doc: Document, title: str, samples: dict[str, etree._Element | None]) -> None:
+def _add_subsection_heading(
+    doc: Document, title: str, samples: dict[str, etree._Element | None]
+) -> None:
     paragraph = _new_paragraph(doc, samples["subsection_heading_ppr"])
     _set_spacing_min(paragraph, before_pt=3.0, after_pt=3.0)
-    _append_rich_text(paragraph, title, samples["subsection_heading_rpr"], base_bold=True, base_italic=True)
+    _append_rich_text(
+        paragraph, title, samples["subsection_heading_rpr"], base_bold=True, base_italic=True
+    )
 
 
 def _body_paragraph(doc: Document, text: str, samples: dict[str, etree._Element | None]) -> None:
@@ -806,7 +820,9 @@ def _body_paragraph(doc: Document, text: str, samples: dict[str, etree._Element 
         _append_rich_text(paragraph, block, samples["body_rpr"], base_bold=False)
 
 
-def _add_missing_figure_notice(doc: Document, text: str, samples: dict[str, etree._Element | None]) -> None:
+def _add_missing_figure_notice(
+    doc: Document, text: str, samples: dict[str, etree._Element | None]
+) -> None:
     paragraph = _new_paragraph(doc, samples["body_ppr"])
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.first_line_indent = Pt(0)
@@ -827,15 +843,18 @@ def _add_figure(
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
         _ai_run.italic = True
         _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     state.figure_number += 1
-    number = str(item.get("ImageNumber") or item.get("number") or state.figure_number).strip() or str(state.figure_number)
+    number = str(
+        item.get("ImageNumber") or item.get("number") or state.figure_number
+    ).strip() or str(state.figure_number)
     title = str(item.get("Title") or item.get("title") or f"Figure title {number}").strip()
     path_text = str(item.get("Path") or item.get("path") or "").strip()
     prompt = str(item.get("Prompt") or "").strip()
@@ -858,7 +877,9 @@ def _add_figure(
     year = datetime.now().year
     src_para.paragraph_format.first_line_indent = Pt(0)
     _set_spacing_min(src_para, before_pt=0.0, after_pt=3.0)
-    _append_rich_text(src_para, f"Source: Authors, {year}", samples["figure_source_rpr"], base_italic=True)
+    _append_rich_text(
+        src_para, f"Source: Authors, {year}", samples["figure_source_rpr"], base_italic=True
+    )
 
     # Caption
     cap_para = _new_paragraph(doc, samples["figure_caption_ppr"])
@@ -927,7 +948,9 @@ def _add_table(
         return
 
     state.table_number += 1
-    number = str(item.get("TableNumber") or item.get("number") or state.table_number).strip() or str(state.table_number)
+    number = str(
+        item.get("TableNumber") or item.get("number") or state.table_number
+    ).strip() or str(state.table_number)
     title = str(item.get("Title") or item.get("title") or f"Table title {number}").strip()
 
     # Caption (Table title above)
@@ -987,7 +1010,9 @@ def _add_table(
     src_para.paragraph_format.first_line_indent = Pt(0)
     year = datetime.now().year
     _set_spacing_min(src_para, before_pt=0.0, after_pt=3.0)
-    _append_rich_text(src_para, f"Source: Authors, {year}", samples["table_source_rpr"], base_italic=True)
+    _append_rich_text(
+        src_para, f"Source: Authors, {year}", samples["table_source_rpr"], base_italic=True
+    )
 
 
 def _add_equation(
@@ -1001,7 +1026,9 @@ def _add_equation(
         return
 
     state.equation_number += 1
-    number = str(item.get("FormulaNumber") or state.equation_number).strip() or str(state.equation_number)
+    number = str(item.get("FormulaNumber") or state.equation_number).strip() or str(
+        state.equation_number
+    )
 
     paragraph = _new_paragraph(doc, samples["equation_ppr"])
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1019,7 +1046,9 @@ def _add_equation(
     _add_sample_run(paragraph, f"(Eq.{number})", samples["equation_label_rpr"], italic=True)
 
 
-def _add_equation_where(doc: Document, text: str, samples: dict[str, etree._Element | None]) -> None:
+def _add_equation_where(
+    doc: Document, text: str, samples: dict[str, etree._Element | None]
+) -> None:
     paragraph = _new_paragraph(doc, samples["equation_where_ppr"])
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
     paragraph.paragraph_format.first_line_indent = Pt(0)
@@ -1159,7 +1188,12 @@ def _render_sections(
     _add_section_heading(doc, "References", samples)
     if not ref_items:
         p = _new_paragraph(doc, samples["reference_item_ppr"])
-        _append_rich_text(p, "Tambahkan referensi sesuai gaya ICOSEG.", samples["reference_item_rpr"], base_bold=False)
+        _append_rich_text(
+            p,
+            "Tambahkan referensi sesuai gaya ICOSEG.",
+            samples["reference_item_rpr"],
+            base_bold=False,
+        )
         return
 
     for item in ref_items:
@@ -1216,7 +1250,12 @@ def verify_document(template_path: Path, out_path: Path, config: dict) -> tuple[
         return text, npara
 
     with zipfile.ZipFile(template_path) as zt, zipfile.ZipFile(out_path) as zo:
-        for part in ("word/header1.xml", "word/footer1.xml", "word/footer2.xml", "word/footer3.xml"):
+        for part in (
+            "word/header1.xml",
+            "word/footer1.xml",
+            "word/footer2.xml",
+            "word/footer3.xml",
+        ):
             sig_t = _hf_signature(zt, part)
             sig_o = _hf_signature(zo, part)
             if sig_t is None or sig_o is None:
@@ -1247,7 +1286,9 @@ def verify_document(template_path: Path, out_path: Path, config: dict) -> tuple[
                     break
             if logo_rid is not None:
                 if logo_rid.encode("utf-8") not in raw:
-                    issues.append("ICOSEG logo missing: image1.png relationship not referenced in document.xml")
+                    issues.append(
+                        "ICOSEG logo missing: image1.png relationship not referenced in document.xml"
+                    )
         except Exception:
             # Don't hard-fail verification if relationship parsing isn't possible.
             pass
@@ -1273,8 +1314,12 @@ def verify_document(template_path: Path, out_path: Path, config: dict) -> tuple[
         paragraphs = body.findall(_wq("p")) if body is not None else []
         tables = body.findall(_wq("tbl")) if body is not None else []
 
-    got_fig = sum(1 for p in paragraphs if _text_of_paragraph(p).strip().lower().startswith("figure "))
-    got_tbl = sum(1 for p in paragraphs if _text_of_paragraph(p).strip().lower().startswith("table "))
+    got_fig = sum(
+        1 for p in paragraphs if _text_of_paragraph(p).strip().lower().startswith("figure ")
+    )
+    got_tbl = sum(
+        1 for p in paragraphs if _text_of_paragraph(p).strip().lower().startswith("table ")
+    )
     got_eq = sum(1 for p in paragraphs if "(eq." in _text_of_paragraph(p).lower())
 
     if got_fig < want["fig"]:
@@ -1335,17 +1380,25 @@ def verify_document(template_path: Path, out_path: Path, config: dict) -> tuple[
         before, after = spacing_of(p)
         if lower.startswith("table "):
             if before < 120 or after < 60:
-                issues.append(f"Table caption spacing too small: before={before}, after={after}, text='{t[:60]}'")
+                issues.append(
+                    f"Table caption spacing too small: before={before}, after={after}, text='{t[:60]}'"
+                )
         if lower.startswith("figure "):
             if before < 60 or after < 120:
-                issues.append(f"Figure caption spacing too small: before={before}, after={after}, text='{t[:60]}'")
+                issues.append(
+                    f"Figure caption spacing too small: before={before}, after={after}, text='{t[:60]}'"
+                )
         if "(eq." in lower:
             if before < 60 or after < 60:
-                issues.append(f"Equation spacing too small: before={before}, after={after}, text='{t[:60]}'")
+                issues.append(
+                    f"Equation spacing too small: before={before}, after={after}, text='{t[:60]}'"
+                )
         ilvl = ilvl_of(p)
         if ilvl in (0, 1):
             if before < 60 or after < 60:
-                issues.append(f"Heading spacing too small (ilvl={ilvl}): before={before}, after={after}, text='{t[:60]}'")
+                issues.append(
+                    f"Heading spacing too small (ilvl={ilvl}): before={before}, after={after}, text='{t[:60]}'"
+                )
 
     ok = not issues
     return ok, issues
@@ -1405,8 +1458,6 @@ def main() -> None:
     build_document(json_arg, out_arg, tpl_arg, verify=verify)
 
 
-
-
 def _set_table_full_borders(table) -> None:
     """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
 
@@ -1415,6 +1466,7 @@ def _set_table_full_borders(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

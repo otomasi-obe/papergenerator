@@ -2,6 +2,7 @@
 Shared helpers used by papers/files/images blueprints.
 Extracted to break circular imports between blueprints.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -11,7 +12,6 @@ import time
 from pathlib import Path
 
 from flask import current_app
-
 
 PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 FILENAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
@@ -56,7 +56,8 @@ def sign_resource_token(scope: str, resource_id: str, user_id: int, ttl_seconds:
     msg = f"{scope}|{resource_id}|{user_id}|{expiry}".encode()
     digest = hmac.new(
         current_app.config["SIGNED_URL_SECRET"].encode(),
-        msg, hashlib.sha256,
+        msg,
+        hashlib.sha256,
     ).hexdigest()
     return f"{expiry}.{user_id}.{digest}"
 
@@ -74,7 +75,8 @@ def verify_resource_token(token: str, scope: str, resource_id: str) -> int | Non
     msg = f"{scope}|{resource_id}|{uid}|{expiry}".encode()
     expected = hmac.new(
         current_app.config["SIGNED_URL_SECRET"].encode(),
-        msg, hashlib.sha256,
+        msg,
+        hashlib.sha256,
     ).hexdigest()
     if not hmac.compare_digest(expected, digest):
         return None

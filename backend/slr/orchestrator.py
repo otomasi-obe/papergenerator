@@ -15,21 +15,27 @@ Strategi baru sesuai brief:
 Modul ini cuma menangani fetching + dedup. Ranking + summarization tetap di
 pipeline.py / scoring.py / summarizer.py.
 """
+
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import re
-from .http_client import get_client
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from .fetchers import ALL, SOURCE_TOPICS
+from .http_client import get_client
 from .paper import Paper
 
 log = logging.getLogger(__name__)
 
 PREDATORY_PUBLISHERS = {
-    "omics", "scirp", "scientific research publishing",
-    "academic journals", "david publishing",
-    "academic and scientific publishing", "bentham science",
+    "omics",
+    "scirp",
+    "scientific research publishing",
+    "academic journals",
+    "david publishing",
+    "academic and scientific publishing",
+    "bentham science",
 }
 
 MAX_WORKERS = 10
@@ -37,23 +43,80 @@ DEFAULT_LIMIT_PER_SOURCE = 60
 
 
 _TOPIC_KEYWORDS = {
-    "medical": ("medic", "medis", "clinic", "klinis", "patient", "covid",
-                "cancer", "drug", "obat", "pharma", "therapy", "disease",
-                "penyakit", "diagnosis", "kesehatan", "kedokteran"),
+    "medical": (
+        "medic",
+        "medis",
+        "clinic",
+        "klinis",
+        "patient",
+        "covid",
+        "cancer",
+        "drug",
+        "obat",
+        "pharma",
+        "therapy",
+        "disease",
+        "penyakit",
+        "diagnosis",
+        "kesehatan",
+        "kedokteran",
+    ),
     "biology": ("biolog", "gene", "protein", "cell", "neuron"),
-    "cs":      ("software", "algorit", "programming", "compiler", "database",
-                "system", "network", "cloud", "distributed", "kernel",
-                "komputer", "informatika"),
-    "ai":      ("machine learning", "deep learning", "neural", "ml", "ai",
-                "lstm", "transformer", "nlp", "computer vision", "agent",
-                "reinforcement", "kecerdasan buatan", "pembelajaran mesin",
-                "pembelajaran mendalam"),
-    "engineering": ("engineering", "control", "robot", "iot", "embedded",
-                    "signal", "circuit", "rangkaian", "teknik elektro",
-                    "teknik", "rekayasa", "elektronika", "mesin"),
+    "cs": (
+        "software",
+        "algorit",
+        "programming",
+        "compiler",
+        "database",
+        "system",
+        "network",
+        "cloud",
+        "distributed",
+        "kernel",
+        "komputer",
+        "informatika",
+    ),
+    "ai": (
+        "machine learning",
+        "deep learning",
+        "neural",
+        "ml",
+        "ai",
+        "lstm",
+        "transformer",
+        "nlp",
+        "computer vision",
+        "agent",
+        "reinforcement",
+        "kecerdasan buatan",
+        "pembelajaran mesin",
+        "pembelajaran mendalam",
+    ),
+    "engineering": (
+        "engineering",
+        "control",
+        "robot",
+        "iot",
+        "embedded",
+        "signal",
+        "circuit",
+        "rangkaian",
+        "teknik elektro",
+        "teknik",
+        "rekayasa",
+        "elektronika",
+        "mesin",
+    ),
     "physics": ("physics", "quantum", "particle", "astro"),
-    "indonesia": ("indonesia", "sinta", "garuda", "kemdikbud", "lokal",
-                  "akreditasi sinta", "lokal indonesia"),
+    "indonesia": (
+        "indonesia",
+        "sinta",
+        "garuda",
+        "kemdikbud",
+        "lokal",
+        "akreditasi sinta",
+        "lokal indonesia",
+    ),
 }
 
 
@@ -68,8 +131,7 @@ def _detect_topics(query: str) -> set[str]:
     return found
 
 
-def pick_sources_for_topic(query: str,
-                           explicit: list[str] | None = None) -> list[str]:
+def pick_sources_for_topic(query: str, explicit: list[str] | None = None) -> list[str]:
     """Pilih sumber yang relevan utk query. Kalau caller spesifik
     (`explicit=[…]`), dipakai apa adanya (subset dari ALL)."""
     if explicit:
@@ -100,8 +162,7 @@ def _norm_title(t: str | None) -> str:
     return " ".join(s.split())
 
 
-def fetch_from_source(name: str, query: str, limit: int,
-                      filters: dict | None) -> list[Paper]:
+def fetch_from_source(name: str, query: str, limit: int, filters: dict | None) -> list[Paper]:
     module = ALL[name]
     with get_client() as client:
         try:
@@ -111,13 +172,15 @@ def fetch_from_source(name: str, query: str, limit: int,
             return []
 
 
-def fetch_titles(query: str,
-                 sources: list[str] | None = None,
-                 limit_per_source: int = DEFAULT_LIMIT_PER_SOURCE,
-                 filters: dict | None = None,
-                 max_total: int | None = None,
-                 skip_predatory: bool = True,
-                 progress_cb=None) -> list[Paper]:
+def fetch_titles(
+    query: str,
+    sources: list[str] | None = None,
+    limit_per_source: int = DEFAULT_LIMIT_PER_SOURCE,
+    filters: dict | None = None,
+    max_total: int | None = None,
+    skip_predatory: bool = True,
+    progress_cb=None,
+) -> list[Paper]:
     """Tahap 1 — panggil semua source paralel, dedup, return list[Paper].
 
     Sesuai algoritma user: SEARCH semua API (judul saja). Walaupun fetcher
@@ -133,8 +196,7 @@ def fetch_titles(query: str,
     all_papers: list[Paper] = []
 
     if progress_cb:
-        progress_cb("fetching", {"sources": sources, "started": 0,
-                                 "total": len(sources)})
+        progress_cb("fetching", {"sources": sources, "started": 0, "total": len(sources)})
 
     completed = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -155,10 +217,15 @@ def fetch_titles(query: str,
                 # WorkerCancelled). We let it propagate so pending fetches can
                 # be cancelled in the except branch below.
                 if progress_cb:
-                    progress_cb("source_done", {
-                        "source": name, "count": len(papers),
-                        "completed": completed, "total": len(sources),
-                    })
+                    progress_cb(
+                        "source_done",
+                        {
+                            "source": name,
+                            "count": len(papers),
+                            "completed": completed,
+                            "total": len(sources),
+                        },
+                    )
                 all_papers.extend(papers)
         except BaseException:
             # Cancel any still-pending fetches before re-raising so we don't
@@ -177,8 +244,7 @@ def fetch_titles(query: str,
     results: list[Paper] = []
     # Sort sources alphabetically so round-robin merge order is deterministic
     # across runs regardless of which fetcher finished first.
-    queues = [list(reversed(by_source[name]))
-              for name in sorted(by_source.keys())]
+    queues = [list(reversed(by_source[name])) for name in sorted(by_source.keys())]
 
     while queues:
         next_queues = []

@@ -1,7 +1,0 @@
-S3 Journal Template Download Log - Rab 06 Mei 2026 12:29:12  WIB
-========================================
-Downloaded: Idealis:_Indonesia_Journal_Information_System_template.docx
-Downloaded: IJNMT_(International_Journal_of_New_Media_Technology)_template.doc
-Failed to download: Jurnal Akuntansi Universitas Jember (No template link found)
-Downloaded: Jurnal_Suara_Hukum_template.docx
-Failed to download: Jurnal Pendidikan Matematika (JUDIKA EDUCATION) (Site timeout)

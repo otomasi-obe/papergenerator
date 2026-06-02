@@ -75,110 +75,93 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// @ts-nocheck
 import { ref, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
 
-const props = defineProps({
-  proposal: { type: Object, required: true },
-})
-const emit = defineEmits(['accepted', 'rejected', 'revisi-accept', 'revisi-reject'])
-
-const paperStore = usePaperStore()
-const status = ref('pending')
-const busy = ref(false)
-
-const ICON_MAP = {
-  Paraphrase: '✍',
-  FixGrammar: '✓',
-  Translate: '🌐',
-}
-const TITLE_MAP = {
-  Paraphrase: 'Paraphrase',
-  FixGrammar: 'Fix Grammar',
-  Translate: 'Translate',
-}
-const LANG_MAP = {
-  en: 'Bahasa Inggris',
-  id: 'Bahasa Indonesia',
-  english: 'Bahasa Inggris',
-  indonesian: 'Bahasa Indonesia',
+interface Props {
+  proposal: any
 }
 
-const icon = computed(() => ICON_MAP[props.proposal.tool] || '✏')
-const title = computed(() => TITLE_MAP[props.proposal.tool] || 'Edit proposal')
+const props = defineProps<Props>()
+const store = usePaperStore()
+const busy = ref<boolean>(false)
 
-const targetLangLabel = computed(() => {
-  const t = String(props.proposal.target_language || '').toLowerCase()
-  return LANG_MAP[t] || props.proposal.target_language || ''
+const status = computed<string>(() => props.proposal.status || 'pending')
+
+const icon = computed<string>(() => {
+  const tool = props.proposal.tool
+  if (tool === 'Translate') return '🌐'
+  if (tool === 'Paraphrase') return '✏️'
+  if (tool === 'Expand') return '📝'
+  if (tool === 'Simplify') return '💡'
+  if (tool === 'Formalize') return '🎓'
+  return '🔧'
 })
 
-const subtitle = computed(() => {
-  const p = props.proposal
-  const scope = p.scope
+const title = computed<string>(() => {
+  const tool = props.proposal.tool
+  if (tool === 'Translate') return 'Translation'
+  if (tool === 'Paraphrase') return 'Paraphrase'
+  if (tool === 'Expand') return 'Expand'
+  if (tool === 'Simplify') return 'Simplify'
+  if (tool === 'Formalize') return 'Formalize'
+  return tool || 'Revision'
+})
+
+const subtitle = computed<string>(() => {
+  const scope = props.proposal.scope
   if (!scope) return ''
-  if (scope === 'whole') return 'whole'
-  if (scope === 'section') {
-    if (p.section_index !== undefined && p.section_index !== null) {
-      return `section ${p.section_index}`
-    }
-    return 'section'
-  }
-  if (scope === 'paragraph') {
-    if (p.section_index !== undefined && p.section_index !== null) {
-      const para = (p.content_index !== undefined && p.content_index !== null)
-        ? ` · paragraph ${p.content_index + 1}`
-        : ''
-      return `paragraph (section ${p.section_index}${para})`
-    }
-    return 'paragraph'
-  }
+  if (scope === 'full_paper') return 'Full paper'
+  if (scope === 'section') return `Section: ${props.proposal.section_title || '?'}`
+  if (scope === 'subsection') return `Subsection: ${props.proposal.subsection_title || '?'}`
+  if (scope === 'abstract') return 'Abstract'
   return scope
 })
 
-function _stringify(v) {
-  if (v === null || v === undefined) return ''
-  if (typeof v === 'string') return v
-  try { return JSON.stringify(v, null, 2) } catch { return String(v) }
-}
+const targetLangLabel = computed<string>(() => {
+  const lang = props.proposal.target_language
+  if (!lang) return ''
+  const map: Record<string, string> = {
+    en: 'EN',
+    id: 'ID',
+    es: 'ES',
+    fr: 'FR',
+    de: 'DE',
+    zh: 'ZH',
+    ja: 'JA',
+    ko: 'KO',
+  }
+  return map[lang] || lang.toUpperCase()
+})
 
-const originalText = computed(() => _stringify(props.proposal.text))
-const rewriteText = computed(() => _stringify(props.proposal.rewrite))
+const originalText = computed<string>(() => {
+  return props.proposal.original_text || ''
+})
 
-async function onAccept() {
-  if (status.value !== 'pending' || busy.value) return
+const rewriteText = computed<string>(() => {
+  return props.proposal.rewrite_text || ''
+})
+
+async function onAccept(): Promise<void> {
+  if (busy.value) return
   busy.value = true
-  const p = props.proposal
   try {
-    if (p.scope === 'paragraph' && p.section_index !== undefined && p.content_index !== undefined) {
-      await paperStore.replaceContent(p.section_index, p.content_index, p.rewrite)
-    } else if (p.scope === 'section' && p.section_index !== undefined) {
-      await paperStore.replaceSectionText(p.section_index, p.rewrite)
-    } else if (p.scope === 'whole') {
-      await paperStore.replaceWhole(p.rewrite)
-    } else if (p.section_index !== undefined && p.content_index !== undefined) {
-      await paperStore.replaceContent(p.section_index, p.content_index, p.rewrite)
-    } else if (p.section_index !== undefined) {
-      await paperStore.replaceSectionText(p.section_index, p.rewrite)
-    } else {
-      throw new Error('Tidak ada target section/paragraph yang valid')
-    }
-    status.value = 'accepted'
-    emit('accepted', p)
-    emit('revisi-accept', p)
-  } catch (e) {
-    console.warn('Apply revisi failed', e)
-    paperStore.showToast?.('Gagal apply: ' + (e?.message || e), 'error')
+    await store.acceptRevisionProposal(props.proposal.id)
   } finally {
     busy.value = false
   }
 }
 
-function onReject() {
-  if (status.value !== 'pending') return
-  status.value = 'rejected'
-  emit('rejected', props.proposal)
-  emit('revisi-reject', props.proposal)
+async function onReject(): Promise<void> {
+  if (busy.value) return
+  busy.value = true
+  try {
+    await store.rejectRevisionProposal(props.proposal.id)
+  } finally {
+    busy.value = false
+  }
 }
 </script>
 
@@ -223,15 +206,15 @@ function onReject() {
   color: var(--text-strong, #1f2937);
 }
 
-:deep(html.dark) .diff-original {
+.dark .diff-original {
   background: rgba(220, 38, 38, 0.12);
   border-color: rgba(220, 38, 38, 0.3);
 }
-:deep(html.dark) .diff-rewrite {
+.dark .diff-rewrite {
   background: rgba(16, 185, 129, 0.12);
   border-color: rgba(16, 185, 129, 0.3);
 }
-:deep(html.dark) .diff-label { color: #fca5a5; }
-:deep(html.dark) .diff-label-rewrite { color: #6ee7b7; }
-:deep(html.dark) .diff-text { color: #eddbac; }
+.dark .diff-label { color: #fca5a5; }
+.dark .diff-label-rewrite { color: #6ee7b7; }
+.dark .diff-text { color: #eddbac; }
 </style>

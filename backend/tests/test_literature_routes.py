@@ -1,4 +1,5 @@
 """Tests for slr_bp Literature endpoints."""
+
 from __future__ import annotations
 
 import os
@@ -20,19 +21,22 @@ os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 
 try:
     import slr_worker
+
     slr_worker._started = True
 except Exception:
     pass
 try:
     import image_worker
+
     image_worker._started = True
 except Exception:
     pass
 
 try:
-    from app import app as flask_app
-    from models import db, User, Paper, LiteratureItem
     from flask_jwt_extended import create_access_token
+
+    from app import app as flask_app
+    from database.models import LiteratureItem, Paper, User, db
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed: {e}", allow_module_level=True)
 
@@ -75,6 +79,7 @@ def _hdr(user):
 
 # ─── POST /literature ────────────────────────────────────────────────────
 
+
 def test_post_literature_requires_title(client, app):
     user = _user()
     paper = _paper(user)
@@ -113,6 +118,7 @@ def test_post_literature_bad_url_stored_as_none(client, app):
 
 
 # ─── PATCH /literature/<id> ──────────────────────────────────────────────
+
 
 def test_patch_whitelisted_fields_apply(client, app):
     user = _user()
@@ -164,8 +170,11 @@ def test_patch_cannot_mutate_protected_fields(client, app):
     user = _user()
     paper = _paper(user)
     item = LiteratureItem(
-        paper_id=paper.id, user_id=user.id, title="x",
-        score_total=0.5, slr_job_id=None,
+        paper_id=paper.id,
+        user_id=user.id,
+        title="x",
+        score_total=0.5,
+        slr_job_id=None,
     )
     db.session.add(item)
     db.session.commit()
@@ -191,6 +200,7 @@ def test_patch_cannot_mutate_protected_fields(client, app):
 
 # ─── DELETE /literature/<id> ─────────────────────────────────────────────
 
+
 def test_delete_literature_removes_row(client, app):
     user = _user()
     paper = _paper(user)
@@ -209,6 +219,7 @@ def test_delete_literature_removes_row(client, app):
 
 
 # ─── Cross-user 404 ──────────────────────────────────────────────────────
+
 
 def test_cross_user_get_returns_404(client, app):
     alice = _user("a@e.com", "a")
@@ -256,13 +267,20 @@ def test_cross_user_delete_returns_404(client, app):
 
 # ─── Ordering: pinned first ──────────────────────────────────────────────
 
+
 def test_get_returns_pinned_items_first(client, app):
     user = _user()
     paper = _paper(user)
-    db.session.add(LiteratureItem(paper_id=paper.id, user_id=user.id,
-                                  title="plain", pinned=False, score_total=0.9))
-    db.session.add(LiteratureItem(paper_id=paper.id, user_id=user.id,
-                                  title="pinned-low", pinned=True, score_total=0.1))
+    db.session.add(
+        LiteratureItem(
+            paper_id=paper.id, user_id=user.id, title="plain", pinned=False, score_total=0.9
+        )
+    )
+    db.session.add(
+        LiteratureItem(
+            paper_id=paper.id, user_id=user.id, title="pinned-low", pinned=True, score_total=0.1
+        )
+    )
     db.session.commit()
 
     resp = client.get(f"/api/papers/{paper.id}/literature", headers=_hdr(user))

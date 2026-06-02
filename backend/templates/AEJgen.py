@@ -16,6 +16,7 @@ Menggunakan AEJ.docx sebagai base template (paste keep formatting):
 Naming convention:
   python AEJgen.py    →  AEJ_output.docx
 """
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,7 @@ from pathlib import Path
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Inches, Pt, RGBColor
+from docx.shared import Inches, Pt, RGBColor
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -58,11 +59,9 @@ CFG = {
     "columns_body": 2,
     "col_width_tw": 4796,
     "col_space_tw": 461,
-
     # Fonts (template pakai Calibri konsisten)
     "font_main": "Calibri",
     "font_formula": "Cambria Math",
-
     # Sizes (pt) sesuai sz=hpt/2
     "size_journal_label": 11,
     "size_title": 9,
@@ -78,43 +77,35 @@ CFG = {
     "size_table_body": 8,
     "size_formula": 9,
     "size_reference": 7.5,
-
     # Colors
     "color_body": "000000",
     "color_section": "943634",
     "color_subsection": "943634",
     "color_journal": "943634",
-
     # Section heading format: "1.0  INTRODUCTION"
     "section_heading_format": "decimal_zero_upper",
-    "subsection_format": "decimal_dot",   # "2.1 Subjudul"
-
+    "subsection_format": "decimal_dot",  # "2.1 Subjudul"
     # Figure / Table prefix (AEJ pakai bahasa Inggris)
     "fig_prefix": "Figure",
     "tbl_prefix": "Table",
     "tbl_number_format": "arabic",
     "fig_number_format": "arabic",
-
     # Table borders: three-line top+bottom only (template AEJ standar)
     "table_borders": "three_line",
     "table_border_size": 4,
-
     # Spacing body (template line=240=single, sp_after=0)
     "line_spacing_body": 240,
     "line_spacing_rule": "auto",
-
     # Indent body — template pakai first-line 187tw / 284tw (paragraf 2+)
     "ind_left_tw": 0,
     "ind_right_tw": 0,
     "first_line_indent_tw": 187,
-
     # Reference hanging indent
     "ref_hanging_indent_tw": 426,
     "ref_left_indent_tw": 426,
     "ref_numbering": "bracket",
-
     # Image
-    "image_max_width_in": 3.0,   # 1 kolom AEJ ~3 inch
+    "image_max_width_in": 3.0,  # 1 kolom AEJ ~3 inch
 }
 
 # ══════════════════════════════════════════════════════════════════════
@@ -127,9 +118,10 @@ def _set_ai_prompt_color_red(doc):
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
-    from docx.shared import RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.shared import RGBColor
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -176,13 +168,15 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
 
+
 def load_json() -> dict:
     with open(TEMPLATE_JSON, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def set_run_font(run, name=None, size_pt=None, bold=False, italic=False,
-                 color=None, underline=False):
+def set_run_font(
+    run, name=None, size_pt=None, bold=False, italic=False, color=None, underline=False
+):
     if name:
         run.font.name = name
         rPr = run._r.get_or_add_rPr()
@@ -257,6 +251,7 @@ def _collect_header_footer_refs(doc):
     Template AEJ menyimpan refs di sectPr INLINE #0, bukan di final sectPr —
     sehingga tanpa langkah ini header/footer template hilang."""
     import copy as _copy
+
     refs = []
     body = doc.element.body
     for sectPr in body.iter(qn("w:sectPr")):
@@ -329,6 +324,7 @@ def _clone_header_footer_refs(target_sectPr, source_sectPr):
     if source_sectPr is None:
         return
     import copy as _copy
+
     for ref_tag in ("headerReference", "footerReference", "titlePg"):
         for ref in source_sectPr.findall(qn(f"w:{ref_tag}")):
             target_sectPr.append(_copy.deepcopy(ref))
@@ -350,6 +346,7 @@ def add_section_break(doc, *, columns: int, inject_refs: list | None = None):
     # Inject refs di awal sectPr kalau diberikan (untuk Section 1 unique config)
     if inject_refs:
         import copy as _copy
+
         for ref in inject_refs:
             sectPr.append(_copy.deepcopy(ref))
 
@@ -391,33 +388,108 @@ def add_section_break(doc, *, columns: int, inject_refs: list | None = None):
 # LATEX → UNICODE (sama seperti CCJgen, dipangkas seperlunya)
 # ══════════════════════════════════════════════════════════════════════
 _GREEK = {
-    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε",
-    "zeta": "ζ", "eta": "η", "theta": "θ", "iota": "ι", "kappa": "κ",
-    "lambda": "λ", "mu": "μ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ",
-    "sigma": "σ", "tau": "τ", "upsilon": "υ", "phi": "φ", "chi": "χ",
-    "psi": "ψ", "omega": "ω", "Alpha": "Α", "Beta": "Β", "Gamma": "Γ",
-    "Delta": "Δ", "Theta": "Θ", "Lambda": "Λ", "Pi": "Π", "Sigma": "Σ",
-    "Phi": "Φ", "Omega": "Ω",
+    "alpha": "α",
+    "beta": "β",
+    "gamma": "γ",
+    "delta": "δ",
+    "epsilon": "ε",
+    "zeta": "ζ",
+    "eta": "η",
+    "theta": "θ",
+    "iota": "ι",
+    "kappa": "κ",
+    "lambda": "λ",
+    "mu": "μ",
+    "nu": "ν",
+    "xi": "ξ",
+    "pi": "π",
+    "rho": "ρ",
+    "sigma": "σ",
+    "tau": "τ",
+    "upsilon": "υ",
+    "phi": "φ",
+    "chi": "χ",
+    "psi": "ψ",
+    "omega": "ω",
+    "Alpha": "Α",
+    "Beta": "Β",
+    "Gamma": "Γ",
+    "Delta": "Δ",
+    "Theta": "Θ",
+    "Lambda": "Λ",
+    "Pi": "Π",
+    "Sigma": "Σ",
+    "Phi": "Φ",
+    "Omega": "Ω",
 }
 _SYMBOLS = {
-    r"\cdot": "·", r"\times": "×", r"\div": "÷", r"\pm": "±",
-    r"\approx": "≈", r"\le": "≤", r"\ge": "≥", r"\leq": "≤", r"\geq": "≥",
-    r"\neq": "≠", r"\ne": "≠", r"\equiv": "≡", r"\propto": "∝",
-    r"\ldots": "…", r"\dots": "…", r"\circ": "°", r"\infty": "∞",
-    r"\rightarrow": "→", r"\to": "→", r"\leftarrow": "←",
-    r"\sum": "Σ", r"\prod": "Π", r"\int": "∫", r"\partial": "∂",
-    r"\quad": "  ", r"\qquad": "    ", r"\,": " ", r"\;": " ", r"\!": "",
-    r"\left": "", r"\right": "",
+    r"\cdot": "·",
+    r"\times": "×",
+    r"\div": "÷",
+    r"\pm": "±",
+    r"\approx": "≈",
+    r"\le": "≤",
+    r"\ge": "≥",
+    r"\leq": "≤",
+    r"\geq": "≥",
+    r"\neq": "≠",
+    r"\ne": "≠",
+    r"\equiv": "≡",
+    r"\propto": "∝",
+    r"\ldots": "…",
+    r"\dots": "…",
+    r"\circ": "°",
+    r"\infty": "∞",
+    r"\rightarrow": "→",
+    r"\to": "→",
+    r"\leftarrow": "←",
+    r"\sum": "Σ",
+    r"\prod": "Π",
+    r"\int": "∫",
+    r"\partial": "∂",
+    r"\quad": "  ",
+    r"\qquad": "    ",
+    r"\,": " ",
+    r"\;": " ",
+    r"\!": "",
+    r"\left": "",
+    r"\right": "",
 }
 _SUP_MAP = {
-    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵",
-    "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻",
-    "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ",
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "+": "⁺",
+    "-": "⁻",
+    "=": "⁼",
+    "(": "⁽",
+    ")": "⁾",
+    "n": "ⁿ",
+    "i": "ⁱ",
 }
 _SUB_MAP = {
-    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅",
-    "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋",
-    "=": "₌", "(": "₍", ")": "₎",
+    "0": "₀",
+    "1": "₁",
+    "2": "₂",
+    "3": "₃",
+    "4": "₄",
+    "5": "₅",
+    "6": "₆",
+    "7": "₇",
+    "8": "₈",
+    "9": "₉",
+    "+": "₊",
+    "-": "₋",
+    "=": "₌",
+    "(": "₍",
+    ")": "₎",
 }
 
 
@@ -452,25 +524,25 @@ def _expand_frac(s: str) -> str:
             return s
         i = m.end()
         if i >= len(s) or s[i] != "{":
-            s = s[:m.start()] + "frac" + s[i:]
+            s = s[: m.start()] + "frac" + s[i:]
             continue
         first = _balanced_brace_pair(s, i)
         if first is None:
-            s = s[:m.start()] + "frac" + s[i:]
+            s = s[: m.start()] + "frac" + s[i:]
             continue
-        a = s[first[0] + 1:first[1] - 1]
+        a = s[first[0] + 1 : first[1] - 1]
         j = first[1]
         while j < len(s) and s[j].isspace():
             j += 1
         if j >= len(s) or s[j] != "{":
-            s = s[:m.start()] + f"({a})" + s[first[1]:]
+            s = s[: m.start()] + f"({a})" + s[first[1] :]
             continue
         second = _balanced_brace_pair(s, j)
         if second is None:
-            s = s[:m.start()] + f"({a})" + s[first[1]:]
+            s = s[: m.start()] + f"({a})" + s[first[1] :]
             continue
-        b = s[second[0] + 1:second[1] - 1]
-        s = s[:m.start()] + f"({a})/({b})" + s[second[1]:]
+        b = s[second[0] + 1 : second[1] - 1]
+        s = s[: m.start()] + f"({a})/({b})" + s[second[1] :]
 
 
 def latex_to_unicode(latex: str) -> str:
@@ -478,8 +550,7 @@ def latex_to_unicode(latex: str) -> str:
     if s.startswith("$") and s.endswith("$"):
         s = s[1:-1]
 
-    for cmd in ("mathrm", "mathbf", "mathit", "mathsf", "mathtt", "bm",
-                "text", "operatorname"):
+    for cmd in ("mathrm", "mathbf", "mathit", "mathsf", "mathtt", "bm", "text", "operatorname"):
         for _ in range(4):
             new = re.sub(r"\\" + cmd + r"\s*\{([^{}]*)\}", r"\1", s)
             if new == s:
@@ -513,6 +584,7 @@ def latex_to_unicode(latex: str) -> str:
 
     def greek_repl(m):
         return _GREEK.get(m.group(1), m.group(0))
+
     s = re.sub(r"\\([A-Za-z]+)", greek_repl, s)
 
     pairs = sorted(_SYMBOLS.items(), key=lambda kv: -len(kv[0]))
@@ -523,6 +595,7 @@ def latex_to_unicode(latex: str) -> str:
         body = m.group(1)
         mapped = _try_map(body, _SUP_MAP)
         return mapped if mapped is not None else f"^({body})"
+
     s = re.sub(r"\^\{([^{}]+)\}", sup_braced, s)
     s = re.sub(r"\^([0-9+\-=])", lambda m: _SUP_MAP[m.group(1)], s)
     s = re.sub(r"\^([A-Za-z])", lambda m: f"^{m.group(1)}", s)
@@ -531,6 +604,7 @@ def latex_to_unicode(latex: str) -> str:
         body = m.group(1)
         mapped = _try_map(body, _SUB_MAP)
         return mapped if mapped is not None else f"_({body})"
+
     s = re.sub(r"_\{([^{}]+)\}", sub_braced, s)
     s = re.sub(r"_([0-9+\-=])", lambda m: _SUB_MAP[m.group(1)], s)
     s = re.sub(r"_([A-Za-z])", lambda m: f"_{m.group(1)}", s)
@@ -546,8 +620,7 @@ def latex_to_unicode(latex: str) -> str:
 _INLINE_RE = re.compile(r"(\\b[^\\]+?\\b|\$[^$]+\$)")
 
 
-def add_inline_runs(paragraph, text: str, *, font, size, color, bold=False,
-                    italic=False):
+def add_inline_runs(paragraph, text: str, *, font, size, color, bold=False, italic=False):
     if not text:
         return
     parts = _INLINE_RE.split(text)
@@ -564,8 +637,7 @@ def add_inline_runs(paragraph, text: str, *, font, size, color, bold=False,
             render = latex_to_unicode(part)
             is_italic = True
         run = paragraph.add_run(render)
-        set_run_font(run, name=font, size_pt=size, bold=is_bold,
-                     italic=is_italic, color=color)
+        set_run_font(run, name=font, size_pt=size, bold=is_bold, italic=is_italic, color=color)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -578,17 +650,29 @@ def add_cover(doc, data):
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     set_paragraph_indent(p, left=0, right=0, first_line=0)
     run = p.add_run("ASEAN Engineering Journal")
-    set_run_font(run, name=CFG["font_main"],
-                 size_pt=CFG["size_journal_label"], bold=True,
-                 color=CFG["color_journal"])
+    set_run_font(
+        run,
+        name=CFG["font_main"],
+        size_pt=CFG["size_journal_label"],
+        bold=True,
+        color=CFG["color_journal"],
+    )
     tab_run = p.add_run("\t\t")
-    set_run_font(tab_run, name=CFG["font_main"],
-                 size_pt=CFG["size_journal_label"],
-                 color=CFG["color_journal"])
+    set_run_font(
+        tab_run,
+        name=CFG["font_main"],
+        size_pt=CFG["size_journal_label"],
+        color=CFG["color_journal"],
+    )
     fp_run = p.add_run("Full Paper")
-    set_run_font(fp_run, name=CFG["font_main"],
-                 size_pt=CFG["size_journal_label"], bold=True, italic=True,
-                 color=CFG["color_journal"])
+    set_run_font(
+        fp_run,
+        name=CFG["font_main"],
+        size_pt=CFG["size_journal_label"],
+        bold=True,
+        italic=True,
+        color=CFG["color_journal"],
+    )
 
     # Title
     title = data.get("title", "Paper Title Goes Here")
@@ -597,23 +681,27 @@ def add_cover(doc, data):
     set_paragraph_spacing(tp, before=240, after=120, line=240, line_rule="auto")
     set_paragraph_indent(tp, left=0, right=0, first_line=0)
     trun = tp.add_run(title.upper())
-    set_run_font(trun, name=CFG["font_main"], size_pt=CFG["size_title"],
-                 bold=True, color=CFG["color_body"])
+    set_run_font(
+        trun, name=CFG["font_main"], size_pt=CFG["size_title"], bold=True, color=CFG["color_body"]
+    )
 
     # Authors
-    authors = data.get("authors") or [{
-        "name": "Author Name",
-        "affiliation": "Department, University",
-        "location": "City, Country",
-        "email": "author@email.ac.id",
-    }]
+    authors = data.get("authors") or [
+        {
+            "name": "Author Name",
+            "affiliation": "Department, University",
+            "location": "City, Country",
+            "email": "author@email.ac.id",
+        }
+    ]
     ap = doc.add_paragraph()
     set_paragraph_alignment(ap, "left")
     set_paragraph_spacing(ap, before=60, after=60, line=240, line_rule="auto")
     set_paragraph_indent(ap, left=0, right=0, first_line=0)
     arun = ap.add_run(", ".join(a.get("name", "Author") for a in authors))
-    set_run_font(arun, name=CFG["font_main"], size_pt=CFG["size_authors"],
-                 bold=True, color=CFG["color_body"])
+    set_run_font(
+        arun, name=CFG["font_main"], size_pt=CFG["size_authors"], bold=True, color=CFG["color_body"]
+    )
 
     # Affiliations (gabung unik)
     seen = set()
@@ -623,54 +711,70 @@ def add_cover(doc, data):
             seen.add(line)
             af = doc.add_paragraph()
             set_paragraph_alignment(af, "left")
-            set_paragraph_spacing(af, before=0, after=0, line=240,
-                                  line_rule="auto")
+            set_paragraph_spacing(af, before=0, after=0, line=240, line_rule="auto")
             set_paragraph_indent(af, left=0, right=0, first_line=0)
             arun = af.add_run(line)
-            set_run_font(arun, name=CFG["font_main"],
-                         size_pt=CFG["size_history"], italic=True,
-                         color=CFG["color_body"])
+            set_run_font(
+                arun,
+                name=CFG["font_main"],
+                size_pt=CFG["size_history"],
+                italic=True,
+                color=CFG["color_body"],
+            )
 
     emails = [a.get("email") for a in authors if a.get("email")]
     if emails:
         ep = doc.add_paragraph()
         set_paragraph_alignment(ep, "left")
-        set_paragraph_spacing(ep, before=0, after=120, line=240,
-                              line_rule="auto")
+        set_paragraph_spacing(ep, before=0, after=120, line=240, line_rule="auto")
         set_paragraph_indent(ep, left=0, right=0, first_line=0)
         run = ep.add_run("*Corresponding author: " + emails[0])
-        set_run_font(run, name=CFG["font_main"],
-                     size_pt=CFG["size_history"], italic=True,
-                     color=CFG["color_body"])
+        set_run_font(
+            run,
+            name=CFG["font_main"],
+            size_pt=CFG["size_history"],
+            italic=True,
+            color=CFG["color_body"],
+        )
 
     # Article history line (placeholder)
     hp = doc.add_paragraph()
     set_paragraph_alignment(hp, "left")
     set_paragraph_spacing(hp, before=0, after=120, line=240, line_rule="auto")
     set_paragraph_indent(hp, left=0, right=0, first_line=0)
-    hrun = hp.add_run("Article history: Received - ; Received in revised form - ; "
-                      "Accepted - ; Published online -")
-    set_run_font(hrun, name=CFG["font_main"], size_pt=CFG["size_history"],
-                 italic=True, color=CFG["color_body"])
+    hrun = hp.add_run(
+        "Article history: Received - ; Received in revised form - ; "
+        "Accepted - ; Published online -"
+    )
+    set_run_font(
+        hrun,
+        name=CFG["font_main"],
+        size_pt=CFG["size_history"],
+        italic=True,
+        color=CFG["color_body"],
+    )
 
     # Abstract
     abstract = data.get("abstract") or (
         "Abstract text goes here. This section should contain 150-250 words "
-        "summarizing the paper.")
+        "summarizing the paper."
+    )
     bp = doc.add_paragraph()
     set_paragraph_alignment(bp, "both")
     set_paragraph_spacing(bp, before=120, after=60, line=240, line_rule="auto")
     set_paragraph_indent(bp, left=0, right=0, first_line=0)
     label = bp.add_run("Abstract")
-    set_run_font(label, name=CFG["font_main"],
-                 size_pt=CFG["size_abstract_label"], bold=True,
-                 color="943634")
+    set_run_font(
+        label, name=CFG["font_main"], size_pt=CFG["size_abstract_label"], bold=True, color="943634"
+    )
     sep = bp.add_run("\n")
-    set_run_font(sep, name=CFG["font_main"],
-                 size_pt=CFG["size_abstract_label"], color=CFG["color_body"])
+    set_run_font(
+        sep, name=CFG["font_main"], size_pt=CFG["size_abstract_label"], color=CFG["color_body"]
+    )
     body = bp.add_run(abstract)
-    set_run_font(body, name=CFG["font_main"],
-                 size_pt=CFG["size_abstract_body"], color=CFG["color_body"])
+    set_run_font(
+        body, name=CFG["font_main"], size_pt=CFG["size_abstract_body"], color=CFG["color_body"]
+    )
 
     # Keywords
     keywords = data.get("keywords") or ["keyword1", "keyword2"]
@@ -679,11 +783,21 @@ def add_cover(doc, data):
     set_paragraph_spacing(kp, before=60, after=120, line=240, line_rule="auto")
     set_paragraph_indent(kp, left=0, right=0, first_line=0)
     klabel = kp.add_run("Keywords: ")
-    set_run_font(klabel, name=CFG["font_main"], size_pt=CFG["size_keywords"],
-                 bold=True, color=CFG["color_body"])
+    set_run_font(
+        klabel,
+        name=CFG["font_main"],
+        size_pt=CFG["size_keywords"],
+        bold=True,
+        color=CFG["color_body"],
+    )
     kbody = kp.add_run(", ".join(keywords))
-    set_run_font(kbody, name=CFG["font_main"], size_pt=CFG["size_keywords"],
-                 italic=True, color=CFG["color_body"])
+    set_run_font(
+        kbody,
+        name=CFG["font_main"],
+        size_pt=CFG["size_keywords"],
+        italic=True,
+        color=CFG["color_body"],
+    )
 
     # Copyright line
     cp = doc.add_paragraph()
@@ -691,8 +805,13 @@ def add_cover(doc, data):
     set_paragraph_spacing(cp, before=60, after=120, line=240, line_rule="auto")
     set_paragraph_indent(cp, left=0, right=0, first_line=0)
     crun = cp.add_run("© 2026 Penerbit UTM Press. All rights reserved")
-    set_run_font(crun, name=CFG["font_main"], size_pt=CFG["size_history"],
-                 italic=True, color=CFG["color_body"])
+    set_run_font(
+        crun,
+        name=CFG["font_main"],
+        size_pt=CFG["size_history"],
+        italic=True,
+        color=CFG["color_body"],
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -727,8 +846,13 @@ def add_section_heading(doc, idx: int, title: str):
     set_paragraph_spacing(p, before=120, after=80, line=240, line_rule="auto")
     set_paragraph_indent(p, left=0, right=0, first_line=0)
     run = p.add_run(_section_label(idx, title))
-    set_run_font(run, name=CFG["font_main"], size_pt=CFG["size_section"],
-                 bold=True, color=CFG["color_section"])
+    set_run_font(
+        run,
+        name=CFG["font_main"],
+        size_pt=CFG["size_section"],
+        bold=True,
+        color=CFG["color_section"],
+    )
 
     # Trailing blank
     blank2 = doc.add_paragraph()
@@ -741,18 +865,27 @@ def add_subsection_heading(doc, idx_section: int, idx_sub: int, title: str):
     set_paragraph_spacing(p, before=120, after=60, line=240, line_rule="auto")
     set_paragraph_indent(p, left=0, right=0, first_line=0)
     run = p.add_run(_subsection_label(idx_section, idx_sub, title))
-    set_run_font(run, name=CFG["font_main"], size_pt=CFG["size_subsection"],
-                 bold=True, italic=True, color=CFG["color_subsection"])
+    set_run_font(
+        run,
+        name=CFG["font_main"],
+        size_pt=CFG["size_subsection"],
+        bold=True,
+        italic=True,
+        color=CFG["color_subsection"],
+    )
 
 
 def add_body_text(doc, text: str, first=False):
     p = doc.add_paragraph()
     set_paragraph_alignment(p, "both")
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
-    set_paragraph_indent(p, left=CFG["ind_left_tw"], right=CFG["ind_right_tw"],
-                         first_line=0 if first else CFG["first_line_indent_tw"])
-    add_inline_runs(p, text, font=CFG["font_main"], size=CFG["size_body"],
-                    color=CFG["color_body"])
+    set_paragraph_indent(
+        p,
+        left=CFG["ind_left_tw"],
+        right=CFG["ind_right_tw"],
+        first_line=0 if first else CFG["first_line_indent_tw"],
+    )
+    add_inline_runs(p, text, font=CFG["font_main"], size=CFG["size_body"], color=CFG["color_body"])
 
 
 def add_figure(doc, fig: dict):
@@ -772,13 +905,16 @@ def add_figure(doc, fig: dict):
     if img_path and img_path.exists():
         run = img_p.add_run()
         try:
-            run.add_picture(str(img_path),
-                            width=Inches(CFG["image_max_width_in"]))
+            run.add_picture(str(img_path), width=Inches(CFG["image_max_width_in"]))
         except Exception as exc:
             run.text = f"[Gambar gagal dimuat: {exc}]"
-            set_run_font(run, name=CFG["font_main"],
-                         size_pt=CFG["size_caption"], italic=True,
-                         color=CFG["color_body"])
+            set_run_font(
+                run,
+                name=CFG["font_main"],
+                size_pt=CFG["size_caption"],
+                italic=True,
+                color=CFG["color_body"],
+            )
     else:
         prompt_text = str(fig.get("Prompt", "")).strip() if isinstance(fig, dict) else ""
         body_parts = []
@@ -788,20 +924,28 @@ def add_figure(doc, fig: dict):
             body_parts.append(prompt_text)
         body = ". ".join(body_parts) if body_parts else (raw_path or "Gambar")
         run = img_p.add_run(f"[PROMPT UNTUK AI GAMBAR: {body}]")
-        set_run_font(run, name=CFG["font_main"], size_pt=CFG["size_caption"],
-                     italic=True, color=CFG["color_body"])
+        set_run_font(
+            run,
+            name=CFG["font_main"],
+            size_pt=CFG["size_caption"],
+            italic=True,
+            color=CFG["color_body"],
+        )
 
     cap = doc.add_paragraph()
     set_paragraph_alignment(cap, "center")
-    set_paragraph_spacing(cap, before=60, after=120, line=240,
-                          line_rule="auto")
+    set_paragraph_spacing(cap, before=60, after=120, line=240, line_rule="auto")
     set_paragraph_indent(cap, left=0, right=0, first_line=0)
     label = cap.add_run(f"{CFG['fig_prefix']} {img_num} ")
-    set_run_font(label, name=CFG["font_main"], size_pt=CFG["size_caption"],
-                 bold=True, color=CFG["color_body"])
+    set_run_font(
+        label,
+        name=CFG["font_main"],
+        size_pt=CFG["size_caption"],
+        bold=True,
+        color=CFG["color_body"],
+    )
     rest = cap.add_run(title)
-    set_run_font(rest, name=CFG["font_main"], size_pt=CFG["size_caption"],
-                 color=CFG["color_body"])
+    set_run_font(rest, name=CFG["font_main"], size_pt=CFG["size_caption"], color=CFG["color_body"])
 
 
 def add_formula(doc, formula: dict):
@@ -826,20 +970,25 @@ def add_formula(doc, formula: dict):
     tabs.append(tab)
 
     run = p.add_run(rendered)
-    set_run_font(run, name=CFG["font_formula"], size_pt=CFG["size_formula"],
-                 italic=True, color=CFG["color_body"])
+    set_run_font(
+        run,
+        name=CFG["font_formula"],
+        size_pt=CFG["size_formula"],
+        italic=True,
+        color=CFG["color_body"],
+    )
 
     tab_run = p.add_run()
     tab_xml = OxmlElement("w:tab")
     tab_run._r.append(tab_xml)
 
     num_run = p.add_run(f"({num})")
-    set_run_font(num_run, name=CFG["font_main"], size_pt=CFG["size_formula"],
-                 color=CFG["color_body"])
+    set_run_font(
+        num_run, name=CFG["font_main"], size_pt=CFG["size_formula"], color=CFG["color_body"]
+    )
 
 
-def _set_three_line_borders(cell, *, is_first_row: bool, is_last_row: bool,
-                            size: int = 4):
+def _set_three_line_borders(cell, *, is_first_row: bool, is_last_row: bool, size: int = 4):
     tcPr = cell._tc.get_or_add_tcPr()
     tcBorders = tcPr.find(qn("w:tcBorders"))
     if tcBorders is None:
@@ -878,11 +1027,15 @@ def add_table(doc, tbl: dict):
     set_paragraph_spacing(cap, before=120, after=60, line=240, line_rule="auto")
     set_paragraph_indent(cap, left=0, right=0, first_line=0)
     label = cap.add_run(f"{CFG['tbl_prefix']} {num}")
-    set_run_font(label, name=CFG["font_main"], size_pt=CFG["size_caption"],
-                 bold=True, color=CFG["color_body"])
+    set_run_font(
+        label,
+        name=CFG["font_main"],
+        size_pt=CFG["size_caption"],
+        bold=True,
+        color=CFG["color_body"],
+    )
     rest = cap.add_run(f"  {title}")
-    set_run_font(rest, name=CFG["font_main"], size_pt=CFG["size_caption"],
-                 color=CFG["color_body"])
+    set_run_font(rest, name=CFG["font_main"], size_pt=CFG["size_caption"], color=CFG["color_body"])
 
     n_cols = len(headers)
     table = doc.add_table(rows=1 + len(rows), cols=n_cols)
@@ -893,38 +1046,45 @@ def add_table(doc, tbl: dict):
     for i, h in enumerate(headers):
         cell = hdr_cells[i]
         cell.text = ""
-        _set_three_line_borders(cell, is_first_row=True,
-                                is_last_row=False,
-                                size=CFG["table_border_size"])
+        _set_three_line_borders(
+            cell, is_first_row=True, is_last_row=False, size=CFG["table_border_size"]
+        )
         p = cell.paragraphs[0]
         set_paragraph_alignment(p, "center")
-        set_paragraph_spacing(p, before=20, after=20, line=240,
-                              line_rule="auto")
+        set_paragraph_spacing(p, before=20, after=20, line=240, line_rule="auto")
         set_paragraph_indent(p, left=0, right=0, first_line=0)
         run = p.add_run(str(h))
-        set_run_font(run, name=CFG["font_main"], size_pt=CFG["size_table_body"],
-                     bold=True, color=CFG["color_body"])
+        set_run_font(
+            run,
+            name=CFG["font_main"],
+            size_pt=CFG["size_table_body"],
+            bold=True,
+            color=CFG["color_body"],
+        )
 
     # Data rows
     last_idx = len(rows)
     for r_idx, row in enumerate(rows, start=1):
-        is_last = (r_idx == last_idx)
+        is_last = r_idx == last_idx
         row_cells = table.rows[r_idx].cells
         for c_idx in range(n_cols):
             value = row[c_idx] if c_idx < len(row) else ""
             cell = row_cells[c_idx]
             cell.text = ""
-            _set_three_line_borders(cell, is_first_row=False,
-                                    is_last_row=is_last,
-                                    size=CFG["table_border_size"])
+            _set_three_line_borders(
+                cell, is_first_row=False, is_last_row=is_last, size=CFG["table_border_size"]
+            )
             p = cell.paragraphs[0]
             set_paragraph_alignment(p, "center")
-            set_paragraph_spacing(p, before=20, after=20, line=240,
-                                  line_rule="auto")
+            set_paragraph_spacing(p, before=20, after=20, line=240, line_rule="auto")
             set_paragraph_indent(p, left=0, right=0, first_line=0)
-            add_inline_runs(p, str(value), font=CFG["font_main"],
-                            size=CFG["size_table_body"],
-                            color=CFG["color_body"])
+            add_inline_runs(
+                p,
+                str(value),
+                font=CFG["font_main"],
+                size=CFG["size_table_body"],
+                color=CFG["color_body"],
+            )
 
     # Trailing blank paragraph
     blank = doc.add_paragraph()
@@ -942,27 +1102,32 @@ def add_references(doc, data):
     set_paragraph_spacing(p, before=200, after=120, line=240, line_rule="auto")
     set_paragraph_indent(p, left=0, right=0, first_line=0)
     run = p.add_run(title.title() if title.isupper() else title)
-    set_run_font(run, name=CFG["font_main"], size_pt=CFG["size_section"],
-                 bold=True, color=CFG["color_section"])
+    set_run_font(
+        run,
+        name=CFG["font_main"],
+        size_pt=CFG["size_section"],
+        bold=True,
+        color=CFG["color_section"],
+    )
 
     for i, item in enumerate(items, start=1):
         rp = doc.add_paragraph()
         set_paragraph_alignment(rp, "both")
-        set_paragraph_spacing(rp, before=0, after=40, line=240,
-                              line_rule="auto")
-        set_paragraph_indent(rp,
-                             left=CFG["ref_left_indent_tw"],
-                             right=0,
-                             hanging=CFG["ref_hanging_indent_tw"])
+        set_paragraph_spacing(rp, before=0, after=40, line=240, line_rule="auto")
+        set_paragraph_indent(
+            rp, left=CFG["ref_left_indent_tw"], right=0, hanging=CFG["ref_hanging_indent_tw"]
+        )
         prefix = f"[{i}] " if CFG["ref_numbering"] == "bracket" else f"{i}. "
         text = re.sub(r"^\[\d+\]\s*", "", item.lstrip())
         text = re.sub(r"^\d+\.\s*", "", text)
         prun = rp.add_run(prefix)
-        set_run_font(prun, name=CFG["font_main"],
-                     size_pt=CFG["size_reference"], color=CFG["color_body"])
+        set_run_font(
+            prun, name=CFG["font_main"], size_pt=CFG["size_reference"], color=CFG["color_body"]
+        )
         body = rp.add_run(text)
-        set_run_font(body, name=CFG["font_main"],
-                     size_pt=CFG["size_reference"], color=CFG["color_body"])
+        set_run_font(
+            body, name=CFG["font_main"], size_pt=CFG["size_reference"], color=CFG["color_body"]
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -1001,15 +1166,15 @@ def process_section(doc, section_data: dict, idx_section: int):
                 process_content_item(doc, item)
 
     subsection_keys = sorted(
-        k for k in section_data.keys()
+        k
+        for k in section_data.keys()
         if k.startswith(f"section{idx_section}") and k != f"section{idx_section}"
     )
     for sub_idx, key in enumerate(subsection_keys, start=1):
         sub = section_data[key]
         if not isinstance(sub, dict):
             continue
-        add_subsection_heading(doc, idx_section, sub_idx,
-                               sub.get("title", f"Subsection {sub_idx}"))
+        add_subsection_heading(doc, idx_section, sub_idx, sub.get("title", f"Subsection {sub_idx}"))
         for i, item in enumerate(sub.get("content") or []):
             if isinstance(item, dict) and item.get("id") == "text" and i == 0:
                 add_body_text(doc, item.get("text", ""), first=True)

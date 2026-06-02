@@ -11,6 +11,7 @@ Covers:
 These tests mock the underlying API helpers (_generate_outline,
 _generate_section, _generate_references) so no network is involved.
 """
+
 from __future__ import annotations
 
 import os
@@ -27,12 +28,11 @@ if str(HERE) not in sys.path:
 os.environ.setdefault("AIOTOMASI_API", "https://example.invalid/api")
 os.environ.setdefault("AIOTOMASI_APIKEY", "test-key-not-real")
 
-import generate_paper_chunked as gpc  # noqa: E402
+import paper_generation.chunked as gpc  # noqa: E402
 from paper_generation.chunked import (  # noqa: E402
     GenerationCancelled,
     generate_paper_json_chunked,
 )
-
 
 # ─── Fixtures ────────────────────────────────────────────────────────────
 
@@ -69,9 +69,11 @@ def _fake_references(*_a, **_kw):
 @pytest.fixture()
 def patched_generators():
     """Patch the three internal chunk callers so tests run offline."""
-    with patch.object(gpc, "_generate_outline", side_effect=_fake_outline) as out_mock, \
-         patch.object(gpc, "_generate_section", side_effect=_fake_section) as sec_mock, \
-         patch.object(gpc, "_generate_references", side_effect=_fake_references) as ref_mock:
+    with (
+        patch.object(gpc, "_generate_outline", side_effect=_fake_outline) as out_mock,
+        patch.object(gpc, "_generate_section", side_effect=_fake_section) as sec_mock,
+        patch.object(gpc, "_generate_references", side_effect=_fake_references) as ref_mock,
+    ):
         yield {"outline": out_mock, "section": sec_mock, "references": ref_mock}
 
 
@@ -243,7 +245,7 @@ def test_load_full_context_helper_handles_empty_inputs():
 
 def test_load_full_context_under_30kb_cap():
     """_load_full_context output must stay under 30KB even with large inputs.
-    
+
     This guards against context bloat — the chunked generator already pushes
     50-130KB total prompt size, so the context injection must respect its budget.
     """
@@ -263,23 +265,27 @@ def test_references_prompt_contains_literature_catalog():
         "[L1] Sleep/Wake MAC for IoT — Smith et al. (2023) DOI: 10.1234/abc\n"
         "[L2] Energy Efficiency in WSN — Chen, Wang (2022) in IEEE Trans WSN\n"
     )
-    
+
     captured_messages = []
-    
+
     def fake_call(messages, *_a, **_kw):
         captured_messages.extend(messages)
         return ('{"references": ["[1] Smith et al. 2023.", "[2] Chen 2022."]}', "test-model")
-    
+
     outline = {"title": "Test", "abstract": "abs", "keywords": ["k"]}
     sections = [{"title": "INTRODUCTION", "content": [{"id": "text", "text": "Cited [L1] [L2]."}]}]
-    
+
     with patch.object(gpc, "_call_aiotomasi_with_fallback", side_effect=fake_call):
         refs = gpc._generate_references(
-            outline, sections, style=None,
-            api_key="x", base_url="http://x.invalid", model="V-OPUS",
+            outline,
+            sections,
+            style=None,
+            api_key="x",
+            base_url="http://x.invalid",
+            model="V-OPUS",
             custom_prompt=fake_lit_block,
         )
-    
+
     # System prompt should mention the curated literature entries.
     sys_prompt = next((m["content"] for m in captured_messages if m["role"] == "system"), "")
     assert "Sleep/Wake MAC for IoT" in sys_prompt or "Smith" in sys_prompt

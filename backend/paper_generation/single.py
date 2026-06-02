@@ -1,9 +1,10 @@
 """
-Single-shot full paper generation — V-OPUS only
-================================================
-Generates a complete academic paper in a single API call to V-OPUS. Replaces
-the chunked orchestrator for jobs that prefer one round-trip with the full
-prompt.txt schema rather than 7 stitched chunks.
+Single-shot full paper generation — VIOLA-GENERATE
+===================================================
+Generates a complete academic paper in a single API call using MODELGENERATE
+from env (VIOLA-GENERATE). Replaces the chunked orchestrator for jobs that
+prefer one round-trip with the full prompt.txt schema rather than 7 stitched
+chunks.
 
 Architecture
 ------------
@@ -11,7 +12,7 @@ Architecture
 2. USER message    = topic + project memory (via custom_prompt) + recent chat
                      history + literature catalog + attached file extracts +
                      additional instructions.
-3. API call        = V-OPUS only (no fallback chain), timeout=900s,
+3. API call        = MODELGENERATE from env (no fallback chain), timeout=900s,
                      max_tokens=32000, temperature=0.7.
 4. Post-process    = json_repair fallback on parse error, flatten the
                      section1..N keys produced by prompt.txt into a sections
@@ -20,8 +21,8 @@ Architecture
                      gets the canonical paper shape.
 
 Hard rules:
-  * Model is HARD-CODED to "V-OPUS". No model parameter, no env override.
-  * If V-OPUS fails, raise — no other model is attempted.
+  * Model is read from MODELGENERATE env var (VIOLA-GENERATE). No hard-coded model.
+  * If generation fails, raise — no other model is attempted.
 """
 
 from __future__ import annotations
@@ -34,9 +35,10 @@ import time
 from pathlib import Path
 
 import requests
-from core.env_loader import load_app_env
 from json_repair import repair_json
-from core.storage_helper import get_generation_log_path, _get_username_from_user_id
+
+from core.env_loader import load_app_env
+from core.storage_helper import _get_username_from_user_id, get_generation_log_path
 
 # GenerationCancelled is re-exported via app._run_generate_full_job; this module
 # does not raise it itself but the caller imports it from generate_paper_chunked.
@@ -44,7 +46,7 @@ from core.storage_helper import get_generation_log_path, _get_username_from_user
 log = logging.getLogger(__name__)
 
 # ── Generator turn-log helpers ───────────────────────────────────────────────
-# We persist the actual prompt sent to V-OPUS and the raw reply (plus parsed
+# We persist the actual prompt sent to the AI and the raw reply (plus parsed
 # shape + validation) under
 #   backend/data/<username>/<paper_id>/generation/<job_id>/
 # using the new storage structure from storage_helper.py
@@ -55,7 +57,7 @@ import json as _json
 def _gen_log_dir(user_id, paper_id, job_id) -> Path | None:
     """Build (and create) the per-job log directory.
 
-    Layout: ``backend/data/<username>/<paper_id>/generation/<job_id>/``. 
+    Layout: ``backend/data/<username>/<paper_id>/generation/<job_id>/``.
     Uses the new storage structure from storage_helper.py.
     """
     try:
@@ -104,6 +106,7 @@ def _validate_paper_shape(paper: dict) -> dict:
         issues.append("title empty")
     return {"ok": not issues, "issues": issues}
 
+
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
 load_app_env()
@@ -111,11 +114,11 @@ load_app_env()
 AIOTOMASI_API = os.getenv("AIOTOMASI_API")
 AIOTOMASI_APIKEY = os.getenv("AIOTOMASI_APIKEY")
 
-PROMPT_FILE = BASE_DIR / "prompt" / "prompt.txt"
-HUMANIZE_FILE = BASE_DIR / "prompt" / "humanize.txt"
+PROMPT_FILE = BASE_DIR.parent / "prompt" / "prompt.txt"
+HUMANIZE_FILE = BASE_DIR.parent / "prompt" / "humanize.txt"
 
-# V-OPUS is the only model used for single-shot generation. No fallback chain.
-SINGLE_SHOT_MODEL = "V-OPUS"
+# Model for single-shot generation from env (VIOLA-GENERATE). No fallback chain.
+SINGLE_SHOT_MODEL = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
 
 
 # ── System prompt builder ────────────────────────────────────────────────────
@@ -136,20 +139,16 @@ def _load_system_prompt(style: str | None = None, topic: str | None = None) -> s
         parts.append(HUMANIZE_FILE.read_text(encoding="utf-8"))
 
     if style:
-        style_file = BASE_DIR / "prompt" / "style" / f"{style}.txt"
+        style_file = BASE_DIR.parent / "prompt" / "style" / f"{style}.txt"
         if style_file.exists():
             parts.append(
-                f"## CITATION STYLE GUIDE — {style}\n"
-                + style_file.read_text(encoding="utf-8")
+                f"## CITATION STYLE GUIDE — {style}\n" + style_file.read_text(encoding="utf-8")
             )
 
     if topic:
-        topic_file = BASE_DIR / "prompt" / "topic" / f"{topic}.txt"
+        topic_file = BASE_DIR.parent / "prompt" / "topic" / f"{topic}.txt"
         if topic_file.exists():
-            parts.append(
-                f"## TOPIC GUIDE — {topic}\n"
-                + topic_file.read_text(encoding="utf-8")
-            )
+            parts.append(f"## TOPIC GUIDE — {topic}\n" + topic_file.read_text(encoding="utf-8"))
 
     return "\n\n".join(parts)
 
@@ -165,7 +164,7 @@ def _load_chat_history(conv_id: str | None, limit: int = 10) -> str:
     if not conv_id:
         return ""
     try:
-        from models import ChatMessage, db
+        from database.models import ChatMessage, db
 
         msgs = (
             db.session.query(ChatMessage)
@@ -192,7 +191,7 @@ def _load_literature(paper_id: str | None, limit: int = 50) -> str:
     if not paper_id:
         return ""
     try:
-        from models import LiteratureItem, db
+        from database.models import LiteratureItem, db
 
         items = (
             db.session.query(LiteratureItem)
@@ -237,14 +236,12 @@ def _load_literature(paper_id: str | None, limit: int = 50) -> str:
         return ""
 
 
-def _load_attached_files(
-    paper_id: str | None, limit: int = 5, char_cap: int = 800
-) -> str:
+def _load_attached_files(paper_id: str | None, limit: int = 5, char_cap: int = 800) -> str:
     """Top `limit` PaperFile rows; each extracted_text is truncated to char_cap."""
     if not paper_id:
         return ""
     try:
-        from models import PaperFile, db
+        from database.models import PaperFile, db
 
         files = (
             db.session.query(PaperFile)
@@ -269,21 +266,26 @@ def _load_attached_files(
         return ""
 
 
-# ── Direct V-OPUS API call (no fallback) ─────────────────────────────────────
+# ── Direct API call (no fallback) ────────────────────────────────────────────
 def _call_v_opus(
     messages: list,
     api_key: str,
     base_url: str,
-    timeout: float = 900.0,
+    timeout: float | None = None,
     progress_cb=None,
 ) -> str:
-    """POST messages to /chat/completions with model=V-OPUS, stream=True.
+    """POST messages to /chat/completions with MODELGENERATE, stream=True.
 
     No fallback chain — a failure here propagates to the caller. The endpoint
     streams Server-Sent Events shaped like OpenAI's chat-completions stream
     (data: {chunk}, terminated by data: [DONE]); some upstream proxies emit
     a single non-SSE JSON line, so we accept both shapes.
     """
+    from core.retry_helper import get_retry_config
+    
+    if timeout is None:
+        _, timeout = get_retry_config()
+    
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -297,9 +299,7 @@ def _call_v_opus(
         "temperature": 0.7,
     }
 
-    resp = requests.post(
-        url, json=payload, headers=headers, timeout=timeout, stream=True
-    )
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, stream=True)
     resp.raise_for_status()
 
     content = ""
@@ -338,7 +338,7 @@ def _call_v_opus(
                 pass
 
     if not content:
-        raise ValueError("V-OPUS returned empty content")
+        raise ValueError("AI returned empty content")
     return content
 
 
@@ -354,9 +354,7 @@ def _parse_json_response(raw: str) -> dict:
             repaired = repair_json(clean, return_objects=True)
             if isinstance(repaired, dict) and repaired:
                 return repaired
-            raise ValueError(
-                f"json_repair did not return a dict: {type(repaired)}"
-            )
+            raise ValueError(f"json_repair did not return a dict: {type(repaired)}")
         except Exception as e2:
             raise ValueError(f"JSON parse failed: {e1} | repair: {e2}")
 
@@ -440,10 +438,7 @@ def _normalize_paper_shape(raw: dict) -> dict:
         elif isinstance(refs.get("content"), list):
             refs = refs["content"]
         else:
-            refs = [
-                v for k, v in refs.items()
-                if isinstance(v, str) and k.lower() != "title"
-            ]
+            refs = [v for k, v in refs.items() if isinstance(v, str) and k.lower() != "title"]
     if not isinstance(refs, list):
         refs = []
 
@@ -508,7 +503,7 @@ def generate_paper_json_single(
     job_id=None,
     user_id=None,
 ) -> dict:
-    """Single-shot full paper generation — always uses model V-OPUS.
+    """Single-shot full paper generation — uses MODELGENERATE from env.
 
     Args:
         judul: Paper title / topic description.
@@ -544,7 +539,7 @@ def generate_paper_json_single(
     Raises:
         ValueError: If ``api_key`` / ``base_url`` resolve to empty, or the
             response cannot be parsed as JSON even after ``json_repair``.
-        requests.HTTPError: If V-OPUS returns a non-2xx response.
+        requests.HTTPError: If the AI returns a non-2xx response.
     """
     _api_key = api_key or AIOTOMASI_APIKEY
     _base_url = base_url or AIOTOMASI_API
@@ -561,15 +556,24 @@ def generate_paper_json_single(
     if custom_prompt and custom_prompt.strip():
         user_parts.append(custom_prompt.strip())
 
+    # Load workflow context if available
+    if paper_id and user_id:
+        try:
+            from paper_generation.workflow_integration import load_workflow_context
+            workflow_ctx = load_workflow_context(paper_id, user_id)
+            if workflow_ctx:
+                user_parts.append(workflow_ctx)
+                log.info("[generate_paper_json_single] Injected workflow context")
+        except Exception as e:
+            log.warning("[generate_paper_json_single] Failed to load workflow context: %s", e)
+
     history_block = _load_chat_history(conv_id, limit=10)
     if history_block:
         user_parts.append(history_block)
 
     # When chat_tools already injected the curated literature catalog into
     # custom_prompt we skip the DB load to avoid duplicating ~50 entries.
-    has_lit_in_custom = bool(
-        custom_prompt and "## Literature catalog" in custom_prompt
-    )
+    has_lit_in_custom = bool(custom_prompt and "## Literature catalog" in custom_prompt)
     if not has_lit_in_custom:
         lit_block = _load_literature(paper_id, limit=50)
         if lit_block:
@@ -577,9 +581,7 @@ def generate_paper_json_single(
 
     # Same dedup logic for attached files: if app._run_generate_full_job
     # already inlined PDF extracts via [REFERENCE DOCUMENTS], skip the DB load.
-    has_files_in_custom = bool(
-        custom_prompt and "[REFERENCE DOCUMENTS]" in custom_prompt
-    )
+    has_files_in_custom = bool(custom_prompt and "[REFERENCE DOCUMENTS]" in custom_prompt)
     if not has_files_in_custom:
         files_block = _load_attached_files(paper_id, limit=5, char_cap=800)
         if files_block:
@@ -612,30 +614,38 @@ def generate_paper_json_single(
         SINGLE_SHOT_MODEL,
     )
 
-    # Persist the EXACT request being sent to V-OPUS so we can inspect it
+    # Persist the EXACT request being sent to the AI so we can inspect it
     # without waiting for the response. Useful when the reply is later
     # incomplete — most of the time the prompt is fine and the truncation is
     # purely model-side, but occasionally we discover the user/system message
     # is missing a section because of a downstream bug.
     gen_dir = _gen_log_dir(user_id, paper_id, job_id)
-    _gen_log_write(gen_dir, "00_request.json", {
-        "ts": _dt.datetime.utcnow().isoformat() + "Z",
-        "model": SINGLE_SHOT_MODEL,
-        "user_id": user_id,
-        "paper_id": paper_id,
-        "conv_id": conv_id,
-        "job_id": job_id,
-        "judul": judul,
-        "topic": topic,
-        "style": style,
-        "system_kb": round(sys_kb, 2),
-        "user_kb": round(user_kb, 2),
-        "messages": messages,
-    })
+    _gen_log_write(
+        gen_dir,
+        "00_request.json",
+        {
+            "ts": _dt.datetime.utcnow().isoformat() + "Z",
+            "model": SINGLE_SHOT_MODEL,
+            "user_id": user_id,
+            "paper_id": paper_id,
+            "conv_id": conv_id,
+            "job_id": job_id,
+            "judul": judul,
+            "topic": topic,
+            "style": style,
+            "system_kb": round(sys_kb, 2),
+            "user_kb": round(user_kb, 2),
+            "messages": messages,
+        },
+    )
 
+    # Call the API with the full prompt
+    from core.retry_helper import get_retry_config
+    _, timeout = get_retry_config()
+    
     t_start = time.time()
     raw_content = _call_v_opus(
-        messages, _api_key, _base_url, timeout=900.0, progress_cb=progress_cb
+        messages, _api_key, _base_url, timeout=timeout, progress_cb=progress_cb
     )
     elapsed = time.time() - t_start
     log.info(
@@ -647,11 +657,15 @@ def generate_paper_json_single(
     # Persist raw reply BEFORE parsing — if json parsing fails we still want
     # the actual upstream bytes on disk for triage.
     _gen_log_write(gen_dir, "01_raw_response.txt", raw_content)
-    _gen_log_write(gen_dir, "01_raw_response_meta.json", {
-        "ts": _dt.datetime.utcnow().isoformat() + "Z",
-        "elapsed_seconds": round(elapsed, 2),
-        "raw_chars": len(raw_content),
-    })
+    _gen_log_write(
+        gen_dir,
+        "01_raw_response_meta.json",
+        {
+            "ts": _dt.datetime.utcnow().isoformat() + "Z",
+            "elapsed_seconds": round(elapsed, 2),
+            "raw_chars": len(raw_content),
+        },
+    )
 
     raw_paper = _parse_json_response(raw_content)
     paper_json = _normalize_paper_shape(raw_paper)

@@ -60,14 +60,17 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  filename: { type: String, default: '' },
-  wordCount: { type: Number, default: 0 },
-  head: { type: String, default: '' },
-  tail: { type: String, default: '' },
-  suggestedKinds: { type: Array, default: () => [] },
-  fileId: { type: [String, Number], default: null },
+<script setup lang="ts">
+import type { FileReviewCardProps, FileReviewCardEmits } from '../types/components'
+
+withDefaults(defineProps<FileReviewCardProps>(), {
+  filename: '',
+  wordCount: 0,
+  head: '',
+  tail: '',
+  suggestedKinds: () => [],
+  fileId: null
 })
-defineEmits(['pick'])
+
+defineEmits<FileReviewCardEmits>()
 </script>

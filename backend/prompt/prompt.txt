@@ -488,7 +488,7 @@ REQUIRED FIGURE TYPES (minimum 6–8 total in paper):
     "(Chen et al., 2022)"
     "as shown by Smith and colleagues (2023)"
     "in the work of Chen et al. (2022)"
-  
+
   The references generation step will assign final numbers and rewrite the
   text references appropriately. If you write [1], [2] inline you create
   a numbering conflict with the literature catalog.

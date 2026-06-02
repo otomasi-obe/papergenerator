@@ -140,12 +140,17 @@ def _set_num_pr(paragraph: Paragraph, *, num_id: int, ilvl: int) -> None:
     num_id_el.set(qn("w:val"), str(num_id))
 
 
-def _set_run_format(run, *, size_pt: float | None = None,
-                    bold: bool | None = None, italic: bool | None = None,
-                    underline: bool | None = None,
-                    font_name: str | None = None,
-                    color_hex: str | None = None,
-                    superscript: bool = False) -> None:
+def _set_run_format(
+    run,
+    *,
+    size_pt: float | None = None,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    underline: bool | None = None,
+    font_name: str | None = None,
+    color_hex: str | None = None,
+    superscript: bool = False,
+) -> None:
     if size_pt is not None:
         run.font.size = Pt(size_pt)
     if bold is not None:
@@ -169,12 +174,18 @@ def _set_run_format(run, *, size_pt: float | None = None,
         run.font.superscript = True
 
 
-def _append_run(paragraph: Paragraph, text: str, *, size_pt: float | None = None,
-                bold: bool | None = None, italic: bool | None = None,
-                underline: bool | None = None,
-                font_name: str | None = None,
-                color_hex: str | None = None,
-                superscript: bool = False):
+def _append_run(
+    paragraph: Paragraph,
+    text: str,
+    *,
+    size_pt: float | None = None,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    underline: bool | None = None,
+    font_name: str | None = None,
+    color_hex: str | None = None,
+    superscript: bool = False,
+):
     run = paragraph.add_run(text)
     _set_run_format(
         run,
@@ -192,8 +203,8 @@ def _append_run(paragraph: Paragraph, text: str, *, size_pt: float | None = None
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -256,7 +267,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -416,9 +427,14 @@ def _write_abstract_cell(cell: _Cell, abstract_text: str) -> None:
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
 
 
-def _write_simple_cell(cell: _Cell, style_name: str, text: str, *,
-                       align=WD_ALIGN_PARAGRAPH.LEFT,
-                       bold: bool | None = None) -> None:
+def _write_simple_cell(
+    cell: _Cell,
+    style_name: str,
+    text: str,
+    *,
+    align=WD_ALIGN_PARAGRAPH.LEFT,
+    bold: bool | None = None,
+) -> None:
     _clear_cell(cell)
     paragraph = cell.paragraphs[0]
     _set_para_style(paragraph, style_name)
@@ -491,7 +507,11 @@ def _format_title_block(doc: Document, config: dict) -> Table:
         )
         if key not in group_map:
             letter_index = len(group_map)
-            label = string.ascii_lowercase[letter_index] if letter_index < len(string.ascii_lowercase) else f"a{letter_index}"
+            label = (
+                string.ascii_lowercase[letter_index]
+                if letter_index < len(string.ascii_lowercase)
+                else f"a{letter_index}"
+            )
             group_map[key] = label
 
         if index > 0:
@@ -551,8 +571,9 @@ def _trim_template_body(doc: Document, first_table: Table) -> None:
             body.remove(child)
 
 
-def _set_cell_border(cell: _Cell, edge: str, value: str,
-                     size: str = "4", color: str = "auto") -> None:
+def _set_cell_border(
+    cell: _Cell, edge: str, value: str, size: str = "4", color: str = "auto"
+) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     tc_borders = tc_pr.find(qn("w:tcBorders"))
     if tc_borders is None:
@@ -573,10 +594,14 @@ def _clear_cell_borders(cell: _Cell) -> None:
         _set_cell_border(cell, edge, "none", size="0")
 
 
-def _new_styled_paragraph(doc: Document, style_name: str, *,
-                          num_id: int | None = None,
-                          ilvl: int | None = None,
-                          align=None) -> Paragraph:
+def _new_styled_paragraph(
+    doc: Document,
+    style_name: str,
+    *,
+    num_id: int | None = None,
+    ilvl: int | None = None,
+    align=None,
+) -> Paragraph:
     paragraph = doc.add_paragraph()
     _set_para_style(paragraph, style_name)
     if num_id is not None and ilvl is not None:
@@ -593,8 +618,7 @@ def _body_paragraph(doc: Document, text: str) -> None:
         _append_rich_text(paragraph, block)
 
 
-def _add_heading(doc: Document, title: str, *, style_name: str,
-                 ilvl: int) -> None:
+def _add_heading(doc: Document, title: str, *, style_name: str, ilvl: int) -> None:
     paragraph = _new_styled_paragraph(doc, style_name, num_id=NUM_HEADING, ilvl=ilvl)
     if style_name == "Heading2":
         paragraph.paragraph_format.space_before = Pt(6)
@@ -614,8 +638,9 @@ def _add_heading(doc: Document, title: str, *, style_name: str,
     _append_run(paragraph, title, font_name="Times New Roman")
 
 
-def _set_table_paragraph(paragraph: Paragraph, style_name: str, *,
-                         bold: bool = False, align=WD_ALIGN_PARAGRAPH.CENTER) -> None:
+def _set_table_paragraph(
+    paragraph: Paragraph, style_name: str, *, bold: bool = False, align=WD_ALIGN_PARAGRAPH.CENTER
+) -> None:
     _clear_paragraph(paragraph)
     _set_para_style(paragraph, style_name)
     paragraph.alignment = align
@@ -635,8 +660,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -646,10 +672,14 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
     image_paragraph = doc.add_paragraph()
     image_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     if image_path.is_file():
-        inline = image_paragraph.add_run().add_picture(str(image_path), width=Cm(MAX_FIGURE_WIDTH_CM))
+        inline = image_paragraph.add_run().add_picture(
+            str(image_path), width=Cm(MAX_FIGURE_WIDTH_CM)
+        )
         _assign_inline_drawing_id(inline)
     else:
-        _append_run(image_paragraph, str(item.get("Path", "")).strip() or "[missing figure]", italic=True)
+        _append_run(
+            image_paragraph, str(item.get("Path", "")).strip() or "[missing figure]", italic=True
+        )
 
     caption = _new_styled_paragraph(
         doc,
@@ -720,7 +750,9 @@ def _add_equation(doc: Document, item: dict) -> None:
 
     paragraph = _new_styled_paragraph(doc, "equation")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    paragraph.paragraph_format.tab_stops.add_tab_stop(Pt(EQUATION_TAB_RIGHT_PT), WD_TAB_ALIGNMENT.RIGHT)
+    paragraph.paragraph_format.tab_stops.add_tab_stop(
+        Pt(EQUATION_TAB_RIGHT_PT), WD_TAB_ALIGNMENT.RIGHT
+    )
     if not _append_inline_math(paragraph, formula):
         _append_run(paragraph, formula, italic=True)
     if number:
@@ -762,8 +794,9 @@ def _subsection_keys(container: dict, prefix: str) -> list[str]:
     return sorted([key for key in container if pattern.match(key)])
 
 
-def _render_subsubsections(doc: Document, subsection: dict, json_path: Path,
-                           parent_key: str) -> None:
+def _render_subsubsections(
+    doc: Document, subsection: dict, json_path: Path, parent_key: str
+) -> None:
     child_keys = _subsection_keys(subsection, parent_key)
     for child_key in child_keys:
         child = subsection[child_key]
@@ -790,7 +823,8 @@ def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
         _render_content(doc, section.get("content", []), json_path)
 
         direct_children = [
-            key for key in _subsection_keys(section, section_key)
+            key
+            for key in _subsection_keys(section, section_key)
             if len(key) == len(section_key) + 1
         ]
         for subsection_key in direct_children:
@@ -811,7 +845,9 @@ def _add_references(doc: Document, config: dict) -> None:
         return
 
     heading = _new_styled_paragraph(doc, "Heading5", align=WD_ALIGN_PARAGRAPH.CENTER)
-    _append_run(heading, str(references.get("title", "References")).strip() or "References", bold=True)
+    _append_run(
+        heading, str(references.get("title", "References")).strip() or "References", bold=True
+    )
 
     for item in items:
         text = str(item.get("text", "")).strip() if isinstance(item, dict) else str(item).strip()
@@ -822,14 +858,14 @@ def _add_references(doc: Document, config: dict) -> None:
         _append_rich_text(paragraph, text)
 
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
-        Path(output_path)
-        if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -857,7 +893,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     if not json_files:
@@ -871,8 +908,6 @@ def main() -> None:
             print(f"Error generating {json_file.name}: {error}")
 
 
-
-
 def _set_table_borders_match_template(table) -> None:
     """Set border tabel sesuai pattern template original: HORIZONTAL_ONLY (academic).
 
@@ -882,6 +917,7 @@ def _set_table_borders_match_template(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:
@@ -905,6 +941,7 @@ def _set_table_borders_match_template(table) -> None:
         else:
             el.set(qn("w:val"), "nil")
             el.set(qn("w:sz"), "0")
+
 
 if __name__ == "__main__":
     main()

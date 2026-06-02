@@ -14,11 +14,11 @@
   Required:
     • python-docx (all generators)
     • lxml (28/39 generators)
-  
+
   Optional:
     • PIL/Pillow (CERiMREgen only)
     • latex2mathml + mathml2omml (IJIMSgen, KKCKgen)
-  
+
   Missing:
     ✗ _docx_base.py (needed by ULTIMACOMPgen)
 
@@ -32,14 +32,14 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   International Journals (IJ*):  7 generators
     IJB, IJECE, IJEECS, IJIMS, IJITEE, IJRED, IJT
-  
+
   Journal of (J*):              12 generators
     JAMRIS, JAT, JCEF, JEEMECS, JIEB, JMEM, JNTETI, JOKI, JRC, JTMM,
     JTRANSIENT, JTUNDIP
-  
+
   Conference Proceedings (IC*):  4 generators
     ICET, ICIMECE, ICONIE, ICOSEG
-  
+
   Other Journals:               16 generators
     AEJ, AMORI, CCJ, CERiMRE, DJLIT, EASR, ELCTRICES, ELKOLIND, ENERGIUPM,
     El-Usrah, IEEE, KKCK, MEV, ROTASI, UITM, ULTIMACOMP
@@ -50,12 +50,12 @@
      → Missing: _docx_base.py module
      → Impact: Generator cannot run
      → Fix: Create shared utility module
-  
+
   2. HIGH CODE DUPLICATION
      → 132 functions duplicated across 3+ generators
      → Impact: Maintenance burden, bug propagation
      → Fix: Extract to shared utilities
-  
+
   3. INCONSISTENT JSON SCHEMAS
      → Two different schemas in use
      → Impact: Confusion, validation issues
@@ -87,10 +87,10 @@
   # 1. Prepare JSON data
   cd /home/sirobo/papergenerator/backend/template
   # Ensure _template.json or _PLC-MediapipeID.json exists
-  
+
   # 2. Run generator
   python IEEEgen.py
-  
+
   # 3. Output generated
   # → IEEE_output.docx (or similar)
 
@@ -100,12 +100,12 @@
     • Extract 10-15 most common functions
     • Fix ULTIMACOMPgen immediately
     • Reduce codebase by ~8,700 lines
-  
+
   Priority 2: Standardize JSON schema
     • Document both schemas
     • Create validation layer
     • Consider migration path
-  
+
   Priority 3: Add tests
     • Unit tests for shared utilities
     • Integration tests for generators

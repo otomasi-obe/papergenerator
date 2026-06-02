@@ -48,6 +48,7 @@
             v-model="slrQuery"
             @keyup.enter="runSLR"
             type="text"
+            autocomplete="off"
             placeholder="Ketik topik (mis. 'reinforcement learning untuk navigasi AGV')"
             class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 focus:ring-2 focus:ring-cream-200 outline-none"
             :disabled="slrRunning"
@@ -102,13 +103,13 @@
       <!-- Add manual form -->
       <div v-if="showAddManual" class="rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 p-4 space-y-2">
         <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50">＋ Tambah Literatur Manual</h3>
-        <input v-model="manualForm.title" placeholder="Judul *" class="input-sm w-full" />
-        <input v-model="manualForm.authors_str" placeholder="Authors (pisah koma)" class="input-sm w-full" />
+        <input v-model="manualForm.title" placeholder="Judul *" autocomplete="off" class="input-sm w-full" />
+        <input v-model="manualForm.authors_str" placeholder="Authors (pisah koma)" autocomplete="off" class="input-sm w-full" />
         <div class="grid grid-cols-2 gap-2">
-          <input v-model.number="manualForm.year" type="number" placeholder="Year" class="input-sm" />
-          <input v-model="manualForm.venue" placeholder="Venue / Journal" class="input-sm" />
-          <input v-model="manualForm.doi" placeholder="DOI" class="input-sm" />
-          <input v-model="manualForm.url" placeholder="URL" class="input-sm" />
+          <input v-model.number="manualForm.year" type="number" placeholder="Year" autocomplete="off" inputmode="numeric" class="input-sm" />
+          <input v-model="manualForm.venue" placeholder="Venue / Journal" autocomplete="off" class="input-sm" />
+          <input v-model="manualForm.doi" placeholder="DOI" autocomplete="off" class="input-sm" />
+          <input v-model="manualForm.url" placeholder="URL" autocomplete="url" inputmode="url" class="input-sm" />
         </div>
         <textarea v-model="manualForm.summary" rows="2" placeholder="Ringkasan / catatan singkat" class="input-sm w-full resize-y"></textarea>
         <div class="flex gap-2 justify-end">
@@ -120,7 +121,7 @@
       <!-- Filters -->
       <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="flex items-center gap-2 flex-wrap">
-          <input v-model="filter" placeholder="🔍 Filter judul / penulis / venue / DOI" class="input-sm w-72" />
+          <input v-model="filter" placeholder="🔍 Filter judul / penulis / venue / DOI" autocomplete="off" class="input-sm w-72" />
           <select v-model="filterSource" class="input-sm">
             <option value="">Semua sumber</option>
             <option v-for="s in availableSources" :key="s" :value="s">{{ s }}</option>
@@ -141,6 +142,8 @@
               min="1500"
               max="2100"
               placeholder="ex: 2018"
+              autocomplete="off"
+              inputmode="numeric"
               class="input-sm w-24"
             />
           </label>
@@ -281,7 +284,7 @@
                 <td class="px-2 py-2 align-top text-ink-500">{{ i + 1 }}</td>
                 <td class="px-2 py-2 align-top">
                   <div v-if="editingId === it.id">
-                    <input v-model="editDraft.title" class="input-sm w-full" />
+                    <input v-model="editDraft.title" autocomplete="off" class="input-sm w-full" />
                     <textarea v-model="editDraft.summary" rows="2" class="input-sm w-full mt-1 resize-y" placeholder="Summary"></textarea>
                   </div>
                   <div v-else>
@@ -290,21 +293,21 @@
                   </div>
                 </td>
                 <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100 max-w-[180px] truncate" :title="(it.authors||[]).join(', ')">
-                  <input v-if="editingId === it.id" v-model="editDraft.authors_str" class="input-sm w-full" />
+                  <input v-if="editingId === it.id" v-model="editDraft.authors_str" autocomplete="off" class="input-sm w-full" />
                   <span v-else>{{ (it.authors || []).slice(0,3).join(', ') }}{{ (it.authors||[]).length > 3 ? ' …' : '' }}</span>
                 </td>
                 <td class="px-2 py-2 align-top">
-                  <input v-if="editingId === it.id" v-model.number="editDraft.year" type="number" class="input-sm w-20" />
+                  <input v-if="editingId === it.id" v-model.number="editDraft.year" type="number" autocomplete="off" inputmode="numeric" class="input-sm w-20" />
                   <span v-else>{{ it.year || '–' }}</span>
                 </td>
                 <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100 max-w-[200px] truncate" :title="it.venue">
-                  <input v-if="editingId === it.id" v-model="editDraft.venue" class="input-sm w-full" />
+                  <input v-if="editingId === it.id" v-model="editDraft.venue" autocomplete="off" class="input-sm w-full" />
                   <span v-else>{{ it.venue || '–' }}</span>
                 </td>
                 <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100 max-w-[180px] truncate">
                   <template v-if="editingId === it.id">
-                    <input v-model="editDraft.doi" placeholder="DOI" class="input-sm w-full" />
-                    <input v-model="editDraft.url" placeholder="URL" class="input-sm w-full mt-1" />
+                    <input v-model="editDraft.doi" placeholder="DOI" autocomplete="off" class="input-sm w-full" />
+                    <input v-model="editDraft.url" placeholder="URL" autocomplete="url" inputmode="url" class="input-sm w-full mt-1" />
                   </template>
                   <template v-else>
                     <a v-if="it.doi" :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 hover:underline">{{ it.doi }}</a>
@@ -357,18 +360,81 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
-import { usePaperStore } from '../stores/paper.js'
-import { useLiteratureStore } from '../stores/literature.js'
-import api from '../api/index.js'
+import { usePaperStore } from '../stores/paper'
+import { useLiteratureStore } from '../stores/literature'
+import api from '../api/index'
+
+interface LiteratureItem {
+  id: number
+  title: string
+  authors?: string[]
+  year?: number | null
+  venue?: string
+  publisher?: string
+  doi?: string | null
+  url?: string
+  summary?: string
+  source?: string
+  source_kind?: string
+  score_total?: number
+  score_breakdown?: any
+  citations?: number
+  pinned?: boolean
+  must_read?: boolean
+}
+
+interface SLRJob {
+  id: number
+  query: string
+  status: 'queued' | 'running' | 'done' | 'error'
+  stage?: string
+  progress?: number
+  progress_message?: string
+  queued_at?: string
+  finished_at?: string
+  stats?: {
+    ai_summary_used?: boolean
+    [key: string]: any
+  }
+}
+
+interface ManualForm {
+  title: string
+  authors_str: string
+  year: number | null
+  venue: string
+  doi: string
+  url: string
+  summary: string
+}
+
+interface EditDraft {
+  title: string
+  authors_str: string
+  year: number | null
+  venue: string
+  doi: string
+  url: string
+  summary: string
+}
+
+interface FilterState {
+  filter: string
+  filterSource: string
+  onlyMustRead: boolean
+  onlyPinned: boolean
+  minYear: number | null
+}
 
 const store = usePaperStore()
 const litStore = useLiteratureStore()
 const { currentPaperId } = storeToRefs(store)
 
-const items = ref([])
+const items = ref<LiteratureItem[]>([])
 const loading = ref(false)
 const loadError = ref('')
 
@@ -376,48 +442,42 @@ const filter = ref('')
 const filterSource = ref('')
 const onlyMustRead = ref(false)
 const onlyPinned = ref(false)
-const minYear = ref(null)
+const minYear = ref<number | null>(null)
 
 const showAddManual = ref(false)
 
-// SLR job runner state
 const slrQuery = ref('')
 const slrTopK = ref(50)
 const slrRunning = ref(false)
-const activeJobs = ref([])
-const lastSlrJob = ref(null)
-const slrCardRef = ref(null)
-const slrInputRef = ref(null)
-let _pollTimer = null
+const activeJobs = ref<SLRJob[]>([])
+const lastSlrJob = ref<SLRJob | null>(null)
+const slrCardRef = ref<HTMLElement | null>(null)
+let _pollTimer: ReturnType<typeof setTimeout> | null = null
 let _extraFastPolls = 0
 
-// Inline edit state
-const editingId = ref(null)
-const editDraft = ref(null)
+const editingId = ref<number | null>(null)
+const editDraft = ref<EditDraft | null>(null)
 
-// Manual add form
-const manualForm = ref({
+const manualForm = ref<ManualForm>({
   title: '', authors_str: '', year: null,
   venue: '', doi: '', url: '', summary: '',
 })
 
-// Bulk selection state
-const selectedIds = ref(new Set())
+const selectedIds = ref<Set<number>>(new Set())
 const bulkBusy = ref(false)
 const bulkMsg = ref('')
 const selectionCount = computed(() => selectedIds.value.size)
 
-// Sorting state
-const sortKey = ref('default') // 'default' | 'title' | 'year' | 'score' | 'citations'
-const sortDir = ref('desc')
+const sortKey = ref<'default' | 'title' | 'year' | 'score' | 'citations'>('default')
+const sortDir = ref<'asc' | 'desc'>('desc')
 
-const paperTitle = computed(() => store.paper?.title || '')
+const paperTitle = computed<string>(() => store.paper?.title || '')
 
-const aiSummaryUsed = computed(() => {
+const aiSummaryUsed = computed<boolean>(() => {
   return !!(lastSlrJob.value && lastSlrJob.value.stats && lastSlrJob.value.stats.ai_summary_used)
 })
 
-const filteredItems = computed(() => {
+const filteredItems = computed<LiteratureItem[]>(() => {
   const q = filter.value.trim().toLowerCase()
   const minY = (minYear.value != null && minYear.value !== '' && Number.isFinite(Number(minYear.value)))
     ? Number(minYear.value)
@@ -436,7 +496,7 @@ const filteredItems = computed(() => {
   })
 })
 
-const displayedItems = computed(() => {
+const displayedItems = computed<LiteratureItem[]>(() => {
   const arr = filteredItems.value.slice()
   if (sortKey.value === 'default') {
     arr.sort((a, b) => {
@@ -450,7 +510,7 @@ const displayedItems = computed(() => {
   }
   const dir = sortDir.value === 'asc' ? 1 : -1
   arr.sort((a, b) => {
-    let va, vb
+    let va: any, vb: any
     switch (sortKey.value) {
       case 'title':
         va = (a.title || '').toLowerCase()
@@ -478,9 +538,9 @@ const displayedItems = computed(() => {
   return arr
 })
 
-const pinnedCount = computed(() => items.value.filter(i => i.pinned).length)
-const availableSources = computed(() => {
-  const set = new Set()
+const pinnedCount = computed<number>(() => items.value.filter(i => i.pinned).length)
+const availableSources = computed<string[]>(() => {
+  const set = new Set<string>()
   for (const it of items.value) {
     if (it.source) set.add(it.source)
     else if (it.source_kind) set.add(it.source_kind)
@@ -488,7 +548,7 @@ const availableSources = computed(() => {
   return Array.from(set).sort()
 })
 
-const allVisibleSelected = computed(() => {
+const allVisibleSelected = computed<boolean>(() => {
   const arr = displayedItems.value
   if (arr.length === 0) return false
   for (const it of arr) {
@@ -497,14 +557,14 @@ const allVisibleSelected = computed(() => {
   return true
 })
 
-const someVisibleSelected = computed(() => {
+const someVisibleSelected = computed<boolean>(() => {
   for (const it of displayedItems.value) {
     if (selectedIds.value.has(it.id)) return true
   }
   return false
 })
 
-function sourceBadgeClass(kind) {
+function sourceBadgeClass(kind: string): string {
   switch (kind) {
     case 'slr':     return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
     case 'file':    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
@@ -513,7 +573,7 @@ function sourceBadgeClass(kind) {
   }
 }
 
-const STAGE_LABELS = {
+const STAGE_LABELS: Record<string, string> = {
   queued: 'Antri',
   fetching: 'Mencari sumber',
   source_done: 'Mengambil hasil',
@@ -528,12 +588,12 @@ const STAGE_LABELS = {
   error: 'Gagal',
 }
 
-function stageLabel(stage) {
+function stageLabel(stage: string | undefined): string {
   if (!stage) return ''
   return STAGE_LABELS[stage] || stage
 }
 
-function stageBadgeClass(job) {
+function stageBadgeClass(job: SLRJob | null): string {
   if (job?.status === 'error') {
     return 'bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100'
   }
@@ -546,7 +606,7 @@ function stageBadgeClass(job) {
   return 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
 }
 
-function toast(msg, type = 'info') {
+function toast(msg: string, type: 'info' | 'success' | 'error' = 'info'): void {
   if (typeof store.showToast === 'function') store.showToast(msg, type)
   else {
     if (type === 'error') console.error(msg)
@@ -555,17 +615,16 @@ function toast(msg, type = 'info') {
   }
 }
 
-function safeUrl(u) {
+function safeUrl(u: string | undefined): string {
   if (typeof u !== 'string') return '#'
   return /^(https?:\/\/|\/)/.test(u) ? u : '#'
 }
 
-// ----- Filter persistence -----
-function filterStorageKey(paperId) {
+function filterStorageKey(paperId: string): string {
   return `lit.filter.${paperId}`
 }
 
-function isAllFiltersDefault() {
+function isAllFiltersDefault(): boolean {
   return !filter.value
     && !filterSource.value
     && !onlyMustRead.value
@@ -573,14 +632,14 @@ function isAllFiltersDefault() {
     && (minYear.value == null || minYear.value === '')
 }
 
-function saveFilterState() {
+function saveFilterState(): void {
   if (!currentPaperId.value) return
   try {
     if (isAllFiltersDefault()) {
       localStorage.removeItem(filterStorageKey(currentPaperId.value))
       return
     }
-    const payload = {
+    const payload: FilterState = {
       filter: filter.value,
       filterSource: filterSource.value,
       onlyMustRead: onlyMustRead.value,
@@ -591,7 +650,7 @@ function saveFilterState() {
   } catch { /* ignore quota / unavailable */ }
 }
 
-function loadFilterStateFor(paperId) {
+function loadFilterStateFor(paperId: string): FilterState | null {
   try {
     const raw = localStorage.getItem(filterStorageKey(paperId))
     if (!raw) return null
@@ -600,7 +659,7 @@ function loadFilterStateFor(paperId) {
   } catch { return null }
 }
 
-function applySavedFilter(saved) {
+function applySavedFilter(saved: FilterState | null): void {
   if (!saved) {
     filter.value = ''
     filterSource.value = ''
@@ -621,8 +680,7 @@ watch(
   () => { saveFilterState() }
 )
 
-// ----- Loaders -----
-async function loadItems() {
+async function loadItems(): Promise<void> {
   if (!currentPaperId.value) return
   loading.value = true
   try {
@@ -636,37 +694,27 @@ async function loadItems() {
       items.value = []
     }
     loadError.value = ''
-  } catch (e) {
+  } catch (e: any) {
     loadError.value = 'Gagal memuat literatur: ' + (e?.response?.data?.error || e?.message || 'network error')
   } finally {
     loading.value = false
   }
 }
 
-let _lastJobIds = new Set()
-let _lastJobStatus = {}
+let _lastJobIds = new Set<number>()
+let _lastJobStatus: Record<number, string> = {}
 let _consecutiveFailures = 0
 let _waitCursor = 0
 const _TRANSIENT_STATUSES = new Set([0, 408, 429, 502, 503, 504, 520, 521, 522, 523, 524])
 
-async function loadJobs() {
+async function loadJobs(): Promise<void> {
   if (!currentPaperId.value) return
   try {
-    // When there are jobs we already know are running, prefer the long-poll
-    // /wait endpoint: it sleeps server-side and returns as soon as job state
-    // moves, so we get near-instant updates without 2s polling. The list
-    // endpoint is the fallback for the idle case where there's nothing to
-    // wait on.
-    //
-    // BUT: under load, the /wait connection can hit a proxy 524 even when
-    // the worker has already finished the job. Once we've seen 2 consecutive
-    // failures, drop back to the cheap /jobs GET so we don't get wedged on a
-    // long-poll endpoint that can't reach us.
     const hasRunning = activeJobs.value.some(
       j => j.status === 'running' || j.status === 'pending' || j.status === 'queued'
     )
     const useLongPoll = hasRunning && _consecutiveFailures < 2
-    let jobs
+    let jobs: SLRJob[]
     if (useLongPoll) {
       const res = await api.get(`/api/papers/${currentPaperId.value}/slr/jobs/wait`, {
         params: { after: _waitCursor },
@@ -674,8 +722,6 @@ async function loadJobs() {
       })
       const data = res.data || {}
       if (data.noop) {
-        // Server hit its own timeout with no changes — stay quiet, the next
-        // schedulePoll() tick will re-arm.
         _consecutiveFailures = 0
         if (loadError.value) loadError.value = ''
         return
@@ -705,20 +751,13 @@ async function loadJobs() {
       (!_lastJobIds.has(j.id) || _lastJobStatus[j.id] !== j.status)
     )
     if (justFinished) {
-      // Re-arm one extra fast cycle so the first idle poll still happens
-      // quickly after the final job state lands.
       _extraFastPolls = 1
-      // SLR finished → refresh the literature rows table.
       await loadItems()
       if (newlyDone.length > 0) {
         const n = items.value.length
         toast(`SLR selesai. ${n} literatur masuk.`, 'success')
-        // Inject a system note into the active chat with action chips so the
-        // user can decide the next step (continue generate, review, etc.)
-        // without firing another AI round-trip. Lazy import to avoid the
-        // chat ↔ paper circular dep.
         try {
-          const { useChatStore } = await import('../stores/chat.js')
+          const { useChatStore } = await import('../stores/chat')
           const chatStore = useChatStore()
           const j = newlyDone[0]
           const q = j?.query || ''
@@ -736,7 +775,7 @@ async function loadJobs() {
           ].join('\n')
           chatStore.injectAssistantMessage?.(body)
         } catch (e) {
-          // Silent — chat injection is best-effort, table state already updated.
+          // Silent
         }
       }
     }
@@ -744,29 +783,17 @@ async function loadJobs() {
     _lastJobStatus = Object.fromEntries(jobs.map(j => [j.id, j.status]))
     slrRunning.value = active.length > 0
     _consecutiveFailures = 0
-    // Clear any stale transient banner now that the poll succeeded.
     if (loadError.value) loadError.value = ''
-  } catch (e) {
+  } catch (e: any) {
     const status = e?.response?.status ?? 0
     const code = e?.response?.data?.code
-    // 3-strikes rule: only surface the banner after THREE consecutive failures.
-    // Single-shot proxy timeouts / DB hiccups stay silent and recover on the
-    // next tick. Banner copy stays generic — no raw 524 / status code in UX.
     const transient = _TRANSIENT_STATUSES.has(status) || code === 'DB_BUSY'
     _consecutiveFailures++
-    // Bump to fast cadence so we recover quickly once the DB / proxy frees up.
     _extraFastPolls = Math.max(_extraFastPolls, 2)
-    // The /wait long-poll can 524 even when the SLR worker has *already*
-    // persisted the literature rows server-side. Without a fallback refresh
-    // here, the table stays empty during the 3-strikes silent window — which
-    // is exactly the "SLR belum tampil di Literatur" symptom users see.
-    // Fire a best-effort literature-items reload so rows surface even if the
-    // jobs poll keeps timing out. Cheap GET on the same paper, fail silent.
     if (transient && activeJobs.value.length > 0) {
-      loadItems().catch(() => { /* swallow — banner handles UX */ })
+      loadItems().catch(() => { /* swallow */ })
     }
     if (_consecutiveFailures < 3) {
-      // Stay quiet — the next poll will probably succeed.
       return
     }
     if (transient) {
@@ -777,20 +804,15 @@ async function loadJobs() {
   }
 }
 
-async function retryLoad() {
+async function retryLoad(): Promise<void> {
   loadError.value = ''
   _consecutiveFailures = 0
   await Promise.all([loadItems(), loadJobs()])
 }
 
-function schedulePoll() {
+function schedulePoll(): void {
   if (_pollTimer) clearTimeout(_pollTimer)
-  // Visibility-aware cadence:
-  //  - tab hidden        → 5 s (just keep state warm without hammering)
-  //  - active SLR job    → 2.5 s (catch progress / completion fast)
-  //  - just-finished     → 2.5 s for one extra cycle
-  //  - idle, tab visible → 30 s (cheapest; backstop in case server push lost)
-  let delay
+  let delay: number
   if (typeof document !== 'undefined' && document.hidden) {
     delay = 5000
   } else if (activeJobs.value.length > 0) {
@@ -807,14 +829,11 @@ function schedulePoll() {
   }, delay + Math.floor(Math.random() * 500))
 }
 
-function _onVisibilityChange() {
-  // Re-arm immediately so a tab that was hidden for >30s doesn't wait out
-  // the long delay before its first refresh.
+function _onVisibilityChange(): void {
   schedulePoll()
 }
 
-// ----- SLR runner -----
-async function runSLR() {
+async function runSLR(): Promise<void> {
   const q = slrQuery.value.trim()
   if (!q || !currentPaperId.value) return
   slrRunning.value = true
@@ -826,13 +845,8 @@ async function runSLR() {
       ai_model: 'V-OPUS',
     })
     await loadJobs()
-    // Re-arm the poller on the fast cadence so the newly-queued job's
-    // completion is detected within seconds, not the next 30s tick. Without
-    // this, the table appears "empty" for up to half a minute after the job
-    // actually finishes because schedulePoll() was last called when
-    // activeJobs was empty (delay=30000).
     schedulePoll()
-  } catch (e) {
+  } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'SLR failed'
     toast('SLR error: ' + msg, 'error')
   } finally {
@@ -840,17 +854,17 @@ async function runSLR() {
   }
 }
 
-async function cancelJob(jobId) {
+async function cancelJob(jobId: number): Promise<void> {
   if (!confirm('Hentikan job SLR ini? Hasil parsial dihilangkan.')) return
   try {
     await api.delete(`/api/slr/jobs/${jobId}`)
     await loadJobs()
-  } catch (e) {
+  } catch (e: any) {
     toast('Cancel failed: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   }
 }
 
-async function startSLRFromPaperTopic() {
+async function startSLRFromPaperTopic(): Promise<void> {
   const title = paperTitle.value
   if (!title) return
   slrQuery.value = title
@@ -861,8 +875,7 @@ async function startSLRFromPaperTopic() {
   await runSLR()
 }
 
-// ----- Import / manual -----
-async function importFromFiles() {
+async function importFromFiles(): Promise<void> {
   if (!currentPaperId.value) return
   loading.value = true
   try {
@@ -870,14 +883,14 @@ async function importFromFiles() {
     const created = (res?.data?.created || []).length
     toast(created > 0 ? `Imported ${created} file${created === 1 ? '' : 's'}` : '0 new files', created > 0 ? 'success' : 'info')
     await loadItems()
-  } catch (e) {
+  } catch (e: any) {
     toast('Import failed: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   } finally {
     loading.value = false
   }
 }
 
-function validateManual(f) {
+function validateManual(f: ManualForm): boolean {
   if (f.doi) {
     const d = f.doi.trim()
     if (d && !/^10\.\d{4,9}\//.test(d)) {
@@ -903,7 +916,7 @@ function validateManual(f) {
   return true
 }
 
-async function addManual() {
+async function addManual(): Promise<void> {
   if (!manualForm.value.title.trim() || !currentPaperId.value) return
   const f = manualForm.value
   if (!validateManual(f)) return
@@ -926,18 +939,17 @@ async function addManual() {
     showAddManual.value = false
     await loadItems()
     toast('Literatur ditambahkan', 'success')
-  } catch (e) {
+  } catch (e: any) {
     toast('Tambah gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   }
 }
 
-// ----- Inline edit -----
-function startEdit(it) {
+function startEdit(it: LiteratureItem): void {
   editingId.value = it.id
   editDraft.value = {
     title: it.title || '',
     authors_str: (it.authors || []).join(', '),
-    year: it.year,
+    year: it.year || null,
     venue: it.venue || '',
     doi: it.doi || '',
     url: it.url || '',
@@ -945,14 +957,15 @@ function startEdit(it) {
   }
 }
 
-function cancelEdit() {
+function cancelEdit(): void {
   editingId.value = null
   editDraft.value = null
 }
 
-async function saveEdit() {
+async function saveEdit(): Promise<void> {
   if (!editingId.value || !currentPaperId.value) return
   const d = editDraft.value
+  if (!d) return
   const authors = d.authors_str.split(',').map(a => a.trim()).filter(Boolean)
   try {
     await api.patch(`/api/papers/${currentPaperId.value}/literature/${editingId.value}`, {
@@ -967,12 +980,13 @@ async function saveEdit() {
     cancelEdit()
     await loadItems()
     toast('Tersimpan', 'success')
-  } catch (e) {
+  } catch (e: any) {
     toast('Save gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   }
 }
 
-async function togglePin(it) {
+async function togglePin(it: LiteratureItem): Promise<void> {
+  if (!currentPaperId.value) return
   const prev = it.pinned
   it.pinned = !prev
   try {
@@ -983,7 +997,8 @@ async function togglePin(it) {
   }
 }
 
-async function toggleMustRead(it) {
+async function toggleMustRead(it: LiteratureItem): Promise<void> {
+  if (!currentPaperId.value) return
   const prev = it.must_read
   it.must_read = !prev
   try {
@@ -994,26 +1009,26 @@ async function toggleMustRead(it) {
   }
 }
 
-async function deleteItem(it) {
+async function deleteItem(it: LiteratureItem): Promise<void> {
+  if (!currentPaperId.value) return
   if (!confirm(`Hapus "${it.title?.slice(0, 80) || 'literatur ini'}"?`)) return
   try {
     await api.delete(`/api/papers/${currentPaperId.value}/literature/${it.id}`)
     await loadItems()
     toast('Dihapus', 'success')
-  } catch (e) {
+  } catch (e: any) {
     toast('Hapus gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   }
 }
 
-// ----- Selection / bulk actions -----
-function toggleSelect(id) {
+function toggleSelect(id: number): void {
   const next = new Set(selectedIds.value)
   if (next.has(id)) next.delete(id)
   else next.add(id)
   selectedIds.value = next
 }
 
-function toggleSelectAllVisible() {
+function toggleSelectAllVisible(): void {
   const ids = displayedItems.value.map(i => i.id)
   if (allVisibleSelected.value) {
     const next = new Set(selectedIds.value)
@@ -1026,20 +1041,20 @@ function toggleSelectAllVisible() {
   }
 }
 
-function clearSelection() {
+function clearSelection(): void {
   selectedIds.value = new Set()
 }
 
-function pruneSelection() {
+function pruneSelection(): void {
   const known = new Set(items.value.map(i => i.id))
-  const next = new Set()
+  const next = new Set<number>()
   for (const id of selectedIds.value) {
     if (known.has(id)) next.add(id)
   }
   selectedIds.value = next
 }
 
-async function runBulk(label, fn) {
+async function runBulk(label: string, fn: (id: number) => Promise<any>): Promise<number> {
   const ids = Array.from(selectedIds.value)
   if (ids.length === 0) return 0
   bulkBusy.value = true
@@ -1055,7 +1070,8 @@ async function runBulk(label, fn) {
   return okCount
 }
 
-async function bulkDelete() {
+async function bulkDelete(): Promise<void> {
+  if (!currentPaperId.value) return
   const total = selectedIds.value.size
   if (total === 0) return
   if (!confirm(`Hapus ${total} literatur terpilih? Tindakan ini tidak bisa dibatalkan.`)) return
@@ -1068,7 +1084,8 @@ async function bulkDelete() {
   else toast(`Dihapus ${ok}/${total} (sisanya gagal)`, ok > 0 ? 'info' : 'error')
 }
 
-async function bulkSetPinned(pinned) {
+async function bulkSetPinned(pinned: boolean): Promise<void> {
+  if (!currentPaperId.value) return
   const total = selectedIds.value.size
   if (total === 0) return
   const ok = await runBulk(pinned ? 'Pin' : 'Unpin', (id) =>
@@ -1079,7 +1096,8 @@ async function bulkSetPinned(pinned) {
   toast(`${pinned ? 'Pinned' : 'Unpinned'} ${ok}/${total}`, ok > 0 ? 'success' : 'error')
 }
 
-async function bulkToggleMustRead() {
+async function bulkToggleMustRead(): Promise<void> {
+  if (!currentPaperId.value) return
   const total = selectedIds.value.size
   if (total === 0) return
   const anyNotMustRead = items.value.some(it => selectedIds.value.has(it.id) && !it.must_read)
@@ -1092,14 +1110,12 @@ async function bulkToggleMustRead() {
   toast(`${newValue ? 'Must-read' : 'Biasa'}: ${ok}/${total}`, ok > 0 ? 'success' : 'error')
 }
 
-// ----- Sorting -----
-function setSort(key) {
+function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations'): void {
   if (sortKey.value !== key) {
     sortKey.value = key
     sortDir.value = key === 'title' ? 'asc' : 'desc'
     return
   }
-  // cycle: desc -> asc -> default ; asc -> desc -> default depending on first
   if (sortDir.value === 'desc') {
     sortDir.value = 'asc'
   } else if (sortDir.value === 'asc') {
@@ -1108,18 +1124,12 @@ function setSort(key) {
   }
 }
 
-function sortIndicator(key) {
+function sortIndicator(key: string): string {
   if (sortKey.value !== key) return ''
   return sortDir.value === 'asc' ? ' ▲' : ' ▼'
 }
 
-/**
- * Apply an intent parked by the chat store after a chat-triggered RunSLR.
- * The backend has already created the job — we DO NOT re-POST. We just
- * pre-fill the query input and surface an optimistic job card so the user
- * sees immediate feedback while the next poll picks up the real job state.
- */
-function applyIntent(intent) {
+function applyIntent(intent: any): void {
   if (!intent) return
   if (intent.query) slrQuery.value = intent.query
   if (intent.top_k) slrTopK.value = intent.top_k
@@ -1137,8 +1147,6 @@ function applyIntent(intent) {
 }
 
 watch(currentPaperId, async (id) => {
-  // Reset cross-paper state so a stale "justFinished" detection from another
-  // paper doesn't fire after switching.
   _lastJobIds = new Set()
   _lastJobStatus = {}
   _consecutiveFailures = 0
@@ -1147,7 +1155,6 @@ watch(currentPaperId, async (id) => {
   lastSlrJob.value = null
   selectedIds.value = new Set()
   loadError.value = ''
-  // Restore filters: defaults first, then overlay any saved state for this paper.
   applySavedFilter(id ? loadFilterStateFor(id) : null)
   if (id) {
     await Promise.all([loadItems(), loadJobs()])

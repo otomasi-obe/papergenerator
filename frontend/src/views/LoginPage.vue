@@ -26,21 +26,40 @@
 
         <!-- Email/Password Form -->
         <form @submit.prevent="handleSubmit" class="space-y-4 mb-5">
-          <label v-if="isRegister" class="block">
-            <span class="text-cream-200/80 text-xs block mb-1">Name</span>
-            <input v-model="form.name" type="text" placeholder="Your full name"
+          <div v-if="isRegister" class="block">
+            <label for="login-name" class="block text-xs font-medium mb-1 text-cream-200/80">
+              Name <span class="text-red-500">*</span>
+            </label>
+            <input id="login-name" v-model="form.name" type="text" placeholder="Your full name"
+              autocomplete="name" aria-required="true"
               class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
-          </label>
-          <label class="block">
-            <span class="text-cream-200/80 text-xs block mb-1">Email</span>
-            <input v-model="form.email" type="email" placeholder="you@example.com"
+          </div>
+          <div class="block">
+            <label for="login-email" class="block text-xs font-medium mb-1 text-cream-200/80">
+              Email <span class="text-red-500">*</span>
+            </label>
+            <input id="login-email" v-model="form.email" type="email" placeholder="you@example.com"
+              autocomplete="email" inputmode="email" aria-required="true"
               class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
-          </label>
-          <label class="block">
-            <span class="text-cream-200/80 text-xs block mb-1">Password</span>
-            <input v-model="form.password" type="password" placeholder="Min. 8 chars, mix of types"
-              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
-          </label>
+          </div>
+          <div class="block">
+            <label for="login-password" class="block text-xs font-medium mb-1 text-cream-200/80">
+              Password <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <input id="login-password" v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="Min. 8 chars, mix of types"
+                :autocomplete="isRegister ? 'new-password' : 'current-password'" aria-required="true"
+                class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300 pr-12" />
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                {{ showPassword ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+          </div>
           <!-- Cloudflare Turnstile widget — only shown for register flow -->
           <div v-if="isRegister && turnstileSiteKey" class="flex justify-center">
             <div ref="turnstileBox" class="cf-turnstile"
@@ -49,7 +68,7 @@
               data-callback="onTurnstileSuccess"></div>
           </div>
           <button type="submit" :disabled="submitting"
-            class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-brown-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50">
+            class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-brown-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform">
             {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
           </button>
         </form>
@@ -64,7 +83,7 @@
         <!-- Google Login Button -->
         <button
           @click="auth.loginWithGoogle()"
-          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-cream-50 text-brown-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-lg text-sm"
+          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-cream-50 text-brown-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-lg text-sm active:scale-95 transition-transform"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -112,6 +131,7 @@ const router = useRouter()
 const isRegister = ref(false)
 const submitting = ref(false)
 const formError = ref('')
+const showPassword = ref(false)
 
 // Turnstile site key dari env build-time. Kalau kosong, CAPTCHA dilewati FE
 // dan backend juga skip (ENABLE_CAPTCHA=false). Aman untuk dev local.

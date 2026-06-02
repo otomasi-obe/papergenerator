@@ -1,0 +1,112 @@
+================================================================================
+REKOMENDASI TEKNIS - PERBAIKAN FETCHERS
+================================================================================
+
+BAGIAN 1: FETCHERS YANG PERLU DIPERBAIKI (FREE API)
+================================================================================
+
+1. DBLP FETCHER
+----------------
+Status: No results (0 papers found)
+Masalah: Implementasi search query atau parsing response
+API: https://dblp.org/search/publ/api
+
+Langkah Perbaikan:
+- Cek format query parameter
+- Cek parsing XML/JSON response
+- Test dengan query sederhana
+- Verifikasi endpoint
+
+2. SEMANTIC SCHOLAR FETCHER
+----------------------------
+Status: No results (0 papers found)
+Masalah: Implementasi API call atau rate limiting
+API: https://api.semanticscholar.org
+
+Langkah Perbaikan:
+- Cek endpoint: /graph/v1/paper/search
+- Cek query parameter format
+- Tambah User-Agent header
+- Implementasi rate limiting (100 req/5min)
+
+================================================================================
+BAGIAN 2: FETCHERS YANG BUTUH API KEY
+================================================================================
+
+3. IEEE XPLORE
+--------------
+Status: No results (butuh IEEE_API_KEY)
+Coverage: Engineering and technology papers
+Cara Daftar: https://developer.ieee.org/member/register
+Quota: 200 calls/day (free tier)
+
+4. SCOPUS
+---------
+Status: No results (butuh SCOPUS_API_KEY)
+Coverage: Multidisciplinary, high quality
+Cara Daftar: Butuh institutional access
+URL: https://dev.elsevier.com
+
+5. SPRINGER
+-----------
+Status: No results (mungkin butuh API key)
+Coverage: Science, technology, medicine
+Cara Daftar: https://dev.springernature.com
+
+================================================================================
+BAGIAN 3: OPTIMASI FETCHERS YANG SUDAH BERHASIL
+================================================================================
+
+Untuk 6 fetchers yang sudah berhasil, perlu ditambahkan:
+
+1. ERROR HANDLING
+- Try-catch untuk network errors
+- Timeout handling (30 detik)
+- Retry mechanism (3x dengan exponential backoff)
+
+2. RATE LIMITING
+- ArXiv: 1 req/3 detik
+- PubMed: 3 req/detik
+- Crossref: 50 req/detik
+- OpenAlex: 10 req/detik
+
+3. CACHING
+- Cache hasil search (1 jam)
+- Cache PDF links (24 jam)
+
+4. LOGGING
+- Log setiap request
+- Log errors dengan stack trace
+- Log rate limit hits
+
+5. VALIDATION
+- Validasi PDF links sebelum return
+- Cek HTTP status code
+- Timeout untuk link validation (5 detik)
+
+================================================================================
+BAGIAN 4: PRIORITAS IMPLEMENTASI
+================================================================================
+
+MINGGU 1: Fix Free APIs
+- Debug dan fix DBLP fetcher
+- Debug dan fix Semantic Scholar fetcher
+- Test dengan berbagai keyword
+
+MINGGU 2: Setup API Keys
+- Daftar IEEE API key
+- Test IEEE fetcher dengan API key
+- Cek Springer API availability
+
+MINGGU 3: Optimasi
+- Implementasi error handling
+- Implementasi rate limiting
+- Implementasi caching
+- Implementasi logging
+
+MINGGU 4: Testing
+- Integration testing semua fetchers
+- Performance testing
+- Dokumentasi lengkap
+
+================================================================================

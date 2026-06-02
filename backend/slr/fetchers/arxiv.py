@@ -1,11 +1,13 @@
 """Fetcher untuk arXiv - http://export.arxiv.org/api/query"""
+
 import re
 import xml.etree.ElementTree as ET
 from typing import Iterable
+
 from ..http_client import RateLimiter, fetch_text
 from ..paper import Paper
 
-BASE = "http://export.arxiv.org/api/query"
+BASE = "https://export.arxiv.org/api/query"
 NS = {
     "atom": "http://www.w3.org/2005/Atom",
     "arxiv": "http://arxiv.org/schemas/atom",
@@ -53,6 +55,9 @@ def _parse_entry(entry: ET.Element) -> Paper | None:
     if jr_el is not None:
         venue = (jr_el.text or "").strip() or None
 
+    # PDF download link
+    pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None
+    
     return Paper(
         source="arxiv",
         source_id=arxiv_id or "",
@@ -63,15 +68,16 @@ def _parse_entry(entry: ET.Element) -> Paper | None:
         venue=venue,
         venue_type="journal" if venue else "preprint",
         doi=doi,
-        url=f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else None,
+        url=pdf_url,  # Direct PDF link
         is_open_access=True,
         type="preprint",
     )
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
-    rl = RateLimiter(3.1)
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
+    # arXiv rate limit: very strict, use 10 seconds to avoid 429
+    # They recommend 3 seconds but we've seen 429s, so being extra conservative
+    rl = RateLimiter(10.0)
     per_page = min(limit, 100)
     start = 0
 
@@ -95,6 +101,7 @@ def search(client, query: str, limit: int = 25,
             root = ET.fromstring(text)
         except ET.ParseError as e:
             import logging
+
             logging.getLogger(__name__).warning("arxiv parse error at start=%d: %s", start, e)
             return
 

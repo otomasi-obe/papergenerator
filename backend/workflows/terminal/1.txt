@@ -1,0 +1,93 @@
+# Skenario: Sosial Pemula — Skripsi dari Nol
+# Tanggal : 2026-05-30 00:26:01
+# Model   : VIOLA-CHAT
+# Fase akhir: 0
+# Jawaban terkumpul: 0
+============================================================
+
+U: Halo, saya ingin meneliti tentang pemberdayaan masyarakat untuk skripsi.
+
+AI: ✅ Terima kasih atas info awalnya! Saya siap membantu menyusun skripsi tentang pemberdayaan masyarakat.
+
+Mari kita mulai dengan mengumpulkan profil dasar kamu. Ini akan membantu saya memahami konteks penelitianmu dengan lebih baik.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"0.1","question":"Tingkat progress penelitian kamu saat ini?","options":["Baru mulai, belum ada data","Sudah ada ide umum tapi belum detail","Sudah ada data awal, sedang analisis","Sudah hampir selesai, tinggal penulisan","Ceritakan sendiri..."]},{"id":"0.2","question":"Kesiapan data penelitian?","options":["Belum punya data sama sekali","Sudah punya data primer (lapangan)","Sudah punya data sekunder (dokumen)","Sudah punya data primer & sekunder","Ceritakan sendiri..."]},{"id":"0.3","question":"Berapa jumlah tim peneliti?","options":["Sendiri (1 orang)","2 orang","3-4 orang","5+ orang","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(10.3s)[0m
+
+U: A
+
+AI: ✅ Terima kasih! Status awal tercatat. Sekarang kita bangun profil paper kamu.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"1.1","question":"Bidang ilmu atau jurusan kamu?","options":["Ilmu Sosial & Humaniora","Ilmu Kesehatan","Teknik & Sains","Pertanian & Perkebunan","Ceritakan sendiri..."]},{"id":"1.2","question":"Jenis paper yang kamu butuhkan?","options":["Skripsi / Tugas Akhir","Artikel Jurnal","Laporan Penelitian","Proposal Penelitian","Ceritakan sendiri..."]},{"id":"1.3","question":"Target publikasi?","options":["Jurnal nasional terakreditasi","Jurnal internasional","Prosiding seminar","Laporan kemitraan komunitas","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(17.0s)[0m
+
+U: A
+
+AI: ✅ Profil dasar tercatat.
+
+### 📄 IDENTITAS PAPER
+| Field | Detail |
+|---|---|
+| Bidang / Jenis | Ilmu Sosial & Humaniora — Skripsi / Tugas Akhir |
+| Target Publikasi | Jurnal nasional terakreditasi |
+| Level Progress | Baru mulai, belum ada data |
+| Judul Provisional | — |
+
+🎉 Profil siap! Lanjut ke topik dan metodologi.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"2.1","question":"Topik spesifik pemberdayaan masyarakat yang kamu minati?","options":["Pemberdayaan ekonomi (UMKM, koperasi)","Pemberdayaan lingkungan (daur ulang, konservasi)","Pemberdayaan sosial (karang taruna, posyandu)","Pemberdayaan digital (literasi tech, e-commerce)","Ceritakan sendiri..."]},{"id":"2.2","question":"Permasalahan utama yang ingin diangkat?","options":["Kurangnya akses pasar bagi UMKM","Rendahnya kesadaran lingkungan","Ketergantungan pada bantuan luar","Kesenjangan digital di masyarakat","Ceritakan sendiri..."]},{"id":"2.3","question":"Kesenjangan penelitian (research gap) yang ingin diisi?","options":["Kurangnya studi di wilayah tertentu","Metode pemberdayaan yang belum dieksplorasi","Dampak jangka panjang yang belum diteliti","Kasus pemberdayaan pasca-bencana","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(5.4s)[0m
+
+U: A
+
+AI: ✅ Topik dan permasalahan tercatat. Lanjut ke fase berikutnya.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"3.1","question":"Pendekatan metodologi yang kamu pilih?","options":["Kualitatif (studi kasus, etnografi)","Kuantitatif (survei, eksperimen)","Campuran (mixed methods)","Aksi partisipatif (PAR)","Ceritakan sendiri..."]},{"id":"3.2","question":"Metode pengumpulan data utama?","options":["Wawancara mendalam","Kuesioner / survei","Observasi partisipatif","Fokus group discussion (FGD)","Ceritakan sendiri..."]},{"id":"3.3","question":"Sumber data penelitian?","options":["Masyarakat di wilayah tertentu","UMKM atau koperasi lokal","Lembaga pemerintah / swasta","Dokumen arsip dan literatur","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(8.1s)[0m
+
+U: D
+
+AI: ✅ Metodologi tercatat. Lanjut ke fase berikutnya.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"4.1","question":"Template struktur yang kamu inginkan?","options":["Standar kampus (BAB I-V)","IMRaD (Intro, Methods, Results, Discussion)","Jurnal terakreditasi (struktur fleksibel)","Laporan komunitas (naratif + rekomendasi)","Ceritakan sendiri..."]},{"id":"4.2","question":"Tingkat kompleksitas paper?","options":["Sederhana (fokus deskriptif)","Sedang (analisis sederhana)","Kompleks (model statistik / teori)","Sangat kompleks (multi-dimensi)","Ceritakan sendiri..."]},{"id":"4.3","question":"Jumlah bagian utama yang diinginkan?","options":["3-4 bagian (ringkas)","5-7 bagian (standar)","8-10 bagian (komprehensif)","Tidak ada batasan","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(12.0s)[0m
+
+U: B
+
+AI: ✅ Struktur dan kompleksitas tercatat. Lanjut ke fase berikutnya.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"5.1","question":"Gaya sitasi yang kamu gunakan?","options":["APA Style (7th ed.)","IEEE","Vancouver","Chicago Manual","Ceritakan sendiri..."]},{"id":"5.2","question":"Jumlah referensi yang diharapkan?","options":["10–15 referensi","16–25 referensi","26–35 referensi","36+ referensi","Ceritakan sendiri..."]},{"id":"5.3","question":"Rentang tahun referensi yang diinginkan?","options":["Semua tahun (sejarah)","5 tahun terakhir (2021–2026)","10 tahun terakhir (2016–2026)","Campuran (50% lama, 50% baru)","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(7.7s)[0m
+
+U: A
+
+AI: ✅ Gaya sitasi dan referensi tercatat. Lanjut ke fase berikutnya.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"6.1","question":"Jenis visualisasi yang kamu butuhkan?","options":["Grafik batang / garis","Peta konsep / alur","Tabel analisis","Diagram algoritma / sistem","Ceritakan sendiri..."]},{"id":"6.2","question":"Jumlah visualisasi yang diharapkan?","options":["1–2 visualisasi","3–4 visualisasi","5–6 visualisasi","7+ visualisasi","Ceritakan sendiri..."]},{"id":"6.3","question":"Platform pembuatan visualisasi?","options":["Excel / Google Sheets","Python (Matplotlib/Seaborn)","R (ggplot2)","Canva / Figma","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(41.6s)[0m
+
+U: Pemberdayaan Masyarakat Melalui Program UMKM di Desa Binaan
+
+AI: ✅ Topik pemberdayaan UMKM tercatat. Lanjut ke fase berikutnya.
+
+<invoke name="AskQuestions">
+<parameter name="questions">[{"id":"7.1","question":"Bahasa yang digunakan untuk penulisan?","options":["Bahasa Indonesia formal","Bahasa Inggris (akademik)","Campuran (Indonesia-Inggris)","Bahasa daerah (dengan terjemahan)","Ceritakan sendiri..."]},{"id":"7.2","question":"Nada penulisan yang diinginkan?","options":["Akademis formal","Populer-educative (mudah dipahami)","Advokatif (mendorong perubahan)","Kolaboratif (ikut partisipatif)","Ceritakan sendiri..."]},{"id":"7.3","question":"Gaya suara penulisan?","options":["Orang ketiga objektif","Orang pertama aktif (kami/mereka)","Orang pertama jamak (penulis)","Campuran sesuai kebutuhan","Ceritakan sendiri..."]}]</parameter>
+</invoke>
+    [2m(13.6s)[0m
+
+────────────────────────────────────────
+Hasil: [33m~ Phase 0[0m  |  Jawaban: 0  |  File: 1.txt

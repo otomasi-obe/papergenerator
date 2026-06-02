@@ -1,0 +1,29 @@
+{
+  "normal_load": {
+    "users": 10,
+    "duration": 60,
+    "spawn_rate": 1,
+    "success": true,
+    "returncode": 0,
+    "stats": {},
+    "output_preview": ""
+  },
+  "peak_load": {
+    "users": 25,
+    "duration": 60,
+    "spawn_rate": 2,
+    "success": true,
+    "returncode": 0,
+    "stats": {},
+    "output_preview": ""
+  },
+  "stress_test": {
+    "users": 50,
+    "duration": 60,
+    "spawn_rate": 5,
+    "success": true,
+    "returncode": 0,
+    "stats": {},
+    "output_preview": ""
+  }
+}

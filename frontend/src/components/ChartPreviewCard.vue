@@ -37,7 +37,7 @@
     <div class="flex flex-wrap gap-2 mt-3">
       <button
         type="button"
-        @click="$emit('accept', { imageId, spec, url })"
+        @click="emit('accept', { imageId, spec, url })"
         class="px-3 py-1.5 rounded-md text-xs font-medium
                bg-brown-600 hover:bg-brown-700 text-cream-50
                dark:bg-cream-300 dark:hover:bg-cream-200 dark:text-ink-900
@@ -47,7 +47,7 @@
       </button>
       <button
         type="button"
-        @click="$emit('regenerate', { imageId, spec })"
+        @click="emit('regenerate', { imageId, spec })"
         class="px-3 py-1.5 rounded-md text-xs font-medium border
                bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
                border-cream-300 dark:border-ash-600
@@ -60,29 +60,30 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
+import type { ChartPreviewCardProps, ChartPreviewCardEmits } from '../types/components'
 
-const props = defineProps({
-  url: { type: String, default: '' },
-  spec: { type: Object, default: null },
-  imageId: { type: [String, Number], default: null },
-  title: { type: String, default: '' },
+const props = withDefaults(defineProps<ChartPreviewCardProps>(), {
+  url: '',
+  spec: null,
+  imageId: null,
+  title: ''
 })
 
-defineEmits(['accept', 'regenerate'])
+const emit = defineEmits<ChartPreviewCardEmits>()
 
-const kindLabel = computed(() => {
+const kindLabel = computed<string>(() => {
   const k = props.spec?.kind || props.spec?.type || ''
   return k ? String(k) : ''
 })
 
-const hasSpec = computed(() => {
+const hasSpec = computed<boolean>(() => {
   return !!props.spec && Object.keys(props.spec).length > 0
 })
 
-const specPretty = computed(() => {
-  try { return JSON.stringify(props.spec, null, 2) }
-  catch { return String(props.spec) }
+const specPretty = computed<string>(() => {
+  if (!props.spec) return ''
+  return JSON.stringify(props.spec, null, 2)
 })
 </script>

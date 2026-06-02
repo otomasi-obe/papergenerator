@@ -14,6 +14,7 @@ Output JSON:
       top50: [...],    # 50 paper rekomendasi terbaik
     }
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,13 +64,14 @@ def _print_summary(payload: dict, top_k: int) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("query")
-    ap.add_argument("--sources", default=",".join(ALL.keys()),
-                    help=f"Comma-separated dari: {','.join(ALL.keys())}")
+    ap.add_argument(
+        "--sources",
+        default=",".join(ALL.keys()),
+        help=f"Comma-separated dari: {','.join(ALL.keys())}",
+    )
     ap.add_argument("--per-source", type=int, default=25)
-    ap.add_argument("--total", type=int, default=200,
-                    help="Maks total paper unik yang diproses")
-    ap.add_argument("--top", type=int, default=50,
-                    help="Jumlah paper teratas untuk rekomendasi")
+    ap.add_argument("--total", type=int, default=200, help="Maks total paper unik yang diproses")
+    ap.add_argument("--top", type=int, default=50, help="Jumlah paper teratas untuk rekomendasi")
     ap.add_argument("--year-from", type=int, default=None)
     ap.add_argument("--out", default="results/slr.json")
     ap.add_argument("--allow-predatory", action="store_true")

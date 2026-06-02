@@ -6,7 +6,9 @@ Strategi:
 2. Hapus body content (paragraf + tabel), pertahankan sectPr final
 3. Generate konten dari _template.json menggunakan styles asli template
 """
+
 from __future__ import annotations
+
 import json
 import re
 import shutil
@@ -49,43 +51,75 @@ def _strip_latex(text: str) -> str:
     if not text:
         return text
     # Hapus $...$ delimiters
-    text = re.sub(r'\$([^$]*)\$', r'\1', text)
+    text = re.sub(r"\$([^$]*)\$", r"\1", text)
     # mathrm/mathbf/mathit/text → konten saja
-    text = re.sub(r'\\(mathrm|mathbf|mathit|text|mathsf|mathtt)\{([^}]*)\}', r'\2', text)
+    text = re.sub(r"\\(mathrm|mathbf|mathit|text|mathsf|mathtt)\{([^}]*)\}", r"\2", text)
     # \frac{a}{b} → a/b
-    text = re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1)/(\2)', text)
+    text = re.sub(r"\\frac\{([^}]*)\}\{([^}]*)\}", r"(\1)/(\2)", text)
     # \sqrt{a} → √(a)
-    text = re.sub(r'\\sqrt\{([^}]*)\}', r'√(\1)', text)
+    text = re.sub(r"\\sqrt\{([^}]*)\}", r"√(\1)", text)
     # _{x} / ^{x} → _x / ^x (flatten)
-    text = re.sub(r'_\{([^}]*)\}', r'_\1', text)
-    text = re.sub(r'\^\{([^}]*)\}', r'^\1', text)
+    text = re.sub(r"_\{([^}]*)\}", r"_\1", text)
+    text = re.sub(r"\^\{([^}]*)\}", r"^\1", text)
     # Symbol replacements
     replacements = {
-        r'\\approx': '≈', r'\\times': '×', r'\\cdot': '·',
-        r'\\leq': '≤', r'\\geq': '≥', r'\\neq': '≠',
-        r'\\infty': '∞', r'\\pm': '±', r'\\mp': '∓',
-        r'\\circ': '°', r'\\degree': '°',
-        r'\\alpha': 'α', r'\\beta': 'β', r'\\gamma': 'γ',
-        r'\\delta': 'δ', r'\\epsilon': 'ε', r'\\theta': 'θ',
-        r'\\lambda': 'λ', r'\\mu': 'μ', r'\\pi': 'π',
-        r'\\sigma': 'σ', r'\\omega': 'ω', r'\\tau': 'τ',
-        r'\\Delta': 'Δ', r'\\Sigma': 'Σ', r'\\Omega': 'Ω',
-        r'\\sum': 'Σ', r'\\int': '∫', r'\\partial': '∂',
-        r'\\quad': '  ', r'\\qquad': '    ',
-        r'\\dots': '...', r'\\ldots': '...', r'\\cdots': '⋯',
-        r'\\left': '', r'\\right': '',
-        r'\\overline': '', r'\\underline': '', r'\\hat': '',
-        r'\\vec': '', r'\\dot': '', r'\\bar': '',
-        r'\\displaystyle': '', r'\\,': ' ', r'\\\\': ' ',
-        r'\\&': '&', r'\\%': '%', r'\\#': '#',
-        r'\\begin\{[^}]*\}': '', r'\\end\{[^}]*\}': '',
+        r"\\approx": "≈",
+        r"\\times": "×",
+        r"\\cdot": "·",
+        r"\\leq": "≤",
+        r"\\geq": "≥",
+        r"\\neq": "≠",
+        r"\\infty": "∞",
+        r"\\pm": "±",
+        r"\\mp": "∓",
+        r"\\circ": "°",
+        r"\\degree": "°",
+        r"\\alpha": "α",
+        r"\\beta": "β",
+        r"\\gamma": "γ",
+        r"\\delta": "δ",
+        r"\\epsilon": "ε",
+        r"\\theta": "θ",
+        r"\\lambda": "λ",
+        r"\\mu": "μ",
+        r"\\pi": "π",
+        r"\\sigma": "σ",
+        r"\\omega": "ω",
+        r"\\tau": "τ",
+        r"\\Delta": "Δ",
+        r"\\Sigma": "Σ",
+        r"\\Omega": "Ω",
+        r"\\sum": "Σ",
+        r"\\int": "∫",
+        r"\\partial": "∂",
+        r"\\quad": "  ",
+        r"\\qquad": "    ",
+        r"\\dots": "...",
+        r"\\ldots": "...",
+        r"\\cdots": "⋯",
+        r"\\left": "",
+        r"\\right": "",
+        r"\\overline": "",
+        r"\\underline": "",
+        r"\\hat": "",
+        r"\\vec": "",
+        r"\\dot": "",
+        r"\\bar": "",
+        r"\\displaystyle": "",
+        r"\\,": " ",
+        r"\\\\": " ",
+        r"\\&": "&",
+        r"\\%": "%",
+        r"\\#": "#",
+        r"\\begin\{[^}]*\}": "",
+        r"\\end\{[^}]*\}": "",
     }
     for pat, repl in replacements.items():
         text = re.sub(pat, repl, text)
     # Sisa command \xxx → strip
-    text = re.sub(r'\\[a-zA-Z]+', '', text)
+    text = re.sub(r"\\[a-zA-Z]+", "", text)
     # Curly braces yang tersisa
-    text = re.sub(r'[{}]', '', text)
+    text = re.sub(r"[{}]", "", text)
     return text
 
 
@@ -125,8 +159,16 @@ def doc_style_lookup(doc, style_name: str):
     raise KeyError(style_name)
 
 
-def _add_run(paragraph, text: str, *, bold: bool = False, italic: bool = False,
-             superscript: bool = False, font_name: str = None, size_pt: float = None):
+def _add_run(
+    paragraph,
+    text: str,
+    *,
+    bold: bool = False,
+    italic: bool = False,
+    superscript: bool = False,
+    font_name: str = None,
+    size_pt: float = None,
+):
     run = paragraph.add_run(text)
     run.bold = bold
     run.italic = italic
@@ -157,7 +199,13 @@ def add_title(doc, data):
 def add_authors(doc, data):
     authors = data.get("authors") or []
     if not authors:
-        authors = [{"name": "Author Name", "affiliation": "Department, University", "email": "author@email.ac.id"}]
+        authors = [
+            {
+                "name": "Author Name",
+                "affiliation": "Department, University",
+                "email": "author@email.ac.id",
+            }
+        ]
 
     # Authors line dengan superscript affiliation index
     p = doc.add_paragraph()
@@ -282,7 +330,7 @@ def add_table(doc, table_data: dict):
 
     # Data rows
     for row_idx, row_data in enumerate(rows, start=1):
-        for col_idx, value in enumerate(row_data[:len(headers)]):
+        for col_idx, value in enumerate(row_data[: len(headers)]):
             cell = table.rows[row_idx].cells[col_idx]
             cell.text = ""
             para = cell.paragraphs[0]

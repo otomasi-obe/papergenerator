@@ -4,9 +4,11 @@ Auth modes for /raw mirror app.py: Bearer header, signed token (?s=), or
 legacy ?t=jwt. Cookies travel automatically because JWT_TOKEN_LOCATION
 includes both cookies and headers.
 """
+
 from __future__ import annotations
 
 import logging
+import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -18,6 +20,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
 )
 
+from core import s3_storage
 from database.models import Paper, PaperFile, db
 from paper_generation.utils import (
     PAPER_ID_RE,
@@ -63,14 +66,14 @@ def _validate_file_content(data: bytes, ext: str) -> bool:
     signatures = FILE_SIGNATURES.get(ext)
     if signatures is None:
         return True
-    
+
     if not data:
         return False
-    
+
     for sig in signatures:
         if data.startswith(sig):
             return True
-    
+
     return False
 
 
@@ -81,19 +84,19 @@ def _read_file_with_limit(stream, max_bytes: int) -> tuple[bytes | None, str | N
     chunk_size = 8192
     chunks = []
     total_size = 0
-    
+
     try:
         while True:
             chunk = stream.read(chunk_size)
             if not chunk:
                 break
-            
+
             total_size += len(chunk)
             if total_size > max_bytes:
                 return None, f"File exceeds {max_bytes // (1024 * 1024)}MB limit"
-            
+
             chunks.append(chunk)
-        
+
         return b"".join(chunks), None
     except Exception as e:
         log.warning("file_read_error", extra={"err": str(e)})
@@ -110,6 +113,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
         if ext == ".pdf":
             try:
                 import fitz  # PyMuPDF — better fidelity than pdfminer for tables
+
                 parts = []
                 with fitz.open(str(filepath)) as doc:
                     for page in doc:
@@ -122,6 +126,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
             except Exception:
                 pass
             from paper_generation.extract_pdfs import extract_text_from_pdf
+
             with open(filepath, "rb") as f:
                 txt = extract_text_from_pdf(f)
             return txt[:MAX_PREVIEW_CHARS]
@@ -129,6 +134,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
         if ext in (".docx", ".doc"):
             try:
                 from docx import Document
+
                 doc = Document(str(filepath))
                 chunks: list[str] = []
                 for p in doc.paragraphs:
@@ -154,12 +160,14 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
                 )
             try:
                 import zipfile
-                import xml.etree.ElementTree as ET
+
+                import defusedxml.ElementTree as ET
 
                 ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
                 with zipfile.ZipFile(str(filepath)) as zf:
                     candidates = [
-                        n for n in zf.namelist()
+                        n
+                        for n in zf.namelist()
                         if n.endswith("/document.xml") or n == "word/document.xml"
                     ]
                     if not candidates:
@@ -168,10 +176,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
                         tree = ET.parse(raw)
                 lines: list[str] = []
                 for para in tree.iter(f"{{{ns['w']}}}p"):
-                    parts = [
-                        (t.text or "")
-                        for t in para.iter(f"{{{ns['w']}}}t")
-                    ]
+                    parts = [(t.text or "") for t in para.iter(f"{{{ns['w']}}}t")]
                     line = "".join(parts).strip()
                     if line:
                         lines.append(line)
@@ -185,6 +190,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
 
         if ext in (".xlsx", ".xls"):
             from openpyxl import load_workbook
+
             wb = load_workbook(str(filepath), read_only=True, data_only=True)
             out: list[str] = []
             for sheet_name in wb.sheetnames:
@@ -233,11 +239,7 @@ def list_paper_files(paper_id: str):
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
-    files = (
-        PaperFile.query.filter_by(paper_id=paper_id)
-        .order_by(PaperFile.created_at.desc())
-        .all()
-    )
+    files = PaperFile.query.filter_by(paper_id=paper_id).order_by(PaperFile.created_at.desc()).all()
     return jsonify({"files": [f.to_dict() for f in files]})
 
 
@@ -261,16 +263,11 @@ def upload_paper_files(paper_id: str):
     if not files:
         return jsonify({"error": "No files uploaded"}), 400
 
-    paper_dir = safe_paper_dir(paper_id)
-    if not paper_dir:
-        return jsonify({"error": "Invalid paper id"}), 400
-    files_dir = paper_dir / "files"
-    files_dir.mkdir(parents=True, exist_ok=True)
-
-    # Phase 1: read bytes + persist to disk synchronously. Cheap and we need a
-    # path before we can hand off to the extraction pool.
+    # Phase 1: read bytes, validate, and persist (S3 or local disk)
     accepted: list[dict] = []
     warnings: list[str] = []
+    temp_files: list[Path] = []  # Track temp files for cleanup
+
     for f in files:
         ext = Path(f.filename or "").suffix.lower()
         if ext not in ALLOWED_FILE_EXTS:
@@ -282,7 +279,7 @@ def upload_paper_files(paper_id: str):
         if error:
             warnings.append(f"{f.filename}: {error}")
             continue
-        
+
         if not data:
             warnings.append(f"{f.filename}: file kosong")
             continue
@@ -295,17 +292,63 @@ def upload_paper_files(paper_id: str):
             continue
 
         name = f"{uuid.uuid4().hex}{ext}"
-        filepath = files_dir / name
-        filepath.write_bytes(data)
-        accepted.append({
-            "name": name,
-            "filepath": filepath,
-            "ext": ext,
-            "original_name": (f.filename or "")[:255],
-            "size": len(data),
-        })
+        s3_key = f"{paper_id}/files/{name}"
+
+        # Determine MIME type for S3
+        mime_map = {
+            ".pdf": "application/pdf",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".doc": "application/msword",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls": "application/vnd.ms-excel",
+            ".csv": "text/csv",
+            ".txt": "text/plain",
+            ".md": "text/markdown",
+        }
+        content_type = mime_map.get(ext, "application/octet-stream")
+
+        # Upload to S3 or save locally
+        if s3_storage.is_s3_enabled():
+            # Upload to S3
+            if not s3_storage.upload_file(data, s3_key, content_type):
+                warnings.append(f"{f.filename}: gagal upload ke S3")
+                continue
+
+            # Create temp file for text extraction
+            temp_file = Path(tempfile.mktemp(suffix=ext))
+            temp_file.write_bytes(data)
+            temp_files.append(temp_file)
+            filepath = temp_file
+        else:
+            # Save to local filesystem (original behavior)
+            paper_dir = safe_paper_dir(paper_id)
+            if not paper_dir:
+                warnings.append(f"{f.filename}: Invalid paper id")
+                continue
+            files_dir = paper_dir / "files"
+            files_dir.mkdir(parents=True, exist_ok=True)
+            filepath = files_dir / name
+            filepath.write_bytes(data)
+
+        accepted.append(
+            {
+                "name": name,
+                "filepath": filepath,
+                "ext": ext,
+                "original_name": (f.filename or "")[:255],
+                "size": len(data),
+                "s3_key": s3_key,
+            }
+        )
 
     if not accepted:
+        # Clean up temp files
+        for temp_file in temp_files:
+            try:
+                if temp_file.exists():
+                    temp_file.unlink()
+            except Exception:
+                pass
         return jsonify({"success": True, "files": [], "warnings": warnings})
 
     # Phase 2: extract text in parallel via the shared 20-worker pool. Each call
@@ -323,6 +366,10 @@ def upload_paper_files(paper_id: str):
             except Exception as e:
                 log.info("extract_failed", extra={"file": item["name"], "err": str(e)})
                 extracted = ""
+
+            # Store S3 key or local path depending on storage mode
+            file_path = item["s3_key"] if s3_storage.is_s3_enabled() else f"{paper_id}/files/{item['name']}"
+
             entry = PaperFile(
                 paper_id=paper_id,
                 user_id=user_id,
@@ -330,7 +377,7 @@ def upload_paper_files(paper_id: str):
                 original_name=item["original_name"],
                 ext=item["ext"],
                 size_bytes=item["size"],
-                file_path=f"{paper_id}/files/{item['name']}",
+                file_path=file_path,
                 extracted_text=extracted,
             )
             db.session.add(entry)
@@ -341,18 +388,39 @@ def upload_paper_files(paper_id: str):
             saved.append(entry.to_dict(include_text=True))
 
         db.session.commit()
+
+        # Clean up temp files after successful commit
+        for temp_file in temp_files:
+            try:
+                if temp_file.exists():
+                    temp_file.unlink()
+            except Exception:
+                log.warning("upload_paper_files: could not clean up temp file %s", temp_file)
+
         return jsonify({"success": True, "files": saved, "warnings": warnings})
     except Exception:
         db.session.rollback()
-        # BUG FIX: Clean up orphaned files if DB commit fails
+        # Clean up on failure
         for item in accepted:
             try:
-                if item["filepath"].exists():
+                # Delete from S3 if uploaded
+                if s3_storage.is_s3_enabled():
+                    s3_storage.delete_file(item["s3_key"])
+                # Delete local file if exists
+                elif item["filepath"].exists():
                     item["filepath"].unlink()
             except Exception:
                 log.warning("upload_paper_files: could not clean up %s", item["filepath"])
-        log.exception("upload_paper_files failed (rolled back)",
-                      extra={"paper_id": paper_id})
+
+        # Clean up temp files
+        for temp_file in temp_files:
+            try:
+                if temp_file.exists():
+                    temp_file.unlink()
+            except Exception:
+                pass
+
+        log.exception("upload_paper_files failed (rolled back)", extra={"paper_id": paper_id})
         return jsonify({"error": "Upload failed"}), 500
 
 
@@ -368,9 +436,7 @@ def delete_paper_file(paper_id: str, file_id: int):
     except (ValueError, TypeError):
 
         return jsonify({"error": "Invalid user identity"}), 401
-    entry = PaperFile.query.filter_by(
-        id=file_id, paper_id=paper_id, user_id=user_id
-    ).first()
+    entry = PaperFile.query.filter_by(id=file_id, paper_id=paper_id, user_id=user_id).first()
     if not entry:
         return jsonify({"error": "File not found"}), 404
 
@@ -398,9 +464,6 @@ def serve_paper_file(paper_id: str, file_id: int):
             return jsonify({"error": "Unauthorized"}), 401
         user_id = uid
     else:
-        token_qs = request.args.get("t")
-        if token_qs and "Authorization" not in request.headers:
-            request.headers.environ["HTTP_AUTHORIZATION"] = f"Bearer {token_qs}"
         try:
             verify_jwt_in_request()
         except Exception:
@@ -413,9 +476,7 @@ def serve_paper_file(paper_id: str, file_id: int):
 
             return jsonify({"error": "Invalid user identity"}), 401
 
-    entry = PaperFile.query.filter_by(
-        id=file_id, paper_id=paper_id, user_id=user_id
-    ).first()
+    entry = PaperFile.query.filter_by(id=file_id, paper_id=paper_id, user_id=user_id).first()
     if not entry:
         return jsonify({"error": "File not found"}), 404
 
@@ -462,15 +523,15 @@ def preview_paper_file(paper_id: str, file_id: int):
     except (ValueError, TypeError):
 
         return jsonify({"error": "Invalid user identity"}), 401
-    entry = PaperFile.query.filter_by(
-        id=file_id, paper_id=paper_id, user_id=user_id
-    ).first()
+    entry = PaperFile.query.filter_by(id=file_id, paper_id=paper_id, user_id=user_id).first()
     if not entry:
         return jsonify({"error": "File not found"}), 404
-    return jsonify({
-        "id": entry.id,
-        "ext": entry.ext,
-        "original_name": entry.original_name,
-        "text": entry.extracted_text or "",
-        "raw_url": f"/api/papers/{paper_id}/files/{file_id}/raw",
-    })
+    return jsonify(
+        {
+            "id": entry.id,
+            "ext": entry.ext,
+            "original_name": entry.original_name,
+            "text": entry.extracted_text or "",
+            "raw_url": f"/api/papers/{paper_id}/files/{file_id}/raw",
+        }
+    )

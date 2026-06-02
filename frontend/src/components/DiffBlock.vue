@@ -13,14 +13,14 @@
           <button
             @click="handleAccept"
             :disabled="processing"
-            class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            class="px-2 py-0.5 min-h-[44px] min-w-[44px] text-[10px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             title="Accept this change"
             aria-label="Accept change"
           >✓ Terima</button>
           <button
             @click="handleReject"
             :disabled="processing"
-            class="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            class="px-2 py-0.5 min-h-[44px] min-w-[44px] text-[10px] font-semibold rounded-md bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             title="Reject this change"
             aria-label="Reject change"
           >✕ Tolak</button>
@@ -31,18 +31,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import type { DiffBlockProps } from '../types/components'
 
-const props = defineProps({
-  change: { type: Object, required: true },
-  store: { type: Object, required: true },
-  align: { type: String, default: '' },
-})
+const props = defineProps<DiffBlockProps>()
 
-const processing = ref(false)
+const processing = ref<boolean>(false)
 
-async function handleAccept() {
+async function handleAccept(): Promise<void> {
   if (processing.value) return
   processing.value = true
   try {
@@ -52,7 +49,7 @@ async function handleAccept() {
   }
 }
 
-async function handleReject() {
+async function handleReject(): Promise<void> {
   if (processing.value) return
   processing.value = true
   try {

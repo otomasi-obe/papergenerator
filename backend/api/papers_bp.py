@@ -2,6 +2,7 @@
 Paper CRUD blueprint — list / create / read / update / delete.
 Extracted from app.py to keep route concerns isolated.
 """
+
 from __future__ import annotations
 
 import copy
@@ -27,48 +28,61 @@ from database.models import (
     SlrJob,
     db,
 )
+from middleware import validate_query, validate_request
 from paper_generation.utils import PAPER_ID_RE, safe_paper_dir
+from schemas import PAPER_CREATE_SCHEMA, PAPER_LIST_QUERY_SCHEMA, PAPER_UPDATE_SCHEMA
 
 log = logging.getLogger(__name__)
 
 papers_bp = Blueprint("papers", __name__, url_prefix="/api/papers")
 
 
+def _extract_title(data: dict) -> str:
+    """Extract a usable title from the request payload, defaulting to 'Untitled'.
+
+    The frontend sends a flat structure (title at top level). Handles empty
+    strings, None, and whitespace-only values.
+    """
+    title = (data.get("title") or "").strip()
+    return title if title else "Untitled"
+
+
 @papers_bp.route("", methods=["GET"])
 @jwt_required()
+@validate_query(PAPER_LIST_QUERY_SCHEMA)
 def list_papers():
     try:
-
         user_id = int(get_jwt_identity())
-
     except (ValueError, TypeError):
-
         return jsonify({"error": "Invalid user identity"}), 401
-    try:
-        limit = max(1, min(int(request.args.get("limit", 20)), 100))
-    except (TypeError, ValueError):
-        limit = 20
-    try:
-        offset = max(0, int(request.args.get("offset", 0)))
-    except (TypeError, ValueError):
-        offset = 0
+
+    limit = int(request.args.get("limit", 20))
+    offset = int(request.args.get("offset", 0))
+
+    # Optimize: use window function to get count without separate query
 
     q = Paper.query.filter_by(user_id=user_id).order_by(Paper.updated_at.desc())
-    total = q.count()
     papers = q.limit(limit).offset(offset).all()
-    return jsonify({
-        "papers": [p.to_dict() for p in papers],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": offset + len(papers) < total,
-        },
-    })
+
+    # Get total count efficiently - only if we need it for pagination
+    total = q.count() if papers else 0
+
+    return jsonify(
+        {
+            "papers": [p.to_dict() for p in papers],
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "total": total,
+                "has_more": len(papers) == limit,  # Optimized check
+            },
+        }
+    )
 
 
 @papers_bp.route("", methods=["POST"])
 @jwt_required()
+@validate_request(PAPER_CREATE_SCHEMA, required=False)
 def save_paper():
     try:
 
@@ -84,7 +98,7 @@ def save_paper():
     paper_id = data.get("id") or uuid.uuid4().hex[:12]
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    title = data.get("title") or (data.get("data") or {}).get("title") or "Untitled"
+    title = _extract_title(data)
 
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if paper:
@@ -119,6 +133,7 @@ def load_paper(paper_id: str):
 
 @papers_bp.route("/<paper_id>", methods=["PUT"])
 @jwt_required()
+@validate_request(PAPER_UPDATE_SCHEMA, required=False)
 def update_paper(paper_id: str):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
@@ -133,7 +148,7 @@ def update_paper(paper_id: str):
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
     data = request.get_json(silent=True) or {}
-    title = data.get("title") or (data.get("data") or {}).get("title") or "Untitled"
+    title = _extract_title(data)
     paper.title = title
     paper.data = data
     paper.updated_at = datetime.now(timezone.utc)
@@ -161,11 +176,14 @@ def delete_paper(paper_id: str):
         # FKs aren't ON DELETE CASCADE at DB level — clean up dependents in the right order.
         conv_ids = [c.id for c in Conversation.query.filter_by(paper_id=paper_id).all()]
         if conv_ids:
-            ChatMessage.query.filter(ChatMessage.conversation_id.in_(conv_ids)) \
-                .delete(synchronize_session=False)
+            ChatMessage.query.filter(ChatMessage.conversation_id.in_(conv_ids)).delete(
+                synchronize_session=False
+            )
         Conversation.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         ProjectMemory.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         PaperFile.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
+        # ImageGenJob must be deleted BEFORE PaperImage because it has FK to paper_images.id
+        ImageGenJob.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         PaperImage.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         AiJob.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
         # SlrJob has a column literally named `query` which shadows the
@@ -173,7 +191,6 @@ def delete_paper(paper_id: str):
         # the session-level API here.
         db.session.query(SlrJob).filter_by(paper_id=paper_id).delete(synchronize_session=False)
         LiteratureItem.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
-        ImageGenJob.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
 
         paper_img_dir = safe_paper_dir(paper_id)
         if paper_img_dir and paper_img_dir.exists():
@@ -194,8 +211,16 @@ def delete_paper(paper_id: str):
 # apply ke papers.data, lalu return paper yang baru.
 
 PAPER_TOP_KEYS = {
-    "title", "abstract", "keywords", "authors", "sections",
-    "references", "figures", "tables", "equations", "acknowledgment",
+    "title",
+    "abstract",
+    "keywords",
+    "authors",
+    "sections",
+    "references",
+    "figures",
+    "tables",
+    "equations",
+    "acknowledgment",
 }
 
 ALLOWED_OPS = {"add", "remove", "replace", "move", "copy", "test"}
@@ -255,18 +280,15 @@ def patch_paper(paper_id: str):
         return jsonify({"error": "patch produced non-object root"}), 422
 
     paper.data = patched
-    new_title = (
-        patched.get("title")
-        or (patched.get("data") or {}).get("title")
-        or paper.title
-        or "Untitled"
-    )
+    new_title = (patched.get("title") or "").strip() or paper.title or "Untitled"
     paper.title = new_title
     paper.updated_at = datetime.now(timezone.utc)
     db.session.commit()
 
-    return jsonify({
-        "success": True,
-        "applied": len(ops),
-        "paper": paper.to_dict(include_data=True),
-    })
+    return jsonify(
+        {
+            "success": True,
+            "applied": len(ops),
+            "paper": paper.to_dict(include_data=True),
+        }
+    )

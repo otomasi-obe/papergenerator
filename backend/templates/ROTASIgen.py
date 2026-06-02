@@ -62,9 +62,7 @@ _DYNAMIC_PARTS = {
     "word/document.xml",
     "word/_rels/document.xml.rels",
 }
-_DYNAMIC_PREFIXES = (
-    "word/media/",
-)
+_DYNAMIC_PREFIXES = ("word/media/",)
 
 
 def _clear_document_body(doc: Document) -> None:
@@ -93,11 +91,15 @@ def _ensure_para_rpr(paragraph):
     return rpr
 
 
-def _set_para_default_rpr(paragraph, *, bold: bool | None = None,
-                          italic: bool | None = None,
-                          lang: str | None = None,
-                          size_pt: float | None = None,
-                          font_name: str | None = None) -> None:
+def _set_para_default_rpr(
+    paragraph,
+    *,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    lang: str | None = None,
+    size_pt: float | None = None,
+    font_name: str | None = None,
+) -> None:
     rpr = _ensure_para_rpr(paragraph)
 
     def set_on_off(tag: str, value: bool | None) -> None:
@@ -157,12 +159,16 @@ def _set_run_lang(run, lang: str) -> None:
     lang_el.set(qn("w:val"), lang)
 
 
-def _set_run_format(run, *, bold: bool | None = None,
-                    italic: bool | None = None,
-                    size_pt: float | None = None,
-                    font_name: str | None = None,
-                    lang: str | None = None,
-                    superscript: bool | None = None) -> None:
+def _set_run_format(
+    run,
+    *,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    size_pt: float | None = None,
+    font_name: str | None = None,
+    lang: str | None = None,
+    superscript: bool | None = None,
+) -> None:
     if bold is not None:
         run.bold = bold
     if italic is not None:
@@ -291,8 +297,8 @@ def _append_inline_math(paragraph, latex: str) -> bool:
 def _normalize_text(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -349,7 +355,7 @@ def _iter_rich_tokens(text: str):
             closing = text.find("$", index + 1)
             if closing != -1:
                 yield from flush()
-                formula = text[index + 1:closing]
+                formula = text[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -360,12 +366,16 @@ def _iter_rich_tokens(text: str):
     yield from flush()
 
 
-def _append_rich_text(paragraph, text: str,
-                      *, default_bold: bool | None = None,
-                      default_italic: bool | None = None,
-                      default_size_pt: float | None = None,
-                      default_font_name: str | None = None,
-                      default_lang: str | None = None) -> None:
+def _append_rich_text(
+    paragraph,
+    text: str,
+    *,
+    default_bold: bool | None = None,
+    default_italic: bool | None = None,
+    default_size_pt: float | None = None,
+    default_font_name: str | None = None,
+    default_lang: str | None = None,
+) -> None:
     for tok in _iter_rich_tokens(text):
         if tok["kind"] == "linebreak":
             paragraph.add_run().add_break()
@@ -489,8 +499,14 @@ def _set_horizontal_cell_borders(cell, top: bool = False, bottom: bool = False) 
         borders = OxmlElement("w:tcBorders")
         tc_pr.append(borders)
     spec = {
-        "top": {"val": "single", "sz": "4", "space": "0", "color": "auto"} if top else {"val": "none"},
-        "bottom": {"val": "single", "sz": "4", "space": "0", "color": "auto"} if bottom else {"val": "none"},
+        "top": (
+            {"val": "single", "sz": "4", "space": "0", "color": "auto"} if top else {"val": "none"}
+        ),
+        "bottom": (
+            {"val": "single", "sz": "4", "space": "0", "color": "auto"}
+            if bottom
+            else {"val": "none"}
+        ),
         "left": {"val": "none"},
         "right": {"val": "none"},
     }
@@ -543,12 +559,14 @@ def _add_authors(doc: Document, config: dict) -> None:
                 affiliation_map[aff_key] = (letter, aff_text or aff_key)
             else:
                 letter = affiliation_map[aff_key][0]
-        author_entries.append({
-            "name": name,
-            "letter": letter,
-            "email": email,
-            "corresponding": index == 0,
-        })
+        author_entries.append(
+            {
+                "name": name,
+                "letter": letter,
+                "email": email,
+                "corresponding": index == 0,
+            }
+        )
 
     names_para = _para(doc, "icsm_authors")
     _sp_after0(names_para)
@@ -561,7 +579,14 @@ def _add_authors(doc: Document, config: dict) -> None:
         _set_run_format(name_run, bold=True, size_pt=10, font_name="Times New Roman", lang="id-ID")
         if author["letter"]:
             sup = names_para.add_run(author["letter"])
-            _set_run_format(sup, bold=True, size_pt=10, font_name="Times New Roman", lang="en-US", superscript=True)
+            _set_run_format(
+                sup,
+                bold=True,
+                size_pt=10,
+                font_name="Times New Roman",
+                lang="en-US",
+                superscript=True,
+            )
         if author["corresponding"]:
             star = names_para.add_run("*")
             _set_run_format(star, bold=True, size_pt=10, font_name="Times New Roman", lang="en-US")
@@ -571,9 +596,24 @@ def _add_authors(doc: Document, config: dict) -> None:
         _sp_after0(p)
         _set_para_default_rpr(p, italic=False, lang="id-ID", size_pt=10)
         letter_run = p.add_run(letter)
-        _set_run_format(letter_run, bold=False, italic=False, size_pt=10, font_name="Times New Roman", lang="en-US", superscript=True)
+        _set_run_format(
+            letter_run,
+            bold=False,
+            italic=False,
+            size_pt=10,
+            font_name="Times New Roman",
+            lang="en-US",
+            superscript=True,
+        )
         body_run = p.add_run(text)
-        _set_run_format(body_run, bold=False, italic=False, size_pt=10, font_name="Times New Roman", lang="id-ID")
+        _set_run_format(
+            body_run,
+            bold=False,
+            italic=False,
+            size_pt=10,
+            font_name="Times New Roman",
+            lang="id-ID",
+        )
 
     emails = list(dict.fromkeys(a["email"] for a in author_entries if a["email"]))
     if emails:
@@ -581,7 +621,9 @@ def _add_authors(doc: Document, config: dict) -> None:
         _sp_after0(p)
         _set_para_default_rpr(p, italic=False, lang="en-US", size_pt=10)
         run = p.add_run("*E-mail: " + "; ".join(emails))
-        _set_run_format(run, bold=False, italic=False, size_pt=10, font_name="Times New Roman", lang="en-US")
+        _set_run_format(
+            run, bold=False, italic=False, size_pt=10, font_name="Times New Roman", lang="en-US"
+        )
 
     spacer = _para(doc, "icsm_title")
     _sp0(spacer)
@@ -589,8 +631,9 @@ def _add_authors(doc: Document, config: dict) -> None:
     _set_para_default_rpr(spacer, lang="en-US", size_pt=10)
 
 
-def _add_abstract_table(doc: Document, header_label: str, abstract_text: str,
-                        keywords_label: str, keywords: list[str]) -> None:
+def _add_abstract_table(
+    doc: Document, header_label: str, abstract_text: str, keywords_label: str, keywords: list[str]
+) -> None:
     table = doc.add_table(rows=1, cols=1)
     table.style = "Normal Table"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -738,8 +781,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -777,7 +821,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
         num_run = cap.add_run(f" {image_number}. ")
         _set_run_format(num_run, bold=True, size_pt=10, font_name="Times New Roman", lang="en-US")
         title_run = cap.add_run(title)
-        _set_run_format(title_run, bold=False, size_pt=10, font_name="Times New Roman", lang="id-ID")
+        _set_run_format(
+            title_run, bold=False, size_pt=10, font_name="Times New Roman", lang="id-ID"
+        )
 
 
 def _add_equation_line(doc: Document, formula: str, number: str | None = None) -> None:
@@ -791,10 +837,14 @@ def _add_equation_line(doc: Document, formula: str, number: str | None = None) -
     p.add_run("\t")
     if not _append_inline_math(p, formula):
         run = p.add_run(formula)
-        _set_run_format(run, bold=False, italic=True, size_pt=10, font_name="Times New Roman", lang="en-US")
+        _set_run_format(
+            run, bold=False, italic=True, size_pt=10, font_name="Times New Roman", lang="en-US"
+        )
     if number is not None:
         run = p.add_run(f"\t({number})")
-        _set_run_format(run, bold=False, italic=False, size_pt=10, font_name="Times New Roman", lang="en-US")
+        _set_run_format(
+            run, bold=False, italic=False, size_pt=10, font_name="Times New Roman", lang="en-US"
+        )
 
 
 def _add_equation(doc: Document, item: dict) -> None:
@@ -823,7 +873,9 @@ def _add_table(doc: Document, item: dict) -> None:
         _set_run_format(num_run, bold=True, size_pt=10, font_name="Times New Roman", lang="en-US")
     if title:
         title_run = cap.add_run(f" {title}")
-        _set_run_format(title_run, bold=False, size_pt=10, font_name="Times New Roman", lang="id-ID")
+        _set_run_format(
+            title_run, bold=False, size_pt=10, font_name="Times New Roman", lang="id-ID"
+        )
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
 
@@ -952,8 +1004,7 @@ def _iter_subsection_keys(section: dict, section_num: int) -> list[str]:
     return [key for _, key in sorted(keys)]
 
 
-def _render_subsection(doc: Document, subsection: dict, json_path: Path,
-                       prefix: str) -> None:
+def _render_subsection(doc: Document, subsection: dict, json_path: Path, prefix: str) -> None:
     title = str(subsection.get("title", "")).strip()
     if title:
         _add_subsection_heading(doc, prefix, title)
@@ -990,8 +1041,9 @@ def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
         for subsection_index, subsection_key in enumerate(subsection_keys, start=1):
             subsection = section[subsection_key]
             if isinstance(subsection, dict):
-                _render_subsection(doc, subsection, json_path,
-                                   prefix=f"{section_index}.{subsection_index}")
+                _render_subsection(
+                    doc, subsection, json_path, prefix=f"{section_index}.{subsection_index}"
+                )
 
 
 def _add_references(doc: Document, config: dict) -> None:
@@ -1052,14 +1104,14 @@ def _set_core_properties(doc: Document, config: dict) -> None:
         pass
 
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
-        Path(output_path)
-        if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1111,8 +1163,6 @@ def main() -> None:
     print("\nDone!")
 
 
-
-
 def _set_table_borders_match_template(table) -> None:
     """Set border tabel sesuai pattern template original: HORIZONTAL_ONLY (academic).
 
@@ -1122,6 +1172,7 @@ def _set_table_borders_match_template(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:
@@ -1145,6 +1196,7 @@ def _set_table_borders_match_template(table) -> None:
         else:
             el.set(qn("w:val"), "nil")
             el.set(qn("w:sz"), "0")
+
 
 if __name__ == "__main__":
     main()

@@ -10,6 +10,7 @@ Public surface:
 - `enqueue_slr_job(...)` — create + queue a row; safe to call from request
   handlers or chat tools. Returns the job id.
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +21,8 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_, update as sa_update
+from sqlalchemy import or_
+from sqlalchemy import update as sa_update
 from sqlalchemy.exc import DBAPIError, OperationalError
 
 from database.models import LiteratureItem, SlrJob, db
@@ -29,8 +31,8 @@ from slr.pipeline import run as run_slr_pipeline
 log = logging.getLogger(__name__)
 
 SLR_MAX_WORKERS = int(os.getenv("SLR_MAX_WORKERS", "10"))
-POLL_INTERVAL = 1.5     # seconds between queue polls when idle
-JOB_TIMEOUT = 1500      # 25 min — kill jobs running past this
+POLL_INTERVAL = 1.5  # seconds between queue polls when idle
+JOB_TIMEOUT = 1500  # 25 min — kill jobs running past this
 SWEEP_EVERY_N_POLLS = 40  # ~ once a minute at POLL_INTERVAL=1.5s
 
 _started = False
@@ -43,6 +45,7 @@ _inflight_lock = threading.Lock()
 
 class WorkerCancelled(Exception):
     """Raised inside the progress callback when a job has been cancelled."""
+
     pass
 
 
@@ -60,15 +63,19 @@ def _safe_commit(job_id: str | None = None, where: str = "") -> bool:
         return False
 
 
-def enqueue_slr_job(*, paper_id: str, user_id: int,
-                    query: str,
-                    conversation_id: str | None = None,
-                    sources: list[str] | None = None,
-                    per_source: int = 60,
-                    top_k: int = 50,
-                    year_from: int | None = None,
-                    ai_summarize: bool = True,
-                    ai_model: str = "V-DEEPSEEK") -> SlrJob:
+def enqueue_slr_job(
+    *,
+    paper_id: str,
+    user_id: int,
+    query: str,
+    conversation_id: str | None = None,
+    sources: list[str] | None = None,
+    per_source: int = 60,
+    top_k: int = 50,
+    year_from: int | None = None,
+    ai_summarize: bool = True,
+    ai_model: str | None = None,
+) -> SlrJob:
     """Insert an SlrJob row in `queued` status and return it. Workers pick it up."""
     job = SlrJob(
         id=_gen_id(),
@@ -81,7 +88,7 @@ def enqueue_slr_job(*, paper_id: str, user_id: int,
         per_source=int(per_source),
         year_from=year_from,
         ai_summarize=bool(ai_summarize),
-        ai_model=(ai_model or "V-DEEPSEEK")[:40],
+        ai_model=(ai_model or os.getenv("MODELGENERATE") or "VIOLA-GENERATE")[:40],
         status="queued",
         stage="queued",
         progress=0,
@@ -101,8 +108,7 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
         timeout_cutoff = now - timedelta(seconds=JOB_TIMEOUT)
         q = db.session.query(SlrJob).filter(
             SlrJob.status == "running",
-            or_(SlrJob.started_at.is_(None),
-                SlrJob.started_at < timeout_cutoff),
+            or_(SlrJob.started_at.is_(None), SlrJob.started_at < timeout_cutoff),
         )
         n = q.update(
             {"status": "error", "error": f"Job timeout ({reason})", "finished_at": now},
@@ -122,7 +128,8 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
         log.warning(
             "slr.sweep skipped due to DB busy/lock (reason=%s); jobs will sweep "
             "on next worker tick: %s",
-            reason, e,
+            reason,
+            e,
         )
         try:
             db.session.rollback()
@@ -151,7 +158,8 @@ def start_slr_workers(app) -> None:
             thread_name_prefix="slr",
         )
         _pump_thread = threading.Thread(
-            target=_pump_loop, args=(app,), daemon=True, name="slr-pump")
+            target=_pump_loop, args=(app,), daemon=True, name="slr-pump"
+        )
         _pump_thread.start()
         log.info("SLR worker pool started (max=%d)", SLR_MAX_WORKERS)
 
@@ -184,9 +192,7 @@ def _dispatch_pending(app):
     # Opportunistic sweep: under heavy queue pressure, don't wait for the
     # periodic sweep to clear timed-out 'running' rows.
     try:
-        queued_count = (db.session.query(SlrJob)
-                        .filter(SlrJob.status == "queued")
-                        .count())
+        queued_count = db.session.query(SlrJob).filter(SlrJob.status == "queued").count()
         if queued_count >= 5:
             try:
                 _sweep_dead_running_jobs(app, reason="Job timeout")
@@ -196,11 +202,13 @@ def _dispatch_pending(app):
         log.exception("slr.queued_count probe failed")
 
     # Pull up to `free` queued jobs and atomically transition to 'running'.
-    candidates = (db.session.query(SlrJob)
-                  .filter(SlrJob.status == "queued")
-                  .order_by(SlrJob.queued_at.asc())
-                  .limit(free * 2)
-                  .all())
+    candidates = (
+        db.session.query(SlrJob)
+        .filter(SlrJob.status == "queued")
+        .order_by(SlrJob.queued_at.asc())
+        .limit(free * 2)
+        .all()
+    )
     if not candidates:
         return
 
@@ -214,13 +222,17 @@ def _dispatch_pending(app):
         # Atomic claim: single conditional UPDATE. Whoever flips queued→running
         # first wins, regardless of process or thread.
         now = datetime.now(timezone.utc)
-        stmt = (sa_update(SlrJob)
-                .where(SlrJob.id == job.id, SlrJob.status == "queued")
-                .values(status="running",
-                        started_at=now,
-                        stage="fetching",
-                        progress=1,
-                        progress_message="Worker picked up the job"))
+        stmt = (
+            sa_update(SlrJob)
+            .where(SlrJob.id == job.id, SlrJob.status == "queued")
+            .values(
+                status="running",
+                started_at=now,
+                stage="fetching",
+                progress=1,
+                progress_message="Worker picked up the job",
+            )
+        )
         try:
             result = db.session.execute(stmt)
             db.session.commit()
@@ -273,7 +285,12 @@ def _run_job(app, job_id: str):
                         except Exception:
                             pass
                         raise WorkerCancelled()
-                    j = db.session.query(SlrJob).filter_by(id=job_id).with_for_update(skip_locked=True).first()
+                    j = (
+                        db.session.query(SlrJob)
+                        .filter_by(id=job_id)
+                        .with_for_update(skip_locked=True)
+                        .first()
+                    )
                     if not j:
                         return
                     if j.status == "cancelled":
@@ -319,12 +336,13 @@ def _run_job(app, job_id: str):
             try:
                 db.session.execute(
                     sa_update(SlrJob)
-                    .where(SlrJob.id == job_id,
-                           SlrJob.status.in_(("running", "cancelled")))
-                    .values(status="cancelled",
-                            stage="cancelled",
-                            progress_message="Job cancelled",
-                            finished_at=now)
+                    .where(SlrJob.id == job_id, SlrJob.status.in_(("running", "cancelled")))
+                    .values(
+                        status="cancelled",
+                        stage="cancelled",
+                        progress_message="Job cancelled",
+                        finished_at=now,
+                    )
                 )
                 _safe_commit(job_id, where="cancelled")
             except Exception:
@@ -334,7 +352,9 @@ def _run_job(app, job_id: str):
         except Exception as e:
             log.exception(
                 "slr.pipeline error job=%s query=%r sources=%s",
-                job_id, (job.query or "")[:200], (job.sources or []),
+                job_id,
+                (job.query or "")[:200],
+                (job.sources or []),
             )
             j = db.session.query(SlrJob).filter_by(id=job_id).first()
             if j:
@@ -377,10 +397,11 @@ def _run_job(app, job_id: str):
         # the user may have pinned/edited from a previous SLR run.
         existing_dois: set[str] = set()
         try:
-            rows = (db.session.query(LiteratureItem.doi)
-                    .filter(LiteratureItem.paper_id == job.paper_id,
-                            LiteratureItem.doi.isnot(None))
-                    .all())
+            rows = (
+                db.session.query(LiteratureItem.doi)
+                .filter(LiteratureItem.paper_id == job.paper_id, LiteratureItem.doi.isnot(None))
+                .all()
+            )
             for (d,) in rows:
                 if d:
                     existing_dois.add(d.strip().lower())
@@ -389,8 +410,9 @@ def _run_job(app, job_id: str):
 
         try:
             with db.session.begin_nested():
-                db.session.query(LiteratureItem).filter_by(
-                    slr_job_id=job_id).delete(synchronize_session=False)
+                db.session.query(LiteratureItem).filter_by(slr_job_id=job_id).delete(
+                    synchronize_session=False
+                )
 
                 for rec in top:
                     title = (rec.get("title") or "").strip()
@@ -407,17 +429,17 @@ def _run_job(app, job_id: str):
                     item = LiteratureItem(
                         paper_id=job.paper_id,
                         user_id=job.user_id,
-                        source_kind='slr',
-                        source=rec.get("source") or '',
+                        source_kind="slr",
+                        source=rec.get("source") or "",
                         title=title,
                         authors=rec.get("authors") or [],
                         year=rec.get("year") or pi.get("year"),
-                        venue=rec.get("venue") or pi.get("venue") or '',
-                        publisher=rec.get("publisher") or pi.get("publisher") or '',
+                        venue=rec.get("venue") or pi.get("venue") or "",
+                        publisher=rec.get("publisher") or pi.get("publisher") or "",
                         doi=doi_raw,
-                        url=rec.get("url") or '',
-                        abstract=rec.get("abstract") or '',
-                        summary=rec.get("summary") or '',
+                        url=rec.get("url") or "",
+                        abstract=rec.get("abstract") or "",
+                        summary=rec.get("summary") or "",
                         citations=rec.get("citations"),
                         score_total=rec.get("score_total"),
                         score_breakdown=rec.get("score_breakdown") or {},
@@ -450,9 +472,7 @@ def _run_job(app, job_id: str):
         j.status = "done"
         j.stage = "done"
         j.progress = 100
-        j.progress_message = (
-            f"Selesai. {len(top)} paper teratas tersimpan ke Literatur tab."
-        )
+        j.progress_message = f"Selesai. {len(top)} paper teratas tersimpan ke Literatur tab."
         j.result = payload
         j.finished_at = datetime.now(timezone.utc)
         _safe_commit(job_id, where="done")
@@ -487,8 +507,10 @@ def _stage_message(stage: str, info: dict) -> str:
         srcs = ", ".join(info.get("sources") or [])
         return f"Mencari paper di {info.get('total', 0)} sumber ({srcs})…"
     if stage == "source_done":
-        return (f"{info.get('source', '?')} → {info.get('count', 0)} hasil "
-                f"({info.get('completed', 0)}/{info.get('total', 0)})")
+        return (
+            f"{info.get('source', '?')} → {info.get('count', 0)} hasil "
+            f"({info.get('completed', 0)}/{info.get('total', 0)})"
+        )
     if stage == "dedup_done":
         return f"Dedup selesai: {info.get('count', 0)} unique paper"
     if stage == "scoring":

@@ -421,6 +421,25 @@ paths:
               type: object
               properties:
                 file: { type: string, format: binary }
+      responses:
+        "200":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_id: { type: integer }
+                  url: { type: string }
+                  filename: { type: string }
+        "400":
+          description: Bad request (invalid file format or missing file)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Payload too large (file size exceeds limit)
+        "415":
+          description: Unsupported media type (not PNG/JPG/GIF/BMP/WEBP)
 
   /api/papers/{paper_id}/images/{image_id}:
     parameters:
@@ -433,6 +452,13 @@ paths:
       tags: [Images]
       summary: Delete an image
       operationId: deletePaperImage
+      responses:
+        "204":
+          description: Image deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Image not found
 
   /api/papers/{paper_id}/sign:
     parameters:
@@ -486,18 +512,88 @@ paths:
       security:
         - {}
         - cookieAuth: []
+      responses:
+        "200":
+          description: Image file bytes
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/gif:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+        "404":
+          description: Image not found
 
   /api/generate:
     post:
       tags: [Generation]
       summary: Generate a single section
       operationId: generateSection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                  description: The generation prompt
+                lastText:
+                  type: string
+                  description: Previous text for context continuity
+                paperContext:
+                  type: object
+                  additionalProperties: true
+                  description: Paper metadata and context
+                section:
+                  type: string
+                  description: Target section (abstract, introduction, etc.)
+      responses:
+        "200":
+          description: Generated content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text: { type: string }
+                  section: { type: string }
+        "400":
+          description: Bad request (missing prompt or invalid JSON)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Rate limit exceeded (20 per minute)
+        "500":
+          description: Server error (API key not configured)
 
   /api/generate-full:
     post:
       tags: [Generation]
       summary: Start a full-paper generation job (async)
       operationId: generateFull
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                  description: The paper generation prompt
+                topic:
+                  type: string
+                  description: Paper topic/subject
+                style:
+                  type: string
+                  description: Writing style preference
       responses:
         "202":
           description: Job accepted; poll /api/job/{job_id}.
@@ -512,54 +608,240 @@ paths:
       tags: [Generation]
       summary: Job status
       operationId: getJob
+      responses:
+        "200":
+          description: Job status and result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, done, error]
+                  elapsed:
+                    type: integer
+                    description: Elapsed time in seconds
+                  result:
+                    type: object
+                    description: Job result (when status is done)
+                  error:
+                    type: string
+                    description: Error message (when status is error)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Job not found or already retrieved
 
   /api/topics:
     get:
       tags: [Generation]
       summary: List available topics
       operationId: listTopics
+      responses:
+        "200":
+          description: List of available topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/styles:
     get:
       tags: [Generation]
       summary: List available styles
       operationId: listStyles
+      responses:
+        "200":
+          description: List of available writing styles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/journals:
     get:
       tags: [Export]
       summary: List available journal templates
       operationId: listJournals
+      responses:
+        "200":
+          description: List of available journals with metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                      description: Journal code identifier
+                    name:
+                      type: string
+                      description: Journal full name
+                    format:
+                      type: object
+                      description: Formatting requirements
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/export:
     post:
       tags: [Export]
       summary: Export paper as DOCX
       operationId: exportDocx
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paper]
+              properties:
+                paper:
+                  type: object
+                  additionalProperties: true
+                  description: Paper data to export
+                journal:
+                  type: string
+                  description: Journal code for formatting
+      responses:
+        "200":
+          description: DOCX file generated successfully
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema: { type: string, format: binary }
+        "400":
+          description: Bad request (missing paper data)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /api/admin/users:
     get:
       tags: [Admin]
       summary: List all users
       operationId: adminListUsers
+      responses:
+        "200":
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    username:
+                      type: string
+                    email:
+                      type: string
+                    is_admin:
+                      type: boolean
+                    created_at:
+                      type: string
+                      format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden (admin access required)
 
   /api/admin/papers:
     get:
       tags: [Admin]
       summary: List all papers across users
       operationId: adminListPapers
+      responses:
+        "200":
+          description: List of all papers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    title:
+                      type: string
+                    user_id:
+                      type: integer
+                    created_at:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden (admin access required)
 
   /api/admin/usage:
     get:
       tags: [Admin]
       summary: API token usage stats
       operationId: adminUsage
+      responses:
+        "200":
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_users:
+                    type: integer
+                  total_papers:
+                    type: integer
+                  total_generations:
+                    type: integer
+                  api_calls_today:
+                    type: integer
+                  storage_used_mb:
+                    type: number
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden (admin access required)
 
   /api/admin/stats:
     get:
       tags: [Admin]
       summary: Summary counts
       operationId: adminStats
+      responses:
+        "200":
+          description: System statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uptime_seconds:
+                    type: integer
+                  active_users:
+                    type: integer
+                  queue_length:
+                    type: integer
+                  cache_hit_rate:
+                    type: number
+                  avg_response_time_ms:
+                    type: number
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Forbidden (admin access required)
 
 components:
   parameters:

@@ -2,6 +2,7 @@
 User-facing quota endpoint — used by the header bar in the frontend.
 GET /api/me/quota → {used, quota, percent, breakdown_by_model}
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -63,19 +64,20 @@ def my_quota():
     used = int(user.token_used_month or 0)
     percent = round(min(100, (used / quota * 100) if quota > 0 else 0), 1)
 
-    return jsonify({
-        "quota_monthly": quota,
-        "used_month": used,
-        "used_today": int(today_total),
-        "remaining": max(0, quota - used),
-        "percent": percent,
-        "month_key": month_key,
-        "breakdown_by_model": [
-            {"model": m or "unknown", "tokens": int(t), "calls": int(c)}
-            for m, t, c in by_model
-        ],
-        "is_unlimited": user.role == "admin",
-    })
+    return jsonify(
+        {
+            "quota_monthly": quota,
+            "used_month": used,
+            "used_today": int(today_total),
+            "remaining": max(0, quota - used),
+            "percent": percent,
+            "month_key": month_key,
+            "breakdown_by_model": [
+                {"model": m or "unknown", "tokens": int(t), "calls": int(c)} for m, t, c in by_model
+            ],
+            "is_unlimited": user.role == "admin",
+        }
+    )
 
 
 def quota_exceeded(user_id: int) -> tuple[bool, dict]:
@@ -89,8 +91,10 @@ def quota_exceeded(user_id: int) -> tuple[bool, dict]:
     used = int(user.token_used_month or 0)
     if quota > 0 and used >= quota:
         reset_epoch = (
-            datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            .timestamp() + 31 * 86400
+            datetime.now(timezone.utc)
+            .replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            .timestamp()
+            + 31 * 86400
         )
         return True, {
             "error": "monthly token quota exceeded",

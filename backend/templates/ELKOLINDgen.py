@@ -42,16 +42,11 @@ MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 NS_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
-        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main":
-        b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
-        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 XSL_CANDIDATES = [
@@ -120,7 +115,9 @@ def _new_paragraph(doc: Document, sample_ppr: etree._Element | None = None) -> P
     return paragraph
 
 
-def _insert_paragraph_before(reference_paragraph: Paragraph, sample_ppr: etree._Element | None = None) -> Paragraph:
+def _insert_paragraph_before(
+    reference_paragraph: Paragraph, sample_ppr: etree._Element | None = None
+) -> Paragraph:
     paragraph_el = OxmlElement("w:p")
     reference_paragraph._p.addprevious(paragraph_el)
     paragraph = Paragraph(paragraph_el, reference_paragraph._parent)
@@ -167,7 +164,9 @@ def _set_table_run_format(run, *, bold: bool = False, italic: bool = False) -> N
     run.italic = italic
 
 
-def _set_cell_border(cell: _Cell, edge: str, value: str, size: str = "4", color: str = "000000") -> None:
+def _set_cell_border(
+    cell: _Cell, edge: str, value: str, size: str = "4", color: str = "000000"
+) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     tc_borders = tc_pr.find(qn("w:tcBorders"))
     if tc_borders is None:
@@ -315,8 +314,8 @@ def _append_inline_math(paragraph: Paragraph, latex: str) -> bool:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -373,7 +372,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -464,7 +463,9 @@ def _author_entries(config: dict) -> list[dict]:
                 "affiliation": str(author.get("affiliation", "")).strip(),
                 "location": str(author.get("location", "")).strip(),
                 "email": str(author.get("email", "")).strip(),
-                "phone": str(author.get("phone") or author.get("wa") or author.get("whatsapp") or "").strip(),
+                "phone": str(
+                    author.get("phone") or author.get("wa") or author.get("whatsapp") or ""
+                ).strip(),
                 "corresponding": bool(author.get("corresponding", False)),
             }
         )
@@ -483,13 +484,16 @@ def _article_history_lines(config: dict) -> tuple[str, str, str]:
     info = config.get("articleInfo", {}) if isinstance(config.get("articleInfo"), dict) else {}
     received = str(info.get("received") or config.get("received") or "-").strip() or "-"
     revised = str(info.get("revised") or config.get("revised") or "-").strip() or "-"
-    published = str(
-        info.get("published")
-        or info.get("accepted")
-        or config.get("published")
-        or config.get("accepted")
+    published = (
+        str(
+            info.get("published")
+            or info.get("accepted")
+            or config.get("published")
+            or config.get("accepted")
+            or "-"
+        ).strip()
         or "-"
-    ).strip() or "-"
+    )
     return received, revised, published
 
 
@@ -657,7 +661,9 @@ def _update_email_paragraph(paragraph: Paragraph, config: dict, samples: dict) -
     _add_sample_run(paragraph, f"e-mail: {email_text}", samples["email_rpr"])
 
 
-def _update_affiliation_paragraphs(doc: Document, blank_paragraph: Paragraph, config: dict, samples: dict) -> None:
+def _update_affiliation_paragraphs(
+    doc: Document, blank_paragraph: Paragraph, config: dict, samples: dict
+) -> None:
     authors = _author_entries(config)
     affiliations = _group_affiliations(authors)
 
@@ -666,11 +672,15 @@ def _update_affiliation_paragraphs(doc: Document, blank_paragraph: Paragraph, co
     target_paragraphs = [first_para, second_para]
 
     while len(target_paragraphs) < len(affiliations):
-        target_paragraphs.append(_insert_paragraph_before(blank_paragraph, samples["affiliation_other_ppr"]))
+        target_paragraphs.append(
+            _insert_paragraph_before(blank_paragraph, samples["affiliation_other_ppr"])
+        )
 
     for index, paragraph in enumerate(target_paragraphs):
         _clear_paragraph(paragraph)
-        sample_ppr = samples["affiliation_first_ppr"] if index == 0 else samples["affiliation_other_ppr"]
+        sample_ppr = (
+            samples["affiliation_first_ppr"] if index == 0 else samples["affiliation_other_ppr"]
+        )
         _apply_sample_ppr(paragraph, sample_ppr)
         if index < len(affiliations):
             label, text = affiliations[index]
@@ -769,7 +779,9 @@ def _update_front_table(table, config: dict, samples: dict) -> None:
     _clear_cell(corresponding_cell)
     p = corresponding_cell.paragraphs[0]
     _apply_sample_ppr(p, samples["corr_heading_ppr"])
-    _add_sample_run(p, "Penulis Korespondensi:", samples["corr_heading_rpr"], bold=True, italic=True)
+    _add_sample_run(
+        p, "Penulis Korespondensi:", samples["corr_heading_rpr"], bold=True, italic=True
+    )
 
     name = corresponding.get("name", "")
     if name:
@@ -819,9 +831,13 @@ def _add_section_heading(doc: Document, title: str, samples: dict) -> None:
     _add_sample_run(paragraph, title.upper(), samples["section_rpr"], bold=True)
 
 
-def _add_subsection_heading(doc: Document, section_index: int, sub_index: int, title: str, samples: dict) -> None:
+def _add_subsection_heading(
+    doc: Document, section_index: int, sub_index: int, title: str, samples: dict
+) -> None:
     paragraph = _new_paragraph(doc, samples["subsection_ppr"])
-    _add_sample_run(paragraph, f"{section_index}.{sub_index}   {title}", samples["subsection_rpr"], bold=True)
+    _add_sample_run(
+        paragraph, f"{section_index}.{sub_index}   {title}", samples["subsection_rpr"], bold=True
+    )
 
 
 def _add_prompt_box(doc: Document, text: str, samples: dict) -> None:
@@ -843,8 +859,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> No
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -1039,7 +1056,9 @@ def _add_references(doc: Document, config: dict, samples: dict) -> None:
 
     for reference in references:
         paragraph = _new_paragraph(doc, samples["reference_item_ppr"])
-        _append_rich_text(paragraph, _strip_reference_label(reference), samples["reference_item_rpr"])
+        _append_rich_text(
+            paragraph, _strip_reference_label(reference), samples["reference_item_rpr"]
+        )
 
 
 def _replace_footer_placeholders(xml_bytes: bytes, replacement_text: str) -> bytes:
@@ -1079,7 +1098,9 @@ def build_document(
     template_path: Path = TEMPLATE_PATH,
 ) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    final_output = Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+    final_output = (
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+    )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
     shutil.copy(str(template_path), str(final_output))
@@ -1122,7 +1143,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     if not json_files:
@@ -1142,8 +1164,6 @@ def main() -> None:
     print(f"Done: {ok} OK, {err} errors")
 
 
-
-
 def _set_table_full_borders(table) -> None:
     """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
 
@@ -1152,6 +1172,7 @@ def _set_table_full_borders(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

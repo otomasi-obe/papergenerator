@@ -1,0 +1,25 @@
+Test Report: europepmc
+============================================================
+
+Test Time: 2026-05-29T12:54:17.951721
+Test Query: medical research
+Status: success
+
+Results:
+  Papers found: 1
+  Papers with URLs: 1
+  Valid download links: 1
+  Invalid download links: 0
+
+Papers:
+
+  1. Minimal Detectable Changes of the Health Assessment Questionnaire-Disability Index, Patient-Reported
+     Year: 2024, DOI: 10.1002/acr.25397
+     URL: https://doi.org/10.1002/acr.25397
+
+Download Link Checks:
+
+  - Minimal Detectable Changes of the Health Assessment Questionnaire-Disability Ind
+    URL: https://doi.org/10.1002/acr.25397
+    Status: accessible (Code: 200)
+    Accessible: ✓

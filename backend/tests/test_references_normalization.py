@@ -13,16 +13,24 @@ NOTE: `templateAnalyse` package is generated lazily by template builders and
 isn't always in the working tree. Skip the whole module if either package is
 missing rather than failing CI on an environment-specific import.
 """
-import sys
+
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 
 template = pytest.importorskip("template.IEEEgen", reason="template package not present")
-templateAnalyse_ieee = pytest.importorskip("templateAnalyse.IEEEgen", reason="templateAnalyse not present in this checkout")
-templateAnalyse_jel = pytest.importorskip("templateAnalyse.JELgen", reason="templateAnalyse not present in this checkout")
-templateAnalyse_icet = pytest.importorskip("templateAnalyse.ICETgen", reason="templateAnalyse not present in this checkout")
+templateAnalyse_ieee = pytest.importorskip(
+    "templateAnalyse.IEEEgen", reason="templateAnalyse not present in this checkout"
+)
+templateAnalyse_jel = pytest.importorskip(
+    "templateAnalyse.JELgen", reason="templateAnalyse not present in this checkout"
+)
+templateAnalyse_icet = pytest.importorskip(
+    "templateAnalyse.ICETgen", reason="templateAnalyse not present in this checkout"
+)
 
 ieee_norm = template._normalize_references_field
 ieee_an_norm = templateAnalyse_ieee._normalize_references_field

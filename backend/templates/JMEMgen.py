@@ -124,7 +124,9 @@ def _remove_paragraph(paragraph: Paragraph) -> None:
         parent.remove(element)
 
 
-def _insert_paragraph_before(reference_paragraph: Paragraph, sample_ppr: etree._Element | None = None) -> Paragraph:
+def _insert_paragraph_before(
+    reference_paragraph: Paragraph, sample_ppr: etree._Element | None = None
+) -> Paragraph:
     paragraph_el = OxmlElement("w:p")
     reference_paragraph._p.addprevious(paragraph_el)
     paragraph = Paragraph(paragraph_el, reference_paragraph._parent)
@@ -193,7 +195,9 @@ def _format_table_run(run, *, bold: bool = False, italic: bool = False) -> None:
     run.italic = italic
 
 
-def _set_cell_border(cell, edge: str, *, value: str = "single", size: str = "4", color: str = "000000") -> None:
+def _set_cell_border(
+    cell, edge: str, *, value: str = "single", size: str = "4", color: str = "000000"
+) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     tc_borders = tc_pr.find(qn("w:tcBorders"))
     if tc_borders is None:
@@ -217,8 +221,8 @@ def _set_full_cell_borders(cell) -> None:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -275,7 +279,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -445,10 +449,17 @@ def _restore_template_parts(output_path: Path, template_path: Path) -> None:
         "word/_rels/footer",
     )
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
-    with zipfile.ZipFile(template_path, "r") as template_zip, zipfile.ZipFile(output_path, "r") as output_zip, zipfile.ZipFile(temp_path, "w") as temp_zip:
+    with (
+        zipfile.ZipFile(template_path, "r") as template_zip,
+        zipfile.ZipFile(output_path, "r") as output_zip,
+        zipfile.ZipFile(temp_path, "w") as temp_zip,
+    ):
         template_names = set(template_zip.namelist())
         for info in output_zip.infolist():
-            if any(info.filename.startswith(prefix) for prefix in prefixes) and info.filename in template_names:
+            if (
+                any(info.filename.startswith(prefix) for prefix in prefixes)
+                and info.filename in template_names
+            ):
                 data = template_zip.read(info.filename)
             else:
                 data = output_zip.read(info.filename)
@@ -519,8 +530,13 @@ def _group_affiliations(authors: list[dict]) -> tuple[list[tuple[int, str]], lis
     next_index = 1
 
     for author in authors:
-        parts = [part for part in (author.get("affiliation", ""), author.get("location", "")) if part]
-        text = ", ".join(parts).strip() or "Affiliation information is not provided in the source JSON."
+        parts = [
+            part for part in (author.get("affiliation", ""), author.get("location", "")) if part
+        ]
+        text = (
+            ", ".join(parts).strip()
+            or "Affiliation information is not provided in the source JSON."
+        )
         key = text.lower()
         if key not in seen:
             seen[key] = next_index
@@ -574,20 +590,32 @@ def _render_front_matter(doc: Document, config: dict, samples: dict) -> None:
         authors = [{"name": "Author Name", "affiliation": "", "location": "", "email": ""}]
 
     affiliations, author_affiliation_indexes = _group_affiliations(authors)
-    email_letters = [string.ascii_lowercase[index] if index < len(string.ascii_lowercase) else f"e{index + 1}" for index in range(len(authors))]
+    email_letters = [
+        string.ascii_lowercase[index] if index < len(string.ascii_lowercase) else f"e{index + 1}"
+        for index in range(len(authors))
+    ]
 
     _clear_paragraph(author_paragraph)
     for author_index, author in enumerate(authors):
         if author_index > 0:
             _append_sample_run(author_paragraph, ", ", samples["author_rpr"])
         _append_sample_run(author_paragraph, author["name"], samples["author_rpr"])
-        _append_sample_run(author_paragraph, str(author_affiliation_indexes[author_index]), samples["author_rpr"], superscript=True)
+        _append_sample_run(
+            author_paragraph,
+            str(author_affiliation_indexes[author_index]),
+            samples["author_rpr"],
+            superscript=True,
+        )
         _append_sample_run(author_paragraph, ",", samples["author_rpr"], superscript=True)
-        _append_sample_run(author_paragraph, email_letters[author_index], samples["author_rpr"], superscript=True)
+        _append_sample_run(
+            author_paragraph, email_letters[author_index], samples["author_rpr"], superscript=True
+        )
 
     target_address_paragraphs = list(address_paragraphs)
     while len(target_address_paragraphs) < len(affiliations):
-        target_address_paragraphs.append(_insert_paragraph_before(address_insert_before, samples["address_ppr"]))
+        target_address_paragraphs.append(
+            _insert_paragraph_before(address_insert_before, samples["address_ppr"])
+        )
 
     for index, paragraph in enumerate(target_address_paragraphs):
         _clear_paragraph(paragraph)
@@ -604,7 +632,11 @@ def _render_front_matter(doc: Document, config: dict, samples: dict) -> None:
     email_text = ", ".join(email_parts)
     if email_text:
         email_text += " (corresponding author)"
-    _append_sample_run(email_paragraph, email_text or "a author@example.com (corresponding author)", samples["email_rpr"])
+    _append_sample_run(
+        email_paragraph,
+        email_text or "a author@example.com (corresponding author)",
+        samples["email_rpr"],
+    )
 
     _rewrite_prefixed_paragraph(
         abstract_id_paragraph,
@@ -646,7 +678,9 @@ def _render_front_matter(doc: Document, config: dict, samples: dict) -> None:
 
 def _add_section_heading(doc: Document, title: str, samples: dict) -> None:
     paragraph = _new_sampled_paragraph(doc, samples["section_heading_ppr"])
-    _append_sample_run(paragraph, title.strip() or "Untitled Section", samples["section_heading_rpr"])
+    _append_sample_run(
+        paragraph, title.strip() or "Untitled Section", samples["section_heading_rpr"]
+    )
 
 
 def _add_first_body_paragraph(doc: Document, text: str, samples: dict) -> None:
@@ -720,8 +754,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -765,13 +800,17 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
 
 
 def _add_equation(doc: Document, item: dict, samples: dict, state: RenderState) -> None:
-    formula = str(item.get("latex") or item.get("text") or "").strip() or _placeholder_text("equation")
+    formula = str(item.get("latex") or item.get("text") or "").strip() or _placeholder_text(
+        "equation"
+    )
     equation_number = _coerce_equation_number(item, state)
 
     paragraph = _new_sampled_paragraph(doc, samples["equation_ppr"])
     paragraph.paragraph_format.space_before = Pt(3)
     paragraph.paragraph_format.space_after = Pt(3)
-    paragraph.paragraph_format.tab_stops.add_tab_stop(Pt(EQUATION_TAB_RIGHT_PT), WD_TAB_ALIGNMENT.RIGHT)
+    paragraph.paragraph_format.tab_stops.add_tab_stop(
+        Pt(EQUATION_TAB_RIGHT_PT), WD_TAB_ALIGNMENT.RIGHT
+    )
 
     if not _append_inline_math(paragraph, formula):
         run = _append_sample_run(paragraph, formula, samples["equation_rpr"])
@@ -823,12 +862,17 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
 
     for row_idx, row_data in enumerate(rows, start=1):
         row_values = row_data if isinstance(row_data, list) else [str(row_data)]
-        padded_values = [str(row_values[col_idx]) if col_idx < len(row_values) else "" for col_idx in range(len(headers))]
+        padded_values = [
+            str(row_values[col_idx]) if col_idx < len(row_values) else ""
+            for col_idx in range(len(headers))
+        ]
         for col_idx, value in enumerate(padded_values):
             _fill_table_cell(table.rows[row_idx].cells[col_idx], value)
 
 
-def _render_content_item(doc: Document, item: dict, json_path: Path, samples: dict, state: RenderState) -> None:
+def _render_content_item(
+    doc: Document, item: dict, json_path: Path, samples: dict, state: RenderState
+) -> None:
     item_id = str(item.get("id") or "").strip().lower()
     if item_id == "text":
         return
@@ -880,13 +924,17 @@ def _render_content_sequence(
 
         if isinstance(item, dict):
             if runin_pending is not None:
-                _add_runin_subsection_paragraph(doc, runin_pending, _placeholder_text("subsection"), samples)
+                _add_runin_subsection_paragraph(
+                    doc, runin_pending, _placeholder_text("subsection"), samples
+                )
                 runin_pending = None
                 first_text_pending = False
             _render_content_item(doc, item, json_path, samples, state)
 
     if runin_pending is not None:
-        _add_runin_subsection_paragraph(doc, runin_pending, _placeholder_text("subsection"), samples)
+        _add_runin_subsection_paragraph(
+            doc, runin_pending, _placeholder_text("subsection"), samples
+        )
     elif first_text_pending:
         _add_first_body_paragraph(doc, _placeholder_text("body"), samples)
 
@@ -906,7 +954,9 @@ def _subsection_keys(section_key: str, section: dict) -> list[str]:
     ]
 
 
-def _render_sections(doc: Document, config: dict, json_path: Path, samples: dict, state: RenderState) -> None:
+def _render_sections(
+    doc: Document, config: dict, json_path: Path, samples: dict, state: RenderState
+) -> None:
     for section_key in _section_keys(config):
         section = config.get(section_key)
         if not isinstance(section, dict):
@@ -1061,13 +1111,12 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     for json_file in json_files:
         build_document(json_file)
-
-
 
 
 def _set_table_full_borders(table) -> None:
@@ -1078,6 +1127,7 @@ def _set_table_full_borders(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

@@ -20,7 +20,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
@@ -39,16 +39,11 @@ NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
-        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main":
-        b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
-        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 XSL_CANDIDATES = [
@@ -294,8 +289,8 @@ def _append_inline_math(paragraph, latex: str) -> bool:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -352,7 +347,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -546,7 +541,9 @@ def _load_template_samples(template_path: Path) -> dict[str, etree._Element | No
         "equation_ppr": clone_ppr(58),
         "equation_num_rpr": clone_rpr(58, 3),
         "reference_heading_ppr": clone_ppr(86),
-        "reference_heading_rpr": clone_rpr(78, 0) if clone_rpr(78, 0) is not None else clone_rpr(9, 0),
+        "reference_heading_rpr": (
+            clone_rpr(78, 0) if clone_rpr(78, 0) is not None else clone_rpr(9, 0)
+        ),
         "reference_item_ppr": clone_ppr(87),
         "reference_item_rpr": clone_rpr(87, 0),
         "trailing_ppr": clone_ppr(102),
@@ -611,7 +608,9 @@ def _add_authors(doc: Document, config: dict, samples: dict) -> None:
     _add_sample_run(meta_paragraph, _received_line(config), samples["meta_rpr"])
 
     corresponding_paragraph = _new_paragraph(doc, samples["corresponding_ppr"])
-    _add_sample_run(corresponding_paragraph, _corresponding_line(config), samples["corresponding_rpr"])
+    _add_sample_run(
+        corresponding_paragraph, _corresponding_line(config), samples["corresponding_rpr"]
+    )
 
     _new_paragraph(doc, samples["blank_section_ppr"])
 
@@ -679,7 +678,9 @@ def _add_section_heading(doc: Document, text: str, samples: dict) -> None:
     _add_sample_run(paragraph, text.upper(), samples["section_rpr"], bold=True)
 
 
-def _add_subsection_heading(doc: Document, text: str, samples: dict, numbering_id: int | None = None) -> None:
+def _add_subsection_heading(
+    doc: Document, text: str, samples: dict, numbering_id: int | None = None
+) -> None:
     paragraph = _new_paragraph(doc, samples["subsection_ppr"])
     if numbering_id is not None:
         _set_paragraph_numbering(paragraph, numbering_id, ilvl=0)
@@ -716,8 +717,14 @@ def _set_horizontal_cell_borders(cell, *, top: bool = False, bottom: bool = Fals
         tc_pr.append(tc_borders)
 
     border_spec = {
-        "top": {"val": "single", "sz": "4", "space": "0", "color": "auto"} if top else {"val": "none"},
-        "bottom": {"val": "single", "sz": "4", "space": "0", "color": "auto"} if bottom else {"val": "none"},
+        "top": (
+            {"val": "single", "sz": "4", "space": "0", "color": "auto"} if top else {"val": "none"}
+        ),
+        "bottom": (
+            {"val": "single", "sz": "4", "space": "0", "color": "auto"}
+            if bottom
+            else {"val": "none"}
+        ),
         "left": {"val": "none"},
         "right": {"val": "none"},
     }
@@ -776,7 +783,11 @@ def _add_figure_caption(doc: Document, number: str, title: str):
     _set_para_style(caption, "IEEEFigure")
     caption.paragraph_format.space_before = Pt(3)
     caption.paragraph_format.space_after = Pt(6)
-    caption.alignment = WD_ALIGN_PARAGRAPH.CENTER if len(title) <= 120 and "\n" not in title else WD_ALIGN_PARAGRAPH.JUSTIFY
+    caption.alignment = (
+        WD_ALIGN_PARAGRAPH.CENTER
+        if len(title) <= 120 and "\n" not in title
+        else WD_ALIGN_PARAGRAPH.JUSTIFY
+    )
     label = caption.add_run(f"Figure {number}. ")
     _style_figure_caption_run(label, bold=True)
     text_run = caption.add_run(title)
@@ -814,6 +825,7 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> No
         prompt_para = doc.add_paragraph()
         prompt_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         from docx.shared import RGBColor as _RGB
+
         pr = prompt_para.add_run(prompt_text)
         pr.italic = True
         pr.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
@@ -926,7 +938,9 @@ def _add_references(doc: Document, config: dict, samples: dict) -> None:
 
     for reference in references:
         paragraph = _new_paragraph(doc, samples["reference_item_ppr"])
-        _append_rich_text(paragraph, _strip_reference_label(reference), samples["reference_item_rpr"])
+        _append_rich_text(
+            paragraph, _strip_reference_label(reference), samples["reference_item_rpr"]
+        )
 
 
 def _render_content_item(doc: Document, item: dict, json_path: Path, samples: dict) -> None:
@@ -986,8 +1000,10 @@ def _render_subsection(
         _body_paragraphs(doc, content.strip(), samples)
 
     nested_keys = [
-        key for key in block.keys()
-        if re.match(r"^section\d+[a-z]{2,}$", key) or (key.startswith("sub") and len(key) > 3 and key[3:].isalnum())
+        key
+        for key in block.keys()
+        if re.match(r"^section\d+[a-z]{2,}$", key)
+        or (key.startswith("sub") and len(key) > 3 and key[3:].isalnum())
     ]
     for nested_key in nested_keys:
         nested = block[nested_key]
@@ -1020,14 +1036,14 @@ def _render_sections(doc: Document, config: dict, json_path: Path, samples: dict
         section_number = section_key.replace("section", "")
         subsection_keys = sorted(
             [
-                key for key in section.keys()
+                key
+                for key in section.keys()
                 if re.match(rf"^section{section_number}[a-z]+$", key)
                 or (key.startswith("sub") and len(key) > 3 and key[3:].isalnum())
             ]
         )
         subsection_num_id = (
-            _create_numbering_instance(doc, SUBSECTION_ABSTRACT_NUM_ID)
-            if subsection_keys else None
+            _create_numbering_instance(doc, SUBSECTION_ABSTRACT_NUM_ID) if subsection_keys else None
         )
         for subsection_key in subsection_keys:
             subsection = section[subsection_key]
@@ -1086,7 +1102,9 @@ def build_document(
     template_path: Path = TEMPLATE_PATH,
 ) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    final_output = Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+    final_output = (
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+    )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
     shutil.copy(str(template_path), str(final_output))
@@ -1123,7 +1141,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     if not json_files:
@@ -1143,8 +1162,6 @@ def main() -> None:
     print(f"Done: {ok} OK, {err} errors")
 
 
-
-
 def _set_table_full_borders(table) -> None:
     """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
 
@@ -1153,6 +1170,7 @@ def _set_table_full_borders(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

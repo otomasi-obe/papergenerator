@@ -6,13 +6,14 @@ Algoritma sesuai spec:
    sumber). Lihat orchestrator.fetch_titles.
 2. RANK dengan kombinasi sinyal SBERT + TF-IDF + citation + recency + venue
    quality (scoring.score_papers). Hasil disort descending.
-3. SUMMARIZE top-K (default 50) dengan AI V-OPUS (summarizer.summarize_with_ai),
+3. SUMMARIZE top-K (default 50) dengan AI MODELGENERATE (summarizer.summarize_with_ai),
    sisanya pakai extractive supaya tetap dapat preview cepat.
 4. Output JSON siap dipakai frontend.
 
 Pipeline ini dipanggil dari `slr_jobs.run_slr_job` (worker queue) sehingga
 panggilan AI yang lama tidak memblokir API request.
 """
+
 from __future__ import annotations
 
 import json
@@ -90,16 +91,18 @@ def _stats(query: str, papers: list[Paper], scored: list[ScoredPaper]) -> dict:
     }
 
 
-def run(query: str,
-        sources: list[str] | None = None,
-        per_source: int = 60,
-        max_total: int | None = None,
-        top_k: int = 50,
-        year_from: int | None = None,
-        skip_predatory: bool = True,
-        ai_summarize: bool = True,
-        ai_model: str | None = None,
-        progress_cb: Callable[[str, dict], None] | None = None) -> dict:
+def run(
+    query: str,
+    sources: list[str] | None = None,
+    per_source: int = 60,
+    max_total: int | None = None,
+    top_k: int = 50,
+    year_from: int | None = None,
+    skip_predatory: bool = True,
+    ai_summarize: bool = True,
+    ai_model: str | None = None,
+    progress_cb: Callable[[str, dict], None] | None = None,
+) -> dict:
     """Eksekusi penuh pipeline. progress_cb dipanggil di tiap milestone:
     - "fetching" / "source_done" / "dedup_done" — dari orchestrator
     - "scoring" / "scored" — dari sini
@@ -120,13 +123,13 @@ def run(query: str,
     # Build filters dict to pass year_from to fetchers that support it (IEEE, S2, etc.)
     filters = {}
     if year_from:
-        filters['year_from'] = year_from
-    
+        filters["year_from"] = year_from
+
     # (some fetchers don't support year filtering at API level)
     fetch_max = max_total
     if year_from and max_total:
         fetch_max = max_total * 2
-    
+
     raw_papers = fetch_titles(
         query=query,
         sources=sources,
@@ -136,7 +139,7 @@ def run(query: str,
         skip_predatory=skip_predatory,
         progress_cb=progress_cb,
     )
-    
+
     # Post-filter for fetchers that don't support year filtering at API level
     if year_from:
         raw_papers = [p for p in raw_papers if p.year and p.year >= year_from]
@@ -149,10 +152,17 @@ def run(query: str,
         return {
             "query": query,
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "stats": {"query": query, "total_unique_papers": 0,
-                      "papers_by_source": {}, "papers_by_year": {}, "scored": 0,
-                      "must_read_count": 0, "is_relevant_count": 0,
-                      "with_abstract": 0, "with_doi": 0},
+            "stats": {
+                "query": query,
+                "total_unique_papers": 0,
+                "papers_by_source": {},
+                "papers_by_year": {},
+                "scored": 0,
+                "must_read_count": 0,
+                "is_relevant_count": 0,
+                "with_abstract": 0,
+                "with_doi": 0,
+            },
             "papers": [],
             "top_k": [],
         }
@@ -173,19 +183,23 @@ def run(query: str,
     ai_used = False
     top_input = []
     for i, sp in enumerate(top_scored):
-        top_input.append({
-            "id": i,
-            "title": sp.paper.title,
-            "year": sp.paper.year,
-            "abstract": sp.paper.abstract or "",
-        })
+        top_input.append(
+            {
+                "id": i,
+                "title": sp.paper.title,
+                "year": sp.paper.year,
+                "abstract": sp.paper.abstract or "",
+            }
+        )
 
     if ai_summarize and top_input:
         if progress_cb:
             progress_cb("summarizing", {"count": len(top_input)})
         try:
             summaries, ai_used = summarize_with_ai(
-                top_input, query=query, model=ai_model,
+                top_input,
+                query=query,
+                model=ai_model,
                 progress_cb=progress_cb,
             )
         except BaseException as e:
@@ -202,7 +216,10 @@ def run(query: str,
                 # in slr_worker) so the worker can mark the job cancelled.
                 # Generic AI errors are swallowed and we continue with extractive.
                 exc_name = e.__class__.__name__
-                if exc_name in ("WorkerCancelled", "CancelledByCaller") or "cancel" in exc_name.lower():
+                if (
+                    exc_name in ("WorkerCancelled", "CancelledByCaller")
+                    or "cancel" in exc_name.lower()
+                ):
                     raise
                 log.warning("AI summarize failed: %s", e)
                 if not isinstance(partial, dict):
@@ -225,8 +242,11 @@ def run(query: str,
         if top_idx >= 0 and top_idx in summaries:
             summary = summaries[top_idx]
         else:
-            summary = extractive_summarize(p.abstract or "", query=query, n_sentences=2) \
-                if p.abstract else ""
+            summary = (
+                extractive_summarize(p.abstract or "", query=query, n_sentences=2)
+                if p.abstract
+                else ""
+            )
         all_records.append(_paper_record(global_idx, sp, summary=summary))
 
     top_records = []
@@ -234,13 +254,13 @@ def run(query: str,
         global_idx = global_pos.get(id(sp.paper))
         if global_idx is None:
             continue
-        summary = summaries.get(top_idx) or \
-            extractive_summarize(sp.paper.abstract or "", query=query, n_sentences=2)
+        summary = summaries.get(top_idx) or extractive_summarize(
+            sp.paper.abstract or "", query=query, n_sentences=2
+        )
         top_records.append(_paper_record(global_idx, sp, summary=summary))
 
     if progress_cb:
-        progress_cb("complete", {"top_k": len(top_records),
-                                  "total": len(all_records)})
+        progress_cb("complete", {"top_k": len(top_records), "total": len(all_records)})
 
     stats = _stats(query, raw_papers, scored)
     stats["ai_summary_used"] = bool(ai_used)
@@ -261,7 +281,6 @@ def save(payload: dict, out_path: str | Path) -> Path:
     return path
 
 
-def run_and_save(query: str, out_path: str | Path = "results/slr.json",
-                  **kwargs) -> Path:
+def run_and_save(query: str, out_path: str | Path = "results/slr.json", **kwargs) -> Path:
     payload = run(query, **kwargs)
     return save(payload, out_path)

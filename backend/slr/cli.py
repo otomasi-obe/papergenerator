@@ -4,16 +4,17 @@ Usage:
   python -m SLR.cli "deep learning autonomous driving" --total 50
   python -m SLR.cli "graph neural network" --sources openalex,crossref --total 30
 """
+
 import argparse
 import json
 from pathlib import Path
-from .orchestrator import fetch_all
+
 from .fetchers import ALL
+from .orchestrator import fetch_all
 
 
 def save_json(papers, path: Path):
-    path.write_text(json.dumps([p.to_dict() for p in papers],
-                                ensure_ascii=False, indent=2))
+    path.write_text(json.dumps([p.to_dict() for p in papers], ensure_ascii=False, indent=2))
 
 
 def print_report(papers):
@@ -61,8 +62,11 @@ def print_report(papers):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("query", help="Query pencarian")
-    ap.add_argument("--sources", default=",".join(ALL.keys()),
-                    help=f"Comma-separated. Pilihan: {','.join(ALL.keys())}")
+    ap.add_argument(
+        "--sources",
+        default=",".join(ALL.keys()),
+        help=f"Comma-separated. Pilihan: {','.join(ALL.keys())}",
+    )
     ap.add_argument("--per-source", type=int, default=20)
     ap.add_argument("--total", type=int, default=50)
     ap.add_argument("--out", default="results")

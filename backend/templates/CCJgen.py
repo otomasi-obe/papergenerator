@@ -22,17 +22,18 @@ top-level paragraph dan terdeteksi oleh auditor).
 
 Output: CCJ_output.docx
 """
+
 import json
 import re
 import shutil
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Pt, Cm, Twips, RGBColor
+from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
-from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor, Twips
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_DOCX = BASE / "CCJ.docx"
@@ -54,17 +55,14 @@ CFG = {
     "header_dist_tw": 720,
     "footer_dist_tw": 720,
     "cols": 1,
-
     # Compensated content margins — replikasi pola para[0]:
     # ind_left=1440, ind_right=2160
     "content_left_tw": 1440,
     "content_right_tw": 2160,
-
     # Fonts (sesuai font table & body content asli)
     "font_heading": "Times New Roman",
     "font_body": "Arial",
     "font_math": "Cambria Math",
-
     # Sizes (pt) — exact match para[0] (15.5pt) dan para[1] (13pt)
     "size_h_main": 15.5,
     "size_h_section": 14.0,
@@ -74,7 +72,6 @@ CFG = {
     "size_table_body": 13.0,
     "size_caption": 11.0,
     "size_ref": 12.0,
-
     # Spacing exact dari para asli
     "main_h_before": 1674,
     "main_h_after": 0,
@@ -84,13 +81,10 @@ CFG = {
     "intro_line": 262,
     "spacer_line": 14,
     "gap_line": 1440,
-
     # Body line tw
     "body_line_tw": 280,
-
     # Border untuk tabel (single sz=8, ~1pt)
     "border_sz": 8,
-
     # Warna sesuai template asli
     "color_text": (0x33, 0x33, 0x33),
     "color_accent": (0x00, 0x6F, 0x7A),
@@ -108,8 +102,7 @@ def _set_ai_prompt_color_red(doc):
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
     from docx.shared import RGBColor
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -130,7 +123,6 @@ def _set_ai_prompt_color_red(doc):
                     _color_prompt(p)
 
     # DISABLED: template NO_BORDERS, jangan force border
-
 
     # Set border tabel data:
     # for t in doc.tables:
@@ -159,14 +151,23 @@ def _set_ai_prompt_color_red(doc):
     # el.set(qn("w:space"), "0")
     # el.set(qn("w:color"), "000000")
 
+
 def load_json():
     with open(TEMPLATE_JSON, encoding="utf-8") as f:
         return json.load(f)
 
 
-def set_run_font(run, name=None, size_pt=None, bold=None, italic=None,
-                 color=None, superscript=False, subscript=False,
-                 underline=False):
+def set_run_font(
+    run,
+    name=None,
+    size_pt=None,
+    bold=None,
+    italic=None,
+    color=None,
+    superscript=False,
+    subscript=False,
+    underline=False,
+):
     if name is not None:
         run.font.name = name
         rPr = run._element.get_or_add_rPr()
@@ -200,10 +201,19 @@ def add_run(paragraph, text, **kwargs):
     return run
 
 
-def set_para(p, before_tw=None, after_tw=None, line_tw=None,
-             line_rule="auto", alignment=None,
-             left_tw=None, right_tw=None, first_line_tw=None,
-             hanging_tw=None, keep_next=False):
+def set_para(
+    p,
+    before_tw=None,
+    after_tw=None,
+    line_tw=None,
+    line_rule="auto",
+    alignment=None,
+    left_tw=None,
+    right_tw=None,
+    first_line_tw=None,
+    hanging_tw=None,
+    keep_next=False,
+):
     pPr = p._p.get_or_add_pPr()
     spacing = pPr.find(qn("w:spacing"))
     if spacing is None:
@@ -304,24 +314,70 @@ def set_final_sectpr(doc):
 # ============================================================
 
 LATEX_SYMBOLS = {
-    "\\alpha": "α", "\\beta": "β", "\\gamma": "γ", "\\delta": "δ",
-    "\\epsilon": "ε", "\\theta": "θ", "\\Theta": "Θ", "\\lambda": "λ",
-    "\\mu": "μ", "\\pi": "π", "\\sigma": "σ", "\\Sigma": "Σ",
-    "\\tau": "τ", "\\phi": "φ", "\\Phi": "Φ", "\\omega": "ω",
-    "\\Omega": "Ω", "\\sum": "∑", "\\prod": "∏", "\\int": "∫",
-    "\\infty": "∞", "\\pm": "±", "\\times": "×", "\\cdot": "·",
-    "\\leq": "≤", "\\geq": "≥", "\\neq": "≠", "\\approx": "≈",
-    "\\rightarrow": "→", "\\leftarrow": "←", "\\Rightarrow": "⇒",
-    "\\sqrt": "√", "\\partial": "∂", "\\nabla": "∇",
-    "\\circ": "°", "\\degree": "°",
-    "\\quad": "  ", "\\,": " ", "\\;": " ", "\\:": " ", "\\!": "",
-    "\\left": "", "\\right": "",
-    "\\cos": "cos", "\\sin": "sin", "\\tan": "tan",
-    "\\log": "log", "\\ln": "ln", "\\exp": "exp",
-    "\\max": "max", "\\min": "min", "\\arg": "arg",
-    "\\to": "→", "\\dots": "…", "\\ldots": "…", "\\cdots": "⋯",
-    "\\vec": "", "\\hat": "", "\\bar": "", "\\tilde": "",
-    "\\%": "%", "\\&": "&", "\\#": "#", "\\$": "$",
+    "\\alpha": "α",
+    "\\beta": "β",
+    "\\gamma": "γ",
+    "\\delta": "δ",
+    "\\epsilon": "ε",
+    "\\theta": "θ",
+    "\\Theta": "Θ",
+    "\\lambda": "λ",
+    "\\mu": "μ",
+    "\\pi": "π",
+    "\\sigma": "σ",
+    "\\Sigma": "Σ",
+    "\\tau": "τ",
+    "\\phi": "φ",
+    "\\Phi": "Φ",
+    "\\omega": "ω",
+    "\\Omega": "Ω",
+    "\\sum": "∑",
+    "\\prod": "∏",
+    "\\int": "∫",
+    "\\infty": "∞",
+    "\\pm": "±",
+    "\\times": "×",
+    "\\cdot": "·",
+    "\\leq": "≤",
+    "\\geq": "≥",
+    "\\neq": "≠",
+    "\\approx": "≈",
+    "\\rightarrow": "→",
+    "\\leftarrow": "←",
+    "\\Rightarrow": "⇒",
+    "\\sqrt": "√",
+    "\\partial": "∂",
+    "\\nabla": "∇",
+    "\\circ": "°",
+    "\\degree": "°",
+    "\\quad": "  ",
+    "\\,": " ",
+    "\\;": " ",
+    "\\:": " ",
+    "\\!": "",
+    "\\left": "",
+    "\\right": "",
+    "\\cos": "cos",
+    "\\sin": "sin",
+    "\\tan": "tan",
+    "\\log": "log",
+    "\\ln": "ln",
+    "\\exp": "exp",
+    "\\max": "max",
+    "\\min": "min",
+    "\\arg": "arg",
+    "\\to": "→",
+    "\\dots": "…",
+    "\\ldots": "…",
+    "\\cdots": "⋯",
+    "\\vec": "",
+    "\\hat": "",
+    "\\bar": "",
+    "\\tilde": "",
+    "\\%": "%",
+    "\\&": "&",
+    "\\#": "#",
+    "\\$": "$",
 }
 
 
@@ -348,7 +404,7 @@ def _expand_brace_command(s, cmd, transform):
             break
         j = idx + len(needle)
         if j < len(s) and s[j].isalpha():
-            out.append(s[i:idx + 1])
+            out.append(s[i : idx + 1])
             i = idx + 1
             continue
         out.append(s[i:idx])
@@ -359,7 +415,7 @@ def _expand_brace_command(s, cmd, transform):
             i = j
             continue
         end = _find_balanced(s, j)
-        inner = s[j + 1:end - 1]
+        inner = s[j + 1 : end - 1]
         out.append(transform(inner))
         i = end
     return "".join(out)
@@ -378,26 +434,64 @@ def _expand_frac(s):
         if j >= len(s) or s[j] != "{":
             return s
         a_end = _find_balanced(s, j)
-        a = s[j + 1:a_end - 1]
+        a = s[j + 1 : a_end - 1]
         k = a_end
         while k < len(s) and s[k] in " \t":
             k += 1
         if k >= len(s) or s[k] != "{":
             return s
         b_end = _find_balanced(s, k)
-        b = s[k + 1:b_end - 1]
+        b = s[k + 1 : b_end - 1]
         a_r = latex_to_unicode(a)
         b_r = latex_to_unicode(b)
         s = s[:idx] + f"({a_r})/({b_r})" + s[b_end:]
 
 
-_SUPER = {"0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵",
-          "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "-": "⁻",
-          "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ"}
-_SUB = {"0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅",
-        "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "-": "₋",
-        "=": "₌", "(": "₍", ")": "₎", "a": "ₐ", "e": "ₑ", "i": "ᵢ",
-        "o": "ₒ", "n": "ₙ", "k": "ₖ", "j": "ⱼ", "m": "ₘ", "x": "ₓ"}
+_SUPER = {
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "+": "⁺",
+    "-": "⁻",
+    "=": "⁼",
+    "(": "⁽",
+    ")": "⁾",
+    "n": "ⁿ",
+    "i": "ⁱ",
+}
+_SUB = {
+    "0": "₀",
+    "1": "₁",
+    "2": "₂",
+    "3": "₃",
+    "4": "₄",
+    "5": "₅",
+    "6": "₆",
+    "7": "₇",
+    "8": "₈",
+    "9": "₉",
+    "+": "₊",
+    "-": "₋",
+    "=": "₌",
+    "(": "₍",
+    ")": "₎",
+    "a": "ₐ",
+    "e": "ₑ",
+    "i": "ᵢ",
+    "o": "ₒ",
+    "n": "ₙ",
+    "k": "ₖ",
+    "j": "ⱼ",
+    "m": "ₘ",
+    "x": "ₓ",
+}
 
 
 def _to_super(s):
@@ -421,7 +515,7 @@ def _expand_super_sub(s):
             nxt = s[i + 1]
             if nxt == "{":
                 end = _find_balanced(s, i + 1)
-                inner = s[i + 2:end - 1]
+                inner = s[i + 2 : end - 1]
                 inner = latex_to_unicode(inner)
                 out.append(_to_super(inner) if c == "^" else _to_sub(inner))
                 i = end
@@ -442,10 +536,13 @@ def latex_to_unicode(s: str) -> str:
     if s.startswith("$") and s.endswith("$"):
         s = s[1:-1].strip()
     s = s.replace("\\\\", " ; ")
-    s = re.sub(r"\\begin\{cases\}(.*?)\\end\{cases\}",
-               lambda m: " { " + m.group(1).strip() + " }", s, flags=re.DOTALL)
-    for cmd in ("mathrm", "mathbf", "mathit", "mathcal", "text",
-                "operatorname"):
+    s = re.sub(
+        r"\\begin\{cases\}(.*?)\\end\{cases\}",
+        lambda m: " { " + m.group(1).strip() + " }",
+        s,
+        flags=re.DOTALL,
+    )
+    for cmd in ("mathrm", "mathbf", "mathit", "mathcal", "text", "operatorname"):
         s = _expand_brace_command(s, cmd, lambda inner: inner)
     s = _expand_frac(s)
     for k in sorted(LATEX_SYMBOLS, key=len, reverse=True):
@@ -465,47 +562,80 @@ def latex_to_unicode(s: str) -> str:
 # ============================================================
 
 _INLINE_RE = re.compile(
-    r"\$([^$]+)\$"
-    r"|\*\*([^*]+)\*\*"
-    r"|\*([^*]+)\*",
+    r"\$([^$]+)\$" r"|\*\*([^*]+)\*\*" r"|\*([^*]+)\*",
     re.DOTALL,
 )
 
 
-def add_runs_with_inline(paragraph, text, base_font, base_size,
-                         base_bold=False, base_italic=False,
-                         base_color=None):
+def add_runs_with_inline(
+    paragraph, text, base_font, base_size, base_bold=False, base_italic=False, base_color=None
+):
     if base_color is None:
         base_color = CFG["color_text"]
     pos = 0
     text = text.replace(" ", " ")
     for m in _INLINE_RE.finditer(text):
         if m.start() > pos:
-            chunk = text[pos:m.start()]
+            chunk = text[pos : m.start()]
             if chunk:
-                add_run(paragraph, chunk, name=base_font, size_pt=base_size,
-                        bold=base_bold, italic=base_italic, color=base_color)
+                add_run(
+                    paragraph,
+                    chunk,
+                    name=base_font,
+                    size_pt=base_size,
+                    bold=base_bold,
+                    italic=base_italic,
+                    color=base_color,
+                )
         if m.group(1) is not None:
             content = latex_to_unicode(m.group(1))
-            add_run(paragraph, content, name=CFG["font_math"],
-                    size_pt=base_size, italic=True, color=base_color)
+            add_run(
+                paragraph,
+                content,
+                name=CFG["font_math"],
+                size_pt=base_size,
+                italic=True,
+                color=base_color,
+            )
         elif m.group(2) is not None:
-            add_run(paragraph, m.group(2), name=base_font, size_pt=base_size,
-                    bold=True, italic=base_italic, color=base_color)
+            add_run(
+                paragraph,
+                m.group(2),
+                name=base_font,
+                size_pt=base_size,
+                bold=True,
+                italic=base_italic,
+                color=base_color,
+            )
         elif m.group(3) is not None:
-            add_run(paragraph, m.group(3), name=base_font, size_pt=base_size,
-                    bold=base_bold, italic=True, color=base_color)
+            add_run(
+                paragraph,
+                m.group(3),
+                name=base_font,
+                size_pt=base_size,
+                bold=base_bold,
+                italic=True,
+                color=base_color,
+            )
         pos = m.end()
     if pos < len(text):
         tail = text[pos:]
         if tail:
-            add_run(paragraph, tail, name=base_font, size_pt=base_size,
-                    bold=base_bold, italic=base_italic, color=base_color)
+            add_run(
+                paragraph,
+                tail,
+                name=base_font,
+                size_pt=base_size,
+                bold=base_bold,
+                italic=base_italic,
+                color=base_color,
+            )
 
 
 # ============================================================
 # EMERALD ROW TABLE BUILDER (untuk Title/Authors/Abstract/Keywords/Refs)
 # ============================================================
+
 
 def _set_cell_borders(cell, sz=8):
     tcPr = cell._tc.get_or_add_tcPr()
@@ -523,15 +653,18 @@ def _set_cell_borders(cell, sz=8):
     tcPr.append(tcBorders)
 
 
-def _set_cell_padding(cell, top_tw=120, bottom_tw=120,
-                      left_tw=144, right_tw=144):
+def _set_cell_padding(cell, top_tw=120, bottom_tw=120, left_tw=144, right_tw=144):
     tcPr = cell._tc.get_or_add_tcPr()
     old = tcPr.find(qn("w:tcMar"))
     if old is not None:
         tcPr.remove(old)
     tcMar = OxmlElement("w:tcMar")
-    for side, val in (("top", top_tw), ("left", left_tw),
-                      ("bottom", bottom_tw), ("right", right_tw)):
+    for side, val in (
+        ("top", top_tw),
+        ("left", left_tw),
+        ("bottom", bottom_tw),
+        ("right", right_tw),
+    ):
         el = OxmlElement(f"w:{side}")
         el.set(qn("w:w"), str(val))
         el.set(qn("w:type"), "dxa")
@@ -610,11 +743,15 @@ def add_emerald_row_table(doc, label, content_renderer):
     cell_l.vertical_alignment = WD_ALIGN_VERTICAL.TOP
     cell_l.text = ""
     p_l = cell_l.paragraphs[0]
-    set_para(p_l, before_tw=120, after_tw=120, line_tw=280,
-             alignment=WD_ALIGN_PARAGRAPH.LEFT)
-    add_run(p_l, label, name=CFG["font_body"],
-            size_pt=CFG["size_table_label"], bold=True,
-            color=CFG["color_text"])
+    set_para(p_l, before_tw=120, after_tw=120, line_tw=280, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+    add_run(
+        p_l,
+        label,
+        name=CFG["font_body"],
+        size_pt=CFG["size_table_label"],
+        bold=True,
+        color=CFG["color_text"],
+    )
 
     cell_c = table.cell(0, 1)
     _set_cell_borders(cell_c, sz=CFG["border_sz"])
@@ -626,25 +763,41 @@ def add_emerald_row_table(doc, label, content_renderer):
     return table
 
 
-def cell_add_paragraph(cell, before_tw=80, after_tw=80, line_tw=280,
-                       alignment=WD_ALIGN_PARAGRAPH.LEFT,
-                       first_line_tw=None):
+def cell_add_paragraph(
+    cell,
+    before_tw=80,
+    after_tw=80,
+    line_tw=280,
+    alignment=WD_ALIGN_PARAGRAPH.LEFT,
+    first_line_tw=None,
+):
     p = cell.add_paragraph()
-    set_para(p, before_tw=before_tw, after_tw=after_tw, line_tw=line_tw,
-             alignment=alignment, first_line_tw=first_line_tw)
+    set_para(
+        p,
+        before_tw=before_tw,
+        after_tw=after_tw,
+        line_tw=line_tw,
+        alignment=alignment,
+        first_line_tw=first_line_tw,
+    )
     return p
 
 
-def cell_add_text(cell, text, italic=False, bold=False, size_pt=None,
-                  color=None):
+def cell_add_text(cell, text, italic=False, bold=False, size_pt=None, color=None):
     if size_pt is None:
         size_pt = CFG["size_table_body"]
     if color is None:
         color = CFG["color_text"]
     p = cell_add_paragraph(cell)
-    add_runs_with_inline(p, text, base_font=CFG["font_body"],
-                         base_size=size_pt, base_bold=bold,
-                         base_italic=italic, base_color=color)
+    add_runs_with_inline(
+        p,
+        text,
+        base_font=CFG["font_body"],
+        base_size=size_pt,
+        base_bold=bold,
+        base_italic=italic,
+        base_color=color,
+    )
     return p
 
 
@@ -652,17 +805,34 @@ def cell_add_text(cell, text, italic=False, bold=False, size_pt=None,
 # SECTION-BREAK SPACER (untuk membentuk 14 inline sectPr)
 # ============================================================
 
+
 def add_spacer(doc, line_tw=14):
     p = doc.add_paragraph()
-    set_para(p, before_tw=0, after_tw=0, line_tw=line_tw, line_rule="exact",
-             left_tw=0, right_tw=0, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+    set_para(
+        p,
+        before_tw=0,
+        after_tw=0,
+        line_tw=line_tw,
+        line_rule="exact",
+        left_tw=0,
+        right_tw=0,
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
+    )
     return p
 
 
 def add_gap(doc, line_tw=1440):
     p = doc.add_paragraph()
-    set_para(p, before_tw=0, after_tw=0, line_tw=line_tw, line_rule="exact",
-             left_tw=0, right_tw=0, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+    set_para(
+        p,
+        before_tw=0,
+        after_tw=0,
+        line_tw=line_tw,
+        line_rule="exact",
+        left_tw=0,
+        right_tw=0,
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
+    )
     return p
 
 
@@ -678,26 +848,42 @@ def add_section_break(doc):
 # TOP-LEVEL CONTENT BUILDERS
 # ============================================================
 
+
 def add_main_heading(doc, data):
     title = data.get("title", "Paper Title Goes Here")
     p = doc.add_paragraph()
-    set_para(p, before_tw=CFG["main_h_before"], after_tw=CFG["main_h_after"],
-             line_tw=CFG["main_h_line"], alignment=WD_ALIGN_PARAGRAPH.LEFT,
-             left_tw=CFG["content_left_tw"], right_tw=0)
-    add_run(p, title, name=CFG["font_heading"],
-            size_pt=CFG["size_h_main"], color=CFG["color_heading"])
+    set_para(
+        p,
+        before_tw=CFG["main_h_before"],
+        after_tw=CFG["main_h_after"],
+        line_tw=CFG["main_h_line"],
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
+        left_tw=CFG["content_left_tw"],
+        right_tw=0,
+    )
+    add_run(
+        p, title, name=CFG["font_heading"], size_pt=CFG["size_h_main"], color=CFG["color_heading"]
+    )
 
 
 def add_intro_paragraph(doc, data):
     abstract = data.get("abstract", "")
-    snippet = (abstract.strip().split(". ")[0] + ".") if abstract else \
-        "Before you submit your manuscript, please read the guidelines below."
+    snippet = (
+        (abstract.strip().split(". ")[0] + ".")
+        if abstract
+        else "Before you submit your manuscript, please read the guidelines below."
+    )
     p = doc.add_paragraph()
-    set_para(p, before_tw=CFG["intro_before"], after_tw=CFG["intro_after"],
-             line_tw=CFG["intro_line"], alignment=WD_ALIGN_PARAGRAPH.LEFT,
-             left_tw=CFG["content_left_tw"], right_tw=CFG["content_right_tw"])
-    add_run(p, snippet, name=CFG["font_body"],
-            size_pt=CFG["size_body"], color=CFG["color_text"])
+    set_para(
+        p,
+        before_tw=CFG["intro_before"],
+        after_tw=CFG["intro_after"],
+        line_tw=CFG["intro_line"],
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+    )
+    add_run(p, snippet, name=CFG["font_body"], size_pt=CFG["size_body"], color=CFG["color_text"])
 
 
 def add_section_heading(doc, label, level=1):
@@ -710,22 +896,31 @@ def add_section_heading(doc, label, level=1):
         size = CFG["size_h_subsection"]
         before = 240
         after = 80
-    set_para(p, before_tw=before, after_tw=after, line_tw=300,
-             alignment=WD_ALIGN_PARAGRAPH.LEFT,
-             left_tw=CFG["content_left_tw"],
-             right_tw=CFG["content_right_tw"], keep_next=True)
-    add_run(p, label, name=CFG["font_heading"], size_pt=size,
-            bold=True, color=CFG["color_heading"])
+    set_para(
+        p,
+        before_tw=before,
+        after_tw=after,
+        line_tw=300,
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+        keep_next=True,
+    )
+    add_run(p, label, name=CFG["font_heading"], size_pt=size, bold=True, color=CFG["color_heading"])
 
 
 def add_body_paragraph(doc, text):
     p = doc.add_paragraph()
-    set_para(p, before_tw=80, after_tw=120, line_tw=CFG["body_line_tw"],
-             alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-             left_tw=CFG["content_left_tw"],
-             right_tw=CFG["content_right_tw"])
-    add_runs_with_inline(p, text, base_font=CFG["font_body"],
-                         base_size=CFG["size_body"])
+    set_para(
+        p,
+        before_tw=80,
+        after_tw=120,
+        line_tw=CFG["body_line_tw"],
+        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+    )
+    add_runs_with_inline(p, text, base_font=CFG["font_body"], base_size=CFG["size_body"])
 
 
 def add_figure_block(doc, fig):
@@ -739,10 +934,15 @@ def add_figure_block(doc, fig):
     num = fig.get("ImageNumber", "?")
 
     p_img = doc.add_paragraph()
-    set_para(p_img, before_tw=120, after_tw=80, line_tw=300,
-             alignment=WD_ALIGN_PARAGRAPH.CENTER,
-             left_tw=CFG["content_left_tw"],
-             right_tw=CFG["content_right_tw"])
+    set_para(
+        p_img,
+        before_tw=120,
+        after_tw=80,
+        line_tw=300,
+        alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+    )
     if full and full.exists():
         try:
             run = p_img.add_run()
@@ -751,46 +951,82 @@ def add_figure_block(doc, fig):
             body = (prompt or "").strip()
             if title and title.lower() not in body.lower():
                 body = f"{title}. {body}" if body else title
-            add_run(p_img, f"[PROMPT UNTUK AI GAMBAR: {body}]",
-                    name=CFG["font_body"], size_pt=CFG["size_caption"],
-                    italic=True, color=(0x7F, 0x7F, 0x7F))
+            add_run(
+                p_img,
+                f"[PROMPT UNTUK AI GAMBAR: {body}]",
+                name=CFG["font_body"],
+                size_pt=CFG["size_caption"],
+                italic=True,
+                color=(0x7F, 0x7F, 0x7F),
+            )
     else:
         body = (prompt or "").strip()
         if title and title.lower() not in body.lower():
             body = f"{title}. {body}" if body else title
         if not body:
             body = title or "Gambar"
-        add_run(p_img, f"[PROMPT UNTUK AI GAMBAR: {body}]",
-                name=CFG["font_body"], size_pt=CFG["size_caption"],
-                italic=True, color=(0x7F, 0x7F, 0x7F))
+        add_run(
+            p_img,
+            f"[PROMPT UNTUK AI GAMBAR: {body}]",
+            name=CFG["font_body"],
+            size_pt=CFG["size_caption"],
+            italic=True,
+            color=(0x7F, 0x7F, 0x7F),
+        )
 
     cap = doc.add_paragraph()
-    set_para(cap, before_tw=60, after_tw=160, line_tw=260,
-             alignment=WD_ALIGN_PARAGRAPH.CENTER,
-             left_tw=CFG["content_left_tw"],
-             right_tw=CFG["content_right_tw"])
-    add_run(cap, f"Figure {num}. ", name=CFG["font_body"],
-            size_pt=CFG["size_caption"], bold=True,
-            color=CFG["color_text"])
-    add_run(cap, title, name=CFG["font_body"],
-            size_pt=CFG["size_caption"], italic=True,
-            color=CFG["color_text"])
+    set_para(
+        cap,
+        before_tw=60,
+        after_tw=160,
+        line_tw=260,
+        alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+    )
+    add_run(
+        cap,
+        f"Figure {num}. ",
+        name=CFG["font_body"],
+        size_pt=CFG["size_caption"],
+        bold=True,
+        color=CFG["color_text"],
+    )
+    add_run(
+        cap,
+        title,
+        name=CFG["font_body"],
+        size_pt=CFG["size_caption"],
+        italic=True,
+        color=CFG["color_text"],
+    )
 
 
 def add_formula_block(doc, fm):
     latex = fm.get("latex", "")
     num = fm.get("FormulaNumber", "?")
     p = doc.add_paragraph()
-    set_para(p, before_tw=120, after_tw=120, line_tw=300,
-             alignment=WD_ALIGN_PARAGRAPH.CENTER,
-             left_tw=CFG["content_left_tw"],
-             right_tw=CFG["content_right_tw"])
+    set_para(
+        p,
+        before_tw=120,
+        after_tw=120,
+        line_tw=300,
+        alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+    )
     formula_text = latex_to_unicode(latex)
-    add_run(p, formula_text, name=CFG["font_math"],
-            size_pt=CFG["size_body"], italic=True,
-            color=CFG["color_text"])
-    add_run(p, f"    ({num})", name=CFG["font_body"],
-            size_pt=CFG["size_body"], color=CFG["color_text"])
+    add_run(
+        p,
+        formula_text,
+        name=CFG["font_math"],
+        size_pt=CFG["size_body"],
+        italic=True,
+        color=CFG["color_text"],
+    )
+    add_run(
+        p, f"    ({num})", name=CFG["font_body"], size_pt=CFG["size_body"], color=CFG["color_text"]
+    )
 
 
 def _three_line_borders(c, top=False, bottom_thick=False, bottom_thin=False):
@@ -825,16 +1061,32 @@ def add_data_table_block(doc, tb):
     rows = tb.get("Rows", []) or []
 
     cap = doc.add_paragraph()
-    set_para(cap, before_tw=160, after_tw=80, line_tw=260,
-             alignment=WD_ALIGN_PARAGRAPH.LEFT,
-             left_tw=CFG["content_left_tw"],
-             right_tw=CFG["content_right_tw"], keep_next=True)
-    add_run(cap, f"Table {num}. ", name=CFG["font_body"],
-            size_pt=CFG["size_caption"], bold=True,
-            color=CFG["color_text"])
-    add_run(cap, title, name=CFG["font_body"],
-            size_pt=CFG["size_caption"], italic=True,
-            color=CFG["color_text"])
+    set_para(
+        cap,
+        before_tw=160,
+        after_tw=80,
+        line_tw=260,
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+        keep_next=True,
+    )
+    add_run(
+        cap,
+        f"Table {num}. ",
+        name=CFG["font_body"],
+        size_pt=CFG["size_caption"],
+        bold=True,
+        color=CFG["color_text"],
+    )
+    add_run(
+        cap,
+        title,
+        name=CFG["font_body"],
+        size_pt=CFG["size_caption"],
+        italic=True,
+        color=CFG["color_text"],
+    )
 
     if not headers and not rows:
         headers = ["Column 1", "Column 2"]
@@ -847,8 +1099,7 @@ def add_data_table_block(doc, tb):
     sub.alignment = WD_TABLE_ALIGNMENT.CENTER
 
     # Width: usable = page_w - left_indent - right_indent ≈ 12240-1440-2160
-    usable = CFG["page_w_tw"] - CFG["content_left_tw"] - \
-        CFG["content_right_tw"]
+    usable = CFG["page_w_tw"] - CFG["content_left_tw"] - CFG["content_right_tw"]
     col_w = usable // n_cols
     _set_table_layout_fixed(sub, [col_w] * n_cols)
     _set_table_indent(sub, CFG["content_left_tw"])
@@ -861,27 +1112,25 @@ def add_data_table_block(doc, tb):
         _set_cell_padding(c, 60, 60, 96, 96)
         _three_line_borders(c, top=True, bottom_thin=True)
         cp = c.paragraphs[0]
-        set_para(cp, before_tw=40, after_tw=40, line_tw=240,
-                 alignment=WD_ALIGN_PARAGRAPH.CENTER)
-        add_runs_with_inline(cp, str(h), base_font=CFG["font_body"],
-                             base_size=CFG["size_caption"],
-                             base_bold=True)
+        set_para(cp, before_tw=40, after_tw=40, line_tw=240, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        add_runs_with_inline(
+            cp, str(h), base_font=CFG["font_body"], base_size=CFG["size_caption"], base_bold=True
+        )
 
     for i, row in enumerate(rows):
-        is_last = (i == last_idx)
+        is_last = i == last_idx
         for j in range(n_cols):
             val = row[j] if j < len(row) else ""
             c = sub.cell(1 + i, j)
             c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
             c.text = ""
             _set_cell_padding(c, 40, 40, 96, 96)
-            _three_line_borders(c, top=False, bottom_thick=is_last,
-                                bottom_thin=False)
+            _three_line_borders(c, top=False, bottom_thick=is_last, bottom_thin=False)
             cp = c.paragraphs[0]
-            set_para(cp, before_tw=20, after_tw=20, line_tw=240,
-                     alignment=WD_ALIGN_PARAGRAPH.LEFT)
-            add_runs_with_inline(cp, str(val), base_font=CFG["font_body"],
-                                 base_size=CFG["size_caption"])
+            set_para(cp, before_tw=20, after_tw=20, line_tw=240, alignment=WD_ALIGN_PARAGRAPH.LEFT)
+            add_runs_with_inline(
+                cp, str(val), base_font=CFG["font_body"], base_size=CFG["size_caption"]
+            )
 
 
 def render_section_content_top_level(doc, content):
@@ -910,22 +1159,32 @@ def render_section_content_top_level(doc, content):
 # EMERALD ROW BLOCKS (Title/Authors/Abstract/Keywords/References)
 # ============================================================
 
+
 def block_title(doc, data):
     title = data.get("title", "Paper Title Goes Here")
 
     def render(cell):
         p = cell_add_paragraph(cell, before_tw=80, after_tw=80, line_tw=300)
-        add_run(p, title, name=CFG["font_body"],
-                size_pt=CFG["size_table_body"], bold=True,
-                color=CFG["color_text"])
+        add_run(
+            p,
+            title,
+            name=CFG["font_body"],
+            size_pt=CFG["size_table_body"],
+            bold=True,
+            color=CFG["color_text"],
+        )
 
     add_emerald_row_table(doc, "Article title", render)
 
 
 def block_authors(doc, data):
     authors = data.get("authors", []) or [
-        {"name": "Author Name", "affiliation": "Department, University",
-         "location": "City, Country", "email": "author@email.ac.id"},
+        {
+            "name": "Author Name",
+            "affiliation": "Department, University",
+            "location": "City, Country",
+            "email": "author@email.ac.id",
+        },
     ]
 
     def render(cell):
@@ -936,32 +1195,59 @@ def block_authors(doc, data):
             email = a.get("email", "")
             full = affil + ((", " + loc) if loc else "")
             p1 = cell_add_paragraph(cell, before_tw=60, after_tw=20)
-            add_run(p1, f"{i+1}. ", name=CFG["font_body"],
-                    size_pt=CFG["size_table_body"], bold=True,
-                    color=CFG["color_text"])
-            add_run(p1, line, name=CFG["font_body"],
-                    size_pt=CFG["size_table_body"], bold=True,
-                    color=CFG["color_text"])
+            add_run(
+                p1,
+                f"{i+1}. ",
+                name=CFG["font_body"],
+                size_pt=CFG["size_table_body"],
+                bold=True,
+                color=CFG["color_text"],
+            )
+            add_run(
+                p1,
+                line,
+                name=CFG["font_body"],
+                size_pt=CFG["size_table_body"],
+                bold=True,
+                color=CFG["color_text"],
+            )
             p2 = cell_add_paragraph(cell, before_tw=0, after_tw=20)
-            add_run(p2, full, name=CFG["font_body"],
-                    size_pt=CFG["size_table_body"], italic=True,
-                    color=CFG["color_text"])
+            add_run(
+                p2,
+                full,
+                name=CFG["font_body"],
+                size_pt=CFG["size_table_body"],
+                italic=True,
+                color=CFG["color_text"],
+            )
             if email:
                 p3 = cell_add_paragraph(cell, before_tw=0, after_tw=80)
-                add_run(p3, "Email: ", name=CFG["font_body"],
-                        size_pt=CFG["size_table_body"], bold=True,
-                        color=CFG["color_text"])
-                add_run(p3, email, name=CFG["font_body"],
-                        size_pt=CFG["size_table_body"],
-                        color=CFG["color_accent"], underline=True)
+                add_run(
+                    p3,
+                    "Email: ",
+                    name=CFG["font_body"],
+                    size_pt=CFG["size_table_body"],
+                    bold=True,
+                    color=CFG["color_text"],
+                )
+                add_run(
+                    p3,
+                    email,
+                    name=CFG["font_body"],
+                    size_pt=CFG["size_table_body"],
+                    color=CFG["color_accent"],
+                    underline=True,
+                )
 
     add_emerald_row_table(doc, "Author details", render)
 
 
 def block_abstract(doc, data):
-    text = data.get("abstract",
-                    "Abstract text goes here. This section should contain "
-                    "150-250 words summarizing the paper.")
+    text = data.get(
+        "abstract",
+        "Abstract text goes here. This section should contain "
+        "150-250 words summarizing the paper.",
+    )
 
     def render(cell):
         cell_add_text(cell, text)
@@ -994,15 +1280,18 @@ def block_references(doc, data):
     def render(cell):
         items_local = items or ["[1] Author, Title, Journal, Year."]
         for i, ref in enumerate(items_local, 1):
-            p = cell_add_paragraph(cell, before_tw=40, after_tw=40,
-                                   line_tw=260)
+            p = cell_add_paragraph(cell, before_tw=40, after_tw=40, line_tw=260)
             pf = p.paragraph_format
             pf.left_indent = Twips(360)
             pf.first_line_indent = Twips(-360)
-            add_run(p, f"[{i}] ", name=CFG["font_body"],
-                    size_pt=CFG["size_ref"], color=CFG["color_text"])
-            add_runs_with_inline(p, str(ref), base_font=CFG["font_body"],
-                                 base_size=CFG["size_ref"])
+            add_run(
+                p,
+                f"[{i}] ",
+                name=CFG["font_body"],
+                size_pt=CFG["size_ref"],
+                color=CFG["color_text"],
+            )
+            add_runs_with_inline(p, str(ref), base_font=CFG["font_body"], base_size=CFG["size_ref"])
 
     add_emerald_row_table(doc, "References", render)
 
@@ -1010,6 +1299,7 @@ def block_references(doc, data):
 # ============================================================
 # SECTION TOP-LEVEL BLOCKS
 # ============================================================
+
 
 def block_section_top_level(doc, sec_data, sec_num):
     title = sec_data.get("title", f"Section {sec_num}")
@@ -1019,8 +1309,11 @@ def block_section_top_level(doc, sec_data, sec_num):
         render_section_content_top_level(doc, sec_data["content"])
 
     sub_keys = sorted(
-        [k for k in sec_data.keys()
-         if k not in ("title", "content") and isinstance(sec_data[k], dict)]
+        [
+            k
+            for k in sec_data.keys()
+            if k not in ("title", "content") and isinstance(sec_data[k], dict)
+        ]
     )
     for idx, k in enumerate(sub_keys, 1):
         sub = sec_data[k]
@@ -1050,6 +1343,7 @@ def _block_subsection(doc, sub_data, sec_num, sub_idx):
 # ============================================================
 # MAIN
 # ============================================================
+
 
 def generate():
     if not TEMPLATE_DOCX.exists():
@@ -1086,16 +1380,20 @@ def generate():
         n = int(k.replace("section", ""))
         sec_data = data[k]
         # Top-level header + content (tanpa subs) → 1 blok
-        blocks.append((f"{k}_top", lambda d=sec_data, n=n:
-                       _block_section_only_top(doc, d, n)))
+        blocks.append((f"{k}_top", lambda d=sec_data, n=n: _block_section_only_top(doc, d, n)))
         # Setiap subsection → 1 blok terpisah agar sectPr menyebar
         sub_keys = sorted(
-            kk for kk in sec_data.keys()
+            kk
+            for kk in sec_data.keys()
             if kk not in ("title", "content") and isinstance(sec_data[kk], dict)
         )
         for sub_idx, sk in enumerate(sub_keys, 1):
-            blocks.append((f"{k}_{sk}", lambda d=sec_data[sk], n=n, si=sub_idx:
-                           _block_subsection(doc, d, n, si)))
+            blocks.append(
+                (
+                    f"{k}_{sk}",
+                    lambda d=sec_data[sk], n=n, si=sub_idx: _block_subsection(doc, d, n, si),
+                )
+            )
 
     blocks.append(("references", lambda: block_references(doc, data)))
 

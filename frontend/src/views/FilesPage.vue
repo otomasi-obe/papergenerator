@@ -102,7 +102,7 @@
 
     <!-- Toast -->
     <Teleport to="body">
-      <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999]">
+      <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60]">
         <div class="px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-green-600">{{ toastMsg }}</div>
       </div>
     </Teleport>

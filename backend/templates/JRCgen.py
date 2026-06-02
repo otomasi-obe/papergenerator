@@ -31,47 +31,42 @@ from docx.shared import Cm, Pt
 from lxml import etree
 
 # ── Paths ─────────────────────────────────────────────────────────
-BASE_DIR       = Path(__file__).resolve().parent
-ROOT_DIR       = BASE_DIR.parent
-JSON_PATH      = BASE_DIR / "_PLC-MediapipeID.json"
-TEMPLATE_PATH  = BASE_DIR / "JRC.docx"
-JOURNAL_NAME   = TEMPLATE_PATH.stem
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
+JSON_PATH = BASE_DIR / "_PLC-MediapipeID.json"
+TEMPLATE_PATH = BASE_DIR / "JRC.docx"
+JOURNAL_NAME = TEMPLATE_PATH.stem
 
 # ── Namespace constants ───────────────────────────────────────────
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
-NS_W    = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NS_R    = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+NS_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
-        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main":
-        b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
-        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 # ── Page/margin dimensions (dari analisis JRC.docx) ──────────────
-PAGE_W_PT           = 595.3    # A4 width
-PAGE_H_PT           = 841.9    # A4 height
-MARGIN_TOP_FIRST    = 27.0     # top margin, title/first page
-MARGIN_TOP_BODY     = 54.0     # top margin, body pages
-MARGIN_BOTTOM       = 72.0     # bottom margin
-MARGIN_LEFT         = 44.65    # left/right margin title section (893tw)
-MARGIN_RIGHT        = 44.65
-MARGIN_LEFT_BODY    = 45.35    # left/right margin body section (907tw)
-MARGIN_RIGHT_BODY   = 45.35
-HEADER_DIST         = 36.0     # header distance (720tw)
-FOOTER_DIST         = 36.0     # footer distance (720tw)
-COL_SPACE           = 36.0     # column gap (720tw)
-COL_WIDTH           = 243.25   # each column width in 2-col layout (4865tw)
-COL1_SPACE_PT       = 18.0     # custom child-column spacing in JRC template (360tw)
+PAGE_W_PT = 595.3  # A4 width
+PAGE_H_PT = 841.9  # A4 height
+MARGIN_TOP_FIRST = 27.0  # top margin, title/first page
+MARGIN_TOP_BODY = 54.0  # top margin, body pages
+MARGIN_BOTTOM = 72.0  # bottom margin
+MARGIN_LEFT = 44.65  # left/right margin title section (893tw)
+MARGIN_RIGHT = 44.65
+MARGIN_LEFT_BODY = 45.35  # left/right margin body section (907tw)
+MARGIN_RIGHT_BODY = 45.35
+HEADER_DIST = 36.0  # header distance (720tw)
+FOOTER_DIST = 36.0  # footer distance (720tw)
+COL_SPACE = 36.0  # column gap (720tw)
+COL_WIDTH = 243.25  # each column width in 2-col layout (4865tw)
+COL1_SPACE_PT = 18.0  # custom child-column spacing in JRC template (360tw)
 BODY_COLUMN_WIDTH_PT = COL_WIDTH  # used for equation tab stops
-MAX_FIGURE_WIDTH_CM = 8.4      # max figure width per column
+MAX_FIGURE_WIDTH_CM = 8.4  # max figure width per column
 
 # ── XSL for math conversion ───────────────────────────────────────
 XSL_CANDIDATES = [
@@ -84,33 +79,34 @@ _XSLT = None
 # ── Style XML IDs (sesuai JRC.docx styles.xml) ───────────────────
 # Key = nama style python-docx, Value = styleId dalam XML
 STYLE_XML_ID = {
-    "paper title":      "papertitle",        # 24pt, Times New Roman
-    "Author":           "Author",            # author names line
-    "Affiliation":      "Affiliation",       # affiliation/department
-    "Abstract":         "Abstract",          # 9pt, bold, firstLine indent
-    "Keywords":         "Keywords",          # 9pt, bold+italic
-    "heading 1":        "Heading1",          # Roman auto-numbered, 10pt, center
-    "heading 2":        "Heading2",          # Letter auto-numbered, 10pt, italic
-    "heading 3":        "Heading3",          # 1) auto-numbered, 10pt, italic
-    "heading 4":        "Heading4",          # 10pt, italic
-    "heading 5":        "Heading5",          # 10pt, spBefore=160
-    "Body Text":        "BodyText",          # 10pt, justified, firstLine 288tw
-    "bullet list":      "bulletlist",        # based on BodyText, ind_left 576
-    "figure caption":   "figurecaption",     # 8pt, auto-Fig.N. (numId=5)
-    "table head":       "tablehead",         # 8pt, auto-TABLE N. (numId=3)
-    "table col head":   "tablecolhead",      # 8pt, bold
-    "table col subhead":"tablecolsubhead",   # 7.5pt, italic
-    "table copy":       "tablecopy",         # 8pt, justified
-    "table footnote":   "tablefootnote",     # 6pt
-    "equation":         "equation",          # Symbol font, spBefore/After=240
-    "references":       "references",        # 8pt, auto-[N] (numId=2)
-    "sponsors":         "sponsors",          # 8pt, firstLine 288
+    "paper title": "papertitle",  # 24pt, Times New Roman
+    "Author": "Author",  # author names line
+    "Affiliation": "Affiliation",  # affiliation/department
+    "Abstract": "Abstract",  # 9pt, bold, firstLine indent
+    "Keywords": "Keywords",  # 9pt, bold+italic
+    "heading 1": "Heading1",  # Roman auto-numbered, 10pt, center
+    "heading 2": "Heading2",  # Letter auto-numbered, 10pt, italic
+    "heading 3": "Heading3",  # 1) auto-numbered, 10pt, italic
+    "heading 4": "Heading4",  # 10pt, italic
+    "heading 5": "Heading5",  # 10pt, spBefore=160
+    "Body Text": "BodyText",  # 10pt, justified, firstLine 288tw
+    "bullet list": "bulletlist",  # based on BodyText, ind_left 576
+    "figure caption": "figurecaption",  # 8pt, auto-Fig.N. (numId=5)
+    "table head": "tablehead",  # 8pt, auto-TABLE N. (numId=3)
+    "table col head": "tablecolhead",  # 8pt, bold
+    "table col subhead": "tablecolsubhead",  # 7.5pt, italic
+    "table copy": "tablecopy",  # 8pt, justified
+    "table footnote": "tablefootnote",  # 6pt
+    "equation": "equation",  # Symbol font, spBefore/After=240
+    "references": "references",  # 8pt, auto-[N] (numId=2)
+    "sponsors": "sponsors",  # 8pt, firstLine 288
 }
 
 
 # ═══════════════════════════════════════════════════════════════════
 # § 1  Utility helpers
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _pt2tw(pt: float) -> int:
     """Convert points to twips (1pt = 20tw)."""
@@ -136,9 +132,15 @@ def _set_para_style(paragraph, style_name: str) -> None:
     pstyle.set(qn("w:val"), xml_id)
 
 
-def _para(doc: Document, style_id: str | None = None,
-          align=None, sb: float | None = None, sa: float | None = None,
-          fi: float | None = None, li: float | None = None) -> object:
+def _para(
+    doc: Document,
+    style_id: str | None = None,
+    align=None,
+    sb: float | None = None,
+    sa: float | None = None,
+    fi: float | None = None,
+    li: float | None = None,
+) -> object:
     """Add a paragraph with optional style and formatting."""
     paragraph = doc.add_paragraph()
     if style_id:
@@ -168,6 +170,7 @@ def _clear_document_body(doc: Document) -> None:
 # ═══════════════════════════════════════════════════════════════════
 # § 2  Math / OMML conversion
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _get_xslt():
     global _XSLT
@@ -218,8 +221,10 @@ def _append_inline_math(paragraph, latex: str) -> bool:
 # § 3  Rich-text helpers
 # ═══════════════════════════════════════════════════════════════════
 
-def _append_text_run(paragraph, text: str, bold: bool = False,
-                     italic: bool = False, underline: bool = False):
+
+def _append_text_run(
+    paragraph, text: str, bold: bool = False, italic: bool = False, underline: bool = False
+):
     if not text:
         return
     run = paragraph.add_run(text)
@@ -238,8 +243,8 @@ def _append_line_break(paragraph):
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -255,8 +260,13 @@ def _iter_rich_tokens(text: str):
         content = "".join(buffer)
         buffer = []
         if content:
-            yield {"kind": "text", "value": content,
-                   "bold": bold, "italic": italic, "underline": underline}
+            yield {
+                "kind": "text",
+                "value": content,
+                "bold": bold,
+                "italic": italic,
+                "underline": underline,
+            }
 
     while index < len(normalized):
         char = normalized[index]
@@ -290,7 +300,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -310,9 +320,13 @@ def _append_rich_text(paragraph, text: str):
                 run = paragraph.add_run(token["value"])
                 run.italic = True
         else:
-            _append_text_run(paragraph, token["value"],
-                             bold=token["bold"], italic=token["italic"],
-                             underline=token["underline"])
+            _append_text_run(
+                paragraph,
+                token["value"],
+                bold=token["bold"],
+                italic=token["italic"],
+                underline=token["underline"],
+            )
 
 
 def _split_body_blocks(text: str) -> list[str]:
@@ -332,6 +346,7 @@ def _body_paragraphs(doc: Document, text: str, style_id: str = "Body Text"):
 # § 4  Section properties builders
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _get_hf_rids(template_path: Path) -> dict:
     """
     Baca rId header/footer dari word/_rels/document.xml.rels template.
@@ -339,8 +354,12 @@ def _get_hf_rids(template_path: Path) -> dict:
             header1.xml = default header, header2.xml = first-page header
             footer1.xml = default footer, footer2.xml = first-page footer
     """
-    result = {"header_default": None, "header_first": None,
-              "footer_default": None, "footer_first":  None}
+    result = {
+        "header_default": None,
+        "header_first": None,
+        "footer_default": None,
+        "footer_first": None,
+    }
     try:
         with zipfile.ZipFile(str(template_path)) as zf:
             if "word/_rels/document.xml.rels" not in zf.namelist():
@@ -349,8 +368,8 @@ def _get_hf_rids(template_path: Path) -> dict:
         root = etree.fromstring(raw)
         hf: dict[str, str] = {}
         for rel in root:
-            rid    = rel.get("Id", "")
-            rtype  = rel.get("Type", "").lower()
+            rid = rel.get("Id", "")
+            rtype = rel.get("Type", "").lower()
             target = rel.get("Target", "").lower()
             if "header" in rtype:
                 if "header1" in target:
@@ -368,9 +387,9 @@ def _get_hf_rids(template_path: Path) -> dict:
         #   default footer  -> footer1.xml (rId9)
         #   first-page foot -> footer2.xml (rId11)
         result["header_default"] = hf.get("header1")
-        result["header_first"]   = hf.get("header2")
+        result["header_first"] = hf.get("header2")
         result["footer_default"] = hf.get("footer1")
-        result["footer_first"]   = hf.get("footer2")
+        result["footer_first"] = hf.get("footer2")
     except Exception:
         pass
     return result
@@ -406,10 +425,10 @@ def _build_title_sectpr(hf_rids: dict) -> etree._Element:
 
     # pgMar (top=27pt untuk area judul)
     pgmar = etree.SubElement(sp, _wq("pgMar"))
-    pgmar.set(_wq("top"),    str(_pt2tw(MARGIN_TOP_FIRST)))
-    pgmar.set(_wq("right"),  str(_pt2tw(MARGIN_RIGHT)))
+    pgmar.set(_wq("top"), str(_pt2tw(MARGIN_TOP_FIRST)))
+    pgmar.set(_wq("right"), str(_pt2tw(MARGIN_RIGHT)))
     pgmar.set(_wq("bottom"), str(_pt2tw(MARGIN_BOTTOM)))
-    pgmar.set(_wq("left"),   str(_pt2tw(MARGIN_LEFT)))
+    pgmar.set(_wq("left"), str(_pt2tw(MARGIN_LEFT)))
     pgmar.set(_wq("header"), str(_pt2tw(HEADER_DIST)))
     pgmar.set(_wq("footer"), str(_pt2tw(FOOTER_DIST)))
     pgmar.set(_wq("gutter"), "0")
@@ -436,7 +455,7 @@ def _build_body_sectpr() -> etree._Element:
     """
     sp = etree.Element(_wq("sectPr"))
 
-    # type: continuous (tidak ganti halaman)
+    # Section type: continuous (tidak ganti halaman)
     stype = etree.SubElement(sp, _wq("type"))
     stype.set(_wq("val"), "continuous")
 
@@ -447,10 +466,10 @@ def _build_body_sectpr() -> etree._Element:
 
     # pgMar
     pgmar = etree.SubElement(sp, _wq("pgMar"))
-    pgmar.set(_wq("top"),    str(_pt2tw(MARGIN_TOP_BODY)))
-    pgmar.set(_wq("right"),  str(_pt2tw(MARGIN_RIGHT_BODY)))
+    pgmar.set(_wq("top"), str(_pt2tw(MARGIN_TOP_BODY)))
+    pgmar.set(_wq("right"), str(_pt2tw(MARGIN_RIGHT_BODY)))
     pgmar.set(_wq("bottom"), str(_pt2tw(MARGIN_BOTTOM)))
-    pgmar.set(_wq("left"),   str(_pt2tw(MARGIN_LEFT_BODY)))
+    pgmar.set(_wq("left"), str(_pt2tw(MARGIN_LEFT_BODY)))
     pgmar.set(_wq("header"), str(_pt2tw(HEADER_DIST)))
     pgmar.set(_wq("footer"), str(_pt2tw(FOOTER_DIST)))
     pgmar.set(_wq("gutter"), "0")
@@ -461,7 +480,7 @@ def _build_body_sectpr() -> etree._Element:
     cols.set(_wq("space"), str(_pt2tw(COL_SPACE)))  # 720tw = 36pt
     cols.set(_wq("equalWidth"), "0")
     col1 = etree.SubElement(cols, _wq("col"))
-    col1.set(_wq("w"), str(_pt2tw(COL_WIDTH)))   # 4865tw = 243.25pt
+    col1.set(_wq("w"), str(_pt2tw(COL_WIDTH)))  # 4865tw = 243.25pt
     col1.set(_wq("space"), str(_pt2tw(COL1_SPACE_PT)))  # 360tw = 18pt
     col2 = etree.SubElement(cols, _wq("col"))
     col2.set(_wq("w"), str(_pt2tw(COL_WIDTH)))
@@ -470,12 +489,16 @@ def _build_body_sectpr() -> etree._Element:
     return sp
 
 
-def _embed_sectpr(doc: Document, sectpr_el,
-                  style_id: str | None = None,
-                  align=None, sb: float | None = None,
-                  sa: float | None = None,
-                  li: float | None = None,
-                  fi: float | None = None) -> object:
+def _embed_sectpr(
+    doc: Document,
+    sectpr_el,
+    style_id: str | None = None,
+    align=None,
+    sb: float | None = None,
+    sa: float | None = None,
+    li: float | None = None,
+    fi: float | None = None,
+) -> object:
     """Tambah paragraf dengan sectPr yang disematkan di pPr-nya."""
     paragraph = doc.add_paragraph()
     if style_id:
@@ -500,13 +523,13 @@ def _embed_sectpr(doc: Document, sectpr_el,
 # § 5  Title block
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _add_title(doc: Document, config: dict):
     """
     Judul paper. Style: papertitle (24pt, Times New Roman).
     Tidak bold, tidak italic — sesuai analisis JRC.docx.
     """
-    title = (config.get("title", "")
-             or config.get("TitleBlock", {}).get("Title", ""))
+    title = config.get("title", "") or config.get("TitleBlock", {}).get("Title", "")
     paragraph = _para(doc, style_id="paper title")
     _append_rich_text(paragraph, title)
 
@@ -630,7 +653,7 @@ def _add_authors(doc: Document, config: dict):
     # ── Kelompokkan author berdasarkan afiliasi unik ──────────────
     # Affiliation key = (affiliation, location)
     aff_map: dict[tuple, int] = {}  # (affiliation, location) → aff_number
-    author_aff_nums: list[int] = []       # aff number untuk setiap author
+    author_aff_nums: list[int] = []  # aff number untuk setiap author
     for entry in entries:
         key = (entry["affiliation"], entry["location"])
         if key not in aff_map:
@@ -639,7 +662,6 @@ def _add_authors(doc: Document, config: dict):
 
     # JRC selalu gunakan nomor posisi author (1,2,3...) sebagai superscript
     # bahkan jika semua author berbagi satu afiliasi (sesuai template JRC)
-    use_sup = True  # always show position superscripts
 
     # ── [001] Author names line ───────────────────────────────────
     # Format: "Rofiq^1, Ahmad^2, Munadi^3"
@@ -657,9 +679,7 @@ def _add_authors(doc: Document, config: dict):
     aff_list: list[tuple] = sorted(aff_map.items(), key=lambda x: x[1])
     for (affiliation, location), aff_num in aff_list:
         # Nomor POSISI author yang punya afiliasi ini (bukan nomor grup)
-        author_pos_for_aff = [
-            str(i + 1) for i, an in enumerate(author_aff_nums) if an == aff_num
-        ]
+        author_pos_for_aff = [str(i + 1) for i, an in enumerate(author_aff_nums) if an == aff_num]
         aff_para = _para(doc, style_id="Affiliation")
         _add_superscript_run(aff_para, ", ".join(author_pos_for_aff))
         aff_para.add_run(" ")
@@ -682,12 +702,12 @@ def _add_authors(doc: Document, config: dict):
         corresponding_para = _para(doc)
         corresponding_para.add_run("*Corresponding Author")
     _para(doc)
-    
 
 
 # ═══════════════════════════════════════════════════════════════════
 # § 6  Abstract dan Keywords
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _add_abstracts(doc: Document, config: dict):
     """
@@ -730,6 +750,7 @@ def _add_abstracts(doc: Document, config: dict):
 # § 7  Section headings
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _add_section_heading(doc: Document, text: str):
     """
     Heading1: auto-numbered Roman (I. II. III.) dari numbering.xml JRC.
@@ -763,6 +784,7 @@ def _add_subsubsection_heading(doc: Document, text: str):
 # § 8  Figures
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _resolve_path(path_text: str, json_path: Path) -> Path:
     path = Path(path_text)
     if path.is_absolute():
@@ -785,8 +807,8 @@ def _set_full_cell_borders(cell):
         if el is None:
             el = OxmlElement(f"w:{edge}")
             tc_borders.append(el)
-        el.set(qn("w:val"),   "single")
-        el.set(qn("w:sz"),    "4")
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "000000")
 
@@ -811,8 +833,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path):
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -825,8 +848,8 @@ def _add_figure(doc: Document, item: dict, json_path: Path):
       - Tidak perlu prefix "Fig. X." — template auto-numbering
     """
     path_text = str(item.get("Path", "")).strip()
-    prompt    = str(item.get("Prompt", "")).strip()
-    title     = str(item.get("Title", "")).strip()
+    prompt = str(item.get("Prompt", "")).strip()
+    title = str(item.get("Title", "")).strip()
 
     try:
         width_cm = float(item.get("WidthCm", MAX_FIGURE_WIDTH_CM))
@@ -841,8 +864,10 @@ def _add_figure(doc: Document, item: dict, json_path: Path):
         img_para = _para(doc, align=WD_ALIGN_PARAGRAPH.CENTER, sb=6.0, sa=2.0)
         img_para.add_run().add_picture(str(image_path), width=Cm(width_cm))
     else:
-        fallback = prompt if prompt else (
-            f"[Gambar {item.get('ImageNumber', '')}] {path_text or 'tidak ditemukan'}"
+        fallback = (
+            prompt
+            if prompt
+            else (f"[Gambar {item.get('ImageNumber', '')}] {path_text or 'tidak ditemukan'}")
         )
         _add_prompt_box(doc, fallback)
 
@@ -855,6 +880,7 @@ def _add_figure(doc: Document, item: dict, json_path: Path):
 # ═══════════════════════════════════════════════════════════════════
 # § 9  Tables
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _set_table_full_borders(table):
     """Set full borders (top, left, bottom, right, insideH, insideV) sesuai JRC."""
@@ -872,8 +898,8 @@ def _set_table_full_borders(table):
         if el is None:
             el = OxmlElement(f"w:{edge}")
             tbl_borders.append(el)
-        el.set(qn("w:val"),   "single")
-        el.set(qn("w:sz"),    "4")
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "000000")
 
@@ -983,9 +1009,9 @@ def _add_table(doc: Document, item: dict):
       - Header row: tablecolhead style (8pt, bold, center)
       - Data rows: tablecopy style (8pt, justified)
     """
-    title   = str(item.get("Title") or item.get("title", "")).strip()
+    title = str(item.get("Title") or item.get("title", "")).strip()
     headers = list(item.get("Headers", []) or item.get("headers", []))
-    rows    = list(item.get("Rows",    []) or item.get("rows",    []))
+    rows = list(item.get("Rows", []) or item.get("rows", []))
 
     if not headers:
         return
@@ -1032,6 +1058,7 @@ def _add_table(doc: Document, item: dict):
 # § 10  Equations
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _add_equation_line(doc: Document, formula: str, number: str | None = None):
     """
     Satu baris persamaan JRC:
@@ -1070,15 +1097,13 @@ def _add_equation_group(doc: Document, item: dict):
     """Tambah satu atau beberapa baris persamaan."""
     # Support format baru: "latex" atau "text" key
     single_latex = str(item.get("latex", "") or item.get("text", "")).strip()
-    formulas     = [str(f).strip() for f in item.get("Lines", []) if str(f).strip()]
+    formulas = [str(f).strip() for f in item.get("Lines", []) if str(f).strip()]
     if not formulas and single_latex:
         formulas = [single_latex]
     if not formulas:
         return
 
-    number = str(
-        item.get("FormulaNumber", "") or item.get("NumberiOrLetter", "")
-    ).strip() or None
+    number = str(item.get("FormulaNumber", "") or item.get("NumberiOrLetter", "")).strip() or None
 
     for formula in formulas[:-1]:
         _add_equation_line(doc, formula)
@@ -1088,6 +1113,7 @@ def _add_equation_group(doc: Document, item: dict):
 # ═══════════════════════════════════════════════════════════════════
 # § 11  Bullet/Number lists
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _iter_point_entries(item: dict):
     items = item.get("Items")
@@ -1115,8 +1141,7 @@ def _add_point_list(doc: Document, item: dict):
         para = _para(doc, style_id="bullet list")
         prefix = custom_label
         if prefix is None:
-            prefix = (f"{index}. " if list_type in {"number", "numbering", "ordered"}
-                      else "\u2022 ")
+            prefix = f"{index}. " if list_type in {"number", "numbering", "ordered"} else "\u2022 "
         para.add_run(prefix)
         _append_rich_text(para, text)
 
@@ -1124,6 +1149,7 @@ def _add_point_list(doc: Document, item: dict):
 # ═══════════════════════════════════════════════════════════════════
 # § 12  References
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _add_references(doc: Document, config: dict):
     """
@@ -1173,6 +1199,7 @@ def _add_references(doc: Document, config: dict):
 # § 13  Content item rendering
 # ═══════════════════════════════════════════════════════════════════
 
+
 def _render_content_item(doc: Document, item: dict, json_path: Path):
     """Render satu item konten dari array content JSON."""
     item_id = str(item.get("id", "")).lower().strip()
@@ -1195,8 +1222,7 @@ def _render_content_item(doc: Document, item: dict, json_path: Path):
         _add_point_list(doc, item)
 
 
-def _render_subsection(doc: Document, subsection: dict, json_path: Path,
-                       sub_key: str = ""):
+def _render_subsection(doc: Document, subsection: dict, json_path: Path, sub_key: str = ""):
     """Render subsection (Heading2 + konten)."""
     title = str(subsection.get("title", "")).strip()
 
@@ -1220,9 +1246,12 @@ def _render_subsection(doc: Document, subsection: dict, json_path: Path,
     if sub_key:
         # Cari sub-keys di dalam subsection yang mengindikasikan sub-subsection
         supp_keys = [
-            k for k in subsection.keys()
-            if (re.match(r'^section\d+[a-z]+[a-z]+$', k) or
-                (k.startswith("sub") and len(k) > 3 and k[3:].isalnum()))
+            k
+            for k in subsection.keys()
+            if (
+                re.match(r"^section\d+[a-z]+[a-z]+$", k)
+                or (k.startswith("sub") and len(k) > 3 and k[3:].isalnum())
+            )
         ]
         for sk in supp_keys:
             subsubsec = subsection[sk]
@@ -1255,13 +1284,13 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
       - Subsections: keys section{N}[a-z]+ atau sub{N}[a-z]+
     """
     section_keys = sorted(
-        [k for k in config.keys() if re.match(r'^section\d+$', k)],
-        key=lambda x: int(x.replace("section", ""))
+        [k for k in config.keys() if re.match(r"^section\d+$", k)],
+        key=lambda x: int(x.replace("section", "")),
     )
 
     for section_key in section_keys:
-        section      = config[section_key]
-        section_num  = section_key.replace("section", "")
+        section = config[section_key]
+        section_num = section_key.replace("section", "")
         section_title = str(section.get("title", "")).strip()
 
         # Heading1 — auto-numbered dari style, teks judul UPPERCASE
@@ -1280,11 +1309,14 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
 
         # Subsections: section{N}[a-z]+ (misal section2a, section2b)
         # atau sub{N}[a-z]+ (format lama)
-        subsection_keys = sorted([
-            k for k in section.keys()
-            if re.match(rf'^section{section_num}[a-z]+$', k)
-            or (k.startswith("sub") and len(k) > 3 and k[3:].isalnum())
-        ])
+        subsection_keys = sorted(
+            [
+                k
+                for k in section.keys()
+                if re.match(rf"^section{section_num}[a-z]+$", k)
+                or (k.startswith("sub") and len(k) > 3 and k[3:].isalnum())
+            ]
+        )
         for sub_key in subsection_keys:
             subval = section[sub_key]
             if isinstance(subval, dict):
@@ -1293,9 +1325,9 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
     # Fallback: format lama dengan "sections" array
     if not section_keys and "sections" in config:
         for section in config.get("sections", []):
-            sec_num   = str(section.get("number", "")).strip()
+            str(section.get("number", "")).strip()
             sec_title = str(section.get("title", "")).strip()
-            heading   = sec_title.upper()
+            heading = sec_title.upper()
             _add_section_heading(doc, heading)
             content = section.get("content", "")
             if isinstance(content, str) and content.strip():
@@ -1318,7 +1350,7 @@ def _render_sections(doc: Document, config: dict, json_path: Path):
 def _render_item_legacy(doc: Document, item: dict, json_path: Path):
     """Render item format lama JTM (ID-based)."""
     item_id = str(item.get("ID") or "").strip()
-    num_text = str(item.get("NumberiOrLetter") or "").strip()
+    str(item.get("NumberiOrLetter") or "").strip()
     text_val = str(item.get("Text") or "").strip()
 
     if item_id in {"Bab", "Bab utama"}:
@@ -1343,9 +1375,12 @@ def _render_item_legacy(doc: Document, item: dict, json_path: Path):
 # § 14  Main build function
 # ═══════════════════════════════════════════════════════════════════
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     """
     Generate JRC DOCX dari JSON.
 
@@ -1360,8 +1395,9 @@ def build_document(json_path: Path = JSON_PATH,
     import shutil
 
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    final_output = (Path(output_path) if output_path
-                    else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx")
+    final_output = (
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+    )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
     # ── Buka template langsung (paste keep formatting) ────────────
@@ -1378,9 +1414,11 @@ def build_document(json_path: Path = JSON_PATH,
     # Paragraf pemisah dengan inline sectPr 1-kolom
     # Spacing sesuai analisis template: spBefore=18pt, spAfter=14pt
     _embed_sectpr(
-        doc, _build_title_sectpr(hf_rids),
+        doc,
+        _build_title_sectpr(hf_rids),
         align=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        sb=18.0, sa=14.0,
+        sb=18.0,
+        sa=14.0,
     )
 
     # ═══ SECTION 2: Body content (2 kolom, continuous) ═══════════
@@ -1391,9 +1429,12 @@ def build_document(json_path: Path = JSON_PATH,
     # Trailing paragraph untuk menutup 2-kolom section
     # spAfter=2.5pt sesuai template trailing para di akhir references
     _embed_sectpr(
-        doc, _build_body_sectpr(),
+        doc,
+        _build_body_sectpr(),
         align=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        sa=2.5, li=17.7, fi=-17.7,
+        sa=2.5,
+        li=17.7,
+        fi=-17.7,
     )
 
     # Final sectPr dari template sudah tersisa di body → 1-kolom penutup
@@ -1407,13 +1448,14 @@ def build_document(json_path: Path = JSON_PATH,
 # § 15  CLI entry point
 # ═══════════════════════════════════════════════════════════════════
 
+
 def main():
     base_dir = Path(__file__).parent
 
     if len(sys.argv) >= 2:
         # Mode single file
-        json_arg     = Path(sys.argv[1])
-        output_arg   = Path(sys.argv[2]) if len(sys.argv) >= 3 else None
+        json_arg = Path(sys.argv[1])
+        output_arg = Path(sys.argv[2]) if len(sys.argv) >= 3 else None
         template_arg = Path(sys.argv[3]) if len(sys.argv) >= 4 else TEMPLATE_PATH
 
         if not json_arg.exists():

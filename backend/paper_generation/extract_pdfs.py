@@ -128,7 +128,11 @@ def _is_heading_line(text: str) -> bool:
         return False
     if re.match(r"^\d+(?:\.\d+)*\.?(?:\s+[A-Z].*)?$", text):
         return True
-    if re.match(r"^(abstract|keywords?|references?|conclusion|introduction|methodology|results?|discussion)\b", text, re.I):
+    if re.match(
+        r"^(abstract|keywords?|references?|conclusion|introduction|methodology|results?|discussion)\b",
+        text,
+        re.I,
+    ):
         return True
     return text.isupper() and len(text.split()) <= 8
 
@@ -374,12 +378,12 @@ def _extract_metadata(pdf_path: str) -> str:
         meta = doc.metadata or {}
         doc.close()
         fields = [
-            ("Title",    meta.get("title",    "").strip()),
-            ("Author",   meta.get("author",   "").strip()),
-            ("Subject",  meta.get("subject",  "").strip()),
+            ("Title", meta.get("title", "").strip()),
+            ("Author", meta.get("author", "").strip()),
+            ("Subject", meta.get("subject", "").strip()),
             ("Keywords", meta.get("keywords", "").strip()),
-            ("Creator",  meta.get("creator",  "").strip()),
-            ("Pages",    meta.get("pages",    "")),
+            ("Creator", meta.get("creator", "").strip()),
+            ("Pages", meta.get("pages", "")),
         ]
         lines = [f"  {k:<10}: {v}" for k, v in fields if v and str(v) not in ("", "0")]
         return "\n".join(lines) if lines else "  (no metadata)"
@@ -391,15 +395,15 @@ def extract_text_from_pdf(stream) -> str:
     """Extract plain text from a PDF file-like stream (for API use)."""
     # BUG FIX: Add size validation to prevent memory exhaustion
     MAX_PDF_SIZE = 50 * 1024 * 1024  # 50MB limit for PDF extraction
-    
+
     data = stream.read() if hasattr(stream, "read") else stream
-    
+
     if len(data) > MAX_PDF_SIZE:
         return f"[PDF too large for extraction: {len(data) // (1024*1024)}MB, limit is 50MB]"
-    
+
     if len(data) == 0:
         return "[Empty PDF file]"
-    
+
     try:
         doc = fitz.open(stream=data, filetype="pdf")
         texts = []
@@ -433,14 +437,14 @@ def extract_pdfs_from_directory(input_path, output_dir):
 
     for i, path in enumerate(pdf_files):
         filename = os.path.basename(path)
-        stem     = os.path.splitext(filename)[0]
+        stem = os.path.splitext(filename)[0]
         out_path = os.path.join(output_dir, stem + ".txt")
 
         print(f"[{i+1}/{len(pdf_files)}] {filename}")
 
         # --- metadata via PyMuPDF (fast) ---
         t0 = time.time()
-        meta_block = _extract_metadata(path)
+        _extract_metadata(path)
         t_meta = time.time() - t0
 
         # --- text via filtered PyMuPDF spans ---
@@ -474,6 +478,7 @@ def extract_pdfs_from_directory(input_path, output_dir):
 
     elapsed = time.time() - total_start
     print(f"\nFinished. Total time: {elapsed:.1f} s | {len(pdf_files)} files → {output_dir}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract each PDF into its own .txt file")

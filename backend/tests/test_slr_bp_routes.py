@@ -2,6 +2,7 @@
 
 Uses the Flask test client + sqlite memory; no real worker pool.
 """
+
 from __future__ import annotations
 
 import os
@@ -24,19 +25,22 @@ os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 # Prevent background worker pools from booting on import
 try:
     import slr_worker
+
     slr_worker._started = True
 except Exception:
     pass
 try:
     import image_worker
+
     image_worker._started = True
 except Exception:
     pass
 
 try:
-    from app import app as flask_app
-    from models import db, User, Paper, SlrJob, LiteratureItem
     from flask_jwt_extended import create_access_token
+
+    from app import app as flask_app
+    from database.models import Paper, SlrJob, User, db
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed (likely missing deps): {e}", allow_module_level=True)
 
@@ -131,8 +135,12 @@ def test_list_slr_jobs_only_for_this_paper(client, app):
     p1 = _make_paper(user, "paperA1")
     p2 = _make_paper(user, "paperA2")
 
-    db.session.add(SlrJob(id="job00000001", user_id=user.id, paper_id=p1.id, query="q1", status="queued"))
-    db.session.add(SlrJob(id="job00000002", user_id=user.id, paper_id=p2.id, query="q2", status="queued"))
+    db.session.add(
+        SlrJob(id="job00000001", user_id=user.id, paper_id=p1.id, query="q1", status="queued")
+    )
+    db.session.add(
+        SlrJob(id="job00000002", user_id=user.id, paper_id=p2.id, query="q2", status="queued")
+    )
     db.session.commit()
 
     resp = client.get(f"/api/papers/{p1.id}/slr/jobs", headers=_auth_headers(user))
@@ -148,8 +156,12 @@ def test_get_slr_job_with_include_result(client, app):
     user = _make_user()
     paper = _make_paper(user)
     job = SlrJob(
-        id="job0000abcd", user_id=user.id, paper_id=paper.id,
-        query="q", status="done", result={"top_k": [{"title": "x"}], "stats": {"n": 1}},
+        id="job0000abcd",
+        user_id=user.id,
+        paper_id=paper.id,
+        query="q",
+        status="done",
+        result={"top_k": [{"title": "x"}], "stats": {"n": 1}},
     )
     db.session.add(job)
     db.session.commit()
@@ -175,8 +187,7 @@ def test_delete_queued_slr_job_marks_cancelled(client, app):
     """
     user = _make_user()
     paper = _make_paper(user)
-    job = SlrJob(id="jobcancel001", user_id=user.id, paper_id=paper.id,
-                 query="q", status="queued")
+    job = SlrJob(id="jobcancel001", user_id=user.id, paper_id=paper.id, query="q", status="queued")
     db.session.add(job)
     db.session.commit()
 
@@ -196,8 +207,7 @@ def test_cross_user_404(client, app):
     alice = _make_user("alice@example.com", "alice")
     bob = _make_user("bob@example.com", "bob")
     paper = _make_paper(alice, "paperALICE")
-    job = SlrJob(id="jobalice0001", user_id=alice.id, paper_id=paper.id,
-                 query="q", status="queued")
+    job = SlrJob(id="jobalice0001", user_id=alice.id, paper_id=paper.id, query="q", status="queued")
     db.session.add(job)
     db.session.commit()
 

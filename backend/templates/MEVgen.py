@@ -71,7 +71,9 @@ def _append_inline_math(paragraph, latex: str) -> bool:
     return True
 
 
-def _append_text_run(paragraph, text: str, bold: bool = False, italic: bool = False, underline: bool = False):
+def _append_text_run(
+    paragraph, text: str, bold: bool = False, italic: bool = False, underline: bool = False
+):
     if not text:
         return None
     run = paragraph.add_run(text)
@@ -88,8 +90,8 @@ def _append_line_break(paragraph):
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -146,7 +148,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -302,7 +304,9 @@ def _normalize_table_number(number: str) -> str:
     return text
 
 
-def _affiliation_groups(authors: list[dict]) -> tuple[OrderedDict[tuple[str, str], dict], list[str]]:
+def _affiliation_groups(
+    authors: list[dict],
+) -> tuple[OrderedDict[tuple[str, str], dict], list[str]]:
     groups: OrderedDict[tuple[str, str], dict] = OrderedDict()
     letters: list[str] = []
     next_letter = ord("a")
@@ -325,7 +329,11 @@ def _add_title_block(doc: Document, config: dict) -> None:
     title = str(config.get("title") or "").strip()
     authors = list(config.get("authors") or [])
     groups, letters = _affiliation_groups(authors)
-    emails = [str(author.get("email") or "").strip() for author in authors if str(author.get("email") or "").strip()]
+    emails = [
+        str(author.get("email") or "").strip()
+        for author in authors
+        if str(author.get("email") or "").strip()
+    ]
 
     _paragraph(doc)
     if title:
@@ -383,7 +391,9 @@ def _add_title_block(doc: Document, config: dict) -> None:
 
 def _add_abstract_keywords(doc: Document, config: dict) -> None:
     abstract = str(config.get("abstract") or "").strip()
-    keywords = [str(keyword).strip() for keyword in config.get("keywords") or [] if str(keyword).strip()]
+    keywords = [
+        str(keyword).strip() for keyword in config.get("keywords") or [] if str(keyword).strip()
+    ]
     if abstract:
         paragraph = _paragraph(doc, first_indent=0)
         label = paragraph.add_run("Abstract")
@@ -413,7 +423,9 @@ def _add_heading(doc: Document, text: str, level: int, numbered: bool = True):
 
 
 def _add_missing_figure_note(doc: Document, prompt: str):
-    paragraph = _paragraph(doc, style="List Paragraph", align=WD_ALIGN_PARAGRAPH.CENTER, first_indent=0, left_indent=0)
+    paragraph = _paragraph(
+        doc, style="List Paragraph", align=WD_ALIGN_PARAGRAPH.CENTER, first_indent=0, left_indent=0
+    )
     run = paragraph.add_run(prompt)
     _set_run_format(run, italic=True)
 
@@ -432,7 +444,13 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
     width_cm = max(1.0, min(width_cm, MAX_FIGURE_WIDTH_CM))
 
     if image_path is not None and image_path.is_file():
-        paragraph = _paragraph(doc, style="List Paragraph", align=WD_ALIGN_PARAGRAPH.CENTER, first_indent=0, left_indent=0)
+        paragraph = _paragraph(
+            doc,
+            style="List Paragraph",
+            align=WD_ALIGN_PARAGRAPH.CENTER,
+            first_indent=0,
+            left_indent=0,
+        )
         paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
     else:
         fallback = prompt or f"Image not found: {path_text}"
@@ -441,7 +459,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
     if title or number:
         caption = _paragraph(doc, style="List Paragraph", first_indent=0, left_indent=0)
         text = f"Figure {number}. {title}".strip() if number else title
-        caption.alignment = WD_ALIGN_PARAGRAPH.CENTER if len(text) <= 110 else WD_ALIGN_PARAGRAPH.JUSTIFY
+        caption.alignment = (
+            WD_ALIGN_PARAGRAPH.CENTER if len(text) <= 110 else WD_ALIGN_PARAGRAPH.JUSTIFY
+        )
         _append_rich_text(caption, text)
 
 
@@ -588,14 +608,20 @@ def _add_references(doc: Document, config: dict) -> None:
         paragraph = _paragraph(doc, style="List Paragraph")
         paragraph.paragraph_format.left_indent = Pt(21.3)
         paragraph.paragraph_format.first_line_indent = Pt(-21.3)
-        _append_rich_text(paragraph, f"{_reference_prefix(index, reference)} {_reference_text(reference)}")
+        _append_rich_text(
+            paragraph, f"{_reference_prefix(index, reference)} {_reference_text(reference)}"
+        )
 
 
 def _default_output_path(json_path: Path) -> Path:
     return json_path.parent / f"{json_path.stem}.docx"
 
 
-def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None, template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = Path(output_path) if output_path else _default_output_path(Path(json_path))
     doc = Document(str(template_path))
@@ -630,8 +656,6 @@ def main():
             print(f"Error: {json_path.name} - {exc}")
 
 
-
-
 def _set_table_borders_match_template(table) -> None:
     """Set border tabel sesuai pattern template original: FULL_GRID.
 
@@ -640,6 +664,7 @@ def _set_table_borders_match_template(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:
@@ -658,6 +683,7 @@ def _set_table_borders_match_template(table) -> None:
         el.set(qn("w:sz"), "4")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "000000")
+
 
 if __name__ == "__main__":
     main()

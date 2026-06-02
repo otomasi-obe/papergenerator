@@ -1,0 +1,150 @@
+[
+  {
+    "fetcher": "europepmc",
+    "test_time": "2026-05-29T23:08:45.517602",
+    "test_query": "COVID-19 vaccine",
+    "status": "success",
+    "papers_found": 5,
+    "papers_with_urls": 5,
+    "valid_download_links": 5,
+    "invalid_download_links": 0,
+    "errors": [],
+    "papers": [
+      {
+        "title": "Correlates of COVID-19 Vaccine Regret in the United States",
+        "authors": [
+          "Bayar MC",
+          "Artman H",
+          "Enders A",
+          "Kahveci I",
+          "Klofstad C"
+        ],
+        "year": 2026,
+        "doi": "10.1007/s11606-026-10374-x",
+        "url": "https://doi.org/10.1007/s11606-026-10374-x",
+        "is_open_access": false,
+        "venue": null
+      },
+      {
+        "title": "Evidence for the Effectiveness of COVID-19 Vaccine in Children",
+        "authors": [
+          "Plotkin SA."
+        ],
+        "year": 2026,
+        "doi": "10.1097/inf.0000000000005157",
+        "url": "https://doi.org/10.1097/inf.0000000000005157",
+        "is_open_access": false,
+        "venue": null
+      },
+      {
+        "title": "Mechanisms Are Emerging for COVID-19 Vaccine-Associated Myocarditis",
+        "authors": [
+          "Abbasi J."
+        ],
+        "year": 2026,
+        "doi": "10.1001/jama.2025.25866",
+        "url": "https://doi.org/10.1001/jama.2025.25866",
+        "is_open_access": false,
+        "venue": null
+      },
+      {
+        "title": "The cost-benefit and ethics of Covid-19 vaccine mandates in New Zealand",
+        "authors": [
+          "Lally M."
+        ],
+        "year": 2026,
+        "doi": "10.1007/s40592-026-00284-3",
+        "url": "https://doi.org/10.1007/s40592-026-00284-3",
+        "is_open_access": false,
+        "venue": null
+      },
+      {
+        "title": "Recent enough to matter: Perceived temporal proximity, anxiety, and COVID-19 vaccine intent",
+        "authors": [
+          "Powell A",
+          "Suwalowska H",
+          "Sankoh O",
+          "Guo C",
+          "Chan EYY"
+        ],
+        "year": 2026,
+        "doi": "10.1016/j.vaccine.2026.128717",
+        "url": "https://doi.org/10.1016/j.vaccine.2026.128717",
+        "is_open_access": false,
+        "venue": null
+      }
+    ],
+    "download_link_checks": [
+      {
+        "paper_title": "Correlates of COVID-19 Vaccine Regret in the United States",
+        "url": "https://doi.org/10.1007/s11606-026-10374-x",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "application/json",
+        "accessible": true
+      },
+      {
+        "paper_title": "Evidence for the Effectiveness of COVID-19 Vaccine in Children",
+        "url": "https://doi.org/10.1097/inf.0000000000005157",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "application/json",
+        "accessible": true
+      },
+      {
+        "paper_title": "Mechanisms Are Emerging for COVID-19 Vaccine-Associated Myocarditis",
+        "url": "https://doi.org/10.1001/jama.2025.25866",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "application/json",
+        "accessible": true
+      },
+      {
+        "paper_title": "The cost-benefit and ethics of Covid-19 vaccine mandates in New Zealand",
+        "url": "https://doi.org/10.1007/s40592-026-00284-3",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "application/json",
+        "accessible": true
+      },
+      {
+        "paper_title": "Recent enough to matter: Perceived temporal proximity, anxiety, and COVID-19 vaccine intent",
+        "url": "https://doi.org/10.1016/j.vaccine.2026.128717",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "application/json",
+        "accessible": true
+      }
+    ]
+  },
+  {
+    "fetcher": "ieee",
+    "test_time": "2026-05-29T23:08:51.302408",
+    "test_query": "signal processing",
+    "status": "no_results",
+    "papers_found": 0,
+    "papers_with_urls": 0,
+    "valid_download_links": 0,
+    "invalid_download_links": 0,
+    "errors": [
+      "No papers found for query"
+    ],
+    "papers": [],
+    "download_link_checks": []
+  },
+  {
+    "fetcher": "igi_global",
+    "test_time": "2026-05-29T23:08:51.377124",
+    "test_query": "information systems",
+    "status": "no_results",
+    "papers_found": 0,
+    "papers_with_urls": 0,
+    "valid_download_links": 0,
+    "invalid_download_links": 0,
+    "errors": [
+      "No papers found for query"
+    ],
+    "papers": [],
+    "download_link_checks": []
+  }
+]

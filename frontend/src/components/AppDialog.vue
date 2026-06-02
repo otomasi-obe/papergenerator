@@ -13,7 +13,7 @@
         >
           <header class="dialog-header">
             <h2 :id="resolvedLabelledById" class="dialog-title">{{ title }}</h2>
-            <button type="button" class="dialog-close" aria-label="Close dialog" @click="emit('close')">×</button>
+            <button type="button" class="dialog-close min-h-[44px] min-w-[44px]" aria-label="Close dialog" @click="emit('close')">×</button>
           </header>
           <div class="dialog-body">
             <slot />
@@ -27,20 +27,17 @@
   </Teleport>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, watch, ref } from 'vue'
+import type { AppDialogProps, AppDialogEmits } from '../types/components'
 
-const props = defineProps({
-  open: { type: Boolean, default: false },
-  title: { type: String, required: true },
-  labelledById: { type: String, default: undefined },
-})
+const props = defineProps<AppDialogProps>()
 
-const emit = defineEmits(['close'])
-const dialogRef = ref(null)
-const previouslyFocused = ref(null)
+const emit = defineEmits<AppDialogEmits>()
+const dialogRef = ref<HTMLElement | null>(null)
+const previouslyFocused = ref<HTMLElement | null>(null)
 const generatedId = `dialog-title-${Math.random().toString(36).slice(2, 10)}`
-const resolvedLabelledById = computed(() => props.labelledById || generatedId)
+const resolvedLabelledById = computed<string>(() => props.labelledById || generatedId)
 
 const focusableSelectors = [
   'a[href]',
@@ -51,23 +48,23 @@ const focusableSelectors = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
-function getFocusable() {
+function getFocusable(): HTMLElement[] {
   return Array.from(dialogRef.value?.querySelectorAll(focusableSelectors) || [])
-    .filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true')
+    .filter((el): el is HTMLElement => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true')
 }
 
-function focusFirst() {
+function focusFirst(): void {
   const first = getFocusable()[0]
   if (first) first.focus()
   else dialogRef.value?.focus()
 }
 
-function restoreFocus() {
+function restoreFocus(): void {
   previouslyFocused.value?.focus?.()
   previouslyFocused.value = null
 }
 
-function handleKeydown(event) {
+function handleKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     emit('close')
     return
@@ -81,35 +78,40 @@ function handleKeydown(event) {
     return
   }
 
-  const first = focusable[0]
-  const last = focusable[focusable.length - 1]
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
+  const currentIndex = focusable.indexOf(document.activeElement as HTMLElement)
+  if (event.shiftKey) {
+    if (currentIndex <= 0) {
+      event.preventDefault()
+      focusable[focusable.length - 1].focus()
+    }
+  } else {
+    if (currentIndex === focusable.length - 1) {
+      event.preventDefault()
+      focusable[0].focus()
+    }
   }
 }
 
-watch(() => props.open, async (isOpen, wasOpen) => {
+watch(() => props.open, async (isOpen) => {
   if (isOpen) {
-    previouslyFocused.value = document.activeElement
+    previouslyFocused.value = document.activeElement as HTMLElement
     await nextTick()
     focusFirst()
-  } else if (wasOpen) {
+  } else {
     restoreFocus()
   }
-}, { immediate: true })
+})
 
-onBeforeUnmount(restoreFocus)
+onBeforeUnmount(() => {
+  if (props.open) restoreFocus()
+})
 </script>
 
 <style scoped>
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 50;
   display: grid;
   place-items: center;
   padding: var(--space-4);

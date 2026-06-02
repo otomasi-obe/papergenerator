@@ -3,19 +3,18 @@ JIEBgen.py — Generator DOCX untuk Journal of Indonesian Economy and Business (
 Menggunakan dokumen asli JIEB.docx sebagai base template (paste keep formatting).
 Data diambil dari _template.json.
 """
+
 import json
-import shutil
 import re
-import os
+import shutil
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Pt, Cm, Inches, Twips, RGBColor, Emu
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.ns import qn
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
-from lxml import etree
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_DOCX = BASE / "JIEB.docx"
@@ -34,13 +33,11 @@ CFG = {
     "footer_distance_tw": 1134,
     "columns": 1,
     "col_space_tw": 360,
-
     "font_body": "Times New Roman",
     "font_title": "Times New Roman",
     "font_heading": "Times New Roman",
     "font_caption": "Times New Roman",
     "font_reference": "Times New Roman",
-
     "size_title": 14,
     "size_body": 11,
     "size_heading1": 11,
@@ -50,25 +47,18 @@ CFG = {
     "size_reference": 11,
     "size_header": 10,
     "size_footer": 10,
-
     "section_heading_format": "arabic_dot",
     "section_heading_upper": False,
     "subsection_format": "arabic_parent_child",
-
     "fig_prefix": "Figure",
     "tbl_prefix": "Table",
     "tbl_number_format": "arabic",
-
     "table_borders": "three_line",
-
     "line_spacing_body": 360,
     "line_spacing_rule": "auto",
-
     "first_line_indent_tw": 0,
-
     "ref_hanging_indent_tw": 720,
     "ref_numbering": "none",
-
     "heading_color": (0x00, 0x70, 0xC0),
     "subheading_color": (0x2E, 0x74, 0xB5),
 }
@@ -89,17 +79,43 @@ def _append_inline_math(paragraph, latex):
     if not latex:
         return False
     import re as _re
+
     s = str(latex).strip()
     SYMBOLS = {
-        r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
-        r"\epsilon": "ε", r"\theta": "θ", r"\lambda": "λ", r"\mu": "μ",
-        r"\pi": "π", r"\sigma": "σ", r"\tau": "τ", r"\phi": "φ",
-        r"\omega": "ω", r"\sum": "∑", r"\prod": "∏", r"\int": "∫",
-        r"\infty": "∞", r"\pm": "±", r"\times": "×", r"\cdot": "·",
-        r"\leq": "≤", r"\geq": "≥", r"\neq": "≠", r"\approx": "≈",
-        r"\to": "→", r"\dots": "…", r"\ldots": "…",
-        r"\quad": " ", r"\,": " ", r"\;": " ", r"\:": " ", r"\!": "",
-        r"\left": "", r"\right": "",
+        r"\alpha": "α",
+        r"\beta": "β",
+        r"\gamma": "γ",
+        r"\delta": "δ",
+        r"\epsilon": "ε",
+        r"\theta": "θ",
+        r"\lambda": "λ",
+        r"\mu": "μ",
+        r"\pi": "π",
+        r"\sigma": "σ",
+        r"\tau": "τ",
+        r"\phi": "φ",
+        r"\omega": "ω",
+        r"\sum": "∑",
+        r"\prod": "∏",
+        r"\int": "∫",
+        r"\infty": "∞",
+        r"\pm": "±",
+        r"\times": "×",
+        r"\cdot": "·",
+        r"\leq": "≤",
+        r"\geq": "≥",
+        r"\neq": "≠",
+        r"\approx": "≈",
+        r"\to": "→",
+        r"\dots": "…",
+        r"\ldots": "…",
+        r"\quad": " ",
+        r"\,": " ",
+        r"\;": " ",
+        r"\:": " ",
+        r"\!": "",
+        r"\left": "",
+        r"\right": "",
     }
     for k, v in SYMBOLS.items():
         s = s.replace(k, v)
@@ -123,9 +139,10 @@ def _set_ai_prompt_color_red(doc):
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
-    from docx.shared import RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.shared import RGBColor
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -171,6 +188,7 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:sz"), "4")
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
+
 
 def load_json():
     with open(TEMPLATE_JSON, "r", encoding="utf-8") as f:
@@ -271,13 +289,14 @@ def add_empty_para(doc):
 
 def _normalize_text(text: str) -> str:
     text = text.replace("\\n", "\n")
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
-def _append_rich_text(paragraph, text: str, font_name=None, size_pt=None,
-                      base_bold=False, base_italic=False):
+def _append_rich_text(
+    paragraph, text: str, font_name=None, size_pt=None, base_bold=False, base_italic=False
+):
     fn = font_name or CFG["font_body"]
     sz = size_pt or CFG["size_body"]
     normalized = _normalize_text(text)
@@ -322,7 +341,7 @@ def _append_rich_text(paragraph, text: str, font_name=None, size_pt=None,
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 flush()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     if not _append_inline_math(paragraph, formula):
                         run = paragraph.add_run(formula)
@@ -346,7 +365,13 @@ def add_title(doc, data):
 def add_authors(doc, data):
     authors = data.get("authors", [])
     if not authors:
-        authors = [{"name": "Author Name", "affiliation": "Department, University", "email": "author@email.ac.id"}]
+        authors = [
+            {
+                "name": "Author Name",
+                "affiliation": "Department, University",
+                "email": "author@email.ac.id",
+            }
+        ]
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -378,7 +403,9 @@ def add_authors(doc, data):
         if len(parts) > 1:
             p_aff = doc.add_paragraph()
             p_aff.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            set_paragraph_spacing(p_aff, before=0, after=0, line=CFG["line_spacing_body"], line_rule="auto")
+            set_paragraph_spacing(
+                p_aff, before=0, after=0, line=CFG["line_spacing_body"], line_rule="auto"
+            )
             run_sup = p_aff.add_run(parts[0])
             set_run_font(run_sup, font_name=CFG["font_body"], size_pt=CFG["size_body"])
             run_sup.font.superscript = True
@@ -389,8 +416,10 @@ def add_authors(doc, data):
 def add_abstract(doc, data):
     add_empty_para(doc)
 
-    abstract_text = data.get("abstract",
-        "Abstract text goes here. This section should contain 150-250 words summarizing the paper.")
+    abstract_text = data.get(
+        "abstract",
+        "Abstract text goes here. This section should contain 150-250 words summarizing the paper.",
+    )
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
@@ -499,7 +528,9 @@ def add_figure(doc, fig_data):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         set_paragraph_spacing(p, before=3, after=3, line=CFG["line_spacing_body"], line_rule="auto")
-        usable_width_cm = (CFG["page_width_tw"] - CFG["margin_left_tw"] - CFG["margin_right_tw"]) / 567.0
+        usable_width_cm = (
+            CFG["page_width_tw"] - CFG["margin_left_tw"] - CFG["margin_right_tw"]
+        ) / 567.0
         max_width = min(usable_width_cm, 14.0)
         run = p.add_run()
         run.add_picture(str(image_path), width=Cm(max_width))
@@ -555,7 +586,9 @@ def add_table(doc, table_data):
 
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_paragraph_spacing(p_title, before=6, after=3, line=CFG["line_spacing_body"], line_rule="auto")
+    set_paragraph_spacing(
+        p_title, before=6, after=3, line=CFG["line_spacing_body"], line_rule="auto"
+    )
     run = p_title.add_run(f"{CFG['tbl_prefix']} {table_number}. ")
     set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True)
     run = p_title.add_run(title)
@@ -653,9 +686,15 @@ def add_references(doc, data):
         if ref_text:
             p = doc.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            set_paragraph_spacing(p, before=0, after=80, line=CFG["line_spacing_body"], line_rule="auto")
-            set_paragraph_indent(p, left=CFG["ref_hanging_indent_tw"], hanging=CFG["ref_hanging_indent_tw"])
-            _append_rich_text(p, ref_text, font_name=CFG["font_reference"], size_pt=CFG["size_reference"])
+            set_paragraph_spacing(
+                p, before=0, after=80, line=CFG["line_spacing_body"], line_rule="auto"
+            )
+            set_paragraph_indent(
+                p, left=CFG["ref_hanging_indent_tw"], hanging=CFG["ref_hanging_indent_tw"]
+            )
+            _append_rich_text(
+                p, ref_text, font_name=CFG["font_reference"], size_pt=CFG["size_reference"]
+            )
 
 
 def process_content_item(doc, item):
@@ -693,7 +732,11 @@ def process_section(doc, section_data, section_key, section_index):
 
     subsection_keys = []
     for key in section_data.keys():
-        if key.startswith(section_key) and len(key) > len(section_key) and key[len(section_key):].isalpha():
+        if (
+            key.startswith(section_key)
+            and len(key) > len(section_key)
+            and key[len(section_key) :].isalpha()
+        ):
             subsection_keys.append(key)
 
     subsection_keys.sort()
@@ -703,7 +746,9 @@ def process_section(doc, section_data, section_key, section_index):
         if isinstance(sub_data, dict):
             sub_title = sub_data.get("title", "")
             if sub_title:
-                add_subsection_heading(doc, sub_title, section_index=section_index, sub_index=sub_idx, level=1)
+                add_subsection_heading(
+                    doc, sub_title, section_index=section_index, sub_index=sub_idx, level=1
+                )
 
             sub_content = sub_data.get("content", [])
             if isinstance(sub_content, list):

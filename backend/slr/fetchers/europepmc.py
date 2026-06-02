@@ -1,5 +1,7 @@
 """Fetcher untuk Europe PMC - https://www.ebi.ac.uk/europepmc/webservices/rest"""
+
 from typing import Iterable
+
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
@@ -24,6 +26,31 @@ def _parse(item: dict) -> Paper | None:
         except (ValueError, TypeError):
             pass
 
+    # Build PDF URL: prioritize full text links
+    pdf_url = None
+    doi = item.get("doi")
+    pmcid = item.get("pmcid")
+    pmid = item.get("pmid")
+    
+    # Check for full text links
+    full_text_urls = item.get("fullTextUrlList", {}).get("fullTextUrl", [])
+    for ft in full_text_urls:
+        if ft.get("documentStyle") == "pdf" or ft.get("availabilityCode") == "OA":
+            pdf_url = ft.get("url")
+            break
+    
+    # Fallback: PMC PDF if available
+    if not pdf_url and pmcid:
+        pdf_url = f"https://europepmc.org/articles/{pmcid}?pdf=render"
+    
+    # Fallback: DOI
+    if not pdf_url and doi:
+        pdf_url = f"https://doi.org/{doi}"
+    
+    # Last resort: landing page
+    if not pdf_url and item.get("id"):
+        pdf_url = f"https://europepmc.org/article/{item.get('source')}/{item.get('id')}"
+
     return Paper(
         source="europepmc",
         source_id=item.get("id", ""),
@@ -33,16 +60,15 @@ def _parse(item: dict) -> Paper | None:
         year=year,
         venue=item.get("journalTitle"),
         venue_type="journal" if item.get("journalTitle") else None,
-        doi=item.get("doi"),
-        url=f"https://europepmc.org/article/{item.get('source')}/{item.get('id')}" if item.get("id") else None,
+        doi=doi,
+        url=pdf_url,
         citations=item.get("citedByCount"),
         is_open_access=item.get("isOpenAccess") == "Y",
         type=item.get("pubType"),
     )
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     rl = RateLimiter(0.3)
     per_page = min(limit, 100)
     fetched = 0

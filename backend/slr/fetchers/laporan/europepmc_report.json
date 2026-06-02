@@ -1,0 +1,38 @@
+{
+  "fetcher": "europepmc",
+  "test_time": "2026-05-29T12:54:17.951721",
+  "test_query": "medical research",
+  "status": "success",
+  "papers_found": 1,
+  "papers_with_urls": 1,
+  "valid_download_links": 1,
+  "invalid_download_links": 0,
+  "errors": [],
+  "papers": [
+    {
+      "title": "Minimal Detectable Changes of the Health Assessment Questionnaire-Disability Index, Patient-Reported Outcomes Measurement Information System-29 Profile Version 2.0 Domains, and Patient Health Questionnaire-8 in People With Systemic Sclerosis: A Scleroderma Patient-Centered Intervention Network Cohort Cross-Sectional Study",
+      "authors": [
+        "Alkan A",
+        "Carrier ME",
+        "Henry RS",
+        "Kwakkenbos L",
+        "Bartlett SJ"
+      ],
+      "year": 2024,
+      "doi": "10.1002/acr.25397",
+      "url": "https://doi.org/10.1002/acr.25397",
+      "is_open_access": false,
+      "venue": null
+    }
+  ],
+  "download_link_checks": [
+    {
+      "paper_title": "Minimal Detectable Changes of the Health Assessment Questionnaire-Disability Index, Patient-Reported",
+      "url": "https://doi.org/10.1002/acr.25397",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/json",
+      "accessible": true
+    }
+  ]
+}

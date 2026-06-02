@@ -1,4 +1,4 @@
-"""Open Google Gemini using Playwright (Python) with a persistent Chrome profile.
+r"""Open Google Gemini using Playwright (Python) with a persistent Chrome profile.
 
 What this is for
 - Opens https://gemini.google.com/app in a real Chrome window.
@@ -41,8 +41,8 @@ Open-only (previous default)
 from __future__ import annotations
 
 import argparse
-import os
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -50,7 +50,6 @@ from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
-
 
 DEFAULT_URL = "https://gemini.google.com/app"
 
@@ -72,7 +71,8 @@ def _is_target_closed_error(exc: BaseException) -> bool:
     return (
         "Target page, context or browser has been closed" in msg
         or "TargetClosedError" in msg
-        or "has been closed" in msg and "Target" in msg
+        or "has been closed" in msg
+        and "Target" in msg
     )
 
 
@@ -81,7 +81,11 @@ def _extract_review_image_items(obj) -> list[dict]:
 
     def walk(node) -> None:
         if isinstance(node, dict):
-            if node.get("id") == "gambar" and isinstance(node.get("Path"), str) and isinstance(node.get("Prompt"), str):
+            if (
+                node.get("id") == "gambar"
+                and isinstance(node.get("Path"), str)
+                and isinstance(node.get("Prompt"), str)
+            ):
                 items.append(node)
             for v in node.values():
                 walk(v)
@@ -120,7 +124,9 @@ def _ensure_gemini_image_tool_selected(page) -> None:
     # If already selected, do nothing.
     cancel = page.get_by_role(
         "button",
-        name=re.compile(r"Batalkan pilihan\\s+Buat\\s+Gambar|Cancel selection\\s+Create image", re.IGNORECASE),
+        name=re.compile(
+            r"Batalkan pilihan\\s+Buat\\s+Gambar|Cancel selection\\s+Create image", re.IGNORECASE
+        ),
     )
     try:
         cancel.wait_for(state="visible", timeout=800)
@@ -150,7 +156,9 @@ def _ensure_gemini_image_tool_selected(page) -> None:
         page.wait_for_timeout(200)
         # The tool list can render as menu items or plain buttons.
         for role in ("menuitem", "button"):
-            pick = page.get_by_role(role, name=re.compile(r"Buat\\s*Gambar|Create\\s*image", re.IGNORECASE))
+            pick = page.get_by_role(
+                role, name=re.compile(r"Buat\\s*Gambar|Create\\s*image", re.IGNORECASE)
+            )
             if pick.count() > 0:
                 pick.first.click()
                 try:
@@ -159,7 +167,9 @@ def _ensure_gemini_image_tool_selected(page) -> None:
                 except Exception:
                     pass
 
-    raise RuntimeError("Tidak bisa memilih tool 'Buat gambar' di Gemini (UI berubah atau tertutup dialog)")
+    raise RuntimeError(
+        "Tidak bisa memilih tool 'Buat gambar' di Gemini (UI berubah atau tertutup dialog)"
+    )
 
 
 def _dismiss_obstructing_dialogs(page) -> None:
@@ -321,7 +331,9 @@ def _wait_for_new_download_button(page, *, previous_count: int, timeout_ms: int)
     raise RuntimeError("Kontrol download gambar baru tidak muncul (timeout)")
 
 
-def _download_new_image(page, output_path: Path, *, previous_download_count: int, timeout_ms: int) -> None:
+def _download_new_image(
+    page, output_path: Path, *, previous_download_count: int, timeout_ms: int
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
 
@@ -340,7 +352,7 @@ def _download_new_image(page, output_path: Path, *, previous_download_count: int
     except PlaywrightTimeoutError:
         # Some UI variants don't show this button; continue with download-button waiting.
         stop_btn = None
-    
+
     if stop_btn is not None:
         saw_stop_button = True
         progress_every_s = 10.0
@@ -351,7 +363,9 @@ def _download_new_image(page, output_path: Path, *, previous_download_count: int
             elapsed_ms = int((now - started) * 1000)
             remaining_ms = timeout_ms - elapsed_ms
             if remaining_ms <= 0:
-                raise RuntimeError("Timeout menunggu Gemini selesai generate (tombol 'Hentikan respons' masih ada)")
+                raise RuntimeError(
+                    "Timeout menunggu Gemini selesai generate (tombol 'Hentikan respons' masih ada)"
+                )
 
             try:
                 stop_btn.wait_for(state="hidden", timeout=min(5_000, remaining_ms))
@@ -373,11 +387,15 @@ def _download_new_image(page, output_path: Path, *, previous_download_count: int
     # retry with a clearer instruction.
     if saw_stop_button:
         fast_fail_ms = min(30_000, remaining_ms)
-        control = _wait_for_new_download_button(page, previous_count=previous_download_count, timeout_ms=fast_fail_ms)
+        control = _wait_for_new_download_button(
+            page, previous_count=previous_download_count, timeout_ms=fast_fail_ms
+        )
         elapsed_ms = int((time.monotonic() - started) * 1000)
         remaining_ms = max(1, timeout_ms - elapsed_ms)
     else:
-        control = _wait_for_new_download_button(page, previous_count=previous_download_count, timeout_ms=remaining_ms)
+        control = _wait_for_new_download_button(
+            page, previous_count=previous_download_count, timeout_ms=remaining_ms
+        )
 
     try:
         control.scroll_into_view_if_needed(timeout=2000)
@@ -423,8 +441,7 @@ def _compress_and_verify(path: Path, max_size_mb: float) -> tuple[bool, int]:
         from image_generation.compress import compress_image  # type: ignore
     except Exception as e:
         raise RuntimeError(
-            "Gagal import compress.py. Pastikan dependensi terpasang (Pillow). "
-            f"Detail: {e}"
+            "Gagal import compress.py. Pastikan dependensi terpasang (Pillow). " f"Detail: {e}"
         )
 
     ok = compress_image(path, max_size_mb=max_size_mb)
@@ -561,7 +578,9 @@ def _wait_for_login(page, *, timeout_ms: int) -> tuple[bool, str | None, object 
             pages = [page]
 
         if not pages:
-            raise RuntimeError("Browser context tidak punya tab (kemungkinan window Chrome tertutup)")
+            raise RuntimeError(
+                "Browser context tidak punya tab (kemungkinan window Chrome tertutup)"
+            )
 
         for candidate in pages:
             try:
@@ -585,10 +604,14 @@ def _wait_for_login(page, *, timeout_ms: int) -> tuple[bool, str | None, object 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Open Gemini using Playwright with a persistent Chrome profile")
+    parser = argparse.ArgumentParser(
+        description="Open Gemini using Playwright with a persistent Chrome profile"
+    )
     parser.add_argument("--url", default=DEFAULT_URL, help="Target URL (default: Gemini app)")
     parser.add_argument("--headless", action="store_true", help="Run headless")
-    parser.add_argument("--test", action="store_true", help="Headless test + save screenshot, then exit")
+    parser.add_argument(
+        "--test", action="store_true", help="Headless test + save screenshot, then exit"
+    )
     parser.add_argument(
         "--smoke",
         action="store_true",
@@ -710,15 +733,21 @@ def main() -> int:
         user_data_dir = Path(args.user_data_dir)
         profile_directory = args.profile_directory
         executable_path = None
-    elif args.use_mcp_playwright_profile or (mcp_dir is not None and not args.use_system_chrome_profile):
+    elif args.use_mcp_playwright_profile or (
+        mcp_dir is not None and not args.use_system_chrome_profile
+    ):
         # Default to MCP profile if available (closest match to Copilot MCP browser).
         user_data_dir = mcp_dir if mcp_dir is not None else _default_project_user_data_dir()
-        profile_directory = _detect_profile_directory_from_local_state(user_data_dir) or args.profile_directory
+        profile_directory = (
+            _detect_profile_directory_from_local_state(user_data_dir) or args.profile_directory
+        )
         executable_path = _detect_executable_from_last_browser(user_data_dir)
     elif args.use_system_chrome_profile:
         system_dir = _default_system_chrome_user_data_dir()
         if system_dir is None:
-            raise SystemExit("Tidak menemukan Chrome User Data di %LOCALAPPDATA%\\Google\\Chrome\\User Data")
+            raise SystemExit(
+                "Tidak menemukan Chrome User Data di %LOCALAPPDATA%\\Google\\Chrome\\User Data"
+            )
         user_data_dir = system_dir
         profile_directory = args.profile_directory
         executable_path = None
@@ -740,7 +769,9 @@ def main() -> int:
     # collapse `navigator.languages` to a single value. We prefer Chrome profile + --lang.
     locale = args.locale
     timezone_id = args.timezone
-    using_mcp_profile = args.use_mcp_playwright_profile or (mcp_dir is not None and not args.use_system_chrome_profile)
+    using_mcp_profile = args.use_mcp_playwright_profile or (
+        mcp_dir is not None and not args.use_system_chrome_profile
+    )
     if using_mcp_profile:
         timezone_id = timezone_id or "Asia/Bangkok"
         # Match MCP languages list (navigator.languages: ["en-US", "en"]).
@@ -806,7 +837,9 @@ def main() -> int:
             if logged_in:
                 print(f"✓ Login terdeteksi: {label or 'Akun Google'}")
             else:
-                print("! Login belum terdeteksi. Jika ini pertama kali, silakan login dulu di window yang terbuka.")
+                print(
+                    "! Login belum terdeteksi. Jika ini pertama kali, silakan login dulu di window yang terbuka."
+                )
 
             if args.print_fingerprint:
                 fp = page.evaluate(
@@ -847,7 +880,9 @@ def main() -> int:
                                 pass
                         print(f"✓ Login terdeteksi: {label2 or 'Akun Google'}")
                     else:
-                        print("✗ Login tidak terdeteksi (timeout). Jalankan ulang setelah login selesai.")
+                        print(
+                            "✗ Login tidak terdeteksi (timeout). Jalankan ulang setelah login selesai."
+                        )
                         context.close()
                         return 4
 
@@ -914,7 +949,9 @@ def main() -> int:
                                         attempt_prompt = f"{prompt}\n\n+ tolong buatkan gambar"
 
                                     try:
-                                        prev_download_count = _download_full_size_buttons(page).count()
+                                        prev_download_count = _download_full_size_buttons(
+                                            page
+                                        ).count()
                                     except Exception as e:
                                         if _is_target_closed_error(e):
                                             raise BrowserClosedError(str(e)) from e
@@ -993,7 +1030,9 @@ def main() -> int:
                             print(f"✓ Login terdeteksi: {label or 'Akun Google'}")
                         else:
                             try:
-                                ok_login, label2, login_page = _wait_for_login(page, timeout_ms=600_000)
+                                ok_login, label2, login_page = _wait_for_login(
+                                    page, timeout_ms=600_000
+                                )
                                 if not ok_login:
                                     raise RuntimeError("Login tidak terdeteksi (timeout)")
                                 logged_in = True

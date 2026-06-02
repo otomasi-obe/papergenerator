@@ -34,6 +34,7 @@ POST /api/ai-jobs/<job_id>/retry-section
 GET  /api/me/ai-jobs/recent
     Filterable inbox of the user's recent jobs (badge + recently-done lookup).
 """
+
 from __future__ import annotations
 
 import json
@@ -48,7 +49,6 @@ from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from database.models import AiJob, Paper, db
-
 
 jobs_bp = Blueprint("jobs_bp", __name__)
 
@@ -121,6 +121,7 @@ def enqueue_generate(paper_id: str):
     # Lazy import so this blueprint can be imported even if RQ is missing during
     # cold paths (alembic, tests).
     from rq import Queue
+
     from tasks.generate_paper_task import run_generate_paper
 
     q = Queue("paper", connection=_REDIS)
@@ -186,8 +187,7 @@ def active_jobs(paper_id: str):
 
         return jsonify({"error": "Invalid user identity"}), 401
     rows = (
-        AiJob.query
-        .filter_by(user_id=user_id, paper_id=paper_id)
+        AiJob.query.filter_by(user_id=user_id, paper_id=paper_id)
         .filter(AiJob.status.in_(["queued", "running"]))
         .order_by(AiJob.started_at.desc())
         .limit(5)
@@ -287,6 +287,7 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
     # Lazy imports so this module stays importable in alembic/test contexts.
     try:
         from rq import Queue
+
         from tasks.generate_paper_task import run_generate_paper
 
         q = Queue("paper", connection=_REDIS)
@@ -305,7 +306,9 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
             job_timeout=900,
             result_ttl=3600,
         )
-        publish_progress(job.id, {"stage": job.stage or "queued", "percent": int(job.progress or 0)})
+        publish_progress(
+            job.id, {"stage": job.stage or "queued", "percent": int(job.progress or 0)}
+        )
         return
     except Exception:
         pass
@@ -314,6 +317,7 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
     # same path used by the chat tool and /api/generate-full POST.
     try:
         import threading
+
         from app import _run_generate_full_job
 
         threading.Thread(
@@ -353,8 +357,7 @@ def ai_jobs_active(paper_id: str):
         return jsonify({"error": "paper not found"}), 404
 
     job = (
-        AiJob.query
-        .filter_by(user_id=user_id, paper_id=paper_id, kind="generate_paper")
+        AiJob.query.filter_by(user_id=user_id, paper_id=paper_id, kind="generate_paper")
         .filter(AiJob.status.in_(_NON_TERMINAL))
         .order_by(AiJob.started_at.desc())
         .first()
@@ -386,11 +389,14 @@ def ai_jobs_cancel(job_id: str):
         pass
     job.status = "cancelled"
     db.session.commit()
-    publish_progress(job_id, {
-        "stage": job.stage or "cancelled",
-        "percent": int(job.progress or 0),
-        "status": "cancelled",
-    })
+    publish_progress(
+        job_id,
+        {
+            "stage": job.stage or "cancelled",
+            "percent": int(job.progress or 0),
+            "status": "cancelled",
+        },
+    )
     return jsonify({"job": job.to_dict()})
 
 
@@ -409,10 +415,15 @@ def ai_jobs_resume(job_id: str):
     if not job:
         return jsonify({"error": "not found"}), 404
     if job.status not in _RESUMABLE:
-        return jsonify({
-            "error": f"cannot resume from status={job.status}",
-            "job": job.to_dict(),
-        }), 409
+        return (
+            jsonify(
+                {
+                    "error": f"cannot resume from status={job.status}",
+                    "job": job.to_dict(),
+                }
+            ),
+            409,
+        )
 
     result = job.result if isinstance(job.result, dict) else {}
     resume_state = {
@@ -431,9 +442,14 @@ def ai_jobs_resume(job_id: str):
     db.session.commit()
 
     _enqueue_resume(job, resume_state)
-    return jsonify({"job": job.to_dict(), "resume_state": {
-        "chunks_done": resume_state["chunks_done"],
-    }})
+    return jsonify(
+        {
+            "job": job.to_dict(),
+            "resume_state": {
+                "chunks_done": resume_state["chunks_done"],
+            },
+        }
+    )
 
 
 @jobs_bp.route("/api/ai-jobs/<job_id>/retry-section", methods=["POST"])
@@ -456,10 +472,15 @@ def ai_jobs_retry_section(job_id: str):
     if not job:
         return jsonify({"error": "not found"}), 404
     if job.status not in _RESUMABLE + ("done",):
-        return jsonify({
-            "error": f"cannot retry from status={job.status}",
-            "job": job.to_dict(),
-        }), 409
+        return (
+            jsonify(
+                {
+                    "error": f"cannot retry from status={job.status}",
+                    "job": job.to_dict(),
+                }
+            ),
+            409,
+        )
 
     body = request.get_json(silent=True) or {}
     stage = (body.get("stage") or "").strip()
@@ -501,10 +522,13 @@ def ai_jobs_retry_section(job_id: str):
     except Exception:
         pass
 
-    _enqueue_resume(job, {
-        "chunks_done": chunks_done,
-        "partial_paper": partial,
-    })
+    _enqueue_resume(
+        job,
+        {
+            "chunks_done": chunks_done,
+            "partial_paper": partial,
+        },
+    )
     return jsonify({"job": job.to_dict()})
 
 

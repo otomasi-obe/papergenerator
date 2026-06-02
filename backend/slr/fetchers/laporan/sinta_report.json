@@ -1,0 +1,75 @@
+{
+  "fetcher": "sinta",
+  "test_time": "2026-05-29T12:54:59.940080",
+  "test_query": "indonesian research",
+  "status": "success",
+  "papers_found": 3,
+  "papers_with_urls": 3,
+  "valid_download_links": 3,
+  "invalid_download_links": 0,
+  "errors": [],
+  "papers": [
+    {
+      "title": "The flower characteristics of a plant is one of the important traits correlated to its productivity. Study on flower characteristics is useful to understand how to increase the crop productivity. The research was conducted at Agro Techno Park Center, Indonesian State Ministry of Research and Technology, Bakung Village, Ogan Ilir Distric South Sumatra from April 2007 to August 2008. The objective of this research was to evaluate the flower characteristics and the yield of jatropha (Jatropha curc",
+      "authors": [
+        "ANDI WIJAYA",
+        "SUSANTI DIANA",
+        "MUHAMAD UMAR HARUN",
+        "HENY HAWALID"
+      ],
+      "year": 2009,
+      "doi": null,
+      "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/1308052",
+      "is_open_access": true,
+      "venue": "HAYATI Journal of Biosciences"
+    },
+    {
+      "title": "Perceived Research Environment and Research Burnout in Indonesian Academics: The Moderator Role of Research Importance",
+      "authors": [
+        "Dian R. Sawitri"
+      ],
+      "year": null,
+      "doi": null,
+      "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/1701712",
+      "is_open_access": true,
+      "venue": "Journal of Educational, Health and Community Psychology"
+    },
+    {
+      "title": "INTRODUCTION IN INDONESIAN SOCIAL SCIENCES AND HUMANITIES RESEARCH ARTICLES: HOW INDONESIAN WRITERS JUSTIFY THEIR RESEARCH PROJECTS",
+      "authors": [
+        "Arsyad, Safnil"
+      ],
+      "year": 2014,
+      "doi": null,
+      "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/950117",
+      "is_open_access": true,
+      "venue": "Linguistik Indonesia"
+    }
+  ],
+  "download_link_checks": [
+    {
+      "paper_title": "The flower characteristics of a plant is one of the important traits correlated to its productivity.",
+      "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/1308052",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "accessible": true
+    },
+    {
+      "paper_title": "Perceived Research Environment and Research Burnout in Indonesian Academics: The Moderator Role of R",
+      "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/1701712",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "accessible": true
+    },
+    {
+      "paper_title": "INTRODUCTION IN INDONESIAN SOCIAL SCIENCES AND HUMANITIES RESEARCH ARTICLES: HOW INDONESIAN WRITERS ",
+      "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/950117",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "accessible": true
+    }
+  ]
+}

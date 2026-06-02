@@ -22,21 +22,23 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-import { usePaperStore } from '../stores/paper.js'
+<script setup lang="ts">
+// @ts-nocheck
+import { usePaperStore } from '../stores/paper'
+import type { AiPromptBoxProps, AiPromptBoxEmits } from '../types/components'
 
-const props = defineProps({
-  section: { type: String, required: true },
-  lastText: { type: String, default: '' }
-})
+const props = defineProps<AiPromptBoxProps>()
 
-const emit = defineEmits(['generated'])
+const emit = defineEmits<AiPromptBoxEmits>()
+
+// @ts-ignore - paper store will be converted to TypeScript in Week 3-4
+const { usePaperStore } = await import('../stores/paper.js')
 const store = usePaperStore()
-const prompt = ref('')
-const loading = ref(false)
 
-async function generate() {
+const prompt = ref<string>('')
+const loading = ref<boolean>(false)
+
+async function generate(): Promise<void> {
   if (!prompt.value.trim()) return
   loading.value = true
   try {

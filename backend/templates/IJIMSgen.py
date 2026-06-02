@@ -3,21 +3,26 @@ IJIMSgen.py — Generator DOCX untuk template IJIMS (Indonesian Journal of Islam
 Menggunakan dokumen asli IJIMS.doc sebagai base template (paste keep formatting).
 Data diambil dari _template.json.
 """
-import json, copy, re, os
+
+import json
+import re
 from pathlib import Path
-from docx import Document
-from docx.shared import Pt, Cm, Emu, Inches, RGBColor
+
 import latex2mathml.converter
 import mathml2omml
+from docx import Document
+from docx.shared import Cm, Emu, Pt, RGBColor
+
 
 def Tw(twips):
     return Emu(twips * 914400 // 1440)
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
+
+
 from docx.enum.section import WD_ORIENT
-from docx.oxml.ns import qn, nsdecls
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml
-from lxml import etree
+from docx.oxml.ns import nsdecls, qn
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_PATH = BASE / "IJIMS.docx"
@@ -32,8 +37,8 @@ def latex_to_omml_element(latex_src):
     mathml = latex2mathml.converter.convert(latex_src)
     omml_str = mathml2omml.convert(mathml)
     omml_str = re.sub(
-        r'(<m:groupChrPr>.*?)</m:groupChr>(\s*<m:e>)',
-        r'\1</m:groupChrPr>\2',
+        r"(<m:groupChrPr>.*?)</m:groupChr>(\s*<m:e>)",
+        r"\1</m:groupChrPr>\2",
         omml_str,
     )
     if not omml_str.startswith("<m:oMath xmlns:m="):
@@ -41,7 +46,7 @@ def latex_to_omml_element(latex_src):
     return parse_xml(omml_str)
 
 
-INLINE_MATH_RE = re.compile(r'\$([^$]+)\$')
+INLINE_MATH_RE = re.compile(r"\$([^$]+)\$")
 
 
 def load_json():
@@ -61,63 +66,65 @@ def set_run_font(run, font_name, size_pt, bold=False, italic=False, color=None):
     if color:
         run.font.color.rgb = RGBColor(*color)
     rpr = run._r.get_or_add_rPr()
-    rfonts = rpr.find(qn('w:rFonts'))
+    rfonts = rpr.find(qn("w:rFonts"))
     if rfonts is None:
-        rfonts = parse_xml(f'<w:rFonts {nsdecls("w")} w:ascii="{font_name}" w:hAnsi="{font_name}" w:cs="{font_name}"/>')
+        rfonts = parse_xml(
+            f'<w:rFonts {nsdecls("w")} w:ascii="{font_name}" w:hAnsi="{font_name}" w:cs="{font_name}"/>'
+        )
         rpr.insert(0, rfonts)
     else:
-        rfonts.set(qn('w:ascii'), font_name)
-        rfonts.set(qn('w:hAnsi'), font_name)
-        rfonts.set(qn('w:cs'), font_name)
+        rfonts.set(qn("w:ascii"), font_name)
+        rfonts.set(qn("w:hAnsi"), font_name)
+        rfonts.set(qn("w:cs"), font_name)
 
 
 def set_paragraph_spacing(paragraph, before=None, after=None, line=None, line_rule=None):
     ppr = paragraph._p.get_or_add_pPr()
-    spacing = ppr.find(qn('w:spacing'))
+    spacing = ppr.find(qn("w:spacing"))
     if spacing is None:
         spacing = parse_xml(f'<w:spacing {nsdecls("w")}/>')
         ppr.append(spacing)
     if before is not None:
-        spacing.set(qn('w:before'), str(before))
+        spacing.set(qn("w:before"), str(before))
     if after is not None:
-        spacing.set(qn('w:after'), str(after))
+        spacing.set(qn("w:after"), str(after))
     if line is not None:
-        spacing.set(qn('w:line'), str(line))
+        spacing.set(qn("w:line"), str(line))
     if line_rule is not None:
-        spacing.set(qn('w:lineRule'), line_rule)
+        spacing.set(qn("w:lineRule"), line_rule)
 
 
 def set_paragraph_indent(paragraph, left=None, right=None, first_line=None, hanging=None):
     ppr = paragraph._p.get_or_add_pPr()
-    ind = ppr.find(qn('w:ind'))
+    ind = ppr.find(qn("w:ind"))
     if ind is None:
         ind = parse_xml(f'<w:ind {nsdecls("w")}/>')
         ppr.append(ind)
     if left is not None:
-        ind.set(qn('w:left'), str(left))
-        ind.set(qn('w:start'), str(left))
+        ind.set(qn("w:left"), str(left))
+        ind.set(qn("w:start"), str(left))
     if right is not None:
-        ind.set(qn('w:right'), str(right))
-        ind.set(qn('w:end'), str(right))
+        ind.set(qn("w:right"), str(right))
+        ind.set(qn("w:end"), str(right))
     if first_line is not None:
-        ind.set(qn('w:firstLine'), str(first_line))
+        ind.set(qn("w:firstLine"), str(first_line))
     if hanging is not None:
-        ind.set(qn('w:hanging'), str(hanging))
+        ind.set(qn("w:hanging"), str(hanging))
 
 
 def set_columns(section, num_cols, space_tw=360):
     sectPr = section._sectPr
-    cols = sectPr.find(qn('w:cols'))
+    cols = sectPr.find(qn("w:cols"))
     if cols is None:
         cols = parse_xml(f'<w:cols {nsdecls("w")}/>')
         sectPr.append(cols)
-    cols.set(qn('w:num'), str(num_cols))
-    cols.set(qn('w:space'), str(space_tw))
+    cols.set(qn("w:num"), str(num_cols))
+    cols.set(qn("w:space"), str(space_tw))
 
 
 def add_even_odd_headers(doc):
     settings_el = doc.settings.element
-    eoh = settings_el.find(qn('w:evenAndOddHeaders'))
+    eoh = settings_el.find(qn("w:evenAndOddHeaders"))
     if eoh is None:
         eoh = parse_xml(f'<w:evenAndOddHeaders {nsdecls("w")}/>')
         settings_el.append(eoh)
@@ -187,7 +194,14 @@ def add_empty_line(doc, font_name="Cambria", size=10):
 def add_authors(doc, data):
     authors = data.get("authors", [])
     if not authors:
-        authors = [{"name": "Author Name", "affiliation": "Institution", "location": "City, Country", "email": "email@mail.ac.id"}]
+        authors = [
+            {
+                "name": "Author Name",
+                "affiliation": "Institution",
+                "location": "City, Country",
+                "email": "email@mail.ac.id",
+            }
+        ]
 
     p_name = doc.add_paragraph()
     p_name.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -227,7 +241,10 @@ def add_abstract(doc, data):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
-    abstract_text = data.get("abstract", "Abstract text goes here. This should be a concise summary of the paper content between 150-250 words.")
+    abstract_text = data.get(
+        "abstract",
+        "Abstract text goes here. This should be a concise summary of the paper content between 150-250 words.",
+    )
     run = p.add_run(abstract_text)
     set_run_font(run, "Cambria", 10.5)
 
@@ -268,7 +285,7 @@ def add_subsection_heading(doc, title):
 def _add_text_with_inline_math(p, text, font_name, size_pt, italic=False, bold=False):
     pos = 0
     for m in INLINE_MATH_RE.finditer(text):
-        before = text[pos:m.start()]
+        before = text[pos : m.start()]
         if before:
             run = p.add_run(before)
             set_run_font(run, font_name, size_pt, bold=bold, italic=italic)
@@ -375,7 +392,7 @@ def add_table(doc, table_data):
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
     tbl_el = table._tbl
-    tblPr = tbl_el.find(qn('w:tblPr'))
+    tblPr = tbl_el.find(qn("w:tblPr"))
     if tblPr is None:
         tblPr = parse_xml(f'<w:tblPr {nsdecls("w")}/>')
         tbl_el.insert(0, tblPr)
@@ -385,7 +402,7 @@ def add_table(doc, table_data):
         '<w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
         '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
         '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
-        '</w:tblBorders>'
+        "</w:tblBorders>"
     )
     tblBorders = parse_xml(borders_xml)
     tblPr.append(tblBorders)
@@ -434,7 +451,7 @@ def add_references(doc, data):
     set_run_font(run, "Cambria", 11.5, bold=True)
 
     if not refs_content:
-        refs_content = ["[1] Author, \"Title,\" Journal, vol. X, no. Y, pp. Z, Year."]
+        refs_content = ['[1] Author, "Title," Journal, vol. X, no. Y, pp. Z, Year.']
 
     for i, ref in enumerate(refs_content):
         p = doc.add_paragraph()
@@ -543,7 +560,9 @@ def generate():
         if key.startswith("section") and isinstance(data[key], dict):
             section_keys.append(key)
 
-    section_keys.sort(key=lambda x: int(re.search(r'\d+', x).group()) if re.search(r'\d+', x) else 0)
+    section_keys.sort(
+        key=lambda x: int(re.search(r"\d+", x).group()) if re.search(r"\d+", x) else 0
+    )
 
     for sk in section_keys:
         process_section(doc, sk, data[sk], level=1)

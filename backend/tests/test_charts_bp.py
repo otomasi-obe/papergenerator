@@ -5,6 +5,7 @@ backend bootstrap and we don't fight whatever postgres state happens to be
 loaded on the host. Mocks chart_generator.generate_chart so matplotlib I/O
 stays out of the test path.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,8 +30,10 @@ try:
     from flask import Flask
     from flask_jwt_extended import JWTManager, create_access_token
     from sqlalchemy import JSON
-    from charts_bp import charts_bp
-    from models import Paper, PaperImage, User, db
+
+    from api.charts_bp import charts_bp
+    from database.models import Paper, PaperImage, User, db
+
     # Swap JSONB for JSON on the Paper.data column so sqlite can render
     # CREATE TABLE. The model itself isn't reloaded at runtime in the real
     # backend, so this is purely a test-side compat shim.
@@ -208,7 +211,7 @@ def test_create_chart_happy_path(client, app, fake_chart_png):
     user = _make_user()
     paper = _make_paper(user)
 
-    with patch("charts_bp.generate_chart", return_value=fake_chart_png):
+    with patch("api.charts_bp.generate_chart", return_value=fake_chart_png):
         resp = client.post(
             f"/api/papers/{paper.id}/charts",
             json={
@@ -244,7 +247,7 @@ def test_create_chart_propagates_value_error(client, app):
     def boom(*_a, **_kw):
         raise ValueError("scatter requires x_data and data")
 
-    with patch("charts_bp.generate_chart", side_effect=boom):
+    with patch("api.charts_bp.generate_chart", side_effect=boom):
         resp = client.post(
             f"/api/papers/{paper.id}/charts",
             json={"kind": "scatter", "title": "t", "data": [[1, 2, 3]]},
@@ -263,7 +266,7 @@ def test_create_chart_propagates_runtime_error(client, app):
     def boom(*_a, **_kw):
         raise RuntimeError("matplotlib backend missing")
 
-    with patch("charts_bp.generate_chart", side_effect=boom):
+    with patch("api.charts_bp.generate_chart", side_effect=boom):
         resp = client.post(
             f"/api/papers/{paper.id}/charts",
             json={"kind": "line", "title": "t", "data": [[1, 2]]},
@@ -280,7 +283,7 @@ def test_create_chart_cross_user_404(client, app, fake_chart_png):
     bob = _make_user("bob@example.com", "bob")
     paper = _make_paper(alice, "paperALICE")
 
-    with patch("charts_bp.generate_chart", return_value=fake_chart_png):
+    with patch("api.charts_bp.generate_chart", return_value=fake_chart_png):
         resp = client.post(
             f"/api/papers/{paper.id}/charts",
             json={"kind": "line", "title": "t", "data": [[1, 2]]},

@@ -3,53 +3,52 @@
 @tailwind utilities;
 
 /* ─── Theme tokens ────────────────────────────────────────────────────────
-   Neutral ivory/anthracite — matches the visual tone of claude.ai/settings:
-   off-white body in light, near-black text; warm dark anthracite in dark
-   with cream text. Tokens are referenced by legacy CSS via var(--*).
+   Editorial / research palette: parchment surfaces, slate ink, deep-teal
+   accent. Tokens are referenced by both the newer CSS variables and the older
+   utility classes preserved in tailwind.config.js.
    ──────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Calibrated against claude.ai measured tokens */
-  --bg-app: #f8f8f6;          /* body bg (light) */
-  --bg-surface: #ffffff;      /* card/input */
-  --bg-card: #ffffff;         /* section card / add-section dashed bg */
-  --bg-elev: #f3f2ee;         /* hover/elevated */
-  --surface-user: #ffffff;    /* user chat bubble bg in LIGHT (was inheriting dark) */
-  --surface-user-text: #121212;
-  --surface-ai: #f3f2ee;
-  --text-strong: #121212;     /* body text */
-  --text-base: #2a2826;
-  --text-muted: #56544c;
-  --border-soft: #d6d5cd;     /* tebal sedikit agar terbaca rofiq.txt #1 */
-  --border-strong: #1a1a1a;   /* garis hitam tebal untuk light mode rofiq.txt #1 */
-  --accent: #d97757;          /* claude.ai orange accent */
+  --bg-app: #f7f1e6;
+  --bg-surface: #fffdfa;
+  --bg-card: #fffaf2;
+  --bg-elev: #f1e8d8;
+  --surface-user: #ffffff;
+  --surface-user-text: #152431;
+  --surface-ai: #f6efe1;
+  --text-strong: #152431;
+  --text-base: #344a5b;
+  --text-muted: #617381;
+  --border-soft: #ddd1bc;
+  --border-strong: #c1ab8b;
+  --accent: #238f7f;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 40px; --space-7: 64px;
   --radius-sm: 6px; --radius-md: 12px; --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 12px 32px rgba(0,0,0,0.16);
+  --shadow-sm: 0 8px 20px rgba(21, 36, 49, 0.06); --shadow-md: 0 18px 40px rgba(21, 36, 49, 0.09); --shadow-lg: 0 28px 64px rgba(16, 24, 31, 0.14);
   --t-fast: 150ms ease; --t-slow: 250ms ease;
-  --focus-ring: 0 0 0 3px rgba(217,119,87,0.3);
+  --focus-ring: 0 0 0 3px rgba(35, 143, 127, 0.24);
   --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 html.dark {
-  --bg-app: #1f1f1e;          /* body bg (dark) */
-  --bg-surface: #2c2c2a;      /* claude.ai elevated surface */
-  --bg-card: #2c2c2a;         /* section card in dark — fix white leak rofiq screenshot */
-  --bg-elev: #383836;         /* hover */
-  --surface-user: #383836;    /* user chat bubble bg in DARK */
-  --surface-user-text: #f8f8f6;
-  --surface-ai: #2c2c2a;
-  --text-strong: #f8f8f6;     /* body text */
-  --text-base: #c3c2b7;       /* secondary */
-  --text-muted: #97958c;      /* muted */
-  --border-soft: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.22);
-  --accent: #d97757;
+  --bg-app: #10171d;
+  --bg-surface: #18232b;
+  --bg-card: #18232b;
+  --bg-elev: #20303a;
+  --surface-user: #22343f;
+  --surface-user-text: #f5f3ee;
+  --surface-ai: #172128;
+  --text-strong: #f5f3ee;
+  --text-base: #d4cdc1;
+  --text-muted: #aea899;
+  --border-soft: rgba(227, 236, 239, 0.10);
+  --border-strong: rgba(227, 236, 239, 0.18);
+  --accent: #4eb2a3;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 40px; --space-7: 64px;
   --radius-sm: 6px; --radius-md: 12px; --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 12px rgba(0,0,0,0.08); --shadow-lg: 0 12px 32px rgba(0,0,0,0.16);
+  --shadow-sm: 0 8px 24px rgba(0,0,0,0.22); --shadow-md: 0 20px 48px rgba(0,0,0,0.28); --shadow-lg: 0 36px 72px rgba(0,0,0,0.36);
   --t-fast: 150ms ease; --t-slow: 250ms ease;
-  --focus-ring: 0 0 0 3px rgba(217,119,87,0.3);
+  --focus-ring: 0 0 0 3px rgba(78, 178, 163, 0.26);
 }
 
 /* Global */
@@ -59,8 +58,9 @@ body {
   padding: 0;
   background-color: var(--bg-app);
   color: var(--text-strong);
-  /* Clean — no grain. Same in both modes. */
-  background-image: none;
+  background-image:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 10%, transparent), transparent 28%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--border-strong) 22%, transparent), transparent 32%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.18s ease, color 0.18s ease;
@@ -108,7 +108,7 @@ h1, h2, .display-serif {
 .editable-content:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(121, 82, 42, 0.2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 /* Toast notification */
@@ -148,4 +148,39 @@ h1, h2, .display-serif {
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
   max-width: 900px;
   margin: 0 auto;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent, #b54a1f);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent, #b54a1f);
+  outline-offset: 2px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -13,6 +13,7 @@ folder berisi `papers.jsonl` (hasil scraping offline), fetcher akan cari di
 file itu dulu (cepat, tidak hit network) lalu mundur ke HTTP scrape kalau
 hasil offline kurang. Kalau env var tidak diset, offline path dilewati.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,8 +31,10 @@ log = logging.getLogger(__name__)
 BASE = "https://garuda.kemdiktisaintek.go.id"
 SEARCH_URL = f"{BASE}/documents/"
 
-_DETAIL_RE = re.compile(r'<a[^>]+class="[^"]*title-article[^"]*"[^>]+href="(/documents/detail/(\d+))"[^>]*>(.*?)</a>',
-                         re.IGNORECASE | re.DOTALL)
+_DETAIL_RE = re.compile(
+    r'<a[^>]+class="[^"]*title-article[^"]*"[^>]+href="(/documents/detail/(\d+))"[^>]*>(.*?)</a>',
+    re.IGNORECASE | re.DOTALL,
+)
 _TAG_RE = re.compile(r"<[^>]+>")
 _WS_RE = re.compile(r"\s+")
 
@@ -49,7 +52,9 @@ def _parse_search_html(html: str) -> list[tuple[str, str]]:
         if title:
             out.append((doc_id, title))
     if not out and html and len(html) > 1024:
-        log.warning("sinta search parse: 0 hits in %d-byte HTML; layout may have changed", len(html))
+        log.warning(
+            "sinta search parse: 0 hits in %d-byte HTML; layout may have changed", len(html)
+        )
     return out
 
 
@@ -60,8 +65,11 @@ def _parse_detail_html(html: str) -> dict:
     for the few fields we need (title, abstract, year, journal, doi via meta).
     """
     abstract = ""
-    m = re.search(r'<xmp[^>]*class="[^"]*abstract-article[^"]*"[^>]*>(.*?)</xmp>',
-                  html, re.IGNORECASE | re.DOTALL)
+    m = re.search(
+        r'<xmp[^>]*class="[^"]*abstract-article[^"]*"[^>]*>(.*?)</xmp>',
+        html,
+        re.IGNORECASE | re.DOTALL,
+    )
     if m:
         abstract = _strip_html(m.group(1))
 
@@ -84,14 +92,20 @@ def _parse_detail_html(html: str) -> dict:
         venue = _strip_html(m.group(1))
 
     publisher = ""
-    m = re.search(r'class="j-pub-name"[^>]*>\s*<a[^>]*>\s*(?:<xmp[^>]*>)?(.*?)(?:</xmp>)?\s*</a>',
-                  html, re.IGNORECASE | re.DOTALL)
+    m = re.search(
+        r'class="j-pub-name"[^>]*>\s*<a[^>]*>\s*(?:<xmp[^>]*>)?(.*?)(?:</xmp>)?\s*</a>',
+        html,
+        re.IGNORECASE | re.DOTALL,
+    )
     if m:
         publisher = _strip_html(m.group(1))
 
     authors: list[str] = []
-    for a in re.finditer(r"/author/view/\d+[^>]*>(?:<xmp[^>]*>)?(.*?)(?:</xmp>)?</a>",
-                          html, re.IGNORECASE | re.DOTALL):
+    for a in re.finditer(
+        r"/author/view/\d+[^>]*>(?:<xmp[^>]*>)?(.*?)(?:</xmp>)?</a>",
+        html,
+        re.IGNORECASE | re.DOTALL,
+    ):
         nm = _strip_html(a.group(1))
         if nm and nm not in authors and len(authors) < 10:
             authors.append(nm)
@@ -101,13 +115,35 @@ def _parse_detail_html(html: str) -> dict:
     if m:
         doi = m.group(0).rstrip(".,;)").strip()
 
+    # Look for PDF download link
+    pdf_url = ""
+    # Try to find direct PDF link in the page
+    pdf_match = re.search(r'href="([^"]*\.pdf[^"]*)"', html, re.IGNORECASE)
+    if pdf_match:
+        pdf_url = pdf_match.group(1)
+        if not pdf_url.startswith("http"):
+            pdf_url = BASE + pdf_url if pdf_url.startswith("/") else BASE + "/" + pdf_url
+    
+    # Try source_url field
+    if not pdf_url:
+        source_match = re.search(r'class="[^"]*source-url[^"]*"[^>]*href="([^"]+)"', html, re.IGNORECASE)
+        if source_match:
+            pdf_url = source_match.group(1)
+
     if not title and html and len(html) > 1024:
-        log.warning("sinta detail parse: no title in %d-byte HTML; layout may have changed", len(html))
+        log.warning(
+            "sinta detail parse: no title in %d-byte HTML; layout may have changed", len(html)
+        )
 
     return {
-        "title": title, "abstract": abstract, "year": year,
-        "venue": venue, "publisher": publisher,
-        "authors": authors, "doi": doi or None,
+        "title": title,
+        "abstract": abstract,
+        "year": year,
+        "venue": venue,
+        "publisher": publisher,
+        "authors": authors,
+        "doi": doi or None,
+        "pdf_url": pdf_url or None,
     }
 
 
@@ -135,11 +171,13 @@ def _from_offline(query: str, limit: int) -> Iterable[Paper]:
                     rec = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                hay = " ".join([
-                    rec.get("title") or "",
-                    rec.get("abstract") or "",
-                    " ".join(rec.get("keywords") or []),
-                ]).lower()
+                hay = " ".join(
+                    [
+                        rec.get("title") or "",
+                        rec.get("abstract") or "",
+                        " ".join(rec.get("keywords") or []),
+                    ]
+                ).lower()
                 hits = sum(1 for t in tokens if t in hay)
                 if hits < threshold:
                     continue
@@ -177,8 +215,7 @@ def _from_offline(query: str, limit: int) -> Iterable[Paper]:
             return
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Cari paper di Garuda/SINTA berdasarkan keyword.
 
     Strategi:
@@ -224,6 +261,14 @@ def search(client, query: str, limit: int = 25,
             if not (meta.get("title") or title):
                 continue
             seen_ids.add(doc_id)
+            
+            # Build PDF URL: prioritize extracted PDF, then DOI, then landing page
+            pdf_url = meta.get("pdf_url")
+            if not pdf_url and meta.get("doi"):
+                pdf_url = f"https://doi.org/{meta.get('doi')}"
+            if not pdf_url:
+                pdf_url = f"{BASE}/documents/detail/{doc_id}"
+            
             yield Paper(
                 source="sinta",
                 source_id=doc_id,
@@ -234,7 +279,7 @@ def search(client, query: str, limit: int = 25,
                 venue=meta.get("venue") or None,
                 venue_type="journal",
                 doi=meta.get("doi"),
-                url=f"{BASE}/documents/detail/{doc_id}",
+                url=pdf_url,
                 citations=None,
                 is_open_access=True,
                 type="journal-article",

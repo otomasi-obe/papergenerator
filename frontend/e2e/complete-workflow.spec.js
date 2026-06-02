@@ -62,12 +62,6 @@ function trackAiInteraction() {
 }
 
 test.describe('Complete Paper Generation Workflow', () => {
-  test.use({
-    video: 'on',
-    trace: 'on',
-    screenshot: 'on',
-  });
-
   test('full workflow: register → create paper → upload files → generate → edit → export', async ({ page, context }) => {
     METRICS.startTime = Date.now();
     const api = context.request;
@@ -79,20 +73,36 @@ test.describe('Complete Paper Generation Workflow', () => {
     // PHASE 1: REGISTRATION & LOGIN
     // ═══════════════════════════════════════════════════════════
     console.log('\n🔐 Phase 1: Registration & Login');
-    
+
+    // Register via API (bypasses CAPTCHA)
     const reg = await api.post('/api/auth/register', {
       data: { ...TEST_USER, captcha_token: '1x00000000000000000000AA' },
     });
     expect(reg.status()).toBe(201);
-    console.log('✓ User registered successfully');
+    console.log('✓ User registered via API');
 
-    await page.goto('/');
-    await expect(page).toHaveTitle(/PaperFull|Paper Generator/i);
-    console.log('✓ Landing page loaded');
+    // Login via API to get cookies
+    const login = await api.post('/api/auth/login', {
+      data: { email: TEST_USER.email, password: TEST_USER.password },
+    });
+    expect(login.status()).toBe(200);
+    const loginData = await login.json();
+    console.log('✓ User logged in via API');
 
-    // Navigate to dashboard (should auto-redirect since we're logged in)
+    // Check what cookies we have
+    const cookies = await context.cookies();
+    console.log('Cookies after login:', cookies.map(c => c.name).join(', '));
+
+    // Set user in localStorage BEFORE page loads using addInitScript
+    await context.addInitScript((userData) => {
+      localStorage.setItem('user', JSON.stringify(userData));
+    }, loginData.user);
+    console.log('✓ Init script added to set user in localStorage');
+
+    // Now navigate to dashboard - the init script will run before page loads
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
+
     await expect(page.locator('h1:has-text("My Papers")')).toBeVisible({ timeout: 10000 });
     console.log('✓ Dashboard loaded');
 

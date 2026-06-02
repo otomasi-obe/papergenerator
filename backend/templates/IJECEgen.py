@@ -29,18 +29,18 @@ Format ringkas (hasil analisa _analyse.py terhadap IJECE.docx):
 - Equation: center, label "(N)" rata kanan
 - References: "REFERENCES" bold + list 8pt
 """
+
 import json
-import shutil
 import re
+import shutil
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Pt, Cm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.ns import qn
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
-from lxml import etree
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_DOCX = BASE / "IJECE.docx"
@@ -63,48 +63,40 @@ CFG = {
     "footer_distance_tw": 1134,
     "columns": 1,
     "col_space_tw": 720,
-
     # Fonts: IJECE menggunakan Times New Roman di body
     "font_body": "Times New Roman",
     "font_title": "Times New Roman",
     "font_heading": "Times New Roman",
     "font_caption": "Times New Roman",
     "font_reference": "Times New Roman",
-
     # Sizes (pt)
-    "size_title": 16,        # Paper's title
-    "size_body": 10,         # IJECE body 10pt
-    "size_author": 10,       # Author names
-    "size_affil": 8,         # Affiliation
+    "size_title": 16,  # Paper's title
+    "size_body": 10,  # IJECE body 10pt
+    "size_author": 10,  # Author names
+    "size_affil": 8,  # Affiliation
     "size_abstract_label": 10,
     "size_abstract": 9,
     "size_keywords": 9,
-    "size_heading1": 10,     # Section heading
-    "size_heading2": 10,     # Subsection
-    "size_heading3": 10,     # Subsubsection
+    "size_heading1": 10,  # Section heading
+    "size_heading2": 10,  # Subsection
+    "size_heading3": 10,  # Subsubsection
     "size_caption": 9,
     "size_reference": 8,
     "size_header": 9,
     "size_footer": 9,
-
     # Heading numbering: arabic dot ("1.", "2.")
     "section_heading_format": "arabic_dot",
     "section_heading_upper": True,
-
     # Figure / Table prefix English
     "fig_prefix": "Figure",
     "tbl_prefix": "Table",
-
     # Tabel border = three-line (top double + bottom single)
     "table_borders": "three_line_double_top",
-
     # Line spacing body
     "line_spacing_body": 240,
     "line_spacing_rule": "auto",
-
     # Indent body
     "first_line_indent_tw": 720,
-
     # Reference
     "ref_left_indent_tw": 426,
     "ref_hanging_indent_tw": 426,
@@ -128,17 +120,43 @@ def _append_inline_math(paragraph, latex):
     if not latex:
         return False
     import re as _re
+
     s = str(latex).strip()
     SYMBOLS = {
-        r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
-        r"\epsilon": "ε", r"\theta": "θ", r"\lambda": "λ", r"\mu": "μ",
-        r"\pi": "π", r"\sigma": "σ", r"\tau": "τ", r"\phi": "φ",
-        r"\omega": "ω", r"\sum": "∑", r"\prod": "∏", r"\int": "∫",
-        r"\infty": "∞", r"\pm": "±", r"\times": "×", r"\cdot": "·",
-        r"\leq": "≤", r"\geq": "≥", r"\neq": "≠", r"\approx": "≈",
-        r"\to": "→", r"\dots": "…", r"\ldots": "…",
-        r"\quad": " ", r"\,": " ", r"\;": " ", r"\:": " ", r"\!": "",
-        r"\left": "", r"\right": "",
+        r"\alpha": "α",
+        r"\beta": "β",
+        r"\gamma": "γ",
+        r"\delta": "δ",
+        r"\epsilon": "ε",
+        r"\theta": "θ",
+        r"\lambda": "λ",
+        r"\mu": "μ",
+        r"\pi": "π",
+        r"\sigma": "σ",
+        r"\tau": "τ",
+        r"\phi": "φ",
+        r"\omega": "ω",
+        r"\sum": "∑",
+        r"\prod": "∏",
+        r"\int": "∫",
+        r"\infty": "∞",
+        r"\pm": "±",
+        r"\times": "×",
+        r"\cdot": "·",
+        r"\leq": "≤",
+        r"\geq": "≥",
+        r"\neq": "≠",
+        r"\approx": "≈",
+        r"\to": "→",
+        r"\dots": "…",
+        r"\ldots": "…",
+        r"\quad": " ",
+        r"\,": " ",
+        r"\;": " ",
+        r"\:": " ",
+        r"\!": "",
+        r"\left": "",
+        r"\right": "",
     }
     for k, v in SYMBOLS.items():
         s = s.replace(k, v)
@@ -162,9 +180,10 @@ def _set_ai_prompt_color_red(doc):
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
-    from docx.shared import RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.shared import RGBColor
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -210,6 +229,7 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:sz"), "4")
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
+
 
 def load_json():
     with open(TEMPLATE_JSON, "r", encoding="utf-8") as f:
@@ -293,13 +313,14 @@ def add_empty_para(doc, line=240):
 
 def _normalize_text(text: str) -> str:
     text = text.replace("\\n", "\n")
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
-def _append_rich_text(paragraph, text: str, font_name=None, size_pt=None,
-                      base_bold=False, base_italic=False):
+def _append_rich_text(
+    paragraph, text: str, font_name=None, size_pt=None, base_bold=False, base_italic=False
+):
     fn = font_name or CFG["font_body"]
     sz = size_pt if size_pt is not None else CFG["size_body"]
     normalized = _normalize_text(text)
@@ -344,7 +365,7 @@ def _append_rich_text(paragraph, text: str, font_name=None, size_pt=None,
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 flush()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     if not _append_inline_math(paragraph, formula):
                         run = paragraph.add_run(formula)
@@ -360,6 +381,7 @@ def _append_rich_text(paragraph, text: str, font_name=None, size_pt=None,
 # CONTENT GENERATORS
 # ============================================================
 
+
 def add_title(doc, data):
     title_text = data.get("title", "Paper Title Goes Here")
     p = doc.add_paragraph()
@@ -373,12 +395,14 @@ def add_title(doc, data):
 def add_authors(doc, data):
     authors = data.get("authors", [])
     if not authors:
-        authors = [{
-            "name": "Author Name",
-            "affiliation": "Department, University",
-            "location": "City, Country",
-            "email": "author@email.ac.id",
-        }]
+        authors = [
+            {
+                "name": "Author Name",
+                "affiliation": "Department, University",
+                "location": "City, Country",
+                "email": "author@email.ac.id",
+            }
+        ]
 
     # Baris nama gabungan, semua bold + superscript afiliasi
     p_names = doc.add_paragraph()
@@ -418,7 +442,9 @@ def add_authors(doc, data):
         set_run_font(r_aff, font_name=CFG["font_body"], size_pt=CFG["size_affil"])
         if email:
             r_email = p_aff.add_run(f" (email: {email})")
-            set_run_font(r_email, font_name=CFG["font_body"], size_pt=CFG["size_affil"], italic=True)
+            set_run_font(
+                r_email, font_name=CFG["font_body"], size_pt=CFG["size_affil"], italic=True
+            )
 
 
 def add_abstract(doc, data):
@@ -430,8 +456,7 @@ def add_abstract(doc, data):
     set_paragraph_spacing(p_label, before=12, after=6, line=240, line_rule="auto")
     set_paragraph_indent(p_label, first_line=0)
     run = p_label.add_run("ABSTRACT")
-    set_run_font(run, font_name=CFG["font_heading"],
-                 size_pt=CFG["size_abstract_label"], bold=True)
+    set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_abstract_label"], bold=True)
 
     # Isi abstract: TNR 9pt italic justify
     abstract_text = data.get(
@@ -442,9 +467,9 @@ def add_abstract(doc, data):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=6, line=240, line_rule="auto")
     set_paragraph_indent(p, first_line=0)
-    _append_rich_text(p, abstract_text,
-                      font_name=CFG["font_body"],
-                      size_pt=CFG["size_abstract"], base_italic=True)
+    _append_rich_text(
+        p, abstract_text, font_name=CFG["font_body"], size_pt=CFG["size_abstract"], base_italic=True
+    )
 
 
 def add_keywords(doc, data):
@@ -460,8 +485,9 @@ def add_keywords(doc, data):
     set_paragraph_spacing(p_label, before=6, after=3, line=240, line_rule="auto")
     set_paragraph_indent(p_label, first_line=0)
     run = p_label.add_run("Keywords:")
-    set_run_font(run, font_name=CFG["font_body"],
-                 size_pt=CFG["size_keywords"], bold=True, italic=True)
+    set_run_font(
+        run, font_name=CFG["font_body"], size_pt=CFG["size_keywords"], bold=True, italic=True
+    )
 
     # Isi keywords
     p = doc.add_paragraph()
@@ -469,8 +495,7 @@ def add_keywords(doc, data):
     set_paragraph_spacing(p, before=0, after=6, line=240, line_rule="auto")
     set_paragraph_indent(p, first_line=0)
     run = p.add_run(keywords_text)
-    set_run_font(run, font_name=CFG["font_body"],
-                 size_pt=CFG["size_keywords"])
+    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_keywords"])
 
 
 def add_section_heading(doc, title, section_index):
@@ -480,8 +505,7 @@ def add_section_heading(doc, title, section_index):
     set_paragraph_indent(p, first_line=0)
     title_text = title.upper() if CFG["section_heading_upper"] else title
     run = p.add_run(f"{section_index}. {title_text}")
-    set_run_font(run, font_name=CFG["font_heading"],
-                 size_pt=CFG["size_heading1"], bold=True)
+    set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading1"], bold=True)
 
 
 def add_subsection_heading(doc, title, section_index, sub_index):
@@ -490,8 +514,7 @@ def add_subsection_heading(doc, title, section_index, sub_index):
     set_paragraph_spacing(p, before=8, after=4, line=240, line_rule="auto")
     set_paragraph_indent(p, first_line=0)
     run = p.add_run(f"{section_index}.{sub_index}.  {title}")
-    set_run_font(run, font_name=CFG["font_heading"],
-                 size_pt=CFG["size_heading2"], bold=True)
+    set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading2"], bold=True)
 
 
 def add_subsubsection_heading(doc, title, section_index, sub_index, subsub_index):
@@ -500,19 +523,15 @@ def add_subsubsection_heading(doc, title, section_index, sub_index, subsub_index
     set_paragraph_spacing(p, before=6, after=3, line=240, line_rule="auto")
     set_paragraph_indent(p, first_line=0)
     run = p.add_run(f"{section_index}.{sub_index}.{subsub_index}. {title}")
-    set_run_font(run, font_name=CFG["font_heading"],
-                 size_pt=CFG["size_heading3"], italic=True)
+    set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading3"], italic=True)
 
 
 def add_body_text(doc, text, first_paragraph=False):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    set_paragraph_spacing(p, before=0, after=0,
-                          line=CFG["line_spacing_body"], line_rule="auto")
+    set_paragraph_spacing(p, before=0, after=0, line=CFG["line_spacing_body"], line_rule="auto")
     set_paragraph_indent(p, first_line=CFG["first_line_indent_tw"])
-    _append_rich_text(p, text,
-                      font_name=CFG["font_body"],
-                      size_pt=CFG["size_body"])
+    _append_rich_text(p, text, font_name=CFG["font_body"], size_pt=CFG["size_body"])
 
 
 def _add_dynamic_prompt_placeholder(doc, title, prompt_text):
@@ -523,9 +542,13 @@ def _add_dynamic_prompt_placeholder(doc, title, prompt_text):
     set_paragraph_indent(p, first_line=0)
     placeholder = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_text}]"
     run = p.add_run(placeholder)
-    set_run_font(run, font_name=CFG["font_body"],
-                 size_pt=CFG["size_body"], italic=True,
-                 color=(0xFF, 0x00, 0x00))
+    set_run_font(
+        run,
+        font_name=CFG["font_body"],
+        size_pt=CFG["size_body"],
+        italic=True,
+        color=(0xFF, 0x00, 0x00),
+    )
 
 
 def add_figure(doc, fig_data):
@@ -543,11 +566,9 @@ def add_figure(doc, fig_data):
     if image_path and image_path.is_file():
         p_img = doc.add_paragraph()
         p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        set_paragraph_spacing(p_img, before=6, after=3,
-                              line=240, line_rule="auto")
+        set_paragraph_spacing(p_img, before=6, after=3, line=240, line_rule="auto")
         set_paragraph_indent(p_img, first_line=0)
-        usable_tw = (CFG["page_width_tw"] - CFG["margin_left_tw"]
-                     - CFG["margin_right_tw"])
+        usable_tw = CFG["page_width_tw"] - CFG["margin_left_tw"] - CFG["margin_right_tw"]
         usable_cm = usable_tw / 567.0
         max_width = min(usable_cm, 14.0)
         run = p_img.add_run()
@@ -558,15 +579,12 @@ def add_figure(doc, fig_data):
     # Caption: "Figure N. <judul>" center
     p_cap = doc.add_paragraph()
     p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p_cap, before=3, after=8,
-                          line=240, line_rule="auto")
+    set_paragraph_spacing(p_cap, before=3, after=8, line=240, line_rule="auto")
     set_paragraph_indent(p_cap, first_line=0)
     r_lbl = p_cap.add_run(f"{CFG['fig_prefix']} {image_number}. ")
-    set_run_font(r_lbl, font_name=CFG["font_caption"],
-                 size_pt=CFG["size_caption"])
+    set_run_font(r_lbl, font_name=CFG["font_caption"], size_pt=CFG["size_caption"])
     r_ttl = p_cap.add_run(title)
-    set_run_font(r_ttl, font_name=CFG["font_caption"],
-                 size_pt=CFG["size_caption"])
+    set_run_font(r_ttl, font_name=CFG["font_caption"], size_pt=CFG["size_caption"])
 
 
 def add_formula(doc, formula_data):
@@ -575,19 +593,16 @@ def add_formula(doc, formula_data):
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p, before=6, after=6,
-                          line=240, line_rule="auto")
+    set_paragraph_spacing(p, before=6, after=6, line=240, line_rule="auto")
     set_paragraph_indent(p, first_line=0)
 
     if not _append_inline_math(p, latex):
         run = p.add_run(latex)
-        set_run_font(run, font_name="Cambria Math",
-                     size_pt=CFG["size_body"], italic=True)
+        set_run_font(run, font_name="Cambria Math", size_pt=CFG["size_body"], italic=True)
 
     if formula_number:
         run = p.add_run(f"\t\t({formula_number})")
-        set_run_font(run, font_name=CFG["font_body"],
-                     size_pt=CFG["size_body"])
+        set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
 
 
 def _set_table_borders_three_line(table):
@@ -638,15 +653,12 @@ def add_table(doc, table_data):
     # Title (DI ATAS tabel)
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p_title, before=8, after=3,
-                          line=240, line_rule="auto")
+    set_paragraph_spacing(p_title, before=8, after=3, line=240, line_rule="auto")
     set_paragraph_indent(p_title, first_line=0)
     r_lbl = p_title.add_run(f"{CFG['tbl_prefix']} {table_number}. ")
-    set_run_font(r_lbl, font_name=CFG["font_caption"],
-                 size_pt=CFG["size_caption"])
+    set_run_font(r_lbl, font_name=CFG["font_caption"], size_pt=CFG["size_caption"])
     r_ttl = p_title.add_run(title)
-    set_run_font(r_ttl, font_name=CFG["font_caption"],
-                 size_pt=CFG["size_caption"])
+    set_run_font(r_ttl, font_name=CFG["font_caption"], size_pt=CFG["size_caption"])
 
     num_cols = len(headers)
     num_rows = len(rows) + 1
@@ -659,12 +671,10 @@ def add_table(doc, table_data):
         cell.text = ""
         p = cell.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        set_paragraph_spacing(p, before=0, after=0,
-                              line=240, line_rule="auto")
+        set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
         set_paragraph_indent(p, first_line=0)
         run = p.add_run(str(header))
-        set_run_font(run, font_name=CFG["font_body"],
-                     size_pt=CFG["size_caption"], bold=True)
+        set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_caption"], bold=True)
 
     for row_idx, row_data in enumerate(rows):
         for col_idx, value in enumerate(row_data):
@@ -674,16 +684,14 @@ def add_table(doc, table_data):
             cell.text = ""
             p = cell.paragraphs[0]
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            set_paragraph_spacing(p, before=0, after=0,
-                                  line=240, line_rule="auto")
+            set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
             set_paragraph_indent(p, first_line=0)
-            _append_rich_text(p, str(value),
-                              font_name=CFG["font_body"],
-                              size_pt=CFG["size_caption"])
+            _append_rich_text(
+                p, str(value), font_name=CFG["font_body"], size_pt=CFG["size_caption"]
+            )
 
     p_spacer = doc.add_paragraph()
-    set_paragraph_spacing(p_spacer, before=0, after=0,
-                          line=240, line_rule="auto")
+    set_paragraph_spacing(p_spacer, before=0, after=0, line=240, line_rule="auto")
     set_paragraph_indent(p_spacer, first_line=0)
 
 
@@ -699,12 +707,10 @@ def add_references(doc, data):
     # Heading "REFERENCES"
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_paragraph_spacing(p, before=12, after=6,
-                          line=240, line_rule="auto")
+    set_paragraph_spacing(p, before=12, after=6, line=240, line_rule="auto")
     set_paragraph_indent(p, first_line=0)
     run = p.add_run(ref_title.upper())
-    set_run_font(run, font_name=CFG["font_heading"],
-                 size_pt=CFG["size_heading1"], bold=True)
+    set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading1"], bold=True)
 
     if not ref_content:
         ref_content = ["[1] Author, Title, Journal, Year."]
@@ -715,15 +721,13 @@ def add_references(doc, data):
             continue
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        set_paragraph_spacing(p, before=0, after=CFG["ref_after_pt"],
-                              line=240, line_rule="auto")
-        set_paragraph_indent(p,
-                             left=CFG["ref_left_indent_tw"],
-                             hanging=CFG["ref_hanging_indent_tw"],
-                             first_line=None)
-        _append_rich_text(p, ref_text,
-                          font_name=CFG["font_reference"],
-                          size_pt=CFG["size_reference"])
+        set_paragraph_spacing(p, before=0, after=CFG["ref_after_pt"], line=240, line_rule="auto")
+        set_paragraph_indent(
+            p, left=CFG["ref_left_indent_tw"], hanging=CFG["ref_hanging_indent_tw"], first_line=None
+        )
+        _append_rich_text(
+            p, ref_text, font_name=CFG["font_reference"], size_pt=CFG["size_reference"]
+        )
 
 
 def process_content_item(doc, item, first_paragraph=False):
@@ -771,7 +775,7 @@ def process_section(doc, section_data, section_key, section_index):
         if (
             key.startswith(section_key)
             and len(key) > len(section_key)
-            and key[len(section_key):].isalpha()
+            and key[len(section_key) :].isalpha()
         ):
             subsection_keys.append(key)
     subsection_keys.sort()
@@ -782,9 +786,7 @@ def process_section(doc, section_data, section_key, section_index):
             continue
         sub_title = sub_data.get("title", "")
         if sub_title:
-            add_subsection_heading(doc, sub_title,
-                                   section_index=section_index,
-                                   sub_index=sub_idx)
+            add_subsection_heading(doc, sub_title, section_index=section_index, sub_index=sub_idx)
 
         sub_content = sub_data.get("content", [])
         sub_first_done = False
@@ -809,7 +811,7 @@ def process_section(doc, section_data, section_key, section_index):
             if (
                 key.startswith(sub_key)
                 and len(key) > len(sub_key)
-                and key[len(sub_key):].isdigit()
+                and key[len(sub_key) :].isdigit()
             ):
                 subsub_keys.append(key)
         subsub_keys.sort()
@@ -820,10 +822,13 @@ def process_section(doc, section_data, section_key, section_index):
                 continue
             ss_title = ss_data.get("title", "")
             if ss_title:
-                add_subsubsection_heading(doc, ss_title,
-                                          section_index=section_index,
-                                          sub_index=sub_idx,
-                                          subsub_index=ss_idx)
+                add_subsubsection_heading(
+                    doc,
+                    ss_title,
+                    section_index=section_index,
+                    sub_index=sub_idx,
+                    subsub_index=ss_idx,
+                )
             ss_content = ss_data.get("content", [])
             ss_first_done = False
             if isinstance(ss_content, list):
@@ -834,8 +839,7 @@ def process_section(doc, section_data, section_key, section_index):
                         ss_first_done = True
                     elif isinstance(item, dict):
                         if str(item.get("id", "")).lower() == "text":
-                            process_content_item(doc, item,
-                                                 first_paragraph=is_first)
+                            process_content_item(doc, item, first_paragraph=is_first)
                             ss_first_done = True
                         else:
                             process_content_item(doc, item)
@@ -873,6 +877,7 @@ def ensure_sectpr(doc):
 # ============================================================
 # MAIN
 # ============================================================
+
 
 def generate():
     data = load_json()

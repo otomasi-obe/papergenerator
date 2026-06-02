@@ -1,0 +1,15 @@
+{
+  "fetcher": "cambridge",
+  "test_time": "2026-05-29T12:54:37.235026",
+  "test_query": "mathematics",
+  "status": "no_results",
+  "papers_found": 0,
+  "papers_with_urls": 0,
+  "valid_download_links": 0,
+  "invalid_download_links": 0,
+  "errors": [
+    "No papers found for query"
+  ],
+  "papers": [],
+  "download_link_checks": []
+}

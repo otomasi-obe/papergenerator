@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
-const PORT = process.env.PORT || 8000;
+const PORT = 8000;
 const BACKEND_HOST = 'localhost';
 const BACKEND_PORT = 8001;
 const DIST_DIR = path.join(__dirname, 'dist');

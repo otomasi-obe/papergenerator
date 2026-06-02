@@ -1,0 +1,78 @@
+{
+  "fetcher": "arxiv",
+  "test_time": "2026-05-29T12:53:34.285836",
+  "test_query": "deep learning",
+  "status": "success",
+  "papers_found": 3,
+  "papers_with_urls": 3,
+  "valid_download_links": 3,
+  "invalid_download_links": 0,
+  "errors": [],
+  "papers": [
+    {
+      "title": "Learn to Accumulate Evidence from All Training Samples: Theory and Practice",
+      "authors": [
+        "Deep Pandey",
+        "Qi Yu"
+      ],
+      "year": 2023,
+      "doi": null,
+      "url": "https://arxiv.org/pdf/2306.11113v2.pdf",
+      "is_open_access": true,
+      "venue": null
+    },
+    {
+      "title": "The Modern Mathematics of Deep Learning",
+      "authors": [
+        "Julius Berner",
+        "Philipp Grohs",
+        "Gitta Kutyniok",
+        "Philipp Petersen"
+      ],
+      "year": 2021,
+      "doi": "10.1017/9781009025096.002",
+      "url": "https://arxiv.org/pdf/2105.04026v2.pdf",
+      "is_open_access": true,
+      "venue": "Mathematical Aspects of Deep Learning, pp. 1-111. Cambridge University Press, 2022"
+    },
+    {
+      "title": "Deep Learning and Computational Physics (Lecture Notes)",
+      "authors": [
+        "Deep Ray",
+        "Orazio Pinti",
+        "Assad A. Oberai"
+      ],
+      "year": 2023,
+      "doi": null,
+      "url": "https://arxiv.org/pdf/2301.00942v1.pdf",
+      "is_open_access": true,
+      "venue": null
+    }
+  ],
+  "download_link_checks": [
+    {
+      "paper_title": "Learn to Accumulate Evidence from All Training Samples: Theory and Practice",
+      "url": "https://arxiv.org/pdf/2306.11113v2.pdf",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "accessible": true
+    },
+    {
+      "paper_title": "The Modern Mathematics of Deep Learning",
+      "url": "https://arxiv.org/pdf/2105.04026v2.pdf",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "accessible": true
+    },
+    {
+      "paper_title": "Deep Learning and Computational Physics (Lecture Notes)",
+      "url": "https://arxiv.org/pdf/2301.00942v1.pdf",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/pdf",
+      "accessible": true
+    }
+  ]
+}

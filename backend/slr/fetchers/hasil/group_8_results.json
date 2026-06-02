@@ -1,0 +1,150 @@
+[
+  {
+    "fetcher": "sinta",
+    "test_time": "2026-05-29T23:11:08.165754",
+    "test_query": "pendidikan",
+    "status": "success",
+    "papers_found": 5,
+    "papers_with_urls": 5,
+    "valid_download_links": 5,
+    "invalid_download_links": 0,
+    "errors": [],
+    "papers": [
+      {
+        "title": "KETERKAITAN ANTARA POLITIK PENDIDIKAN, KEBIJAKAN PENDIDIKAN DAN KEKUASAAN SERTA IMPLIKASINYA PADA PRAKTEK PENDIDIKAN DI LEMBAGA PENDIDIKAN (ISLAM): KETERKAITAN ANTARA POLITIK PENDIDIKAN, KEBIJAKAN PENDIDIKAN DAN KEKUASAAN SERTA IMPLIKASINYA PADA PRAKTEK PENDIDIKAN DI LEMBAGA PENDIDIKAN (ISLAM)",
+        "authors": [
+          "Damanhrui",
+          "Shodikin",
+          "Yacub, Jamiluddin",
+          "Permatasari, Ermanita",
+          "Kholijah, Siti"
+        ],
+        "year": 2024,
+        "doi": null,
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/4107696",
+        "is_open_access": true,
+        "venue": "JPPG"
+      },
+      {
+        "title": "a Peran Supervisi Pendidikan dalam Meningkatkan Kualitas Pembelajaran: Pengertian Supervisi Pendidikan, Ruang Lingkup Supervisi Pendidikan, Tujuan dan Manfaat Supervisi Pendidikan, Prinsip-prinsip Supervisi Pendidikan, Peran Supervisi Pendidikan, Peran Supervisi Pendidikan dalam Meningkatkan Kualitas Pembelajaran",
+        "authors": [
+          "Nur Arifin, Rabiatul Adawiyah",
+          "Yakub , Ali Mustopa",
+          "Ropiah, siti",
+          "Asikin, Nurul",
+          "Siregar, Riskiani"
+        ],
+        "year": 2025,
+        "doi": null,
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/5891401",
+        "is_open_access": true,
+        "venue": "MATAAZIR (Jurnal Administrasi dan Manajemen Pendidikan)"
+      },
+      {
+        "title": "PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN KARAKTER ANAK USIA SEKOL",
+        "authors": [
+          "Simbolon, Erikson"
+        ],
+        "year": 2020,
+        "doi": null,
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/4392411",
+        "is_open_access": true,
+        "venue": "In Veritate Lux : Jurnal Ilmu Kateketik Pastoral Teologi, Pendidikan, Antropologi, dan Budaya"
+      },
+      {
+        "title": "PELAKSANAAN STANDAR PENDIDIKAN INKLUSIF OLEH UNIVERSITAS BRAWIJAYA (Implementasi Peraturan Menteri Pendidikan Dan Kebudayaan Nomor 46 Tahun 2014 tentang Pendidikan Khusus, Pendidikan Layanan Khusus dan/atau Pembelajaran Layanan Khusus Pada Pendidikan Ting",
+        "authors": [
+          "Bintang Ibrahim Nur"
+        ],
+        "year": null,
+        "doi": null,
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/1222199",
+        "is_open_access": true,
+        "venue": "Jurnal Mahasiswa Fakultas Hukum"
+      },
+      {
+        "title": "Kritik Tafsir Ayat-Ayat Pendidikan terhadap Pendidikan Segregasi, Pendidikan Inklusif, dan Pendidikan Integrasi (Studi Pendidikan di Perguruan Tinggi Yogyakarta)",
+        "authors": [
+          "Aris Nurlailiyah"
+        ],
+        "year": 2015,
+        "doi": null,
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/2709024",
+        "is_open_access": true,
+        "venue": "An-Nur : Jurnal Studi Islam"
+      }
+    ],
+    "download_link_checks": [
+      {
+        "paper_title": "KETERKAITAN ANTARA POLITIK PENDIDIKAN, KEBIJAKAN PENDIDIKAN DAN KEKUASAAN SERTA IMPLIKASINYA PADA PR",
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/4107696",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "accessible": true
+      },
+      {
+        "paper_title": "a Peran Supervisi Pendidikan dalam Meningkatkan Kualitas Pembelajaran: Pengertian Supervisi Pendidik",
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/5891401",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "accessible": true
+      },
+      {
+        "paper_title": "PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN KARAKTER ANAK USIA SEKOLAH DASAR PENDIDIKAN K",
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/4392411",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "accessible": true
+      },
+      {
+        "paper_title": "PELAKSANAAN STANDAR PENDIDIKAN INKLUSIF OLEH UNIVERSITAS BRAWIJAYA (Implementasi Peraturan Menteri P",
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/1222199",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "accessible": true
+      },
+      {
+        "paper_title": "Kritik Tafsir Ayat-Ayat Pendidikan terhadap Pendidikan Segregasi, Pendidikan Inklusif, dan Pendidika",
+        "url": "https://garuda.kemdiktisaintek.go.id/documents/detail/2709024",
+        "status": "accessible",
+        "status_code": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "accessible": true
+      }
+    ]
+  },
+  {
+    "fetcher": "springer",
+    "test_time": "2026-05-29T23:11:13.301170",
+    "test_query": "computational biology",
+    "status": "no_results",
+    "papers_found": 0,
+    "papers_with_urls": 0,
+    "valid_download_links": 0,
+    "invalid_download_links": 0,
+    "errors": [
+      "No papers found for query"
+    ],
+    "papers": [],
+    "download_link_checks": []
+  },
+  {
+    "fetcher": "taylor_francis",
+    "test_time": "2026-05-29T23:11:13.388417",
+    "test_query": "social psychology",
+    "status": "no_results",
+    "papers_found": 0,
+    "papers_with_urls": 0,
+    "valid_download_links": 0,
+    "invalid_download_links": 0,
+    "errors": [
+      "No papers found for query"
+    ],
+    "papers": [],
+    "download_link_checks": []
+  }
+]

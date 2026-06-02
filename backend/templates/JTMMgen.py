@@ -75,9 +75,16 @@ def _set_run_font(run, font_name: str) -> None:
         rfonts.set(qn(f"w:{attr}"), font_name)
 
 
-def _format_run(run, *, font_name: str = BODY_FONT, size_pt: float = 12.0,
-                bold: bool | None = None, italic: bool | None = None,
-                underline: bool | None = None, superscript: bool = False) -> None:
+def _format_run(
+    run,
+    *,
+    font_name: str = BODY_FONT,
+    size_pt: float = 12.0,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    underline: bool | None = None,
+    superscript: bool = False,
+) -> None:
     _set_run_font(run, font_name)
     run.font.size = Pt(size_pt)
     if bold is not None:
@@ -90,10 +97,17 @@ def _format_run(run, *, font_name: str = BODY_FONT, size_pt: float = 12.0,
         run.font.superscript = True
 
 
-def _append_text_run(paragraph, text: str, *, font_name: str = BODY_FONT,
-                     size_pt: float = 12.0, bold: bool | None = None,
-                     italic: bool | None = None, underline: bool | None = None,
-                     superscript: bool = False):
+def _append_text_run(
+    paragraph,
+    text: str,
+    *,
+    font_name: str = BODY_FONT,
+    size_pt: float = 12.0,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    underline: bool | None = None,
+    superscript: bool = False,
+):
     run = paragraph.add_run(text)
     _format_run(
         run,
@@ -107,8 +121,9 @@ def _append_text_run(paragraph, text: str, *, font_name: str = BODY_FONT,
     return run
 
 
-def _set_paragraph_spacing(paragraph, *, before: float | None = None,
-                           after: float | None = None) -> None:
+def _set_paragraph_spacing(
+    paragraph, *, before: float | None = None, after: float | None = None
+) -> None:
     if before is not None:
         paragraph.paragraph_format.space_before = Pt(before)
     if after is not None:
@@ -134,8 +149,8 @@ def _clear_document_body(doc: Document) -> None:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -198,7 +213,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing].strip()
+                formula = normalized[index + 1 : closing].strip()
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -254,16 +269,25 @@ def _append_inline_math(paragraph, latex: str) -> bool:
     return True
 
 
-def _append_rich_text(paragraph, text: str, *, font_name: str = BODY_FONT,
-                      size_pt: float = 12.0, bold: bool = False,
-                      italic: bool = False, underline: bool = False) -> None:
+def _append_rich_text(
+    paragraph,
+    text: str,
+    *,
+    font_name: str = BODY_FONT,
+    size_pt: float = 12.0,
+    bold: bool = False,
+    italic: bool = False,
+    underline: bool = False,
+) -> None:
     for token in _iter_rich_tokens(text):
         if token["kind"] == "linebreak":
             paragraph.add_run().add_break()
             continue
         if token["kind"] == "math":
             if not _append_inline_math(paragraph, token["value"]):
-                _append_text_run(paragraph, token["value"], font_name=font_name, size_pt=size_pt, italic=True)
+                _append_text_run(
+                    paragraph, token["value"], font_name=font_name, size_pt=size_pt, italic=True
+                )
             continue
         _append_text_run(
             paragraph,
@@ -287,7 +311,9 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
 
 
 def _placeholder_text(label: str) -> str:
-    return f"Teks placeholder untuk {label} ditambahkan karena data tersebut tidak tersedia di JSON."
+    return (
+        f"Teks placeholder untuk {label} ditambahkan karena data tersebut tidak tersedia di JSON."
+    )
 
 
 def _default_english_abstract(config: dict) -> str:
@@ -367,23 +393,29 @@ def _author_entries(config: dict) -> list[dict]:
         email = str(author.get("email", "")).strip()
         if not any((name, affiliation, location, email)):
             continue
-        entries.append({
-            "name": name or _placeholder_text("nama penulis"),
-            "affiliation": affiliation or _placeholder_text("afiliasi penulis"),
-            "location": location or _placeholder_text("lokasi penulis"),
-            "email": email or f"placeholder{len(entries) + 1}@example.com",
-        })
+        entries.append(
+            {
+                "name": name or _placeholder_text("nama penulis"),
+                "affiliation": affiliation or _placeholder_text("afiliasi penulis"),
+                "location": location or _placeholder_text("lokasi penulis"),
+                "email": email or f"placeholder{len(entries) + 1}@example.com",
+            }
+        )
     if entries:
         return entries
-    return [{
-        "name": "Nama Penulis Placeholder",
-        "affiliation": "Afiliasi Placeholder",
-        "location": "Kota, Negara",
-        "email": "placeholder@example.com",
-    }]
+    return [
+        {
+            "name": "Nama Penulis Placeholder",
+            "affiliation": "Afiliasi Placeholder",
+            "location": "Kota, Negara",
+            "email": "placeholder@example.com",
+        }
+    ]
 
 
-def _group_affiliations(authors: list[dict]) -> tuple[dict[tuple[str, str], int], list[tuple[tuple[str, str], int]]]:
+def _group_affiliations(
+    authors: list[dict],
+) -> tuple[dict[tuple[str, str], int], list[tuple[tuple[str, str], int]]]:
     mapping: dict[tuple[str, str], int] = {}
     ordered: list[tuple[tuple[str, str], int]] = []
     next_index = 1
@@ -437,7 +469,9 @@ def _add_authors(doc: Document, config: dict) -> None:
         _set_para_style(aff_paragraph, "TTPAddress")
         aff_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _set_paragraph_spacing(aff_paragraph, before=3.0, after=0.0)
-        _append_text_run(aff_paragraph, str(number), font_name=TITLE_FONT, size_pt=11.0, superscript=True)
+        _append_text_run(
+            aff_paragraph, str(number), font_name=TITLE_FONT, size_pt=11.0, superscript=True
+        )
         details = ", ".join(part for part in (affiliation, location) if part)
         _append_text_run(aff_paragraph, details, font_name=TITLE_FONT, size_pt=11.0)
 
@@ -448,14 +482,26 @@ def _add_authors(doc: Document, config: dict) -> None:
     for index, author in enumerate(authors):
         if index > 0:
             _append_text_run(email_paragraph, ", ", font_name=TITLE_FONT, size_pt=11.0)
-        _append_text_run(email_paragraph, _email_letter(index), font_name=TITLE_FONT, size_pt=11.0, superscript=True)
+        _append_text_run(
+            email_paragraph,
+            _email_letter(index),
+            font_name=TITLE_FONT,
+            size_pt=11.0,
+            superscript=True,
+        )
         _append_text_run(email_paragraph, author["email"], font_name=TITLE_FONT, size_pt=11.0)
     _append_text_run(email_paragraph, " (corresponding author)", font_name=TITLE_FONT, size_pt=11.0)
 
 
-def _add_abstract_block(doc: Document, *, heading: str, text: str,
-                        keyword_label: str, keywords: list[str],
-                        english: bool = False) -> None:
+def _add_abstract_block(
+    doc: Document,
+    *,
+    heading: str,
+    text: str,
+    keyword_label: str,
+    keywords: list[str],
+    english: bool = False,
+) -> None:
     paragraph = doc.add_paragraph()
     _set_para_style(paragraph, "TTPAbstract")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
@@ -483,7 +529,9 @@ def _add_front_matter(doc: Document, config: dict) -> None:
     _add_title(doc, config)
     _add_authors(doc, config)
 
-    abstract_id = str(config.get("abstract", "")).strip() or _placeholder_text("abstrak bahasa Indonesia")
+    abstract_id = str(config.get("abstract", "")).strip() or _placeholder_text(
+        "abstrak bahasa Indonesia"
+    )
     keywords = [str(item).strip() for item in config.get("keywords", []) if str(item).strip()]
     if not keywords:
         keywords = ["keyword placeholder", "manuscript placeholder"]
@@ -567,8 +615,15 @@ def _set_table_borders(table) -> None:
         element.set(qn("w:color"), "000000")
 
 
-def _fill_cell(cell, text: str, *, bold: bool = False, italic: bool = False,
-               align=WD_ALIGN_PARAGRAPH.CENTER, size_pt: float = 10.0) -> None:
+def _fill_cell(
+    cell,
+    text: str,
+    *,
+    bold: bool = False,
+    italic: bool = False,
+    align=WD_ALIGN_PARAGRAPH.CENTER,
+    size_pt: float = 10.0,
+) -> None:
     cell.text = ""
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     paragraph = cell.paragraphs[0]
@@ -584,20 +639,25 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
         _ai_run.italic = True
         _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
-    title = str(item.get("Title") or item.get("title") or "").strip() or _placeholder_text("judul gambar")
+    title = str(item.get("Title") or item.get("title") or "").strip() or _placeholder_text(
+        "judul gambar"
+    )
     number = str(item.get("ImageNumber") or item.get("number") or "").strip()
     if not number:
         state.figure_number += 1
         number = str(state.figure_number)
     else:
-        state.figure_number = max(state.figure_number, int(number)) if number.isdigit() else state.figure_number + 1
+        state.figure_number = (
+            max(state.figure_number, int(number)) if number.isdigit() else state.figure_number + 1
+        )
 
     image_paragraph = doc.add_paragraph()
     image_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -638,7 +698,9 @@ def _add_equation(doc: Document, item: dict, state: RenderState) -> None:
     paragraph.paragraph_format.left_indent = Pt(283 / 20)
     paragraph.paragraph_format.first_line_indent = Pt(0)
     paragraph.paragraph_format.right_indent = Pt(0)
-    paragraph.paragraph_format.tab_stops.add_tab_stop(Pt(EQUATION_RIGHT_TAB_PT), WD_TAB_ALIGNMENT.RIGHT)
+    paragraph.paragraph_format.tab_stops.add_tab_stop(
+        Pt(EQUATION_RIGHT_TAB_PT), WD_TAB_ALIGNMENT.RIGHT
+    )
     _set_paragraph_spacing(paragraph, before=3.0, after=3.0)
     if not _append_inline_math(paragraph, latex):
         _append_text_run(paragraph, latex, size_pt=12.0, italic=True)
@@ -651,7 +713,10 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
     rows = [list(map(str, row)) for row in (item.get("Rows") or item.get("rows") or [])]
     if not headers:
         headers = ["Kolom 1", "Kolom 2"]
-        rows = [["Placeholder baris 1", "Placeholder baris 1"], ["Placeholder baris 2", "Placeholder baris 2"]]
+        rows = [
+            ["Placeholder baris 1", "Placeholder baris 1"],
+            ["Placeholder baris 2", "Placeholder baris 2"],
+        ]
 
     number = str(item.get("TableNumber") or item.get("number") or "").strip()
     if not number:
@@ -659,7 +724,9 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
         number = _roman_numeral(state.table_number)
     else:
         state.table_number += 1
-    title = str(item.get("Title") or item.get("title") or "").strip() or _placeholder_text("judul tabel")
+    title = str(item.get("Title") or item.get("title") or "").strip() or _placeholder_text(
+        "judul tabel"
+    )
 
     caption = doc.add_paragraph()
     caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -684,8 +751,9 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
     doc.add_paragraph()
 
 
-def _render_content_item(doc: Document, item: dict, json_path: Path,
-                         first_text: bool, state: RenderState) -> bool:
+def _render_content_item(
+    doc: Document, item: dict, json_path: Path, first_text: bool, state: RenderState
+) -> bool:
     item_id = str(item.get("id", "")).strip().lower()
     if item_id == "text":
         text = str(item.get("text", "")).strip()
@@ -704,8 +772,9 @@ def _render_content_item(doc: Document, item: dict, json_path: Path,
     return first_text
 
 
-def _render_content(doc: Document, content, json_path: Path,
-                    state: RenderState, *, insert_placeholder: bool = True) -> None:
+def _render_content(
+    doc: Document, content, json_path: Path, state: RenderState, *, insert_placeholder: bool = True
+) -> None:
     first_text = True
     rendered_any = False
     if isinstance(content, str):
@@ -766,9 +835,13 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
             subsection = section.get(subsection_key, {})
             if not isinstance(subsection, dict):
                 continue
-            subsection_title = str(subsection.get("title", "")).strip() or _placeholder_text(f"judul {subsection_key}")
+            subsection_title = str(subsection.get("title", "")).strip() or _placeholder_text(
+                f"judul {subsection_key}"
+            )
             _add_subsection_heading(doc, f"{section_index}.{subsection_index}", subsection_title)
-            _render_content(doc, subsection.get("content", []), json_path, state, insert_placeholder=True)
+            _render_content(
+                doc, subsection.get("content", []), json_path, state, insert_placeholder=True
+            )
 
 
 def _add_references(doc: Document, config: dict) -> None:
@@ -778,7 +851,9 @@ def _add_references(doc: Document, config: dict) -> None:
     if isinstance(references, dict):
         title = str(references.get("title", title)).strip() or title
         content = references.get("content", [])
-    _add_section_heading(doc, str(len([key for key in config if re.fullmatch(r"section\d+", key)]) + 1), title)
+    _add_section_heading(
+        doc, str(len([key for key in config if re.fullmatch(r"section\d+", key)]) + 1), title
+    )
 
     items = []
     if isinstance(content, list):
@@ -797,7 +872,9 @@ def _add_references(doc: Document, config: dict) -> None:
         paragraph = doc.add_paragraph()
         _set_para_style(paragraph, "TTPReference")
         paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        _set_hanging_indent_twips(paragraph, left_tw=REFERENCE_HANGING_TW, hanging_tw=REFERENCE_HANGING_TW)
+        _set_hanging_indent_twips(
+            paragraph, left_tw=REFERENCE_HANGING_TW, hanging_tw=REFERENCE_HANGING_TW
+        )
         _set_paragraph_spacing(paragraph, before=0.0, after=6.0)
         paragraph.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
         paragraph.paragraph_format.line_spacing = Pt(REFERENCE_LINE_PT)
@@ -805,9 +882,11 @@ def _add_references(doc: Document, config: dict) -> None:
         _append_rich_text(paragraph, text, size_pt=12.0)
 
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
         Path(output_path)
@@ -840,7 +919,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     for json_file in json_files:

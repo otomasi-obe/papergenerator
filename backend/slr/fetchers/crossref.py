@@ -1,8 +1,10 @@
 """Fetcher untuk Crossref - https://api.crossref.org"""
+
 import html
 import os
 import re
 from typing import Iterable
+
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
@@ -37,25 +39,43 @@ def _parse_item(item: dict) -> Paper | None:
         abstract = re.sub(r"<[^>]+>", "", abstract).strip()
         abstract = html.unescape(abstract)
 
+    # Build PDF URL: prioritize link array, then DOI
+    doi = item.get("DOI")
+    pdf_url = None
+    
+    # Check for direct PDF links in link array
+    links = item.get("link", [])
+    for link in links:
+        if link.get("content-type") == "application/pdf":
+            pdf_url = link.get("URL")
+            break
+    
+    # Fallback to DOI resolver
+    if not pdf_url and doi:
+        pdf_url = f"https://doi.org/{doi}"
+    
+    # Last resort: use URL field
+    if not pdf_url:
+        pdf_url = item.get("URL")
+
     return Paper(
         source="crossref",
-        source_id=item.get("DOI", ""),
+        source_id=doi or "",
         title=title,
         authors=authors,
         abstract=abstract,
         year=year,
         venue=venue,
         venue_type=item.get("type"),
-        doi=item.get("DOI"),
-        url=item.get("URL"),
+        doi=doi,
+        url=pdf_url,
         citations=item.get("is-referenced-by-count"),
         type=item.get("type"),
         publisher=item.get("publisher"),
     )
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Filter contoh: {'type': 'journal-article', 'from-pub-date': '2020'}"""
     rl = RateLimiter(0.25)
     per_page = min(limit, 100)

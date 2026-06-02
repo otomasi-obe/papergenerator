@@ -2,7 +2,9 @@
 ICONIEgen.py — Generator DOCX untuk International Conference of Islamic Education (ICONIE).
 Template pakai default style (style=''), formatting di-set per-paragraph.
 """
+
 from __future__ import annotations
+
 import json
 import re
 import shutil
@@ -34,33 +36,57 @@ SIZE_CAPTION = 10
 def _strip_latex(text: str) -> str:
     if not text:
         return text
-    text = re.sub(r'\$([^$]*)\$', r'\1', text)
-    text = re.sub(r'\\(mathrm|mathbf|mathit|text|mathsf|mathtt)\{([^}]*)\}', r'\2', text)
-    text = re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1)/(\2)', text)
-    text = re.sub(r'\\sqrt\{([^}]*)\}', r'√(\1)', text)
-    text = re.sub(r'_\{([^}]*)\}', r'_\1', text)
-    text = re.sub(r'\^\{([^}]*)\}', r'^\1', text)
+    text = re.sub(r"\$([^$]*)\$", r"\1", text)
+    text = re.sub(r"\\(mathrm|mathbf|mathit|text|mathsf|mathtt)\{([^}]*)\}", r"\2", text)
+    text = re.sub(r"\\frac\{([^}]*)\}\{([^}]*)\}", r"(\1)/(\2)", text)
+    text = re.sub(r"\\sqrt\{([^}]*)\}", r"√(\1)", text)
+    text = re.sub(r"_\{([^}]*)\}", r"_\1", text)
+    text = re.sub(r"\^\{([^}]*)\}", r"^\1", text)
     replacements = {
-        r'\\approx': '≈', r'\\times': '×', r'\\cdot': '·',
-        r'\\leq': '≤', r'\\geq': '≥', r'\\neq': '≠',
-        r'\\infty': '∞', r'\\pm': '±', r'\\circ': '°',
-        r'\\alpha': 'α', r'\\beta': 'β', r'\\gamma': 'γ',
-        r'\\theta': 'θ', r'\\lambda': 'λ', r'\\mu': 'μ',
-        r'\\pi': 'π', r'\\sigma': 'σ', r'\\omega': 'ω',
-        r'\\Delta': 'Δ', r'\\Sigma': 'Σ',
-        r'\\sum': 'Σ', r'\\int': '∫', r'\\partial': '∂',
-        r'\\quad': '  ', r'\\qquad': '    ',
-        r'\\dots': '...', r'\\ldots': '...',
-        r'\\left': '', r'\\right': '',
-        r'\\overline': '', r'\\underline': '', r'\\hat': '',
-        r'\\vec': '', r'\\bar': '', r'\\dot': '',
-        r'\\displaystyle': '', r'\\,': ' ',
-        r'\\begin\{[^}]*\}': '', r'\\end\{[^}]*\}': '',
+        r"\\approx": "≈",
+        r"\\times": "×",
+        r"\\cdot": "·",
+        r"\\leq": "≤",
+        r"\\geq": "≥",
+        r"\\neq": "≠",
+        r"\\infty": "∞",
+        r"\\pm": "±",
+        r"\\circ": "°",
+        r"\\alpha": "α",
+        r"\\beta": "β",
+        r"\\gamma": "γ",
+        r"\\theta": "θ",
+        r"\\lambda": "λ",
+        r"\\mu": "μ",
+        r"\\pi": "π",
+        r"\\sigma": "σ",
+        r"\\omega": "ω",
+        r"\\Delta": "Δ",
+        r"\\Sigma": "Σ",
+        r"\\sum": "Σ",
+        r"\\int": "∫",
+        r"\\partial": "∂",
+        r"\\quad": "  ",
+        r"\\qquad": "    ",
+        r"\\dots": "...",
+        r"\\ldots": "...",
+        r"\\left": "",
+        r"\\right": "",
+        r"\\overline": "",
+        r"\\underline": "",
+        r"\\hat": "",
+        r"\\vec": "",
+        r"\\bar": "",
+        r"\\dot": "",
+        r"\\displaystyle": "",
+        r"\\,": " ",
+        r"\\begin\{[^}]*\}": "",
+        r"\\end\{[^}]*\}": "",
     }
     for pat, repl in replacements.items():
         text = re.sub(pat, repl, text)
-    text = re.sub(r'\\[a-zA-Z]+', '', text)
-    text = re.sub(r'[{}]', '', text)
+    text = re.sub(r"\\[a-zA-Z]+", "", text)
+    text = re.sub(r"[{}]", "", text)
     return text
 
 
@@ -76,8 +102,14 @@ def clear_body(doc):
         body.remove(child)
 
 
-def _set_run_font(run, font: str = FONT_DEFAULT, size_pt: float = SIZE_BODY,
-                  bold: bool = False, italic: bool = False, superscript: bool = False):
+def _set_run_font(
+    run,
+    font: str = FONT_DEFAULT,
+    size_pt: float = SIZE_BODY,
+    bold: bool = False,
+    italic: bool = False,
+    superscript: bool = False,
+):
     run.font.name = font
     rPr = run._element.get_or_add_rPr()
     rFonts = rPr.find(qn("w:rFonts"))
@@ -94,9 +126,17 @@ def _set_run_font(run, font: str = FONT_DEFAULT, size_pt: float = SIZE_BODY,
         run.font.superscript = True
 
 
-def _set_para_spacing(paragraph, *, before_pt: float = None, after_pt: float = None,
-                       line_tw: int = None, line_rule: str = "auto",
-                       first_line_tw: int = None, left_tw: int = None, right_tw: int = None):
+def _set_para_spacing(
+    paragraph,
+    *,
+    before_pt: float = None,
+    after_pt: float = None,
+    line_tw: int = None,
+    line_rule: str = "auto",
+    first_line_tw: int = None,
+    left_tw: int = None,
+    right_tw: int = None,
+):
     pf = paragraph.paragraph_format
     if before_pt is not None:
         pf.space_before = Pt(before_pt)
@@ -142,7 +182,11 @@ def add_title(doc, data):
 
 def add_authors(doc, data):
     authors = data.get("authors") or [
-        {"name": "Author Name", "affiliation": "Department, University", "email": "author@email.ac.id"}
+        {
+            "name": "Author Name",
+            "affiliation": "Department, University",
+            "email": "author@email.ac.id",
+        }
     ]
 
     affil_map = {}
@@ -192,8 +236,7 @@ def add_abstract(doc, data):
     abstract = (data.get("abstract") or "Abstract text goes here.").strip()
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    _set_para_spacing(p, before_pt=6, after_pt=3, line_tw=276,
-                      left_tw=284, right_tw=140)
+    _set_para_spacing(p, before_pt=6, after_pt=3, line_tw=276, left_tw=284, right_tw=140)
     r = p.add_run("Abstract: ")
     _set_run_font(r, size_pt=SIZE_ABSTRACT, bold=True, italic=True)
     r = p.add_run(_strip_latex(abstract))
@@ -207,8 +250,7 @@ def add_keywords(doc, data):
     text = ", ".join(kw)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    _set_para_spacing(p, before_pt=3, after_pt=6, line_tw=276,
-                      left_tw=284, right_tw=140)
+    _set_para_spacing(p, before_pt=3, after_pt=6, line_tw=276, left_tw=284, right_tw=140)
     r = p.add_run("Keywords: ")
     _set_run_font(r, size_pt=SIZE_ABSTRACT, bold=True, italic=True)
     r = p.add_run(text)
@@ -282,7 +324,7 @@ def add_table(doc, table_data: dict):
         _set_run_font(r, size_pt=SIZE_CAPTION, bold=True)
 
     for row_idx, row_data in enumerate(rows, start=1):
-        for col_idx, value in enumerate(row_data[:len(headers)]):
+        for col_idx, value in enumerate(row_data[: len(headers)]):
             cell = table.rows[row_idx].cells[col_idx]
             cell.text = ""
             para = cell.paragraphs[0]
@@ -399,8 +441,7 @@ def add_references(doc, data):
     for ref in items:
         rp = doc.add_paragraph()
         rp.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        _set_para_spacing(rp, before_pt=0, after_pt=3, line_tw=276,
-                          first_line_tw=-360, left_tw=360)
+        _set_para_spacing(rp, before_pt=0, after_pt=3, line_tw=276, first_line_tw=-360, left_tw=360)
         r = rp.add_run(str(ref))
         _set_run_font(r, size_pt=SIZE_CAPTION)
 

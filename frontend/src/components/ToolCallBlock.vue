@@ -42,28 +42,27 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
+import type { ToolCallBlockProps } from '../types/components'
 
-const props = defineProps({
-  toolCall: { type: Object, required: true }
-})
+const props = defineProps<ToolCallBlockProps>()
 
-const showResult = ref(false)
+const showResult = ref<boolean>(false)
 
-const statusColor = computed(() => {
+const statusColor = computed<string>(() => {
   if (props.toolCall.status === 'running') return 'bg-yellow-400 animate-pulse'
   if (props.toolCall.status === 'done') return 'bg-green-400'
   return 'bg-gray-400'
 })
 
-const statusLabel = computed(() => {
+const statusLabel = computed<string>(() => {
   if (props.toolCall.status === 'running') return 'running'
   if (props.toolCall.status === 'done') return 'completed'
   return ''
 })
 
-const formattedArgs = computed(() => {
+const formattedArgs = computed<string>(() => {
   if (!props.toolCall.arguments) return '{}'
   if (typeof props.toolCall.arguments === 'string') return props.toolCall.arguments
   return JSON.stringify(props.toolCall.arguments, null, 2)

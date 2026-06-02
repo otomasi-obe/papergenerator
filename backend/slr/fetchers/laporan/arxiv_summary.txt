@@ -1,0 +1,43 @@
+Test Report: arxiv
+============================================================
+
+Test Time: 2026-05-29T12:53:34.285836
+Test Query: deep learning
+Status: success
+
+Results:
+  Papers found: 3
+  Papers with URLs: 3
+  Valid download links: 3
+  Invalid download links: 0
+
+Papers:
+
+  1. Learn to Accumulate Evidence from All Training Samples: Theory and Practice
+     Year: 2023, DOI: None
+     URL: https://arxiv.org/pdf/2306.11113v2.pdf
+
+  2. The Modern Mathematics of Deep Learning
+     Year: 2021, DOI: 10.1017/9781009025096.002
+     URL: https://arxiv.org/pdf/2105.04026v2.pdf
+
+  3. Deep Learning and Computational Physics (Lecture Notes)
+     Year: 2023, DOI: None
+     URL: https://arxiv.org/pdf/2301.00942v1.pdf
+
+Download Link Checks:
+
+  - Learn to Accumulate Evidence from All Training Samples: Theory and Practice
+    URL: https://arxiv.org/pdf/2306.11113v2.pdf
+    Status: accessible (Code: 200)
+    Accessible: ✓
+
+  - The Modern Mathematics of Deep Learning
+    URL: https://arxiv.org/pdf/2105.04026v2.pdf
+    Status: accessible (Code: 200)
+    Accessible: ✓
+
+  - Deep Learning and Computational Physics (Lecture Notes)
+    URL: https://arxiv.org/pdf/2301.00942v1.pdf
+    Status: accessible (Code: 200)
+    Accessible: ✓

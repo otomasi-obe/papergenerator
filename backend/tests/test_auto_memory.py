@@ -3,6 +3,7 @@
 The regex layer must catch >=16 of 20 sample replies; the LLM fallback is
 mocked so no real HTTP traffic occurs.
 """
+
 from __future__ import annotations
 
 import os
@@ -15,7 +16,6 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-not-real-and-not-short")
 os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
 
-import auto_memory  # noqa: E402
 from chat.auto_memory import (  # noqa: E402
     ExtractedFact,
     _confidence_ok,
@@ -25,7 +25,6 @@ from chat.auto_memory import (  # noqa: E402
     _resolve_option_index,
     extract_facts,
 )
-
 
 # ── helpers ────────────────────────────────────────────────────────────────
 
@@ -47,13 +46,7 @@ OPSI_TOPIK_QUESTION = (
     "[/OPSI]"
 )
 
-NO_KEY_QUESTION = (
-    "Mau lanjut sekarang?\n"
-    "[OPSI]\n"
-    "1) Ya\n"
-    "2) Nanti dulu\n"
-    "[/OPSI]"
-)
+NO_KEY_QUESTION = "Mau lanjut sekarang?\n" "[OPSI]\n" "1) Ya\n" "2) Nanti dulu\n" "[/OPSI]"
 
 
 def _saved(facts):
@@ -61,6 +54,7 @@ def _saved(facts):
 
 
 # ── parse_assistant ────────────────────────────────────────────────────────
+
 
 def test_parse_assistant_extracts_key_marker():
     parsed = _parse_assistant(OPSI_QUESTION)
@@ -89,6 +83,7 @@ def test_parse_assistant_handles_none():
 
 # ── option index resolution ────────────────────────────────────────────────
 
+
 def test_resolve_option_numeric():
     assert _resolve_option_index("1") == 1
     assert _resolve_option_index("  2 ") == 2
@@ -114,6 +109,7 @@ def test_resolve_option_none_for_free_text():
 
 # ── confidence filter ─────────────────────────────────────────────────────
 
+
 def test_confidence_filter_rejects_short():
     assert not _confidence_ok("ok", None)
     assert not _confidence_ok("a", None)
@@ -136,6 +132,7 @@ def test_confidence_filter_rejects_long_echo():
 
 
 # ── regex layer (the 20-sample target) ─────────────────────────────────────
+
 
 def test_regex_layer_numeric_options():
     parsed = _parse_assistant(OPSI_QUESTION)
@@ -175,12 +172,8 @@ def test_regex_layer_explicit_ingat_with_key():
 
 def test_regex_layer_explicit_simpan():
     parsed = _parse_assistant("anything")
-    facts = _regex_layer(
-        "simpan: key=tone value=formal IEEE-style", parsed
-    )
-    assert facts == [
-        ExtractedFact(key="tone", value="formal IEEE-style", source="regex")
-    ]
+    facts = _regex_layer("simpan: key=tone value=formal IEEE-style", parsed)
+    assert facts == [ExtractedFact(key="tone", value="formal IEEE-style", source="regex")]
 
 
 def test_regex_layer_plain_text_with_expected_key():
@@ -284,6 +277,7 @@ def test_regex_layer_20_sample_threshold():
 
 # ── LLM fallback (mocked) ─────────────────────────────────────────────────
 
+
 class _FakeResp:
     def __init__(self, status_code=200, payload=None):
         self.status_code = status_code
@@ -303,9 +297,7 @@ def test_llm_fallback_returns_none_without_env(monkeypatch):
 def test_llm_fallback_parses_json(monkeypatch):
     monkeypatch.setenv("AIOTOMASI_API", "https://example.test")
     monkeypatch.setenv("AIOTOMASI_APIKEY", "k")
-    payload = {
-        "choices": [{"message": {"content": '{"value": "Teknik Elektro"}'}}]
-    }
+    payload = {"choices": [{"message": {"content": '{"value": "Teknik Elektro"}'}}]}
     with patch("auto_memory.requests.post", return_value=_FakeResp(200, payload)):
         out = _llm_fallback_layer("jurusan", "Saya kuliah Teknik Elektro di UGM")
     assert out is not None
@@ -327,18 +319,10 @@ def test_llm_fallback_handles_code_fence(monkeypatch):
     monkeypatch.setenv("AIOTOMASI_API", "https://example.test")
     monkeypatch.setenv("AIOTOMASI_APIKEY", "k")
     payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": '```json\n{"value": "Manajemen Operasional"}\n```'
-                }
-            }
-        ]
+        "choices": [{"message": {"content": '```json\n{"value": "Manajemen Operasional"}\n```'}}]
     }
     with patch("auto_memory.requests.post", return_value=_FakeResp(200, payload)):
-        out = _llm_fallback_layer(
-            "jurusan", "Sebenarnya jurusan saya manajemen operasional di FEB"
-        )
+        out = _llm_fallback_layer("jurusan", "Sebenarnya jurusan saya manajemen operasional di FEB")
     assert out is not None
     assert out.value == "Manajemen Operasional"
 
@@ -363,6 +347,7 @@ def test_llm_fallback_short_input_skipped(monkeypatch):
 
 
 # ── extract_facts (top-level) ─────────────────────────────────────────────
+
 
 def test_extract_facts_persists_via_save_memory(monkeypatch):
     saved = []
@@ -419,18 +404,13 @@ def test_extract_facts_falls_back_to_llm(monkeypatch):
     )
 
     def fake_llm(expected_key, user_msg):
-        return ExtractedFact(
-            key=expected_key, value="Teknik Industri", source="llm"
-        )
+        return ExtractedFact(key=expected_key, value="Teknik Industri", source="llm")
 
     monkeypatch.setattr(auto_memory, "_llm_fallback_layer", fake_llm)
     # Pose a question whose [OPSI] options don't match the user reply, and a
     # reply that's NOT a stopword and longer than 5 chars — but make the regex
     # layer return [] by removing [key=...] so we can isolate the LLM path.
-    last = (
-        "Sebenarnya, jurusan apa? Bisa cerita?\n"
-        "[OPSI]\n1) Teknik\n2) Manajemen\n[/OPSI]"
-    )
+    last = "Sebenarnya, jurusan apa? Bisa cerita?\n" "[OPSI]\n1) Teknik\n2) Manajemen\n[/OPSI]"
     # No expected_key -> regex returns [] -> no LLM call (LLM needs key).
     out = extract_facts("p1", 1, None, "Saya di FT, ambil Teknik Industri", last)
     assert out == [] and saved == []
@@ -438,14 +418,14 @@ def test_extract_facts_falls_back_to_llm(monkeypatch):
     # Now with expected_key, regex won't match (free-text >5 chars triggers regex
     # actually). Force regex to fail by making message a stopword-ish phrase but
     # long enough for LLM. We'll simulate by directly calling the LLM path.
-    last_with_key = (
-        "Jurusan apa? [key=jurusan]\n[OPSI]\n1) Teknik\n2) Manajemen\n[/OPSI]"
-    )
+    last_with_key = "Jurusan apa? [key=jurusan]\n[OPSI]\n1) Teknik\n2) Manajemen\n[/OPSI]"
     saved.clear()
     # Force regex to skip by patching _regex_layer.
     monkeypatch.setattr(auto_memory, "_regex_layer", lambda *a, **k: [])
     out = extract_facts(
-        "p1", 1, None,
+        "p1",
+        1,
+        None,
         "Sulit dijelaskan singkat, intinya saya kuliah Teknik Industri",
         last_with_key,
     )

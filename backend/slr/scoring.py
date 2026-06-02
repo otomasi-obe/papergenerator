@@ -21,6 +21,7 @@ Tidak menggunakan API berbayar. Embedding dipakai pakai
 embedder otomatis fallback ke TF-IDF (max_features=384, normalized) dengan
 sentinel `_TFIDF_FALLBACK` sehingga cosine downstream tetap jalan.
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,8 +44,16 @@ _SBERT = None  # lazy
 _TFIDF_FALLBACK = "TFIDF_FALLBACK"
 
 _HIGH_QUALITY_VENUE_TOKENS = (
-    "ieee", "acm", "springer", "elsevier", "nature", "science",
-    "transactions", "proceedings", "annals", "communications",
+    "ieee",
+    "acm",
+    "springer",
+    "elsevier",
+    "nature",
+    "science",
+    "transactions",
+    "proceedings",
+    "annals",
+    "communications",
 )
 
 
@@ -55,6 +64,7 @@ def _get_sbert():
     if _SBERT is None:
         try:
             from sentence_transformers import SentenceTransformer
+
             _SBERT = SentenceTransformer(_SBERT_MODEL)
         except Exception as e:
             log.warning(
@@ -145,13 +155,21 @@ def _embed(texts: Sequence[str]) -> np.ndarray:
         norms = np.linalg.norm(mat, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         return mat / norms
-    return sbert.encode(list(texts), batch_size=32, show_progress_bar=False,
-                         convert_to_numpy=True, normalize_embeddings=True)
+    return sbert.encode(
+        list(texts),
+        batch_size=32,
+        show_progress_bar=False,
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+    )
 
 
-def score_papers(query: str, papers: Iterable[Paper],
-                 sbert_threshold: float = 0.40,
-                 must_read_threshold: float = 0.55) -> list[ScoredPaper]:
+def score_papers(
+    query: str,
+    papers: Iterable[Paper],
+    sbert_threshold: float = 0.40,
+    must_read_threshold: float = 0.55,
+) -> list[ScoredPaper]:
     """Skor batch paper. Paper tanpa abstract tetap di-skor pakai title-only +
     penalti pada score_breakdown.has_signal."""
     plist = list(papers)
@@ -169,8 +187,7 @@ def score_papers(query: str, papers: Iterable[Paper],
     # Sinyal pelengkap: TF-IDF cosine. Bekerja walau abstract pendek.
     try:
         max_df = 1.0 if len(plist) < 20 else 0.9
-        vec = TfidfVectorizer(stop_words="english", max_df=max_df, min_df=1,
-                              ngram_range=(1, 2))
+        vec = TfidfVectorizer(stop_words="english", max_df=max_df, min_df=1, ngram_range=(1, 2))
         mat = vec.fit_transform([query] + texts)
         tfidf_sims = cosine_similarity(mat[0:1], mat[1:]).flatten()
     except ValueError:
@@ -186,11 +203,7 @@ def score_papers(query: str, papers: Iterable[Paper],
         signal_penalty = 0.0 if has_signal[i] else 0.15
 
         total = (
-            0.45 * sbert_s
-            + 0.15 * tfidf_s
-            + 0.15 * cite_s
-            + 0.10 * recency_s
-            + 0.15 * venue_s
+            0.45 * sbert_s + 0.15 * tfidf_s + 0.15 * cite_s + 0.10 * recency_s + 0.15 * venue_s
         ) - signal_penalty
         total = max(0.0, min(1.0, total))
 
@@ -204,13 +217,15 @@ def score_papers(query: str, papers: Iterable[Paper],
             "signal_penalty": signal_penalty,
         }
 
-        out.append(ScoredPaper(
-            paper=p,
-            score_total=round(total, 4),
-            score_breakdown=breakdown,
-            is_relevant=sbert_s >= sbert_threshold,
-            must_read=total >= must_read_threshold,
-        ))
+        out.append(
+            ScoredPaper(
+                paper=p,
+                score_total=round(total, 4),
+                score_breakdown=breakdown,
+                is_relevant=sbert_s >= sbert_threshold,
+                must_read=total >= must_read_threshold,
+            )
+        )
 
     out.sort(key=lambda s: -s.score_total)
     return out

@@ -21,7 +21,17 @@
     </div>
 
     <div class="flex items-center justify-between mb-4 max-w-4xl mx-auto">
-      <h2 class="text-lg font-semibold text-gray-800">Paper Preview</h2>
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-semibold text-gray-800">Paper Preview</h2>
+        <button @click="editMode = !editMode"
+          :class="['px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1',
+            editMode
+              ? 'bg-amber-500 text-white hover:bg-amber-600'
+              : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 border border-cream-300 dark:border-ash-600']">
+          <span>{{ editMode ? '👁 View' : '✏️ Edit' }}</span>
+        </button>
+        <span v-if="editMode" class="text-[11px] text-amber-600 dark:text-amber-400 animate-pulse">Editing — perubahan auto-save</span>
+      </div>
       <button @click="store.exportDocx()"
         class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium flex items-center gap-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,9 +57,14 @@
           </h1>
         </template>
       </DiffBlock>
-      <h1 v-else class="text-2xl font-bold text-center mb-4 leading-tight" style="font-family: 'Times New Roman', serif;">
-        {{ store.paper.title || 'Paper Title' }}
-      </h1>
+      <div v-else class="text-center mb-4">
+        <input v-if="editMode" v-model="store.paper.title"
+          class="text-2xl font-bold text-center w-full bg-transparent border-b-2 border-dashed border-gray-300 focus:border-brown-500 outline-none px-2 py-1"
+          style="font-family: 'Times New Roman', serif;" placeholder="Paper Title" />
+        <h1 v-else class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
+          {{ store.paper.title || 'Paper Title' }}
+        </h1>
+      </div>
 
       <!-- Authors -->
       <div class="text-center mb-6">
@@ -82,9 +97,12 @@
           </div>
         </template>
       </DiffBlock>
-      <div v-else-if="store.paper.abstract" class="mb-4 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
+      <div v-else class="mb-4 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
         <span class="font-bold italic">Abstract—</span>
-        <span class="italic">{{ store.paper.abstract }}</span>
+        <textarea v-if="editMode" v-model="store.paper.abstract"
+          class="italic w-full bg-transparent border border-dashed border-gray-300 focus:border-brown-500 rounded outline-none px-2 py-1 resize-none min-h-[4rem]"
+          placeholder="Paper abstract..." rows="2"></textarea>
+        <span v-else class="italic">{{ store.paper.abstract || '(kosong)' }}</span>
       </div>
 
       <!-- Keywords (with inline diff if pending) -->
@@ -132,16 +150,29 @@
             </h2>
 
             <template v-for="(item, cIdx) in section.content" :key="cIdx">
-              <p v-if="item.id === 'text' && item.text" class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug mb-2">{{ item.text }}</p>
+              <div v-if="item.id === 'text' && item.text" class="mb-2">
+                <textarea v-if="editMode" :value="item.text"
+                  @input="item.text = ($event.target as HTMLTextAreaElement).value"
+                  class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-gray-300 focus:border-brown-500 rounded outline-none px-2 py-1 resize-none min-h-[3rem]"
+                  style="font-family: 'Times New Roman', serif;" rows="2"
+                  placeholder="Tulis konten..."></textarea>
+                <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
+              </div>
               <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                 <div class="inline-block border border-gray-200 rounded p-2">
                   <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
                   <div v-else class="w-48 h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>
                 </div>
-                <p v-if="item.Title" class="text-xs mt-1 text-gray-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+                <input v-if="editMode" v-model="item.Title"
+                  class="text-xs mt-1 text-gray-600 text-center bg-transparent border-b border-dashed border-gray-300 focus:border-brown-500 outline-none px-1"
+                  placeholder="Caption gambar..." />
+                <p v-else-if="item.Title" class="text-xs mt-1 text-gray-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
               </div>
               <div v-else-if="item.id === 'tabel'" class="my-3">
-                <p v-if="item.Title" class="text-xs text-center font-semibold mb-1">TABLE {{ getItemNum(item) }}: {{ item.Title }}</p>
+                <input v-if="editMode" v-model="item.Title"
+                  class="text-xs text-center font-semibold mb-1 w-full bg-transparent border-b border-dashed border-gray-300 focus:border-brown-500 outline-none px-1"
+                  placeholder="Judul tabel..." />
+                <p v-else-if="item.Title" class="text-xs text-center font-semibold mb-1">TABLE {{ getItemNum(item) }}: {{ item.Title }}</p>
                 <table class="w-full text-xs border-collapse border border-gray-300 mx-auto">
                   <thead>
                     <tr>
@@ -156,22 +187,38 @@
                 </table>
               </div>
               <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center font-mono text-sm text-gray-700">
-                ({{ getItemNum(item) }}) &nbsp; {{ item.latex }}
+                <input v-if="editMode" v-model="item.latex"
+                  class="text-center bg-transparent border-b border-dashed border-gray-300 focus:border-brown-500 outline-none px-1 font-mono"
+                  placeholder="LaTeX formula..." />
+                <span v-else>({{ getItemNum(item) }}) &nbsp; {{ item.latex }}</span>
               </div>
             </template>
 
             <div v-for="(sub, subIdx) in section.subsections" :key="subIdx" class="mt-3">
-              <h3 class="font-bold italic text-sm mb-1">
+              <input v-if="editMode" v-model="sub.title"
+                class="font-bold italic text-sm mb-1 w-full bg-transparent border-b border-dashed border-gray-300 focus:border-brown-500 outline-none px-1"
+                placeholder="Subsection title..." />
+              <h3 v-else class="font-bold italic text-sm mb-1">
                 {{ String.fromCharCode(65 + subIdx) }}. {{ sub.title }}
               </h3>
               <template v-for="(item, cIdx) in sub.content" :key="cIdx">
-                <p v-if="item.id === 'text' && item.text" class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug mb-2">{{ item.text }}</p>
+                <div v-if="item.id === 'text' && item.text" class="mb-2">
+                  <textarea v-if="editMode" :value="item.text"
+                    @input="item.text = ($event.target as HTMLTextAreaElement).value"
+                    class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-gray-300 focus:border-brown-500 rounded outline-none px-2 py-1 resize-none min-h-[3rem]"
+                    style="font-family: 'Times New Roman', serif;" rows="2"
+                    placeholder="Tulis konten..."></textarea>
+                  <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
+                </div>
                 <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                   <div class="inline-block border border-gray-200 rounded p-2">
                     <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
                     <div v-else class="w-48 h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No image</div>
                   </div>
-                  <p v-if="item.Title" class="text-xs mt-1 text-gray-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+                  <input v-if="editMode" v-model="item.Title"
+                    class="text-xs mt-1 text-gray-600 text-center bg-transparent border-b border-dashed border-gray-300 focus:border-brown-500 outline-none px-1"
+                    placeholder="Caption gambar..." />
+                  <p v-else-if="item.Title" class="text-xs mt-1 text-gray-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
                 </div>
               </template>
             </div>
@@ -223,13 +270,15 @@
   </div>
 </template>
 
-<script setup>
-import { computed, ref } from 'vue'
-import { usePaperStore } from '../stores/paper.js'
+<script setup lang="ts">
+// @ts-nocheck
+import { ref, computed } from 'vue'
+import { usePaperStore } from '../stores/paper'
 import DiffBlock from './DiffBlock.vue'
 
 const store = usePaperStore()
 const resolvedOpen = ref(false)
+const editMode = ref(false)
 
 const pendingActive = computed(() =>
   (store.pendingChanges || []).filter(p => p.status === 'pending')
@@ -238,9 +287,8 @@ const resolvedChanges = computed(() =>
   (store.pendingChanges || []).filter(p => p.status !== 'pending')
 )
 
-// Group pending by kind for quick lookup
 const pendingByKind = computed(() => {
-  const map = {}
+  const map: Record<string, any> = {}
   for (const c of pendingActive.value) {
     if (['title', 'abstract', 'keywords'].includes(c.kind)) {
       if (!map[c.kind]) map[c.kind] = c
@@ -250,7 +298,7 @@ const pendingByKind = computed(() => {
 })
 
 const pendingSectionByIdx = computed(() => {
-  const map = {}
+  const map: Record<number, any> = {}
   for (const c of pendingActive.value) {
     if (c.kind === 'section' && c.payload.section_index !== null && c.payload.section_index !== undefined) {
       map[c.payload.section_index] = c
@@ -264,7 +312,7 @@ const newSectionProposals = computed(() =>
 )
 
 const pendingRefByIdx = computed(() => {
-  const map = {}
+  const map: Record<number, any> = {}
   for (const c of pendingActive.value) {
     if (c.kind === 'reference' && c.payload.ref_index !== null && c.payload.ref_index !== undefined) {
       map[c.payload.ref_index] = c
@@ -277,27 +325,30 @@ const newRefProposals = computed(() =>
   pendingActive.value.filter(c => c.kind === 'reference' && (c.payload.ref_index === null || c.payload.ref_index === undefined))
 )
 
-function imgSrc(path) {
+function imgSrc(path: string): string {
+  if (!store.currentPaperId || store.currentPaperId === 'null' || store.currentPaperId === 'undefined' || !path) return ''
   return `/api/images/${store.currentPaperId}/${path}`
 }
 
-function toRoman(num) { return store.toRoman(num) }
+function toRoman(num: number): string { 
+  return store.toRoman(num) 
+}
 
-function getItemNum(item) {
+function getItemNum(item: any): string {
   const info = store.getItemNumber(item)
   return info.label || '?'
 }
 
-function sectionText(section) {
+function sectionText(section: any): string {
   if (!section?.content) return ''
   return section.content
-    .filter(it => it && it.id === 'text')
-    .map(it => it.text || '')
+    .filter((it: any) => it && it.id === 'text')
+    .map((it: any) => it.text || '')
     .join('\n\n')
 }
 
-function kindLabel(kind) {
-  return ({
+function kindLabel(kind: string): string {
+  const labels: Record<string, string> = {
     title: 'Judul',
     abstract: 'Abstrak',
     keywords: 'Keywords',
@@ -305,6 +356,7 @@ function kindLabel(kind) {
     reference: 'Referensi',
     journal: 'Jurnal',
     export_docx: 'Export DOCX',
-  })[kind] || kind
+  }
+  return labels[kind] || kind
 }
 </script>

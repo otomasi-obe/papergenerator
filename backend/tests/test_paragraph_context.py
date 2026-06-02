@@ -14,6 +14,7 @@ Schema (per chat_tools._get_paragraph_context):
 If Agent G hasn't landed `_get_paragraph_context` yet, the module skips with
 a clear reason.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,10 +33,11 @@ os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
 os.environ.setdefault("SIGNED_URL_SECRET", "test-signed-url-secret")
 
 try:
-    from flask import Flask
-    from sqlalchemy import JSON
     import chat_tools
+    from flask import Flask
     from models import Paper, User, db
+    from sqlalchemy import JSON
+
     Paper.__table__.c.data.type = JSON()
 except Exception as e:  # pragma: no cover
     pytest.skip(f"chat_tools bootstrap failed: {e}", allow_module_level=True)
@@ -126,7 +128,7 @@ def _parse(out):
     assert isinstance(out, str), f"expected str, got {type(out).__name__}"
     s = out
     if s.startswith(chat_tools.PROPOSAL_PREFIX):
-        s = s[len(chat_tools.PROPOSAL_PREFIX):]
+        s = s[len(chat_tools.PROPOSAL_PREFIX) :]
     return json.loads(s)
 
 
@@ -174,9 +176,9 @@ def test_extracts_citations_and_fig_table_refs(app):
     refs = payload.get("fig_table_refs") or []
     refs_blob = json.dumps(refs)
     assert "Fig. 2" in refs_blob or "Fig 2" in refs_blob, f"missing fig ref: {refs}"
-    assert ("Table III" in refs_blob) or ("table iii" in refs_blob.lower()), (
-        f"missing table ref: {refs}"
-    )
+    assert ("Table III" in refs_blob) or (
+        "table iii" in refs_blob.lower()
+    ), f"missing table ref: {refs}"
 
 
 def test_first_paragraph_has_empty_prev(app):
@@ -217,7 +219,8 @@ def test_section_neighbor_titles(app):
 def test_include_paper_meta(app):
     user, paper = _make_user_paper()
     out = _call(
-        paper.id, user.id,
+        paper.id,
+        user.id,
         {"section_index": 2, "content_index": 0, "include_paper_meta": True},
     )
     payload = _parse(out)
@@ -242,7 +245,13 @@ def test_constraints_block_present(app):
     # Defaults when no ProjectMemory rows: language=id, citation_style=IEEE.
     assert constraints.get("language") in ("id", "en")
     assert constraints.get("citation_style") in (
-        "ACS", "APA", "Chicago", "Harvard", "IEEE", "MLA", "Vancouver",
+        "ACS",
+        "APA",
+        "Chicago",
+        "Harvard",
+        "IEEE",
+        "MLA",
+        "Vancouver",
     )
 
 

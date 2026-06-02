@@ -1,0 +1,41 @@
+{
+  "fetcher": "dblp",
+  "status": "success",
+  "test_time": "2026-05-29T13:46:27.582774",
+  "query": "machine learning",
+  "papers_found": 5,
+  "valid_links": 3,
+  "success_rate": "60%",
+  "note": "Free API, CS papers - CONFIRMED WORKING after debug",
+  "sample_papers": [
+    {
+      "title": "The Changing Landscape of Machine Learning: A Comparative Analysis of Centralized Machine Learning, Distributed Machine Learning and Federated Machine Learning",
+      "year": 2023,
+      "authors": [
+        "Dishita Naik",
+        "Nitin Naik"
+      ],
+      "url": "https://doi.org/10.1007/978-3-031-47508-5_2",
+      "url_valid": true
+    },
+    {
+      "title": "Study of IA methods in data analytics (machine learning / deep learning) to improve the content of computer science MOOCs",
+      "year": 2024,
+      "authors": [
+        "Sergio Simonian"
+      ],
+      "url": "https://tel.archives-ouvertes.fr/tel-05077401",
+      "url_valid": true
+    },
+    {
+      "title": "Roles of Machine Learning and Deep Learning for Supporting E-Learning Processes and Learning Outcomes",
+      "year": 2024,
+      "authors": [
+        "Sean Eom",
+        "Mohamed Amroune"
+      ],
+      "url": "https://aisel.aisnet.org/amcis2024/is_education/is_education/15",
+      "url_valid": true
+    }
+  ]
+}

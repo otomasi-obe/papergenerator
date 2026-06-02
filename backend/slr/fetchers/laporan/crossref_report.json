@@ -1,0 +1,71 @@
+{
+  "fetcher": "crossref",
+  "test_time": "2026-05-29T12:53:46.007640",
+  "test_query": "machine learning",
+  "status": "success",
+  "papers_found": 3,
+  "papers_with_urls": 3,
+  "valid_download_links": 3,
+  "invalid_download_links": 0,
+  "errors": [],
+  "papers": [
+    {
+      "title": "Machine learning with sklearn",
+      "authors": [
+        "Thomas P. Trappenberg"
+      ],
+      "year": 2019,
+      "doi": "10.1093/oso/9780198828044.003.0003",
+      "url": "https://doi.org/10.1093/oso/9780198828044.003.0003",
+      "is_open_access": null,
+      "venue": "Fundamentals of Machine Learning"
+    },
+    {
+      "title": "Optimization and Machine Learning",
+      "authors": [],
+      "year": 2022,
+      "doi": "10.1002/9781119902881",
+      "url": "https://doi.org/10.1002/9781119902881",
+      "is_open_access": null,
+      "venue": null
+    },
+    {
+      "title": "Why Use Automated Machine Learning?",
+      "authors": [
+        "Kai R. Larsen",
+        "Daniel S. Becker"
+      ],
+      "year": 2021,
+      "doi": "10.1093/oso/9780190941659.003.0001",
+      "url": "https://doi.org/10.1093/oso/9780190941659.003.0001",
+      "is_open_access": null,
+      "venue": "Automated Machine Learning for Business"
+    }
+  ],
+  "download_link_checks": [
+    {
+      "paper_title": "Machine learning with sklearn",
+      "url": "https://doi.org/10.1093/oso/9780198828044.003.0003",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/json",
+      "accessible": true
+    },
+    {
+      "paper_title": "Optimization and Machine Learning",
+      "url": "https://doi.org/10.1002/9781119902881",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/json",
+      "accessible": true
+    },
+    {
+      "paper_title": "Why Use Automated Machine Learning?",
+      "url": "https://doi.org/10.1093/oso/9780190941659.003.0001",
+      "status": "accessible",
+      "status_code": 200,
+      "content_type": "application/json",
+      "accessible": true
+    }
+  ]
+}

@@ -28,15 +28,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+import logging
 import re
-import sys
 import time
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
+
+log = logging.getLogger(__name__)
 
 
 REPO_DIR = Path(__file__).resolve().parent
@@ -186,7 +186,7 @@ def _wait_for_login(page, *, timeout_s: int) -> tuple[bool, str | None]:
         now = time.monotonic()
         if now >= next_log:
             remaining = int(deadline - now)
-            print(f"  ! menunggu login Google ({remaining}s tersisa)…", flush=True)
+            log.info(f"  ! menunggu login Google ({remaining}s tersisa)…")
             next_log = now + 15
         time.sleep(1.0)
     return False, None
@@ -278,7 +278,10 @@ def _login_one_slot(p, slot: int, *, headless: bool, timeout_s: int) -> dict:
         if not ok:
             if headless:
                 raise RuntimeError("belum login dan mode headless – jalankan tanpa --headless dulu")
-            print(f"  ! belum login. Login Google di window Chrome (timeout {timeout_s}s)…", flush=True)
+            print(
+                f"  ! belum login. Login Google di window Chrome (timeout {timeout_s}s)…",
+                flush=True,
+            )
             ok, label = _wait_for_login(page, timeout_s=timeout_s)
             if not ok:
                 raise RuntimeError("login tidak terdeteksi (timeout)")
@@ -335,10 +338,18 @@ def _verify_one_slot(slot: int) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--slot", type=int, default=None, help="Hanya proses slot tertentu (1..4)")
-    parser.add_argument("--refresh", action="store_true", help="Ulangi login meski cookies sudah ada")
-    parser.add_argument("--headless", action="store_true", help="Jangan tampilkan window (hanya berhasil kalau profile sudah login)")
+    parser.add_argument(
+        "--refresh", action="store_true", help="Ulangi login meski cookies sudah ada"
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Jangan tampilkan window (hanya berhasil kalau profile sudah login)",
+    )
     parser.add_argument("--check", action="store_true", help="Hanya cek cookies yang ada")
-    parser.add_argument("--login-timeout", type=int, default=600, help="Detik menunggu login per slot (default 600)")
+    parser.add_argument(
+        "--login-timeout", type=int, default=600, help="Detik menunggu login per slot (default 600)"
+    )
     args = parser.parse_args()
 
     slots = [args.slot] if args.slot else list(range(1, NUM_SLOTS + 1))
@@ -368,7 +379,9 @@ def main() -> int:
             if cookies_path.exists() and not args.refresh:
                 v = _verify_one_slot(s)
                 if v["ok"]:
-                    print(f"slot {s}: cookies sudah ada & valid – skip (pakai --refresh untuk ulang)")
+                    print(
+                        f"slot {s}: cookies sudah ada & valid – skip (pakai --refresh untuk ulang)"
+                    )
                     results.append({"slot": s, "skipped": True, "path": str(cookies_path)})
                     continue
                 print(f"slot {s}: cookies ada tapi tidak valid ({v['reason']}) → re-login")

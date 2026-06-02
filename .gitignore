@@ -1,7 +1,13 @@
-# Environment files
+# Environment files (unencrypted - never commit these)
 .env
 .env.local
 .env.*.local
+
+# Encrypted environment files (these ARE tracked in git)
+!.env.enc
+!.env.*.enc
+!**/.env.enc
+!**/.env.*.enc
 
 # Python
 __pycache__/
@@ -53,13 +59,19 @@ build/
 .DS_Store
 Thumbs.db
 
-# Project specific
+# Project specific - data & uploads (generated at runtime)
+backend/data/
 backend/uploads/
-backend/data/uploads/
 backend/exports/
+backend/archive/
+backend/output/
 exports/
 uploads/
-papers/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Logs
 logs/
@@ -67,8 +79,6 @@ logs/
 app.log
 backend-*.log
 frontend-*.log
-/tmp/
-/var/
 
 # PM2
 .pm2/
@@ -85,23 +95,37 @@ frontend-*.log
 *.temp
 .cache/
 
+# Playwright / test artifacts
 .playwright-mcp/
-
-# Sprint 1 additions
-backend/archive/
-backend/output/*
-backend/exports/*
-backend/imageGenerator/cookies-account*.json
-backups/
-.plan/
-.planning/
-infra/observability/data/
 test-results/
 playwright-report/
 coverage/
+test-results.json/
 
-backend/imageGenerator/account1/
-backend/imageGenerator/account2/
-backend/imageGenerator/account3/
-backend/imageGenerator/account4/
-backend/data/images/
+# Backup files
+backups/
+server.ps1
+
+# Planning / temp directories
+.plan/
+.planning/
+
+# Observability data
+infra/observability/data/
+
+# Cookie files for image generator
+backend/imageGenerator/cookies-account*.json
+
+# User-specific template downloads (large binary/template files)
+prompt/riset/template/
+prompt/style/
+prompt/topic/
+prompt/flow/
+Goal/
+
+# Encrypted .env files - only track examples
+frontend/.env.development.enc
+frontend/.env.production.enc
+
+# Local scripts not for commit
+scripts/monitor_db_integrity.sh

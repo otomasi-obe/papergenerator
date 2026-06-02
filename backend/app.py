@@ -5,38 +5,45 @@ Flask API for AI-powered academic paper generation and DOCX export.
 Supports IEEE conference paper format, Google OAuth login, PostgreSQL storage.
 """
 
+import importlib
+import json
+import logging
 import os
 import re
-import sys
-import json
-import uuid
-import time
-import logging
 import threading
-import importlib
-from pathlib import Path
+import time
+import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
-from flask import Flask, request, jsonify, send_file, Response
+from dotenv import load_dotenv
+from flask import Flask, Response, jsonify, request, send_file
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity, get_jwt, verify_jwt_in_request
+from flask_jwt_extended import (
+    JWTManager,
+    get_jwt_identity,
+    jwt_required,
+    verify_jwt_in_request,
+)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
-from dotenv import load_dotenv
 
-from database.models import db, User, Paper, PaperImage, PaperFile, ApiUsageLog, AiJob, ImageGenJob
-from api.auth_bp import auth_bp, init_oauth
 from api.admin_bp import admin_bp
-from api.chat_bp import chat_bp
-from api.papers_bp import papers_bp
-from api.files_bp import files_bp
-from api.images_bp import paper_images_bp, image_serve_bp
+from api.auth_bp import auth_bp, init_oauth
 from api.charts_bp import charts_bp
-from api.jobs_bp import jobs_bp
+from api.chat_bp import chat_bp
+from api.files_bp import files_bp
+from api.health_bp import health_bp
 from api.image_jobs_bp import image_jobs_bp
-from api.slr_bp import slr_bp
+from api.images_bp import image_serve_bp, paper_images_bp
+from api.jobs_bp import jobs_bp
+from api.papers_bp import papers_bp
 from api.quota_bp import quota_bp
+from api.slr_bp import slr_bp
+from api.workflow_bp import workflow_bp
+from database.models import AiJob, ApiUsageLog, Paper, SlrJob, ImageGenJob, db
 
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
 try:
@@ -54,11 +61,10 @@ try:
             release=os.getenv("SENTRY_RELEASE", "dev"),
             environment=os.getenv("FLASK_ENV", "production"),
         )
-except Exception:
-    pass
+except (ImportError, ValueError, Exception) as e:
+    logging.getLogger(__name__).warning(f"Failed to initialize Sentry: {e}")
 from paper_generation.chunked import GenerationCancelled
 from paper_generation.single import generate_paper_json_single
-from templates.IEEEgen import build_document as build_ieee_docx
 
 # Load environment variables.
 #
@@ -69,12 +75,12 @@ from templates.IEEEgen import build_document as build_ieee_docx
 # That happened once. Never again — when we detect a sqlite test override
 # already in place we DON'T override env from .env.
 _in_tests = (
-    os.environ.get('PYTEST_CURRENT_TEST') is not None
-    or os.environ.get('FLASK_ENV') == 'testing'
-    or (os.environ.get('DATABASE_URL', '').startswith('sqlite:'))
+    os.environ.get("PYTEST_CURRENT_TEST") is not None
+    or os.environ.get("FLASK_ENV") == "testing"
+    or (os.environ.get("DATABASE_URL", "").startswith("sqlite:"))
 )
-load_dotenv(Path(__file__).parent.parent / ".env", override=not _in_tests)
-load_dotenv(Path(__file__).parent / ".env", override=not _in_tests)
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=not _in_tests)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=not _in_tests)
 
 app = Flask(__name__)
 
@@ -83,70 +89,71 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-_db_url = os.getenv('DATABASE_URL')
+_db_url = os.getenv("DATABASE_URL")
 if not _db_url:
     raise RuntimeError("DATABASE_URL environment variable is required. Set it in .env")
-app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Pooling options only make sense for server-grade DBs (Postgres/MySQL).
 # Under sqlite (used by tests) SQLAlchemy uses StaticPool which rejects
 # pool_size/max_overflow/pool_timeout. Skip those keys when on sqlite.
-if not _db_url.startswith('sqlite:'):
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 12,
-        'max_overflow': 28,
-        'pool_timeout': 30,
-        'pool_recycle': 1800,
-        'pool_pre_ping': True,
+if not _db_url.startswith("sqlite:"):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 12,
+        "max_overflow": 28,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
+        "pool_pre_ping": True,
     }
 else:
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
     }
 
-_jwt_secret = os.getenv('JWT_SECRET_KEY')
-if not _jwt_secret or _jwt_secret == 'change-me-in-production':
+_jwt_secret = os.getenv("JWT_SECRET_KEY")
+if not _jwt_secret or _jwt_secret == "change-me-in-production":
     raise RuntimeError("JWT_SECRET_KEY must be set to a secure value in .env")
-app.config['JWT_SECRET_KEY'] = _jwt_secret
+app.config["JWT_SECRET_KEY"] = _jwt_secret
 
 # JWT in httpOnly cookies (XSS-safe) + CSRF double-submit protection.
 # Bearer header still accepted as a fallback so signed-URL/E2E tooling and
 # legacy clients keep working during rollout.
 from datetime import timedelta as _td
-app.config['JWT_TOKEN_LOCATION'] = ['cookies', 'headers']
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = _td(hours=1)
-app.config['JWT_REFRESH_TOKEN_EXPIRES'] = _td(days=7)
-app.config['JWT_COOKIE_SECURE'] = os.getenv('JWT_COOKIE_SECURE', 'true').lower() == 'true'
-app.config['JWT_COOKIE_HTTPONLY'] = True
-app.config['JWT_COOKIE_SAMESITE'] = 'Lax'   # Lax keeps SSO callback redirects working
-app.config['JWT_COOKIE_CSRF_PROTECT'] = True
-app.config['JWT_ACCESS_CSRF_HEADER_NAME'] = 'X-CSRF-TOKEN'
-app.config['JWT_REFRESH_CSRF_HEADER_NAME'] = 'X-CSRF-TOKEN'
-app.config['JWT_ACCESS_COOKIE_PATH'] = '/api/'
-app.config['JWT_REFRESH_COOKIE_PATH'] = '/api/auth/refresh'
 
-_secret_key = os.getenv('SECRET_KEY')
-if not _secret_key or _secret_key in ('flask-secret-key', 'change-me-in-production'):
+app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = _td(hours=1)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = _td(days=7)
+app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "true").lower() == "true"
+app.config["JWT_COOKIE_HTTPONLY"] = True
+app.config["JWT_COOKIE_SAMESITE"] = "Lax"  # Lax keeps SSO callback redirects working
+app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+app.config["JWT_ACCESS_CSRF_HEADER_NAME"] = "X-CSRF-TOKEN"
+app.config["JWT_REFRESH_CSRF_HEADER_NAME"] = "X-CSRF-TOKEN"
+app.config["JWT_ACCESS_COOKIE_PATH"] = "/api/"
+app.config["JWT_REFRESH_COOKIE_PATH"] = "/api/auth/refresh"
+
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key or _secret_key in ("flask-secret-key", "change-me-in-production"):
     raise RuntimeError("SECRET_KEY must be set to a secure non-default value in .env")
-app.config['SECRET_KEY'] = _secret_key
+app.config["SECRET_KEY"] = _secret_key
 
 # Session cookie hardening — flask sessions are only used for OAuth state, but
 # defaults are unsafe behind a reverse proxy.
-app.config['SESSION_COOKIE_SECURE'] = os.getenv('SESSION_COOKIE_SECURE', 'true').lower() == 'true'
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Lax (not Strict) so OAuth callback works
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Lax (not Strict) so OAuth callback works
 
 # Server-signed URL secret — used for generating short-lived signed image/file
 # URLs that don't expose the bearer JWT in query strings or referer headers.
 # Falls back to SECRET_KEY so existing deployments don't break, but it's
 # recommended to set a dedicated rotating value.
-app.config['SIGNED_URL_SECRET'] = os.getenv('SIGNED_URL_SECRET') or _secret_key
+app.config["SIGNED_URL_SECRET"] = os.getenv("SIGNED_URL_SECRET") or _secret_key
 
 # Per-request body cap. Each PaperFile is capped at 10 MB by files_bp itself,
 # but multipart uploads bundle all selected files in one POST so 4 PDFs of
 # ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
 # can ride the same multipart payload (form overhead included).
-app.config['MAX_CONTENT_LENGTH'] = 60 * 1024 * 1024  # 60MB max upload
+app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024  # 60MB max upload
 
 
 # Friendlier 413 — Werkzeug's default returns an HTML page that the chat
@@ -154,24 +161,57 @@ app.config['MAX_CONTENT_LENGTH'] = 60 * 1024 * 1024  # 60MB max upload
 # can show "file terlalu besar" instead of "Network error".
 @app.errorhandler(413)
 def _on_413(_e):
-    return jsonify({
-        "error": "Payload terlalu besar",
-        "hint": (
-            f"Total upload melebihi {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB. "
-            "Coba upload file lebih sedikit atau pisah jadi beberapa kali upload."
+    return (
+        jsonify(
+            {
+                "error": "Payload terlalu besar",
+                "hint": (
+                    f"Total upload melebihi {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB. "
+                    "Coba upload file lebih sedikit atau pisah jadi beberapa kali upload."
+                ),
+                "code": "PAYLOAD_TOO_LARGE",
+            }
         ),
-        "code": "PAYLOAD_TOO_LARGE",
-    }), 413
+        413,
+    )
+
 
 # ─── Extensions ───────────────────────────────────────────────────────────────
-CORS(app, supports_credentials=True, origins=[
-    "http://localhost:1000",
-    "http://localhost:5173",
-    "https://paperfull.app",
-    "https://www.paperfull.app",
-])
+# CORS: Only allow localhost in development
+cors_origins = ["https://paperfull.app", "https://www.paperfull.app"]
+if app.config.get("ENV") != "production" and not app.config.get("PRODUCTION"):
+    cors_origins.extend(["http://localhost:1000", "http://localhost:5173", "http://localhost:3001", "http://localhost:8000"])
+CORS(app, supports_credentials=True, origins=cors_origins)
 db.init_app(app)
 jwt = JWTManager(app)
+
+
+# ─── JWT Error Handlers ───────────────────────────────────────────────────────
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Token expired", "code": "TOKEN_EXPIRED"}), 401
+
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({"error": "Invalid token", "code": "INVALID_TOKEN"}), 401
+
+
+@jwt.unauthorized_loader
+def unauthorized_callback(error):
+    return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED"}), 401
+
+
+@jwt.needs_fresh_token_loader
+def needs_fresh_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Fresh token required", "code": "FRESH_TOKEN_REQUIRED"}), 401
+
+
+@jwt.revoked_token_loader
+def revoked_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Token has been revoked", "code": "TOKEN_REVOKED"}), 401
+
+
 init_oauth(app)
 
 # ─── PostgreSQL session safeguards ────────────────────────────────────────
@@ -192,15 +232,55 @@ def _set_pg_session_defaults(dbapi_connection, _):
             cur.execute("SET idle_in_transaction_session_timeout = '5min'")
             cur.execute("SET lock_timeout = '5s'")
         dbapi_connection.commit()
-    except Exception:
+    except (AttributeError, Exception):
         logging.getLogger(__name__).exception("failed to set pg session defaults")
+
+
+# Rate limiting: require Redis in production for distributed rate limiting
+ratelimit_storage = os.getenv("RATELIMIT_STORAGE_URI")
+if not ratelimit_storage:
+    if app.config.get("ENV") == "production" or app.config.get("PRODUCTION"):
+        raise RuntimeError(
+            "RATELIMIT_STORAGE_URI must be set in production. "
+            "Use Redis: redis://localhost:6379 or redis://user:pass@host:port/db"
+        )
+    else:
+        # Development/testing: allow memory storage
+        ratelimit_storage = "memory://"
+        logging.getLogger(__name__).warning(
+            "Using memory:// for rate limiting (development only). "
+            "Set RATELIMIT_STORAGE_URI=redis://... for production."
+        )
+
+
+def rate_limit_handler(request_limit):
+    """Custom handler for rate limit breaches - returns JSON response."""
+    from core.errors import ErrorCategory, ErrorCode
+    from monitoring.observability_v2 import RATE_LIMIT_BREACHES
+
+    endpoint = request.endpoint or "unknown"
+    RATE_LIMIT_BREACHES.labels(endpoint=endpoint, limit_type="ip").inc()
+
+    response = jsonify(
+        {
+            "error": "Terlalu banyak request",
+            "code": ErrorCode.RATE_LIMIT_EXCEEDED,
+            "category": ErrorCategory.RATE_LIMIT,
+            "details": {"retry_after": 60},
+        }
+    )
+    response.status_code = 429
+    return response
+
 
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
+    enabled=not _in_tests,
     default_limits=["1000 per minute"],
-    storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"),
+    storage_uri=ratelimit_storage,
     strategy="fixed-window",
+    on_breach=rate_limit_handler,
 )
 
 app.register_blueprint(auth_bp)
@@ -215,6 +295,8 @@ app.register_blueprint(jobs_bp)
 app.register_blueprint(image_jobs_bp)
 app.register_blueprint(slr_bp)
 app.register_blueprint(quota_bp)
+app.register_blueprint(health_bp)
+app.register_blueprint(workflow_bp)
 
 
 # ─── OpenAPI / Swagger UI ─────────────────────────────────────────────────
@@ -271,14 +353,38 @@ def api_docs():
 # ─── Security headers ────────────────────────────────────────────────────────
 @app.after_request
 def _security_headers(response):
-    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    response.headers.setdefault('X-Frame-Options', 'DENY')
-    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-    response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
-    response.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    # Content Security Policy
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "font-src 'self' data:; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    response.headers.setdefault("Content-Security-Policy", csp)
     # API responses should never be cached by intermediaries by default.
-    if request.path.startswith('/api/'):
-        response.headers.setdefault('Cache-Control', 'no-store')
+    if request.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+
+    # Track rate limit metrics
+    try:
+        from monitoring.observability_v2 import RATE_LIMIT_REQUESTS
+
+        endpoint = request.endpoint or "unknown"
+        status = "blocked" if response.status_code == 429 else "allowed"
+        RATE_LIMIT_REQUESTS.labels(endpoint=endpoint, status=status).inc()
+    except Exception:
+        pass
+
     return response
 
 
@@ -288,6 +394,7 @@ limiter.limit("10 per minute")(auth_bp)
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 LOG_FILE = Path(__file__).parent / "data" / "logs" / "app.log"
 from monitoring.observability_v2 import init_observability  # noqa: E402  (after app + db ready)
+
 init_observability(app, db, log_file=LOG_FILE)
 log = logging.getLogger(__name__)
 
@@ -296,7 +403,7 @@ UPLOAD_FOLDER.mkdir(exist_ok=True)
 EXPORT_FOLDER = Path(__file__).parent / "data" / "exports"
 EXPORT_FOLDER.mkdir(exist_ok=True)
 
-TEMPLATE_FOLDER = Path(__file__).parent / "template"
+TEMPLATE_FOLDER = Path(__file__).parent / "templates"
 
 
 def _available_journals():
@@ -339,7 +446,9 @@ def _get_builder_for_journal(journal_code: str):
         raise ValueError(f"Template generator missing build_document: {canonical}gen")
     return canonical, builder
 
-AIOTOMASI_MODEL = os.getenv("AIOTOMASI_MODEL", "V-OPUS")
+
+AIOTOMASI_MODEL = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
+
 
 # ─── AI Job Store (DB-backed; safe across multi-worker gunicorn) ─────────────
 def _job_create(job_id: str, user_id: int, prompt: str, paper_id: str | None = None):
@@ -403,6 +512,7 @@ def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool
     job.timeout = bool(timeout_flag)
     db.session.commit()
 
+
 def _get_current_user_id():
     try:
         verify_jwt_in_request(optional=True)
@@ -410,6 +520,7 @@ def _get_current_user_id():
         return int(identity) if identity else None
     except Exception:
         return None
+
 
 def _log_api_usage(endpoint, usage, user_id=None):
     """Insert usage row + bump per-user monthly counter (token quota tracking).
@@ -419,28 +530,32 @@ def _log_api_usage(endpoint, usage, user_id=None):
             log_entry = ApiUsageLog(
                 user_id=user_id,
                 endpoint=endpoint,
-                prompt_tokens=usage.get('prompt_tokens', 0),
-                completion_tokens=usage.get('completion_tokens', 0),
-                total_tokens=usage.get('total_tokens', 0),
+                prompt_tokens=usage.get("prompt_tokens", 0),
+                completion_tokens=usage.get("completion_tokens", 0),
+                total_tokens=usage.get("total_tokens", 0),
                 model=AIOTOMASI_MODEL,
             )
             db.session.add(log_entry)
 
             # Quota counter — reset on month change.
             if user_id is not None:
-                from models import User
+                from database.models import User
+
                 u = User.query.get(int(user_id))
                 if u:
                     now = datetime.now(timezone.utc)
-                    month_key = now.strftime('%Y-%m')
-                    if (u.usage_month_key or '') != month_key:
+                    month_key = now.strftime("%Y-%m")
+                    if (u.usage_month_key or "") != month_key:
                         u.usage_month_key = month_key
                         u.token_used_month = 0
-                    u.token_used_month = (u.token_used_month or 0) + int(usage.get('total_tokens', 0))
+                    u.token_used_month = (u.token_used_month or 0) + int(
+                        usage.get("total_tokens", 0)
+                    )
 
             db.session.commit()
     except Exception as e:
         log.warning("Failed to log API usage: %s", e)
+
 
 # ─── DB Init ──────────────────────────────────────────────────────────────────
 with app.app_context():
@@ -462,16 +577,20 @@ def _sweep_stuck_jobs():
         try:
             time.sleep(60)
             with app.app_context():
-                cutoff = datetime.now(timezone.utc) - __import__('datetime').timedelta(seconds=AIJOB_PENDING_TIMEOUT_SECONDS)
+                cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(
+                    seconds=AIJOB_PENDING_TIMEOUT_SECONDS
+                )
                 stuck = AiJob.query.filter(
-                    AiJob.status == 'pending',
+                    AiJob.status == "pending",
                     AiJob.started_at < cutoff,
                 ).all()
                 if not stuck:
                     continue
                 for j in stuck:
-                    j.status = 'error'
-                    j.error = f"Job stuck >{AIJOB_PENDING_TIMEOUT_SECONDS//60}min — worker likely crashed"
+                    j.status = "error"
+                    j.error = (
+                        f"Job stuck >{AIJOB_PENDING_TIMEOUT_SECONDS//60}min — worker likely crashed"
+                    )
                     j.timeout = True
                 db.session.commit()
                 log.warning("Swept %d stuck AI jobs", len(stuck))
@@ -486,6 +605,7 @@ threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").st
 # to spin up Playwright. Started here on app boot.
 try:
     from workers.image_worker import start_image_workers as _start_image_workers  # noqa: PLC0415
+
     _start_image_workers(app)
 except Exception:
     log.exception("Failed to start image worker pool — generate-image will not work")
@@ -497,25 +617,29 @@ except Exception:
 if not app.config.get("TESTING"):
     try:
         from workers.slr_worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
+
         _start_slr_workers(app)
     except Exception:
-        log.exception("Failed to start SLR worker pool — Literature/SLR jobs will queue but not run")
+        log.exception(
+            "Failed to start SLR worker pool — Literature/SLR jobs will queue but not run"
+        )
 
 # ─── Health Check ────────────────────────────────────────────────────────────
+
 
 @app.route("/api/health", methods=["GET"])
 @limiter.exempt
 def health():
-    return jsonify({
-        "status": "ok",
-        "model": AIOTOMASI_MODEL,
-        "timestamp": datetime.now().isoformat()
-    })
+    return jsonify(
+        {"status": "ok", "model": AIOTOMASI_MODEL, "timestamp": datetime.now().isoformat()}
+    )
+
 
 # ─── AI Generate (Section) ───────────────────────────────────────────────────
 
+
 @app.route("/api/generate", methods=["POST"])
-@limiter.limit("20 per minute")   # AI calls are expensive; 20/min per IP
+@limiter.limit("20 per minute")  # AI calls are expensive; 20/min per IP
 @jwt_required()
 def generate():
     try:
@@ -530,6 +654,13 @@ def generate():
 
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
+
+        # AI Mocking for testing (rate limiting still enforced by decorator)
+        from tests.helpers.mock_ai import get_mock_generate_response, should_mock_ai
+
+        if should_mock_ai():
+            mock_response = get_mock_generate_response(prompt=prompt, section=section)
+            return jsonify(mock_response)
 
         api_key = os.getenv("AIOTOMASI_APIKEY")
         base_url = os.getenv("AIOTOMASI_API")
@@ -548,50 +679,86 @@ def generate():
             "acknowledgment": "Write 2-3 sentences of paper acknowledgments thanking funding agencies, collaborators. Professional and concise.",
         }
 
-        system_prompt = prompts_by_section.get(section,
-            "You are an expert academic writer for IEEE papers. Generate content for the specified section. Use LaTeX notation for formulas. Return ONLY the content.")
+        system_prompt = prompts_by_section.get(
+            section,
+            "You are an expert academic writer for IEEE papers. Generate content for the specified section. Use LaTeX notation for formulas. Return ONLY the content.",
+        )
 
         messages = [{"role": "system", "content": system_prompt}]
         context_parts = []
         if paper_context:
             context_parts.append(f"Paper title: {paper_context.get('title', 'Untitled')}")
-            if paper_context.get('abstract'):
+            if paper_context.get("abstract"):
                 context_parts.append(f"Abstract: {paper_context['abstract'][:500]}")
         if last_text:
             context_parts.append(f"\n--- Current content ---\n{last_text}\n--- End ---")
         if context_parts:
             messages.append({"role": "user", "content": "\n".join(context_parts)})
-            messages.append({"role": "assistant", "content": "I understand the context. What would you like me to do?"})
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": "I understand the context. What would you like me to do?",
+                }
+            )
         messages.append({"role": "user", "content": prompt})
 
         from paper_generation.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
+
         result, model_used = _call_aiotomasi_with_fallback(
-            messages, api_key, base_url, AIOTOMASI_MODEL,
+            messages,
+            api_key,
+            base_url,
+            AIOTOMASI_MODEL,
         )
         # Upstream SSE doesn't return token counts; report char-derived estimate
         # so the frontend keeps its existing usage shape without claiming false
         # token totals. _log_api_usage records 0/0/0 which is harmless.
         usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         user_id = _get_current_user_id()
-        threading.Thread(target=_log_api_usage, args=("generate", usage, user_id), daemon=True).start()
-        return jsonify({"success": True, "content": result, "text": result, "model": model_used, "usage": usage})
+        threading.Thread(
+            target=_log_api_usage, args=("generate", usage, user_id), daemon=True
+        ).start()
+        return jsonify(
+            {
+                "success": True,
+                "content": result,
+                "text": result,
+                "model": model_used,
+                "usage": usage,
+            }
+        )
 
+    except HTTPException:
+        raise
     except Exception as e:
         log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
 
+
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
-def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None, pdf_texts=None, custom_prompt=None, paper_id=None, conv_id=None, resume_state=None, **_legacy_kwargs):
-    """Generate a full paper via single-shot V-OPUS.
+
+def _run_generate_full_job(
+    job_id,
+    prompt,
+    user_id=None,
+    topic=None,
+    style=None,
+    pdf_texts=None,
+    custom_prompt=None,
+    paper_id=None,
+    conv_id=None,
+    resume_state=None,
+    **_legacy_kwargs,
+):
+    """Generate a full paper via single-shot generation.
 
     Legacy callers may still pass ``model=`` or ``chunked=`` — both are now
-    silently ignored. The model is hard-coded to V-OPUS inside
-    ``generate_paper_json_single``; chunked orchestration has been retired in
-    favour of one round-trip with the full prompt.txt schema.
+    silently ignored. The model is read from MODELGENERATE env var (VIOLA-GENERATE).
+    See paper_generation/single.py for implementation details.
     """
     t_start = time.time()
-    log.info("[job:%s] started, prompt=%r (single-shot V-OPUS)", job_id, prompt[:80])
+    log.info("[job:%s] started, prompt=%r (single-shot generation)", job_id, prompt[:80])
     if _legacy_kwargs:
         log.info("[job:%s] ignoring legacy kwargs: %s", job_id, sorted(_legacy_kwargs.keys()))
     uid = None
@@ -609,11 +776,15 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
     def _publish(stage, percent, status):
         try:
             from jobs_bp import publish_progress
-            publish_progress(job_id, {
-                "stage": stage,
-                "percent": int(percent),
-                "status": status,
-            })
+
+            publish_progress(
+                job_id,
+                {
+                    "stage": stage,
+                    "percent": int(percent),
+                    "status": status,
+                },
+            )
         except Exception:
             pass
 
@@ -678,11 +849,13 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         # section1 because of `max_tokens`) silently produces a stub paper that
         # only the user discovers after waiting 5–10 minutes.
         from paper_generation.single import _validate_paper_shape as _vps
+
         validation = _vps(paper_data)
         if not validation["ok"]:
             log.warning(
                 "[job:%s] generated paper INCOMPLETE: %s",
-                job_id, validation["issues"],
+                job_id,
+                validation["issues"],
             )
             # We still save the partial result (better than nothing), but mark
             # the job stage so the chat surfaces the issue rather than
@@ -698,7 +871,17 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             except Exception:
                 pass
 
-        paper_data.setdefault("authors", [{"name": "Author Name", "affiliation": "Department, University", "location": "City, Country", "email": "author@example.com"}])
+        paper_data.setdefault(
+            "authors",
+            [
+                {
+                    "name": "Author Name",
+                    "affiliation": "Department, University",
+                    "location": "City, Country",
+                    "email": "author@example.com",
+                }
+            ],
+        )
         paper_data.setdefault("keywords", [])
         paper_data.setdefault("sections", [])
         paper_data.setdefault("acknowledgment", "")
@@ -708,29 +891,40 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         paper_data.setdefault("equations", [])
 
         for auth in paper_data["authors"]:
-            auth.setdefault("name", ""); auth.setdefault("affiliation", "")
-            auth.setdefault("location", ""); auth.setdefault("email", "")
+            auth.setdefault("name", "")
+            auth.setdefault("affiliation", "")
+            auth.setdefault("location", "")
+            auth.setdefault("email", "")
 
         for i, sec in enumerate(paper_data["sections"]):
-            sec.setdefault("id", f"id-sec{i+1}"); sec.setdefault("number", "")
-            sec.setdefault("title", ""); sec.setdefault("content", "")
+            sec.setdefault("id", f"id-sec{i+1}")
+            sec.setdefault("number", "")
+            sec.setdefault("title", "")
+            sec.setdefault("content", "")
             sec.setdefault("subsections", [])
             for j, sub in enumerate(sec["subsections"]):
                 sub.setdefault("id", f"id-sub{i+1}{chr(97+j)}")
                 sub.setdefault("letter", chr(65 + j))
-                sub.setdefault("title", ""); sub.setdefault("content", "")
+                sub.setdefault("title", "")
+                sub.setdefault("content", "")
                 sub.setdefault("numberedItems", [])
 
         for i, fig in enumerate(paper_data["figures"]):
-            fig.setdefault("id", f"figure-{i+1}"); fig.setdefault("caption", f"Fig. {i+1}. ")
-            fig.setdefault("filename", ""); fig.setdefault("url", "")
+            fig.setdefault("id", f"figure-{i+1}")
+            fig.setdefault("caption", f"Fig. {i+1}. ")
+            fig.setdefault("filename", "")
+            fig.setdefault("url", "")
 
         for i, tbl in enumerate(paper_data["tables"]):
-            tbl.setdefault("id", f"table-{i+1}"); tbl.setdefault("caption", f"TABLE {i+1}. ")
-            tbl.setdefault("headers", []); tbl.setdefault("rows", [])
+            tbl.setdefault("id", f"table-{i+1}")
+            tbl.setdefault("caption", f"TABLE {i+1}. ")
+            tbl.setdefault("headers", [])
+            tbl.setdefault("rows", [])
 
         for i, eq in enumerate(paper_data["equations"]):
-            eq.setdefault("id", f"eq-{i+1}"); eq.setdefault("latex", ""); eq.setdefault("number", i + 1)
+            eq.setdefault("id", f"eq-{i+1}")
+            eq.setdefault("latex", "")
+            eq.setdefault("number", i + 1)
 
         try:
             output_dir = Path(__file__).parent / "output"
@@ -738,7 +932,9 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
             safe_title = re.sub(r"[^a-zA-Z0-9_]", "_", prompt[:50]).strip("_")
             ts_str = time.strftime("%Y%m%d_%H%M%S")
             json_out = output_dir / f"{ts_str}_{safe_title}.json"
-            json_out.write_text(json.dumps(paper_data, ensure_ascii=False, indent=2), encoding="utf-8")
+            json_out.write_text(
+                json.dumps(paper_data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         except Exception as save_err:
             log.warning("[job:%s] Could not save JSON: %s", job_id, save_err)
 
@@ -746,7 +942,11 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         _checkpoint("complete", 100)
 
         elapsed = time.time() - t_start
-        _log_api_usage("generate-full", {"total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0}, user_id)
+        _log_api_usage(
+            "generate-full",
+            {"total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0},
+            user_id,
+        )
         with app.app_context():
             # Persist into Paper.data when chat-tool flow gave us a paper_id —
             # this prevents the result being lost if the one-shot /api/job
@@ -757,8 +957,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
                     if paper:
                         paper.data = paper_data
                         paper.title = (
-                            paper_data.get("title")
-                            or (paper_data.get("data") or {}).get("title")
+                            (paper_data.get("title") or "").strip()
                             or paper.title
                             or "Untitled"
                         )
@@ -796,6 +995,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
                 log.exception("[job:%s] failed to persist cancellation", job_id)
         try:
             from jobs_bp import publish_progress
+
             publish_progress(job_id, {"stage": gc.stage, "status": "cancelled"})
         except Exception:
             pass
@@ -803,14 +1003,22 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
     except Exception as e:
         elapsed = time.time() - t_start
         err_str = str(e)
-        timeout_flag = "timeout" in type(e).__name__.lower() or "timeout" in err_str.lower() or "timed out" in err_str.lower()
+        timeout_flag = (
+            "timeout" in type(e).__name__.lower()
+            or "timeout" in err_str.lower()
+            or "timed out" in err_str.lower()
+        )
         log.error("[job:%s] FAILED after %.1fs: %s", job_id, elapsed, e, exc_info=True)
         with app.app_context():
             if uid is not None:
                 _job_set_error(
                     job_id,
                     uid,
-                    f"Generation timed out after {int(elapsed)}s. Try a shorter topic." if timeout_flag else err_str,
+                    (
+                        f"Generation timed out after {int(elapsed)}s. Try a shorter topic."
+                        if timeout_flag
+                        else err_str
+                    ),
                     timeout_flag=timeout_flag,
                 )
     finally:
@@ -819,6 +1027,7 @@ def _run_generate_full_job(job_id, prompt, user_id=None, topic=None, style=None,
         # generation succeeded or failed.
         try:
             from api.chat_bp import clear_active_job
+
             if paper_id:
                 clear_active_job(paper_id)
         except Exception:
@@ -837,31 +1046,39 @@ def get_paper_active_job(paper_id):
         return jsonify({"error": "Paper not found"}), 404
     try:
         from api.chat_bp import _active_jobs_by_paper
+
         job_id = _active_jobs_by_paper.get(paper_id)
         if not job_id:
             return jsonify({"active": False})
         job = AiJob.query.filter_by(id=job_id, user_id=int(user_id)).first()
-        if not job or job.status != 'pending':
+        if not job or job.status != "pending":
             # Stale — clean up and report no active job.
             _active_jobs_by_paper.pop(paper_id, None)
             return jsonify({"active": False})
         elapsed = (
-            int((datetime.now(timezone.utc) - job.started_at.replace(tzinfo=timezone.utc)).total_seconds())
-            if job.started_at else 0
+            int(
+                (
+                    datetime.now(timezone.utc) - job.started_at.replace(tzinfo=timezone.utc)
+                ).total_seconds()
+            )
+            if job.started_at
+            else 0
         )
-        return jsonify({
-            "active": True,
-            "job_id": job.id,
-            "prompt": (job.prompt or "")[:200],
-            "elapsed_seconds": elapsed,
-            "status": job.status,
-        })
+        return jsonify(
+            {
+                "active": True,
+                "job_id": job.id,
+                "prompt": (job.prompt or "")[:200],
+                "elapsed_seconds": elapsed,
+                "status": job.status,
+            }
+        )
     except Exception as e:
         return jsonify({"active": False, "error": str(e)})
 
 
 @app.route("/api/generate-full", methods=["POST"])
-@limiter.limit("10 per minute")   # Full paper generation: heavier, stricter limit
+@limiter.limit("10 per minute")  # Full paper generation: heavier, stricter limit
 @jwt_required()
 def generate_full():
     try:
@@ -871,12 +1088,21 @@ def generate_full():
         prompt = data.get("prompt", "").strip()
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
+
+        # AI Mocking for testing (rate limiting still enforced by decorator)
+        from tests.helpers.mock_ai import get_mock_generate_full_response, should_mock_ai
+
+        if should_mock_ai():
+            job_id = uuid.uuid4().hex[:12]
+            mock_response = get_mock_generate_full_response(prompt=prompt, job_id=job_id)
+            return jsonify(mock_response)
+
         topic = data.get("topic") or None
         style = data.get("style") or None
         pdf_texts = data.get("pdf_texts") or []
         model = data.get("model") or None
         if model is not None:
-            allowed_models = {"V-OPUS", "V-DEEPSEEK"}
+            allowed_models = {"VIOLA-CHAT", "VIOLA-GENERATE"}
             if model not in allowed_models:
                 return jsonify({"error": f"Invalid model. Allowed: {sorted(allowed_models)}"}), 400
 
@@ -916,7 +1142,16 @@ def get_job_status(job_id):
     if job is None:
         return jsonify({"error": "Job not found or already retrieved"}), 404
 
-    elapsed = int((datetime.now(timezone.utc) - (job.started_at.replace(tzinfo=timezone.utc) if job.started_at and job.started_at.tzinfo is None else (job.started_at or datetime.now(timezone.utc)))).total_seconds())
+    elapsed = int(
+        (
+            datetime.now(timezone.utc)
+            - (
+                job.started_at.replace(tzinfo=timezone.utc)
+                if job.started_at and job.started_at.tzinfo is None
+                else (job.started_at or datetime.now(timezone.utc))
+            )
+        ).total_seconds()
+    )
     if job.status == "pending":
         return jsonify({"status": "pending", "elapsed": elapsed})
     # Don't delete the row on done/error any more — the badge inbox
@@ -930,34 +1165,49 @@ def get_job_status(job_id):
         # directly. Both shapes are tolerated.
         if isinstance(paper, dict) and "sections" not in paper and isinstance(job.result, dict):
             paper = job.result
-        return jsonify({"status": "done", "success": True, "paper": paper, "usage": {}, "elapsed": elapsed})
+        return jsonify(
+            {"status": "done", "success": True, "paper": paper, "usage": {}, "elapsed": elapsed}
+        )
 
     err = job.error or "Unknown error"
     timeout_flag = bool(job.timeout)
     return jsonify({"status": "error", "error": err, "timeout": timeout_flag})
 
+
 # ─── Topics / Styles / PDF Upload ─────────────────────────────────────────────
+
 
 @app.route("/api/topics", methods=["GET"])
 def list_topics():
-    """Return sorted list of available topic slugs."""
-    topic_dir = Path(__file__).parent / "prompt" / "topic"
-    topics = sorted(
-        p.stem for p in topic_dir.glob("*.txt") if not p.stem.startswith("_")
-    )
+    """Return sorted list of available topic slugs (cached)."""
+    from core.cache import cached
+
+    @cached(ttl_seconds=3600)  # Cache for 1 hour
+    def _get_topics():
+        topic_dir = Path(__file__).parent / "prompt" / "topic"
+        return sorted(p.stem for p in topic_dir.glob("*.txt") if not p.stem.startswith("_"))
+
+    topics = _get_topics()
     return jsonify({"topics": topics})
 
 
 @app.route("/api/styles", methods=["GET"])
 def list_styles():
-    """Return sorted list of available citation style slugs."""
-    style_dir = Path(__file__).parent / "prompt" / "style"
-    styles = sorted(p.stem for p in style_dir.glob("*.txt"))
+    """Return sorted list of available citation style slugs (cached)."""
+    from core.cache import cached
+
+    @cached(ttl_seconds=3600)  # Cache for 1 hour
+    def _get_styles():
+        style_dir = Path(__file__).parent / "prompt" / "style"
+        return sorted(p.stem for p in style_dir.glob("*.txt"))
+
+    styles = _get_styles()
     return jsonify({"styles": styles})
 
 
 MAX_PDF_FILES = 10
 MAX_WORDS_PER_FILE = 5000
+
 
 @app.route("/api/upload-pdfs", methods=["POST"])
 @limiter.limit("20 per minute")
@@ -968,10 +1218,12 @@ def upload_pdfs():
     Routes through the shared 20-worker extraction pool in files_bp so a chat
     upload doesn't block a Files-tab upload (and vice versa).
     """
-    from paper_generation.extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
+    import io  # noqa: PLC0415
+
     from docx import Document  # noqa: PLC0415
     from files_bp import _EXTRACT_POOL  # noqa: PLC0415
-    import io  # noqa: PLC0415
+
+    from paper_generation.extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
 
     files = request.files.getlist("files")
     if not files:
@@ -1016,8 +1268,9 @@ def upload_pdfs():
         except Exception as e:
             return f"[Error reading {name}: {e}]"
 
-    futures = [(name, _EXTRACT_POOL.submit(_extract, kind, name, blob))
-               for kind, name, blob in payloads]
+    futures = [
+        (name, _EXTRACT_POOL.submit(_extract, kind, name, blob)) for kind, name, blob in payloads
+    ]
 
     results = []
     for name, fut in futures:
@@ -1041,8 +1294,8 @@ def upload_pdfs():
 # ─── Paper-specific Image Upload + signed URLs + image serving ───────────
 # Moved to images_bp.py — registered above (paper_images_bp + image_serve_bp).
 
-_PAPER_ID_RE = re.compile(r'^[A-Za-z0-9_-]{1,64}$')
-_FILENAME_RE = re.compile(r'^[A-Za-z0-9_.-]{1,128}$')
+_PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_FILENAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 
 @app.route("/api/journals", methods=["GET"])
@@ -1053,7 +1306,9 @@ def list_journals():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 # ─── Legacy Image Upload ──────────────────────────────────────────────────────
+
 
 @app.route("/api/upload-image", methods=["POST"])
 @limiter.limit("30 per minute")
@@ -1075,7 +1330,7 @@ def upload_image_legacy():
         file.stream.seek(0)
         if size > 10 * 1024 * 1024:
             return jsonify({"error": "Ukuran file > 10 MB"}), 413
-        
+
         head = file.stream.read(16)
         file.stream.seek(0)
         if not _is_image_bytes(head, ext):
@@ -1085,12 +1340,21 @@ def upload_image_legacy():
         filename = f"{uuid.uuid4().hex}{ext}"
         filepath = legacy_dir / filename
         file.save(str(filepath))
-        return jsonify({"success": True, "filename": filename, "url": f"/api/images/legacy/{filename}", "originalName": file.filename[:255]})
+        return jsonify(
+            {
+                "success": True,
+                "filename": filename,
+                "url": f"/api/images/legacy/{filename}",
+                "originalName": file.filename[:255],
+            }
+        )
     except Exception as e:
         log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
 
+
 # ─── Export DOCX ──────────────────────────────────────────────────────────────
+
 
 @app.route("/api/export", methods=["POST"])
 @jwt_required()
@@ -1117,27 +1381,33 @@ def export_docx():
             output_path = EXPORT_FOLDER / f"{canonical_journal}_{uuid.uuid4().hex[:8]}.docx"
             builder(json_filepath, output_path)
 
-            safe_title = re.sub(r'[^a-zA-Z0-9_\-]+', '_', str(paper.get('title', 'paper'))).strip('_')
+            safe_title = re.sub(r"[^a-zA-Z0-9_\-]+", "_", str(paper.get("title", "paper"))).strip(
+                "_"
+            )
             if not safe_title:
-                safe_title = 'paper'
+                safe_title = "paper"
             download_name = f"{canonical_journal}_{safe_title[:60]}.docx"
             response = send_file(
-                str(output_path), as_attachment=True,
+                str(output_path),
+                as_attachment=True,
                 download_name=download_name,
-                mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
+
             @response.call_on_close
             def _cleanup():
                 try:
                     output_path.unlink(missing_ok=True)
                 except Exception:
                     pass
+
             return response
         finally:
             json_filepath.unlink(missing_ok=True)
     except Exception as e:
         log.exception("unhandled error")
         return jsonify({"error": str(e)}), 500
+
 
 # ─── Paper CRUD ───────────────────────────────────────────────────────────────
 # Moved to papers_bp.py — registered above. Keeping this header as a breadcrumb.

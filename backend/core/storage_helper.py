@@ -17,7 +17,6 @@ IMPORTANT: Does NOT modify SQL database schema - only changes file storage paths
 
 import json
 import logging
-import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -41,7 +40,8 @@ def _safe_path_seg(value: object, fallback: str = "unknown") -> str:
 def _get_username_from_user_id(user_id) -> str:
     """Map user_id to username. Falls back to user_id if User model not available."""
     try:
-        from models import User
+        from database.models import User
+
         uid = int(user_id)
         user = User.query.get(uid)
         if user and user.email:
@@ -55,11 +55,11 @@ def _get_username_from_user_id(user_id) -> str:
 def get_user_paper_path(username: str, paper_id: str) -> Path:
     """
     Get base path for a user's paper.
-    
+
     Args:
         username: Username or user_id (will be sanitized)
         paper_id: Paper ID
-        
+
     Returns:
         Path: backend/data/<username>/<paper_id>/
     """
@@ -73,13 +73,13 @@ def get_user_paper_path(username: str, paper_id: str) -> Path:
 def save_chat_log(username: str, paper_id: str, direction: str, data: dict) -> Optional[Path]:
     """
     Save chat log with timestamp format DDMMYY-HHMMSS-{direction}.json
-    
+
     Args:
         username: Username or user_id
         paper_id: Paper ID
         direction: 'send' or 'recv'
         data: Dictionary to save as JSON
-        
+
     Returns:
         Path to saved file, or None on error
     """
@@ -87,22 +87,22 @@ def save_chat_log(username: str, paper_id: str, direction: str, data: dict) -> O
         base_path = get_user_paper_path(username, paper_id)
         chat_dir = base_path / "chat"
         chat_dir.mkdir(exist_ok=True)
-        
+
         # Format: DDMMYY-HHMMSS (e.g., 250523-124830)
         timestamp = datetime.now().strftime("%d%m%y-%H%M%S")
         filename = f"{timestamp}-{direction}.json"
         filepath = chat_dir / filename
-        
+
         # Add metadata
         payload = {
             "ts": datetime.utcnow().isoformat() + "Z",
             "direction": direction,
             **data,
         }
-        
+
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
-        
+
         return filepath
     except Exception as e:
         log.warning("save_chat_log failed: %s", e)
@@ -112,12 +112,12 @@ def save_chat_log(username: str, paper_id: str, direction: str, data: dict) -> O
 def get_image_path(username: str, paper_id: str, filename: str) -> Path:
     """
     Get path for an image file.
-    
+
     Args:
         username: Username or user_id
         paper_id: Paper ID
         filename: Image filename
-        
+
     Returns:
         Path: backend/data/<username>/<paper_id>/image/<filename>
     """
@@ -130,12 +130,12 @@ def get_image_path(username: str, paper_id: str, filename: str) -> Path:
 def get_paper_json_path(username: str, paper_id: str, title: str) -> Path:
     """
     Get path for paper editor JSON.
-    
+
     Args:
         username: Username or user_id
         paper_id: Paper ID
         title: Paper title (will be sanitized)
-        
+
     Returns:
         Path: backend/data/<username>/<paper_id>/<title>.json
     """
@@ -147,12 +147,12 @@ def get_paper_json_path(username: str, paper_id: str, title: str) -> Path:
 def get_slr_json_path(username: str, paper_id: str, title: str) -> Path:
     """
     Get path for SLR JSON.
-    
+
     Args:
         username: Username or user_id
         paper_id: Paper ID
         title: Paper title (will be sanitized)
-        
+
     Returns:
         Path: backend/data/<username>/<paper_id>/<title>-SLR.json
     """
@@ -164,38 +164,38 @@ def get_slr_json_path(username: str, paper_id: str, title: str) -> Path:
 def get_docx_path(username: str, paper_id: str, title: str, journal: str = "") -> Path:
     """
     Get path for DOCX output.
-    
+
     Args:
         username: Username or user_id
         paper_id: Paper ID
         title: Paper title (will be sanitized)
         journal: Optional journal name to prepend
-        
+
     Returns:
         Path: backend/data/<username>/<paper_id>/<title>.docx
               or backend/data/<username>/<paper_id>/<journal>_<title>.docx
     """
     base_path = get_user_paper_path(username, paper_id)
     safe_title = _safe_path_seg(title, "untitled")
-    
+
     if journal:
         safe_journal = _safe_path_seg(journal, "")
         filename = f"{safe_journal}_{safe_title}.docx" if safe_journal else f"{safe_title}.docx"
     else:
         filename = f"{safe_title}.docx"
-    
+
     return base_path / filename
 
 
 def get_generation_log_path(username: str, paper_id: str, job_id: str) -> Path:
     """
     Get path for paper generation logs.
-    
+
     Args:
         username: Username or user_id
         paper_id: Paper ID
         job_id: Generation job ID
-        
+
     Returns:
         Path: backend/data/<username>/<paper_id>/generation/<job_id>/
     """
@@ -208,10 +208,10 @@ def get_generation_log_path(username: str, paper_id: str, job_id: str) -> Path:
 def get_legacy_paper_dir(paper_id: str) -> Path:
     """
     Get legacy upload directory for backward compatibility.
-    
+
     Args:
         paper_id: Paper ID
-        
+
     Returns:
         Path: backend/data/uploads/<paper_id>/
     """
@@ -222,32 +222,38 @@ def migrate_to_new_structure(user_id: int, paper_id: str) -> bool:
     """
     Migrate files from legacy structure to new structure.
     This is optional and can be called on-demand.
-    
+
     Args:
         user_id: User ID
         paper_id: Paper ID
-        
+
     Returns:
         bool: True if migration successful or not needed, False on error
     """
     try:
         import shutil
-        
+
         username = _get_username_from_user_id(user_id)
         legacy_dir = get_legacy_paper_dir(paper_id)
-        
+
         if not legacy_dir.exists():
             return True
-        
+
         new_base = get_user_paper_path(username, paper_id)
-        
+
         # Migrate images
         for img_file in legacy_dir.glob("*"):
-            if img_file.is_file() and img_file.suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".webp"}:
+            if img_file.is_file() and img_file.suffix.lower() in {
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".webp",
+            }:
                 dest = get_image_path(username, paper_id, img_file.name)
                 if not dest.exists():
                     shutil.copy2(img_file, dest)
-        
+
         # Migrate files subdirectory
         legacy_files = legacy_dir / "files"
         if legacy_files.exists():
@@ -258,7 +264,7 @@ def migrate_to_new_structure(user_id: int, paper_id: str) -> bool:
                     dest = new_files / file.name
                     if not dest.exists():
                         shutil.copy2(file, dest)
-        
+
         log.info("Migrated files for paper %s to new structure", paper_id)
         return True
     except Exception as e:

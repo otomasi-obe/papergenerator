@@ -62,21 +62,147 @@ _DRAWING_ID_NEXT = 1
 _DOC_PR_PATTERN = re.compile(r'<wp:docPr\b[^>]*\bid="(\d+)"')
 
 AUTHOR_CONTRIBUTION_HEADERS = [
-    "Name of Author", "C", "M", "So", "Va", "Fo", "I", "R", "D", "O", "E", "Vi", "Su", "P", "Fu",
+    "Name of Author",
+    "C",
+    "M",
+    "So",
+    "Va",
+    "Fo",
+    "I",
+    "R",
+    "D",
+    "O",
+    "E",
+    "Vi",
+    "Su",
+    "P",
+    "Fu",
 ]
 
 AUTHOR_CONTRIBUTION_TEMPLATE_ROWS = [
-    ["Author 1 name", CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, "", CHECK_MARK, CHECK_MARK, CHECK_MARK, "", "", CHECK_MARK, ""],
-    ["Author 2 name", "", CHECK_MARK, "", "", "", CHECK_MARK, "", CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, "", ""],
-    ["Author 3 name", CHECK_MARK, "", CHECK_MARK, CHECK_MARK, "", "", CHECK_MARK, "", "", CHECK_MARK, CHECK_MARK, "", CHECK_MARK, CHECK_MARK],
+    [
+        "Author 1 name",
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        "",
+    ],
+    [
+        "Author 2 name",
+        "",
+        CHECK_MARK,
+        "",
+        "",
+        "",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        "",
+    ],
+    [
+        "Author 3 name",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+    ],
     [".....", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
-    ["Author x name", "", "", "", "", CHECK_MARK, "", CHECK_MARK, "", "", CHECK_MARK, "", CHECK_MARK, "", CHECK_MARK],
+    [
+        "Author x name",
+        "",
+        "",
+        "",
+        "",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+    ],
 ]
 
 AUTHOR_CONTRIBUTION_EXAMPLE_ROWS = [
-    ["Muhammad Usman Akram", CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, "", CHECK_MARK, CHECK_MARK, CHECK_MARK, "", "", CHECK_MARK, ""],
-    ["Siti Zaiton Mohd Hashim", "", CHECK_MARK, "", "", "", CHECK_MARK, "", CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, CHECK_MARK, "", ""],
-    ["Mohd Ali Hassan", CHECK_MARK, "", CHECK_MARK, CHECK_MARK, "", "", CHECK_MARK, "", "", CHECK_MARK, CHECK_MARK, "", CHECK_MARK, CHECK_MARK],
+    [
+        "Muhammad Usman Akram",
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        "",
+    ],
+    [
+        "Siti Zaiton Mohd Hashim",
+        "",
+        CHECK_MARK,
+        "",
+        "",
+        "",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        "",
+    ],
+    [
+        "Mohd Ali Hassan",
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        "",
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+        "",
+        CHECK_MARK,
+        CHECK_MARK,
+    ],
 ]
 
 DATA_AVAILABILITY_EXAMPLES = [
@@ -147,8 +273,9 @@ def _assign_inline_drawing_id(inline) -> None:
         node.set("id", str(drawing_id))
 
 
-def _set_run_font(run, size_pt: float, *, bold: bool = False,
-                  italic: bool = False, superscript: bool = False) -> None:
+def _set_run_font(
+    run, size_pt: float, *, bold: bool = False, italic: bool = False, superscript: bool = False
+) -> None:
     run.bold = bold
     run.italic = italic
     run.font.size = Pt(size_pt)
@@ -163,9 +290,15 @@ def _set_run_font(run, size_pt: float, *, bold: bool = False,
         rfonts.set(qn(key), FONT_NAME)
 
 
-def _append_run(paragraph: Paragraph, text: str, size_pt: float, *,
-               bold: bool = False, italic: bool = False,
-               superscript: bool = False):
+def _append_run(
+    paragraph: Paragraph,
+    text: str,
+    size_pt: float,
+    *,
+    bold: bool = False,
+    italic: bool = False,
+    superscript: bool = False,
+):
     run = paragraph.add_run(text)
     _set_run_font(run, size_pt, bold=bold, italic=italic, superscript=superscript)
     return run
@@ -174,8 +307,8 @@ def _append_run(paragraph: Paragraph, text: str, size_pt: float, *,
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -238,7 +371,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -293,8 +426,14 @@ def _append_inline_math(paragraph: Paragraph, latex: str) -> bool:
     return True
 
 
-def _append_rich_text(paragraph: Paragraph, text: str, size_pt: float, *,
-                      base_bold: bool = False, base_italic: bool = False) -> None:
+def _append_rich_text(
+    paragraph: Paragraph,
+    text: str,
+    size_pt: float,
+    *,
+    base_bold: bool = False,
+    base_italic: bool = False,
+) -> None:
     for token in _iter_rich_tokens(text):
         if token["kind"] == "linebreak":
             paragraph.add_run().add_break()
@@ -324,9 +463,16 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
     return BASE_DIR / path
 
 
-def _set_paragraph_common(paragraph: Paragraph, align, *, first_line: float | None = None,
-                          left_indent: float | None = None, hanging: float | None = None,
-                          space_before: float | None = None, space_after: float | None = None) -> None:
+def _set_paragraph_common(
+    paragraph: Paragraph,
+    align,
+    *,
+    first_line: float | None = None,
+    left_indent: float | None = None,
+    hanging: float | None = None,
+    space_before: float | None = None,
+    space_after: float | None = None,
+) -> None:
     paragraph.alignment = align
     pf = paragraph.paragraph_format
     if left_indent is not None:
@@ -341,7 +487,9 @@ def _set_paragraph_common(paragraph: Paragraph, align, *, first_line: float | No
         pf.space_after = Pt(space_after)
 
 
-def _add_tab_stop(paragraph: Paragraph, position_pt: float, alignment=WD_TAB_ALIGNMENT.LEFT) -> None:
+def _add_tab_stop(
+    paragraph: Paragraph, position_pt: float, alignment=WD_TAB_ALIGNMENT.LEFT
+) -> None:
     paragraph.paragraph_format.tab_stops.add_tab_stop(Pt(position_pt), alignment)
 
 
@@ -400,11 +548,15 @@ def _set_cell_width(cell: _Cell, width_cm: float) -> None:
     tc_w.set(qn("w:type"), "dxa")
 
 
-def _add_text_table(doc: Document, rows: list[list[str]], *,
-                    column_widths_cm: list[float] | None = None,
-                    font_pt: float = BODY_FONT_PT,
-                    column_alignments: list | None = None,
-                    header_bold: bool = False) -> Table:
+def _add_text_table(
+    doc: Document,
+    rows: list[list[str]],
+    *,
+    column_widths_cm: list[float] | None = None,
+    font_pt: float = BODY_FONT_PT,
+    column_alignments: list | None = None,
+    header_bold: bool = False,
+) -> Table:
     table = doc.add_table(rows=len(rows), cols=len(rows[0]))
     _set_table_full_borders(table)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -435,8 +587,9 @@ def _add_text_table(doc: Document, rows: list[list[str]], *,
     return table
 
 
-def _write_centered_line(paragraph: Paragraph, text: str, size_pt: float, *,
-                         bold: bool = False) -> None:
+def _write_centered_line(
+    paragraph: Paragraph, text: str, size_pt: float, *, bold: bool = False
+) -> None:
     _clear_paragraph(paragraph)
     _set_paragraph_common(paragraph, WD_ALIGN_PARAGRAPH.CENTER)
     _append_rich_text(paragraph, text, size_pt, base_bold=bold)
@@ -483,7 +636,12 @@ def _format_title_block(doc: Document, config: dict) -> Table:
         _set_paragraph_common(paragraph, WD_ALIGN_PARAGRAPH.CENTER)
 
     for paragraph, ((affiliation, location), indices) in zip(aff_paragraphs, groups.items()):
-        _append_run(paragraph, ",".join(str(index) for index in indices), AFFILIATION_FONT_PT, superscript=True)
+        _append_run(
+            paragraph,
+            ",".join(str(index) for index in indices),
+            AFFILIATION_FONT_PT,
+            superscript=True,
+        )
         details = ", ".join(part for part in [affiliation, location] if part)
         if details:
             _append_run(paragraph, f" {details}", AFFILIATION_FONT_PT)
@@ -504,9 +662,15 @@ def _unique_table_cells(table: Table) -> list[_Cell]:
     return cells
 
 
-def _set_cell_text(cell: _Cell, text: str, *, align=WD_ALIGN_PARAGRAPH.LEFT,
-                   size_pt: float = BODY_FONT_PT, bold: bool = False,
-                   italic: bool = False) -> None:
+def _set_cell_text(
+    cell: _Cell,
+    text: str,
+    *,
+    align=WD_ALIGN_PARAGRAPH.LEFT,
+    size_pt: float = BODY_FONT_PT,
+    bold: bool = False,
+    italic: bool = False,
+) -> None:
     _clear_cell(cell)
     paragraph = cell.paragraphs[0]
     _set_paragraph_common(paragraph, align)
@@ -551,12 +715,18 @@ def _set_corresponding_cell(cell: _Cell, author: dict) -> None:
 
 def _update_article_info_table(table: Table, config: dict) -> None:
     abstract = str(config.get("abstract", "")).strip()
-    keywords = [str(keyword).strip() for keyword in config.get("keywords", []) if str(keyword).strip()]
+    keywords = [
+        str(keyword).strip() for keyword in config.get("keywords", []) if str(keyword).strip()
+    ]
     authors = [author for author in config.get("authors", []) if isinstance(author, dict)]
     corresponding = authors[0] if authors else {}
 
-    _set_cell_text(table.cell(0, 0), "Article Info", align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=10.0, bold=True)
-    _set_cell_text(table.cell(0, 2), "ABSTRACT", align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=10.0, bold=True)
+    _set_cell_text(
+        table.cell(0, 0), "Article Info", align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=10.0, bold=True
+    )
+    _set_cell_text(
+        table.cell(0, 2), "ABSTRACT", align=WD_ALIGN_PARAGRAPH.CENTER, size_pt=10.0, bold=True
+    )
     _set_article_info_cell(table.cell(1, 0), keywords)
     _set_cell_text(table.cell(1, 2), abstract, align=WD_ALIGN_PARAGRAPH.JUSTIFY, size_pt=10.0)
     _set_cell_text(table.cell(2, 0), "", size_pt=10.0)
@@ -615,7 +785,9 @@ def _subsubsection_heading(doc: Document, number_text: str, title: str) -> None:
     _append_run(paragraph, f"{number_text}. {title}", BODY_FONT_PT)
 
 
-def _set_cell_border(cell: _Cell, edge: str, value: str, size: str = "4", color: str = "auto") -> None:
+def _set_cell_border(
+    cell: _Cell, edge: str, value: str, size: str = "4", color: str = "auto"
+) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     tc_borders = tc_pr.find(qn("w:tcBorders"))
     if tc_borders is None:
@@ -649,8 +821,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -784,8 +957,9 @@ def _subsection_keys(container: dict, prefix: str) -> list[str]:
     return sorted([key for key in container if pattern.match(key)])
 
 
-def _render_subsubsections(doc: Document, subsection: dict, json_path: Path,
-                           parent_key: str, number_text: str) -> None:
+def _render_subsubsections(
+    doc: Document, subsection: dict, json_path: Path, parent_key: str, number_text: str
+) -> None:
     child_keys = _subsection_keys(subsection, parent_key)
     for index, child_key in enumerate(child_keys, start=1):
         child = subsection[child_key]
@@ -812,7 +986,8 @@ def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
         _render_content(doc, section.get("content", []), json_path)
 
         direct_children = [
-            key for key in _subsection_keys(section, section_key)
+            key
+            for key in _subsection_keys(section, section_key)
             if len(key) == len(section_key) + 1
         ]
         for subsection_index, subsection_key in enumerate(direct_children, start=1):
@@ -855,14 +1030,20 @@ def _add_mandatory_guideline_sections(doc: Document, config: dict) -> None:
     )
     _add_text_table(
         doc,
-        [[
-            "C : Konseptualisasi\nM : Metodologi\nSo : Perangkat Lunak\nVa : Validasi\nFo : Analisis Formal",
-            "I : Investigasi\nR : Sumber Daya\nD : Kurasi Data\nO : Penulisan - Draf Awal\nE : Penulisan - Tinjauan & Penyuntingan",
-            "Vi : Visualisasi\nSu : Supervisi\nP : Administrasi Proyek\nFu : Akuisisi Pendanaan",
-        ]],
+        [
+            [
+                "C : Konseptualisasi\nM : Metodologi\nSo : Perangkat Lunak\nVa : Validasi\nFo : Analisis Formal",
+                "I : Investigasi\nR : Sumber Daya\nD : Kurasi Data\nO : Penulisan - Draf Awal\nE : Penulisan - Tinjauan & Penyuntingan",
+                "Vi : Visualisasi\nSu : Supervisi\nP : Administrasi Proyek\nFu : Akuisisi Pendanaan",
+            ]
+        ],
         column_widths_cm=[4.6, 4.6, 4.6],
         font_pt=GUIDE_TABLE_FONT_PT,
-        column_alignments=[WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.LEFT],
+        column_alignments=[
+            WD_ALIGN_PARAGRAPH.LEFT,
+            WD_ALIGN_PARAGRAPH.LEFT,
+            WD_ALIGN_PARAGRAPH.LEFT,
+        ],
     )
     _guideline_label(doc, "Lihat contoh berikut:")
     _add_text_table(
@@ -904,7 +1085,14 @@ def _add_mandatory_guideline_sections(doc: Document, config: dict) -> None:
 def _biography_rows(config: dict) -> list[list[str]]:
     authors = [author for author in config.get("authors", []) if isinstance(author, dict)]
     if not authors:
-        authors = [{"name": "Nama Penulis", "affiliation": "Afiliasi", "location": "Kota, Negara", "email": "email@domain.com"}]
+        authors = [
+            {
+                "name": "Nama Penulis",
+                "affiliation": "Afiliasi",
+                "location": "Kota, Negara",
+                "email": "email@domain.com",
+            }
+        ]
 
     rows: list[list[str]] = []
     for index, author in enumerate(authors):
@@ -912,10 +1100,10 @@ def _biography_rows(config: dict) -> list[list[str]]:
         affiliation = str(author.get("affiliation", "")).strip()
         location = str(author.get("location", "")).strip()
         email = str(author.get("email", "")).strip() or "[email penulis]"
-        affiliation_text = ", ".join(part for part in [affiliation, location] if part) or "afiliasi penulis"
-        biography = (
-            f"{name} berafiliasi dengan {affiliation_text}. Lengkapi bagian ini dengan biografi profesional penulis yang memuat latar belakang akademik, posisi saat ini, minat riset, publikasi penting, dan kontribusi signifikan pada paper ini. Cantumkan ORCID (wajib), serta Google Scholar, Scopus Author ID, atau Web of Science ResearcherID bila tersedia. Penulis dapat dihubungi melalui email: {email}. (9 pt)"
+        affiliation_text = (
+            ", ".join(part for part in [affiliation, location] if part) or "afiliasi penulis"
         )
+        biography = f"{name} berafiliasi dengan {affiliation_text}. Lengkapi bagian ini dengan biografi profesional penulis yang memuat latar belakang akademik, posisi saat ini, minat riset, publikasi penting, dan kontribusi signifikan pada paper ini. Cantumkan ORCID (wajib), serta Google Scholar, Scopus Author ID, atau Web of Science ResearcherID bila tersedia. Penulis dapat dihubungi melalui email: {email}. (9 pt)"
         rows.append(["[Foto 3x4 cm]", biography])
         if index != len(authors) - 1:
             rows.append(["", ""])
@@ -929,16 +1117,43 @@ def _add_biographies_of_authors(doc: Document, config: dict) -> None:
         "Pada bagian ini, penulis wajib menyajikan biografi profesional yang mencakup latar belakang akademik, posisi saat ini, minat riset, dan kontribusi penting terhadap studi ini. Selain itu, penulis perlu mencantumkan tautan profil profesional seperti ORCID (wajib) serta, bila ada, Google Scholar, Scopus Author ID, atau Web of Science (WoS) ResearcherID. Informasi ini membantu menegaskan identitas akademik penulis dan meningkatkan visibilitas penelitiannya.",
     )
     _guideline_label(doc, "Informasi yang wajib dicantumkan:", bold=True)
-    _guideline_paragraph(doc, "\\bNama lengkap:\\b Cantumkan nama lengkap penulis sebagaimana tercatat pada dokumen resmi. Bila diinginkan, format nama dapat disesuaikan dengan profil Scopus penulis.")
-    _guideline_paragraph(doc, "\\bAlamat email tiap penulis:\\b Cantumkan email profesional setiap penulis untuk memudahkan korespondensi.")
+    _guideline_paragraph(
+        doc,
+        "\\bNama lengkap:\\b Cantumkan nama lengkap penulis sebagaimana tercatat pada dokumen resmi. Bila diinginkan, format nama dapat disesuaikan dengan profil Scopus penulis.",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bAlamat email tiap penulis:\\b Cantumkan email profesional setiap penulis untuk memudahkan korespondensi.",
+    )
     _guideline_paragraph(doc, "\\bAkun profesional:\\b")
-    _guideline_paragraph(doc, "\\bORCID iD:\\b Wajib dicantumkan untuk setiap penulis agar karya ilmiah dapat terhubung dengan identitas peneliti.")
-    _guideline_paragraph(doc, "\\bProfil Google Scholar:\\b Tambahkan tautan ke profil Google Scholar penulis. Jika belum ada, penulis dapat membuat profil baru lalu mencantumkan tautannya.")
-    _guideline_paragraph(doc, "\\bScopus Author ID:\\b Jika tersedia, cantumkan Scopus Author ID untuk meningkatkan visibilitas penulis di Scopus.")
-    _guideline_paragraph(doc, "\\bWeb of Science (WoS) ResearcherID:\\b Cantumkan ResearcherID. Jika belum memiliki profil WoS, penulis dapat membuatnya lalu mencantumkan tautannya.")
-    _guideline_paragraph(doc, "\\bBiografi singkat:\\b Tulis ringkasan singkat mengenai latar belakang akademik, minat riset, publikasi penting, dan kontribusi penulis pada paper ini. Panjang yang disarankan sekitar 150 hingga 200 kata (9 pt).")
-    _guideline_paragraph(doc, "\\bPencapaian profesional:\\b Jika ada, sebutkan penghargaan penting, pengakuan profesional, atau proyek riset utama yang pernah diikuti penulis.")
-    _guideline_paragraph(doc, "\\bFoto penulis:\\b Lampirkan foto wajah profesional yang jelas berukuran 3x4 cm. Hindari foto yang terlalu kasual, buram, atau beresolusi rendah.")
+    _guideline_paragraph(
+        doc,
+        "\\bORCID iD:\\b Wajib dicantumkan untuk setiap penulis agar karya ilmiah dapat terhubung dengan identitas peneliti.",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bProfil Google Scholar:\\b Tambahkan tautan ke profil Google Scholar penulis. Jika belum ada, penulis dapat membuat profil baru lalu mencantumkan tautannya.",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bScopus Author ID:\\b Jika tersedia, cantumkan Scopus Author ID untuk meningkatkan visibilitas penulis di Scopus.",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bWeb of Science (WoS) ResearcherID:\\b Cantumkan ResearcherID. Jika belum memiliki profil WoS, penulis dapat membuatnya lalu mencantumkan tautannya.",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bBiografi singkat:\\b Tulis ringkasan singkat mengenai latar belakang akademik, minat riset, publikasi penting, dan kontribusi penulis pada paper ini. Panjang yang disarankan sekitar 150 hingga 200 kata (9 pt).",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bPencapaian profesional:\\b Jika ada, sebutkan penghargaan penting, pengakuan profesional, atau proyek riset utama yang pernah diikuti penulis.",
+    )
+    _guideline_paragraph(
+        doc,
+        "\\bFoto penulis:\\b Lampirkan foto wajah profesional yang jelas berukuran 3x4 cm. Hindari foto yang terlalu kasual, buram, atau beresolusi rendah.",
+    )
     _guideline_label(doc, "Berikut contoh format bagian biografi untuk tiap penulis:")
     _add_text_table(
         doc,
@@ -980,14 +1195,14 @@ def _add_references(doc: Document, config: dict) -> None:
         _append_rich_text(paragraph, text, REFERENCE_FONT_PT)
 
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
-        Path(output_path)
-        if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1018,7 +1233,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     if not json_files:
@@ -1032,8 +1248,6 @@ def main() -> None:
             print(f"Error generating {json_file.name}: {error}")
 
 
-
-
 def _set_table_full_borders(table) -> None:
     """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
 
@@ -1042,6 +1256,7 @@ def _set_table_full_borders(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

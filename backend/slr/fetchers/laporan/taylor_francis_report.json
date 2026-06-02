@@ -1,0 +1,15 @@
+{
+  "fetcher": "taylor_francis",
+  "test_time": "2026-05-29T12:54:33.107244",
+  "test_query": "social science",
+  "status": "no_results",
+  "papers_found": 0,
+  "papers_with_urls": 0,
+  "valid_download_links": 0,
+  "invalid_download_links": 0,
+  "errors": [
+    "No papers found for query"
+  ],
+  "papers": [],
+  "download_link_checks": []
+}

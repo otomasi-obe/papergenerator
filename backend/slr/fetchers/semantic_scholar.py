@@ -1,16 +1,29 @@
 """Fetcher untuk Semantic Scholar - https://api.semanticscholar.org/graph/v1"""
+
 import os
 from typing import Iterable
+
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
 BASE = "https://api.semanticscholar.org/graph/v1/paper/search"
 
-FIELDS = ",".join([
-    "paperId", "externalIds", "title", "abstract", "year",
-    "authors", "venue", "publicationVenue", "publicationTypes",
-    "citationCount", "openAccessPdf", "publicationDate",
-])
+FIELDS = ",".join(
+    [
+        "paperId",
+        "externalIds",
+        "title",
+        "abstract",
+        "year",
+        "authors",
+        "venue",
+        "publicationVenue",
+        "publicationTypes",
+        "citationCount",
+        "openAccessPdf",
+        "publicationDate",
+    ]
+)
 
 
 def _parse(p: dict) -> Paper | None:
@@ -28,6 +41,16 @@ def _parse(p: dict) -> Paper | None:
     if pub_types:
         venue_type = pub_types[0]
 
+    # Prioritize PDF link if available
+    pdf_info = p.get("openAccessPdf") or {}
+    pdf_url = pdf_info.get("url")
+    
+    # Fallback to DOI or landing page
+    if not pdf_url and doi:
+        pdf_url = f"https://doi.org/{doi}"
+    if not pdf_url and p.get("paperId"):
+        pdf_url = f"https://www.semanticscholar.org/paper/{p.get('paperId')}"
+
     return Paper(
         source="semantic_scholar",
         source_id=(p.get("paperId") or ""),
@@ -38,7 +61,7 @@ def _parse(p: dict) -> Paper | None:
         venue=p.get("venue") or pub_venue.get("name"),
         venue_type=pub_venue.get("type") or venue_type,
         doi=doi,
-        url=f"https://www.semanticscholar.org/paper/{p.get('paperId')}" if p.get("paperId") else None,
+        url=pdf_url,
         citations=p.get("citationCount"),
         is_open_access=bool(p.get("openAccessPdf")),
         type=venue_type,
@@ -46,11 +69,11 @@ def _parse(p: dict) -> Paper | None:
     )
 
 
-def search(client, query: str, limit: int = 25,
-           filters: dict | None = None) -> Iterable[Paper]:
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Free tier rate limit ketat (~1 req/sec). Set S2_API_KEY untuk lebih tinggi."""
     api_key = os.getenv("S2_API_KEY")
-    rl = RateLimiter(0.1 if api_key else 1.5)
+    # Semantic Scholar strict rate limiting: use 5 seconds without API key to avoid 429
+    rl = RateLimiter(0.1 if api_key else 5.0)
     headers = {"x-api-key": api_key} if api_key else None
     per_page = min(limit, 100)
     fetched = 0

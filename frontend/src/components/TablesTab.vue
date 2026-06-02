@@ -46,7 +46,7 @@
           <table class="min-w-full border border-cream-300 text-sm">
             <thead>
               <tr class="bg-cream-200">
-                <th v-for="(header, cIdx) in table.headers" :key="cIdx"
+                <th v-for="(_header, cIdx) in table.headers" :key="cIdx"
                   class="border border-cream-300 px-2 py-1 relative">
                   <input v-model="table.headers[cIdx]" class="w-full bg-transparent text-center font-semibold text-sm text-brown-900 focus:outline-none" />
                   <button v-if="table.headers.length > 1"
@@ -61,7 +61,7 @@
             </thead>
             <tbody>
               <tr v-for="(row, rIdx) in table.rows" :key="rIdx">
-                <td v-for="(cell, cIdx) in row" :key="cIdx" class="border border-cream-300 px-1 py-1">
+                <td v-for="(_cell, cIdx) in row" :key="cIdx" class="border border-cream-300 px-1 py-1">
                   <input v-model="table.rows[rIdx][cIdx]"
                     class="w-full bg-transparent text-center text-sm text-brown-900 focus:outline-none focus:bg-cream-100 px-1" />
                 </td>
@@ -87,7 +87,9 @@
   </div>
 </template>
 
-<script setup>
-import { usePaperStore } from '../stores/paper.js'
+<script setup lang="ts">
+// @ts-nocheck
+import { computed } from 'vue'
+const { usePaperStore } = await import('../stores/paper.js')
 const store = usePaperStore()
 </script>

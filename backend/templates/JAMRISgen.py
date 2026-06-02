@@ -140,11 +140,15 @@ def _set_run_font(run, font_name: str) -> None:
         rfonts.set(qn(f"w:{attr}"), font_name)
 
 
-def _format_run(run, *, size_pt: float | None = None,
-                bold: bool | None = None,
-                italic: bool | None = None,
-                underline: bool | None = None,
-                font_name: str | None = None) -> None:
+def _format_run(
+    run,
+    *,
+    size_pt: float | None = None,
+    bold: bool | None = None,
+    italic: bool | None = None,
+    underline: bool | None = None,
+    font_name: str | None = None,
+) -> None:
     if font_name:
         _set_run_font(run, font_name)
     if size_pt is not None:
@@ -164,9 +168,14 @@ def _clear_document_body(doc: Document) -> None:
             body.remove(child)
 
 
-def _embed_sectpr(doc: Document, sectpr_el, *, align=None,
-                  space_before_pt: float | None = None,
-                  space_after_pt: float | None = None) -> None:
+def _embed_sectpr(
+    doc: Document,
+    sectpr_el,
+    *,
+    align=None,
+    space_before_pt: float | None = None,
+    space_after_pt: float | None = None,
+) -> None:
     paragraph = doc.add_paragraph()
     if align is not None:
         paragraph.alignment = align
@@ -272,10 +281,16 @@ def _append_inline_math(paragraph, latex: str) -> bool:
     return True
 
 
-def _append_text_run(paragraph, text: str, *, bold: bool = False,
-                     italic: bool = False, underline: bool = False,
-                     size_pt: float | None = None,
-                     font_name: str | None = None):
+def _append_text_run(
+    paragraph,
+    text: str,
+    *,
+    bold: bool = False,
+    italic: bool = False,
+    underline: bool = False,
+    size_pt: float | None = None,
+    font_name: str | None = None,
+):
     if not text:
         return None
     run = paragraph.add_run(text)
@@ -297,8 +312,8 @@ def _append_line_break(paragraph) -> None:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -355,7 +370,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -366,17 +381,24 @@ def _iter_rich_tokens(text: str):
     yield from flush_buffer()
 
 
-def _append_rich_text(paragraph, text: str, *, base_bold: bool = False,
-                      base_italic: bool = False,
-                      size_pt: float | None = None,
-                      font_name: str | None = None) -> None:
+def _append_rich_text(
+    paragraph,
+    text: str,
+    *,
+    base_bold: bool = False,
+    base_italic: bool = False,
+    size_pt: float | None = None,
+    font_name: str | None = None,
+) -> None:
     for token in _iter_rich_tokens(text):
         if token["kind"] == "linebreak":
             _append_line_break(paragraph)
             continue
         if token["kind"] == "math":
             if not _append_inline_math(paragraph, token["value"]):
-                _append_text_run(paragraph, token["value"], italic=True, size_pt=size_pt, font_name=font_name)
+                _append_text_run(
+                    paragraph, token["value"], italic=True, size_pt=size_pt, font_name=font_name
+                )
             continue
         _append_text_run(
             paragraph,
@@ -499,9 +521,9 @@ def _set_cell_margins(cell, *, top: int, left: int, bottom: int, right: int) -> 
         el.set(qn("w:type"), "dxa")
 
 
-def _fill_cell_text(cell, text: str, *, size_pt: float,
-                    bold: bool = False,
-                    align=WD_ALIGN_PARAGRAPH.CENTER) -> None:
+def _fill_cell_text(
+    cell, text: str, *, size_pt: float, bold: bool = False, align=WD_ALIGN_PARAGRAPH.CENTER
+) -> None:
     cell.text = ""
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     paragraph = cell.paragraphs[0]
@@ -634,8 +656,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -677,7 +700,9 @@ def _add_equation(doc: Document, item: dict) -> None:
     table.style = "Normal Table"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = False
-    _set_table_width_fixed(table, EQUATION_TABLE_TOTAL_TW, [EQUATION_FORMULA_TW, EQUATION_NUMBER_TW])
+    _set_table_width_fixed(
+        table, EQUATION_TABLE_TOTAL_TW, [EQUATION_FORMULA_TW, EQUATION_NUMBER_TW]
+    )
     _set_table_borders(table, enabled=False)
 
     left_cell = table.cell(0, 0)
@@ -781,7 +806,9 @@ def _add_author_about(doc: Document, config: dict) -> None:
         if name_run is None:
             continue
 
-        details = [value for value in (author["affiliation"], author["location"], author["email"]) if value]
+        details = [
+            value for value in (author["affiliation"], author["location"], author["email"]) if value
+        ]
         if details:
             _append_text_run(paragraph, " - ")
             _append_rich_text(paragraph, ", ".join(details), size_pt=10.0, font_name=FONT_CENTURY)
@@ -799,7 +826,11 @@ def _add_references(doc: Document, config: dict) -> None:
     _append_text_run(heading, "References", bold=True, size_pt=10.0)
 
     for index, reference in enumerate(references, start=1):
-        ref_text = str(reference.get("text") or reference.get("Text") or "") if isinstance(reference, dict) else str(reference)
+        ref_text = (
+            str(reference.get("text") or reference.get("Text") or "")
+            if isinstance(reference, dict)
+            else str(reference)
+        )
         ref_text = _clean_reference_text(ref_text)
         if not ref_text:
             continue
@@ -824,7 +855,9 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, state: Rend
         _add_table(doc, item, state)
 
 
-def _render_subsection(doc: Document, subsection: dict, json_path: Path, state: RenderState) -> None:
+def _render_subsection(
+    doc: Document, subsection: dict, json_path: Path, state: RenderState
+) -> None:
     title = str(subsection.get("title", "")).strip()
     if title:
         _add_subsection_heading(doc, title)
@@ -864,7 +897,8 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
 
         subsection_keys = sorted(
             [
-                key for key, value in section.items()
+                key
+                for key, value in section.items()
                 if isinstance(value, dict) and key.startswith(section_key) and key != section_key
             ]
         )
@@ -872,9 +906,11 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
             _render_subsection(doc, section[subsection_key], json_path, state)
 
 
-def build_document(json_path: Path = JSON_PATH,
-                   output_path: Path | None = None,
-                   template_path: Path = TEMPLATE_PATH) -> Path:
+def build_document(
+    json_path: Path = JSON_PATH,
+    output_path: Path | None = None,
+    template_path: Path = TEMPLATE_PATH,
+) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
         Path(output_path)
@@ -916,7 +952,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     for json_file in json_files:

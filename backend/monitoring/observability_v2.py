@@ -17,6 +17,7 @@ Features:
 - Separate handlers for different log categories
 - Automatic log cleanup based on retention policies
 """
+
 from __future__ import annotations
 
 import gzip
@@ -30,7 +31,7 @@ import uuid
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
-from flask import Flask, Response, g, request, jsonify
+from flask import Flask, Response, g, jsonify, request
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     Counter,
@@ -39,7 +40,7 @@ from prometheus_client import (
     generate_latest,
 )
 from sqlalchemy import text
-
+from werkzeug.exceptions import HTTPException
 
 # ── Metrics (process-wide, registered once at import) ───────────────────────
 REQ_COUNT = Counter(
@@ -60,7 +61,7 @@ REQ_IN_FLIGHT = Gauge(
 AI_GENERATION_COUNT = Counter(
     "ai_generation_total",
     "AI paper-generation jobs by terminal status.",
-    ["status"],   # done | error | timeout
+    ["status"],  # done | error | timeout
 )
 LOG_ERRORS_TOTAL = Counter(
     "log_errors_total",
@@ -77,6 +78,21 @@ FRONTEND_ERRORS_TOTAL = Counter(
     "Frontend errors reported to backend.",
     ["error_type", "page"],
 )
+RATE_LIMIT_REQUESTS = Counter(
+    "rate_limit_requests_total",
+    "Total requests processed by rate limiter.",
+    ["endpoint", "status"],
+)
+RATE_LIMIT_BREACHES = Counter(
+    "rate_limit_breaches_total",
+    "Rate limit violations by endpoint and limit type.",
+    ["endpoint", "limit_type"],
+)
+RATE_LIMIT_CURRENT_USAGE = Gauge(
+    "rate_limit_current_usage",
+    "Current rate limit usage percentage by endpoint.",
+    ["endpoint", "identifier"],
+)
 
 
 # ── Structured JSON logging ─────────────────────────────────────────────────
@@ -86,10 +102,27 @@ class JSONFormatter(logging.Formatter):
     """
 
     _RESERVED = {
-        "name", "msg", "args", "levelname", "levelno", "pathname", "filename",
-        "module", "exc_info", "exc_text", "stack_info", "lineno", "funcName",
-        "created", "msecs", "relativeCreated", "thread", "threadName",
-        "processName", "process", "message",
+        "name",
+        "msg",
+        "args",
+        "levelname",
+        "levelno",
+        "pathname",
+        "filename",
+        "module",
+        "exc_info",
+        "exc_text",
+        "stack_info",
+        "lineno",
+        "funcName",
+        "created",
+        "msecs",
+        "relativeCreated",
+        "thread",
+        "threadName",
+        "processName",
+        "process",
+        "message",
     }
 
     def format(self, record: logging.LogRecord) -> str:
@@ -117,12 +150,13 @@ def _namer(default_name: str) -> str:
 def _rotator(source: str, dest: str) -> None:
     """Compress rotated logs with gzip."""
     try:
-        with open(source, 'rb') as f_in:
-            with gzip.open(dest, 'wb') as f_out:
+        with open(source, "rb") as f_in:
+            with gzip.open(dest, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
         Path(source).unlink()
     except Exception as e:
-        # Don't crash the app if compression fails - log to stderr
+        # Don't crash the app if compression fails - log to stderr and root logger
+        logging.error("log_rotation_failed", extra={"source": source, "error": str(e)})
         print(f"WARNING: Log rotation failed for {source}: {e}", file=sys.stderr)
 
 
@@ -130,18 +164,18 @@ def _create_rotating_handler(
     log_dir: Path,
     filename: str,
     level: int = logging.INFO,
-    when: str = 'midnight',
+    when: str = "midnight",
     backup_count: int = 7,
 ) -> TimedRotatingFileHandler:
     """Create a rotating file handler with compression.
-    
+
     Args:
         log_dir: Directory to store logs
         filename: Log file name (e.g., 'app.log')
         level: Minimum log level
         when: Rotation interval ('midnight', 'H', 'D', etc.)
         backup_count: Number of backup files to keep
-    
+
     Returns:
         Configured TimedRotatingFileHandler
     """
@@ -150,7 +184,7 @@ def _create_rotating_handler(
         when=when,
         interval=1,
         backupCount=backup_count,
-        encoding='utf-8',
+        encoding="utf-8",
         utc=True,
     )
     handler.namer = _namer
@@ -162,7 +196,7 @@ def _create_rotating_handler(
 
 def _configure_logging(log_dir: Path) -> None:
     """Configure root logger with rotating file handlers and stdout.
-    
+
     Creates five log files:
     - app.log: All logs (INFO+), 7-day retention
     - error.log: Errors only (ERROR+), 30-day retention
@@ -171,45 +205,45 @@ def _configure_logging(log_dir: Path) -> None:
     - perf.log: Performance logs (WARNING+), 7-day retention
     """
     log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Reset any existing handlers
     root = logging.getLogger()
     for h in list(root.handlers):
         root.removeHandler(h)
-    
+
     # Main application log (all levels, 7-day retention)
-    app_handler = _create_rotating_handler(
-        log_dir, 'app.log', level=logging.INFO, backup_count=7
-    )
-    
+    app_handler = _create_rotating_handler(log_dir, "app.log", level=logging.INFO, backup_count=7)
+
     # Error log (errors only, 30-day retention for compliance)
     error_handler = _create_rotating_handler(
-        log_dir, 'error.log', level=logging.ERROR, backup_count=30
+        log_dir, "error.log", level=logging.ERROR, backup_count=30
     )
-    
+
     # Access log (HTTP requests, 7-day retention)
     access_handler = _create_rotating_handler(
-        log_dir, 'access.log', level=logging.INFO, backup_count=7
+        log_dir, "access.log", level=logging.INFO, backup_count=7
     )
-    access_handler.addFilter(lambda r: 'papergenerator.obs' in r.name and 'http' in r.msg)
-    
+    access_handler.addFilter(lambda r: "papergenerator.obs" in r.name and "http" in r.msg)
+
     # Worker log (background workers, 7-day retention)
     worker_handler = _create_rotating_handler(
-        log_dir, 'worker.log', level=logging.INFO, backup_count=7
+        log_dir, "worker.log", level=logging.INFO, backup_count=7
     )
-    worker_handler.addFilter(lambda r: any(x in r.name for x in ['worker', 'slr', 'image', 'gemini']))
-    
+    worker_handler.addFilter(
+        lambda r: any(x in r.name for x in ["worker", "slr", "image", "gemini"])
+    )
+
     # Performance log (warnings about slow operations, 7-day retention)
     perf_handler = _create_rotating_handler(
-        log_dir, 'perf.log', level=logging.WARNING, backup_count=7
+        log_dir, "perf.log", level=logging.WARNING, backup_count=7
     )
-    perf_handler.addFilter(lambda r: 'perf' in r.name.lower())
-    
+    perf_handler.addFilter(lambda r: "perf" in r.name.lower())
+
     # Stdout for Docker/systemd log collection
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(JSONFormatter())
     stream_handler.setLevel(logging.INFO)
-    
+
     # Configure root logger
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     root.setLevel(log_level)
@@ -242,7 +276,7 @@ def _check_disk(path: Path, min_free_mb: int = 200) -> tuple[bool, dict]:
 # ── Wiring ──────────────────────────────────────────────────────────────────
 def init_observability(app: Flask, db, *, log_file: Path) -> None:
     """Initialize observability: logging, metrics, health checks.
-    
+
     Args:
         app: Flask application instance
         db: SQLAlchemy database instance
@@ -251,12 +285,15 @@ def init_observability(app: Flask, db, *, log_file: Path) -> None:
     # Use parent directory for all logs
     log_dir = log_file.parent / "logs"
     _configure_logging(log_dir)
-    
+
     log = logging.getLogger("papergenerator.obs")
-    log.info("Observability initialized", extra={
-        "log_dir": str(log_dir),
-        "log_level": os.getenv("LOG_LEVEL", "INFO"),
-    })
+    log.info(
+        "Observability initialized",
+        extra={
+            "log_dir": str(log_dir),
+            "log_level": os.getenv("LOG_LEVEL", "INFO"),
+        },
+    )
 
     @app.before_request
     def _start_timer():
@@ -299,9 +336,24 @@ def init_observability(app: Flask, db, *, log_file: Path) -> None:
     @app.errorhandler(Exception)
     def _on_unhandled(e):
         rid = getattr(g, "_req_id", "")
+
+        # Don't log HTTP exceptions as errors (they're expected client errors)
+        if isinstance(e, HTTPException):
+            # Log as info/warning, not exception
+            log.info(
+                "http_exception",
+                extra={
+                    "req_id": rid,
+                    "path": request.path,
+                    "status": e.code,
+                    "exception_name": e.name,
+                },
+            )
+            return e  # Return HTTP exception as-is
+
+        # Only log unexpected exceptions
         log.exception("unhandled_error", extra={"req_id": rid, "path": request.path})
-        # Re-raise so Flask's default handler still produces the 500 response.
-        raise e
+        raise e  # Re-raise non-HTTP exceptions
 
     @app.route("/metrics", methods=["GET"])
     @app.route("/api/metrics", methods=["GET"])

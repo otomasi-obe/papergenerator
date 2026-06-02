@@ -26,13 +26,10 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  loading: { type: Boolean, default: false },
-  error: { type: String, default: null },
-  isEmpty: { type: Boolean, default: false },
-  onRetry: { type: Function, default: undefined },
-})
+<script setup lang="ts">
+import type { StateViewProps } from '../types/components'
+
+defineProps<StateViewProps>()
 </script>
 
 <style scoped>

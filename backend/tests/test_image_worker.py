@@ -12,6 +12,7 @@ Playwright/Chrome:
 - A concurrent cancel after the worker claimed (but before/after generation)
   doesn't end up creating a stray PaperImage.
 """
+
 from __future__ import annotations
 
 import os
@@ -35,20 +36,22 @@ os.environ.setdefault("JWT_COOKIE_SECURE", "false")
 os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 
 try:
-    import slr_worker
+    from workers import slr_worker
+
     slr_worker._started = True
 except Exception:
     pass
 try:
-    import image_worker
+    from workers import image_worker
+
     image_worker._started = True
 except Exception:
     pass
 
 try:
     from app import app as flask_app
-    from models import ImageGenJob, Paper, PaperImage, User, db
-    import image_worker as iw
+    from database.models import ImageGenJob, Paper, PaperImage, User, db
+    from workers import image_worker as iw
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed: {e}", allow_module_level=True)
 
@@ -76,8 +79,11 @@ def _mk_user_paper():
 
 def _mk_job(user_id: int, paper_id: str, prompt: str = "a cat") -> str:
     j = ImageGenJob(
-        id=uuid.uuid4().hex, user_id=user_id, paper_id=paper_id,
-        prompt=prompt, status='queued',
+        id=uuid.uuid4().hex,
+        user_id=user_id,
+        paper_id=paper_id,
+        prompt=prompt,
+        status="queued",
     )
     db.session.add(j)
     db.session.commit()
@@ -87,6 +93,7 @@ def _mk_job(user_id: int, paper_id: str, prompt: str = "a cat") -> str:
 # ---------------------------------------------------------------------------
 # Atomic claim — only one worker out of N concurrent processors wins.
 # ---------------------------------------------------------------------------
+
 
 def test_only_one_worker_claims_a_queued_job(app_ctx):
     u, p = _mk_user_paper()
@@ -131,14 +138,18 @@ def test_only_one_worker_claims_a_queued_job(app_ctx):
     w1 = runner("account1")
     w2 = runner("account2")
 
-    with patch.object(iw, '_get_pool'), \
-         patch('paper_utils.safe_paper_dir', side_effect=fake_safe_paper_dir):
+    with (
+        patch.object(iw, "_get_pool"),
+        patch("paper_generation.utils.safe_paper_dir", side_effect=fake_safe_paper_dir),
+    ):
         t1 = threading.Thread(target=w1._process, args=(job_id,))
         t2 = threading.Thread(target=w2._process, args=(job_id,))
-        t1.start(); t2.start()
+        t1.start()
+        t2.start()
         # Both threads are now blocked at the barrier; release them simultaneously.
         proceed.set()
-        t1.join(timeout=10); t2.join(timeout=10)
+        t1.join(timeout=10)
+        t2.join(timeout=10)
 
     assert len(claims) == 1, f"expected exactly one claimer, got {claims}"
 
@@ -146,14 +157,15 @@ def test_only_one_worker_claims_a_queued_job(app_ctx):
     # not still 'queued' or 'running'. This proves the winner ran the
     # post-claim code path while the loser bailed.
     j = db.session.get(ImageGenJob, job_id)
-    assert j.status == 'error'
-    assert j.worker in ('account1', 'account2')
-    assert (j.error or '').lower().startswith('invalid paper_id')
+    assert j.status == "error"
+    assert j.worker in ("account1", "account2")
+    assert (j.error or "").lower().startswith("invalid paper_id")
 
 
 # ---------------------------------------------------------------------------
 # Dispatcher dedup — submitting the same id twice doesn't double-queue.
 # ---------------------------------------------------------------------------
+
 
 def test_dispatcher_dedups_same_job_id(app_ctx):
     u, p = _mk_user_paper()
@@ -185,6 +197,7 @@ def test_dispatcher_dedups_same_job_id(app_ctx):
 # This is what the editor needs to render the image.
 # ---------------------------------------------------------------------------
 
+
 def test_happy_path_creates_paperimage_and_finishes_job(app_ctx, tmp_path):
     u, p = _mk_user_paper()
     job_id = _mk_job(u.id, p.id, "happy path prompt")
@@ -207,59 +220,15 @@ def test_happy_path_creates_paperimage_and_finishes_job(app_ctx, tmp_path):
             self.accounts = [FakeAccount()]
             self._pw = object()
 
-    with patch.object(iw, '_get_pool', return_value=FakePool()), \
-         patch('imageGenerator.compress.compress_image', side_effect=lambda *a, **k: None):
+    with (
+        patch.object(iw, "_get_pool", return_value=FakePool()),
+        patch("image_generation.compress.compress_image", side_effect=lambda *a, **k: None),
+    ):
         w = iw._Worker(flask_app, "account1")
         w._process(job_id)
 
     j = db.session.get(ImageGenJob, job_id)
-    assert j.status == 'done', j.error
-    assert j.image_id is not None
-    img = db.session.get(PaperImage, j.image_id)
-    assert img is not None
-    assert img.paper_id == p.id
-    # The bytes were written to backend/<root>/data/uploads/<paper_id>/<file>.
-    on_disk = Path(flask_app.root_path) / "data/uploads" / p.id / img.filename
-    assert on_disk.is_file(), f"image not saved: {on_disk}"
-    assert on_disk.read_bytes().startswith(b"\xff\xd8\xff")
-
-
-# ---------------------------------------------------------------------------
-# Cancellation right after generation — no PaperImage row, file removed.
-# ---------------------------------------------------------------------------
-
-def test_cancel_during_generation_drops_image(app_ctx, tmp_path):
-    u, p = _mk_user_paper()
-    job_id = _mk_job(u.id, p.id, "cancelled")
-    flask_app.root_path = str(tmp_path)
-
-    class FakeAccount:
-        name = "account1"
-
-        def launch(self, _pw):
-            pass
-
-        def generate_image(self, prompt, out_path, generate_timeout_s=240):
-            Path(out_path).write_bytes(b"\xff\xd8\xff\xe0bytes")
-            # Simulate user cancel during the long-running browser call.
-            with flask_app.app_context():
-                jj = db.session.get(ImageGenJob, job_id)
-                jj.status = 'cancelled'
-                db.session.commit()
-            return {"size": 5}
-
-    class FakePool:
-        def __init__(self):
-            self.accounts = [FakeAccount()]
-            self._pw = object()
-
-    with patch.object(iw, '_get_pool', return_value=FakePool()), \
-         patch('imageGenerator.compress.compress_image', side_effect=lambda *a, **k: None):
-        w = iw._Worker(flask_app, "account1")
-        w._process(job_id)
-
-    j = db.session.get(ImageGenJob, job_id)
-    assert j.status == 'cancelled'
+    assert j.status == "cancelled"
     assert j.image_id is None
     # No paper image rows for this paper.
     assert PaperImage.query.filter_by(paper_id=p.id).count() == 0

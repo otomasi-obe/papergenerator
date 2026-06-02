@@ -200,7 +200,9 @@ def _new_paragraph(doc: Document, sample_ppr: etree._Element | None = None) -> P
     return paragraph
 
 
-def _set_paragraph_spacing(paragraph: Paragraph, *, before_pt: float | None = None, after_pt: float | None = None) -> None:
+def _set_paragraph_spacing(
+    paragraph: Paragraph, *, before_pt: float | None = None, after_pt: float | None = None
+) -> None:
     if before_pt is not None:
         paragraph.paragraph_format.space_before = Pt(before_pt)
     if after_pt is not None:
@@ -216,8 +218,8 @@ def _split_text_blocks(text: str) -> list[str]:
 def _iter_rich_tokens(text: str):
     # Normalize newlines and convert Markdown bold/italic to toggle-escape format
     normalized = text.replace("\\n", "\n")
-    normalized = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', normalized, flags=re.DOTALL)
-    normalized = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', normalized)
+    normalized = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", normalized, flags=re.DOTALL)
+    normalized = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", normalized)
     buffer: list[str] = []
     bold = False
     italic = False
@@ -269,7 +271,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                value = normalized[index + 1:closing]
+                value = normalized[index + 1 : closing]
                 if value:
                     yield {"kind": "math", "value": value}
                 index = closing + 1
@@ -446,7 +448,9 @@ def _strip_markup(text: str) -> str:
     return value
 
 
-def _compute_column_widths(headers: list[str], rows: list[list[str]], total_width_tw: int) -> list[int]:
+def _compute_column_widths(
+    headers: list[str], rows: list[list[str]], total_width_tw: int
+) -> list[int]:
     count = len(headers)
     if count <= 0:
         return []
@@ -603,7 +607,9 @@ def _normalize_authors(raw_authors: Any) -> list[dict[str, str]]:
     ]
 
 
-def _build_affiliation_groups(authors: list[dict[str, str]]) -> tuple[dict[tuple[str, str], int], list[tuple[int, str]]]:
+def _build_affiliation_groups(
+    authors: list[dict[str, str]]
+) -> tuple[dict[tuple[str, str], int], list[tuple[int, str]]]:
     group_map: dict[tuple[str, str], int] = {}
     groups: list[tuple[int, str]] = []
     for author in authors:
@@ -632,7 +638,9 @@ def _fallback_english_abstract(config: dict[str, Any]) -> str:
     )
 
 
-def _add_front_matter(doc: Document, config: dict[str, Any], proto: dict[str, etree._Element | None]) -> None:
+def _add_front_matter(
+    doc: Document, config: dict[str, Any], proto: dict[str, etree._Element | None]
+) -> None:
     authors = _normalize_authors(config.get("authors"))
     group_map, groups = _build_affiliation_groups(authors)
     corresponding = authors[0]
@@ -650,7 +658,11 @@ def _add_front_matter(doc: Document, config: dict[str, Any], proto: dict[str, et
         if index > 0:
             separator = ", " if index < len(authors) - 1 else " dan "
             _append_run(authors_paragraph, separator, proto["author_rpr"])
-        _append_run(authors_paragraph, _fallback_text(author.get("name", ""), f"Penulis {index + 1}"), proto["author_rpr"])
+        _append_run(
+            authors_paragraph,
+            _fallback_text(author.get("name", ""), f"Penulis {index + 1}"),
+            proto["author_rpr"],
+        )
         affiliation_id = group_map[(author.get("affiliation", ""), author.get("location", ""))]
         marker = f"{affiliation_id}*)" if author is corresponding else str(affiliation_id)
         _append_run(authors_paragraph, marker, proto["author_sup_rpr"])
@@ -667,7 +679,9 @@ def _add_front_matter(doc: Document, config: dict[str, Any], proto: dict[str, et
     corr_email = _fallback_text(corresponding.get("email", ""), "email@example.com")
     corr_paragraph = _new_paragraph(doc, proto["corr_ppr"])
     _append_run(corr_paragraph, "*", proto["corr_star_rpr"])
-    _append_run(corr_paragraph, f"Penulis korespondensi, E-mail: {corr_email}", proto["corr_text_rpr"])
+    _append_run(
+        corr_paragraph, f"Penulis korespondensi, E-mail: {corr_email}", proto["corr_text_rpr"]
+    )
 
     _new_paragraph(doc, proto["blank_center_ppr"])
     _new_paragraph(doc, proto["blank_center_ppr"])
@@ -707,7 +721,9 @@ def _add_front_matter(doc: Document, config: dict[str, Any], proto: dict[str, et
     _new_paragraph(doc, proto["blank_center_ppr"])
 
     abstract_en_paragraph = _new_paragraph(doc, proto["abstract_body_ppr"])
-    _append_rich_text(abstract_en_paragraph, _fallback_english_abstract(config), proto["abstract_body_rpr"])
+    _append_rich_text(
+        abstract_en_paragraph, _fallback_english_abstract(config), proto["abstract_body_rpr"]
+    )
 
     _new_paragraph(doc, proto["blank_justify_ppr"])
 
@@ -726,9 +742,13 @@ def _add_body_paragraph(doc: Document, text: str, proto: dict[str, etree._Elemen
         _append_rich_text(paragraph, block, proto["body_rpr"])
 
 
-def _add_section_heading(doc: Document, number: int, title: str, proto: dict[str, etree._Element | None]) -> None:
+def _add_section_heading(
+    doc: Document, number: int, title: str, proto: dict[str, etree._Element | None]
+) -> None:
     paragraph = _new_paragraph(doc, proto["section_heading_ppr"])
-    _set_paragraph_spacing(paragraph, before_pt=SECTION_SPACE_BEFORE_PT, after_pt=SECTION_SPACE_AFTER_PT)
+    _set_paragraph_spacing(
+        paragraph, before_pt=SECTION_SPACE_BEFORE_PT, after_pt=SECTION_SPACE_AFTER_PT
+    )
     _append_run(paragraph, f"{number}. {title}", proto["section_heading_rpr"])
 
 
@@ -740,19 +760,30 @@ def _add_subsection_heading(
     proto: dict[str, etree._Element | None],
 ) -> None:
     paragraph = _new_paragraph(doc, proto["subsection_ppr"])
-    _set_paragraph_spacing(paragraph, before_pt=SUBSECTION_SPACE_BEFORE_PT, after_pt=SUBSECTION_SPACE_AFTER_PT)
-    _append_run(paragraph, f"{section_number}.{subsection_number}.\t{title}", proto["subsection_rpr"])
+    _set_paragraph_spacing(
+        paragraph, before_pt=SUBSECTION_SPACE_BEFORE_PT, after_pt=SUBSECTION_SPACE_AFTER_PT
+    )
+    _append_run(
+        paragraph, f"{section_number}.{subsection_number}.\t{title}", proto["subsection_rpr"]
+    )
 
 
-def _add_figure(doc: Document, item: dict[str, Any], json_path: Path, proto: dict[str, etree._Element | None], state: RenderState) -> None:
+def _add_figure(
+    doc: Document,
+    item: dict[str, Any],
+    json_path: Path,
+    proto: dict[str, etree._Element | None],
+    state: RenderState,
+) -> None:
 
     # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
     _ai_title = str(item.get("Title") or item.get("title") or "").strip()
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -767,15 +798,23 @@ def _add_figure(doc: Document, item: dict[str, Any], json_path: Path, proto: dic
         inline = paragraph.add_run().add_picture(str(image_path), width=Cm(MAX_FIGURE_WIDTH_CM))
         _assign_inline_drawing_id(inline)
     else:
-        _append_run(paragraph, str(image_path) or "[gambar belum tersedia]", proto["body_rpr"], italic=True)
+        _append_run(
+            paragraph, str(image_path) or "[gambar belum tersedia]", proto["body_rpr"], italic=True
+        )
 
     caption = _new_paragraph(doc, proto["figure_caption_ppr"])
-    _set_paragraph_spacing(caption, before_pt=FIGURE_TITLE_BEFORE_PT, after_pt=FIGURE_TITLE_AFTER_PT)
-    _append_rich_text(caption, f"Gambar {state.figure_number}. {title}", proto["figure_caption_rpr"])
+    _set_paragraph_spacing(
+        caption, before_pt=FIGURE_TITLE_BEFORE_PT, after_pt=FIGURE_TITLE_AFTER_PT
+    )
+    _append_rich_text(
+        caption, f"Gambar {state.figure_number}. {title}", proto["figure_caption_rpr"]
+    )
     state.figure_number += 1
 
 
-def _add_table(doc: Document, item: dict[str, Any], proto: dict[str, etree._Element | None], state: RenderState) -> None:
+def _add_table(
+    doc: Document, item: dict[str, Any], proto: dict[str, etree._Element | None], state: RenderState
+) -> None:
     headers = [str(value).strip() for value in item.get("Headers", []) if str(value).strip()]
     rows = [
         [str(value).strip() for value in row]
@@ -824,7 +863,9 @@ def _add_table(doc: Document, item: dict[str, Any], proto: dict[str, etree._Elem
     state.table_number += 1
 
 
-def _add_equation(doc: Document, item: dict[str, Any], proto: dict[str, etree._Element | None], state: RenderState) -> None:
+def _add_equation(
+    doc: Document, item: dict[str, Any], proto: dict[str, etree._Element | None], state: RenderState
+) -> None:
     formula = _fallback_text(item.get("latex", "") or item.get("text", ""), "x = y")
     number = str(state.equation_number)
     paragraph = _new_paragraph(doc, proto["equation_ppr"])
@@ -835,7 +876,13 @@ def _add_equation(doc: Document, item: dict[str, Any], proto: dict[str, etree._E
     state.equation_number += 1
 
 
-def _render_content_item(doc: Document, item: dict[str, Any], json_path: Path, proto: dict[str, etree._Element | None], state: RenderState) -> None:
+def _render_content_item(
+    doc: Document,
+    item: dict[str, Any],
+    json_path: Path,
+    proto: dict[str, etree._Element | None],
+    state: RenderState,
+) -> None:
     item_type = str(item.get("id", "")).strip().lower()
     if item_type == "text":
         text = _fallback_text(item.get("text", ""), "Konten belum tersedia pada source JSON.")
@@ -850,10 +897,18 @@ def _render_content_item(doc: Document, item: dict[str, Any], json_path: Path, p
     if item_type in {"rumus", "formula", "equation"}:
         _add_equation(doc, item, proto, state)
         return
-    _add_body_paragraph(doc, f"Konten tipe '{item_type or 'unknown'}' belum memiliki renderer khusus.", proto)
+    _add_body_paragraph(
+        doc, f"Konten tipe '{item_type or 'unknown'}' belum memiliki renderer khusus.", proto
+    )
 
 
-def _render_content(doc: Document, content: Any, json_path: Path, proto: dict[str, etree._Element | None], state: RenderState) -> None:
+def _render_content(
+    doc: Document,
+    content: Any,
+    json_path: Path,
+    proto: dict[str, etree._Element | None],
+    state: RenderState,
+) -> None:
     if isinstance(content, str):
         if content.strip():
             _add_body_paragraph(doc, content.strip(), proto)
@@ -888,7 +943,13 @@ def _subsection_keys(section_key: str, container: dict[str, Any]) -> list[str]:
     return [key for _, key in matches]
 
 
-def _render_sections(doc: Document, config: dict[str, Any], json_path: Path, proto: dict[str, etree._Element | None], state: RenderState) -> None:
+def _render_sections(
+    doc: Document,
+    config: dict[str, Any],
+    json_path: Path,
+    proto: dict[str, etree._Element | None],
+    state: RenderState,
+) -> None:
     for section_number, key in _section_keys(config):
         section = config.get(key)
         if not isinstance(section, dict):
@@ -901,12 +962,16 @@ def _render_sections(doc: Document, config: dict[str, Any], json_path: Path, pro
             subsection = section.get(subsection_key)
             if not isinstance(subsection, dict):
                 continue
-            subsection_title = _fallback_text(subsection.get("title", ""), f"Subbagian {section_number}.{subsection_index}")
+            subsection_title = _fallback_text(
+                subsection.get("title", ""), f"Subbagian {section_number}.{subsection_index}"
+            )
             _add_subsection_heading(doc, section_number, subsection_index, subsection_title, proto)
             _render_content(doc, subsection.get("content", []), json_path, proto, state)
 
 
-def _render_references(doc: Document, config: dict[str, Any], proto: dict[str, etree._Element | None]) -> None:
+def _render_references(
+    doc: Document, config: dict[str, Any], proto: dict[str, etree._Element | None]
+) -> None:
     references = config.get("references") if isinstance(config.get("references"), dict) else {}
     title = _fallback_text(references.get("title", ""), "Referensi")
     content = references.get("content") if isinstance(references.get("content"), list) else []
@@ -947,9 +1012,10 @@ def build_document(json_path: Path = JSON_PATH, output_path: Path | None = None)
     # Inject inline section break (cols=2 continuous) sebelum references
     # untuk match struktur 4-section original (title 1col -> body 2col ->
     # refs 2col -> final 2col).
+    from copy import deepcopy as _deepcopy
+
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn as _qn
-    from copy import deepcopy as _deepcopy
 
     # Ambil pgSz/pgMar dari final body sectPr supaya page setup match
     body_el = doc._element.body

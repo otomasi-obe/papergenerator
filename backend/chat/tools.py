@@ -4,54 +4,56 @@ Chat Tool Executor
 Executes tools requested by the AI during chat conversations.
 """
 
-import os
-import shlex
+import datetime
+import ipaddress
 import json
 import logging
-import subprocess
-import ipaddress
+import os
+import shlex
 import socket
+import subprocess
 import threading
-import time
 import uuid
-import datetime
 from urllib.parse import urlparse
 
 import requests
-from database.models import Paper, ProjectMemory, PaperFile, PaperImage, db
 
+from database.models import Paper, PaperFile, PaperImage, ProjectMemory, db
 
 logger = logging.getLogger(__name__)
 
 
 def _check_paper_lock(paper_id: str, operation_type: str) -> tuple[bool, str | None]:
     """Check if paper is locked by another operation.
-    
+
     Args:
         paper_id: Paper ID to check
         operation_type: 'generate' | 'edit_apply' | 'slr' | 'chat'
-    
+
     Returns:
         (allowed, reason): (True, None) if allowed, (False, reason) if blocked
     """
     paper = Paper.query.get(paper_id)
     if not paper or not paper.active_operation:
         return True, None
-    
-    if paper.active_operation == 'generating':
-        if operation_type in ['generate', 'edit_apply']:
+
+    if paper.active_operation == "generating":
+        if operation_type in ["generate", "edit_apply"]:
             return False, "Paper sedang di-generate. Tunggu selesai atau cancel dulu."
-    
+
     return True, None
+
 
 def _set_paper_lock(paper_id: str, operation: str, job_id: str = None):
     """Set paper lock."""
     from datetime import datetime
+
     paper = Paper.query.get(paper_id)
     paper.active_operation = operation
     paper.active_operation_job_id = job_id
     paper.active_operation_started_at = datetime.utcnow()
     db.session.commit()
+
 
 def _clear_paper_lock(paper_id: str):
     """Clear paper lock."""
@@ -62,7 +64,7 @@ def _clear_paper_lock(paper_id: str):
     db.session.commit()
 
 
-SAFE_BASH_COMMANDS = {'grep', 'find', 'wc', 'cat', 'head', 'tail', 'ls', 'echo', 'date', 'pwd'}
+SAFE_BASH_COMMANDS = {"grep", "find", "wc", "cat", "head", "tail", "ls", "echo", "date", "pwd"}
 
 MAX_RESULT_LENGTH = 6000
 
@@ -80,60 +82,98 @@ def _log_chat_call(paper_id, conv_id, role, payload):
         sub = os.path.join(LOGS_DIR, str(paper_id or "_global"))
         os.makedirs(sub, exist_ok=True)
         fname = os.path.join(sub, f"{date_str}.jsonl")
-        line = json.dumps({
-            "ts": datetime.datetime.utcnow().isoformat() + "Z",
-            "conv_id": conv_id,
-            "role": role,
-            "payload": payload,
-        }, ensure_ascii=False)
+        line = json.dumps(
+            {
+                "ts": datetime.datetime.utcnow().isoformat() + "Z",
+                "conv_id": conv_id,
+                "role": role,
+                "payload": payload,
+            },
+            ensure_ascii=False,
+        )
         with open(fname, "a", encoding="utf-8") as f:
             f.write(line + "\n")
     except Exception as e:
         logger.warning(f"_log_chat_call failed: {e}")
 
+
 # Files / paths the AI must NEVER be able to read.
 SENSITIVE_FILE_NAMES = {
-    '.env', '.env.local', '.env.production', '.env.development',
-    'mydatabase.db', 'requirements.txt.lock', 'id_rsa', 'id_dsa',
-    'id_ecdsa', 'id_ed25519', '.gitconfig',
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.development",
+    "mydatabase.db",
+    "requirements.txt.lock",
+    "id_rsa",
+    "id_dsa",
+    "id_ecdsa",
+    "id_ed25519",
+    ".gitconfig",
 }
 SENSITIVE_PATH_FRAGMENTS = (
-    '/.git/', '/node_modules/', '/data/uploads/', '/data/exports/',
-    '/.ssh/', '/certs/', '/__pycache__/',
+    "/.git/",
+    "/node_modules/",
+    "/data/uploads/",
+    "/data/exports/",
+    "/.ssh/",
+    "/certs/",
+    "/__pycache__/",
 )
 ALLOWED_READ_ROOTS = (
-    '/home/sirobo/papergenerator/backend/prompt/',
-    '/home/sirobo/papergenerator/backend/template/',
-    '/home/sirobo/papergenerator/frontend/src/',
+    "/home/sirobo/papergenerator/backend/prompt/",
+    "/home/sirobo/papergenerator/backend/template/",
+    "/home/sirobo/papergenerator/frontend/src/",
 )
 
 
-_ALLOWED_MODELS = {None, "V-OPUS", "V-DEEPSEEK"}
+_ALLOWED_MODELS = {None, "VIOLA-CHAT", "VIOLA-GENERATE"}
 
 
 def execute_tool(tool_name, arguments, user_id, paper_id=None, model=None, conv_id=None):
     if model not in _ALLOWED_MODELS:
         model = None
-    logger.info(f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, model={model}, conv_id={conv_id}, args={json.dumps(arguments, ensure_ascii=False)[:300]}")
-    _log_chat_call(paper_id, conv_id, "tool_call", {
-        "tool": tool_name,
-        "arguments": arguments,
-        "model": model,
-    })
-    try:
-        result = _dispatch_tool(tool_name, arguments, user_id, paper_id, model=model, conv_id=conv_id)
-        logger.info(f"[EXECUTE_TOOL_OK] tool={tool_name} result_preview={str(result)[:200]}")
-        _log_chat_call(paper_id, conv_id, "tool_result", {
+    logger.info(
+        f"[EXECUTE_TOOL] Entering execute_tool: tool={tool_name}, user_id={user_id}, paper_id={paper_id}, model={model}, conv_id={conv_id}, args={json.dumps(arguments, ensure_ascii=False)[:300]}"
+    )
+    _log_chat_call(
+        paper_id,
+        conv_id,
+        "tool_call",
+        {
             "tool": tool_name,
-            "result_preview": str(result)[:2000],
-        })
+            "arguments": arguments,
+            "model": model,
+        },
+    )
+    try:
+        result = _dispatch_tool(
+            tool_name, arguments, user_id, paper_id, model=model, conv_id=conv_id
+        )
+        logger.info(f"[EXECUTE_TOOL_OK] tool={tool_name} result_preview={str(result)[:200]}")
+        _log_chat_call(
+            paper_id,
+            conv_id,
+            "tool_result",
+            {
+                "tool": tool_name,
+                "result_preview": str(result)[:2000],
+            },
+        )
         return result
     except Exception as e:
-        logger.exception(f"[EXECUTE_TOOL_ERROR] tool={tool_name} user_id={user_id} paper_id={paper_id}")
-        _log_chat_call(paper_id, conv_id, "tool_error", {
-            "tool": tool_name,
-            "error": str(e)[:2000],
-        })
+        logger.exception(
+            f"[EXECUTE_TOOL_ERROR] tool={tool_name} user_id={user_id} paper_id={paper_id}"
+        )
+        _log_chat_call(
+            paper_id,
+            conv_id,
+            "tool_error",
+            {
+                "tool": tool_name,
+                "error": str(e)[:2000],
+            },
+        )
         raise
 
 
@@ -152,7 +192,8 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, con
         )
     elif tool_name == "GenerateFullPaper":
         return _generate_full_paper(
-            paper_id, user_id,
+            paper_id,
+            user_id,
             arguments.get("prompt", ""),
             arguments.get("topic"),
             arguments.get("style"),
@@ -161,30 +202,31 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, con
         )
     elif tool_name == "RunSLR":
         return _run_slr_tool(
-            paper_id, user_id,
+            paper_id,
+            user_id,
             arguments.get("query", ""),
             arguments.get("sources"),
             int(arguments.get("top_k", 50) or 50),
             int(arguments.get("per_source", 60) or 60),
             arguments.get("year_from"),
-            arguments.get("ai_model") or model or "V-DEEPSEEK",
+            arguments.get("ai_model") or model or os.getenv("MODELGENERATE") or "VIOLA-GENERATE",
         )
     elif tool_name == "AddLiterature":
         kw = (arguments.get("keyword") or "").strip()
         if not kw:
             return "Error: keyword is required"
         return _run_slr_tool(
-            paper_id, user_id,
+            paper_id,
+            user_id,
             kw,
             None,
             int(arguments.get("top_k", 30) or 30),
             60,
             arguments.get("year_from"),
-            "V-DEEPSEEK",
+            os.getenv("MODELGENERATE") or "VIOLA-GENERATE",
         )
     elif tool_name == "GetLiterature":
-        return _get_literature_tool(paper_id, user_id,
-                                    int(arguments.get("limit", 50) or 50))
+        return _get_literature_tool(paper_id, user_id, int(arguments.get("limit", 50) or 50))
     elif tool_name == "ListAttachedFiles":
         return _list_attached_files(paper_id, user_id)
     elif tool_name == "ReadAttachedFile":
@@ -234,10 +276,13 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, con
             chips = []
         # Wrap as a structured proposal so the chat blueprint can forward it
         # to the frontend through the SSE chips event.
-        return _propose("chips", {
-            "chips": chips,
-            "context_hint": arguments.get("context_hint", ""),
-        })
+        return _propose(
+            "chips",
+            {
+                "chips": chips,
+                "context_hint": arguments.get("context_hint", ""),
+            },
+        )
     # ─── Paper-edit proposal tools ──────────────────────────────────────
     # These tools don't mutate the paper. They emit a proposal payload that
     # the frontend collects and shows to the user for accept/reject.
@@ -248,16 +293,22 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, con
     elif tool_name == "ProposeKeywords":
         return _propose("keywords", {"value": arguments.get("keywords") or []})
     elif tool_name == "ProposeSection":
-        return _propose("section", {
-            "section_index": arguments.get("section_index"),
-            "title": arguments.get("title"),
-            "content": arguments.get("content"),
-        })
+        return _propose(
+            "section",
+            {
+                "section_index": arguments.get("section_index"),
+                "title": arguments.get("title"),
+                "content": arguments.get("content"),
+            },
+        )
     elif tool_name == "ProposeReference":
-        return _propose("reference", {
-            "ref_index": arguments.get("ref_index"),
-            "value": arguments.get("value", ""),
-        })
+        return _propose(
+            "reference",
+            {
+                "ref_index": arguments.get("ref_index"),
+                "value": arguments.get("value", ""),
+            },
+        )
     elif tool_name == "ProposeJournal":
         return _propose("journal", {"value": arguments.get("journal", "")})
     elif tool_name == "RequestExportDocx":
@@ -296,13 +347,20 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, con
         return "Tool not permitted in chat environment for security reasons."
     elif tool_name == "ClassifyFile":
         return _classify_file_tool(
-            paper_id, user_id,
+            paper_id,
+            user_id,
             arguments.get("file_id"),
             (arguments.get("kind") or "other"),
             (arguments.get("caption") or ""),
         )
     elif tool_name == "GenerateChart":
         return _generate_chart_tool(paper_id, user_id, arguments)
+    elif tool_name == "GenerateImage":
+        return _generate_image_tool(paper_id, user_id, arguments.get("prompt", ""))
+    elif tool_name == "GetJobStatus":
+        return _get_job_status_tool(arguments.get("job_id"), arguments.get("job_type"))
+    elif tool_name == "UploadFile":
+        return _upload_file_tool(paper_id, user_id, arguments.get("file_type", "document"))
     elif tool_name == "GetParagraphContext":
         return _get_paragraph_context(paper_id, user_id, arguments)
     elif tool_name == "ReviewLargeFile":
@@ -311,13 +369,34 @@ def _dispatch_tool(tool_name, arguments, user_id, paper_id=None, model=None, con
         qs = arguments.get("questions") or []
         if not isinstance(qs, list) or not qs:
             return "Error: questions array is required"
-        return _propose("multi_question", {"questions": qs[:5]})
+        validated = []
+        for q in qs[:3]:
+            if not isinstance(q, dict):
+                continue
+            opts = q.get("options") or []
+            if isinstance(opts, list):
+                opts = opts[:5]
+            validated.append({
+                "key": q.get("key", ""),
+                "label": q.get("label", ""),
+                "options": opts,
+            })
+        if not validated:
+            return "Error: at least 1 valid question is required"
+        return _propose("multi_question", {"questions": validated})
+    elif tool_name == "StartWorkflow":
+        return _start_workflow(paper_id, user_id)
+    elif tool_name == "SaveWorkflowAnswers":
+        return _save_workflow_answers(paper_id, user_id, arguments)
     elif tool_name == "ReviewPaper":
-        return _propose("review_plan", {
-            "directive": arguments.get("directive", ""),
-            "scope": arguments.get("scope", "whole"),
-            "suggestions": [],
-        })
+        return _propose(
+            "review_plan",
+            {
+                "directive": arguments.get("directive", ""),
+                "scope": arguments.get("scope", "whole"),
+                "suggestions": [],
+            },
+        )
     elif tool_name == "ReviseData":
         return _propose("revise_data", {"directive": arguments.get("directive", "")})
     else:
@@ -335,8 +414,107 @@ def _propose(kind: str, fields: dict) -> str:
     return PROPOSAL_PREFIX + json.dumps(payload, ensure_ascii=False)
 
 
-def _propose_revisi(*, tool: str, scope, section_index, content_index,
-                    text, rewrite, target_language=None, style=None) -> str:
+def _start_workflow(paper_id, user_id):
+    """Start the 9-phase workflow questionnaire. Returns all questions from Phase 0."""
+    from workflows.tool import start_workflow
+
+    result = start_workflow(paper_id, user_id)
+    return _propose(result["kind"], {k: v for k, v in result.items() if k != "kind"})
+
+
+def _save_workflow_answers(paper_id, user_id, arguments):
+    """Save workflow answers and return next phase questions."""
+    from workflows.tool import save_workflow_answers
+
+    answers = arguments.get("answers") or {}
+    if isinstance(answers, list):
+        answers_list = answers
+    else:
+        # Convert dict to list of {key, value} pairs
+        answers_list = [{"key": k, "value": v} for k, v in answers.items()]
+
+    # Get current phase from workflow state
+    from workflows.tool import _get_workflow_state
+    workflow_state = _get_workflow_state(paper_id, user_id)
+    current_phase = workflow_state.get("current_phase", "0")
+
+    result = save_workflow_answers(paper_id, user_id, current_phase, answers_list)
+
+    # Handle different result types
+    if result["kind"] == "workflow_validation":
+        # Phase 9 validation complete — auto-trigger paper generation
+        from workflows.tool import _get_workflow_state as _gwfs
+        wf_state = _gwfs(paper_id, user_id)
+        all_answers = wf_state.get("answers", {})
+
+        # Build the generation prompt from workflow answers (title is most specific)
+        gen_prompt = (
+            all_answers.get("title")
+            or all_answers.get("topic")
+            or all_answers.get("field", "Paper akademik")
+        ).strip()
+
+        gen_payload = None
+        if gen_prompt:
+            gen_str = _generate_full_paper(
+                paper_id,
+                user_id,
+                gen_prompt,
+                topic=all_answers.get("topic"),
+                style=all_answers.get("citation_style"),
+            )
+            if isinstance(gen_str, str) and gen_str.startswith(PROPOSAL_PREFIX):
+                try:
+                    gen_payload = json.loads(gen_str[len(PROPOSAL_PREFIX):])
+                except Exception:
+                    pass
+
+        validation_data = {k: v for k, v in result.items() if k != "kind"}
+        if gen_payload:
+            validation_data["generation"] = gen_payload
+        return _propose("workflow_complete_generating", validation_data)
+    elif result["kind"] == "workflow_continue":
+        # Move to next phase - fetch questions for next phase
+        from workflows.tool import start_workflow
+        next_result = start_workflow(paper_id, user_id)
+        # When the next phase has no card-ready questions (ai_generated fields
+        # whose options haven't been filled yet), pass a text hint to the LLM
+        # so it generates them via AskQuestions instead of rendering an empty card.
+        questions = next_result.get("questions") or []
+        if not questions and next_result.get("phase"):
+            phase_name = next_result.get("phase_name", f"Phase {next_result['phase']}")
+            return (
+                f"✅ Jawaban disimpan. Lanjut ke {phase_name}. "
+                f"Gunakan AskQuestions untuk menanyakan pertanyaan fase ini "
+                f"(batch 3 pertanyaan) dengan opsi A–D yang relevan berdasarkan "
+                f"profil pengguna. JANGAN tulis pertanyaan sebagai teks biasa."
+            )
+        return _propose(next_result["kind"], {k: v for k, v in next_result.items() if k != "kind"})
+    elif result["kind"] == "workflow_complete":
+        return result["message"]
+
+    return "Workflow error: unexpected result type"
+
+
+def _get_memory_value(paper_id, key):
+    """Get a single memory value by key."""
+    if not paper_id or not key:
+        return None
+    entry = ProjectMemory.query.filter_by(paper_id=paper_id, key=key).first()
+    return entry.value if entry else None
+
+
+def _propose_revisi(
+    *,
+    tool: str,
+    scope,
+    section_index,
+    content_index,
+    text,
+    rewrite,
+    target_language=None,
+    style=None,
+) -> str:
     """Wrap a revisi-mode proposal (Paraphrase / FixGrammar / Translate).
 
     The frontend (agent F2) will pick this up via the ``propose_revisi`` kind
@@ -378,8 +556,8 @@ def _truncate(text, max_len=MAX_RESULT_LENGTH):
     # tails. Otherwise we sometimes hand the upstream API an invalid UTF-8
     # sequence which surfaces as a 500. Slow path is fine here — short results
     # never enter this branch.
-    head = text[:max_len].encode('utf-8', errors='ignore')[:max_len]
-    head = head.decode('utf-8', errors='ignore')
+    head = text[:max_len].encode("utf-8", errors="ignore")[:max_len]
+    head = head.decode("utf-8", errors="ignore")
     return head + f"\n\n... [truncated, {len(text)} chars total]"
 
 
@@ -391,7 +569,7 @@ def _web_search(query):
             "https://html.duckduckgo.com/html/",
             params={"q": query},
             headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"},
-            timeout=10
+            timeout=10,
         )
         from html.parser import HTMLParser
 
@@ -432,17 +610,22 @@ def _web_fetch(url, prompt):
         return "Error: url is required"
     try:
         parsed = urlparse(url)
-        if parsed.scheme not in ('http', 'https'):
+        if parsed.scheme not in ("http", "https"):
             return "Error: only http/https URLs are allowed."
-        host = parsed.hostname or ''
+        host = parsed.hostname or ""
         if not host:
             return "Error: invalid URL host."
         # Block SSRF to private / loopback / link-local ranges.
         try:
             for info in socket.getaddrinfo(host, None):
                 ip = ipaddress.ip_address(info[4][0])
-                if (ip.is_private or ip.is_loopback or ip.is_link_local
-                        or ip.is_multicast or ip.is_reserved):
+                if (
+                    ip.is_private
+                    or ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_multicast
+                    or ip.is_reserved
+                ):
                     return "Error: requests to internal addresses are not allowed."
         except (socket.gaierror, ValueError):
             return "Error: could not resolve URL."
@@ -455,10 +638,11 @@ def _web_fetch(url, prompt):
         )
         text = resp.text[:MAX_RESULT_LENGTH]
         import re
-        text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL)
-        text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL)
-        text = re.sub(r'<[^>]+>', ' ', text)
-        text = re.sub(r'\s+', ' ', text).strip()
+
+        text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL)
+        text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
         return _truncate(text)
     except Exception as e:
         return f"Fetch error: {str(e)}"
@@ -483,8 +667,12 @@ def _search_papers(query, limit_per_source=3, sources=None):
         src_list = [s for s in sources if isinstance(s, str)]
 
     try:
-        raw = search_all(query, limit_per_source=max(1, min(int(limit_per_source), 5)),
-                         sources=src_list, include_keyed=False)
+        raw = search_all(
+            query,
+            limit_per_source=max(1, min(int(limit_per_source), 5)),
+            sources=src_list,
+            include_keyed=False,
+        )
     except Exception as e:
         return f"SearchPapers error: {e}"
 
@@ -508,19 +696,23 @@ def _search_papers(query, limit_per_source=3, sources=None):
             continue
         seen.add(key)
 
-        cleaned.append({
-            "source": r.get("source"),
-            "title": title,
-            "authors": (r.get("authors") or [])[:6],
-            "year": r.get("year"),
-            "doi": doi,
-            "url": url or (f"https://doi.org/{doi}" if doi else ""),
-            "pdf_url": pdf,
-            "abstract": (r.get("abstract") or "")[:600],
-        })
+        cleaned.append(
+            {
+                "source": r.get("source"),
+                "title": title,
+                "authors": (r.get("authors") or [])[:6],
+                "year": r.get("year"),
+                "doi": doi,
+                "url": url or (f"https://doi.org/{doi}" if doi else ""),
+                "pdf_url": pdf,
+                "abstract": (r.get("abstract") or "")[:600],
+            }
+        )
 
     if not cleaned:
-        return "(No valid, accessible papers found. Try a more specific query or different keywords.)"
+        return (
+            "(No valid, accessible papers found. Try a more specific query or different keywords.)"
+        )
 
     # Cap output volume so the model context stays bounded
     cleaned = cleaned[:25]
@@ -531,10 +723,11 @@ def _search_papers(query, limit_per_source=3, sources=None):
 def _list_attached_files(paper_id, user_id):
     if not paper_id:
         return "No paper linked to this conversation."
-    files = (PaperFile.query
-             .filter_by(paper_id=paper_id, user_id=user_id)
-             .order_by(PaperFile.created_at.desc())
-             .all())
+    files = (
+        PaperFile.query.filter_by(paper_id=paper_id, user_id=user_id)
+        .order_by(PaperFile.created_at.desc())
+        .all()
+    )
     if not files:
         return "(no files attached to this paper)"
     lines = []
@@ -595,54 +788,77 @@ def _classify_file_tool(paper_id, user_id, file_id, kind, caption):
 
     pf = PaperFile.query.filter_by(id=fid, paper_id=paper_id, user_id=user_id).first()
     if not pf:
-        return _propose("file_classified_error", {
-            "file_id": fid,
-            "error": "file not found or unauthorized",
-        })
+        return _propose(
+            "file_classified_error",
+            {
+                "file_id": fid,
+                "error": "file not found or unauthorized",
+            },
+        )
 
     cap = (caption or "").strip()[:500]
     try:
         kind_key = f"file_kind:{fid}"
         kind_entry = ProjectMemory.query.filter_by(
-            paper_id=paper_id, key=kind_key, conversation_id=None,
+            paper_id=paper_id,
+            key=kind_key,
+            conversation_id=None,
         ).first()
         if kind_entry:
             kind_entry.value = k
             kind_entry.kind = "file_meta"
         else:
-            db.session.add(ProjectMemory(
-                paper_id=paper_id, user_id=user_id,
-                key=kind_key, value=k, kind="file_meta",
-            ))
+            db.session.add(
+                ProjectMemory(
+                    paper_id=paper_id,
+                    user_id=user_id,
+                    key=kind_key,
+                    value=k,
+                    kind="file_meta",
+                )
+            )
 
         if cap:
             cap_key = f"file_caption:{fid}"
             cap_entry = ProjectMemory.query.filter_by(
-                paper_id=paper_id, key=cap_key, conversation_id=None,
+                paper_id=paper_id,
+                key=cap_key,
+                conversation_id=None,
             ).first()
             if cap_entry:
                 cap_entry.value = cap
                 cap_entry.kind = "file_meta"
             else:
-                db.session.add(ProjectMemory(
-                    paper_id=paper_id, user_id=user_id,
-                    key=cap_key, value=cap, kind="file_meta",
-                ))
+                db.session.add(
+                    ProjectMemory(
+                        paper_id=paper_id,
+                        user_id=user_id,
+                        key=cap_key,
+                        value=cap,
+                        kind="file_meta",
+                    )
+                )
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         logger.exception("ClassifyFile commit failed")
-        return _propose("file_classified_error", {
-            "file_id": fid,
-            "error": f"persist failed: {e}",
-        })
+        return _propose(
+            "file_classified_error",
+            {
+                "file_id": fid,
+                "error": f"persist failed: {e}",
+            },
+        )
 
-    return _propose("file_classified", {
-        "file_id": fid,
-        "file_kind": k,
-        "caption": cap,
-        "original_name": pf.original_name,
-    })
+    return _propose(
+        "file_classified",
+        {
+            "file_id": fid,
+            "file_kind": k,
+            "caption": cap,
+            "original_name": pf.original_name,
+        },
+    )
 
 
 # Pretty labels for well-known memory keys we surface explicitly in the
@@ -680,19 +896,27 @@ def _format_literature_block(paper_id) -> str:
     if not paper_id:
         return ""
     try:
-        from models import LiteratureItem
-        items = (db.session.query(LiteratureItem)
-                 .filter_by(paper_id=paper_id)
-                 .order_by(LiteratureItem.pinned.desc(),
-                           LiteratureItem.must_read.desc(),
-                           LiteratureItem.score_total.desc(),
-                           LiteratureItem.created_at.desc())
-                 .limit(50).all())
+        from database.models import LiteratureItem
+
+        items = (
+            db.session.query(LiteratureItem)
+            .filter_by(paper_id=paper_id)
+            .order_by(
+                LiteratureItem.pinned.desc(),
+                LiteratureItem.must_read.desc(),
+                LiteratureItem.score_total.desc(),
+                LiteratureItem.created_at.desc(),
+            )
+            .limit(50)
+            .all()
+        )
     except Exception:
         return ""
     if not items:
         return ""
-    priority = [it for it in items if getattr(it, "pinned", False) or getattr(it, "must_read", False)]
+    priority = [
+        it for it in items if getattr(it, "pinned", False) or getattr(it, "must_read", False)
+    ]
     rest = [it for it in items if it not in priority]
     ordered = priority + rest
     lines = [
@@ -753,9 +977,7 @@ def _format_memory_block(paper_id) -> str:
     if not by_key:
         return ""
 
-    lines = [
-        "## Project facts (from chat memory — pakai SEMUA fakta ini sebagai source of truth)"
-    ]
+    lines = ["## Project facts (from chat memory — pakai SEMUA fakta ini sebagai source of truth)"]
     seen = set()
     for k in _MEMORY_KEY_ORDER:
         if k in by_key:
@@ -770,8 +992,7 @@ def _format_memory_block(paper_id) -> str:
     return "\n".join(lines)
 
 
-def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
-                   year_from, ai_model):
+def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source, year_from, ai_model):
     """Enqueue an SLR job from the chat. Returns a structured proposal payload
     so the frontend can show a progress card and the chat blueprint can
     forward a friendly status to the model."""
@@ -797,15 +1018,19 @@ def _run_slr_tool(paper_id, user_id, query, sources, top_k, per_source,
     except (TypeError, ValueError):
         year_from_int = None
 
-    if ai_model not in {"V-OPUS", "V-DEEPSEEK"}:
-        ai_model = "V-DEEPSEEK"
+    if ai_model not in {"VIOLA-CHAT", "VIOLA-GENERATE"}:
+        ai_model = os.getenv("MODELGENERATE") or "VIOLA-GENERATE"
 
     job = enqueue_slr_job(
-        paper_id=paper_id, user_id=int(user_id), query=q,
-        sources=src_list, per_source=max(10, min(int(per_source), 100)),
+        paper_id=paper_id,
+        user_id=int(user_id),
+        query=q,
+        sources=src_list,
+        per_source=max(10, min(int(per_source), 100)),
         top_k=max(10, min(int(top_k), 100)),
         year_from=year_from_int,
-        ai_summarize=True, ai_model=ai_model,
+        ai_summarize=True,
+        ai_model=ai_model,
     )
     job_id = job.id
 
@@ -825,37 +1050,46 @@ def _get_literature_tool(paper_id, user_id, limit=50):
     if not paper_id:
         return "No paper linked to this conversation."
     try:
-        from models import LiteratureItem
+        from database.models import LiteratureItem
     except Exception as e:
         return f"Error: cannot read literature ({e})"
-    items = (db.session.query(LiteratureItem)
-             .filter_by(paper_id=paper_id)
-             .order_by(LiteratureItem.pinned.desc(),
-                       LiteratureItem.score_total.desc(),
-                       LiteratureItem.created_at.desc())
-             .limit(max(1, min(int(limit), 100)))
-             .all())
+    items = (
+        db.session.query(LiteratureItem)
+        .filter_by(paper_id=paper_id)
+        .order_by(
+            LiteratureItem.pinned.desc(),
+            LiteratureItem.score_total.desc(),
+            LiteratureItem.created_at.desc(),
+        )
+        .limit(max(1, min(int(limit), 100)))
+        .all()
+    )
     if not items:
-        return ("(Literature kosong. Pakai RunSLR untuk cari paper, atau import "
-                "file PDF/DOCX dulu.)")
+        return (
+            "(Literature kosong. Pakai RunSLR untuk cari paper, atau import " "file PDF/DOCX dulu.)"
+        )
     rows = []
     for it in items:
         authors = ", ".join((it.authors or [])[:4])
-        rows.append({
-            "id": it.id,
-            "title": it.title,
-            "year": it.year,
-            "authors": authors,
-            "venue": it.venue,
-            "doi": it.doi,
-            "summary": (it.summary or it.abstract or "")[:400],
-            "must_read": bool(it.must_read),
-            "score": it.score_total,
-        })
+        rows.append(
+            {
+                "id": it.id,
+                "title": it.title,
+                "year": it.year,
+                "authors": authors,
+                "venue": it.venue,
+                "doi": it.doi,
+                "summary": (it.summary or it.abstract or "")[:400],
+                "must_read": bool(it.must_read),
+                "score": it.score_total,
+            }
+        )
     return _truncate(json.dumps(rows, ensure_ascii=False, indent=2))
 
 
-def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_attached_files=True, model=None):
+def _generate_full_paper(
+    paper_id, user_id, prompt, topic=None, style=None, use_attached_files=True, model=None
+):
     """Kick off the same /api/generate-full job pipeline used by the dashboard,
     but from a chat tool call. Auto-injects extracted text from any files the
     user has attached to this paper. Also runs a quick planner pass first so
@@ -869,7 +1103,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     if not prompt:
         return "Error: prompt is required (the paper title or topic)."
 
-    allowed, reason = _check_paper_lock(paper_id, 'generate')
+    allowed, reason = _check_paper_lock(paper_id, "generate")
     if not allowed:
         return f"Error: {reason}"
 
@@ -883,31 +1117,39 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     # error so the frontend can offer to run SLR first.
     if paper_id:
         try:
-            from models import LiteratureItem
+            from database.models import LiteratureItem
+
             n_lit = LiteratureItem.query.filter_by(paper_id=paper_id).count()
             n_must = LiteratureItem.query.filter_by(
-                paper_id=paper_id, must_read=True,
+                paper_id=paper_id,
+                must_read=True,
             ).count()
         except Exception:
+            logger.exception("GenerateFullPaper: literature pre-flight count failed")
             n_lit, n_must = 0, 0
         if n_lit < 20 and n_must == 0:
-            return _propose("validation_error", {
-                "error_code": "NEED_MORE_LITERATURE",
-                "message": (
-                    f"Baru ada {n_lit} literatur. Minimal 20 paper SLR untuk "
-                    f"generate berkualitas. Mau jalankan SLR otomatis dulu?"
-                ),
-                "current": n_lit,
-                "required": 20,
-            })
+            return _propose(
+                "validation_error",
+                {
+                    "error_code": "NEED_MORE_LITERATURE",
+                    "message": (
+                        f"Baru ada {n_lit} literatur. Minimal 20 paper SLR untuk "
+                        f"generate berkualitas. Mau jalankan SLR otomatis dulu?"
+                    ),
+                    "current": n_lit,
+                    "required": 20,
+                },
+            )
 
     # Collect attached file texts (capped) so the generator can use them as refs
     pdf_texts = []
     if use_attached_files and paper_id:
-        files = (PaperFile.query
-                 .filter_by(paper_id=paper_id, user_id=user_id)
-                 .order_by(PaperFile.created_at.desc())
-                 .limit(5).all())
+        files = (
+            PaperFile.query.filter_by(paper_id=paper_id, user_id=user_id)
+            .order_by(PaperFile.created_at.desc())
+            .limit(5)
+            .all()
+        )
         for f in files:
             if f.extracted_text:
                 pdf_texts.append(f"# {f.original_name}\n{f.extracted_text}")
@@ -969,7 +1211,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
 
     # Run inside the existing app context so Flask's job machinery is available
     try:
-        from app import app, _job_create, _run_generate_full_job
+        from app import _job_create, _run_generate_full_job, app
     except Exception as e:
         return f"Error: cannot import app job runner ({e})"
 
@@ -1003,7 +1245,8 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
         # Cleanup the AiJob row so the paper isn't stuck with a phantom 'pending' job
         try:
             with app.app_context():
-                from models import AiJob
+                from database.models import AiJob
+
                 row = AiJob.query.get(job_id)
                 if row:
                     row.status = "error"
@@ -1020,6 +1263,7 @@ def _generate_full_paper(paper_id, user_id, prompt, topic=None, style=None, use_
     # with worker state.
     try:
         from api.chat_bp import register_active_job
+
         register_active_job(paper_id, job_id)
     except Exception:
         pass  # registry not available — non-fatal
@@ -1043,7 +1287,7 @@ def _plan_outline(prompt: str, memory_lines: str, topic: str, style: str) -> str
     are non-fatal — the writer step is still ok with an empty custom_prompt."""
     base = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
     api_key = os.getenv("AIOTOMASI_APIKEY") or ""
-    model = "V-DEEPSEEK"
+    model = os.getenv("MODELCHAT") or "VIOLA-CHAT"
     if not (base and api_key and model):
         return ""
 
@@ -1135,9 +1379,19 @@ def _get_paper_section(paper_id, user_id, section):
 # AI so it can rewrite Fig./Table/Eq. mentions in section text after the user
 # has reordered items.
 _ROMAN_PAIRS = (
-    (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
-    (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
-    (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+    (1000, "M"),
+    (900, "CM"),
+    (500, "D"),
+    (400, "CD"),
+    (100, "C"),
+    (90, "XC"),
+    (50, "L"),
+    (40, "XL"),
+    (10, "X"),
+    (9, "IX"),
+    (5, "V"),
+    (4, "IV"),
+    (1, "I"),
 )
 
 
@@ -1150,39 +1404,46 @@ def _to_roman(num: int) -> str:
     return out
 
 
-def _walk_content_for_numbering(content_list, fig_idx, tbl_idx, eq_idx,
-                                figs, tbls, eqs, section_title):
+def _walk_content_for_numbering(
+    content_list, fig_idx, tbl_idx, eq_idx, figs, tbls, eqs, section_title
+):
     """Walk a content list (already shape-normalized: list of dicts with id)
     and append entries to figs/tbls/eqs lists. Returns updated indices."""
-    for item in (content_list or []):
+    for item in content_list or []:
         if not isinstance(item, dict):
             continue
         kind = item.get("id")
         if kind == "gambar":
-            figs.append({
-                "fig_number": fig_idx,
-                "label": f"Fig. {fig_idx}",
-                "title": item.get("Title") or "",
-                "section": section_title,
-                "has_path": bool(item.get("Path")),
-                "prompt": (item.get("Prompt") or "")[:200],
-            })
+            figs.append(
+                {
+                    "fig_number": fig_idx,
+                    "label": f"Fig. {fig_idx}",
+                    "title": item.get("Title") or "",
+                    "section": section_title,
+                    "has_path": bool(item.get("Path")),
+                    "prompt": (item.get("Prompt") or "")[:200],
+                }
+            )
             fig_idx += 1
         elif kind == "tabel":
-            tbls.append({
-                "table_number": tbl_idx,
-                "label": f"Table {_to_roman(tbl_idx)}",
-                "title": item.get("Title") or "",
-                "section": section_title,
-            })
+            tbls.append(
+                {
+                    "table_number": tbl_idx,
+                    "label": f"Table {_to_roman(tbl_idx)}",
+                    "title": item.get("Title") or "",
+                    "section": section_title,
+                }
+            )
             tbl_idx += 1
         elif kind == "rumus":
-            eqs.append({
-                "eq_number": eq_idx,
-                "label": f"Eq. ({eq_idx})",
-                "section": section_title,
-                "latex": (item.get("latex") or "")[:200],
-            })
+            eqs.append(
+                {
+                    "eq_number": eq_idx,
+                    "label": f"Eq. ({eq_idx})",
+                    "section": section_title,
+                    "latex": (item.get("latex") or "")[:200],
+                }
+            )
             eq_idx += 1
     return fig_idx, tbl_idx, eq_idx
 
@@ -1213,15 +1474,26 @@ def _get_paper_numbering(paper_id, user_id):
         for sec in sections:
             title = sec.get("title", "")
             fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
-                sec.get("content"), fig_idx, tbl_idx, eq_idx,
-                figs, tbls, eqs, title)
-            for sub in (sec.get("subsections") or []):
+                sec.get("content"), fig_idx, tbl_idx, eq_idx, figs, tbls, eqs, title
+            )
+            for sub in sec.get("subsections") or []:
                 fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
-                    sub.get("content"), fig_idx, tbl_idx, eq_idx,
-                    figs, tbls, eqs, f"{title} — {sub.get('title','')}")
+                    sub.get("content"),
+                    fig_idx,
+                    tbl_idx,
+                    eq_idx,
+                    figs,
+                    tbls,
+                    eqs,
+                    f"{title} — {sub.get('title','')}",
+                )
     else:
         skeys = sorted(
-            (k for k in data.keys() if isinstance(k, str) and k.startswith("section") and k[7:].isdigit()),
+            (
+                k
+                for k in data.keys()
+                if isinstance(k, str) and k.startswith("section") and k[7:].isdigit()
+            ),
             key=lambda k: int(k[7:]),
         )
         for sk in skeys:
@@ -1230,20 +1502,32 @@ def _get_paper_numbering(paper_id, user_id):
                 continue
             title = sec.get("title", "")
             fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
-                sec.get("content"), fig_idx, tbl_idx, eq_idx,
-                figs, tbls, eqs, title)
-            for subk in sorted(k for k in sec.keys() if isinstance(k, str) and k.startswith(sk) and k != sk):
+                sec.get("content"), fig_idx, tbl_idx, eq_idx, figs, tbls, eqs, title
+            )
+            for subk in sorted(
+                k for k in sec.keys() if isinstance(k, str) and k.startswith(sk) and k != sk
+            ):
                 sub = sec.get(subk) or {}
                 if not isinstance(sub, dict):
                     continue
                 fig_idx, tbl_idx, eq_idx = _walk_content_for_numbering(
-                    sub.get("content"), fig_idx, tbl_idx, eq_idx,
-                    figs, tbls, eqs, f"{title} — {sub.get('title','')}")
+                    sub.get("content"),
+                    fig_idx,
+                    tbl_idx,
+                    eq_idx,
+                    figs,
+                    tbls,
+                    eqs,
+                    f"{title} — {sub.get('title','')}",
+                )
 
-    return _truncate(json.dumps(
-        {"figures": figs, "tables": tbls, "equations": eqs},
-        ensure_ascii=False, indent=2,
-    ))
+    return _truncate(
+        json.dumps(
+            {"figures": figs, "tables": tbls, "equations": eqs},
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 def _safe_read(file_path):
@@ -1265,7 +1549,7 @@ def _safe_read(file_path):
         # Refuse anything bigger than 256KB to keep prompts bounded
         if os.path.getsize(real_path) > 256 * 1024:
             return "Error: file too large to read (>256KB)."
-        with open(real_path, 'r', encoding='utf-8', errors='replace') as f:
+        with open(real_path, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
         return _truncate(content)
     except Exception as e:
@@ -1276,7 +1560,7 @@ def _safe_bash(command):
     if not command:
         return "Error: command is required"
     # Reject anything that looks like shell metacharacters BEFORE parsing.
-    forbidden = (';', '&&', '||', '|', '`', '$(', '$\\', '>', '<', '\n', '\r')
+    forbidden = (";", "&&", "||", "|", "`", "$(", "$\\", ">", "<", "\n", "\r")
     if any(tok in command for tok in forbidden):
         return "Error: shell metacharacters are not allowed."
     try:
@@ -1293,9 +1577,9 @@ def _safe_bash(command):
         low = arg.lower()
         if any(frag in arg for frag in SENSITIVE_PATH_FRAGMENTS):
             return "Error: argument references a restricted path."
-        if any(low.endswith('/' + s) or low == s for s in SENSITIVE_FILE_NAMES):
+        if any(low.endswith("/" + s) or low == s for s in SENSITIVE_FILE_NAMES):
             return "Error: argument references a restricted file."
-        if arg.startswith('/') and not arg.startswith('/home/sirobo/papergenerator/'):
+        if arg.startswith("/") and not arg.startswith("/home/sirobo/papergenerator/"):
             return "Error: only paths inside the project are allowed."
     try:
         result = subprocess.run(
@@ -1304,7 +1588,7 @@ def _safe_bash(command):
             capture_output=True,
             text=True,
             timeout=10,
-            cwd='/home/sirobo/papergenerator',
+            cwd="/home/sirobo/papergenerator",
         )
         output = result.stdout
         if result.stderr:
@@ -1374,7 +1658,11 @@ def _list_memory(paper_id, user_id):
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return "Paper not found."
-    entries = ProjectMemory.query.filter_by(paper_id=paper_id).order_by(ProjectMemory.updated_at.desc()).all()
+    entries = (
+        ProjectMemory.query.filter_by(paper_id=paper_id)
+        .order_by(ProjectMemory.updated_at.desc())
+        .all()
+    )
     if not entries:
         return "(memory is empty for this paper)"
     lines = [f"- [{e.kind}] {e.key}: {e.value}" for e in entries]
@@ -1398,7 +1686,11 @@ def get_memory_summary(paper_id) -> str:
     """Used by chat.py to inject saved memory into the system prompt."""
     if not paper_id:
         return ""
-    entries = ProjectMemory.query.filter_by(paper_id=paper_id).order_by(ProjectMemory.updated_at.desc()).all()
+    entries = (
+        ProjectMemory.query.filter_by(paper_id=paper_id)
+        .order_by(ProjectMemory.updated_at.desc())
+        .all()
+    )
     if not entries:
         return ""
     lines = [f"- [{e.kind}] {e.key}: {e.value}" for e in entries]
@@ -1419,7 +1711,7 @@ def _generate_chart_tool(paper_id, user_id, args):
         return "Error: paper not found"
 
     try:
-        from core.chart_generator import generate_chart, ChartSpec
+        from core.chart_generator import ChartSpec, generate_chart
         from paper_generation.utils import safe_paper_dir
     except Exception as e:
         return f"Error: chart generator unavailable ({e})"
@@ -1455,6 +1747,7 @@ def _generate_chart_tool(paper_id, user_id, args):
         dest = paper_dir / fname
         try:
             import shutil
+
             shutil.copyfile(src, str(dest))
         except Exception as e:
             return f"Error: persisting chart failed ({e})"
@@ -1476,19 +1769,23 @@ def _generate_chart_tool(paper_id, user_id, args):
             pass
         return f"Error: persisting chart failed ({e})"
 
-    return PROPOSAL_PREFIX + json.dumps({
-        "kind": "chart_proposal",
-        "image_id": img_id,
-        "filename": fname,
-        "url": f"/api/images/{paper_id}/{fname}",
-        "spec": {"kind": args.get("kind"), "title": args.get("title")},
-    }, ensure_ascii=False)
+    return PROPOSAL_PREFIX + json.dumps(
+        {
+            "kind": "chart_proposal",
+            "image_id": img_id,
+            "filename": fname,
+            "url": f"/api/images/{paper_id}/{fname}",
+            "spec": {"kind": args.get("kind"), "title": args.get("title")},
+        },
+        ensure_ascii=False,
+    )
 
 
 def _get_paragraph_context(paper_id, user_id, args):
     """Token-efficient context for paragraph-scoped revisions: returns the
     target paragraph plus immediate neighbors plus a one-line outline."""
     import re as _re
+
     if not paper_id:
         return "No paper linked to this conversation."
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
@@ -1593,16 +1890,213 @@ def _review_large_file(paper_id, user_id, args):
 
     head = " ".join(words[:200])
     tail = " ".join(words[-200:])
-    return PROPOSAL_PREFIX + json.dumps({
-        "kind": "file_review",
-        "file_id": fid,
-        "filename": f.original_name or f.filename,
-        "word_count": word_count,
-        "head": head,
-        "tail": tail,
-        "suggested_kinds": ["data", "methods", "results", "abstract", "literature"],
-        "needs_user_pick": True,
-    }, ensure_ascii=False)
+    return PROPOSAL_PREFIX + json.dumps(
+        {
+            "kind": "file_review",
+            "file_id": fid,
+            "filename": f.original_name or f.filename,
+            "word_count": word_count,
+            "head": head,
+            "tail": tail,
+            "suggested_kinds": ["data", "methods", "results", "abstract", "literature"],
+            "needs_user_pick": True,
+        },
+        ensure_ascii=False,
+    )
+
+
+def _generate_image_tool(paper_id, user_id, prompt):
+    """Enqueue an AI image generation job via Gemini worker pool.
+
+    Returns a job_id that the frontend can poll via /api/image-jobs/<id>.
+    When the job completes, the worker persists a PaperImage row and sets
+    image_id on the job.
+    """
+    if not paper_id:
+        return "Error: this chat is not linked to a paper."
+    if not user_id:
+        return "Error: not authenticated."
+
+    prompt = (prompt or "").strip()
+    if not prompt:
+        return "Error: prompt is required (describe the image to generate)."
+
+    if len(prompt) > 2000:
+        return "Error: prompt too long (max 2000 characters)."
+
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return "Error: paper not found."
+
+    try:
+        from database.models import ImageGenJob
+    except Exception as e:
+        return f"Error: ImageGenJob model unavailable ({e})"
+
+    # Check inflight limit
+    inflight = ImageGenJob.query.filter(
+        ImageGenJob.user_id == user_id,
+        ImageGenJob.status.in_(["queued", "running"]),
+    ).count()
+    if inflight >= 12:
+        return "Error: Maximum 12 active image jobs. Please wait for some to complete."
+
+    job_id = uuid.uuid4().hex
+    job = ImageGenJob(
+        id=job_id,
+        user_id=user_id,
+        paper_id=paper_id,
+        prompt=prompt,
+        status="queued",
+    )
+    db.session.add(job)
+    db.session.commit()
+
+    # Best-effort: submit to worker pool immediately
+    try:
+        from workers.image_worker import submit_now
+        submit_now(job_id)
+    except Exception:
+        logger.warning("submit_now failed (job will run via dispatcher poll)")
+
+    return _propose(
+        "image_job",
+        {
+            "job_id": job_id,
+            "prompt": prompt,
+            "status": "queued",
+        },
+    )
+
+
+def _get_job_status_tool(job_id, job_type=None):
+    """Check status of any background job (paper generation, SLR, or image).
+
+    Args:
+        job_id: The job ID to check
+        job_type: Optional hint: 'paper'|'slr'|'image'. If not provided, tries all.
+
+    Returns:
+        JSON with job status, progress, stage, error (if any).
+    """
+    if not job_id:
+        return "Error: job_id is required."
+
+    job_id = str(job_id).strip()
+    if not job_id:
+        return "Error: job_id cannot be empty."
+
+    # Try to find the job in the appropriate table
+    job = None
+    job_kind = None
+
+    if job_type == "paper" or job_type is None:
+        try:
+            from database.models import AiJob
+            job = AiJob.query.get(job_id)
+            if job:
+                job_kind = "paper"
+        except Exception:
+            pass
+
+    if not job and (job_type == "slr" or job_type is None):
+        try:
+            from database.models import SlrJob
+            job = SlrJob.query.get(job_id)
+            if job:
+                job_kind = "slr"
+        except Exception:
+            pass
+
+    if not job and (job_type == "image" or job_type is None):
+        try:
+            from database.models import ImageGenJob
+            job = ImageGenJob.query.get(job_id)
+            if job:
+                job_kind = "image"
+        except Exception:
+            pass
+
+    if not job:
+        return f"Error: Job {job_id} not found."
+
+    # Build response based on job type
+    response = {
+        "job_id": job_id,
+        "job_type": job_kind,
+        "status": job.status,
+    }
+
+    if hasattr(job, "progress"):
+        response["progress"] = job.progress
+    if hasattr(job, "stage"):
+        response["stage"] = job.stage or ""
+    if hasattr(job, "progress_message"):
+        response["progress_message"] = job.progress_message or ""
+    if hasattr(job, "error") and job.error:
+        response["error"] = job.error
+    if hasattr(job, "image_id") and job.image_id:
+        response["image_id"] = job.image_id
+    if hasattr(job, "worker") and job.worker:
+        response["worker"] = job.worker
+
+    # Add timestamps
+    if hasattr(job, "started_at") and job.started_at:
+        response["started_at"] = job.started_at.isoformat()
+    if hasattr(job, "finished_at") and job.finished_at:
+        response["finished_at"] = job.finished_at.isoformat()
+    if hasattr(job, "updated_at") and job.updated_at:
+        response["updated_at"] = job.updated_at.isoformat()
+
+    return _truncate(json.dumps(response, ensure_ascii=False, indent=2))
+
+
+def _upload_file_tool(paper_id, user_id, file_type="document"):
+    """Return the upload URL for attaching files to this paper.
+
+    Args:
+        paper_id: The paper to attach files to
+        user_id: Current user
+        file_type: 'document' (PDF/DOCX) or 'image' (PNG/JPG)
+
+    Returns:
+        Upload URL and instructions.
+    """
+    if not paper_id:
+        return "Error: this chat is not linked to a paper."
+    if not user_id:
+        return "Error: not authenticated."
+
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+    if not paper:
+        return "Error: paper not found."
+
+    file_type = (file_type or "document").strip().lower()
+
+    if file_type == "image":
+        upload_url = f"/api/images/{paper_id}/images/upload"
+        accepted_formats = "PNG, JPG, JPEG"
+        max_size = "10MB"
+    else:
+        upload_url = f"/api/files/{paper_id}/upload"
+        accepted_formats = "PDF, DOCX, TXT, MD"
+        max_size = "50MB"
+
+    return _propose(
+        "upload_url",
+        {
+            "upload_url": upload_url,
+            "paper_id": paper_id,
+            "file_type": file_type,
+            "accepted_formats": accepted_formats,
+            "max_size": max_size,
+            "method": "POST",
+            "instructions": (
+                f"Upload {file_type}s to {upload_url} via POST with multipart/form-data. "
+                f"Accepted formats: {accepted_formats}. Max size: {max_size}."
+            ),
+        },
+    )
 
 
 CHAT_TOOLS = [
@@ -1663,7 +2157,10 @@ CHAT_TOOLS = [
             "properties": {
                 "prompt": {"type": "string", "description": "Full topic / proposed title."},
                 "topic": {"type": "string", "description": "Optional topic slug from /api/topics."},
-                "style": {"type": "string", "description": "Optional citation-style slug from /api/styles."},
+                "style": {
+                    "type": "string",
+                    "description": "Optional citation-style slug from /api/styles.",
+                },
                 "use_attached_files": {"type": "boolean", "description": "Default true."},
             },
             "required": ["prompt"],
@@ -1691,10 +2188,19 @@ CHAT_TOOLS = [
                     "items": {"type": "string"},
                     "description": "Optional: restrict to specific sources (e.g. ['ieee','sinta']).",
                 },
-                "top_k": {"type": "integer", "description": "How many to summarize (default 50, max 100)."},
-                "per_source": {"type": "integer", "description": "Max results per source (default 60)."},
+                "top_k": {
+                    "type": "integer",
+                    "description": "How many to summarize (default 50, max 100).",
+                },
+                "per_source": {
+                    "type": "integer",
+                    "description": "Max results per source (default 60).",
+                },
                 "year_from": {"type": "integer", "description": "Optional cutoff year."},
-                "ai_model": {"type": "string", "description": "V-OPUS|V-DEEPSEEK. Default V-DEEPSEEK."},
+                "ai_model": {
+                    "type": "string",
+                    "description": "VIOLA-CHAT|VIOLA-GENERATE. Default VIOLA-GENERATE.",
+                },
             },
             "required": ["query"],
         },
@@ -1943,8 +2449,14 @@ CHAT_TOOLS = [
                     "items": {
                         "type": "object",
                         "properties": {
-                            "label": {"type": "string", "description": "Short text shown on the chip."},
-                            "value": {"type": "string", "description": "The exact reply submitted when clicked."},
+                            "label": {
+                                "type": "string",
+                                "description": "Short text shown on the chip.",
+                            },
+                            "value": {
+                                "type": "string",
+                                "description": "The exact reply submitted when clicked.",
+                            },
                         },
                         "required": ["label", "value"],
                     },
@@ -2090,7 +2602,10 @@ CHAT_TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "kind": {"type": "string", "enum": ["line", "bar", "scatter", "hist", "box", "heatmap", "pie"]},
+                "kind": {
+                    "type": "string",
+                    "enum": ["line", "bar", "scatter", "hist", "box", "heatmap", "pie"],
+                },
                 "title": {"type": "string"},
                 "xlabel": {"type": "string"},
                 "ylabel": {"type": "string"},
@@ -2102,14 +2617,88 @@ CHAT_TOOLS = [
         },
     },
     {
+        "name": "GenerateImage",
+        "description": (
+            "Generate an AI image via Gemini worker pool. Use this when the user "
+            "requests an illustration, diagram, or visual that cannot be created "
+            "with GenerateChart. Returns a job_id that the frontend polls. When "
+            "complete, the image is persisted as a PaperImage and can be referenced "
+            "in sections. Max 12 concurrent jobs per user."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Detailed description of the image to generate (max 2000 chars).",
+                },
+            },
+            "required": ["prompt"],
+        },
+    },
+    {
+        "name": "GetJobStatus",
+        "description": (
+            "Check the status of any background job (paper generation, SLR, or image). "
+            "Returns status (queued|running|done|error|cancelled), progress (0-100), "
+            "stage, error message (if any), and timestamps. Use this to check on jobs "
+            "started by GenerateFullPaper, RunSLR, or GenerateImage."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string",
+                    "description": "The job ID returned by GenerateFullPaper, RunSLR, or GenerateImage.",
+                },
+                "job_type": {
+                    "type": "string",
+                    "enum": ["paper", "slr", "image"],
+                    "description": "Optional hint to speed up lookup. If omitted, tries all types.",
+                },
+            },
+            "required": ["job_id"],
+        },
+    },
+    {
+        "name": "UploadFile",
+        "description": (
+            "Get the upload URL for attaching files to this paper. Returns the "
+            "endpoint URL, accepted formats, and max size. Use this when the user "
+            "wants to upload documents (PDF/DOCX/TXT/MD) or images (PNG/JPG). "
+            "The frontend handles the actual upload via multipart/form-data POST."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "file_type": {
+                    "type": "string",
+                    "enum": ["document", "image"],
+                    "description": "Type of file to upload. Default: document.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "GetParagraphContext",
         "description": "Get a single paragraph plus its immediate neighbors and a section outline. Use this BEFORE Paraphrase/FixGrammar/Translate when the scope is a single paragraph. Returns ~80% fewer tokens than GetPaperSection while still giving you context to preserve voice, citations, and figure references.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "section_index": {"type": "integer", "description": "1-indexed section number (1..5)"},
-                "content_index": {"type": "integer", "description": "0-indexed position in section.content array"},
-                "neighbor_window": {"type": "integer", "default": 1, "description": "How many paragraphs above/below to include"},
+                "section_index": {
+                    "type": "integer",
+                    "description": "1-indexed section number (1..5)",
+                },
+                "content_index": {
+                    "type": "integer",
+                    "description": "0-indexed position in section.content array",
+                },
+                "neighbor_window": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "How many paragraphs above/below to include",
+                },
                 "include_paper_meta": {"type": "boolean", "default": False},
             },
             "required": ["section_index", "content_index"],
@@ -2128,21 +2717,29 @@ CHAT_TOOLS = [
     },
     {
         "name": "AskQuestions",
-        "description": "Ask the user up to 5 multiple-choice questions at once (Claude-Code style). Each question has 2-6 chip options; the user can also type a free-text answer. Use ONLY in discovery mode for batched fact gathering. Frontend renders MultiQuestionCard. After user answers, auto-memory persists each (key, value).",
+        "description": "Ask the user exactly 3 related multiple-choice questions at once. Each question MUST have exactly 4 chip options; the user can also type a free-text answer. Use for batched fact gathering in discovery/revisi mode. Frontend renders MultiQuestionCard with uniform layout. After user answers, auto-memory persists each (key, value). ALWAYS send 3 questions per call, logically connected.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "questions": {
                     "type": "array",
-                    "minItems": 1, "maxItems": 5,
+                    "minItems": 1,
+                    "maxItems": 3,
                     "items": {
                         "type": "object",
                         "properties": {
-                            "key": {"type": "string", "description": "Memory key, e.g. jurusan, topik, metode."},
-                            "label": {"type": "string", "description": "Question text in user's language."},
+                            "key": {
+                                "type": "string",
+                                "description": "Memory key, e.g. jurusan, topik, metode.",
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "Question text in user's language.",
+                            },
                             "options": {
                                 "type": "array",
-                                "minItems": 2, "maxItems": 6,
+                                "minItems": 4,
+                                "maxItems": 4,
                                 "items": {
                                     "type": "object",
                                     "properties": {
@@ -2166,8 +2763,15 @@ CHAT_TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "directive": {"type": "string", "description": "User's review directive (e.g., 'tighten language', 'check coherence', 'verify citations')."},
-                "scope": {"type": "string", "enum": ["whole", "section1", "section2", "section3", "section4", "section5"], "default": "whole"},
+                "directive": {
+                    "type": "string",
+                    "description": "User's review directive (e.g., 'tighten language', 'check coherence', 'verify citations').",
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": ["whole", "section1", "section2", "section3", "section4", "section5"],
+                    "default": "whole",
+                },
             },
             "required": ["directive"],
         },
@@ -2194,6 +2798,29 @@ CHAT_TOOLS = [
                 "top_k": {"type": "integer", "default": 30},
             },
             "required": ["keyword"],
+        },
+    },
+    {
+        "name": "StartWorkflow",
+        "description": "Start the 9-phase guided questionnaire for building a paper from scratch. Returns the first batch of 3 questions (Phase 0: progress, data readiness, team size). Use when user wants to generate a full paper and has no existing history.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "SaveWorkflowAnswers",
+        "description": "Save the user's workflow answers and return the next batch of 3 questions. Call this after receiving answers from a workflow MultiQuestionCard. Automatically advances to the next phase when current phase questions are complete.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "answers": {
+                    "type": "object",
+                    "description": "Dictionary of key-value pairs from the user's answers (e.g. {\"progress_level\": \"A\", \"data_readiness\": \"B\", \"team_size\": \"A\"}).",
+                },
+            },
+            "required": ["answers"],
         },
     },
 ]

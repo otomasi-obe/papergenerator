@@ -39,16 +39,11 @@ RIGHT_TAB_PT = 225.0
 FORMULA_TAB_PT = 70.0
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
-        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main":
-        b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
-        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math":
-        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 XSL_CANDIDATES = [
@@ -224,8 +219,8 @@ def _add_sample_run(
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -282,7 +277,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -508,7 +503,13 @@ def _keywords_en_list(config: dict) -> list[str]:
             items = [str(item).strip() for item in value if str(item).strip()]
             if items:
                 return items
-    return ["Gesture Control", "Programmable Logic Controller", "Computer Vision", "Industrial Communication", "Automation"]
+    return [
+        "Gesture Control",
+        "Programmable Logic Controller",
+        "Computer Vision",
+        "Industrial Communication",
+        "Automation",
+    ]
 
 
 def _keywords_id_list(config: dict) -> list[str]:
@@ -553,7 +554,9 @@ def _acknowledgment_text(config: dict) -> str:
             return value
     affiliations = []
     for author in _parse_author_entries(config):
-        value = ", ".join(part for part in (author.get("affiliation", ""), author.get("location", "")) if part)
+        value = ", ".join(
+            part for part in (author.get("affiliation", ""), author.get("location", "")) if part
+        )
         if value and value not in affiliations:
             affiliations.append(value)
     if affiliations:
@@ -717,14 +720,22 @@ def _add_authors(doc: Document, config: dict, samples: dict[str, etree._Element 
         if index:
             _add_sample_run(author_para, ", ", samples["author_name_rpr"])
         _add_sample_run(author_para, author["name"], samples["author_name_rpr"])
-        _add_sample_run(author_para, str(author_numbers[index]), samples["author_sup_rpr"], superscript=True)
+        _add_sample_run(
+            author_para, str(author_numbers[index]), samples["author_sup_rpr"], superscript=True
+        )
         if index == 0:
-            star_rpr = samples["author_star_rpr"] if samples["author_star_rpr"] is not None else samples["author_sup_rpr"]
+            star_rpr = (
+                samples["author_star_rpr"]
+                if samples["author_star_rpr"] is not None
+                else samples["author_sup_rpr"]
+            )
             _add_sample_run(author_para, "*", star_rpr, superscript=True)
 
     for group in grouped_affiliations:
         paragraph = _new_paragraph(doc, samples["affiliation_ppr"])
-        _add_sample_run(paragraph, str(group["number"]), samples["affiliation_sup_rpr"], superscript=True)
+        _add_sample_run(
+            paragraph, str(group["number"]), samples["affiliation_sup_rpr"], superscript=True
+        )
         _add_sample_run(paragraph, " ", samples["affiliation_sup_rpr"], superscript=True)
         details = [part for part in (str(group["affiliation"]), str(group["location"])) if part]
         body_text = ", ".join(details) if details else "Afiliasi Penulis"
@@ -750,19 +761,27 @@ def _add_abstract_block(
     _new_paragraph(doc, samples["abstract_gap_ppr"])
 
     abstract_paragraph = _new_paragraph(doc, samples["abstract_body_ppr"])
-    _append_rich_text(abstract_paragraph, abstract_text, samples["abstract_body_rpr"], base_italic=True)
+    _append_rich_text(
+        abstract_paragraph, abstract_text, samples["abstract_body_rpr"], base_italic=True
+    )
 
     _new_paragraph(doc, samples["post_keywords_gap_ppr"])
 
     keyword_paragraph = _new_paragraph(doc, samples["keywords_ppr"])
-    _append_rich_text(keyword_paragraph, f"{keyword_label}: ", samples["keywords_label_rpr"], base_bold=True)
+    _append_rich_text(
+        keyword_paragraph, f"{keyword_label}: ", samples["keywords_label_rpr"], base_bold=True
+    )
     keyword_text = "; ".join(keywords).strip()
     if keyword_text and not keyword_text.endswith("."):
         keyword_text += "."
-    _append_rich_text(keyword_paragraph, keyword_text, samples["keywords_body_rpr"], base_italic=False)
+    _append_rich_text(
+        keyword_paragraph, keyword_text, samples["keywords_body_rpr"], base_italic=False
+    )
 
 
-def _add_front_matter(doc: Document, config: dict, samples: dict[str, etree._Element | None]) -> None:
+def _add_front_matter(
+    doc: Document, config: dict, samples: dict[str, etree._Element | None]
+) -> None:
     _add_title(doc, config, samples)
     _add_authors(doc, config, samples)
 
@@ -821,7 +840,11 @@ def _add_subsection_heading(
     paragraph = _new_paragraph(doc, samples["subsection_ppr"])
     _set_spacing(paragraph, before=3.0, after=3.0)
     paragraph.paragraph_format.first_line_indent = Pt(0)
-    subsection_rpr = samples["subsection_rpr"] if samples["subsection_rpr"] is not None else samples["section_rpr"]
+    subsection_rpr = (
+        samples["subsection_rpr"]
+        if samples["subsection_rpr"] is not None
+        else samples["section_rpr"]
+    )
     _append_rich_text(
         paragraph,
         _smart_heading_case(title),
@@ -855,8 +878,9 @@ def _add_figure(
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -1044,7 +1068,9 @@ def _add_equation(
         return
 
     state.formula_number += 1
-    number = str(item.get("FormulaNumber") or state.formula_number).strip() or str(state.formula_number)
+    number = str(item.get("FormulaNumber") or state.formula_number).strip() or str(
+        state.formula_number
+    )
 
     paragraph = _new_paragraph(doc, samples["equation_ppr"])
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1057,7 +1083,9 @@ def _add_equation(
     if not _append_inline_math(paragraph, formula):
         _add_sample_run(paragraph, formula, samples["equation_body_rpr"], italic=True)
     paragraph.add_run().add_tab()
-    _add_sample_run(paragraph, f"({number})", samples["equation_num_rpr"] or samples["equation_body_rpr"])
+    _add_sample_run(
+        paragraph, f"({number})", samples["equation_num_rpr"] or samples["equation_body_rpr"]
+    )
 
 
 def _render_content_item(
@@ -1127,14 +1155,17 @@ def _render_sections(
 
         subsection_keys = sorted(
             [
-                key for key, value in section.items()
+                key
+                for key, value in section.items()
                 if isinstance(value, dict) and re.fullmatch(rf"{re.escape(section_key)}[a-z]+", key)
             ],
-            key=lambda key: key[len(section_key):],
+            key=lambda key: key[len(section_key) :],
         )
         for subsection_index, subsection_key in enumerate(subsection_keys, start=1):
             subsection = section[subsection_key]
-            title = str(subsection.get("title") or f"Subbagian {section_index}.{subsection_index}").strip()
+            title = str(
+                subsection.get("title") or f"Subbagian {section_index}.{subsection_index}"
+            ).strip()
             _add_subsection_heading(doc, section_index, subsection_index, title, samples)
             _render_content_sequence(doc, subsection.get("content", []), json_path, samples, state)
 
@@ -1215,7 +1246,8 @@ def main() -> None:
         return
 
     json_files = sorted(
-        path for path in BASE_DIR.glob("*.json")
+        path
+        for path in BASE_DIR.glob("*.json")
         if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
     )
     if not json_files:
@@ -1235,8 +1267,6 @@ def main() -> None:
     print(f"Done: {ok} OK, {err} errors")
 
 
-
-
 def _set_table_borders_match_template(table) -> None:
     """Pastikan tabel punya border tegas/visible (val=single, sz=4 = 0.5pt).
 
@@ -1245,6 +1275,7 @@ def _set_table_borders_match_template(table) -> None:
     """
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     if tbl_pr is None:

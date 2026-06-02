@@ -1,0 +1,96 @@
+MASTER TEST REPORT - ALL FETCHERS
+================================================================================
+
+Test Time: 2026-05-29T12:53:34.270979
+Total Fetchers: 26
+Tested: 26
+
+Results Summary:
+  ✓ Success: 6
+  ⚠ Partial Success: 0
+  ○ No Results: 20
+  ✗ Failed: 0
+  ✗ Error: 0
+
+================================================================================
+DETAILED RESULTS
+================================================================================
+
+✓ arxiv                | Status: success         | Papers:  3 | Valid Links:  3
+   Note: Free API, direct PDF links
+
+✓ pubmed               | Status: success         | Papers:  3 | Valid Links:  3
+   Note: Free API, PMC has free PDFs
+
+✓ crossref             | Status: success         | Papers:  3 | Valid Links:  3
+   Note: Free API, metadata only
+
+✓ openalex             | Status: success         | Papers:  3 | Valid Links:  3
+   Note: Free API, good coverage
+
+○ dblp                 | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Free API, CS papers
+
+○ semantic_scholar     | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Free API, good metadata
+
+✓ europepmc            | Status: success         | Papers:  1 | Valid Links:  1
+   Note: Free API, biomedical papers
+
+○ ieee                 | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires IEEE_API_KEY
+
+○ scopus               | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires SCOPUS_API_KEY
+
+○ springer             | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require API key
+
+○ sciencedirect        | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires API key
+
+○ wiley                | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require credentials
+
+○ taylor_francis       | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require credentials
+
+○ oxford               | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require credentials
+
+○ cambridge            | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require credentials
+
+○ emerald              | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require credentials
+
+○ jstor                | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ proquest             | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ ebscohost            | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ asce                 | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ igi_global           | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: May require credentials
+
+○ mcgrawhill           | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ clinicalkey          | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ embase               | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+○ westlaw              | Status: no_results      | Papers:  0 | Valid Links:  0
+   Note: Requires credentials
+
+✓ sinta                | Status: success         | Papers:  3 | Valid Links:  3
+   Note: Indonesian research database
+

@@ -25,15 +25,15 @@ from __future__ import annotations
 
 import os
 import re
-import json
 import urllib.parse
 import xml.etree.ElementTree as ET
-from typing import List, Dict, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 import requests
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 except ImportError:
     pass
@@ -52,16 +52,36 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
-_ALLOWED_HOSTS = frozenset({
-    "api.openalex.org", "api.crossref.org", "export.arxiv.org",
-    "api.semanticscholar.org", "europepmc.org", "www.ebi.ac.uk",
-    "eutils.ncbi.nlm.nih.gov", "doaj.org", "dblp.org", "api.openaire.eu",
-    "api.archives-ouvertes.fr", "api.plos.org", "api.biorxiv.org",
-    "api.fatcat.wiki", "zenodo.org", "api.datacite.org", "api.osf.io",
-    "paperswithcode.com", "inspirehep.net", "api.ies.ed.gov",
-    "api.core.ac.uk", "api.lens.org", "api.adsabs.harvard.edu",
-    "api.springernature.com", "ieeexploreapi.ieee.org", "api.unpaywall.org",
-})
+_ALLOWED_HOSTS = frozenset(
+    {
+        "api.openalex.org",
+        "api.crossref.org",
+        "export.arxiv.org",
+        "api.semanticscholar.org",
+        "europepmc.org",
+        "www.ebi.ac.uk",
+        "eutils.ncbi.nlm.nih.gov",
+        "doaj.org",
+        "dblp.org",
+        "api.openaire.eu",
+        "api.archives-ouvertes.fr",
+        "api.plos.org",
+        "api.biorxiv.org",
+        "api.fatcat.wiki",
+        "zenodo.org",
+        "api.datacite.org",
+        "api.osf.io",
+        "paperswithcode.com",
+        "inspirehep.net",
+        "api.ies.ed.gov",
+        "api.core.ac.uk",
+        "api.lens.org",
+        "api.adsabs.harvard.edu",
+        "api.springernature.com",
+        "ieeexploreapi.ieee.org",
+        "api.unpaywall.org",
+    }
+)
 
 
 def _is_safe_url(url: str) -> bool:
@@ -95,6 +115,7 @@ def _safe_post(url, *args, **kwargs):
     if not _is_safe_url(url):
         raise requests.exceptions.InvalidURL(f"refused by SSRF allowlist: {url}")
     return requests.post(url, *args, **kwargs)
+
 
 CORE_API_KEY = os.getenv("CORE_API_KEY", "")
 LENS_TOKEN = os.getenv("LENS_TOKEN", "")
@@ -134,6 +155,7 @@ def _record(source: str, **kw) -> Dict:
 # TIER 1 — FREE, NO API KEY
 # ──────────────────────────────────────────────────────────────────────────
 
+
 def _reconstruct_inverted(inv: Optional[Dict]) -> str:
     if not inv:
         return ""
@@ -154,18 +176,19 @@ def search_openalex(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
 
     out = []
     for w in data.get("results", []):
-        authors = [a.get("author", {}).get("display_name", "")
-                   for a in w.get("authorships", [])]
-        out.append(_record(
-            "openalex",
-            title=w.get("title", ""),
-            abstract=_reconstruct_inverted(w.get("abstract_inverted_index")),
-            url=w.get("doi") or w.get("id", ""),
-            pdf_url=(w.get("primary_location") or {}).get("pdf_url", "") or "",
-            authors=authors,
-            year=w.get("publication_year"),
-            doi=(w.get("doi") or "").replace("https://doi.org/", ""),
-        ))
+        authors = [a.get("author", {}).get("display_name", "") for a in w.get("authorships", [])]
+        out.append(
+            _record(
+                "openalex",
+                title=w.get("title", ""),
+                abstract=_reconstruct_inverted(w.get("abstract_inverted_index")),
+                url=w.get("doi") or w.get("id", ""),
+                pdf_url=(w.get("primary_location") or {}).get("pdf_url", "") or "",
+                authors=authors,
+                year=w.get("publication_year"),
+                doi=(w.get("doi") or "").replace("https://doi.org/", ""),
+            )
+        )
     return out
 
 
@@ -191,15 +214,17 @@ def search_crossref(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
             if dp and dp[0]:
                 year = dp[0][0]
                 break
-        out.append(_record(
-            "crossref",
-            title=(it.get("title") or [""])[0],
-            abstract=re.sub(r"<[^>]+>", "", it.get("abstract") or "").strip(),
-            url=it.get("URL", ""),
-            authors=authors,
-            year=year,
-            doi=it.get("DOI", ""),
-        ))
+        out.append(
+            _record(
+                "crossref",
+                title=(it.get("title") or [""])[0],
+                abstract=re.sub(r"<[^>]+>", "", it.get("abstract") or "").strip(),
+                url=it.get("URL", ""),
+                authors=authors,
+                year=year,
+                doi=it.get("DOI", ""),
+            )
+        )
     return out
 
 
@@ -232,15 +257,17 @@ def search_arxiv(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
             if ln.get("title") == "pdf":
                 pdf_url = ln.get("href", "")
                 break
-        out.append(_record(
-            "arxiv",
-            title=title,
-            abstract=summary,
-            url=link,
-            pdf_url=pdf_url,
-            authors=authors,
-            year=year,
-        ))
+        out.append(
+            _record(
+                "arxiv",
+                title=title,
+                abstract=summary,
+                url=link,
+                pdf_url=pdf_url,
+                authors=authors,
+                year=year,
+            )
+        )
     return out
 
 
@@ -261,7 +288,8 @@ def search_semantic_scholar(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict
             r = _safe_get(url, params=params, headers=headers, timeout=DEFAULT_TIMEOUT)
             if r.status_code == 429:
                 import time as _t
-                _t.sleep(2 ** attempt)
+
+                _t.sleep(2**attempt)
                 continue
             r.raise_for_status()
             data = r.json()
@@ -273,16 +301,18 @@ def search_semantic_scholar(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict
 
     out = []
     for p in data.get("data", []):
-        out.append(_record(
-            "semanticscholar",
-            title=p.get("title", ""),
-            abstract=p.get("abstract") or "",
-            url=p.get("url", ""),
-            pdf_url=(p.get("openAccessPdf") or {}).get("url", "") or "",
-            authors=[a.get("name", "") for a in p.get("authors", []) or []],
-            year=p.get("year"),
-            doi=(p.get("externalIds") or {}).get("DOI", ""),
-        ))
+        out.append(
+            _record(
+                "semanticscholar",
+                title=p.get("title", ""),
+                abstract=p.get("abstract") or "",
+                url=p.get("url", ""),
+                pdf_url=(p.get("openAccessPdf") or {}).get("url", "") or "",
+                authors=[a.get("name", "") for a in p.get("authors", []) or []],
+                year=p.get("year"),
+                doi=(p.get("externalIds") or {}).get("DOI", ""),
+            )
+        )
     return out
 
 
@@ -298,20 +328,25 @@ def search_europepmc(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
 
     out = []
     for p in (data.get("resultList") or {}).get("result", []) or []:
-        authors = [a.get("fullName", "") for a in (p.get("authorList") or {}).get("author", []) or []]
+        authors = [
+            a.get("fullName", "") for a in (p.get("authorList") or {}).get("author", []) or []
+        ]
         full_text_urls = (p.get("fullTextUrlList") or {}).get("fullTextUrl", []) or []
-        pdf = next((f.get("url", "") for f in full_text_urls
-                    if f.get("documentStyle") == "pdf"), "")
-        out.append(_record(
-            "europepmc",
-            title=p.get("title", ""),
-            abstract=p.get("abstractText") or "",
-            url=(full_text_urls[0].get("url") if full_text_urls else "") or "",
-            pdf_url=pdf,
-            authors=authors,
-            year=int(p["pubYear"]) if p.get("pubYear", "").isdigit() else None,
-            doi=p.get("doi", ""),
-        ))
+        pdf = next(
+            (f.get("url", "") for f in full_text_urls if f.get("documentStyle") == "pdf"), ""
+        )
+        out.append(
+            _record(
+                "europepmc",
+                title=p.get("title", ""),
+                abstract=p.get("abstractText") or "",
+                url=(full_text_urls[0].get("url") if full_text_urls else "") or "",
+                pdf_url=pdf,
+                authors=authors,
+                year=int(p["pubYear"]) if p.get("pubYear", "").isdigit() else None,
+                doi=p.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -344,21 +379,29 @@ def search_pubmed(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         if not rec:
             continue
         authors = [a.get("name", "") for a in rec.get("authors", []) or []]
-        doi = next((aid.get("value", "") for aid in rec.get("articleids", [])
-                    if aid.get("idtype") == "doi"), "")
+        doi = next(
+            (
+                aid.get("value", "")
+                for aid in rec.get("articleids", [])
+                if aid.get("idtype") == "doi"
+            ),
+            "",
+        )
         year = None
         m = re.search(r"\d{4}", rec.get("pubdate", ""))
         if m:
             year = int(m.group())
-        out.append(_record(
-            "pubmed",
-            title=rec.get("title", ""),
-            abstract="",
-            url=f"https://pubmed.ncbi.nlm.nih.gov/{pid}/",
-            authors=authors,
-            year=year,
-            doi=doi,
-        ))
+        out.append(
+            _record(
+                "pubmed",
+                title=rec.get("title", ""),
+                abstract="",
+                url=f"https://pubmed.ncbi.nlm.nih.gov/{pid}/",
+                authors=authors,
+                year=year,
+                doi=doi,
+            )
+        )
     return out
 
 
@@ -367,7 +410,9 @@ def search_doaj(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     params = {"pageSize": limit}
     try:
         r = _safe_get(
-            url, params=params, timeout=DEFAULT_TIMEOUT,
+            url,
+            params=params,
+            timeout=DEFAULT_TIMEOUT,
             headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
         )
         r.raise_for_status()
@@ -379,18 +424,21 @@ def search_doaj(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     for it in data.get("results", []):
         bib = it.get("bibjson", {})
         ids = {x.get("type"): x.get("id") for x in bib.get("identifier", []) or []}
-        link = next((l.get("url") for l in bib.get("link", []) or []
-                     if l.get("type") == "fulltext"), "")
+        link = next(
+            (l.get("url") for l in bib.get("link", []) or [] if l.get("type") == "fulltext"), ""
+        )
         authors = [a.get("name", "") for a in bib.get("author", []) or []]
-        out.append(_record(
-            "doaj",
-            title=bib.get("title", ""),
-            abstract=bib.get("abstract", ""),
-            url=link,
-            authors=authors,
-            year=int(bib["year"]) if str(bib.get("year", "")).isdigit() else None,
-            doi=ids.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "doaj",
+                title=bib.get("title", ""),
+                abstract=bib.get("abstract", ""),
+                url=link,
+                authors=authors,
+                year=int(bib["year"]) if str(bib.get("year", "")).isdigit() else None,
+                doi=ids.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -412,14 +460,16 @@ def search_dblp(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         if isinstance(a, dict):
             a = [a]
         authors = [x.get("text", "") if isinstance(x, dict) else str(x) for x in a]
-        out.append(_record(
-            "dblp",
-            title=info.get("title", ""),
-            url=info.get("ee") or info.get("url", ""),
-            authors=authors,
-            year=int(info["year"]) if str(info.get("year", "")).isdigit() else None,
-            doi=info.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "dblp",
+                title=info.get("title", ""),
+                url=info.get("ee") or info.get("url", ""),
+                authors=authors,
+                year=int(info["year"]) if str(info.get("year", "")).isdigit() else None,
+                doi=info.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -463,14 +513,16 @@ def search_openaire(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
             if isinstance(p, dict) and p.get("@classid") == "doi":
                 doi = p.get("$", "")
                 break
-        out.append(_record(
-            "openaire",
-            title=str(title or ""),
-            abstract=str(desc or ""),
-            url=f"https://doi.org/{doi}" if doi else "",
-            authors=authors,
-            doi=doi,
-        ))
+        out.append(
+            _record(
+                "openaire",
+                title=str(title or ""),
+                abstract=str(desc or ""),
+                url=f"https://doi.org/{doi}" if doi else "",
+                authors=authors,
+                doi=doi,
+            )
+        )
     return out
 
 
@@ -497,23 +549,29 @@ def search_hal(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         abstract = d.get("abstract_s")
         if isinstance(abstract, list):
             abstract = abstract[0] if abstract else ""
-        out.append(_record(
-            "hal",
-            title=title or "",
-            abstract=abstract or "",
-            url=d.get("uri_s", ""),
-            pdf_url=d.get("fileMain_s", "") or "",
-            authors=d.get("authFullName_s") or [],
-            year=d.get("producedDateY_i"),
-            doi=d.get("doiId_s", "") or "",
-        ))
+        out.append(
+            _record(
+                "hal",
+                title=title or "",
+                abstract=abstract or "",
+                url=d.get("uri_s", ""),
+                pdf_url=d.get("fileMain_s", "") or "",
+                authors=d.get("authFullName_s") or [],
+                year=d.get("producedDateY_i"),
+                doi=d.get("doiId_s", "") or "",
+            )
+        )
     return out
 
 
 def search_plos(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     url = "https://api.plos.org/search"
-    params = {"q": query, "rows": limit, "wt": "json",
-              "fl": "id,title,abstract,author,publication_date,journal"}
+    params = {
+        "q": query,
+        "rows": limit,
+        "wt": "json",
+        "fl": "id,title,abstract,author,publication_date,journal",
+    }
     try:
         r = _session().get(url, params=params, timeout=DEFAULT_TIMEOUT)
         r.raise_for_status()
@@ -532,15 +590,17 @@ def search_plos(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
             title = title[0] if title else ""
         pub = d.get("publication_date", "")
         year = int(pub[:4]) if pub[:4].isdigit() else None
-        out.append(_record(
-            "plos",
-            title=title,
-            abstract=abstract,
-            url=f"https://doi.org/{doi}" if doi else "",
-            authors=d.get("author", []) or [],
-            year=year,
-            doi=doi,
-        ))
+        out.append(
+            _record(
+                "plos",
+                title=title,
+                abstract=abstract,
+                url=f"https://doi.org/{doi}" if doi else "",
+                authors=d.get("author", []) or [],
+                year=year,
+                doi=doi,
+            )
+        )
     return out
 
 
@@ -550,7 +610,9 @@ def search_biorxiv(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     url = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
     params = {
         "query": f"({query}) AND (SRC:PPR)",
-        "format": "json", "pageSize": limit, "resultType": "core",
+        "format": "json",
+        "pageSize": limit,
+        "resultType": "core",
     }
     try:
         r = _session().get(url, params=params, timeout=DEFAULT_TIMEOUT)
@@ -561,16 +623,20 @@ def search_biorxiv(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
 
     out = []
     for p in (data.get("resultList") or {}).get("result", []) or []:
-        out.append(_record(
-            "biorxiv",
-            title=p.get("title", ""),
-            abstract=p.get("abstractText") or "",
-            url=p.get("doi") and f"https://doi.org/{p['doi']}" or "",
-            authors=[a.get("fullName", "")
-                     for a in (p.get("authorList") or {}).get("author", []) or []],
-            year=int(p["pubYear"]) if p.get("pubYear", "").isdigit() else None,
-            doi=p.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "biorxiv",
+                title=p.get("title", ""),
+                abstract=p.get("abstractText") or "",
+                url=p.get("doi") and f"https://doi.org/{p['doi']}" or "",
+                authors=[
+                    a.get("fullName", "")
+                    for a in (p.get("authorList") or {}).get("author", []) or []
+                ],
+                year=int(p["pubYear"]) if p.get("pubYear", "").isdigit() else None,
+                doi=p.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -579,8 +645,12 @@ def search_fatcat(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     (returns 405 even with browser UA). Frontend at scholar.archive.org/search
     works in a browser; for programmatic access bridge via OpenAlex DOIs and
     fetch IA snapshots through the Wayback CDX API."""
-    return [{"source": "fatcat",
-             "error": "scholar.archive.org JSON API returns 405 to scripts (frontend-only). Use Wayback CDX or OpenAlex bridge."}]
+    return [
+        {
+            "source": "fatcat",
+            "error": "scholar.archive.org JSON API returns 405 to scripts (frontend-only). Use Wayback CDX or OpenAlex bridge.",
+        }
+    ]
 
 
 def search_zenodo(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
@@ -598,20 +668,21 @@ def search_zenodo(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         meta = h.get("metadata", {})
         creators = meta.get("creators", []) or []
         files = h.get("files", []) or []
-        pdf = next((f.get("links", {}).get("self") for f in files
-                    if f.get("type") == "pdf"), "")
+        pdf = next((f.get("links", {}).get("self") for f in files if f.get("type") == "pdf"), "")
         pub = meta.get("publication_date", "")
         year = int(pub[:4]) if pub[:4].isdigit() else None
-        out.append(_record(
-            "zenodo",
-            title=meta.get("title", ""),
-            abstract=re.sub(r"<[^>]+>", "", meta.get("description") or "").strip(),
-            url=h.get("links", {}).get("self_html", ""),
-            pdf_url=pdf,
-            authors=[c.get("name", "") for c in creators],
-            year=year,
-            doi=meta.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "zenodo",
+                title=meta.get("title", ""),
+                abstract=re.sub(r"<[^>]+>", "", meta.get("description") or "").strip(),
+                url=h.get("links", {}).get("self_html", ""),
+                pdf_url=pdf,
+                authors=[c.get("name", "") for c in creators],
+                year=year,
+                doi=meta.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -630,15 +701,17 @@ def search_datacite(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         attr = it.get("attributes", {})
         titles = attr.get("titles") or [{}]
         descs = attr.get("descriptions") or [{}]
-        out.append(_record(
-            "datacite",
-            title=titles[0].get("title", "") if titles else "",
-            abstract=descs[0].get("description", "") if descs else "",
-            url=attr.get("url", ""),
-            authors=[c.get("name", "") for c in attr.get("creators", []) or []],
-            year=attr.get("publicationYear"),
-            doi=attr.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "datacite",
+                title=titles[0].get("title", "") if titles else "",
+                abstract=descs[0].get("description", "") if descs else "",
+                url=attr.get("url", ""),
+                authors=[c.get("name", "") for c in attr.get("creators", []) or []],
+                year=attr.get("publicationYear"),
+                doi=attr.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -659,14 +732,16 @@ def search_osf(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         a = it.get("attributes", {})
         pub = a.get("date_published") or ""
         year = int(pub[:4]) if pub[:4].isdigit() else None
-        out.append(_record(
-            "osf",
-            title=a.get("title", ""),
-            abstract=a.get("description", ""),
-            url=(it.get("links") or {}).get("html") or "",
-            year=year,
-            doi=a.get("doi", "") or "",
-        ))
+        out.append(
+            _record(
+                "osf",
+                title=a.get("title", ""),
+                abstract=a.get("description", ""),
+                url=(it.get("links") or {}).get("html") or "",
+                year=year,
+                doi=a.get("doi", "") or "",
+            )
+        )
     return out
 
 
@@ -694,22 +769,28 @@ def search_huggingface(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         arxiv_id = p.get("id", "")
         pub = p.get("publishedAt") or ""
         year = int(pub[:4]) if pub[:4].isdigit() else None
-        out.append(_record(
-            "huggingface",
-            title=p.get("title", ""),
-            abstract=p.get("summary", ""),
-            url=f"https://huggingface.co/papers/{arxiv_id}" if arxiv_id else "",
-            pdf_url=f"https://arxiv.org/pdf/{arxiv_id}" if arxiv_id else "",
-            authors=[a.get("name", "") for a in p.get("authors", []) or []],
-            year=year,
-        ))
+        out.append(
+            _record(
+                "huggingface",
+                title=p.get("title", ""),
+                abstract=p.get("summary", ""),
+                url=f"https://huggingface.co/papers/{arxiv_id}" if arxiv_id else "",
+                pdf_url=f"https://arxiv.org/pdf/{arxiv_id}" if arxiv_id else "",
+                authors=[a.get("name", "") for a in p.get("authors", []) or []],
+                year=year,
+            )
+        )
     return out
 
 
 def search_inspirehep(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     """High-energy physics. Free JSON API."""
     url = "https://inspirehep.net/api/literature"
-    params = {"q": query, "size": limit, "fields": "titles,abstracts,authors,publication_info,arxiv_eprints,dois"}
+    params: Dict[str, Any] = {
+        "q": query,
+        "size": limit,
+        "fields": "titles,abstracts,authors,publication_info,arxiv_eprints,dois",
+    }
     try:
         r = _session().get(url, params=params, timeout=DEFAULT_TIMEOUT)
         r.raise_for_status()
@@ -727,23 +808,31 @@ def search_inspirehep(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         doi = dois[0].get("value", "") if dois else ""
         arxiv = (m.get("arxiv_eprints") or [{}])[0].get("value", "")
         year = (m.get("publication_info") or [{}])[0].get("year")
-        out.append(_record(
-            "inspirehep",
-            title=title,
-            abstract=abstract,
-            url=f"https://arxiv.org/abs/{arxiv}" if arxiv else (f"https://doi.org/{doi}" if doi else ""),
-            authors=authors,
-            year=year,
-            doi=doi,
-        ))
+        out.append(
+            _record(
+                "inspirehep",
+                title=title,
+                abstract=abstract,
+                url=(
+                    f"https://arxiv.org/abs/{arxiv}"
+                    if arxiv
+                    else (f"https://doi.org/{doi}" if doi else "")
+                ),
+                authors=authors,
+                year=year,
+                doi=doi,
+            )
+        )
     return out
 
 
 def search_eric(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     """ERIC — Education Resources Information Center (US Dept. of Education)."""
     url = "https://api.ies.ed.gov/eric/"
-    params = {
-        "search": query, "format": "json", "rows": limit,
+    params: Dict[str, Any] = {
+        "search": query,
+        "format": "json",
+        "rows": limit,
         "fields": "title,description,author,publicationdateyear,id,url",
     }
     try:
@@ -756,14 +845,20 @@ def search_eric(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     out = []
     docs = ((data.get("response") or {}).get("docs")) or []
     for d in docs:
-        out.append(_record(
-            "eric",
-            title=d.get("title", ""),
-            abstract=" ".join(d.get("description") or []) if isinstance(d.get("description"), list) else (d.get("description") or ""),
-            url=d.get("url", "") or f"https://eric.ed.gov/?id={d.get('id', '')}",
-            authors=d.get("author") or [],
-            year=d.get("publicationdateyear"),
-        ))
+        out.append(
+            _record(
+                "eric",
+                title=d.get("title", ""),
+                abstract=(
+                    " ".join(d.get("description") or [])
+                    if isinstance(d.get("description"), list)
+                    else (d.get("description") or "")
+                ),
+                url=d.get("url", "") or f"https://eric.ed.gov/?id={d.get('id', '')}",
+                authors=d.get("author") or [],
+                year=d.get("publicationdateyear"),
+            )
+        )
     return out
 
 
@@ -771,9 +866,15 @@ def search_eric(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
 # TIER 2 — KEY REQUIRED (graceful skip if env var is empty)
 # ──────────────────────────────────────────────────────────────────────────
 
+
 def search_core(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     if not CORE_API_KEY:
-        return [{"source": "core", "error": "CORE_API_KEY not set (free key at core.ac.uk/services/api)"}]
+        return [
+            {
+                "source": "core",
+                "error": "CORE_API_KEY not set (free key at core.ac.uk/services/api)",
+            }
+        ]
     url = "https://api.core.ac.uk/v3/search/works"
     headers = {"Authorization": f"Bearer {CORE_API_KEY}", "User-Agent": USER_AGENT}
     params = {"q": query, "limit": limit}
@@ -787,16 +888,18 @@ def search_core(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     out = []
     for p in data.get("results", []) or []:
         ftu = p.get("sourceFulltextUrls") or []
-        out.append(_record(
-            "core",
-            title=p.get("title", ""),
-            abstract=p.get("abstract") or "",
-            url=p.get("downloadUrl") or (ftu[0] if ftu else ""),
-            pdf_url=p.get("downloadUrl", "") or "",
-            authors=[a.get("name", "") for a in (p.get("authors") or [])],
-            year=p.get("yearPublished"),
-            doi=p.get("doi", "") or "",
-        ))
+        out.append(
+            _record(
+                "core",
+                title=p.get("title", ""),
+                abstract=p.get("abstract") or "",
+                url=p.get("downloadUrl") or (ftu[0] if ftu else ""),
+                pdf_url=p.get("downloadUrl", "") or "",
+                authors=[a.get("name", "") for a in (p.get("authors") or [])],
+                year=p.get("yearPublished"),
+                doi=p.get("doi", "") or "",
+            )
+        )
     return out
 
 
@@ -816,21 +919,28 @@ def search_lens(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     out = []
     for p in data.get("data", []) or []:
         ext = {e.get("type"): e.get("value") for e in (p.get("external_ids") or [])}
-        out.append(_record(
-            "lens",
-            title=p.get("title", ""),
-            abstract=p.get("abstract", ""),
-            url=(p.get("source_urls") or [""])[0],
-            authors=[a.get("display_name", "") for a in (p.get("authors") or [])],
-            year=p.get("year_published"),
-            doi=ext.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "lens",
+                title=p.get("title", ""),
+                abstract=p.get("abstract", ""),
+                url=(p.get("source_urls") or [""])[0],
+                authors=[a.get("display_name", "") for a in (p.get("authors") or [])],
+                year=p.get("year_published"),
+                doi=ext.get("doi", ""),
+            )
+        )
     return out
 
 
 def search_nasa_ads(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     if not NASA_ADS_TOKEN:
-        return [{"source": "nasa_ads", "error": "NASA_ADS_TOKEN not set (free key at ui.adsabs.harvard.edu)"}]
+        return [
+            {
+                "source": "nasa_ads",
+                "error": "NASA_ADS_TOKEN not set (free key at ui.adsabs.harvard.edu)",
+            }
+        ]
     url = "https://api.adsabs.harvard.edu/v1/search/query"
     headers = {"Authorization": f"Bearer {NASA_ADS_TOKEN}"}
     params = {"q": query, "rows": limit, "fl": "title,abstract,author,year,doi,bibcode"}
@@ -846,21 +956,32 @@ def search_nasa_ads(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
         title = d.get("title", "")
         if isinstance(title, list):
             title = title[0] if title else ""
-        out.append(_record(
-            "nasa_ads",
-            title=title,
-            abstract=d.get("abstract", ""),
-            url=f"https://ui.adsabs.harvard.edu/abs/{d.get('bibcode', '')}",
-            authors=d.get("author", []) or [],
-            year=d.get("year"),
-            doi=(d.get("doi") or [""])[0] if isinstance(d.get("doi"), list) else d.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "nasa_ads",
+                title=title,
+                abstract=d.get("abstract", ""),
+                url=f"https://ui.adsabs.harvard.edu/abs/{d.get('bibcode', '')}",
+                authors=d.get("author", []) or [],
+                year=d.get("year"),
+                doi=(
+                    (d.get("doi") or [""])[0]
+                    if isinstance(d.get("doi"), list)
+                    else d.get("doi", "")
+                ),
+            )
+        )
     return out
 
 
 def search_springer(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     if not SPRINGER_KEY:
-        return [{"source": "springer", "error": "SPRINGER_API_KEY not set (free at dev.springernature.com)"}]
+        return [
+            {
+                "source": "springer",
+                "error": "SPRINGER_API_KEY not set (free at dev.springernature.com)",
+            }
+        ]
     url = "https://api.springernature.com/meta/v2/json"
     params = {"q": query, "p": limit, "api_key": SPRINGER_KEY}
     try:
@@ -872,22 +993,33 @@ def search_springer(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
 
     out = []
     for rec in data.get("records", []) or []:
-        out.append(_record(
-            "springer",
-            title=rec.get("title", ""),
-            abstract=rec.get("abstract", ""),
-            url=rec.get("url", [{}])[0].get("value", "") if rec.get("url") else "",
-            authors=[c.get("creator", "") for c in rec.get("creators", [])],
-            year=int((rec.get("publicationDate") or "")[:4]) if (rec.get("publicationDate") or "")[:4].isdigit() else None,
-            doi=rec.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "springer",
+                title=rec.get("title", ""),
+                abstract=rec.get("abstract", ""),
+                url=rec.get("url", [{}])[0].get("value", "") if rec.get("url") else "",
+                authors=[c.get("creator", "") for c in rec.get("creators", [])],
+                year=(
+                    int((rec.get("publicationDate") or "")[:4])
+                    if (rec.get("publicationDate") or "")[:4].isdigit()
+                    else None
+                ),
+                doi=rec.get("doi", ""),
+            )
+        )
     return out
 
 
 def search_unpaywall(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     """Unpaywall: search by query — returns OA versions of articles."""
     if not UNPAYWALL_EMAIL:
-        return [{"source": "unpaywall", "error": "UNPAYWALL_EMAIL not set (any email works at unpaywall.org)"}]
+        return [
+            {
+                "source": "unpaywall",
+                "error": "UNPAYWALL_EMAIL not set (any email works at unpaywall.org)",
+            }
+        ]
     url = "https://api.unpaywall.org/v2/search"
     params = {"query": query, "email": UNPAYWALL_EMAIL}
     try:
@@ -901,16 +1033,20 @@ def search_unpaywall(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
     for h in (data.get("results") or [])[:limit]:
         r0 = h.get("response", {})
         oa = r0.get("best_oa_location") or {}
-        out.append(_record(
-            "unpaywall",
-            title=r0.get("title", ""),
-            url=r0.get("doi_url", "") or oa.get("url", ""),
-            pdf_url=oa.get("url_for_pdf", "") or "",
-            authors=[f"{a.get('given', '')} {a.get('family', '')}".strip()
-                     for a in r0.get("z_authors", []) or []],
-            year=r0.get("year"),
-            doi=r0.get("doi", ""),
-        ))
+        out.append(
+            _record(
+                "unpaywall",
+                title=r0.get("title", ""),
+                url=r0.get("doi_url", "") or oa.get("url", ""),
+                pdf_url=oa.get("url_for_pdf", "") or "",
+                authors=[
+                    f"{a.get('given', '')} {a.get('family', '')}".strip()
+                    for a in r0.get("z_authors", []) or []
+                ],
+                year=r0.get("year"),
+                doi=r0.get("doi", ""),
+            )
+        )
     return out
 
 
@@ -919,42 +1055,45 @@ def search_unpaywall(query: str, limit: int = DEFAULT_LIMIT) -> List[Dict]:
 # ──────────────────────────────────────────────────────────────────────────
 
 FREE_NO_KEY: Dict[str, Callable] = {
-    "openalex":       search_openalex,
-    "crossref":       search_crossref,
-    "arxiv":          search_arxiv,
+    "openalex": search_openalex,
+    "crossref": search_crossref,
+    "arxiv": search_arxiv,
     "semanticscholar": search_semantic_scholar,
-    "europepmc":      search_europepmc,
-    "pubmed":         search_pubmed,
-    "doaj":           search_doaj,
-    "dblp":           search_dblp,
-    "openaire":       search_openaire,
-    "hal":            search_hal,
-    "plos":           search_plos,
-    "biorxiv":        search_biorxiv,
-    "fatcat":         search_fatcat,
-    "zenodo":         search_zenodo,
-    "datacite":       search_datacite,
-    "osf":            search_osf,
+    "europepmc": search_europepmc,
+    "pubmed": search_pubmed,
+    "doaj": search_doaj,
+    "dblp": search_dblp,
+    "openaire": search_openaire,
+    "hal": search_hal,
+    "plos": search_plos,
+    "biorxiv": search_biorxiv,
+    "fatcat": search_fatcat,
+    "zenodo": search_zenodo,
+    "datacite": search_datacite,
+    "osf": search_osf,
     "paperswithcode": search_paperswithcode,
-    "huggingface":    search_huggingface,
-    "inspirehep":     search_inspirehep,
-    "eric":           search_eric,
+    "huggingface": search_huggingface,
+    "inspirehep": search_inspirehep,
+    "eric": search_eric,
 }
 
 KEYED: Dict[str, Callable] = {
-    "core":      search_core,
-    "lens":      search_lens,
-    "nasa_ads":  search_nasa_ads,
-    "springer":  search_springer,
+    "core": search_core,
+    "lens": search_lens,
+    "nasa_ads": search_nasa_ads,
+    "springer": search_springer,
     "unpaywall": search_unpaywall,
 }
 
 SOURCES: Dict[str, Callable] = {**FREE_NO_KEY, **KEYED}
 
 
-def search_all(query: str, limit_per_source: int = 3,
-               sources: Optional[List[str]] = None,
-               include_keyed: bool = False) -> List[Dict]:
+def search_all(
+    query: str,
+    limit_per_source: int = 3,
+    sources: Optional[List[str]] = None,
+    include_keyed: bool = False,
+) -> List[Dict]:
     if sources is None:
         chosen = list(FREE_NO_KEY.keys())
         if include_keyed:
@@ -977,8 +1116,9 @@ def fetch_content(url: str, max_chars: int = 20000) -> str:
     if not url:
         return ""
     try:
-        r = _safe_get(url, timeout=DEFAULT_TIMEOUT,
-                         headers={"User-Agent": USER_AGENT}, allow_redirects=True)
+        r = _safe_get(
+            url, timeout=DEFAULT_TIMEOUT, headers={"User-Agent": USER_AGENT}, allow_redirects=True
+        )
         r.raise_for_status()
     except Exception as e:
         return f"[fetch error: {e}]"
@@ -987,7 +1127,9 @@ def fetch_content(url: str, max_chars: int = 20000) -> str:
     if "pdf" in ctype or url.lower().endswith(".pdf"):
         try:
             from io import BytesIO
+
             from pypdf import PdfReader
+
             reader = PdfReader(BytesIO(r.content))
             text = "\n".join((p.extract_text() or "") for p in reader.pages)
             return text[:max_chars]
@@ -998,6 +1140,7 @@ def fetch_content(url: str, max_chars: int = 20000) -> str:
 
     try:
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(r.text, "html.parser")
         for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
             tag.decompose()
@@ -1015,7 +1158,11 @@ def format_results(results: List[Dict]) -> str:
             lines.append(f"[{r.get('source')}] ERROR: {r['error']}")
             continue
         a = r.get("authors") or []
-        a_str = (", ".join(a[:3]) + (" et al." if len(a) > 3 else "")) if isinstance(a, list) else str(a)
+        a_str = (
+            (", ".join(a[:3]) + (" et al." if len(a) > 3 else ""))
+            if isinstance(a, list)
+            else str(a)
+        )
         lines.append(
             f"\n[{i}] ({r.get('source')}) {r.get('title') or '(no title)'}"
             f"\n    Authors : {a_str}"
@@ -1029,10 +1176,16 @@ def format_results(results: List[Dict]) -> str:
 
 
 if __name__ == "__main__":
+    import logging
     import sys
+
+    # Configure logging for CLI usage
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    log = logging.getLogger(__name__)
+
     q = " ".join(sys.argv[1:]) or "robot agv"
-    print(f"Query: {q}\n" + "=" * 70)
+    log.info(f"Query: {q}\n" + "=" * 70)
     res = search_all(q, limit_per_source=2, include_keyed=True)
-    print(format_results(res))
+    log.info(format_results(res))
     ok = [r for r in res if "error" not in r]
-    print(f"\nTotal results: {len(ok)} / {len(res)} entries")
+    log.info(f"\nTotal results: {len(ok)} / {len(res)} entries")

@@ -78,9 +78,10 @@ def _set_ai_prompt_color_red(doc):
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
-    from docx.shared import RGBColor
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.shared import RGBColor
+
     RED = RGBColor(0xFF, 0x00, 0x00)
 
     def _color_prompt(p):
@@ -126,6 +127,7 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:sz"), "4")
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
+
 
 def _pt_to_twips(value: float) -> int:
     return int(round(value * 20))
@@ -251,8 +253,8 @@ def _append_line_break(paragraph) -> None:
 def _normalize_text_commands(text: str) -> str:
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
-    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
+    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
 
 
@@ -307,7 +309,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1:closing]
+                formula = normalized[index + 1 : closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -499,7 +501,10 @@ def _guess_column_widths(headers: list[str], rows: list[list[str]]) -> list[int]
     if cols <= 0:
         return []
     if cols == 2:
-        return [int(CONTENT_TABLE_WIDTH_TW * 0.38), CONTENT_TABLE_WIDTH_TW - int(CONTENT_TABLE_WIDTH_TW * 0.38)]
+        return [
+            int(CONTENT_TABLE_WIDTH_TW * 0.38),
+            CONTENT_TABLE_WIDTH_TW - int(CONTENT_TABLE_WIDTH_TW * 0.38),
+        ]
 
     weights = []
     min_chars = 8
@@ -729,8 +734,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
     _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
     if _ai_title:
         _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.shared import RGBColor as _RGB
         from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
+        from docx.shared import RGBColor as _RGB
+
         _ai_para = doc.add_paragraph()
         _ai_para.alignment = _WAP.CENTER
         _ai_run = _ai_para.add_run(_ai_full)
@@ -871,7 +877,9 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, state: Rend
         _add_equation_group(doc, item)
 
 
-def _render_subsubsection(doc: Document, subsubsection: dict, json_path: Path, state: RenderState) -> None:
+def _render_subsubsection(
+    doc: Document, subsubsection: dict, json_path: Path, state: RenderState
+) -> None:
     title = str(subsubsection.get("title", "")).strip()
     if title:
         _add_subsubsection_heading(doc, title)
@@ -884,7 +892,9 @@ def _render_subsubsection(doc: Document, subsubsection: dict, json_path: Path, s
                 _body_paragraphs(doc, item.strip())
 
 
-def _render_subsection(doc: Document, subsection: dict, json_path: Path, state: RenderState, sub_key: str) -> None:
+def _render_subsection(
+    doc: Document, subsection: dict, json_path: Path, state: RenderState, sub_key: str
+) -> None:
     title = str(subsection.get("title", "")).strip()
     if title:
         _add_subsection_heading(doc, title)
@@ -934,11 +944,7 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
                     _body_paragraphs(doc, item.strip())
 
         subsection_keys = sorted(
-            [
-                key
-                for key in section.keys()
-                if re.fullmatch(rf"section{section_number}[a-z]+", key)
-            ]
+            [key for key in section.keys() if re.fullmatch(rf"section{section_number}[a-z]+", key)]
         )
         for subsection_key in subsection_keys:
             subsection = section[subsection_key]
@@ -980,9 +986,7 @@ def build_document(
 ) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
-        Path(output_path)
-        if output_path
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        Path(output_path) if output_path else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,0 +1,13 @@
+Generate summary of this paper
+Results of the paper
+Conclusions from the paper
+Explain Abstract of this paper
+What are the contributions of this paper
+Find Related Papers
+Explain the practical implications of this paper
+Summarise introduction of this paper
+Literature survey of this paper
+Methods used in this paper
+What data has been used in this paper
+Limitations of this paper
+Future works suggested in this paper
