@@ -260,13 +260,22 @@ def google_login():
             503,
         )
 
-    # Generate CSRF state token (OAuth CSRF vulnerability fix)
-    state = secrets.token_urlsafe(32)
-    session["oauth_state"] = state
+    # Generate CSRF state token and sign it to avoid session dependency
+    # This fixes the issue where session cookies aren't reliably sent cross-site
+    import hashlib
+    import hmac
+    import base64
     
-    # Debug: Log session contents after storing state
-    log.warning("OAuth login - Session contents after storing state: %s", dict(session))
-    log.warning("OAuth login - State stored: %s", state)
+    state = secrets.token_urlsafe(32)
+    # Create a signed state: state + "." + signature
+    signature = hmac.new(
+        app.config["SECRET_KEY"].encode(),
+        state.encode(),
+        hashlib.sha256
+    ).digest()
+    signed_state = base64.urlsafe_b64encode(state.encode() + b"." + signature).decode().rstrip("=")
+    
+    log.info("OAuth login - Generated signed state (length=%d)", len(signed_state))
 
     # Use GOOGLE_CALLBACK_URL from .env, with fallback construction for production
     redirect_uri = os.getenv("GOOGLE_CALLBACK_URL")
@@ -275,8 +284,8 @@ def google_login():
         protocol = "http" if "localhost" in domain else "https"
         redirect_uri = f"{protocol}://{domain}/api/auth/google/callback"
 
-    log.warning("OAuth login - Redirect URI: %s", redirect_uri)
-    return oauth.google.authorize_redirect(redirect_uri, state=state)
+    log.info("OAuth login - Redirect URI: %s", redirect_uri)
+    return oauth.google.authorize_redirect(redirect_uri, state=signed_state)
 
 
 @auth_bp.route("/google/callback")
@@ -284,24 +293,41 @@ def google_callback():
     """Handle Google OAuth callback with CSRF validation, set httpOnly cookies, redirect to frontend."""
     frontend_url = _allowed_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:1000"))
 
-    # DEBUG: Log session and cookies
-    log.warning("OAuth callback - Session contents: %s", dict(session))
-    log.warning("OAuth callback - Request cookies: %s", dict(request.cookies))
-    log.warning("OAuth callback - Args: state=%s", request.args.get("state"))
-
-    # Validate CSRF state token (OAuth CSRF vulnerability fix)
+    # Validate signed CSRF state token (no session dependency)
+    import hashlib
+    import hmac
+    import base64
+    
     state_from_request = request.args.get("state")
-    state_from_session = session.pop("oauth_state", None)
-
-    log.warning("OAuth callback - state_from_request=%s, state_from_session=%s", state_from_request, state_from_session)
-
-    if not state_from_request or not state_from_session:
-        log.warning("OAuth callback missing state parameter")
+    
+    if not state_from_request:
+        log.warning("OAuth callback - Missing state parameter in request")
         return redirect(f"{frontend_url}/login?error=invalid_state")
-
-    if not secrets.compare_digest(state_from_request, state_from_session):
-        log.warning("OAuth callback state mismatch - possible CSRF attack")
-        return redirect(f"{frontend_url}/login?error=csrf_detected")
+    
+    # Verify the signed state
+    try:
+        # Decode the signed state
+        padded = state_from_request + "=" * (4 - len(state_from_request) % 4)
+        decoded = base64.urlsafe_b64decode(padded)
+        state_bytes, signature = decoded.rsplit(b".", 1)
+        state = state_bytes.decode()
+        
+        # Verify signature
+        expected_sig = hmac.new(
+            app.config["SECRET_KEY"].encode(),
+            state.encode(),
+            hashlib.sha256
+        ).digest()
+        
+        if not secrets.compare_digest(signature, expected_sig):
+            log.warning("OAuth callback - Invalid state signature")
+            return redirect(f"{frontend_url}/login?error=csrf_detected")
+        
+        log.info("OAuth callback - State signature valid, state=%s...", state[:20])
+        
+    except Exception as e:
+        log.warning("OAuth callback - Failed to decode/verify state: %s", e)
+        return redirect(f"{frontend_url}/login?error=invalid_state")
 
     try:
         token = oauth.google.authorize_access_token()
