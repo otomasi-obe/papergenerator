@@ -141,7 +141,12 @@ app.config["SECRET_KEY"] = _secret_key
 # defaults are unsafe behind a reverse proxy.
 app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Lax (not Strict) so OAuth callback works
+# None (with Secure) allows cross-site cookie for OAuth callback from Google
+app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "None")
+# Allow subdomains to receive the session cookie (important for OAuth callback)
+_domain = os.getenv("SESSION_COOKIE_DOMAIN")
+if _domain:
+    app.config["SESSION_COOKIE_DOMAIN"] = _domain
 
 # Server-signed URL secret — used for generating short-lived signed image/file
 # URLs that don't expose the bearer JWT in query strings or referer headers.

@@ -263,6 +263,10 @@ def google_login():
     # Generate CSRF state token (OAuth CSRF vulnerability fix)
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
+    
+    # Debug: Log session contents after storing state
+    log.warning("OAuth login - Session contents after storing state: %s", dict(session))
+    log.warning("OAuth login - State stored: %s", state)
 
     # Use GOOGLE_CALLBACK_URL from .env, with fallback construction for production
     redirect_uri = os.getenv("GOOGLE_CALLBACK_URL")
@@ -271,6 +275,7 @@ def google_login():
         protocol = "http" if "localhost" in domain else "https"
         redirect_uri = f"{protocol}://{domain}/api/auth/google/callback"
 
+    log.warning("OAuth login - Redirect URI: %s", redirect_uri)
     return oauth.google.authorize_redirect(redirect_uri, state=state)
 
 
@@ -279,9 +284,16 @@ def google_callback():
     """Handle Google OAuth callback with CSRF validation, set httpOnly cookies, redirect to frontend."""
     frontend_url = _allowed_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:1000"))
 
+    # DEBUG: Log session and cookies
+    log.warning("OAuth callback - Session contents: %s", dict(session))
+    log.warning("OAuth callback - Request cookies: %s", dict(request.cookies))
+    log.warning("OAuth callback - Args: state=%s", request.args.get("state"))
+
     # Validate CSRF state token (OAuth CSRF vulnerability fix)
     state_from_request = request.args.get("state")
     state_from_session = session.pop("oauth_state", None)
+
+    log.warning("OAuth callback - state_from_request=%s, state_from_session=%s", state_from_request, state_from_session)
 
     if not state_from_request or not state_from_session:
         log.warning("OAuth callback missing state parameter")
