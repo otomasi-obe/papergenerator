@@ -1,7 +1,7 @@
 <template>
   <div :class="['flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start']">
     <!-- AI Avatar -->
-    <div v-if="message.role === 'assistant'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-brown-400 to-brown-600 flex items-center justify-center mt-1 shadow-sm">
+    <div v-if="message.role === 'assistant'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center mt-1 shadow-sm">
       <svg class="w-4 h-4 text-cream-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
       </svg>
@@ -21,19 +21,19 @@
            show this animated progress block right inside the chat bubble. -->
       <div
         v-if="generatingPaper"
-        class="mb-3 p-4 rounded-xl border border-brown-300 dark:border-cream-600 bg-gradient-to-r from-cream-50 to-brown-50 dark:from-ash-700 dark:to-ash-800"
+        class="mb-3 p-4 rounded-xl border border-navy-300 dark:border-cream-600 bg-gradient-to-r from-cream-50 to-navy-50 dark:from-ash-700 dark:to-ash-800"
       >
         <div class="flex items-center gap-3">
           <div class="relative w-10 h-10 shrink-0">
             <div class="absolute inset-0 rounded-full border-2 border-cream-300 dark:border-ash-600"></div>
-            <div class="absolute inset-0 rounded-full border-2 border-t-brown-600 dark:border-t-cream-200 animate-spin"></div>
+            <div class="absolute inset-0 rounded-full border-2 border-t-navy-600 dark:border-t-cream-200 animate-spin"></div>
             <div class="absolute inset-0 flex items-center justify-center text-base">📝</div>
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-sm font-semibold text-ink-900 dark:text-ink-50">AI sedang menulis paper lengkap</div>
             <div class="text-xs text-ink-700 dark:text-ink-300 mt-0.5">Proses ini biasanya 3-10 menit. Editor akan auto-load hasilnya.</div>
             <div class="mt-2 h-1 rounded-full bg-cream-200 dark:bg-ash-600 overflow-hidden">
-              <div class="h-full w-1/3 rounded-full bg-gradient-to-r from-brown-400 to-brown-600 dark:from-cream-300 dark:to-cream-400 animate-progress-slide"></div>
+              <div class="h-full w-1/3 rounded-full bg-gradient-to-r from-navy-400 to-navy-600 dark:from-cream-300 dark:to-cream-400 animate-progress-slide"></div>
             </div>
           </div>
         </div>
@@ -116,23 +116,23 @@
            AI is starting a multi-step review pass over the paper. -->
       <div
         v-if="metaKind === 'review_plan' && message.role === 'assistant'"
-        class="my-2 p-3 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/20"
+        class="my-2 p-3 rounded-lg border border-navy-300 dark:border-navy-600 bg-navy-50 dark:bg-navy-900/20"
       >
         <div class="flex items-start gap-2">
           <span class="text-base leading-none mt-0.5">🔍</span>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+            <div class="text-sm font-medium text-navy-800 dark:text-navy-100">
               Memulai review menyeluruh
             </div>
             <div
               v-if="message.metadata.directive"
-              class="text-xs text-indigo-800 dark:text-indigo-200 mt-0.5 break-words"
+              class="text-xs text-navy-700 dark:text-navy-200 mt-0.5 break-words"
             >
               {{ message.metadata.directive }}
             </div>
             <div
               v-if="message.metadata.scope"
-              class="text-[10px] uppercase tracking-wide text-indigo-700 dark:text-indigo-300 mt-1"
+              class="text-[10px] uppercase tracking-wide text-navy-600 dark:text-navy-300 mt-1"
             >
               scope: {{ message.metadata.scope }}
             </div>
@@ -204,10 +204,10 @@
                 v-if="message.metadata.retry_prompt"
                 type="button"
                 @click="$emit('chip-select', message.metadata.retry_prompt)"
-                class="px-3 py-1.5 rounded-full text-xs font-medium border
-                       bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
-                       border-cream-300 dark:border-ash-600
-                       text-ink-800 dark:text-ink-100"
+             class="px-3 py-1.5 rounded-full text-xs font-medium border
+                    bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
+                    border-cream-300 dark:border-ash-600
+                    text-ink-800 dark:text-ink-100 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
               >
                 Coba lagi
               </button>
@@ -243,9 +243,9 @@
           <button
             type="button"
             @click="$emit('chip-select', 'Generate semua prompt gambar di paper sekarang.')"
-            class="px-3 py-1.5 rounded-full text-xs font-medium
-                   bg-brown-600 hover:bg-brown-700 text-cream-50
-                   dark:bg-cream-300 dark:hover:bg-cream-200 dark:text-ink-900"
+           class="px-3 py-1.5 rounded-full text-xs font-medium
+                  bg-navy-600 hover:bg-navy-700 text-cream-50
+                  dark:bg-cream-300 dark:hover:bg-cream-200 dark:text-ink-900 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
           >Generate semua</button>
           <button
             type="button"
@@ -313,14 +313,14 @@
         v-if="isStreaming && message.role === 'assistant' && !message.content && !message.thinking"
         class="inline-flex items-center gap-1 py-1"
       >
-        <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-        <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-        <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+        <span class="w-1.5 h-1.5 bg-navy-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+        <span class="w-1.5 h-1.5 bg-navy-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+        <span class="w-1.5 h-1.5 bg-navy-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
       </span>
     </div>
 
     <!-- User Avatar -->
-    <div v-if="message.role === 'user'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-cream-500 to-brown-500 flex items-center justify-center mt-1 shadow-sm">
+    <div v-if="message.role === 'user'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-cream-500 to-navy-500 flex items-center justify-center mt-1 shadow-sm">
       <svg class="w-4 h-4 text-cream-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
       </svg>

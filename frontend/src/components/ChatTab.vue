@@ -7,7 +7,7 @@
         <button
           @click="createNewChat"
           :disabled="creatingChat || !currentPaperId"
-          class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+          class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors active:scale-95 transition-transform"
         >
           <span class="text-sm leading-none">＋</span>
           {{ creatingChat ? 'Creating…' : 'New chat' }}
@@ -19,7 +19,7 @@
           Pilih chat yang sudah ada, atau buat chat baru.
         </p>
         <div v-if="!currentPaperId" class="px-3 py-10 text-center">
-          <span class="inline-block w-5 h-5 border-2 border-brown-400 dark:border-cream-400 border-t-transparent rounded-full animate-spin mb-3"></span>
+           <span class="inline-block w-5 h-5 border-2 border-navy-400 dark:border-cream-400 border-t-transparent rounded-full animate-spin mb-3"></span>
           <p class="text-xs text-[var(--text-muted)]">Paper sedang disiapkan…</p>
           <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-70">Chat akan aktif setelah paper tersimpan.</p>
         </div>
@@ -34,7 +34,7 @@
             :class="[
               'group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all',
               conv.id === currentConversationId
-                ? 'bg-brown-100 dark:bg-ash-700 border-l-4 border-brown-600 dark:border-cream-400 shadow-sm'
+                 ? 'bg-navy-100 dark:bg-ash-700 border-l-4 border-navy-600 dark:border-cream-400 shadow-sm'
                 : 'hover:bg-[var(--bg-surface)] hover:shadow-sm border border-transparent hover:border-[var(--border-soft)]'
             ]"
             @click="handleSelectConversation(conv.id)"
@@ -50,7 +50,7 @@
                 @keyup.enter="commitRename(conv)"
                 @keyup.escape="cancelRename"
                 @blur="commitRename(conv)"
-                class="w-full text-xs px-1.5 py-0.5 border border-indigo-300 dark:border-indigo-600 bg-[var(--bg-surface)] text-[var(--text-strong)] rounded outline-none focus:ring-1 focus:ring-indigo-300 dark:focus:ring-indigo-600"
+                 class="w-full text-xs px-1.5 py-0.5 border border-cream-300 dark:border-ash-600 bg-[var(--bg-surface)] text-[var(--text-strong)] rounded outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30"
                 ref="renameInput"
               />
               <div v-else class="text-sm text-[var(--text-strong)] truncate leading-snug">
@@ -63,14 +63,14 @@
             <button
               v-if="renamingId !== conv.id"
               @click.stop="startRename(conv)"
-              class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-strong)] text-xs min-h-[44px] min-w-[44px] flex items-center justify-center"
-              title="Rename"
-              aria-label="Rename conversation"
-            ><span aria-hidden="true">✎</span></button>
-            <button
-              v-if="renamingId !== conv.id"
-              @click.stop="confirmDeleteChat(conv)"
-              class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 text-xs min-h-[44px] min-w-[44px] flex items-center justify-center"
+               class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--text-strong)] text-xs min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform"
+               title="Rename"
+               aria-label="Rename conversation"
+             ><span aria-hidden="true">✎</span></button>
+             <button
+               v-if="renamingId !== conv.id"
+               @click.stop="confirmDeleteChat(conv)"
+               class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 text-xs min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform"
               title="Delete"
               aria-label="Delete conversation"
             ><span aria-hidden="true">🗑</span></button>
@@ -81,14 +81,14 @@
         <div v-if="currentPaperId" class="mt-5 border-t border-[var(--border-soft)] pt-3">
           <button
             @click="memoryOpen = !memoryOpen"
-            class="w-full flex items-center justify-between min-h-[44px] text-xs font-medium text-[var(--text-base)] hover:text-[var(--text-strong)]"
+             class="w-full flex items-center justify-between min-h-[44px] text-xs font-medium text-[var(--text-base)] hover:text-[var(--text-strong)] active:scale-95 transition-transform"
             :title="`Project memory (${memory.length} items)`"
           >
             <span class="flex items-center gap-1.5">
               🧠
               <span
                 v-if="memory.length"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-semibold"
+                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-navy-100 dark:bg-navy-900/30 text-navy-700 dark:text-navy-300 text-[10px] font-semibold"
               >{{ memory.length }}</span>
             </span>
             <span class="text-[var(--text-muted)]">{{ memoryOpen ? '▾' : '▸' }}</span>
@@ -111,7 +111,7 @@
               </div>
               <button
                 @click="chatStore.deleteMemoryEntry(m.id)"
-                class="opacity-0 group-hover/mem:opacity-100 text-[var(--text-muted)] hover:text-red-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                 class="opacity-0 group-hover/mem:opacity-100 text-[var(--text-muted)] hover:text-red-500 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform"
                 title="Forget"
                 aria-label="Forget memory entry"
               ><span aria-hidden="true">✕</span></button>
@@ -163,7 +163,7 @@
           v-if="showInlineStreamingIndicator"
           class="flex gap-3 justify-start"
         >
-          <div class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-brown-400 to-brown-600 flex items-center justify-center mt-1 shadow-sm">
+          <div class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center mt-1 shadow-sm">
             <svg class="w-4 h-4 text-cream-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
             </svg>
@@ -171,9 +171,9 @@
           <div class="max-w-[80%] rounded-2xl px-4 py-3 ai-status-bubble">
             <div class="flex items-center gap-2 text-xs text-ink-800 dark:text-ink-100">
               <span class="inline-flex items-center gap-1 shrink-0" aria-hidden="true">
-                <span class="w-1.5 h-1.5 rounded-full bg-brown-500 dark:bg-brown-300 animate-bounce" style="animation-delay: 0ms"></span>
-                <span class="w-1.5 h-1.5 rounded-full bg-brown-500 dark:bg-brown-300 animate-bounce" style="animation-delay: 150ms"></span>
-                <span class="w-1.5 h-1.5 rounded-full bg-brown-500 dark:bg-brown-300 animate-bounce" style="animation-delay: 300ms"></span>
+                 <span class="w-1.5 h-1.5 rounded-full bg-navy-500 dark:bg-navy-300 animate-bounce" style="animation-delay: 0ms"></span>
+                 <span class="w-1.5 h-1.5 rounded-full bg-navy-500 dark:bg-navy-300 animate-bounce" style="animation-delay: 150ms"></span>
+                 <span class="w-1.5 h-1.5 rounded-full bg-navy-500 dark:bg-navy-300 animate-bounce" style="animation-delay: 300ms"></span>
               </span>
               <Transition name="fade" mode="out-in">
                 <span :key="streamingIndicatorText" class="font-medium leading-snug">{{ streamingIndicatorText }}</span>
@@ -193,17 +193,17 @@
           <span class="text-base leading-none shrink-0">⚠️</span>
           <span class="flex-1 leading-snug">
             <strong>{{ paperStore.pendingCount }} perubahan</strong> belum disetujui.
-            <button @click="openPreview" class="underline font-semibold hover:text-amber-700 dark:hover:text-amber-100">Buka Preview</button>
+             <button @click="openPreview" class="underline font-semibold hover:text-amber-700 dark:hover:text-amber-100 active:scale-95 transition-transform">Buka Preview</button>
           </span>
         </div>
         <div class="flex items-center gap-1.5 mt-1.5">
           <button
             @click="paperStore.acceptAllProposals()"
-            class="flex-1 px-2.5 py-1 min-h-[44px] text-[11px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white"
-          >✓ Terima semua</button>
-          <button
-            @click="paperStore.rejectAllProposals()"
-            class="flex-1 px-2.5 py-1 min-h-[44px] text-[11px] font-semibold rounded-md bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+             class="flex-1 px-2.5 py-1 min-h-[44px] text-[11px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 transition-transform"
+           >✓ Terima semua</button>
+           <button
+             @click="paperStore.rejectAllProposals()"
+             class="flex-1 px-2.5 py-1 min-h-[44px] text-[11px] font-semibold rounded-md bg-rose-100 hover:bg-rose-200 dark:bg-rose-900/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 active:scale-95 transition-transform"
           >✕ Tolak semua</button>
         </div>
       </div>
@@ -216,7 +216,7 @@
             :key="s.key"
             @click="sendSuggestion(s)"
             :disabled="isStreaming || (activeJob && activeJob.active)"
-            class="text-[11px] px-2.5 py-1 min-h-[44px] rounded-full bg-cream-100 dark:bg-ash-700 hover:bg-brown-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 text-ink-800 dark:text-ink-100 transition-colors border border-cream-300 dark:border-ash-600 disabled:opacity-50 disabled:cursor-not-allowed"
+             class="text-[11px] px-2.5 py-1 min-h-[44px] rounded-full bg-cream-100 dark:bg-ash-700 hover:bg-navy-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 text-ink-800 dark:text-ink-100 transition-colors border border-cream-300 dark:border-ash-600 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
             :title="s.text"
           >
             {{ s.label }}
@@ -251,11 +251,11 @@
         </div>
         <button
           @click="retryLastMessage"
-          class="shrink-0 px-2.5 py-1 min-h-[36px] text-[11px] font-semibold rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors"
-        >↻ Retry</button>
-        <button
-          @click="lastError = null"
-          class="shrink-0 text-red-500 hover:text-red-700 dark:text-red-300 dark:hover:text-red-100 min-h-[36px] min-w-[36px] flex items-center justify-center"
+           class="shrink-0 px-2.5 py-1 min-h-[36px] text-[11px] font-semibold rounded-md bg-red-600 hover:bg-red-700 text-white transition-colors active:scale-95 transition-transform"
+         >↻ Retry</button>
+         <button
+           @click="lastError = null"
+           class="shrink-0 text-red-500 hover:text-red-700 dark:text-red-300 dark:hover:text-red-100 min-h-[36px] min-w-[36px] flex items-center justify-center active:scale-95 transition-transform"
           title="Tutup"
         >✕</button>
       </div>
@@ -304,14 +304,14 @@
             <button
               v-if="f.canRetry"
               @click="retryUpload(i)"
-              class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 ml-1 min-h-[44px] min-w-[44px]"
-              title="Retry upload"
-              aria-label="Retry upload"
-            ><span aria-hidden="true">↻</span></button>
-            <button
-              v-if="!f.uploading"
-              @click="removeAttachedFile(i)"
-              class="text-ink-500 dark:text-ink-300 hover:text-rose-500 ml-1 min-h-[44px] min-w-[44px]"
+               class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 ml-1 min-h-[44px] min-w-[44px] active:scale-95 transition-transform"
+               title="Retry upload"
+               aria-label="Retry upload"
+             ><span aria-hidden="true">↻</span></button>
+             <button
+               v-if="!f.uploading"
+               @click="removeAttachedFile(i)"
+               class="text-ink-500 dark:text-ink-300 hover:text-rose-500 ml-1 min-h-[44px] min-w-[44px] active:scale-95 transition-transform"
               title="Remove"
               aria-label="Remove attached file"
             ><span aria-hidden="true">✕</span></button>
@@ -319,12 +319,12 @@
         </div>
         <p v-if="attachWarning" class="text-[10px] text-amber-700 dark:text-amber-300 mb-1">{{ attachWarning }}</p>
 
-        <div class="rounded-2xl border-2 border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-sm focus-within:border-brown-500 dark:focus-within:border-cream-400 focus-within:ring-4 focus-within:ring-cream-200 dark:focus-within:ring-ash-600 transition-all">
+        <div class="rounded-xl border-2 border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-sm focus-within:border-navy-500 dark:focus-within:border-navy-400 focus-within:ring-4 focus-within:ring-[#238f7f]/30 dark:focus-within:ring-[#4eb2a3]/30 transition-all">
           <div class="flex items-center gap-2 p-2">
             <button
               @click="showSuggestions = !showSuggestions"
               :aria-expanded="showSuggestions && !inputText"
-              class="shrink-0 min-h-[44px] min-w-[44px] px-2 text-[11px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 rounded-xl transition-colors"
+              class="shrink-0 min-h-[44px] min-w-[44px] px-2 text-[11px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 rounded-lg transition-colors active:scale-95 transition-transform"
               title="Saran"
             >💡 Saran</button>
             <input
@@ -339,7 +339,7 @@
               <button
                 @click="toggleAttachMenu"
                 :disabled="isStreaming || uploadingFiles"
-                class="min-h-[44px] min-w-[44px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 rounded-xl transition-colors flex items-center justify-center disabled:opacity-40"
+                 class="min-h-[44px] min-w-[44px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 rounded-lg transition-colors active:scale-95 transition-transform flex items-center justify-center disabled:opacity-40"
                 :title="uploadingFiles ? `Uploading ${uploadFileCount.current}/${uploadFileCount.total}…` : 'Lampirkan'"
                 :aria-label="uploadingFiles ? `Uploading ${uploadFileCount.current} of ${uploadFileCount.total} files` : 'Attach files'"
               >
@@ -351,21 +351,21 @@
                 <button
                   type="button"
                   @click="pickUpload"
-                  class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2"
+                   class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 rounded-lg active:scale-95 transition-transform"
                 >
                   <span>📤</span><span>Upload file (PDF/DOCX)</span>
                 </button>
                 <button
                   type="button"
                   @click="openPasteText"
-                  class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600"
-                >
-                  <span>📋</span><span>Paste teks</span>
-                </button>
-                <button
-                  type="button"
-                  @click="openExistingFiles"
-                  class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600"
+                   class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600 rounded-lg active:scale-95 transition-transform"
+                 >
+                   <span>📋</span><span>Paste teks</span>
+                 </button>
+                 <button
+                   type="button"
+                   @click="openExistingFiles"
+                   class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600 rounded-lg active:scale-95 transition-transform"
                 >
                   <span>📁</span><span>Dari file paper ini</span>
                 </button>
@@ -383,7 +383,7 @@
             <button
               v-if="isStreaming"
               @click="handleStop"
-              class="shrink-0 min-h-[44px] min-w-[44px] bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors flex items-center justify-center"
+               class="shrink-0 min-h-[44px] min-w-[44px] bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors active:scale-95 transition-transform flex items-center justify-center"
               title="Stop"
               aria-label="Stop generating"
             >
@@ -395,7 +395,7 @@
               v-else
               @click="handleSend"
               :disabled="(!inputText.trim() && !attachedFiles.length) || (activeJob && activeJob.active)"
-              class="shrink-0 min-h-[44px] min-w-[44px] bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+               class="shrink-0 min-h-[44px] min-w-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 transition-transform flex items-center justify-center"
               title="Send"
               aria-label="Send message"
             >
@@ -414,8 +414,8 @@
         "<strong>{{ deleteTarget.title || 'Untitled chat' }}</strong>" akan dihapus permanen. Memory tetap aman.
       </p>
       <template #actions>
-        <button @click="deleteTarget = null" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
-        <button @click="doDeleteChat" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white">Delete</button>
+         <button @click="deleteTarget = null" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700 active:scale-95 transition-transform">Cancel</button>
+         <button @click="doDeleteChat" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white active:scale-95 transition-transform">Delete</button>
       </template>
     </AppDialog>
 
@@ -440,9 +440,9 @@
         </ul>
       </div>
       <template #actions>
-        <button @click="filePickerOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
-        <button @click="confirmPickFiles" :disabled="!pickedFileIds.size"
-                class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40">
+         <button @click="filePickerOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700 active:scale-95 transition-transform">Cancel</button>
+         <button @click="confirmPickFiles" :disabled="!pickedFileIds.size"
+                 class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40 active:scale-95 transition-transform">
           Lampirkan ({{ pickedFileIds.size }})
         </button>
       </template>
@@ -458,7 +458,7 @@
             v-model="pasteTextName"
             type="text"
             placeholder="e.g. Catatan metode, Outline bab 2"
-            class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-brown-300 dark:focus:ring-cream-400"
+             class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30"
           />
         </label>
         <label class="block text-xs text-ink-700 dark:text-ink-200">
@@ -467,7 +467,7 @@
             v-model="pasteTextContent"
             rows="10"
             placeholder="Tempel teks di sini… (max ~50.000 karakter)"
-            class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-brown-300 dark:focus:ring-cream-400 font-mono"
+             class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 font-mono"
           ></textarea>
         </label>
         <p class="text-[10px] text-ink-500 dark:text-ink-300">
@@ -475,11 +475,11 @@
         </p>
       </div>
       <template #actions>
-        <button @click="pasteTextOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
-        <button
-          @click="confirmPasteText"
-          :disabled="!pasteTextContent.trim()"
-          class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40"
+         <button @click="pasteTextOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700 active:scale-95 transition-transform">Cancel</button>
+         <button
+           @click="confirmPasteText"
+           :disabled="!pasteTextContent.trim()"
+           class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40 active:scale-95 transition-transform"
         >Lampirkan</button>
       </template>
     </AppDialog>

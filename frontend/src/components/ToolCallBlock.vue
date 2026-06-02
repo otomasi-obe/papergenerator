@@ -1,23 +1,23 @@
 <template>
-  <div class="rounded-lg border border-gray-200 bg-gray-50 overflow-hidden text-xs">
+  <div class="rounded-lg border border-cream-300 bg-cream-50 overflow-hidden text-xs">
     <!-- Header -->
-    <div class="flex items-center gap-2 px-3 py-2 bg-gray-100 border-b border-gray-200">
+    <div class="flex items-center gap-2 px-3 py-2 bg-cream-100 border-b border-cream-300">
       <div :class="['w-2 h-2 rounded-full', statusColor]"></div>
-      <span class="font-mono font-medium text-gray-700">{{ toolCall.name }}</span>
-      <span class="text-gray-400 ml-auto">{{ statusLabel }}</span>
+      <span class="font-mono font-medium text-ink-700">{{ toolCall.name }}</span>
+      <span class="text-ink-400 ml-auto">{{ statusLabel }}</span>
     </div>
 
     <!-- Arguments -->
-    <div class="px-3 py-2 border-b border-gray-100">
-      <div class="text-gray-500 mb-1 font-medium">Arguments:</div>
-      <pre class="text-gray-700 font-mono whitespace-pre-wrap break-all bg-white rounded p-2 border border-gray-100">{{ formattedArgs }}</pre>
+    <div class="px-3 py-2 border-b border-cream-200">
+      <div class="text-ink-500 mb-1 font-medium">Arguments:</div>
+      <pre class="text-ink-700 font-mono whitespace-pre-wrap break-all bg-white rounded p-2 border border-cream-200">{{ formattedArgs }}</pre>
     </div>
 
     <!-- Result -->
     <div v-if="toolCall.result" class="px-3 py-2">
       <button
         @click="showResult = !showResult"
-        class="flex items-center gap-1 text-gray-500 hover:text-gray-700 font-medium mb-1"
+        class="flex items-center gap-1 text-ink-500 hover:text-ink-700 font-medium mb-1 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 active:scale-95 transition-transform"
       >
         <svg
           :class="['w-3 h-3 transition-transform', showResult ? 'rotate-90' : '']"
@@ -30,14 +30,14 @@
       </button>
       <pre
         v-show="showResult"
-        class="text-gray-600 font-mono whitespace-pre-wrap break-all bg-white rounded p-2 border border-gray-100 max-h-48 overflow-y-auto"
+        class="text-ink-600 font-mono whitespace-pre-wrap break-all bg-white rounded p-2 border border-cream-200 max-h-48 overflow-y-auto"
       >{{ toolCall.result }}</pre>
     </div>
 
     <!-- Running indicator -->
     <div v-if="toolCall.status === 'running'" class="px-3 py-2 flex items-center gap-2">
       <span class="inline-block w-3 h-3 border-2 border-[var(--accent)]/70 border-t-transparent rounded-full animate-spin"></span>
-      <span class="text-gray-500">Executing...</span>
+      <span class="text-ink-500">Executing...</span>
     </div>
   </div>
 </template>
@@ -53,7 +53,7 @@ const showResult = ref<boolean>(false)
 const statusColor = computed<string>(() => {
   if (props.toolCall.status === 'running') return 'bg-yellow-400 animate-pulse'
   if (props.toolCall.status === 'done') return 'bg-green-400'
-  return 'bg-gray-400'
+  return 'bg-ink-400'
 })
 
 const statusLabel = computed<string>(() => {

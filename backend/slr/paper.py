@@ -14,6 +14,7 @@ class Paper:
     venue_type: Optional[str] = None
     doi: Optional[str] = None
     url: Optional[str] = None
+    pdf_url: Optional[str] = None
     citations: Optional[int] = None
     is_open_access: Optional[bool] = None
     type: Optional[str] = None

@@ -346,6 +346,7 @@ class LiteratureItem(db.Model):
     publisher = db.Column(db.Text, default="")
     doi = db.Column(db.String(255), nullable=True, index=True)
     url = db.Column(db.Text, default="")
+    pdf_url = db.Column(db.Text, nullable=True)
     abstract = db.Column(db.Text, default="")
     summary = db.Column(db.Text, default="")
     citations = db.Column(db.Integer, nullable=True)
@@ -386,6 +387,7 @@ class LiteratureItem(db.Model):
             "publisher": self.publisher,
             "doi": self.doi,
             "url": self.url,
+            "pdf_url": self.pdf_url,
             "abstract": self.abstract,
             "summary": self.summary,
             "citations": self.citations,

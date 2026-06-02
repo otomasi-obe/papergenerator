@@ -508,6 +508,9 @@ def create_literature(paper_id: str):
             400,
         )
 
+    raw_pdf_url = body.get("pdf_url")
+    pdf_url_norm = _safe_url(raw_pdf_url) if raw_pdf_url else None
+
     item = LiteratureItem(
         paper_id=paper_id,
         user_id=user_id,
@@ -520,6 +523,7 @@ def create_literature(paper_id: str):
         publisher=(body.get("publisher") or "")[:500],
         doi=doi_norm,
         url=url_norm,
+        pdf_url=pdf_url_norm,
         abstract=body.get("abstract") or "",
         summary=body.get("summary") or "",
         citations=_safe_int(body.get("citations")),
@@ -561,6 +565,7 @@ def update_literature(paper_id: str, item_id: int):
         "publisher",
         "doi",
         "url",
+        "pdf_url",
         "abstract",
         "summary",
         "citations",
@@ -610,6 +615,18 @@ def update_literature(paper_id: str, item_id: int):
                     return _err(
                         "invalid url: must be http(s):// or relative path",
                         "URL_INVALID",
+                        400,
+                    )
+                v = safe
+        elif k == "pdf_url":
+            if v in (None, ""):
+                v = None
+            else:
+                safe = _safe_url(v)
+                if safe is None:
+                    return _err(
+                        "invalid pdf_url: must be http(s):// or relative path",
+                        "PDF_URL_INVALID",
                         400,
                     )
                 v = safe

@@ -43,6 +43,7 @@ from api.papers_bp import papers_bp
 from api.quota_bp import quota_bp
 from api.slr_bp import slr_bp
 from api.workflow_bp import workflow_bp
+from api.tools_bp import tools_bp
 from database.models import AiJob, ApiUsageLog, Paper, SlrJob, ImageGenJob, db
 
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
@@ -302,6 +303,7 @@ app.register_blueprint(slr_bp)
 app.register_blueprint(quota_bp)
 app.register_blueprint(health_bp)
 app.register_blueprint(workflow_bp)
+app.register_blueprint(tools_bp)
 
 
 # ─── OpenAPI / Swagger UI ─────────────────────────────────────────────────

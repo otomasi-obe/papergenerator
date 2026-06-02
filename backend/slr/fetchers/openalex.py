@@ -73,6 +73,7 @@ def _parse_work(w: dict) -> Paper | None:
         venue_type=venue_type,
         doi=doi,
         url=pdf_url,
+        pdf_url=pdf_url if oa_info.get("is_oa") else None,
         citations=w.get("cited_by_count"),
         is_open_access=oa_info.get("is_oa"),
         type=w.get("type"),

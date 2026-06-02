@@ -11,7 +11,7 @@
       <span class="text-xs text-ink-500 dark:text-ink-300 tabular-nums">{{ progress }}%</span>
     </div>
     <div class="h-1.5 rounded-full bg-cream-200 dark:bg-ash-700 overflow-hidden">
-      <div class="h-full bg-brown-500 dark:bg-cream-300 transition-all"
+      <div class="h-full bg-navy-500 dark:bg-cream-300 transition-all"
            :style="{ width: progress + '%' }" />
     </div>
     <div v-if="job.status !== 'done'" class="mt-2 flex gap-2 text-xs">

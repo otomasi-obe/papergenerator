@@ -27,6 +27,7 @@ from .paper import Paper
 from .scoring import ScoredPaper, score_papers
 from .summarizer import summarize as extractive_summarize
 from .summarizer import summarize_with_ai
+from .unpaywall import enrich_papers_without_pdf
 
 log = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ def _paper_record(idx: int, sp: ScoredPaper, summary: str | None = None) -> dict
         "publisher_info": _publisher_info(p),
         "doi": p.doi,
         "url": p.url,
+        "pdf_url": p.pdf_url,
         "source": p.source,
         "year": p.year,
         "venue": p.venue,
@@ -176,6 +178,24 @@ def run(
 
     # Stable indices by id() for joining back later.
     score_lookup = {id(s.paper): s for s in scored}
+
+    # 2.5 Enrich with Unpaywall PDF URLs for papers missing pdf_url
+    try:
+        top_records = []
+        for sp in scored[:top_k]:
+            p = sp.paper
+            top_records.append({
+                "doi": p.doi,
+                "pdf_url": p.pdf_url,
+            })
+        n_enriched = enrich_papers_without_pdf(top_records)
+        if n_enriched:
+            log.info("slr.unpaywall: enriched %d/%d papers with pdf_url", n_enriched, len(top_records))
+        for i, sp in enumerate(scored[:top_k]):
+            if i < len(top_records) and top_records[i].get("pdf_url"):
+                sp.paper.pdf_url = top_records[i]["pdf_url"]
+    except Exception as e:
+        log.warning("slr.unpaywall enrichment failed: %s", e)
 
     # 3. AI SUMMARIZE top-K (rest gets extractive)
     top_scored = scored[:top_k]

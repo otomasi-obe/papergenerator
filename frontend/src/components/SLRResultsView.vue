@@ -8,12 +8,12 @@
             :class="[
               'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
               activeTab === 'top'
-                ? 'border-brown-700 dark:border-cream-200 text-brown-700 dark:text-cream-200'
+                ? 'border-navy-700 dark:border-cream-200 text-navy-700 dark:text-cream-200'
                 : 'border-transparent text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50'
             ]"
           >
             Top {{ result.top_k }} Results
-            <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-brown-100 dark:bg-brown-900/30">
+            <span class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-navy-100 dark:bg-navy-900/30">
               {{ result.top_papers?.length || 0 }}
             </span>
           </button>
@@ -24,7 +24,7 @@
             :class="[
               'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
               activeTab === sourceName
-                ? 'border-brown-700 dark:border-cream-200 text-brown-700 dark:text-cream-200'
+                ? 'border-navy-700 dark:border-cream-200 text-navy-700 dark:text-cream-200'
                 : 'border-transparent text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50'
             ]"
           >
@@ -56,9 +56,9 @@
           </button>
         </div>
 
-        <div v-if="result.summary" class="bg-brown-50 dark:bg-brown-900/20 border border-brown-200 dark:border-brown-800 rounded-xl p-4 mb-4">
-          <h3 class="font-semibold text-brown-900 dark:text-brown-200 mb-2">AI Summary</h3>
-          <p class="text-sm text-brown-800 dark:text-brown-300">{{ result.summary }}</p>
+         <div v-if="result.summary" class="bg-navy-50 dark:bg-navy-900/20 border border-navy-200 dark:border-navy-800 rounded-xl p-4 mb-4">
+          <h3 class="font-semibold text-navy-900 dark:text-navy-200 mb-2">AI Summary</h3>
+          <p class="text-sm text-navy-800 dark:text-navy-300">{{ result.summary }}</p>
         </div>
 
         <div v-if="!result.top_papers || result.top_papers.length === 0" class="text-center py-12">

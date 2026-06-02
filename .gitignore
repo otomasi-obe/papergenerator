@@ -30,6 +30,7 @@ parts/
 sdist/
 var/
 wheels/
+PaperRiset/
 *.egg-info/
 .installed.cfg
 *.egg

@@ -15,7 +15,7 @@
              bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
              border-cream-300 dark:border-ash-600
              text-ink-800 dark:text-ink-100
-             focus:outline-none focus-visible:ring-2 focus-visible:ring-brown-400 dark:focus-visible:ring-cream-400 focus-visible:ring-offset-1"
+             focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-400 dark:focus-visible:ring-cream-400 focus-visible:ring-offset-1"
     >
       {{ chip.label }}
     </button>

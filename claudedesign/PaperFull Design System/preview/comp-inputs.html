@@ -1,0 +1,26 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  body { margin: 0; padding: 22px 24px; background: var(--bg-surface); font-family: var(--font-sans); }
+  .cap { font-size: 14px; color: var(--fg-strong); font-weight: 700; margin-bottom: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .label { display:block; font-size: 13px; font-weight: 500; color: var(--ink-900); margin-bottom: 6px; }
+  .input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border-soft); border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 13px; color: var(--ink-900); background: #fff; outline: none; }
+  .input::placeholder { color: var(--ivory-500); }
+  .input.focus { border-color: var(--navy-500); box-shadow: 0 0 0 3px rgba(35,143,127,.20); }
+  .full { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+  <div class="cap">Form fields</div>
+  <div class="grid">
+    <div><label class="label">Name</label><input class="input" placeholder="Your full name" /></div>
+    <div><label class="label">Email</label><input class="input focus" value="you@example.com" /></div>
+    <div class="full"><label class="label">Abstract</label><input class="input" placeholder="Paper abstract…" /></div>
+  </div>
+</body>
+</html>

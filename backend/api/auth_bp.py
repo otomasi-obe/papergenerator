@@ -300,7 +300,12 @@ def google_login():
         redirect_uri = f"{protocol}://{domain}/api/auth/google/callback"
 
     log.info("OAuth login - Redirect URI: %s", redirect_uri)
-    return oauth.google.authorize_redirect(redirect_uri, state=signed_state)
+    resp = oauth.google.authorize_redirect(redirect_uri, state=signed_state)
+    # Ensure the session cookie is set before the redirect.
+    # SameSite=None + Secure is required for cross-site cookie delivery
+    # during the Google OAuth redirect chain.
+    session.modified = True
+    return resp
 
 
 @auth_bp.route("/google/callback")
@@ -308,23 +313,36 @@ def google_callback():
     """Handle Google OAuth callback with CSRF validation, set httpOnly cookies, redirect to frontend."""
     frontend_url = _allowed_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:1000"))
 
+    # Check for explicit OAuth error from Google (e.g. user denied access)
+    google_error = request.args.get("error")
+    if google_error:
+        log.warning("OAuth callback - Google returned error: %s (%s)",
+                     google_error, request.args.get("error_description", ""))
+        return redirect(f"{frontend_url}/login?error=google_denied")
+
     # Verify signed CSRF state token (no session dependency)
     signed_state = request.args.get("state")
     if not signed_state:
         log.warning("OAuth callback - Missing state parameter")
         return redirect(f"{frontend_url}/login?error=invalid_state")
 
-    raw_state = _verify_signed_state(signed_state)
-    if not raw_state:
+    if not _verify_signed_state(signed_state):
         log.warning("OAuth callback - Invalid state signature")
         return redirect(f"{frontend_url}/login?error=csrf_detected")
 
     log.info("OAuth callback - State signature verified OK")
 
-    # authlib's authorize_access_token looks up _state_google_<state> in Flask session,
-    # where <state> is request.args.get("state"). Since we use signed state in the URL,
-    # populate session with the signed state key so authlib's lookup succeeds.
-    session[f"_state_google_{signed_state}"] = {}
+    # Verify the OAuth state data exists in session (contains PKCE code_verifier).
+    # NOTE: Do NOT overwrite session state here — authorize_redirect() already
+    # stored it. The session cookie (SameSite=None; Secure) survives the
+    # cross-site Google redirect. If the state data is missing, the session
+    # cookie was not delivered (browser privacy settings, wrong domain, etc.)
+    from authlib.integrations.base_client.framework_integration import FrameworkIntegration
+    _fw = FrameworkIntegration("google")
+    existing_state_data = _fw.get_state_data(session, signed_state)
+    if not existing_state_data:
+        log.warning("OAuth callback - No state data in session for signed_state (session cookie may be missing)")
+        return redirect(f"{frontend_url}/login?error=session_expired")
 
     try:
         token = oauth.google.authorize_access_token()
@@ -362,11 +380,18 @@ def google_callback():
         resp = redirect(f"{frontend_url}/auth/callback")
         set_access_cookies(resp, access)
         set_refresh_cookies(resp, refresh)
+        log.info("OAuth success - redirecting to %s with cookies set", frontend_url)
         return resp
 
     except Exception as e:
         log.error("OAuth callback error: %s", e, exc_info=True)
-        return redirect(f"{frontend_url}/login?error=auth_failed")
+        error_code = "auth_failed"
+        error_lower = str(e).lower()
+        if "access_denied" in error_lower:
+            error_code = "google_denied"
+        elif "mismatch" in error_lower or "state" in error_lower:
+            error_code = "csrf_detected"
+        return redirect(f"{frontend_url}/login?error={error_code}")
 
 
 @auth_bp.route("/refresh", methods=["POST"])

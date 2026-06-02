@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-3xl">
     <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6">
-      <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50">Journal</h2>
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif">Journal</h2>
       <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
         Pilih jurnal/template tujuan untuk export DOCX. Gunakan kotak pencarian untuk menyaring.
       </p>
@@ -33,7 +33,7 @@
             aria-controls="journal-list"
             aria-haspopup="listbox"
             placeholder="🔍 Cari jurnal (contoh: IEEE, JOKI, JNTETI…)"
-            class="w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none"
+            class="w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
             :disabled="store.journalsLoading"
           />
 

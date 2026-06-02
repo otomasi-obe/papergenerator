@@ -51,6 +51,7 @@ def _parse(p: dict) -> Paper | None:
     if not pdf_url and p.get("paperId"):
         pdf_url = f"https://www.semanticscholar.org/paper/{p.get('paperId')}"
 
+    oa = bool(p.get("openAccessPdf"))
     return Paper(
         source="semantic_scholar",
         source_id=(p.get("paperId") or ""),
@@ -62,8 +63,9 @@ def _parse(p: dict) -> Paper | None:
         venue_type=pub_venue.get("type") or venue_type,
         doi=doi,
         url=pdf_url,
+        pdf_url=pdf_url if oa else None,
         citations=p.get("citationCount"),
-        is_open_access=bool(p.get("openAccessPdf")),
+        is_open_access=oa,
         type=venue_type,
         publisher=pub_venue.get("publisher"),
     )

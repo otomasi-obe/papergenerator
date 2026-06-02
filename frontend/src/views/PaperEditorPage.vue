@@ -11,7 +11,7 @@
           <button
             type="button"
             @click="handlePapersBack"
-            class="flex items-center gap-1 text-sm text-ink-700 dark:text-ink-200 hover:text-ink-900 dark:hover:text-ink-50 px-2 py-1.5 rounded hover:bg-cream-200 dark:hover:bg-ash-700 shrink-0 transition-colors"
+            class="flex items-center gap-1 text-sm text-ink-700 dark:text-ink-200 hover:text-ink-900 dark:hover:text-ink-50 px-2 py-1.5 rounded hover:bg-cream-200 dark:hover:bg-ash-700 shrink-0 transition-colors active:scale-95 transition-transform"
           >
             ← Papers
           </button>
@@ -19,31 +19,31 @@
           <input
             v-model="store.paper.title"
             placeholder="Untitled Paper"
-            class="text-sm text-ink-900 dark:text-ink-50 font-medium bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-brown-500 dark:focus:border-cream-400 focus:bg-cream-50 dark:focus:bg-ash-800 focus:outline-none focus:ring-2 focus:ring-cream-200 dark:focus:ring-ash-700 rounded px-2 py-1 truncate min-w-[8rem] w-0 flex-[1_1_12rem] max-w-none transition-colors"
+            class="text-sm text-ink-900 dark:text-ink-50 font-medium bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-navy-500 dark:focus:border-cream-400 focus:bg-cream-50 dark:focus:bg-ash-800 focus:outline-none focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 rounded px-2 py-1 truncate min-w-[8rem] w-0 flex-[1_1_12rem] max-w-none transition-colors"
             title="Klik untuk mengubah judul paper"
             aria-label="Paper title"
           />
           <span v-if="store.loading" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0">Saving…</span>
-          <button v-else-if="saveStatus === 'saving'" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0" type="button">Saving…</button>
-          <button v-else-if="saveStatus === 'saved'" class="text-[11px] text-emerald-700 dark:text-emerald-300 shrink-0" type="button">Saved · {{ savedRelative }}</button>
-          <button v-else-if="saveStatus === 'error'" @click="retrySave" class="text-[11px] text-red-600 dark:text-red-300 hover:underline shrink-0" type="button">Save failed</button>
+          <button v-else-if="saveStatus === 'saving'" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0 active:scale-95 transition-transform" type="button">Saving…</button>
+          <button v-else-if="saveStatus === 'saved'" class="text-[11px] text-emerald-700 dark:text-emerald-300 shrink-0 active:scale-95 transition-transform" type="button">Saved · {{ savedRelative }}</button>
+          <button v-else-if="saveStatus === 'error'" @click="retrySave" class="text-[11px] text-red-600 dark:text-red-300 hover:underline shrink-0 active:scale-95 transition-transform" type="button">Save failed</button>
           </div>
 
           <!-- Group B: actions + tabs + AI chat. Wraps to its own line when it no longer fits beside the title group -->
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0 flex-[0_1_auto]">
             <div class="flex items-center gap-1 shrink-0">
               <button @click="store.exportDocx()" :disabled="store.loading"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0 active:scale-95 transition-transform"
                 title="Export DOCX">
                 📄 DOCX
               </button>
               <button @click="store.undo()" :disabled="!store.canUndo"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0 active:scale-95 transition-transform"
                 title="Undo (Ctrl/Cmd+Z)">
                 ↶ Undo
               </button>
               <button @click="store.redo()" :disabled="!store.canRedo"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0 active:scale-95 transition-transform"
                 title="Redo (Ctrl/Cmd+Shift+Z)">
                 ↷ Redo
               </button>
@@ -60,7 +60,7 @@
                 :id="`tab-${tab.id}`"
                 :aria-selected="activeTab === tab.id"
                 :aria-controls="`panel-${tab.id}`"
-                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap',
+                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap active:scale-95 transition-transform',
                   activeTab === tab.id
                     ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
                     : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
@@ -68,16 +68,26 @@
                 <span v-if="tab.id === 'preview' && store.pendingCount > 0"
                   class="ml-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold">{{ store.pendingCount }}</span>
               </button>
+              
+              <!-- Tools and AI Chat toggle buttons -->
+              <button @click="toggleTools"
+                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap active:scale-95 transition-transform',
+                  activeTab === 'tools'
+                    ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
+                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
+                :title="'Toggle Tools'">
+                🛠 Tools
+              </button>
+              
+              <button @click="toggleChat"
+                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap active:scale-95 transition-transform',
+                  chatOpen && activeTab !== 'tools'
+                    ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
+                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
+                :title="chatOpen ? 'Tutup AI Chat' : 'Buka AI Chat'">
+                💬 AI Chat
+              </button>
             </div>
-
-            <button @click="toggleChat"
-              :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap',
-                chatOpen
-                  ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
-                  : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
-              :title="chatOpen ? 'Tutup AI Chat' : 'Buka AI Chat'">
-              💬 AI Chat
-            </button>
           </div>
         </div>
       </div>
@@ -96,32 +106,38 @@
         <span v-if="aiElapsedSeconds > 600" class="ml-2 opacity-80">(masih bekerja — paper besar bisa sampai 15 menit)</span>
       </div>
       <button v-if="canCancelAi" @click="chatStore.stopStreaming()"
-              class="shrink-0 px-2.5 py-1 rounded text-xs font-medium border border-amber-400 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50">Cancel</button>
+              class="shrink-0 px-2.5 py-1 rounded text-xs font-medium border border-amber-400 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50 active:scale-95 transition-transform">Cancel</button>
     </div>
 
-    <!-- Split layout: left tab pane (collapsible) + right chat panel.
-         When no tab is selected, the left pane collapses and the chat goes
-         full-width — useful for distraction-free conversation. -->
+    <!-- Split layout: LEFT tools sidebar + RIGHT chat panel.
+         Tools sidebar is always visible; chat is always on the right. -->
     <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
-      <!-- LEFT: editor / journal / figures / preview.
-           NOTE: we use v-show (not v-if) on the outer wrapper so all panels
-           — including LiteratureTab — stay mounted from the very first paint.
-           This is what makes chat-triggered SLR auto-open work seamlessly:
-           the literature poller is already running before the tab gets
-           switched in by `ui.requestTab(...)`. -->
-      <div v-show="activeTab" class="overflow-y-auto" :class="chatOpen ? 'w-1/2' : 'w-full'">
-        <div class="px-4 lg:px-8 py-6">
+      <!-- LEFT tools sidebar: editor / journal / literature / files / data / preview. -->
+      <div class="overflow-y-auto border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="(chatOpen && activeTab !== 'tools') || activeTab === 'tools' ? 'w-1/2' : 'w-full'">
+        <!-- Empty state when no tab selected -->
+        <div v-if="!activeTab" class="flex flex-col items-center justify-center h-full px-6 py-12 text-center min-h-[60vh]">
+          <div class="text-5xl mb-4" aria-hidden="true">📝</div>
+          <h3 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-2">Tools Panel</h3>
+          <p class="text-sm text-ink-500 dark:text-ink-300 mb-6 max-w-xs">Pilih tab di toolbar untuk mulai edit paper, kelola literatur, atau lihat preview.</p>
+          <div class="grid grid-cols-2 gap-2 w-full max-w-xs">
+            <button v-for="tab in leftTabs" :key="tab.id" @click="activeTab = tab.id"
+              class="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 text-xs font-medium hover:border-navy-500 dark:hover:border-cream-400 hover:text-navy-700 dark:hover:text-cream-200 transition-colors text-left active:scale-95 transition-transform">
+              {{ tab.label }}
+            </button>
+          </div>
+        </div>
+        <div v-show="activeTab" class="px-4 lg:px-8 py-6">
 
           <!-- TAB: EDITOR -->
           <div v-show="activeTab === 'editor'" role="tabpanel" id="panel-editor" aria-labelledby="tab-editor" class="space-y-4">
         <!-- Title -->
-        <div class="card border-l-4 border-l-brown-500">
+        <div class="card border-l-4 border-l-navy-500">
           <label class="label">Title</label>
           <input v-model="store.paper.title" class="input" placeholder="Paper title..." />
         </div>
 
         <!-- Authors -->
-        <div class="card border-l-4 border-l-brown-500">
+        <div class="card border-l-4 border-l-navy-500">
           <div class="flex items-center justify-between mb-3">
             <label class="label !mb-0">Authors</label>
             <button @click="store.addAuthor()" class="btn-add">+ Author</button>
@@ -154,7 +170,7 @@
         </div>
 
         <!-- Abstract -->
-        <div class="card border-l-4 border-l-brown-500">
+        <div class="card border-l-4 border-l-navy-500">
           <label class="label">Abstract</label>
           <textarea v-model="store.paper.abstract" rows="2" @input="autoResize"
             ref="abstractRef"
@@ -166,9 +182,9 @@
           <label class="label">Keywords</label>
           <div class="flex flex-wrap gap-1.5 mb-2">
             <span v-for="(_kw, i) in store.paper.keywords" :key="i"
-              class="bg-cream-200 text-brown-800 px-2 py-0.5 rounded text-sm flex items-center gap-1">
+              class="bg-cream-200 text-navy-800 px-2 py-0.5 rounded text-sm flex items-center gap-1">
               {{ _kw }}
-              <button @click="store.removeKeyword(i)" class="text-brown-400 hover:text-brown-700 text-xs">✕</button>
+              <button @click="store.removeKeyword(i)" class="text-navy-400 hover:text-navy-700 text-xs">✕</button>
             </span>
           </div>
           <div class="flex gap-2">
@@ -184,7 +200,7 @@
             <div class="group card border-l-4 border-l-cream-600">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                  <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-brown-500 select-none text-xl leading-tight shrink-0">⠿</span>
+                  <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-navy-500 select-none text-xl leading-tight shrink-0">⠿</span>
                   <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                     <button @click="moveItem(store.paper.sections, sIdx, sIdx - 1)" :disabled="sIdx === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
                     <button @click="moveItem(store.paper.sections, sIdx, sIdx + 1)" :disabled="sIdx === store.paper.sections.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
@@ -213,7 +229,7 @@
                   <div class="group ml-4 border-l-2 border-cream-300 pl-4">
                     <div class="flex items-center justify-between mb-2">
                       <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <span role="button" aria-label="Drag to reorder" class="sub-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-brown-500 select-none shrink-0">⠿</span>
+                        <span role="button" aria-label="Drag to reorder" class="sub-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-navy-500 select-none shrink-0">⠿</span>
                         <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                           <button @click="moveItem(section.subsections, subIdx, subIdx - 1)" :disabled="subIdx === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
                           <button @click="moveItem(section.subsections, subIdx, subIdx + 1)" :disabled="subIdx === section.subsections.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
@@ -239,7 +255,7 @@
               </draggable>
 
               <button @click="store.addSubsection(sIdx)"
-                class="mt-3 w-full py-2 border border-dashed border-cream-400 rounded-lg text-brown-500 hover:bg-cream-100 text-sm transition-colors">
+                class="mt-3 w-full py-2 border border-dashed border-cream-400 rounded-lg text-navy-500 hover:bg-cream-100 text-sm transition-colors active:scale-95 transition-transform">
                 + Add Subsection
               </button>
             </div>
@@ -247,7 +263,7 @@
         </draggable>
 
         <button @click="store.addSection()"
-          class="w-full py-3 border-2 border-dashed border-cream-300 rounded-xl text-brown-400 hover:border-brown-400 hover:text-brown-700 transition text-sm">
+          class="w-full py-3 border-2 border-dashed border-cream-300 rounded-xl text-navy-400 hover:border-navy-400 hover:text-navy-700 transition text-sm active:scale-95 transition-transform">
           + Add Section
         </button>
 
@@ -261,12 +277,12 @@
                      :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
             <template #item="{ element: ref, index: i }">
               <div class="group flex gap-2 items-center">
-                <span role="button" aria-label="Drag to reorder" class="ref-drag cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 select-none shrink-0">⠿</span>
+                <span role="button" aria-label="Drag to reorder" class="ref-drag cursor-grab active:cursor-grabbing text-ink-300 hover:text-ink-500 select-none shrink-0">⠿</span>
                 <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                   <button @click="moveItem(store.paper.references, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
                   <button @click="moveItem(store.paper.references, i, i + 1)" :disabled="i === store.paper.references.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
                 </div>
-                <span class="text-[11px] text-gray-400 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
+                <span class="text-[11px] text-ink-400 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
                 <input :value="ref" @input="store.paper.references[i] = $event.target.value"
                   class="input-sm flex-1 text-xs" placeholder="Reference text..." />
                 <button @click="store.removeReference(i)" class="text-red-300 hover:text-red-500 text-xs shrink-0">✕</button>
@@ -305,10 +321,13 @@
         </div>
       </div>
 
-      <!-- RIGHT: chat panel. Full-width when no tab is selected. -->
-      <div v-if="chatOpen" class="bg-cream-50 dark:bg-ash-800 border-l border-cream-300 dark:border-ash-700 shrink-0 overflow-hidden flex flex-col shadow-[-1px_0_0_rgba(15,14,11,0.06)]"
-        :class="activeTab ? 'w-1/2' : 'w-full'">
+      <!-- RIGHT: chat panel or tools workspace -->
+      <div v-if="chatOpen && activeTab !== 'tools'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col w-1/2">
         <ChatTab :paper-id="store.currentPaperId" @open-preview="activeTab = 'preview'" />
+      </div>
+      
+      <div v-if="activeTab === 'tools'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col w-1/2">
+        <ToolWorkspace />
       </div>
     </div>
 
@@ -335,13 +354,13 @@
       <template #actions>
         <button
           @click="cancelDelete"
-          class="px-4 py-2 rounded-lg text-sm font-medium text-ink-700 dark:text-ink-200 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors"
+          class="px-4 py-2 rounded-lg text-sm font-medium text-ink-700 dark:text-ink-200 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors active:scale-95 transition-transform"
         >
           Batal
         </button>
         <button
           @click="doDelete"
-          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors active:scale-95 transition-transform"
         >
           Hapus
         </button>
@@ -375,6 +394,8 @@ import LiteratureTab from '../components/LiteratureTab.vue'
 import PreviewTab from '../components/PreviewTab.vue'
 import ChatTab from '../components/ChatTab.vue'
 import DataTab from '../components/DataTab.vue'
+import ToolsTab from '../components/ToolsTab.vue'
+import ToolWorkspace from '../components/ToolWorkspace.vue'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useKeyboardShortcuts'
@@ -420,7 +441,19 @@ const aiStartedAt = ref<number | null>(null)
 const chatOpen = ref(true)
 
 function toggleChat() {
+  if (activeTab.value === 'tools') {
+    activeTab.value = ''
+  }
   chatOpen.value = !chatOpen.value
+}
+
+function toggleTools() {
+  if (activeTab.value === 'tools') {
+    activeTab.value = ''
+  } else {
+    chatOpen.value = false
+    activeTab.value = 'tools'
+  }
 }
 
 function handlePapersBack() {
@@ -515,6 +548,12 @@ const shortcuts: KeyboardShortcut[] = [
     ctrl: true,
     handler: () => { activeTab.value = leftTabs[4].id },
     description: 'Switch to Data tab'
+  },
+    {
+    key: '6',
+    ctrl: true,
+    handler: () => { activeTab.value = leftTabs[1].id },
+    description: 'Switch to Tools tab'
   },
   {
     key: 'n',
@@ -741,10 +780,10 @@ function cancelDelete() {
 </script>
 
 <style scoped>
-.card { @apply bg-white dark:bg-anthracite-700 rounded-xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] border border-ivory-300 dark:border-anthracite-500 p-5; }
-.label { @apply block text-sm font-medium text-ink-900 dark:text-ink-50 mb-1.5; }
+.card { @apply bg-white dark:bg-anthracite-700 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] border border-ivory-300 dark:border-anthracite-500 p-5; }
+.label { @apply block text-sm font-medium font-serif text-ink-900 dark:text-ink-50 mb-1.5; }
 .input { @apply w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none; }
 .input-sm { @apply px-2.5 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none; }
-.btn-add { @apply px-3 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded-lg text-xs font-medium transition-colors; }
-.btn-content { @apply px-2.5 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded text-xs transition-colors; }
+.btn-add { @apply px-3 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded-lg text-xs font-medium transition-colors active:scale-95 transition-transform; }
+.btn-content { @apply px-2.5 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded text-xs transition-colors active:scale-95 transition-transform; }
 </style>

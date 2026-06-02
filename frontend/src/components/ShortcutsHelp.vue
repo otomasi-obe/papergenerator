@@ -65,26 +65,16 @@ const emit = defineEmits<Emits>()
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
-  color: #374151;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  color: var(--text-strong);
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
   border-radius: 0.375rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.dark .kbd {
-  color: #e5e7eb;
-  background: #374151;
-  border-color: #4b5563;
-}
-
 .shortcut-description {
   font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.dark .shortcut-description {
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .btn-primary {
@@ -92,19 +82,23 @@ const emit = defineEmits<Emits>()
   border-radius: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  background: #8b7355;
+  background: var(--accent);
   color: white;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.15s;
 }
 
 .btn-primary:hover {
-  background: #6d5a44;
+  filter: brightness(0.95);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
 }
 
 .btn-primary:focus-visible {
-  outline: 2px solid #8b7355;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #238f7f;
 }
 </style>

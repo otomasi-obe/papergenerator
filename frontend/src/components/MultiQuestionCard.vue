@@ -305,11 +305,11 @@ onMounted(() => {
 
 <style scoped>
 .multi-question-card {
-  border: 1px solid var(--border-soft, #e5e7eb);
+  border: 1px solid var(--border-soft, #dfcfb5);
   border-radius: 8px;
   padding: 12px;
-  background: var(--surface-ai, #fafafa);
-  color: var(--text-strong, #111);
+  background: var(--surface-ai, #fbf8f1);
+  color: var(--text-strong, #0c1c3c);
   margin: 8px 0;
 }
 .header {
@@ -317,7 +317,7 @@ onMounted(() => {
   gap: 8px;
   align-items: center;
   font-size: 13px;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #3e70a8);
   margin-bottom: 10px;
 }
 .header-icon { font-size: 14px; }
@@ -331,14 +331,14 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--border-soft, #d1d5db);
+  background: var(--border-soft, #dfcfb5);
   transition: background 0.15s, transform 0.15s;
 }
 .progress-dot.done {
-  background: #16a34a;
+  background: #2f9d6e;
 }
 .progress-dot.active {
-  background: var(--accent, #2563eb);
+  background: var(--accent-primary, #1265c8);
   transform: scale(1.25);
 }
 .question-row {
@@ -360,46 +360,50 @@ onMounted(() => {
 }
 .chip {
   padding: 5px 12px;
-  border: 1px solid var(--border-strong, #d1d5db);
+  border: 1px solid var(--border-strong, #c3aa83);
   border-radius: 16px;
   background: var(--bg-surface, #ffffff);
-  color: var(--text-strong, #111);
+  color: var(--text-strong, #0c1c3c);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.chip:hover { background: var(--bg-elev, #f3f4f6); }
+.chip:hover { background: var(--bg-elev, #faf5ec); }
+.chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #238f7f;
+}
 .chip.selected {
-  background: var(--accent, #2563eb);
+  background: var(--accent-primary, #1265c8);
   color: #ffffff;
-  border-color: var(--accent, #2563eb);
+  border-color: var(--accent-primary, #1265c8);
 }
 .custom-input {
   width: 100%;
-  border: 1px solid var(--border-strong, #d1d5db);
+  border: 1px solid var(--border-strong, #c3aa83);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;
   background: var(--bg-surface, #ffffff);
-  color: var(--text-strong, #111);
+  color: var(--text-strong, #0c1c3c);
   box-sizing: border-box;
 }
 .custom-input::placeholder {
-  color: var(--text-muted, #9ca3af);
+  color: var(--text-muted, #3e70a8);
   opacity: 1;
 }
-.custom-input:focus {
+.custom-input:focus-visible {
   outline: none;
-  border-color: var(--accent, #2563eb);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+  border-color: var(--accent-primary, #1265c8);
+  box-shadow: 0 0 0 2px rgba(35, 143, 127, 0.18);
 }
 .dark .custom-input {
-  background: #18232b;
-  color: #f5f3ee;
-  border-color: rgba(227, 236, 239, 0.18);
+  background: var(--bg-surface, #102c55);
+  color: var(--text-strong, #f0f5fb);
+  border-color: var(--border-strong, #1e518e);
 }
 .dark .custom-input::placeholder {
-  color: #9db7d3;
+  color: var(--text-muted, #8eb3d8);
 }
 .actions {
   margin-top: 12px;
@@ -414,12 +418,16 @@ onMounted(() => {
   font-weight: 500;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s, transform 0.15s;
+}
+.btn-primary:active,
+.btn-secondary:active {
+  transform: scale(0.95);
 }
 .btn-primary {
-  background: var(--accent, #2563eb);
+  background: var(--accent-primary, #1265c8);
   color: #ffffff;
-  border: 1px solid var(--accent, #2563eb);
+  border: 1px solid var(--accent-primary, #1265c8);
   margin-left: auto;
 }
 .btn-primary:hover:not(:disabled) {
@@ -429,37 +437,42 @@ onMounted(() => {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #238f7f;
+}
 .btn-secondary {
   background: var(--bg-surface, #ffffff);
-  color: var(--text-strong, #111);
-  border: 1px solid var(--border-strong, #d1d5db);
+  color: var(--text-strong, #0c1c3c);
+  border: 1px solid var(--border-strong, #c3aa83);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: var(--bg-elev, #f3f4f6);
+  background: var(--bg-elev, #faf5ec);
 }
 .btn-secondary:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .dark .btn-secondary {
-  background: #18232b;
-  color: #f5f3ee;
-  border-color: rgba(227, 236, 239, 0.18);
+  background: var(--bg-surface, #102c55);
+  color: var(--text-strong, #f0f5fb);
+  border-color: var(--border-strong, #1e518e);
 }
 .dark .btn-secondary:hover:not(:disabled) {
-  background: #20303a;
+  background: var(--bg-elev, #163d71);
 }
 .hint {
   margin: 8px 0 0;
   font-size: 11px;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #3e70a8);
 }
 .dark .hint {
-  color: #9db7d3;
+  color: var(--text-muted, #8eb3d8);
 }
 .hint kbd {
-  background: var(--bg-elev, #f3f4f6);
-  border: 1px solid var(--border-soft, #e5e7eb);
+  background: var(--bg-elev, #faf5ec);
+  border: 1px solid var(--border-soft, #dfcfb5);
   border-radius: 3px;
   padding: 0 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -467,9 +480,9 @@ onMounted(() => {
   color: var(--text-strong, inherit);
 }
 .dark .hint kbd {
-  background: #20303a;
-  border-color: rgba(227, 236, 239, 0.18);
-  color: #f5f3ee;
+  background: var(--bg-elev, #163d71);
+  border-color: var(--border-soft, #163d71);
+  color: var(--text-strong, #f0f5fb);
 }
 
 /* Loading state */
@@ -487,8 +500,8 @@ onMounted(() => {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--border-soft, #e5e7eb);
-  border-top-color: var(--accent, #2563eb);
+  border: 3px solid var(--border-soft, #dfcfb5);
+  border-top-color: var(--accent-primary, #1265c8);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -497,7 +510,7 @@ onMounted(() => {
 }
 .loading-text {
   font-size: 14px;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-muted, #3e70a8);
   font-weight: 500;
 }
 </style>

@@ -3,14 +3,14 @@
     <div class="w-full px-4 lg:px-8 py-3 flex items-center justify-between">
       <!-- Logo + Nav + Token quota bar (rofiq.txt: kuota tampil kiri atas) -->
       <div class="flex items-center gap-4">
-        <router-link to="/dashboard" class="flex items-center gap-2 min-h-[44px] min-w-[44px] text-ink-900 dark:text-ink-50 hover:text-brown-700 dark:hover:text-cream-200 transition-colors">
+        <router-link to="/dashboard" class="flex items-center gap-2 min-h-[44px] min-w-[44px] text-ink-900 dark:text-ink-50 hover:text-navy-700 dark:hover:text-cream-200 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2 rounded-lg">
           <img :src="logoUrl" alt="PaperFull" class="h-7 w-7 rounded-md object-contain" />
-          <span class="font-semibold">PaperFull</span>
+          <span class="font-semibold font-serif">PaperFull</span>
         </router-link>
 
         <!-- Token quota bar -->
         <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
-          <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
+          <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
             <div class="w-24 h-2 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
               <div
                 class="h-full transition-all"
@@ -23,7 +23,7 @@
             </span>
           </button>
           <!-- Tooltip: detail breakdown -->
-          <div v-if="quotaOpen" role="dialog" class="absolute left-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-lg shadow-lg p-3 z-50 text-xs" @keydown.escape.stop="quotaOpen = false">
+          <div v-if="quotaOpen" role="dialog" class="absolute left-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @keydown.escape.stop="quotaOpen = false">
             <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Pemakaian token bulan {{ quota.month_key }}</div>
             <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
               <span>Hari ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
@@ -37,10 +37,10 @@
         </div>
 
         <nav class="hidden md:flex items-center gap-2 text-sm">
-          <router-link to="/dashboard" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
+          <router-link to="/dashboard" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
             Papers
           </router-link>
-          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
+          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
             Admin
           </router-link>
         </nav>
@@ -51,7 +51,7 @@
         <!-- Job inbox bell -->
         <div class="bell-wrap relative" ref="bellRef">
           <button @click="onBellClick"
-            class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative"
+            class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
             aria-haspopup="menu"
             :aria-expanded="bellOpen"
             :title="recentCount > 0 ? `${recentCount} paper baru selesai` : 'Belum ada paper baru selesai'">
@@ -66,7 +66,7 @@
           </button>
           <div v-if="bellOpen"
                role="menu"
-               class="absolute right-0 mt-2 w-72 bg-cream-50 dark:bg-ash-800 rounded-lg shadow-lg border border-cream-300 dark:border-ash-700 z-50">
+               class="absolute right-0 mt-2 w-72 bg-cream-50 dark:bg-ash-800 rounded-xl shadow-lg border border-cream-300 dark:border-ash-700 z-50">
             <div class="p-3 border-b border-cream-200 dark:border-ash-700 text-sm font-semibold text-ink-900 dark:text-ink-50">
               Recent generated papers
             </div>
@@ -77,7 +77,7 @@
               <router-link v-for="j in recentDone" :key="j.id"
                  :to="{ name: 'editor', params: { paperId: j.paper_id } }"
                  @click="bellOpen = false"
-                 class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded text-sm text-ink-800 dark:text-ink-100">
+                 class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg text-sm text-ink-800 dark:text-ink-100 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
                 <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
                 <div class="text-[10px] text-ink-500 dark:text-ink-300">{{ formatTime(j.updated_at) }}</div>
               </router-link>
@@ -87,11 +87,11 @@
 
         <div class="relative" ref="menuRef">
           <button @click="menuOpen = !menuOpen"
-            class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50"
+            class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] rounded-xl hover:bg-cream-200 dark:hover:bg-ash-700 transition-colors text-sm text-ink-900 dark:text-ink-50 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
             aria-haspopup="menu"
             :aria-expanded="menuOpen">
             <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-7 h-7 rounded-full" alt="avatar" />
-            <span v-else class="w-7 h-7 rounded-full bg-brown-500 dark:bg-brown-400 flex items-center justify-center text-cream-50 text-xs font-bold">
+            <span v-else class="w-7 h-7 rounded-full bg-navy-500 dark:bg-navy-400 flex items-center justify-center text-cream-50 text-xs font-bold">
               {{ auth.user?.name?.[0]?.toUpperCase() || 'U' }}
             </span>
             <span class="hidden md:inline font-medium">{{ auth.user?.name || 'User' }}</span>
@@ -99,11 +99,11 @@
           </button>
 
           <!-- Dropdown -->
-          <div v-if="menuOpen" role="menu" class="absolute right-0 top-full mt-1 w-56 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50">
+          <div v-if="menuOpen" role="menu" class="absolute right-0 top-full mt-1 w-56 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50" tabindex="-1">
             <div class="px-4 py-3 border-b border-cream-200 dark:border-ash-700">
               <p class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ auth.user?.name }}</p>
               <p class="text-xs text-ink-600 dark:text-ink-300">{{ auth.user?.email }}</p>
-              <span v-if="auth.isAdmin" class="text-xs bg-brown-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50 px-1.5 py-0.5 rounded mt-1 inline-block">Admin</span>
+              <span v-if="auth.isAdmin" class="text-xs bg-navy-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50 px-1.5 py-0.5 rounded-full mt-1 inline-block">Admin</span>
             </div>
 
             <!-- Theme switcher -->
@@ -115,7 +115,7 @@
                   :key="opt.value"
                   @click="setMode(opt.value)"
                   :class="[
-                    'flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-medium transition-colors',
+                    'flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-medium transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2',
                     mode === opt.value
                       ? 'bg-cream-50 dark:bg-ash-850 text-ink-900 dark:text-ink-50 shadow-sm border border-cream-300 dark:border-ash-600'
                       : 'text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50',
@@ -128,14 +128,14 @@
               </div>
             </div>
 
-            <router-link to="/dashboard" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors">
+            <router-link to="/dashboard" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
               <span aria-hidden="true">📄</span> My Papers
             </router-link>
-            <router-link v-if="auth.isAdmin" to="/admin" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors">
+            <router-link v-if="auth.isAdmin" to="/admin" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
               <span aria-hidden="true">📊</span> Admin
             </router-link>
             <div class="border-t border-cream-200 dark:border-ash-700">
-              <button @click="doLogout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors">
+              <button @click="doLogout" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
                 <span aria-hidden="true">🚪</span> Sign Out
               </button>
             </div>
@@ -155,7 +155,7 @@ import { useTheme } from '../stores/theme'
 import { usePaperJobsStore } from '../stores/paperJobs'
 import { useQuotaStore } from '../stores/quota'
 
-const logoUrl = '/logo.png'
+const logoUrl = '/assets/logo.png'
 
 const auth = useAuthStore()
 const router = useRouter()

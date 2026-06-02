@@ -1,0 +1,40 @@
+<!-- @dsCard group="Components" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  body { margin: 0; padding: 22px 24px; background: var(--bg-surface); font-family: var(--font-sans); }
+  .cap { font-size: 14px; color: var(--fg-strong); font-weight: 700; margin-bottom: 14px; }
+  .row { display:flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .pill { font-size: 12px; padding: 3px 11px; border-radius: var(--radius-pill); font-weight: 500; }
+  .meta { background: var(--cream-100); color: var(--ink-700); }
+  .kw { background: var(--cream-200); color: var(--navy-800); display:inline-flex; gap:6px; align-items:center; }
+  .kw b { color: var(--cream-500); cursor:pointer; font-weight:700; }
+  .accepted { background: var(--gold-100); color: var(--gold-700); display:inline-flex; gap:5px; align-items:center; }
+  .success { background: rgba(47,157,110,.14); color: #1f7d54; }
+  .pending { background: var(--gold-100); color: #845b0d; border: 1px solid var(--gold-300); display:inline-flex;gap:5px;align-items:center }
+  .admin { background: rgba(217,167,24,.14); color: #845b0d; border:1px solid var(--gold-300); font-family:var(--font-mono); }
+  .lbl { font-size: 11px; color: var(--fg-muted); margin: 16px 0 8px; text-transform:uppercase; letter-spacing:.12em; }
+</style>
+</head>
+<body>
+  <div class="cap">Badges, pills &amp; status</div>
+  <div class="lbl">Metadata &amp; keywords</div>
+  <div class="row">
+    <span class="pill meta">Updated 3h ago</span>
+    <span class="pill meta">🖼️ 4 images</span>
+    <span class="pill meta">IEEE Access</span>
+    <span class="pill kw">robotics <b>✕</b></span>
+    <span class="pill kw">control theory <b>✕</b></span>
+  </div>
+  <div class="lbl">Status</div>
+  <div class="row">
+    <span class="pill accepted">★ Accepted</span>
+    <span class="pill success">Saved · just now</span>
+    <span class="pill pending">⚠ 3 pending</span>
+    <span class="pill admin">∞ admin</span>
+  </div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  body { margin: 0; padding: 20px 22px; background: var(--bg-surface); font-family: var(--font-sans); }
+  .cap { display:flex; align-items:baseline; gap:8px; margin: 0 0 14px; }
+  .cap b { font-size: 14px; color: var(--fg-strong); font-weight: 700; }
+  .cap span { font-size: 12px; color: var(--fg-muted); }
+  .pills { display:flex; flex-wrap: wrap; gap: 10px; }
+  .pill { display:inline-flex; align-items:center; gap:8px; padding: 7px 14px 7px 12px; border-radius: var(--radius-pill); font-size: 12.5px; font-weight: 600; color: #fff; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.85); display:inline-block; }
+  .pill .hx { font-family: var(--font-mono); font-size: 10px; font-weight: 500; opacity:.8; }
+</style>
+</head>
+<body>
+  <div class="cap"><b>Academic context colors</b><span>map document type / status → color</span></div>
+  <div class="pills">
+    <span class="pill" style="background:var(--academic-journal)"><i></i>Journal <span class="hx">0b4088</span></span>
+    <span class="pill" style="background:var(--academic-conference)"><i></i>Conference <span class="hx">1265c8</span></span>
+    <span class="pill" style="background:var(--academic-preprint)"><i></i>Preprint <span class="hx">2e82e0</span></span>
+    <span class="pill" style="background:var(--academic-thesis)"><i></i>Thesis <span class="hx">c28d0d</span></span>
+    <span class="pill" style="background:var(--academic-book)"><i></i>Book <span class="hx">084263</span></span>
+  </div>
+</body>
+</html>

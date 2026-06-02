@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PaperFull — App UI Kit</title>
+<link rel="stylesheet" href="../../colors_and_type.css?v=4" />
+<link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+<div id="root"></div>
+<script>
+  // Global helper shared across babel scopes
+  function toRoman(num) {
+    const map = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+    let out = ''; for (const [v, s] of map) { while (num >= v) { out += s; num -= v; } } return out;
+  }
+  window.toRoman = toRoman;
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="Header.jsx"></script>
+<script type="text/babel" src="Dashboard.jsx"></script>
+<script type="text/babel" src="Chat.jsx"></script>
+<script type="text/babel" src="Tabs.jsx"></script>
+<script type="text/babel" src="Tools.jsx"></script>
+<script type="text/babel" src="Editor.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const SEED = [
+  { id: 1, title: 'Adaptive Sliding-Mode Control for a Two-Wheeled Self-Balancing Robot', updated: '3h ago', images: 4, journal: 'IEEE RA-L', sections: 6 },
+  { id: 2, title: 'A Systematic Literature Review of MQTT Security in Industrial IoT', updated: '1d ago', images: 2, journal: 'SINTA 2', sections: 5 },
+  { id: 3, title: 'Field-Oriented Control of BLDC Motors using STM32', updated: '2d ago', images: 7, journal: 'IECON', sections: 8 },
+  { id: 4, title: 'Deep Learning for Real-Time Defect Detection on PCB Assembly Lines', updated: '5d ago', images: 5, journal: 'Scopus Q1', sections: 6 },
+];
+
+const FULL_PAPER = {
+  title: 'Adaptive Sliding-Mode Control for a Two-Wheeled Self-Balancing Robot',
+  authors: [
+    { name: 'M. Rofiq', affil: 'Dept. of Automation Eng., Universitas Diponegoro' },
+    { name: 'A. Pratama', affil: 'Dept. of Automation Eng., Universitas Diponegoro' },
+  ],
+  abstract: 'This paper presents an adaptive sliding-mode controller (ASMC) for the stabilization of a two-wheeled self-balancing robot under parameter uncertainty and external disturbance. A Lyapunov-based adaptation law tunes the switching gain online, reducing chattering while preserving robustness. Experimental results on an STM32 platform show a 38% reduction in settling time over a fixed-gain baseline.',
+  keywords: ['sliding-mode control', 'self-balancing robot', 'Lyapunov stability', 'mechatronics'],
+  sections: [
+    { title: 'Introduction', body: 'Two-wheeled self-balancing robots are a canonical underactuated system widely used to benchmark control strategies. Classical linear controllers degrade under model uncertainty, motivating robust nonlinear approaches.' },
+    { title: 'Methods', body: 'We derive the dynamic model via Lagrangian mechanics and design an adaptive sliding-mode law. The switching gain is adapted online through a Lyapunov candidate guaranteeing asymptotic stability of the sliding surface.' },
+    { title: 'Results', body: 'Hardware-in-the-loop trials demonstrate a 38% faster settling time and a 21% reduction in steady-state oscillation amplitude compared with a fixed-gain SMC baseline across ten disturbance trials.' },
+    { title: 'Discussion', body: 'The online adaptation suppresses chattering without sacrificing disturbance rejection, suggesting applicability to broader classes of underactuated mobile platforms.' },
+  ],
+  references: [
+    'J. Slotine and W. Li, Applied Nonlinear Control. Prentice Hall, 1991.',
+    'V. Utkin, "Variable structure systems with sliding modes," IEEE Trans. Autom. Control, 1977.',
+    'R. Coban, "Adaptive sliding-mode control of a balancing robot," ISA Trans., 2019.',
+  ],
+};
+
+function App() {
+  const [route, setRoute] = useState('dashboard'); // dashboard | editor
+  const [papers, setPapers] = useState(SEED);
+  const [theme, setTheme] = useState('light');
+  const [toast, setToast] = useState('');
+  const [messages, setMessages] = useState([
+    { role: 'user', text: 'Generate an IEEE paper on sliding-mode control for a balancing robot.' },
+    { role: 'ai', text: 'Siap — saya susun draft lengkap (Intro, Methods, Results, Discussion) dengan 20+ referensi dan formula LaTeX. Cek tab Preview untuk melihat hasilnya.', tool: 'generate_paper · 4,180 words' },
+  ]);
+  const [streaming, setStreaming] = useState(false);
+
+  useEffect(() => {
+    const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', dark);
+  }, [theme]);
+
+  function showToast(m) { setToast(m); clearTimeout(window.__t); window.__t = setTimeout(() => setToast(''), 2200); }
+
+  function sendMessage(text) {
+    setMessages((m) => [...m, { role: 'user', text }]);
+    setStreaming(true);
+    setTimeout(() => {
+      setStreaming(false);
+      setMessages((m) => [...m, { role: 'ai', text: 'Oke! Saya terapkan perubahan itu ke paper. Ada 3 perubahan menunggu persetujuan di tab Preview.', tool: 'edit_paper · 3 proposals' }]);
+    }, 1600);
+  }
+
+  return (
+    <div className="app-root">
+      <AppHeader active={route} theme={theme} setTheme={setTheme} onNav={setRoute} />
+      {route === 'dashboard' ? (
+        <Dashboard
+          papers={papers}
+          onNew={() => setRoute('editor')}
+          onOpen={() => setRoute('editor')}
+          onCopy={() => showToast('Paper copied')}
+          onDelete={(id) => { setPapers((p) => p.filter((x) => x.id !== id)); showToast('Paper deleted'); }}
+        />
+      ) : (
+        <Editor paper={FULL_PAPER} onBack={() => setRoute('dashboard')} messages={messages} onSend={sendMessage} streaming={streaming} />
+      )}
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

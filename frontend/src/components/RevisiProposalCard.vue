@@ -14,7 +14,7 @@
           </span>
           <span
             v-if="proposal.tool === 'Translate' && proposal.target_language"
-            class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 shrink-0"
+            class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-navy-100 dark:bg-navy-900/40 text-navy-700 dark:text-navy-300 shrink-0"
           >
             → {{ targetLangLabel }}
           </span>

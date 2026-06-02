@@ -4,12 +4,12 @@
     <div class="flex items-center gap-1 mb-4 max-w-5xl mx-auto">
       <button @click="subTab = 'docs'"
         :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-          subTab === 'docs' ? 'bg-brown-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900' : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700']">
+          subTab === 'docs' ? 'bg-navy-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900' : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700']">
         📄 Dokumen
       </button>
       <button @click="subTab = 'figures'"
         :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1',
-          subTab === 'figures' ? 'bg-brown-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900' : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700']">
+          subTab === 'figures' ? 'bg-navy-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900' : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700']">
         🖼 Figures &amp; Images
         <span v-if="store.figureItems.length" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold">{{ store.figureItems.length }}</span>
       </button>
@@ -31,11 +31,11 @@
           class="hidden"
           @change="onFileChange"
         />
-        <button
+          <button
           v-if="!uploading"
           @click="fileInput?.click()"
           :disabled="!store.currentPaperId"
-          class="px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+          class="px-3 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
         >
           ＋ Upload file
         </button>
@@ -161,12 +161,12 @@
         </div>
         <div class="flex items-center gap-2">
           <input ref="figureImageInput" type="file" accept="image/*" multiple class="hidden" @change="onFigureImageUpload" />
-          <button @click="figureImageInput?.click()" :disabled="!store.currentPaperId"
-            class="px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors">
+           <button @click="figureImageInput?.click()" :disabled="!store.currentPaperId"
+            class="px-3 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
             ＋ Upload Gambar
           </button>
-          <button @click="refreshSources"
-            class="px-3 py-1.5 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 rounded-lg text-xs font-medium transition-colors">
+           <button @click="refreshSources"
+            class="px-3 py-1.5 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 rounded-lg text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
             ↻ Refresh
           </button>
         </div>
@@ -186,7 +186,7 @@
           class="bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-sm overflow-hidden">
           <!-- Figure header -->
           <div class="px-4 py-2.5 border-b border-cream-300 dark:border-ash-700 bg-cream-100 dark:bg-ash-850 flex items-center gap-2">
-            <span class="text-xs font-bold px-2 py-0.5 rounded bg-brown-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900">Fig. {{ fig.label }}</span>
+            <span class="text-xs font-bold px-2 py-0.5 rounded bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900">Fig. {{ fig.label }}</span>
             <span class="text-xs text-ink-500 dark:text-ink-300 truncate">Section: {{ fig.sectionTitle || '(tanpa judul)' }}</span>
           </div>
 
@@ -205,12 +205,12 @@
               <!-- Source picker (gallery) -->
               <div class="space-y-1.5">
                 <button @click="toggleFigGallery(fig)" type="button"
-                  class="w-full px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-brown-700 dark:text-anthracite-100 rounded text-xs font-medium flex items-center justify-between gap-1">
+                  class="w-full px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-navy-700 dark:text-anthracite-100 rounded text-xs font-medium flex items-center justify-between gap-1 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                   <span class="flex items-center gap-1">
                     <span>{{ figGalleryOpen[fig.label] ? '▾' : '▸' }}</span>
                     🖼 Pilih dari galeri
                   </span>
-                  <span v-if="store.figureSources.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-brown-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900">{{ store.figureSources.length }}</span>
+                  <span v-if="store.figureSources.length" class="text-[10px] px-1.5 py-0.5 rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900">{{ store.figureSources.length }}</span>
                 </button>
 
                 <div v-show="figGalleryOpen[fig.label]" class="rounded border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 p-2">
@@ -223,8 +223,8 @@
                       :disabled="store.isSourceUsedByOther(src.filename, fig.item)"
                       :class="['relative rounded border overflow-hidden text-left transition-all',
                         fig.item.Path === src.filename
-                          ? 'border-brown-600 dark:border-cream-300 ring-2 ring-brown-300 dark:ring-cream-500'
-                          : 'border-cream-300 dark:border-anthracite-500 hover:border-brown-400',
+                          ? 'border-navy-600 dark:border-cream-300 ring-2 ring-navy-300 dark:ring-cream-500'
+                          : 'border-cream-300 dark:border-anthracite-500 hover:border-navy-400',
                         store.isSourceUsedByOther(src.filename, fig.item)
                           ? 'opacity-45 cursor-not-allowed'
                           : 'cursor-pointer']"
@@ -233,7 +233,7 @@
                         <img :src="thumbUrl(src.filename)" :alt="src.label" class="max-h-full max-w-full object-contain" @error="onThumbErr" />
                       </div>
                       <span class="absolute top-1 left-1 text-[9px] px-1 rounded bg-black/55 text-white font-medium">{{ srcKindLabel(src.kind) }}</span>
-                      <span v-if="fig.item.Path === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-brown-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
+                      <span v-if="fig.item.Path === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
                       <span v-else-if="store.isSourceUsedByOther(src.filename, fig.item)" class="absolute top-1 right-1 text-[9px] px-1 rounded bg-amber-500 text-white font-medium">Fig {{ otherFigLabel(src.filename) }}</span>
                       <span class="block text-[10px] text-ink-700 dark:text-anthracite-100 px-1 py-0.5 truncate">{{ src.label }}</span>
                     </button>
@@ -242,7 +242,7 @@
               </div>
 
               <!-- Direct upload for this figure -->
-              <label class="w-full px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-brown-700 dark:text-anthracite-100 rounded text-xs font-medium cursor-pointer flex items-center justify-center gap-1">
+               <label class="w-full px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-navy-700 dark:text-anthracite-100 rounded text-xs font-medium cursor-pointer flex items-center justify-center gap-1 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                 📤 {{ fig.item.Path ? 'Ganti' : 'Upload' }} Gambar
                 <input type="file" accept="image/*" class="hidden" @change="uploadForFigure($event, fig)" />
               </label>
@@ -257,7 +257,7 @@
               <div>
                 <label class="block text-xs font-medium text-ink-700 dark:text-ink-200 mb-1">Caption / Judul Gambar</label>
                 <input :value="fig.item.Title || ''" @input="fig.item.Title = ($event.target as HTMLInputElement).value"
-                  class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-white dark:bg-anthracite-800 text-ink-900 dark:text-ink-50 rounded text-sm outline-none focus:border-brown-400"
+                  class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-white dark:bg-anthracite-800 text-ink-900 dark:text-ink-50 rounded text-sm outline-none focus:border-navy-400"
                   placeholder="Fig. caption..." />
               </div>
 
@@ -269,7 +269,7 @@
                 </div>
                 <textarea :value="fig.item.Prompt || ''" @input="fig.item.Prompt = ($event.target as HTMLTextAreaElement).value"
                   rows="3"
-                  class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-white dark:bg-anthracite-800 text-ink-900 dark:text-ink-50 rounded text-xs outline-none focus:border-brown-400 resize-none"
+                  class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-white dark:bg-anthracite-800 text-ink-900 dark:text-ink-50 rounded text-xs outline-none focus:border-navy-400 resize-none"
                   placeholder="Deskripsi gambar untuk AI (contoh: 'create image: diagram of IoT architecture with 3 layers...')"></textarea>
               </div>
 
@@ -277,7 +277,7 @@
               <div class="flex items-center gap-2">
                 <button @click="generateForFigure(fig)" type="button"
                   :disabled="!String(fig.item.Prompt || '').trim() || !!figGenerating[fig.label]"
-                  class="px-3 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+                  class="px-3 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                   <span v-if="figGenerating[fig.label]" class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                   ✨ Generate Image
                 </button>

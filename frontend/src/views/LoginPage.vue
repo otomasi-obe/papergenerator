@@ -1,17 +1,17 @@
 <template>
-  <main class="min-h-screen bg-gradient-to-br from-brown-900 via-brown-800 to-stone-900 flex items-center justify-center px-4">
+  <main class="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center px-4">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center mb-3">
-          <img :src="logoWithText" alt="PaperFull" class="h-12 object-contain drop-shadow-[0_4px_24px_rgba(212,180,131,0.35)]" />
+          <img :src="logoWithText" alt="PaperFull" class="h-12 object-contain drop-shadow-[0_4px_24px_rgba(11,64,136,0.25)]" />
         </div>
         <p class="text-cream-200/70 text-sm">AI-powered academic paper writing tool</p>
       </div>
 
       <!-- Login Card -->
-      <div class="bg-cream-50/5 border border-cream-200/15 rounded-2xl p-8 backdrop-blur-sm">
-        <h2 class="text-cream-50 text-xl font-semibold mb-2 text-center">
+      <div class="bg-cream-50/5 border border-cream-300/30 rounded-2xl p-8 backdrop-blur-sm">
+        <h2 class="text-cream-50 text-xl font-semibold mb-2 text-center font-serif">
           {{ isRegister ? 'Create an account' : 'Sign in to your account' }}
         </h2>
         <p class="text-cream-200/70 text-sm text-center mb-7">
@@ -32,7 +32,7 @@
             </label>
             <input id="login-name" v-model="form.name" type="text" placeholder="Your full name"
               autocomplete="name" aria-required="true"
-              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-300/30 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-[#238f7f]/30" />
           </div>
           <div class="block">
             <label for="login-email" class="block text-xs font-medium mb-1 text-cream-200/80">
@@ -40,7 +40,7 @@
             </label>
             <input id="login-email" v-model="form.email" type="email" placeholder="you@example.com"
               autocomplete="email" inputmode="email" aria-required="true"
-              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300" />
+              class="w-full px-4 py-3 bg-cream-50/5 border border-cream-300/30 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-[#238f7f]/30" />
           </div>
           <div class="block">
             <label for="login-password" class="block text-xs font-medium mb-1 text-cream-200/80">
@@ -49,12 +49,12 @@
             <div class="relative">
               <input id="login-password" v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="Min. 8 chars, mix of types"
                 :autocomplete="isRegister ? 'new-password' : 'current-password'" aria-required="true"
-                class="w-full px-4 py-3 bg-cream-50/5 border border-cream-200/15 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-cream-300 focus:ring-1 focus:ring-cream-300 pr-12" />
+                class="w-full px-4 py-3 bg-cream-50/5 border border-cream-300/30 rounded-xl text-cream-50 placeholder-cream-200/70 text-sm focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-[#238f7f]/30 pr-12" />
               <button
                 type="button"
                 @click="showPassword = !showPassword"
                 :aria-label="showPassword ? 'Hide password' : 'Show password'"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink-500 hover:text-ink-700 dark:text-ink-300 dark:hover:text-ink-100"
               >
                 {{ showPassword ? 'Hide' : 'Show' }}
               </button>
@@ -68,22 +68,22 @@
               data-callback="onTurnstileSuccess"></div>
           </div>
           <button type="submit" :disabled="submitting"
-            class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-brown-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform">
+            class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-navy-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform">
             {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
           </button>
         </form>
 
         <!-- Divider -->
         <div class="flex items-center gap-3 mb-5">
-          <div class="flex-1 h-px bg-cream-200/15"></div>
+          <div class="flex-1 h-px bg-cream-300/30"></div>
           <span class="text-cream-200/70 text-xs">or</span>
-          <div class="flex-1 h-px bg-cream-200/15"></div>
+          <div class="flex-1 h-px bg-cream-300/30"></div>
         </div>
 
         <!-- Google Login Button -->
         <button
           @click="auth.loginWithGoogle()"
-          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-cream-50 text-brown-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-lg text-sm active:scale-95 transition-transform"
+          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-cream-50 text-navy-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-lg text-sm active:scale-95 transition-transform"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -117,12 +117,21 @@
   </main>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import api from '../api/index.js'
-import logoWithText from '../image/logo-with-text.png'
+const logoWithText = '/assets/logo-with-text.png'
+
+// Extend Window interface for Turnstile
+declare global {
+  interface Window {
+    turnstile?: any
+    onTurnstileLoad?: () => void
+    onTurnstileSuccess?: (token: string) => void
+  }
+}
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -183,9 +192,18 @@ const form = reactive({
   password: '',
 })
 
+const errorMessages: Record<string, string> = {
+  auth_failed: 'Google sign-in failed. Please try again.',
+  google_denied: 'You denied access. Please click "Continue with Google" and accept the permissions.',
+  invalid_state: 'Sign-in session invalid. Please close this tab and sign in again.',
+  csrf_detected: 'Security check failed. Please sign in again.',
+  session_expired: 'Sign-in session expired. Please try again.',
+}
+
 const errorMsg = computed(() => {
   if (formError.value) return formError.value
-  if (route.query.error === 'auth_failed') return 'Google sign-in failed. Please try again.'
+  const code = route.query.error as string
+  if (code && errorMessages[code]) return errorMessages[code]
   return null
 })
 
@@ -224,7 +242,7 @@ async function handleSubmit() {
     const res = await api.post(endpoint, payload)
     auth.setUser(res.data.user)
     router.push('/dashboard')
-  } catch (err) {
+  } catch (err: any) {
     formError.value = err.response?.data?.error || 'Something went wrong. Please try again.'
     if (turnstileWidgetId !== null && window.turnstile) {
       try { window.turnstile.reset(turnstileWidgetId) } catch {}

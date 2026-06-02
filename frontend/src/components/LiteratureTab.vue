@@ -4,7 +4,7 @@
       <!-- Header -->
       <div class="flex items-start justify-between gap-3 flex-wrap">
         <div class="min-w-0">
-          <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50">📚 Literatur</h2>
+          <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif">📚 Literatur</h2>
           <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
             Tabel referensi paper. Hasil SLR otomatis tersimpan di sini, dan bisa juga ditambah / diedit manual.
             Data ini dipakai sebagai sumber utama saat generate paper lengkap.
@@ -19,7 +19,7 @@
           >📂 Import dari File</button>
           <button
             @click="showAddManual = !showAddManual"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-brown-700 hover:bg-brown-800 text-cream-50"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-navy-700 hover:bg-navy-800 text-cream-50 active:scale-95 transition-transform"
           >＋ Tambah Manual</button>
         </div>
       </div>
@@ -39,7 +39,7 @@
       <!-- Run SLR -->
       <div ref="slrCardRef" class="rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 p-4">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50">🔍 Jalankan SLR</h3>
+          <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50 font-serif">🔍 Jalankan SLR</h3>
           <span class="text-[10px] text-ink-500 dark:text-anthracite-200">Multi-source (OpenAlex · Crossref · arXiv · IEEE · SINTA · ...)</span>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
@@ -50,7 +50,7 @@
             type="text"
             autocomplete="off"
             placeholder="Ketik topik (mis. 'reinforcement learning untuk navigasi AGV')"
-            class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 focus:ring-2 focus:ring-cream-200 outline-none"
+            class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
             :disabled="slrRunning"
           />
           <select
@@ -66,7 +66,7 @@
           <button
             @click="runSLR"
             :disabled="slrRunning || !slrQuery.trim()"
-            class="px-4 py-2 rounded-lg text-sm font-semibold bg-brown-700 hover:bg-brown-800 text-cream-50 disabled:opacity-50"
+            class="px-4 py-2 rounded-lg text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-cream-50 disabled:opacity-50 active:scale-95 transition-transform"
           >
             {{ slrRunning ? 'Mencari…' : 'Jalankan SLR' }}
           </button>
@@ -102,7 +102,7 @@
 
       <!-- Add manual form -->
       <div v-if="showAddManual" class="rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 p-4 space-y-2">
-        <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50">＋ Tambah Literatur Manual</h3>
+        <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50 font-serif">＋ Tambah Literatur Manual</h3>
         <input v-model="manualForm.title" placeholder="Judul *" autocomplete="off" class="input-sm w-full" />
         <input v-model="manualForm.authors_str" placeholder="Authors (pisah koma)" autocomplete="off" class="input-sm w-full" />
         <div class="grid grid-cols-2 gap-2">
@@ -227,6 +227,7 @@
               <th class="px-2 py-2 text-left">Venue</th>
               <th class="px-2 py-2 text-left">DOI / URL</th>
               <th class="px-2 py-2 text-left">Sumber</th>
+              <th class="px-2 py-2 text-left w-24">📥 PDF</th>
               <th class="px-2 py-2 text-left">
                 <button @click="setSort('citations')" class="hover:underline font-semibold">
                   Sitasi{{ sortIndicator('citations') }}
@@ -243,22 +244,22 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="13" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
+              <td colspan="14" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
             </tr>
             <tr v-else-if="items.length === 0">
-              <td colspan="13" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="14" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
                 <div class="space-y-3">
                   <div>Belum ada literatur. Jalankan SLR atau tambah manual untuk mulai.</div>
                   <button
                     v-if="paperTitle"
                     @click="startSLRFromPaperTopic"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brown-700 hover:bg-brown-800 text-cream-50"
+                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 text-cream-50 active:scale-95 transition-transform"
                   >Jalankan SLR otomatis dari topik paper ini</button>
                 </div>
               </td>
             </tr>
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="13" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="14" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
                 Tidak ada literatur yang cocok dengan filter ini. Coba ubah / kosongkan filter.
               </td>
             </tr>
@@ -320,6 +321,30 @@
                     {{ it.source || it.source_kind }}
                   </span>
                 </td>
+                <td class="px-2 py-2 align-top">
+                  <template v-if="it.pdf_url">
+                    <a :href="it.pdf_url" target="_blank" rel="noopener"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 transition-colors"
+                      title="Download PDF">
+                      📥 PDF
+                    </a>
+                  </template>
+                  <template v-else-if="it.doi">
+                    <a :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors"
+                      title="Buka DOI">
+                      🔗 DOI
+                    </a>
+                  </template>
+                  <template v-else-if="it.url">
+                    <a :href="safeUrl(it.url)" target="_blank" rel="noopener"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
+                      title="Buka URL">
+                      🔗 URL
+                    </a>
+                  </template>
+                  <span v-else class="text-ink-400 text-[10px]">–</span>
+                </td>
                 <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100">{{ it.citations ?? '–' }}</td>
                 <td class="px-2 py-2 align-top">
                   <span
@@ -377,6 +402,7 @@ interface LiteratureItem {
   publisher?: string
   doi?: string | null
   url?: string
+  pdf_url?: string | null
   summary?: string
   source?: string
   source_kind?: string
@@ -489,7 +515,7 @@ const filteredItems = computed<LiteratureItem[]>(() => {
     if (minY != null && (it.year == null || Number(it.year) < minY)) return false
     if (!q) return true
     const hay = [
-      it.title, it.venue, it.publisher, it.doi, it.url,
+      it.title, it.venue, it.publisher, it.doi, it.url, it.pdf_url,
       ((it.authors || []).join(', ')),
     ].join(' ').toLowerCase()
     return hay.includes(q)
@@ -568,7 +594,7 @@ function sourceBadgeClass(kind: string): string {
   switch (kind) {
     case 'slr':     return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
     case 'file':    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
-    case 'manual':  return 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
+    case 'manual':  return 'bg-cream-100 text-ink-700 dark:bg-anthracite-600 dark:text-anthracite-100'
     default:        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'
   }
 }
@@ -601,7 +627,7 @@ function stageBadgeClass(job: SLRJob | null): string {
     return 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100'
   }
   if (job?.status === 'queued' || job?.stage === 'queued') {
-    return 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100'
+    return 'bg-cream-100 text-ink-700 dark:bg-anthracite-700 dark:text-anthracite-100'
   }
   return 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
 }
@@ -1187,8 +1213,8 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 outline-none focus:ring-1 focus:ring-cream-200 dark:focus:ring-anthracite-500; }
-.btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-brown-700 hover:bg-brown-800 text-cream-50 disabled:opacity-50; }
+.input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
+.btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 text-cream-50 disabled:opacity-50 active:scale-95 transition-transform; }
 .btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700; }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

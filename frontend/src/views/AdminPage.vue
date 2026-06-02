@@ -99,7 +99,7 @@
               <div v-for="d in usage.daily" :key="d.date"
                 class="flex-1 bg-[var(--accent)]/70 rounded-t min-w-[6px] hover:bg-[var(--accent)] transition-colors cursor-default relative group"
                 :style="{ height: `${maxDailyCalls > 0 ? (d.calls / maxDailyCalls) * 100 : 0}%` }">
-                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-ink-900 text-cream-50 text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                   {{ d.date }}: {{ d.calls }} calls
                 </div>
               </div>
@@ -167,7 +167,7 @@
                     </td>
                     <td class="px-4 py-3">
                       <span :class="['text-xs px-2 py-0.5 rounded-full font-medium',
-                        u.role === 'admin' ? 'bg-cream-100 dark:bg-ash-700 text-ink-900 dark:text-ink-50' : 'bg-gray-100 text-ink-600 dark:text-ink-300']">
+                        u.role === 'admin' ? 'bg-cream-100 dark:bg-ash-700 text-ink-900 dark:text-ink-50' : 'bg-cream-100 text-ink-600 dark:text-ink-300 dark:text-ink-300']">
                         {{ u.role }}
                       </span>
                     </td>

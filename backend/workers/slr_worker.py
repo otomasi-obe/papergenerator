@@ -438,6 +438,7 @@ def _run_job(app, job_id: str):
                         publisher=rec.get("publisher") or pi.get("publisher") or "",
                         doi=doi_raw,
                         url=rec.get("url") or "",
+                        pdf_url=rec.get("pdf_url") or None,
                         abstract=rec.get("abstract") or "",
                         summary=rec.get("summary") or "",
                         citations=rec.get("citations"),

@@ -1,25 +1,35 @@
 <template>
   <article class="bg-cream-50 dark:bg-ash-800 rounded-xl border border-cream-300 dark:border-ash-700 p-4 hover:shadow-md transition-all">
     <div class="flex items-start justify-between gap-3 mb-2">
-      <h3 class="font-semibold text-ink-900 dark:text-ink-50 text-base leading-snug flex-1">
+      <h3 class="font-semibold text-ink-900 dark:text-ink-50 text-base leading-snug flex-1 font-serif">
         {{ item.title }}
       </h3>
-      <div class="flex gap-1 flex-shrink-0">
+      <div class="flex gap-1 flex-shrink-0 flex-wrap">
+        <a
+          v-if="(item as any).pdf_url"
+          :href="(item as any).pdf_url"
+          target="_blank"
+          rel="noopener"
+          class="px-2 py-1 text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 rounded transition-colors font-medium"
+          title="Download PDF"
+        >
+          📥 PDF
+        </a>
         <button
-          v-if="item.doi"
+          v-if="item.doi && !(item as any).pdf_url"
           @click="openDoi"
-          class="px-2 py-1 text-xs bg-cream-200 dark:bg-ash-700 hover:bg-cream-300 dark:hover:bg-ash-600 rounded transition-colors"
+          class="px-2 py-1 text-xs bg-cream-200 dark:bg-ash-700 hover:bg-cream-300 dark:hover:bg-ash-600 rounded transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
           title="Open DOI"
         >
-          DOI
+          🔗 DOI
         </button>
         <button
-          v-if="item.url"
+          v-if="item.url && !(item as any).pdf_url"
           @click="openUrl"
-          class="px-2 py-1 text-xs bg-cream-200 dark:bg-ash-700 hover:bg-cream-300 dark:hover:bg-ash-600 rounded transition-colors"
+          class="px-2 py-1 text-xs bg-cream-200 dark:bg-ash-700 hover:bg-cream-300 dark:hover:bg-ash-600 rounded transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
           title="Open URL"
         >
-          URL
+          🔗 URL
         </button>
       </div>
     </div>
@@ -38,7 +48,7 @@
         <span v-if="item.citations !== null && item.citations !== undefined" class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">
           {{ item.citations }} citations
         </span>
-        <span v-if="item.score_total !== null && item.score_total !== undefined" class="px-2 py-0.5 rounded-full bg-brown-100 dark:bg-brown-900/30 text-brown-800 dark:text-brown-300">
+         <span v-if="item.score_total !== null && item.score_total !== undefined" class="px-2 py-0.5 rounded-full bg-navy-100 dark:bg-navy-900/30 text-navy-800 dark:text-navy-300">
           Score: {{ item.score_total.toFixed(2) }}
         </span>
         <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">
@@ -54,13 +64,13 @@
     <div class="flex gap-2">
       <button
         @click="$emit('add-to-library', item)"
-        class="flex-1 px-3 py-1.5 min-h-[44px] bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-sm rounded-lg transition-colors font-medium"
+        class="flex-1 px-3 py-1.5 min-h-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-sm rounded-lg transition-colors font-medium active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
       >
         Add to Library
       </button>
       <button
         @click="expanded = !expanded"
-        class="px-3 py-1.5 min-h-[44px] bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-sm rounded-lg transition-colors"
+        class="px-3 py-1.5 min-h-[44px] bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-sm rounded-lg transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
       >
         {{ expanded ? 'Less' : 'More' }}
       </button>

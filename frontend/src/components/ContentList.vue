@@ -10,7 +10,7 @@
         <!-- Item header -->
         <div class="flex items-center justify-between mb-1.5">
           <div class="flex items-center gap-1.5">
-            <span class="content-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-brown-500 select-none text-base leading-none px-0.5" role="button" aria-label="Drag to reorder">⠿</span>
+             <span class="content-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-navy-500 select-none text-base leading-none px-0.5" role="button" aria-label="Drag to reorder">⠿</span>
             <span v-if="item.id !== 'gambar'" class="text-[10px] font-medium uppercase tracking-wide pl-1.5 border-l-2"
               :class="badgeClass(item.id)">
               {{ badgeLabel(item, idx) }}
@@ -30,14 +30,14 @@
             @input="item.text = ($event.target as HTMLTextAreaElement).value"
             v-autosize
             rows="2"
-            class="w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-brown-400 outline-none break-words"
+             class="w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-navy-400 outline-none break-words"
             placeholder="Write text content... Use [1], [2] for citations."></textarea>
         </template>
 
         <!-- IMAGE / GAMBAR -->
         <template v-else-if="item.id === 'gambar'">
           <div class="space-y-2">
-            <input v-model="item.Title" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm outline-none focus:border-brown-400"
+             <input v-model="item.Title" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm outline-none focus:border-navy-400"
               placeholder="Image Title / Caption" />
 
             <!-- Thumbnail (always rendered when there's a path or live preview from current job) -->
@@ -50,19 +50,19 @@
             <!-- Action row: Upload + Gallery + Prompt toggle. Layout is identical
                  whether or not an image exists, so the toolbar doesn't shift. -->
             <div class="flex items-center gap-2 flex-wrap">
-              <label class="px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-brown-700 dark:text-anthracite-100 rounded text-xs cursor-pointer flex items-center gap-1 font-medium">
+               <label class="px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-navy-700 dark:text-anthracite-100 rounded text-xs cursor-pointer flex items-center gap-1 font-medium focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                 📤 {{ item.Path ? 'Replace' : 'Upload' }}
                 <input type="file" accept="image/*" class="hidden" @change="uploadContentImage($event, item)" />
               </label>
               <button @click="toggleGallery(item)" type="button"
-                class="px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-brown-700 dark:text-anthracite-100 rounded text-xs font-medium flex items-center gap-1">
+                class="px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-navy-700 dark:text-anthracite-100 rounded text-xs font-medium flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                 <span>{{ galleryOpen[stableKey(item)] ? '▾' : '▸' }}</span>
                 <span>🖼 Set dari galeri</span>
                 <span v-if="store.figureSources.length"
-                  class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-brown-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 text-[10px] font-bold">{{ store.figureSources.length }}</span>
+                  class="inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 text-[10px] font-bold">{{ store.figureSources.length }}</span>
               </button>
               <button @click="togglePrompt(item)" type="button"
-                class="px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-brown-700 dark:text-anthracite-100 rounded text-xs font-medium flex items-center gap-1">
+                class="px-2.5 py-1.5 bg-cream-200 dark:bg-anthracite-600 hover:bg-cream-300 dark:hover:bg-anthracite-500 text-navy-700 dark:text-anthracite-100 rounded text-xs font-medium flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                 <span>{{ promptOpen[stableKey(item)] ? '▾' : '▸' }}</span>
                 <span>Prompt &amp; Generate</span>
               </button>
@@ -91,8 +91,8 @@
                   :disabled="store.isSourceUsedByOther(src.filename, item)"
                   :class="['group/src relative rounded border overflow-hidden text-left transition-all',
                     item.Path === src.filename
-                      ? 'border-brown-600 dark:border-cream-300 ring-2 ring-brown-300 dark:ring-cream-500'
-                      : 'border-cream-300 dark:border-anthracite-500 hover:border-brown-400',
+                      ? 'border-navy-600 dark:border-cream-300 ring-2 ring-navy-300 dark:ring-cream-500'
+                      : 'border-cream-300 dark:border-anthracite-500 hover:border-navy-400',
                     store.isSourceUsedByOther(src.filename, item)
                       ? 'opacity-45 cursor-not-allowed'
                       : 'cursor-pointer']"
@@ -105,7 +105,7 @@
                          @error="onThumbError($event, item)" />
                   </div>
                   <span class="absolute top-1 left-1 text-[9px] px-1 rounded bg-black/55 text-white font-medium">{{ srcKindLabel(src.kind) }}</span>
-                  <span v-if="item.Path === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-brown-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
+                   <span v-if="item.Path === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
                   <span v-else-if="store.isSourceUsedByOther(src.filename, item)" class="absolute top-1 right-1 text-[9px] px-1 rounded bg-amber-500 text-white font-medium">Fig {{ otherFigLabel(src.filename) }}</span>
                   <span class="block text-[10px] text-ink-700 dark:text-anthracite-100 px-1 py-0.5 truncate">{{ src.label }}</span>
                 </button>
@@ -118,11 +118,11 @@
                 @input="item.Prompt = ($event.target as HTMLTextAreaElement).value"
                 v-autosize
                 rows="2"
-                class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 rounded text-xs outline-none focus:border-brown-400 text-brown-700 dark:text-anthracite-100 dark:placeholder-anthracite-300"
+                 class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 rounded text-xs outline-none focus:border-navy-400 text-navy-700 dark:text-anthracite-100 dark:placeholder-anthracite-300"
                 placeholder="AI Image Prompt (deskripsi gambar untuk Gemini)"></textarea>
               <button @click="generateImage(item)" type="button"
                 :disabled="!String(item.Prompt || '').trim() || !!generating[stableKey(item)]"
-                class="px-2.5 py-1.5 bg-brown-700 hover:bg-brown-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+                class="px-2.5 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                 <span v-if="generating[stableKey(item)]" class="w-3 h-3 border-2 border-cream-50 dark:border-ash-900 border-t-transparent rounded-full animate-spin"></span>
                 ✨ Generate Image
               </button>
@@ -133,7 +133,7 @@
         <!-- TABLE / TABEL -->
         <template v-else-if="item.id === 'tabel'">
           <div class="space-y-2">
-            <input v-model="item.Title" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm outline-none focus:border-brown-400"
+             <input v-model="item.Title" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm outline-none focus:border-navy-400"
               placeholder="Table Title" />
             <div class="overflow-x-auto">
               <table class="w-full text-xs border-collapse">
@@ -142,22 +142,22 @@
                     <th v-for="(h, ci) in item.Headers" :key="ci"
                       class="border border-cream-300 dark:border-anthracite-500 bg-cream-100 dark:bg-anthracite-700 p-0 relative">
                       <input :value="h" @input="item.Headers[ci] = ($event.target as HTMLInputElement).value"
-                        class="w-full px-2 py-1.5 text-xs font-semibold bg-transparent text-brown-900 dark:text-anthracite-50 outline-none text-center" />
+                        class="w-full px-2 py-1.5 text-xs font-semibold bg-transparent text-navy-900 dark:text-anthracite-50 outline-none text-center" />
                       <button v-if="item.Headers.length > 1"
                         @click="store.removeTableCol(item, ci)"
                         class="absolute -top-2 -right-2 bg-red-400 text-white rounded-full w-4 h-4 text-[10px] leading-none opacity-0 group-hover:opacity-100">✕</button>
                     </th>
                     <th class="w-8">
-                      <button @click="store.addTableCol(item)"
-                        class="text-brown-400 dark:text-anthracite-300 hover:text-brown-700 dark:hover:text-anthracite-50 text-xs">+</button>
+                       <button @click="store.addTableCol(item)"
+                        class="text-navy-400 dark:text-anthracite-300 hover:text-navy-700 dark:hover:text-anthracite-50 text-xs focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">+</button>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row, ri) in item.Rows" :key="ri">
                     <td v-for="(cell, ci) in row" :key="ci" class="border border-cream-300 dark:border-anthracite-500 p-0">
-                      <input :value="cell" @input="item.Rows[ri][ci] = ($event.target as HTMLInputElement).value"
-                        class="w-full px-2 py-1 text-xs bg-transparent text-brown-900 dark:text-anthracite-50 outline-none" />
+                       <input :value="cell" @input="item.Rows[ri][ci] = ($event.target as HTMLInputElement).value"
+                        class="w-full px-2 py-1 text-xs bg-transparent text-navy-900 dark:text-anthracite-50 outline-none" />
                     </td>
                     <td class="w-8 text-center">
                       <button @click="store.removeTableRow(item, ri)"
@@ -167,16 +167,16 @@
                 </tbody>
               </table>
             </div>
-            <button @click="store.addTableRow(item)"
-              class="text-xs text-brown-600 dark:text-anthracite-100 hover:text-brown-800 dark:hover:text-anthracite-50">+ Add Row</button>
+             <button @click="store.addTableRow(item)"
+              class="text-xs text-navy-600 dark:text-anthracite-100 hover:text-navy-800 dark:hover:text-anthracite-50 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">+ Add Row</button>
           </div>
         </template>
 
         <!-- FORMULA / RUMUS -->
         <template v-else-if="item.id === 'rumus'">
-          <input v-model="item.latex" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-brown-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm font-mono outline-none focus:border-brown-400"
+           <input v-model="item.latex" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm font-mono outline-none focus:border-navy-400"
             placeholder="LaTeX formula, e.g. T_{total} \approx \max(T_{cap}, T_{inf}, T_{modbus})" />
-          <div v-if="item.latex" class="mt-1.5 text-xs text-brown-400 dark:text-anthracite-300 font-mono bg-cream-100 dark:bg-anthracite-700 dark:text-anthracite-100 px-2 py-1 rounded break-all">
+           <div v-if="item.latex" class="mt-1.5 text-xs text-navy-400 dark:text-anthracite-300 font-mono bg-cream-100 dark:bg-anthracite-700 dark:text-anthracite-100 px-2 py-1 rounded break-all">
             Preview: {{ item.latex }}
           </div>
         </template>
@@ -189,8 +189,8 @@
         <button type="button"
           @click="toggleInsert(idx)"
           :class="['w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all',
-                   'bg-cream-100 dark:bg-anthracite-700 border border-cream-300 dark:border-anthracite-500 text-brown-500 dark:text-anthracite-100',
-                   'hover:bg-brown-700 hover:border-brown-700 hover:text-cream-50 dark:hover:bg-cream-200 dark:hover:text-ash-900',
+                   'bg-cream-100 dark:bg-anthracite-700 border border-cream-300 dark:border-anthracite-500 text-navy-500 dark:text-anthracite-100',
+                   'hover:bg-navy-700 hover:border-navy-700 hover:text-cream-50 dark:hover:bg-cream-200 dark:hover:text-ash-900',
                    insertOpen === idx ? 'opacity-100 scale-110' : 'opacity-0 group-hover:opacity-100 focus:opacity-100',
                    'shadow-sm']"
           title="Tambah konten setelah box ini">+</button>
@@ -318,12 +318,12 @@ function stableKey(obj: any): string {
 
 function badgeClass(id: string): string {
   const map: Record<string, string> = {
-    text: 'border-cream-300 text-brown-500 dark:text-anthracite-100',
-    gambar: 'border-amber-300 text-amber-600 dark:text-amber-300',
-    tabel: 'border-emerald-300 text-emerald-600 dark:text-emerald-300',
-    rumus: 'border-cream-400 text-brown-600 dark:text-anthracite-100'
+     text: 'border-cream-300 text-navy-500 dark:text-anthracite-100',
+     gambar: 'border-amber-300 text-amber-600 dark:text-amber-300',
+     tabel: 'border-emerald-300 text-emerald-600 dark:text-emerald-300',
+     rumus: 'border-cream-400 text-navy-600 dark:text-anthracite-100'
   }
-  return map[id] || 'border-cream-300 text-brown-500'
+   return map[id] || 'border-cream-300 text-navy-500'
 }
 
 function badgeLabel(item: ContentItem, _idx: number): string {

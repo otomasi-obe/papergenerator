@@ -12,7 +12,7 @@
       </div>
       <button
         @click="openAddSource"
-        class="shrink-0 px-3 py-1.5 bg-brown-600 hover:bg-brown-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-xs font-medium">
+        class="shrink-0 px-3 py-1.5 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-xs font-medium active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
         ＋ Tambah sumber data
       </button>
     </div>
@@ -25,7 +25,7 @@
             @click="sourceMode = 'upload'"
             :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
               sourceMode === 'upload'
-                ? 'bg-brown-600 text-cream-50 dark:bg-cream-200 dark:text-ash-900'
+                ? 'bg-navy-600 text-cream-50 dark:bg-cream-200 dark:text-ash-900'
                 : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700']">
             📁 Unggah file
           </button>
@@ -33,7 +33,7 @@
             @click="sourceMode = 'manual'"
             :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
               sourceMode === 'manual'
-                ? 'bg-brown-600 text-cream-50 dark:bg-cream-200 dark:text-ash-900'
+                ? 'bg-navy-600 text-cream-50 dark:bg-cream-200 dark:text-ash-900'
                 : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700']">
             ⌨ Input manual
           </button>
@@ -52,7 +52,7 @@
             @change="onFileSelected"
           />
           <div
-            class="border-2 border-dashed border-cream-400 dark:border-ash-600 rounded-xl p-6 text-center cursor-pointer hover:border-brown-500 dark:hover:border-cream-400 transition-colors"
+            class="border-2 border-dashed border-cream-400 dark:border-ash-600 rounded-xl p-6 text-center cursor-pointer hover:border-navy-500 dark:hover:border-cream-400 transition-colors"
             @click="fileInput?.click()"
             @dragover.prevent
             @drop.prevent="onFileDrop"
@@ -66,7 +66,7 @@
           </div>
 
           <div v-if="extractState === 'loading'" class="mt-3 flex items-center gap-2 text-sm text-ink-600 dark:text-ink-300">
-            <span class="inline-block w-4 h-4 border-2 border-cream-300 border-t-brown-600 rounded-full animate-spin"></span>
+             <span class="inline-block w-4 h-4 border-2 border-cream-300 border-t-navy-600 rounded-full animate-spin"></span>
             Mengekstrak data dari <strong>{{ pendingFilename }}</strong>…
           </div>
 
@@ -92,7 +92,7 @@
           ></textarea>
           <button
             @click="applyManual"
-            class="mt-2 px-4 py-2 bg-brown-600 hover:bg-brown-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium">
+             class="mt-2 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
             Tambahkan sumber data
           </button>
           <p v-if="manualError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ manualError }}</p>
@@ -104,8 +104,8 @@
     <div v-if="!sources.length && !addingSource"
       class="border-2 border-dashed border-cream-300 dark:border-ash-700 rounded-xl p-10 text-center text-ink-500 dark:text-ink-400">
       <p class="text-sm">Belum ada sumber data.</p>
-      <button @click="openAddSource"
-        class="mt-3 px-4 py-2 bg-brown-600 hover:bg-brown-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium">
+       <button @click="openAddSource"
+        class="mt-3 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
         ＋ Tambah sumber data
       </button>
     </div>
@@ -124,15 +124,15 @@
         <div class="flex items-center gap-2 min-w-0">
           <span class="text-base leading-none">{{ source.type === 'manual' ? '⌨' : '📄' }}</span>
           <input v-model="source.name"
-            class="font-semibold text-sm text-ink-800 dark:text-ink-100 bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-brown-500 dark:focus:border-cream-400 focus:bg-white dark:focus:bg-ash-900 rounded px-1.5 py-0.5 outline-none truncate max-w-xs"
+             class="font-semibold text-sm text-ink-800 dark:text-ink-100 bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-navy-500 dark:focus:border-cream-400 focus:bg-white dark:focus:bg-ash-900 rounded px-1.5 py-0.5 outline-none truncate max-w-xs"
             :title="source.name" />
           <span class="text-xs text-ink-500 dark:text-ink-400 shrink-0 whitespace-nowrap">
             {{ source.rows.length }} baris × {{ source.columns.length }} kolom
           </span>
         </div>
         <div class="flex gap-1.5 shrink-0">
-          <button @click="addTable(source)"
-            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-brown-600 hover:bg-brown-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900">
+           <button @click="addTable(source)"
+            class="px-2.5 py-1 rounded-lg text-xs font-medium bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
             ＋ Tabel
           </button>
           <button @click="removeSource(source)"
@@ -155,7 +155,7 @@
             <div class="flex items-center gap-2 min-w-0">
               <span class="text-sm leading-none">🗂</span>
               <input v-model="table.name"
-                class="text-sm font-semibold text-ink-700 dark:text-ink-100 bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-brown-500 dark:focus:border-cream-400 focus:bg-white dark:focus:bg-ash-900 rounded px-1.5 py-0.5 outline-none truncate max-w-[12rem]" />
+                class="text-sm font-semibold text-ink-700 dark:text-ink-100 bg-transparent border border-transparent hover:border-cream-400 dark:hover:border-ash-600 focus:border-navy-500 dark:focus:border-cream-400 focus:bg-white dark:focus:bg-ash-900 rounded px-1.5 py-0.5 outline-none truncate max-w-[12rem]" />
               <span class="text-xs text-ink-500 dark:text-ink-400 shrink-0 whitespace-nowrap">
                 {{ table.rows.length }} × {{ table.columns.length }}
               </span>
@@ -163,7 +163,7 @@
             <div class="flex gap-1.5 shrink-0">
               <button @click="addColumn(table)" class="px-2 py-1 rounded-lg text-xs font-medium text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700">+ Kolom</button>
               <button @click="addRow(table)" class="px-2 py-1 rounded-lg text-xs font-medium text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700">+ Baris</button>
-              <button @click="newChart(table)" class="px-2 py-1 rounded-lg text-xs font-medium bg-brown-600 hover:bg-brown-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900">＋ Grafik</button>
+               <button @click="newChart(table)" class="px-2 py-1 rounded-lg text-xs font-medium bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">＋ Grafik</button>
               <button @click="removeTable(source, table)" class="px-2 py-1 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30">Hapus</button>
             </div>
           </div>
@@ -253,7 +253,7 @@
                     <div class="flex flex-wrap gap-1.5 p-2 border border-cream-300 dark:border-ash-600 rounded-lg bg-white dark:bg-ash-900 min-h-[2.5rem]">
                       <label v-for="(col, i) in table.columns" :key="i"
                         class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer"
-                        :class="form.yCols.includes(i) ? 'bg-brown-600 text-cream-50 dark:bg-cream-200 dark:text-ash-900' : 'bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-200'">
+                         :class="form.yCols.includes(i) ? 'bg-navy-600 text-cream-50 dark:bg-cream-200 dark:text-ash-900' : 'bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-200'">
                         <input type="checkbox" class="hidden" :value="i" v-model="form.yCols" />
                         {{ col || `Kolom ${i + 1}` }}
                       </label>
@@ -266,12 +266,12 @@
                 </div>
 
                 <div class="flex gap-2">
-                  <button @click="saveChart(table)" :disabled="saving"
-                    class="px-4 py-2 bg-brown-600 hover:bg-brown-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50">
+                   <button @click="saveChart(table)" :disabled="saving"
+                    class="px-4 py-2 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                     {{ saving ? 'Membuat…' : 'Buat Grafik' }}
                   </button>
                   <button @click="cancelEdit"
-                    class="px-4 py-2 bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-200 rounded-lg text-sm font-medium hover:bg-cream-300 dark:hover:bg-ash-600">
+                    class="px-4 py-2 bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-200 rounded-lg text-sm font-medium hover:bg-cream-300 dark:hover:bg-ash-600 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                     Batal
                   </button>
                 </div>

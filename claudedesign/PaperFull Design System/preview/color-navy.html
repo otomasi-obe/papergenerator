@@ -1,0 +1,31 @@
+<!-- @dsCard group="Colors" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<style>
+  body { margin: 0; padding: 20px 22px; background: var(--bg-surface); font-family: var(--font-sans); }
+  .row { display: flex; gap: 0; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-card); }
+  .sw { flex: 1; height: 92px; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px 9px; box-sizing: border-box; }
+  .sw .n { font-size: 11px; font-weight: 600; }
+  .sw .h { font-family: var(--font-mono); font-size: 9.5px; opacity: .85; }
+  .cap { display:flex; align-items:baseline; gap:8px; margin: 0 0 12px; }
+  .cap b { font-size: 14px; color: var(--fg-strong); font-weight: 700; }
+  .cap span { font-size: 12px; color: var(--fg-muted); }
+</style>
+</head>
+<body>
+  <div class="cap"><b>Navy — Biru Laut</b><span>Primary brand · CTA = navy-700 · link = navy-500</span></div>
+  <div class="row">
+    <div class="sw" style="background:var(--navy-50); color:#0b4088"><span class="n">50</span><span class="h">ebf3ff</span></div>
+    <div class="sw" style="background:var(--navy-200); color:#082f6a"><span class="n">200</span><span class="h">a1c9f6</span></div>
+    <div class="sw" style="background:var(--navy-400); color:#fff"><span class="n">400</span><span class="h">2e82e0</span></div>
+    <div class="sw" style="background:var(--navy-500); color:#fff"><span class="n">500</span><span class="h">1265c8</span></div>
+    <div class="sw" style="background:var(--navy-700); color:#fff"><span class="n">700 · CTA</span><span class="h">0b4088</span></div>
+    <div class="sw" style="background:var(--navy-800); color:#fff"><span class="n">800</span><span class="h">082f6a</span></div>
+    <div class="sw" style="background:var(--navy-900); color:#fff"><span class="n">900</span><span class="h">051d49</span></div>
+    <div class="sw" style="background:var(--navy-950); color:#fff"><span class="n">950</span><span class="h">020d2a</span></div>
+  </div>
+</body>
+</html>

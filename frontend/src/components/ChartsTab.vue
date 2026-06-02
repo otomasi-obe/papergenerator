@@ -1,24 +1,24 @@
 <template>
   <div class="p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-brown-800">Charts</h2>
+      <h2 class="text-lg font-semibold text-navy-800">Charts</h2>
       <button @click="showEditor = true"
-        class="px-4 py-2 bg-brown-600 text-cream-50 rounded-lg hover:bg-brown-700 text-sm font-medium">
+        class="px-4 py-2 bg-navy-600 text-cream-50 rounded-lg hover:bg-navy-700 text-sm font-medium active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
         + Add Chart
       </button>
     </div>
 
-    <p class="text-sm text-brown-500 mb-4">
+    <p class="text-sm text-navy-500 mb-4">
       Create charts from your data. Reference in sections with
-      <code class="bg-cream-200 text-brown-800 px-1 rounded">[CHART:chart-1]</code>
+      <code class="bg-cream-200 text-navy-800 px-1 rounded">[CHART:chart-1]</code>
     </p>
 
-    <div v-if="loading" class="text-center py-12 text-brown-400">
+    <div v-if="loading" class="text-center py-12 text-navy-400">
       <p>Loading charts...</p>
     </div>
 
     <div v-else-if="charts.length === 0 && !showEditor"
-      class="text-center py-12 text-brown-400">
+      class="text-center py-12 text-navy-400">
       <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -28,18 +28,18 @@
 
     <div v-if="showEditor" class="border border-cream-200 rounded-xl mb-6 overflow-hidden bg-cream-50">
       <div class="bg-cream-100 px-4 py-3 flex items-center justify-between border-b border-cream-200">
-        <span class="text-sm font-semibold text-brown-700">
+        <span class="text-sm font-semibold text-navy-700">
           {{ editingChart ? 'Edit Chart' : 'New Chart' }}
         </span>
-        <button @click="cancelEdit"
-          class="text-brown-400 hover:text-brown-600 text-sm">✕ Cancel</button>
+          <button @click="cancelEdit"
+          class="text-navy-400 hover:text-navy-600 text-sm">✕ Cancel</button>
       </div>
 
       <div class="p-4 space-y-4">
         <div>
-          <label class="block text-xs text-brown-500 mb-1">Chart Type</label>
+            <label class="block text-xs text-navy-500 mb-1">Chart Type</label>
           <select v-model="chartForm.kind"
-            class="w-full px-3 py-2 border border-cream-300 bg-white text-brown-900 rounded text-sm">
+            class="w-full px-3 py-2 border border-cream-300 bg-white text-navy-900 rounded text-sm">
             <option value="line">Line Chart</option>
             <option value="bar">Bar Chart</option>
             <option value="scatter">Scatter Plot</option>
@@ -51,50 +51,50 @@
         </div>
 
         <div>
-          <label class="block text-xs text-brown-500 mb-1">Title</label>
+            <label class="block text-xs text-navy-500 mb-1">Title</label>
           <input v-model="chartForm.title" placeholder="Chart title"
-            class="w-full px-3 py-2 border border-cream-300 bg-white text-brown-900 rounded text-sm" />
+            class="w-full px-3 py-2 border border-cream-300 bg-white text-navy-900 rounded text-sm" />
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs text-brown-500 mb-1">X-axis Label</label>
-            <input v-model="chartForm.xlabel" placeholder="X-axis"
-              class="w-full px-3 py-2 border border-cream-300 bg-white text-brown-900 rounded text-sm" />
+            <label class="block text-xs text-navy-500 mb-1">X-axis Label</label>
+          <input v-model="chartForm.xlabel" placeholder="X-axis"
+            class="w-full px-3 py-2 border border-cream-300 bg-white text-navy-900 rounded text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-brown-500 mb-1">Y-axis Label</label>
-            <input v-model="chartForm.ylabel" placeholder="Y-axis"
-              class="w-full px-3 py-2 border border-cream-300 bg-white text-brown-900 rounded text-sm" />
+            <label class="block text-xs text-navy-500 mb-1">Y-axis Label</label>
+          <input v-model="chartForm.ylabel" placeholder="Y-axis"
+            class="w-full px-3 py-2 border border-cream-300 bg-white text-navy-900 rounded text-sm" />
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-brown-500 mb-2">Data Input Method</label>
+            <label class="block text-xs text-navy-500 mb-2">Data Input Method</label>
           <div class="flex gap-2 mb-3">
-            <button @click="dataInputMethod = 'manual'"
-              :class="['px-3 py-1.5 rounded text-sm', dataInputMethod === 'manual' ? 'bg-brown-600 text-white' : 'bg-cream-200 text-brown-700']">
+             <button @click="dataInputMethod = 'manual'"
+              :class="['px-3 py-1.5 rounded text-sm', dataInputMethod === 'manual' ? 'bg-navy-600 text-white' : 'bg-cream-200 text-navy-700']">
               Manual Entry
             </button>
             <button @click="dataInputMethod = 'upload'"
-              :class="['px-3 py-1.5 rounded text-sm', dataInputMethod === 'upload' ? 'bg-brown-600 text-white' : 'bg-cream-200 text-brown-700']">
+              :class="['px-3 py-1.5 rounded text-sm', dataInputMethod === 'upload' ? 'bg-navy-600 text-white' : 'bg-cream-200 text-navy-700']">
               Upload File
             </button>
           </div>
 
           <div v-if="dataInputMethod === 'manual'">
-            <label class="block text-xs text-brown-500 mb-1">Data (JSON format)</label>
-            <textarea v-model="dataJson" rows="6" placeholder='{"data": [[1,2,3]], "series_labels": ["Series 1"], "x_data": ["A","B","C"]}'
-              class="w-full px-3 py-2 border border-cream-300 bg-white text-brown-900 rounded text-sm font-mono"></textarea>
-            <p class="text-xs text-brown-400 mt-1">
+            <label class="block text-xs text-navy-500 mb-1">Data (JSON format)</label>
+          <textarea v-model="dataJson" rows="6" placeholder='{"data": [[1,2,3]], "series_labels": ["Series 1"], "x_data": ["A","B","C"]}'
+              class="w-full px-3 py-2 border border-cream-300 bg-white text-navy-900 rounded text-sm font-mono"></textarea>
+            <p class="text-xs text-navy-400 mt-1">
               Format: data (required), series_labels (optional), x_data (optional)
             </p>
           </div>
 
           <div v-else>
             <input type="file" @change="handleFileUpload" accept=".csv,.tsv,.xlsx,.xls"
-              class="w-full px-3 py-2 border border-cream-300 bg-white text-brown-900 rounded text-sm" />
-            <p class="text-xs text-brown-400 mt-1">
+              class="w-full px-3 py-2 border border-cream-300 bg-white text-navy-900 rounded text-sm" />
+            <p class="text-xs text-navy-400 mt-1">
               Upload CSV, TSV, or Excel file
             </p>
             <div v-if="uploadedData" class="mt-2 p-2 bg-cream-100 rounded text-xs">
@@ -110,11 +110,11 @@
 
         <div class="flex gap-2">
           <button @click="saveChart" :disabled="saving"
-            class="px-4 py-2 bg-brown-600 text-white rounded hover:bg-brown-700 text-sm font-medium disabled:opacity-50">
+            class="px-4 py-2 bg-navy-600 text-white rounded hover:bg-navy-700 text-sm font-medium disabled:opacity-50 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
             {{ saving ? 'Saving...' : (editingChart ? 'Update Chart' : 'Create Chart') }}
           </button>
           <button @click="cancelEdit"
-            class="px-4 py-2 bg-cream-200 text-brown-700 rounded hover:bg-cream-300 text-sm font-medium">
+            class="px-4 py-2 bg-cream-200 text-navy-700 rounded hover:bg-cream-300 text-sm font-medium focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
             Cancel
           </button>
         </div>
@@ -124,12 +124,12 @@
     <div v-for="chart in charts" :key="chart.image_id"
       class="border border-cream-200 rounded-xl mb-4 overflow-hidden">
       <div class="bg-cream-100 px-4 py-3 flex items-center justify-between border-b border-cream-200">
-        <span class="text-sm font-semibold text-brown-700">
+        <span class="text-sm font-semibold text-navy-700">
           {{ chart.kind }} - {{ chart.original_name }}
         </span>
         <div class="flex gap-2">
           <button @click="editChart(chart)"
-            class="text-brown-600 hover:text-brown-800 text-sm">Edit</button>
+             class="text-navy-600 hover:text-navy-800 text-sm">Edit</button>
           <button @click="deleteChart(chart.image_id)"
             class="text-red-400 hover:text-red-600 text-sm">Delete</button>
         </div>
@@ -138,7 +138,7 @@
       <div class="p-4">
         <img :src="chart.url" :alt="chart.original_name" class="max-w-full h-auto rounded border border-cream-300" />
         <div class="mt-3 bg-cream-100 border border-cream-200 rounded p-2">
-          <p class="text-xs text-brown-700">
+            <p class="text-xs text-navy-700">
             <strong>Usage:</strong> Insert <code class="bg-cream-200 px-1 rounded">{{ `[CHART:${chart.image_id}]` }}</code> in section content.
           </p>
         </div>

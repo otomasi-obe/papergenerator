@@ -38,10 +38,10 @@
       <button
         type="button"
         @click="emit('accept', { imageId, spec, url })"
-        class="px-3 py-1.5 rounded-md text-xs font-medium
-               bg-brown-600 hover:bg-brown-700 text-cream-50
-               dark:bg-cream-300 dark:hover:bg-cream-200 dark:text-ink-900
-               focus:outline-none focus:ring-2 focus:ring-brown-400 dark:focus:ring-cream-400"
+         class="px-3 py-1.5 rounded-md text-xs font-medium active:scale-95 transition-transform
+                bg-navy-600 hover:bg-navy-700 text-cream-50
+                dark:bg-cream-300 dark:hover:bg-cream-200 dark:text-ink-900
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 dark:focus:ring-cream-400"
       >
         Pakai chart ini
       </button>
@@ -51,8 +51,8 @@
         class="px-3 py-1.5 rounded-md text-xs font-medium border
                bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600
                border-cream-300 dark:border-ash-600
-               text-ink-800 dark:text-ink-100
-               focus:outline-none focus:ring-2 focus:ring-brown-400 dark:focus:ring-cream-400"
+                text-ink-800 dark:text-ink-100
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 dark:focus:ring-cream-400"
       >
         Generate ulang
       </button>

@@ -1,7 +1,7 @@
 <template>
   <div :class="['my-2 group/diff relative rounded-lg overflow-hidden', align === 'center' ? 'text-center' : '']">
-    <details class="bg-rose-50/60 border-l-4 border-rose-300 px-3 py-2 text-slate-700">
-      <summary class="text-[10px] uppercase tracking-wide text-rose-600 font-semibold cursor-pointer">− Removed / Sebelum · Show original</summary>
+    <details class="bg-rose-50/60 border-l-4 border-rose-300 px-3 py-2 text-ink-700">
+      <summary class="text-[10px] uppercase tracking-wide text-rose-600 font-semibold cursor-pointer focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">− Removed / Sebelum · Show original</summary>
       <div class="mt-1">
         <slot name="before" />
       </div>
@@ -13,14 +13,14 @@
           <button
             @click="handleAccept"
             :disabled="processing"
-            class="px-2 py-0.5 min-h-[44px] min-w-[44px] text-[10px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            class="px-2 py-0.5 min-h-[44px] min-w-[44px] text-[10px] font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-opacity focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 active:scale-95 transition-transform"
             title="Accept this change"
             aria-label="Accept change"
           >✓ Terima</button>
           <button
             @click="handleReject"
             :disabled="processing"
-            class="px-2 py-0.5 min-h-[44px] min-w-[44px] text-[10px] font-semibold rounded-md bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            class="px-2 py-0.5 min-h-[44px] min-w-[44px] text-[10px] font-semibold rounded-md bg-cream-100 hover:bg-rose-100 text-ink-600 hover:text-rose-700 border border-cream-300 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 active:scale-95 transition-transform"
             title="Reject this change"
             aria-label="Reject change"
           >✕ Tolak</button>
