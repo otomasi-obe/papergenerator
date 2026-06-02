@@ -5,6 +5,9 @@ Handles Google OAuth 2.0 login flow, email/password registration, and JWT token 
 JWT is delivered via httpOnly cookies with double-submit CSRF protection.
 """
 
+import base64
+import hashlib
+import hmac
 import logging
 import os
 import re
@@ -13,7 +16,7 @@ from datetime import datetime, timezone
 
 import requests
 from authlib.integrations.flask_client import OAuth
-from flask import Blueprint, jsonify, redirect, request, session
+from flask import Blueprint, current_app, jsonify, redirect, request, session
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -261,15 +264,10 @@ def google_login():
         )
 
     # Generate CSRF state token and sign it to avoid session dependency
-    # This fixes the issue where session cookies aren't reliably sent cross-site
-    import hashlib
-    import hmac
-    import base64
-    
     state = secrets.token_urlsafe(32)
     # Create a signed state: state + "." + signature
     signature = hmac.new(
-        app.config["SECRET_KEY"].encode(),
+        current_app.config["SECRET_KEY"].encode(),
         state.encode(),
         hashlib.sha256
     ).digest()
@@ -294,10 +292,6 @@ def google_callback():
     frontend_url = _allowed_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:1000"))
 
     # Validate signed CSRF state token (no session dependency)
-    import hashlib
-    import hmac
-    import base64
-    
     state_from_request = request.args.get("state")
     
     if not state_from_request:
@@ -306,15 +300,13 @@ def google_callback():
     
     # Verify the signed state
     try:
-        # Decode the signed state
         padded = state_from_request + "=" * (4 - len(state_from_request) % 4)
         decoded = base64.urlsafe_b64decode(padded)
         state_bytes, signature = decoded.rsplit(b".", 1)
         state = state_bytes.decode()
         
-        # Verify signature
         expected_sig = hmac.new(
-            app.config["SECRET_KEY"].encode(),
+            current_app.config["SECRET_KEY"].encode(),
             state.encode(),
             hashlib.sha256
         ).digest()
@@ -323,7 +315,7 @@ def google_callback():
             log.warning("OAuth callback - Invalid state signature")
             return redirect(f"{frontend_url}/login?error=csrf_detected")
         
-        log.info("OAuth callback - State signature valid, state=%s...", state[:20])
+        log.info("OAuth callback - State signature valid")
         
     except Exception as e:
         log.warning("OAuth callback - Failed to decode/verify state: %s", e)
