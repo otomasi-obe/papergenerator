@@ -3,19 +3,19 @@
     <!-- Resolved changes (collapsible at top) -->
     <div v-if="resolvedChanges.length > 0" class="mb-3 max-w-4xl mx-auto">
       <button @click="resolvedOpen = !resolvedOpen"
-        class="text-xs text-ink-500 hover:text-ink-700 flex items-center gap-1">
+        class="text-xs text-ink-500 dark:text-ash-300 hover:text-ink-700 dark:hover:text-ash-100 flex items-center gap-1">
         <span>{{ resolvedOpen ? '▾' : '▸' }}</span>
         Riwayat persetujuan ({{ resolvedChanges.length }})
         <button v-if="resolvedOpen" @click.stop="store.clearResolvedProposals()"
-          class="ml-2 text-[10px] underline text-ink-400 hover:text-ink-600">bersihkan</button>
+          class="ml-2 text-[10px] underline text-ink-400 dark:text-ash-400 hover:text-ink-600 dark:hover:text-ash-200">bersihkan</button>
       </button>
       <div v-if="resolvedOpen" class="mt-2 space-y-1.5">
         <div v-for="c in resolvedChanges" :key="c.id"
-          class="text-[11px] flex items-center gap-2 bg-cream-50 rounded px-2 py-1">
+          class="text-[11px] flex items-center gap-2 bg-cream-50 dark:bg-ash-800 rounded px-2 py-1">
           <span :class="c.status === 'accepted' ? 'text-emerald-600' : 'text-rose-500'">
             {{ c.status === 'accepted' ? '✓' : '✕' }}
           </span>
-          <span class="font-medium text-ink-600">{{ kindLabel(c.kind) }}</span>
+          <span class="font-medium text-ink-600 dark:text-ink-100">{{ kindLabel(c.kind) }}</span>
         </div>
       </div>
     </div>
@@ -59,7 +59,7 @@
       </DiffBlock>
       <div v-else class="text-center mb-4">
         <input v-if="editMode" v-model="store.paper.title"
-          class="text-2xl font-bold text-center w-full bg-transparent border-b-2 border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-2 py-1"
+          class="text-2xl font-bold text-center w-full bg-transparent border-b-2 border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-2 py-1 dark:text-ash-100"
           style="font-family: 'Times New Roman', serif;" placeholder="Paper Title" />
         <h1 v-else class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
           {{ store.paper.title || 'Paper Title' }}
@@ -70,13 +70,13 @@
       <div class="text-center mb-6">
         <div v-for="(author, i) in store.paper.authors" :key="i" class="mb-2">
           <div class="text-sm" style="font-family: 'Times New Roman', serif;">{{ author.name }}</div>
-           <div class="text-xs italic text-ink-600 dark:text-ink-400" style="font-family: 'Times New Roman', serif;">
+           <div class="text-xs italic opacity-70 dark:opacity-60" style="font-family: 'Times New Roman', serif;">
             {{ author.affiliation }}
           </div>
-          <div v-if="author.location" class="text-xs italic text-ink-600 dark:text-ink-400" style="font-family: 'Times New Roman', serif;">
+          <div v-if="author.location" class="text-xs italic opacity-70 dark:opacity-60" style="font-family: 'Times New Roman', serif;">
             {{ author.location }}
           </div>
-          <div v-if="author.email" class="text-xs italic text-ink-600 dark:text-ink-400" style="font-family: 'Times New Roman', serif;">
+          <div v-if="author.email" class="text-xs italic opacity-70 dark:opacity-60" style="font-family: 'Times New Roman', serif;">
             e-mail: {{ author.email }}
           </div>
         </div>
@@ -100,7 +100,7 @@
       <div v-else class="mb-4 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
         <span class="font-bold italic">Abstract—</span>
         <textarea v-if="editMode" v-model="store.paper.abstract"
-          class="italic w-full bg-transparent border border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[4rem]"
+          class="italic w-full bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[4rem] dark:text-ash-100"
           placeholder="Paper abstract..." rows="2"></textarea>
         <span v-else class="italic">{{ store.paper.abstract || '(kosong)' }}</span>
       </div>
@@ -153,42 +153,42 @@
               <div v-if="item.id === 'text' && item.text" class="mb-2">
                 <textarea v-if="editMode" :value="item.text"
                   @input="item.text = ($event.target as HTMLTextAreaElement).value"
-                  class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[3rem]"
+                  class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[3rem] dark:text-ash-100"
                   style="font-family: 'Times New Roman', serif;" rows="2"
                   placeholder="Tulis konten..."></textarea>
                 <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
               </div>
               <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
-                <div class="inline-block border border-cream-300 rounded p-2">
+                <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
                   <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
-                  <div v-else class="w-48 h-32 bg-cream-100 flex items-center justify-center text-ink-400 text-xs">No image</div>
+                  <div v-else class="w-48 h-32 bg-cream-100 dark:bg-ash-800 flex items-center justify-center opacity-50 dark:opacity-40 text-xs">No image</div>
                 </div>
                 <input v-if="editMode" v-model="item.Title"
-                  class="text-xs mt-1 text-ink-600 text-center bg-transparent border-b border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
+                  class="text-xs mt-1 opacity-70 dark:opacity-60 text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
                   placeholder="Caption gambar..." />
-                <p v-else-if="item.Title" class="text-xs mt-1 text-ink-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+                <p v-else-if="item.Title" class="text-xs mt-1 opacity-70 dark:opacity-60">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
               </div>
               <div v-else-if="item.id === 'tabel'" class="my-3">
                 <input v-if="editMode" v-model="item.Title"
-                  class="text-xs text-center font-semibold mb-1 w-full bg-transparent border-b border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
+                  class="text-xs text-center font-semibold mb-1 w-full bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 dark:text-ash-100"
                   placeholder="Judul tabel..." />
                 <p v-else-if="item.Title" class="text-xs text-center font-semibold mb-1">TABLE {{ getItemNum(item) }}: {{ item.Title }}</p>
-                <table class="w-full text-xs border-collapse border border-cream-400 mx-auto">
+                <table class="w-full text-xs border-collapse border border-cream-400 dark:border-ash-600 mx-auto">
                   <thead>
                     <tr>
-                      <th v-for="(h, hi) in item.Headers" :key="hi" class="border border-cream-400 bg-cream-50 px-2 py-1 text-center font-semibold">{{ h }}</th>
+                      <th v-for="(h, hi) in item.Headers" :key="hi" class="border border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 px-2 py-1 text-center font-semibold">{{ h }}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="(row, ri) in item.Rows" :key="ri">
-                      <td v-for="(cell, ci) in row" :key="ci" class="border border-cream-400 px-2 py-1 text-center">{{ cell }}</td>
+                      <td v-for="(cell, ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center">{{ cell }}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center font-mono text-sm text-ink-700">
+              <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center font-mono text-sm">
                 <input v-if="editMode" v-model="item.latex"
-                  class="text-center bg-transparent border-b border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 font-mono"
+                  class="text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 font-mono dark:text-ash-100"
                   placeholder="LaTeX formula..." />
                 <span v-else>({{ getItemNum(item) }}) &nbsp; {{ item.latex }}</span>
               </div>
@@ -196,7 +196,7 @@
 
             <div v-for="(sub, subIdx) in section.subsections" :key="subIdx" class="mt-3">
               <input v-if="editMode" v-model="sub.title"
-                class="font-bold italic text-sm mb-1 w-full bg-transparent border-b border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
+                class="font-bold italic text-sm mb-1 w-full bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 dark:text-ash-100"
                 placeholder="Subsection title..." />
               <h3 v-else class="font-bold italic text-sm mb-1">
                 {{ String.fromCharCode(65 + subIdx) }}. {{ sub.title }}
@@ -205,20 +205,20 @@
                 <div v-if="item.id === 'text' && item.text" class="mb-2">
                   <textarea v-if="editMode" :value="item.text"
                     @input="item.text = ($event.target as HTMLTextAreaElement).value"
-                    class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[3rem]"
+                    class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[3rem] dark:text-ash-100"
                     style="font-family: 'Times New Roman', serif;" rows="2"
                     placeholder="Tulis konten..."></textarea>
                   <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
                 </div>
                 <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
-                  <div class="inline-block border border-cream-300 rounded p-2">
+                  <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
                     <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
-                    <div v-else class="w-48 h-32 bg-cream-100 flex items-center justify-center text-ink-400 text-xs">No image</div>
+                    <div v-else class="w-48 h-32 bg-cream-100 dark:bg-ash-800 flex items-center justify-center opacity-50 dark:opacity-40 text-xs">No image</div>
                   </div>
                   <input v-if="editMode" v-model="item.Title"
-                    class="text-xs mt-1 text-ink-600 text-center bg-transparent border-b border-dashed border-cream-400 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
+                    class="text-xs mt-1 opacity-70 dark:opacity-60 text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
                     placeholder="Caption gambar..." />
-                  <p v-else-if="item.Title" class="text-xs mt-1 text-ink-600">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+                  <p v-else-if="item.Title" class="text-xs mt-1 opacity-70 dark:opacity-60">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
                 </div>
               </template>
             </div>
@@ -228,7 +228,7 @@
         <!-- Newly proposed sections (no existing index) -->
         <DiffBlock v-for="change in newSectionProposals" :key="change.id" :change="change" :store="store">
           <template #before>
-            <p class="text-rose-700 italic text-xs">(belum ada section ini — akan ditambahkan)</p>
+            <p class="text-rose-700 dark:text-rose-300 italic text-xs">(belum ada section ini — akan ditambahkan)</p>
           </template>
           <template #after>
             <h2 class="text-center font-bold mb-2 text-sm">
@@ -258,7 +258,7 @@
           <!-- New reference proposals -->
           <DiffBlock v-for="change in newRefProposals" :key="change.id" :change="change" :store="store">
             <template #before>
-              <div class="text-rose-700 italic text-xs pl-6 -indent-6">(referensi baru — akan ditambahkan)</div>
+              <div class="text-rose-700 dark:text-rose-300 italic text-xs pl-6 -indent-6">(referensi baru — akan ditambahkan)</div>
             </template>
             <template #after>
               <div class="text-xs leading-snug pl-6 -indent-6">+ [{{ store.paper.references.length + 1 }}] {{ change.payload.value }}</div>

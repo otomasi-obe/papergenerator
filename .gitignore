@@ -63,10 +63,8 @@ Thumbs.db
 # Project specific - data & uploads (generated at runtime)
 backend/data/
 backend/uploads/
-backend/exports/
 backend/archive/
 backend/output/
-exports/
 uploads/
 
 # Database files

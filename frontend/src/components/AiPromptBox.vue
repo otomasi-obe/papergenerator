@@ -1,10 +1,10 @@
 <template>
-  <div class="mt-2 border rounded-lg bg-cream-50 p-3">
+  <div class="mt-2 border border-cream-300 dark:border-ash-700 rounded-lg bg-cream-50 dark:bg-ash-800 p-3">
     <div class="flex items-center gap-2 mb-2">
       <svg class="w-4 h-4 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
       </svg>
-      <span class="text-xs font-medium text-ink-600">AI Prompt — edit this {{ section }}</span>
+      <span class="text-xs font-medium text-ink-600 dark:text-ink-200">AI Prompt — edit this {{ section }}</span>
     </div>
     <div class="flex gap-2">
       <input v-model="prompt" type="text"
@@ -18,7 +18,7 @@
         <span>Send</span>
       </button>
     </div>
-    <p class="text-xs text-ink-400 mt-1">Sends current text + your prompt to AI. Result will replace current content.</p>
+    <p class="text-xs text-ink-400 dark:text-ink-300 mt-1">Sends current text + your prompt to AI. Result will replace current content.</p>
   </div>
 </template>
 

@@ -1,13 +1,5 @@
 <template>
   <div class="space-y-4">
-    <!-- Back button -->
-    <button
-      class="text-sm text-ink-700 dark:text-ink-200 py-1.5 inline-flex items-center gap-1.5 hover:text-ink-900 dark:hover:text-ink-50 transition-colors"
-      @click="store.clearActiveTool()"
-    >
-      ← All tools
-    </button>
-
     <!-- Tool header -->
     <div class="mb-4">
       <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">

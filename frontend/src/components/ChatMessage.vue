@@ -1,8 +1,8 @@
 <template>
   <div :class="['flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start']">
     <!-- AI Avatar -->
-    <div v-if="message.role === 'assistant'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center mt-1 shadow-sm">
-      <svg class="w-4 h-4 text-cream-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-if="message.role === 'assistant'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 dark:from-cream-300 dark:to-cream-400 flex items-center justify-center mt-1 shadow-sm">
+      <svg class="w-4 h-4 text-cream-50 dark:text-ash-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
       </svg>
     </div>

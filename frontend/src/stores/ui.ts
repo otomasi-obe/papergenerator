@@ -5,7 +5,6 @@ const LS_KEY = 'pg_ui_state_v1'
 
 interface PaperUiState {
   activeTab: string
-  chatOpen: boolean
 }
 
 interface UiState {
@@ -36,7 +35,7 @@ export const useUiStore = defineStore('ui', () => {
   function _entry(paperId: string | null | undefined): PaperUiState | null {
     if (!paperId) return null
     if (!perPaper.value[paperId]) {
-      perPaper.value[paperId] = { activeTab: '', chatOpen: true }
+      perPaper.value[paperId] = { activeTab: 'editor' }
     }
     return perPaper.value[paperId]
   }
@@ -48,15 +47,6 @@ export const useUiStore = defineStore('ui', () => {
   function setTab(paperId: string, tabId: string): void {
     const e = _entry(paperId)
     if (e) e.activeTab = tabId || ''
-  }
-
-  function getChatOpen(paperId: string): boolean {
-    return _entry(paperId)?.chatOpen ?? true
-  }
-
-  function setChatOpen(paperId: string, isOpen: boolean): void {
-    const e = _entry(paperId)
-    if (e) e.chatOpen = !!isOpen
   }
 
   function reset(paperId: string): void {
@@ -72,6 +62,6 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     tabSwitchSignal,
-    getTab, setTab, getChatOpen, setChatOpen, reset, requestTab,
+    getTab, setTab, reset, requestTab,
   }
 })

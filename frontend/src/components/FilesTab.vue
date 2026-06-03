@@ -124,7 +124,7 @@
           <iframe
             v-if="activeFile.ext === '.pdf'"
             :src="rawUrl(activeFile)"
-            class="w-full h-full min-h-[60vh] border-0 bg-white"
+            class="w-full h-full min-h-[60vh] border-0 bg-white dark:bg-ash-900"
           />
           <!-- TXT / MD / CSV -->
           <pre

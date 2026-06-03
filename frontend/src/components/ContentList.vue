@@ -10,7 +10,7 @@
         <!-- Item header -->
         <div class="flex items-center justify-between mb-1.5">
           <div class="flex items-center gap-1.5">
-             <span class="content-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-navy-500 select-none text-base leading-none px-0.5" role="button" aria-label="Drag to reorder">⠿</span>
+             <span class="content-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none text-base leading-none px-0.5" role="button" aria-label="Drag to reorder">⠿</span>
             <span v-if="item.id !== 'gambar'" class="text-[10px] font-medium uppercase tracking-wide pl-1.5 border-l-2"
               :class="badgeClass(item.id)">
               {{ badgeLabel(item, idx) }}

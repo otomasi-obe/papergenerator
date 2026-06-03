@@ -19,7 +19,7 @@
           >📂 Import dari File</button>
           <button
             @click="showAddManual = !showAddManual"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-navy-700 hover:bg-navy-800 text-cream-50 active:scale-95 transition-transform"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
           >＋ Tambah Manual</button>
         </div>
       </div>
@@ -66,7 +66,7 @@
           <button
             @click="runSLR"
             :disabled="slrRunning || !slrQuery.trim()"
-            class="px-4 py-2 rounded-lg text-sm font-semibold bg-navy-700 hover:bg-navy-800 text-cream-50 disabled:opacity-50 active:scale-95 transition-transform"
+            class="px-4 py-2 rounded-lg text-sm font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform"
           >
             {{ slrRunning ? 'Mencari…' : 'Jalankan SLR' }}
           </button>
@@ -253,7 +253,7 @@
                   <button
                     v-if="paperTitle"
                     @click="startSLRFromPaperTopic"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 text-cream-50 active:scale-95 transition-transform"
+                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
                   >Jalankan SLR otomatis dari topik paper ini</button>
                 </div>
               </td>
@@ -1214,7 +1214,7 @@ onUnmounted(() => {
 
 <style scoped>
 .input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
-.btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 text-cream-50 disabled:opacity-50 active:scale-95 transition-transform; }
+.btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform; }
 .btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700; }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

@@ -25,7 +25,7 @@
           />
           <span v-if="store.loading" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0">Saving…</span>
           <button v-else-if="saveStatus === 'saving'" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0 active:scale-95 transition-transform" type="button">Saving…</button>
-          <button v-else-if="saveStatus === 'saved'" class="text-[11px] text-emerald-700 dark:text-emerald-300 shrink-0 active:scale-95 transition-transform" type="button">Saved · {{ savedRelative }}</button>
+          <button v-else-if="saveStatus === 'saved'" class="text-[11px] text-ink-700 dark:text-ink-200 shrink-0 active:scale-95 transition-transform" type="button">Saved · {{ savedRelative }}</button>
           <button v-else-if="saveStatus === 'error'" @click="retrySave" class="text-[11px] text-red-600 dark:text-red-300 hover:underline shrink-0 active:scale-95 transition-transform" type="button">Save failed</button>
           </div>
 
@@ -48,44 +48,33 @@
                 ↷ Redo
               </button>
               <span v-if="store.pendingCount > 0"
-                class="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shrink-0">
+                class="text-[11px] px-2 py-0.5 rounded-full bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-200 border border-cream-300 dark:border-ash-600 shrink-0">
                 {{ store.pendingCount }} pending
               </span>
             </div>
 
-            <div role="tablist" class="flex items-center gap-1 shrink-0" @keydown="onTabKeydown">
-              <button v-for="tab in leftTabs" :key="tab.id"
-                @click="toggleTab(tab.id)"
-                role="tab"
-                :id="`tab-${tab.id}`"
-                :aria-selected="activeTab === tab.id"
-                :aria-controls="`panel-${tab.id}`"
+            <!-- Editor / Preview / Tools — three buttons -->
+            <div class="flex items-center gap-1 shrink-0">
+              <button @click="activeTab = 'editor'"
                 :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap active:scale-95 transition-transform',
-                  activeTab === tab.id
+                  activeTab === 'editor'
                     ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
                     : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
-                {{ tab.label }}
-                <span v-if="tab.id === 'preview' && store.pendingCount > 0"
-                  class="ml-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold">{{ store.pendingCount }}</span>
+                📝 Editor
               </button>
-              
-              <!-- Tools and AI Chat toggle buttons -->
+              <button @click="activeTab = 'preview'"
+                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap active:scale-95 transition-transform',
+                  activeTab === 'preview'
+                    ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
+                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
+                👁 Preview
+              </button>
               <button @click="toggleTools"
                 :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap active:scale-95 transition-transform',
-                  activeTab === 'tools'
+                  toolsOpen || rightPanel
                     ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
-                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
-                :title="'Toggle Tools'">
+                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
                 🛠 Tools
-              </button>
-              
-              <button @click="toggleChat"
-                :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 shrink-0 whitespace-nowrap active:scale-95 transition-transform',
-                  chatOpen && activeTab !== 'tools'
-                    ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
-                    : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']"
-                :title="chatOpen ? 'Tutup AI Chat' : 'Buka AI Chat'">
-                💬 AI Chat
               </button>
             </div>
           </div>
@@ -95,10 +84,10 @@
 
     <!-- Generation status banner (non-blocking) -->
     <div v-if="store.aiLoading"
-         class="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-300 dark:border-amber-700 px-4 lg:px-8 py-2.5 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-sm shrink-0">
+         class="bg-cream-100 dark:bg-ash-700 border-b border-cream-300 dark:border-ash-600 px-4 lg:px-8 py-2.5 flex items-center gap-3 text-ink-700 dark:text-ink-200 text-sm shrink-0">
       <div class="relative w-6 h-6 shrink-0">
-        <div class="absolute inset-0 rounded-full border-2 border-amber-200 dark:border-amber-700"></div>
-        <div class="absolute inset-0 rounded-full border-2 border-t-amber-600 dark:border-t-amber-300 animate-spin"></div>
+        <div class="absolute inset-0 rounded-full border-2 border-cream-300 dark:border-ash-500"></div>
+        <div class="absolute inset-0 rounded-full border-2 border-t-ink-700 dark:border-t-ink-200 animate-spin"></div>
       </div>
       <div class="flex-1 min-w-0 leading-snug">
         <span class="font-medium">{{ store.aiLoadingMessage || 'AI sedang generate paper...' }}</span>
@@ -106,27 +95,15 @@
         <span v-if="aiElapsedSeconds > 600" class="ml-2 opacity-80">(masih bekerja — paper besar bisa sampai 15 menit)</span>
       </div>
       <button v-if="canCancelAi" @click="chatStore.stopStreaming()"
-              class="shrink-0 px-2.5 py-1 rounded text-xs font-medium border border-amber-400 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50 active:scale-95 transition-transform">Cancel</button>
+              class="shrink-0 px-2.5 py-1 rounded text-xs font-medium border border-cream-400 dark:border-ash-500 hover:bg-cream-200 dark:hover:bg-ash-600 active:scale-95 transition-transform">Cancel</button>
     </div>
 
     <!-- Split layout: LEFT tools sidebar + RIGHT chat panel.
          Tools sidebar is always visible; chat is always on the right. -->
     <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
-      <!-- LEFT tools sidebar: editor / journal / literature / files / data / preview. -->
-      <div class="overflow-y-auto border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="(chatOpen && activeTab !== 'tools') || activeTab === 'tools' ? 'w-1/2' : 'w-full'">
-        <!-- Empty state when no tab selected -->
-        <div v-if="!activeTab" class="flex flex-col items-center justify-center h-full px-6 py-12 text-center min-h-[60vh]">
-          <div class="text-5xl mb-4" aria-hidden="true">📝</div>
-          <h3 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-2">Tools Panel</h3>
-          <p class="text-sm text-ink-500 dark:text-ink-300 mb-6 max-w-xs">Pilih tab di toolbar untuk mulai edit paper, kelola literatur, atau lihat preview.</p>
-          <div class="grid grid-cols-2 gap-2 w-full max-w-xs">
-            <button v-for="tab in leftTabs" :key="tab.id" @click="activeTab = tab.id"
-              class="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 text-xs font-medium hover:border-navy-500 dark:hover:border-cream-400 hover:text-navy-700 dark:hover:text-cream-200 transition-colors text-left active:scale-95 transition-transform">
-              {{ tab.label }}
-            </button>
-          </div>
-        </div>
-        <div v-show="activeTab" class="px-4 lg:px-8 py-6">
+      <!-- LEFT pane: editor / preview. -->
+      <div class="overflow-y-auto border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="rightPanel || toolsOpen ? 'w-1/2' : 'w-full'">
+        <div class="px-4 lg:px-8 py-6">
 
           <!-- TAB: EDITOR -->
           <div v-show="activeTab === 'editor'" role="tabpanel" id="panel-editor" aria-labelledby="tab-editor" class="space-y-4">
@@ -182,9 +159,9 @@
           <label class="label">Keywords</label>
           <div class="flex flex-wrap gap-1.5 mb-2">
             <span v-for="(_kw, i) in store.paper.keywords" :key="i"
-              class="bg-cream-200 text-navy-800 px-2 py-0.5 rounded text-sm flex items-center gap-1">
+              class="bg-cream-200 dark:bg-ash-700 text-navy-800 dark:text-ash-100 px-2 py-0.5 rounded text-sm flex items-center gap-1">
               {{ _kw }}
-              <button @click="store.removeKeyword(i)" class="text-navy-400 hover:text-navy-700 text-xs">✕</button>
+              <button @click="store.removeKeyword(i)" class="text-navy-400 dark:text-ash-300 hover:text-navy-700 dark:hover:text-ash-100 text-xs">✕</button>
             </span>
           </div>
           <div class="flex gap-2">
@@ -200,7 +177,7 @@
             <div class="group card border-l-4 border-l-cream-600">
               <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
-                  <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-navy-500 select-none text-xl leading-tight shrink-0">⠿</span>
+                  <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none text-xl leading-tight shrink-0">⠿</span>
                   <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                     <button @click="moveItem(store.paper.sections, sIdx, sIdx - 1)" :disabled="sIdx === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
                     <button @click="moveItem(store.paper.sections, sIdx, sIdx + 1)" :disabled="sIdx === store.paper.sections.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
@@ -229,7 +206,7 @@
                   <div class="group ml-4 border-l-2 border-cream-300 pl-4">
                     <div class="flex items-center justify-between mb-2">
                       <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <span role="button" aria-label="Drag to reorder" class="sub-drag cursor-grab active:cursor-grabbing text-cream-400 hover:text-navy-500 select-none shrink-0">⠿</span>
+                        <span role="button" aria-label="Drag to reorder" class="sub-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none shrink-0">⠿</span>
                         <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                           <button @click="moveItem(section.subsections, subIdx, subIdx - 1)" :disabled="subIdx === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
                           <button @click="moveItem(section.subsections, subIdx, subIdx + 1)" :disabled="subIdx === section.subsections.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
@@ -255,7 +232,7 @@
               </draggable>
 
               <button @click="store.addSubsection(sIdx)"
-                class="mt-3 w-full py-2 border border-dashed border-cream-400 rounded-lg text-navy-500 hover:bg-cream-100 text-sm transition-colors active:scale-95 transition-transform">
+                class="mt-3 w-full py-2 border border-dashed border-cream-400 dark:border-ash-600 text-navy-500 dark:text-ash-300 hover:bg-cream-100 dark:hover:bg-ash-700 text-sm transition-colors active:scale-95 transition-transform">
                 + Add Subsection
               </button>
             </div>
@@ -263,7 +240,7 @@
         </draggable>
 
         <button @click="store.addSection()"
-          class="w-full py-3 border-2 border-dashed border-cream-300 rounded-xl text-navy-400 hover:border-navy-400 hover:text-navy-700 transition text-sm active:scale-95 transition-transform">
+          class="w-full py-3 border-2 border-dashed border-cream-300 dark:border-ash-600 text-navy-400 dark:text-ash-300 hover:border-navy-400 dark:hover:border-cream-400 hover:text-navy-700 dark:hover:text-cream-200 transition text-sm active:scale-95 transition-transform">
           + Add Section
         </button>
 
@@ -294,26 +271,6 @@
         <div class="h-20"></div>
       </div>
 
-      <!-- TAB: JOURNAL -->
-      <div v-show="activeTab === 'journal'" role="tabpanel" id="panel-journal" aria-labelledby="tab-journal">
-        <JournalTab />
-      </div>
-
-      <!-- TAB: LITERATURE -->
-      <div v-show="activeTab === 'literature'" role="tabpanel" id="panel-literature" aria-labelledby="tab-literature">
-        <LiteratureTab />
-      </div>
-
-      <!-- TAB: FILES -->
-      <div v-show="activeTab === 'files'" role="tabpanel" id="panel-files" aria-labelledby="tab-files">
-        <FilesTab />
-      </div>
-
-      <!-- TAB: DATA (tables + charts from one source) -->
-      <div v-show="activeTab === 'data'" role="tabpanel" id="panel-data" aria-labelledby="tab-data">
-        <DataTab />
-      </div>
-
       <!-- TAB: PREVIEW -->
       <div v-show="activeTab === 'preview'" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview">
         <PreviewTab />
@@ -321,13 +278,71 @@
         </div>
       </div>
 
-      <!-- RIGHT: chat panel or tools workspace -->
-      <div v-if="chatOpen && activeTab !== 'tools'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col w-1/2">
+      <!-- RIGHT: Tools menu / Chat / Journal / Literatur / Files / Data / Tool workspace -->
+      <div v-if="toolsOpen" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-4 space-y-1">
+          <!-- Chat -->
+          <button @click="openRightPanel('chat')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">💬</span>
+            <span class="text-xs font-medium">AI Chat</span>
+          </button>
+          <!-- Journal -->
+          <button @click="openRightPanel('journal')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">📚</span>
+            <span class="text-xs font-medium">Journal</span>
+          </button>
+          <!-- Literatur -->
+          <button @click="openRightPanel('literature')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">📖</span>
+            <span class="text-xs font-medium">Literatur</span>
+          </button>
+          <!-- Files -->
+          <button @click="openRightPanel('files')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">📂</span>
+            <span class="text-xs font-medium">Files</span>
+          </button>
+          <!-- Data -->
+          <button @click="openRightPanel('data')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">📊</span>
+            <span class="text-xs font-medium">Data</span>
+          </button>
+          <div class="h-px bg-cream-300 dark:bg-ash-600 my-3"></div>
+          <!-- Writing tools -->
+          <button v-for="tool in toolsStore.TOOLS" :key="tool.id" @click="openToolWorkspace(tool)"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">{{ tool.icon }}</span>
+            <span class="text-xs font-medium">{{ tool.title }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-else-if="rightPanel === 'chat'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
         <ChatTab :paper-id="store.currentPaperId" @open-preview="activeTab = 'preview'" />
       </div>
-      
-      <div v-if="activeTab === 'tools'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col w-1/2">
-        <ToolWorkspace />
+
+      <div v-else-if="rightPanel === 'journal'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><JournalTab /></div>
+      </div>
+
+      <div v-else-if="rightPanel === 'literature'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><LiteratureTab /></div>
+      </div>
+
+      <div v-else-if="rightPanel === 'files'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><FilesTab /></div>
+      </div>
+
+      <div v-else-if="rightPanel === 'data'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><DataTab /></div>
+      </div>
+
+      <div v-else-if="rightPanel === 'tool-workspace'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><ToolsTab /></div>
       </div>
     </div>
 
@@ -395,7 +410,7 @@ import PreviewTab from '../components/PreviewTab.vue'
 import ChatTab from '../components/ChatTab.vue'
 import DataTab from '../components/DataTab.vue'
 import ToolsTab from '../components/ToolsTab.vue'
-import ToolWorkspace from '../components/ToolWorkspace.vue'
+import { useToolsStore } from '../stores/tools.ts'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useKeyboardShortcuts'
@@ -403,6 +418,7 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useK
 const store = usePaperStore()
 const ui = useUiStore()
 const chatStore = useChatStore()
+const toolsStore = useToolsStore()
 const imageGenStore = useImageGenStore()
 const paperJobsStore = usePaperJobsStore()
 const route = useRoute()
@@ -413,7 +429,7 @@ const router = useRouter()
 // `activeTab` is a computed proxy onto the UI store so chat-triggered tab
 // switches (e.g. SLR auto-open) take effect immediately.
 const activeTab = computed({
-  get: () => (store.currentPaperId ? ui.getTab(store.currentPaperId) : '') || '',
+  get: () => (store.currentPaperId ? ui.getTab(store.currentPaperId) : '') || 'editor',
   set: (v) => {
     if (store.currentPaperId) ui.setTab(store.currentPaperId, v || '')
   },
@@ -438,29 +454,39 @@ const nowTick = ref(Date.now())
 const aiStartedAt = ref<number | null>(null)
 
 // ─── Split layout state ───────────────────────────────────────────────────
-const chatOpen = ref(true)
+// rightPanel: '' = closed | 'chat' | 'journal' | 'literature' | 'files' | 'data' | 'tool-workspace'
+const rightPanel = ref('chat')
+const toolsOpen = ref(false) // shows the tools menu list
 
-function toggleChat() {
-  if (activeTab.value === 'tools') {
-    activeTab.value = ''
-  }
-  chatOpen.value = !chatOpen.value
+function openRightPanel(panel) {
+  toolsOpen.value = false
+  rightPanel.value = panel
+  // Ensure left pane shows something (default to editor if nothing selected)
+  if (!activeTab.value) activeTab.value = 'editor'
+}
+
+function openToolWorkspace(tool) {
+  toolsOpen.value = false
+  toolsStore.setActiveTool(tool)
+  rightPanel.value = 'tool-workspace'
+  if (!activeTab.value) activeTab.value = 'editor'
 }
 
 function toggleTools() {
-  if (activeTab.value === 'tools') {
-    activeTab.value = ''
+  if (toolsOpen.value) {
+    toolsOpen.value = false
   } else {
-    chatOpen.value = false
-    activeTab.value = 'tools'
+    rightPanel.value = ''
+    toolsOpen.value = true
   }
 }
 
 function handlePapersBack() {
-  const onPaperChatHome = chatOpen.value && !chatStore.currentConversationId && !activeTab.value
+  const onPaperChatHome = rightPanel.value === 'chat' && !toolsOpen.value && !chatStore.currentConversationId && activeTab.value === 'editor'
   if (!onPaperChatHome && store.currentPaperId) {
-    chatOpen.value = true
-    activeTab.value = ''
+    rightPanel.value = 'chat'
+    toolsOpen.value = false
+    activeTab.value = 'editor'
     chatStore.currentConversationId = null
     return
   }
@@ -472,7 +498,7 @@ const shortcuts: KeyboardShortcut[] = [
   {
     key: 'k',
     ctrl: true,
-    handler: () => toggleChat(),
+    handler: () => { rightPanel.value = rightPanel.value === 'chat' ? '' : 'chat'; toolsOpen.value = false },
     description: 'Toggle AI Chat panel'
   },
   {
@@ -522,38 +548,38 @@ const shortcuts: KeyboardShortcut[] = [
   {
     key: '1',
     ctrl: true,
-    handler: () => { activeTab.value = leftTabs[0].id },
+    handler: () => { activeTab.value = 'editor' },
     description: 'Switch to Editor tab'
   },
   {
     key: '2',
     ctrl: true,
-    handler: () => { activeTab.value = leftTabs[1].id },
+    handler: () => { openRightPanel('journal') },
     description: 'Switch to Journal tab'
   },
   {
     key: '3',
     ctrl: true,
-    handler: () => { activeTab.value = leftTabs[2].id },
+    handler: () => { openRightPanel('literature') },
     description: 'Switch to Literature tab'
   },
   {
     key: '4',
     ctrl: true,
-    handler: () => { activeTab.value = leftTabs[3].id },
+    handler: () => { openRightPanel('files') },
     description: 'Switch to Files tab'
   },
   {
     key: '5',
     ctrl: true,
-    handler: () => { activeTab.value = leftTabs[4].id },
+    handler: () => { openRightPanel('data') },
     description: 'Switch to Data tab'
   },
-    {
+  {
     key: '6',
     ctrl: true,
-    handler: () => { activeTab.value = leftTabs[1].id },
-    description: 'Switch to Tools tab'
+    handler: () => { toggleTools() },
+    description: 'Toggle Tools panel'
   },
   {
     key: 'n',
@@ -578,15 +604,6 @@ useKeyboardShortcuts(shortcuts)
 // ─── Topic / Style / PDF state (used by chat for file attach) ─────────────
 const availableTopics = ref([])
 const availableStyles = ref([])
-
-const leftTabs = [
-  { id: 'editor', label: '📝 Editor' },
-  { id: 'journal', label: '📚 Journal' },
-  { id: 'literature', label: '📖 Literatur' },
-  { id: 'files', label: '📂 Files' },
-  { id: 'data', label: '📊 Data' },
-  { id: 'preview', label: '👁 Preview' },
-]
 
 const keyMap = new WeakMap()
 let __kc = 0
@@ -643,14 +660,14 @@ onMounted(async () => {
   if (paperId && paperId !== 'null' && paperId !== 'undefined') {
     const paperIdStr = Array.isArray(paperId) ? paperId[0] : paperId
     await store.loadPaperFromDb(paperIdStr)
-    chatOpen.value = ui.getChatOpen(paperIdStr)
+    rightPanel.value = 'chat'
   } else {
     store.newPaper()
-    chatOpen.value = true
+    rightPanel.value = 'chat'
     const newId = await store.savePaperToDb(true)
     if (newId) {
       router.replace({ name: 'editor', params: { paperId: newId } })
-      chatOpen.value = ui.getChatOpen(newId) ?? true
+      rightPanel.value = 'chat'
     }
   }
   // Start active-job poller for whichever paper we ended up on.
@@ -680,13 +697,13 @@ watch(activeTab, (newTab) => {
 }, { immediate: false })
 
 watch(() => store.paper.abstract, () => resizeAbstract())
-watch(() => chatOpen.value, () => resizeAbstract())
+watch(() => rightPanel.value, () => resizeAbstract())
 
 watch(() => route.params.paperId, async (newId, oldId) => {
   if (newId && newId !== 'null' && newId !== 'undefined' && newId !== oldId && newId !== store.currentPaperId) {
     const newIdStr = Array.isArray(newId) ? newId[0] : newId
     await store.loadPaperFromDb(newIdStr)
-    chatOpen.value = ui.getChatOpen(newIdStr)
+    rightPanel.value = 'chat'
     resizeAbstract()
   }
 })
@@ -705,10 +722,8 @@ function toggleTab(id: string) {
   activeTab.value = activeTab.value === id ? '' : id
 }
 function onTabKeydown(e: KeyboardEvent) {
-  if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return
-  const idx = leftTabs.findIndex(t => t.id === activeTab.value)
-  const next = e.key === 'ArrowRight' ? (idx + 1) % leftTabs.length : (idx - 1 + leftTabs.length) % leftTabs.length
-  activeTab.value = leftTabs[next].id
+  // Arrow key navigation not needed with simplified toolbar
+  return
 }
 function moveItem(list: any[], from: number, to: number) {
   if (!Array.isArray(list) || to < 0 || to >= list.length || from === to) return

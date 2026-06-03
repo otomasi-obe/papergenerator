@@ -68,7 +68,7 @@
               data-callback="onTurnstileSuccess"></div>
           </div>
           <button type="submit" :disabled="submitting"
-            class="w-full px-6 py-3.5 bg-cream-100 hover:bg-cream-50 text-navy-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform">
+            class="w-full px-6 py-3.5 bg-cream-100 dark:bg-ash-700 hover:bg-cream-50 dark:hover:bg-ash-600 text-navy-800 dark:text-ash-100 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform">
             {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
           </button>
         </form>

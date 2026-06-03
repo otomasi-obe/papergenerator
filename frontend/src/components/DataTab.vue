@@ -66,7 +66,7 @@
           </div>
 
           <div v-if="extractState === 'loading'" class="mt-3 flex items-center gap-2 text-sm text-ink-600 dark:text-ink-300">
-             <span class="inline-block w-4 h-4 border-2 border-cream-300 border-t-navy-600 rounded-full animate-spin"></span>
+             <span class="inline-block w-4 h-4 border-2 border-cream-300 dark:border-ash-600 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></span>
             Mengekstrak data dari <strong>{{ pendingFilename }}</strong>…
           </div>
 

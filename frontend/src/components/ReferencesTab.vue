@@ -2,8 +2,8 @@
   <div class="p-6">
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h2 class="text-lg font-semibold text-ink-900">References</h2>
-        <p class="text-sm text-ink-500">IEEE citation format. Reference in text with [1], [2], etc.</p>
+        <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">References</h2>
+        <p class="text-sm text-ink-500 dark:text-ink-300">IEEE citation format. Reference in text with [1], [2], etc.</p>
       </div>
       <div class="flex gap-2">
         <AiButton @click="aiGenerateRefs" label="AI Generate All" :loading="store.aiLoading" />
@@ -15,7 +15,7 @@
     </div>
 
     <div v-if="store.paper.references.length === 0"
-      class="text-center py-12 text-ink-400">
+      class="text-center py-12 text-ink-400 dark:text-ink-300">
       <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -25,7 +25,7 @@
 
     <div v-for="(ref, index) in store.paper.references" :key="ref.id"
       class="flex items-start gap-3 mb-3 group">
-        <span class="text-sm font-mono bg-cream-100 px-2 py-1.5 rounded text-ink-600 min-w-[40px] text-center">
+        <span class="text-sm font-mono bg-cream-100 dark:bg-ash-700 px-2 py-1.5 rounded text-ink-600 dark:text-ink-200 min-w-[40px] text-center">
         [{{ Number(index) + 1 }}]
       </span>
       <div class="flex-1">
@@ -41,12 +41,12 @@
     </div>
 
     <!-- AI Prompt for References -->
-    <div class="mt-4 border rounded-lg bg-cream-50 p-4">
+    <div class="mt-4 border border-cream-300 dark:border-ash-700 rounded-lg bg-cream-50 dark:bg-ash-800 p-4">
       <div class="flex items-center gap-2 mb-2">
         <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
-        <span class="text-sm font-medium text-ink-600">AI Prompt — add references</span>
+        <span class="text-sm font-medium text-ink-600 dark:text-ink-200">AI Prompt — add references</span>
       </div>
       <div class="flex gap-2">
         <input v-model="refPrompt" type="text"

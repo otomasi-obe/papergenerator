@@ -2,7 +2,7 @@
   <main class="min-h-screen bg-navy-900 flex items-center justify-center">
     <div class="text-center text-white">
       <div class="text-4xl mb-4 animate-spin" aria-hidden="true">⚙️</div>
-      <p class="text-ink-300" role="status" aria-live="polite">{{ statusMsg }}</p>
+      <p class="text-ink-300 dark:text-ink-200" role="status" aria-live="polite">{{ statusMsg }}</p>
     </div>
   </main>
 </template>
