@@ -19,6 +19,13 @@ app.use('/api', createProxyMiddleware({
   ws: true,
   timeout: 1800000,
   proxyTimeout: 1800000,
+  xfwd: true,
+  onProxyReq: (proxyReq, req) => {
+    const originalHost = req.headers['x-forwarded-host'] || req.headers.host;
+    const forwardedProto = req.headers['x-forwarded-proto'] || 'https';
+    if (originalHost) proxyReq.setHeader('x-forwarded-host', originalHost);
+    proxyReq.setHeader('x-forwarded-proto', forwardedProto);
+  },
   onError: (err, req, res) => {
     console.error('Proxy error:', err.message);
     res.status(502).json({ error: 'Bad Gateway', message: err.message });

@@ -1032,11 +1032,18 @@ const lastAssistantMessage = computed(() => {
   return null
 })
 
+const lastAssistantHasVisibleBody = computed(() => {
+  const message = lastAssistantMessage.value
+  if (!message) return false
+  if ((message.content || '').trim()) return true
+  if ((message.thinking || '').trim()) return true
+  if (message.metadata?.kind) return true
+  return (message.tool_calls || []).some((tool: any) => tool?.status === 'error' || !!tool?.error)
+})
+
 const showInlineStreamingIndicator = computed(() => {
-  if (!isStreaming.value || streamingElapsed.value <= 5) return false
-  const lastAssistant = lastAssistantMessage.value
-  if (!lastAssistant) return true
-  return !!showTimeoutWarning.value || !!(lastAssistant.tool_calls || []).length
+  if (!isStreaming.value) return false
+  return !lastAssistantHasVisibleBody.value
 })
 
 const streamingIndicatorText = computed(() =>

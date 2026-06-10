@@ -54,7 +54,7 @@
             class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
             aria-haspopup="menu"
             :aria-expanded="bellOpen"
-            :title="recentCount > 0 ? `${recentCount} paper baru selesai` : 'Belum ada paper baru selesai'">
+            :title="recentCount > 0 ? `${activeJobs.length} diproses, ${recentDone.length} selesai` : 'Belum ada paper yang diproses'">
             <svg class="w-5 h-5 text-ink-700 dark:text-ink-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -66,21 +66,51 @@
           </button>
           <div v-if="bellOpen"
                role="menu"
-               class="absolute right-0 mt-2 w-72 bg-cream-50 dark:bg-ash-800 rounded-xl shadow-lg border border-cream-300 dark:border-ash-700 z-50">
+               class="absolute right-0 mt-2 w-80 bg-cream-50 dark:bg-ash-800 rounded-xl shadow-lg border border-cream-300 dark:border-ash-700 z-50">
             <div class="p-3 border-b border-cream-200 dark:border-ash-700 text-sm font-semibold text-ink-900 dark:text-ink-50">
-              Recent generated papers
+              Paper Jobs
             </div>
             <div class="max-h-80 overflow-y-auto p-2">
-              <div v-if="!recentDone.length" class="text-xs text-ink-500 dark:text-ink-300 p-3 text-center">
-                Belum ada paper yang baru selesai.
+              <!-- Active (in-progress) jobs -->
+              <div v-if="activeJobs.length" class="mb-2">
+                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold">Sedang diproses</div>
+                <div v-for="j in activeJobs" :key="'active-' + j.id"
+                   class="block p-2 rounded-lg text-sm bg-navy-50 dark:bg-navy-900/30 border border-navy-200 dark:border-navy-700 mb-1"
+                   :class="j.paper_id ? 'cursor-pointer hover:bg-navy-100 dark:hover:bg-navy-800/40' : ''"
+                   @click="j.paper_id && navigateToPaper(j.paper_id)">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 border-2 border-navy-300 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin shrink-0"></span>
+                    <div class="font-medium truncate text-navy-800 dark:text-navy-200 flex-1">{{ j.result?.partial_paper?.title || j.paper_title || 'Generating...' }}</div>
+                  </div>
+                  <div class="mt-1 flex items-center gap-2">
+                    <div class="flex-1 h-1.5 rounded-full bg-navy-200 dark:bg-navy-800 overflow-hidden">
+                      <div class="h-full bg-navy-500 dark:bg-cream-300 transition-all" :style="{ width: (j.progress || 0) + '%' }"></div>
+                    </div>
+                    <span class="text-[10px] text-navy-600 dark:text-navy-400 tabular-nums shrink-0">{{ j.progress || 0 }}%</span>
+                  </div>
+                  <div class="text-[10px] text-navy-600 dark:text-navy-400 mt-1 truncate">{{ j.prompt || '' }}</div>
+                </div>
               </div>
-              <router-link v-for="j in recentDone" :key="j.id"
-                 :to="{ name: 'editor', params: { paperId: j.paper_id } }"
-                 @click="bellOpen = false"
-                 class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg text-sm text-ink-800 dark:text-ink-100 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
-                <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
-                <div class="text-[10px] text-ink-500 dark:text-ink-300">{{ formatTime(j.updated_at) }}</div>
-              </router-link>
+
+              <!-- Completed jobs -->
+              <div v-if="recentDone.length">
+                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold">Selesai</div>
+                <router-link v-for="j in recentDone" :key="j.id"
+                   :to="{ name: 'editor', params: { paperId: j.paper_id } }"
+                   @click="onJobClick(j.id)"
+                   class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg text-sm text-ink-800 dark:text-ink-100 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-emerald-600 dark:text-emerald-400 shrink-0">✓</span>
+                    <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
+                  </div>
+                  <div class="text-[10px] text-ink-500 dark:text-ink-300 ml-5">{{ formatTime(j.updated_at) }}</div>
+                </router-link>
+              </div>
+
+              <!-- Empty state -->
+              <div v-if="!activeJobs.length && !recentDone.length" class="text-xs text-ink-500 dark:text-ink-300 p-3 text-center">
+                Belum ada paper yang diproses.
+              </div>
             </div>
           </div>
         </div>
@@ -169,14 +199,28 @@ const bellRef = ref<HTMLElement | null>(null)
 const { mode, setMode } = useTheme()
 
 const jobsStore = usePaperJobsStore()
-const recentDone = computed(() => jobsStore.recentDone)
-const recentCount = computed(() => recentDone.value.length)
+const recentDone = computed(() => {
+  const clicked = jobsStore.clickedJobIds
+  return jobsStore.recentDone.filter(j => !clicked.has(j.id))
+})
+const activeJobs = computed(() => jobsStore.globalActiveJobs || [])
+const recentCount = computed(() => recentDone.value.length + activeJobs.value.length)
 
 const quotaStore = useQuotaStore()
 const quota = computed(() => quotaStore.quota)
 
 function onBellClick(): void {
   bellOpen.value = !bellOpen.value
+}
+
+function navigateToPaper(paperId: string): void {
+  bellOpen.value = false
+  router.push({ name: 'editor', params: { paperId } })
+}
+
+function onJobClick(jobId: string): void {
+  jobsStore.markJobAsClicked(jobId)
+  bellOpen.value = false
 }
 
 function formatTime(iso: string | null | undefined): string {

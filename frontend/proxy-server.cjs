@@ -3,9 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
-const PORT = 8000;
+const PORT = parseInt(process.env.FRONTEND_PORT) || 8000;
 const BACKEND_HOST = 'localhost';
-const BACKEND_PORT = 8001;
+const BACKEND_PORT = parseInt(process.env.BACKEND_PORT) || 8001;
 const DIST_DIR = path.join(__dirname, 'dist');
 
 const mimeTypes = {
@@ -37,6 +37,8 @@ const server = http.createServer((req, res) => {
 
   // Proxy API requests to backend
   if (url.pathname.startsWith('/api/')) {
+    const originalHost = req.headers['x-forwarded-host'] || req.headers.host;
+    const forwardedProto = req.headers['x-forwarded-proto'] || 'https';
     const proxyOptions = {
       hostname: BACKEND_HOST,
       port: BACKEND_PORT,
@@ -45,6 +47,8 @@ const server = http.createServer((req, res) => {
       headers: {
         ...req.headers,
         host: `${BACKEND_HOST}:${BACKEND_PORT}`,
+        'x-forwarded-host': originalHost,
+        'x-forwarded-proto': forwardedProto,
       },
     };
 

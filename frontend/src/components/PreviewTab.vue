@@ -32,18 +32,35 @@
         </button>
         <span v-if="editMode" class="text-[11px] text-amber-600 dark:text-amber-400 animate-pulse">Editing — perubahan auto-save</span>
       </div>
-      <button @click="store.exportDocx()"
-                  class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium flex items-center gap-2 active:scale-95 transition-transform">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Export DOCX
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Zoom controls (only when tools panel is closed) -->
+        <div v-if="showZoom && !editMode" class="flex items-center gap-1 border border-cream-300 dark:border-ash-600 rounded-lg overflow-hidden">
+          <button @click="zoomOut" :disabled="zoomLevel <= 0.5"
+            class="px-2 py-1 text-xs text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 disabled:opacity-30 transition-colors"
+            title="Zoom out">−</button>
+          <span class="px-2 py-1 text-xs text-ink-600 dark:text-ink-300 tabular-nums min-w-[3rem] text-center">{{ Math.round(zoomLevel * 100) }}%</span>
+          <button @click="zoomIn" :disabled="zoomLevel >= 2"
+            class="px-2 py-1 text-xs text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 disabled:opacity-30 transition-colors"
+            title="Zoom in">+</button>
+          <button @click="zoomLevel = 1"
+            class="px-2 py-1 text-xs text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 border-l border-cream-300 dark:border-ash-600 transition-colors"
+            title="Reset zoom">↺</button>
+        </div>
+        <button @click="store.exportDocx()"
+                    class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium flex items-center gap-2 active:scale-95 transition-transform">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Export DOCX
+        </button>
+      </div>
     </div>
 
     <!-- IEEE Paper Preview (rendered, with INLINE diffs) -->
-    <div class="paper-preview border border-cream-300 dark:border-ash-700 rounded-2xl bg-white dark:bg-ash-900 p-8 max-w-4xl mx-auto shadow-sm">
+    <div class="paper-preview-wrapper overflow-auto">
+      <div class="paper-preview border border-cream-300 dark:border-ash-700 rounded-2xl bg-white dark:bg-ash-900 p-8 max-w-4xl mx-auto shadow-sm"
+           :style="{ transform: (showZoom && !editMode) ? `scale(${zoomLevel})` : '', transformOrigin: 'top center', transition: 'transform 0.2s ease' }">
       <!-- Title (with inline diff if pending) -->
       <DiffBlock v-if="pendingByKind.title" :change="pendingByKind.title" :store="store" align="center">
         <template #before>
@@ -100,7 +117,8 @@
       <div v-else class="mb-4 text-justify" style="font-family: 'Times New Roman', serif; font-size: 9pt;">
         <span class="font-bold italic">Abstract—</span>
         <textarea v-if="editMode" v-model="store.paper.abstract"
-          class="italic w-full bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[4rem] dark:text-ash-100"
+          v-autoresize
+          class="italic w-full bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none overflow-hidden dark:text-ash-100"
           placeholder="Paper abstract..." rows="2"></textarea>
         <span v-else class="italic">{{ store.paper.abstract || '(kosong)' }}</span>
       </div>
@@ -152,8 +170,9 @@
             <template v-for="(item, cIdx) in section.content" :key="cIdx">
               <div v-if="item.id === 'text' && item.text" class="mb-2">
                 <textarea v-if="editMode" :value="item.text"
-                  @input="item.text = ($event.target as HTMLTextAreaElement).value"
-                  class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[3rem] dark:text-ash-100"
+                  @input="onTextareaInput($event, item)"
+                  v-autoresize
+                  class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none overflow-hidden dark:text-ash-100"
                   style="font-family: 'Times New Roman', serif;" rows="2"
                   placeholder="Tulis konten..."></textarea>
                 <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
@@ -204,8 +223,9 @@
               <template v-for="(item, cIdx) in sub.content" :key="cIdx">
                 <div v-if="item.id === 'text' && item.text" class="mb-2">
                   <textarea v-if="editMode" :value="item.text"
-                    @input="item.text = ($event.target as HTMLTextAreaElement).value"
-                    class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none min-h-[3rem] dark:text-ash-100"
+                    @input="onTextareaInput($event, item)"
+                    v-autoresize
+                    class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none overflow-hidden dark:text-ash-100"
                     style="font-family: 'Times New Roman', serif;" rows="2"
                     placeholder="Tulis konten..."></textarea>
                   <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
@@ -267,18 +287,28 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import DiffBlock from './DiffBlock.vue'
+
+interface Props {
+  showZoom?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  showZoom: false,
+})
 
 const store = usePaperStore()
 const resolvedOpen = ref(false)
 const editMode = ref(false)
+const zoomLevel = ref(1)
 
 const pendingActive = computed(() =>
   (store.pendingChanges || []).filter(p => p.status === 'pending')
@@ -325,6 +355,18 @@ const newRefProposals = computed(() =>
   pendingActive.value.filter(c => c.kind === 'reference' && (c.payload.ref_index === null || c.payload.ref_index === undefined))
 )
 
+function zoomIn(): void {
+  zoomLevel.value = Math.min(2, zoomLevel.value + 0.1)
+}
+
+function zoomOut(): void {
+  zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.1)
+}
+
+function onTextareaInput(event: Event, item: any): void {
+  item.text = (event.target as HTMLTextAreaElement).value
+}
+
 function imgSrc(path: string): string {
   if (!store.currentPaperId || store.currentPaperId === 'null' || store.currentPaperId === 'undefined' || !path) return ''
   return `/api/images/${store.currentPaperId}/${path}`
@@ -358,5 +400,29 @@ function kindLabel(kind: string): string {
     export_docx: 'Export DOCX',
   }
   return labels[kind] || kind
+}
+
+// Auto-resize directive for textareas
+const vAutoresize = {
+  mounted(el: HTMLTextAreaElement) {
+    const resize = () => {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    }
+    el.addEventListener('input', resize)
+    // Initial resize
+    nextTick(resize)
+    // Store cleanup reference
+    el._autoresizeCleanup = () => el.removeEventListener('input', resize)
+  },
+  updated(el: HTMLTextAreaElement) {
+    nextTick(() => {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    })
+  },
+  unmounted(el: HTMLTextAreaElement) {
+    el._autoresizeCleanup?.()
+  },
 }
 </script>

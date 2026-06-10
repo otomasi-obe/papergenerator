@@ -70,7 +70,7 @@ def test_image_job(app, test_user, test_paper):
 def test_paper_image(app, test_user, test_paper, test_image_bytes):
     """Create a test paper image record and file."""
     with app.app_context():
-        from paper_generation.utils import safe_paper_dir
+        from tools.editor.utils import safe_paper_dir
 
         paper_dir = safe_paper_dir(test_paper.id)
         paper_dir.mkdir(parents=True, exist_ok=True)

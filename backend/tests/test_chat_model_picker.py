@@ -11,7 +11,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
 
 
 def test_chat_model_constant_is_v_deepseek():
-    import chat
+    import tools.chat as chat
 
     assert chat.CHAT_MODEL == "V-DEEPSEEK"
 
@@ -20,7 +20,7 @@ def test_call_upstream_default_kwarg_is_v_deepseek():
     """`_call_upstream(model=...)` defaults to V-DEEPSEEK."""
     import inspect
 
-    import chat
+    import tools.chat as chat
 
     sig = inspect.signature(chat._call_upstream)
     assert sig.parameters["model"].default == "V-DEEPSEEK"
@@ -28,7 +28,7 @@ def test_call_upstream_default_kwarg_is_v_deepseek():
 
 def test_legacy_picker_attrs_removed():
     """The old SELECTABLE_MODELS / DEFAULT_MODEL_KEY / _resolve_model API is gone."""
-    import chat
+    import tools.chat as chat
 
     assert not hasattr(chat, "SELECTABLE_MODELS")
     assert not hasattr(chat, "DEFAULT_MODEL_KEY")
@@ -40,7 +40,7 @@ def test_send_message_ignores_client_model_field():
     We inspect source rather than firing a request to avoid spinning up app+db."""
     import inspect
 
-    import chat
+    import tools.chat as chat
 
     src = inspect.getsource(chat.send_message)
     # No 400 path mentioning "Unknown model" anymore.

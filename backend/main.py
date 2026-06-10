@@ -1,0 +1,1645 @@
+"""
+PaperFull - Backend API Server
+=====================================
+Flask API for AI-powered academic paper generation and DOCX export.
+Supports IEEE conference paper format, Google OAuth login, PostgreSQL storage.
+"""
+
+import importlib
+import json
+import logging
+import os
+import re
+import threading
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+
+from dotenv import load_dotenv
+from flask import Flask, Response, g, jsonify, request, send_file
+from flask_cors import CORS
+from flask_jwt_extended import (
+    JWTManager,
+    get_jwt_identity,
+    jwt_required,
+    verify_jwt_in_request,
+)
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from tools.admin import admin
+from utils.auth_bp import auth, init_oauth
+from tools.data.chart_api import chart_api
+from tools.chat.chat import simple_chat
+from tools.File import files, _EXTRACT_POOL
+from utils.health import health
+from tools.image_generation.image_jobs import image_jobs
+from tools.image_generation.images import paper_images, image_serve
+from tools.paperfull.jobs import jobs
+from tools.editor.papers import papers
+from utils.quota import quota, quota_exceeded
+from tools.Literatur.slr_api import slr_api
+# from tools.chat.workflow_api import workflow_api
+from utils.ai_tools.tools_api import tools_api
+from utils.logging import logging_api
+from database.models import AiJob, ApiUsageLog, Paper, SlrJob, ImageGenJob, db
+from utils.job_core import (
+    init_job_core as _init_job_core,
+    _job_create,
+    _job_get,
+    _job_set_done,
+    _job_set_error,
+    _get_current_user_id,
+    _log_api_usage,
+)
+
+# ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    _dsn = os.getenv("GLITCHTIP_DSN", "").strip()
+    if _dsn:
+        sentry_sdk.init(
+            dsn=_dsn,
+            integrations=[FlaskIntegration(), SqlalchemyIntegration()],
+            traces_sample_rate=0.05,
+            send_default_pii=False,
+            release=os.getenv("SENTRY_RELEASE", "dev"),
+            environment=os.getenv("FLASK_ENV", "production"),
+        )
+except (ImportError, ValueError, Exception) as e:
+    logging.getLogger(__name__).warning(f"Failed to initialize Sentry: {e}")
+from tools.editor.chunked import GenerationCancelled
+from tools.editor.single import generate_paper_json_single
+from utils.ai_tools.model_config import get_primary_generate_model
+
+# Load environment variables.
+#
+# IMPORTANT: tests set DATABASE_URL to ``sqlite:///:memory:`` BEFORE importing
+# app.py (see backend/tests/conftest.py). If we blindly call load_dotenv with
+# override=True the production Postgres URL from .env clobbers the test value
+# and the test fixture's ``db.drop_all()`` then runs against the live database.
+# That happened once. Never again — when we detect a sqlite test override
+# already in place we DON'T override env from .env.
+_in_tests = (
+    os.environ.get("PYTEST_CURRENT_TEST") is not None
+    or os.environ.get("FLASK_ENV") == "testing"
+    or (os.environ.get("DATABASE_URL", "").startswith("sqlite:"))
+)
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=not _in_tests)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=not _in_tests)
+
+app = Flask(__name__)
+
+# Trust nginx reverse proxy headers (X-Forwarded-For, X-Forwarded-Proto, etc.)
+# This ensures url_for(..., _external=True) generates https:// URLs correctly
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+# ─── Config ───────────────────────────────────────────────────────────────────
+_db_url = os.getenv("DATABASE_URL")
+if not _db_url:
+    raise RuntimeError("DATABASE_URL environment variable is required. Set it in .env")
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# Pooling options only make sense for server-grade DBs (Postgres/MySQL).
+# Under sqlite (used by tests) SQLAlchemy uses StaticPool which rejects
+# pool_size/max_overflow/pool_timeout. Skip those keys when on sqlite.
+if not _db_url.startswith("sqlite:"):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 12,
+        "max_overflow": 28,
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
+        "pool_pre_ping": True,
+    }
+else:
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+    }
+
+_jwt_secret = os.getenv("JWT_SECRET_KEY")
+if not _jwt_secret or _jwt_secret == "change-me-in-production":
+    raise RuntimeError("JWT_SECRET_KEY must be set to a secure value in .env")
+app.config["JWT_SECRET_KEY"] = _jwt_secret
+
+# JWT in httpOnly cookies (XSS-safe) + CSRF double-submit protection.
+# Bearer header still accepted as a fallback so signed-URL/E2E tooling and
+# legacy clients keep working during rollout.
+from datetime import timedelta as _td
+
+app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = _td(hours=1)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = _td(days=7)
+app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "true").lower() == "true"
+app.config["JWT_COOKIE_HTTPONLY"] = True
+app.config["JWT_COOKIE_SAMESITE"] = "Lax"  # Lax keeps SSO callback redirects working
+app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+app.config["JWT_ACCESS_CSRF_HEADER_NAME"] = "X-CSRF-TOKEN"
+app.config["JWT_REFRESH_CSRF_HEADER_NAME"] = "X-CSRF-TOKEN"
+app.config["JWT_ACCESS_COOKIE_PATH"] = "/api/"
+app.config["JWT_REFRESH_COOKIE_PATH"] = "/api/auth/refresh"
+
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key or _secret_key in ("flask-secret-key", "change-me-in-production"):
+    raise RuntimeError("SECRET_KEY must be set to a secure non-default value in .env")
+app.config["SECRET_KEY"] = _secret_key
+
+# Session cookie hardening — flask sessions are only used for OAuth state, but
+# defaults are unsafe behind a reverse proxy.
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+# None (with Secure) allows cross-site cookie for OAuth callback from Google
+app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "None")
+# Allow subdomains to receive the session cookie (important for OAuth callback)
+_domain = os.getenv("SESSION_COOKIE_DOMAIN")
+if _domain:
+    app.config["SESSION_COOKIE_DOMAIN"] = _domain
+
+# Server-signed URL secret — used for generating short-lived signed image/file
+# URLs that don't expose the bearer JWT in query strings or referer headers.
+# Falls back to SECRET_KEY so existing deployments don't break, but it's
+# recommended to set a dedicated rotating value.
+app.config["SIGNED_URL_SECRET"] = os.getenv("SIGNED_URL_SECRET") or _secret_key
+
+# Per-request body cap. Each PaperFile is capped at 10 MB by files_bp itself,
+# but multipart uploads bundle all selected files in one POST so 4 PDFs of
+# ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
+# can ride the same multipart payload (form overhead included).
+app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024  # 60MB max upload
+
+
+# Friendlier 413 — Werkzeug's default returns an HTML page that the chat
+# upload code treats as a generic network error. Serve JSON so the frontend
+# can show "file terlalu besar" instead of "Network error".
+@app.errorhandler(404)
+def _on_404(_e):
+    return (
+        jsonify(
+            {
+                "error": "Endpoint tidak ditemukan",
+                "code": "NOT_FOUND",
+                "category": "CLIENT",
+            }
+        ),
+        404,
+    )
+
+
+@app.errorhandler(413)
+def _on_413(_e):
+    return (
+        jsonify(
+            {
+                "error": "Payload terlalu besar",
+                "hint": (
+                    f"Total upload melebihi {app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)} MB. "
+                    "Coba upload file lebih sedikit atau pisah jadi beberapa kali upload."
+                ),
+                "code": "PAYLOAD_TOO_LARGE",
+            }
+        ),
+        413,
+    )
+
+
+# ─── Extensions ───────────────────────────────────────────────────────────────
+# CORS: Only allow localhost in development
+cors_origins = []
+if app.config.get("ENV") != "production" and not app.config.get("PRODUCTION"):
+    cors_origins.extend(["http://localhost:8000"])
+CORS(app, supports_credentials=True, origins=cors_origins)
+db.init_app(app)
+jwt = JWTManager(app)
+
+
+# ─── JWT Error Handlers ───────────────────────────────────────────────────────
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Token expired", "code": "TOKEN_EXPIRED"}), 401
+
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({"error": "Invalid token", "code": "INVALID_TOKEN"}), 401
+
+
+@jwt.unauthorized_loader
+def unauthorized_callback(error):
+    return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED"}), 401
+
+
+@jwt.needs_fresh_token_loader
+def needs_fresh_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Fresh token required", "code": "FRESH_TOKEN_REQUIRED"}), 401
+
+
+@jwt.revoked_token_loader
+def revoked_token_callback(jwt_header, jwt_payload):
+    return jsonify({"error": "Token has been revoked", "code": "TOKEN_REVOKED"}), 401
+
+
+init_oauth(app)
+
+# ─── Database query logging (debug / performance monitoring) ─────────────
+# Logs every SQL query at INFO level when QUERY_LOGGING_ENABLED is true.
+# In production this should only be enabled temporarily for profiling.
+from sqlalchemy import event as _sa_event
+from sqlalchemy.engine import Engine as _SAEngine
+
+_QUERY_LOGGING_ENABLED = os.getenv("QUERY_LOGGING_ENABLED", "").lower() in ("1", "true", "yes")
+if _QUERY_LOGGING_ENABLED:
+
+    @_sa_event.listens_for(_SAEngine, "before_cursor_execute")
+    def _before_query_log(conn, cursor, statement, parameters, context, executemany):
+        query_log = logging.getLogger("database.queries")
+        conn.info["query_log_start"] = time.monotonic()
+        query_log.info("SQL: %s  PARAMS: %s", statement, parameters)
+
+    @_sa_event.listens_for(_SAEngine, "after_cursor_execute")
+    def _after_query_log(conn, cursor, statement, parameters, context, executemany):
+        query_log = logging.getLogger("database.queries")
+        elapsed = time.monotonic() - conn.info.get("query_log_start", time.monotonic())
+        if elapsed > 0.5:
+            query_log.warning("SLOW SQL (%.3fs): %s  PARAMS: %s", elapsed, statement, parameters)
+        elif elapsed > 0.05:
+            query_log.info("SQL (%.3fs): %s", elapsed, statement)
+
+    log.info("database query logging enabled (QUERY_LOGGING_ENABLED=1)")
+
+
+# PostgreSQL session safeguards
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+
+@event.listens_for(Engine, "connect")
+def _set_pg_session_defaults(dbapi_connection, _):
+    """Hindari sesi nyangkut: timeout query 30 dtk, idle txn 5 menit, lock 5 dtk."""
+    if not dbapi_connection.__class__.__module__.startswith("psycopg"):
+        return
+    try:
+        with dbapi_connection.cursor() as cur:
+            cur.execute("SET statement_timeout = '30s'")
+            cur.execute("SET idle_in_transaction_session_timeout = '5min'")
+            cur.execute("SET lock_timeout = '5s'")
+        dbapi_connection.commit()
+    except (AttributeError, Exception):
+        logging.getLogger(__name__).exception("failed to set pg session defaults")
+
+
+# Rate limiting: require Redis in production for distributed rate limiting
+ratelimit_storage = os.getenv("RATELIMIT_STORAGE_URI")
+if not ratelimit_storage:
+    if app.config.get("ENV") == "production" or app.config.get("PRODUCTION"):
+        raise RuntimeError(
+            "RATELIMIT_STORAGE_URI must be set in production. "
+            "Use Redis: redis://localhost:6379 or redis://user:pass@host:port/db"
+        )
+    else:
+        # Development/testing: allow memory storage
+        ratelimit_storage = "memory://"
+        logging.getLogger(__name__).warning(
+            "Using memory:// for rate limiting (development only). "
+            "Set RATELIMIT_STORAGE_URI=redis://... for production."
+        )
+
+
+def rate_limit_handler(request_limit):
+    """Custom handler for rate limit breaches - returns JSON response."""
+    from utils.core.errors import ErrorCategory, ErrorCode
+    from utils.monitoring.observability_v2 import RATE_LIMIT_BREACHES
+
+    endpoint = request.endpoint or "unknown"
+    RATE_LIMIT_BREACHES.labels(endpoint=endpoint, limit_type="ip").inc()
+
+    response = jsonify(
+        {
+            "error": "Terlalu banyak request",
+            "code": ErrorCode.RATE_LIMIT_EXCEEDED,
+            "category": ErrorCategory.RATE_LIMIT,
+            "details": {"retry_after": 60},
+        }
+    )
+    response.status_code = 429
+    return response
+
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    enabled=not _in_tests,
+    default_limits=["1000 per minute"],
+    storage_uri=ratelimit_storage,
+    strategy="fixed-window",
+    on_breach=rate_limit_handler,
+)
+
+
+# ─── Correlation ID middleware (per-request UUID for log tracing) ───────────
+@app.before_request
+def add_correlation_id():
+    g.correlation_id = str(uuid.uuid4())
+
+
+app.register_blueprint(auth)
+app.register_blueprint(admin)
+app.register_blueprint(simple_chat)
+app.register_blueprint(papers)
+app.register_blueprint(files)
+app.register_blueprint(paper_images)
+app.register_blueprint(image_serve)
+app.register_blueprint(chart_api)
+app.register_blueprint(jobs)
+app.register_blueprint(image_jobs)
+app.register_blueprint(slr_api)
+app.register_blueprint(quota)
+app.register_blueprint(health)
+app.register_blueprint(tools_api)
+app.register_blueprint(logging_api)
+
+
+# ─── OpenAPI / Swagger UI ─────────────────────────────────────────────────
+_OPENAPI_PATH = Path(__file__).parent / "openapi.yaml"
+
+
+@app.route("/api/openapi.yaml", methods=["GET"])
+def openapi_yaml():
+    """Serve the OpenAPI 3.1 spec as YAML."""
+    if not _OPENAPI_PATH.is_file():
+        return jsonify({"error": "Spec not found"}), 404
+    return send_file(_OPENAPI_PATH, mimetype="application/yaml")
+
+
+_SWAGGER_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PaperFull API — Swagger UI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+  <style>body { margin:0; } .topbar { display:none; }</style>
+</head>
+<body>
+  <div id="swagger"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: "/api/openapi.yaml",
+        dom_id: "#swagger",
+        deepLinking: true,
+        withCredentials: true,
+        requestInterceptor: (req) => {
+          // Forward CSRF for state-changing calls so try-it-out actually works.
+          const m = (document.cookie.match(/(?:^|;\\s*)csrf_access_token=([^;]+)/) || [])[1];
+          if (m && /^(POST|PUT|PATCH|DELETE)$/i.test(req.method || '')) {
+            req.headers['X-CSRF-TOKEN'] = decodeURIComponent(m);
+          }
+          return req;
+        },
+      });
+    };
+  </script>
+</body>
+</html>"""
+
+
+@app.route("/api/docs", methods=["GET"])
+def api_docs():
+    """Serve Swagger UI from CDN, pointed at /api/openapi.yaml."""
+    return Response(_SWAGGER_HTML, mimetype="text/html")
+
+
+# ─── Security headers ────────────────────────────────────────────────────────
+@app.after_request
+def _security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    # Content Security Policy
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+        "img-src 'self' data: https:; "
+        "connect-src 'self'; "
+        "font-src 'self' data:; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    response.headers.setdefault("Content-Security-Policy", csp)
+    # API responses should never be cached by intermediaries by default.
+    if request.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+
+    # Track rate limit metrics
+    try:
+        from utils.monitoring.observability_v2 import RATE_LIMIT_REQUESTS
+
+        endpoint = request.endpoint or "unknown"
+        status = "blocked" if response.status_code == 429 else "allowed"
+        RATE_LIMIT_REQUESTS.labels(endpoint=endpoint, status=status).inc()
+    except Exception:
+        pass
+
+    return response
+
+
+# ─── Request access logging ───────────────────────────────────────────────────
+@app.after_request
+def _log_request(response):
+    try:
+        duration_ms = 0
+        if hasattr(g, '_req_started_at'):
+            duration_ms = (time.perf_counter() - g._req_started_at) * 1000
+        user_id = None
+        try:
+            verify_jwt_in_request(optional=True)
+            identity = get_jwt_identity()
+            if identity:
+                user_id = int(identity)
+        except Exception:
+            pass
+        log_access(
+            method=request.method,
+            path=request.path,
+            status=response.status_code,
+            duration_ms=round(duration_ms, 2),
+            user_id=user_id,
+            ip=request.headers.get("X-Forwarded-For", request.remote_addr),
+        )
+    except Exception:
+        pass
+    return response
+
+
+# Stricter rate limit on auth endpoints to defend against credential stuffing.
+limiter.limit("10 per minute")(auth)
+
+# ─── Logging Setup ────────────────────────────────────────────────────────────
+from utils.core.global_logger import init_global_logging, log_access, log_activity
+_global_log = init_global_logging()
+log = logging.getLogger(__name__)
+
+UPLOAD_FOLDER = Path(__file__).parent / "data/uploads"
+UPLOAD_FOLDER.mkdir(exist_ok=True)
+EXPORT_FOLDER = Path(__file__).parent / "data" / "exports"
+EXPORT_FOLDER.mkdir(exist_ok=True)
+USER_BASE = Path(__file__).parent / "user"
+USER_BASE.mkdir(exist_ok=True)
+
+TEMPLATE_FOLDER = Path(__file__).parent / "tools" / "Journal"
+
+
+def _available_journals():
+    """Return canonical journal/template codes from *gen.py files in tools/Journal."""
+    codes = []
+    try:
+        for gen_path in TEMPLATE_FOLDER.glob("*gen.py"):
+            if gen_path.name.startswith("_"):
+                continue
+            code = gen_path.stem[:-3]  # remove 'gen' suffix: "IEEEgen" -> "IEEE"
+            if code:
+                codes.append(code)
+    except Exception:
+        return []
+    return sorted(set(codes), key=str.lower)
+
+
+def _resolve_journal_code(raw: str | None) -> str:
+    available = _available_journals()
+    if not raw:
+        return "IEEE" if "IEEE" in available else (available[0] if available else "IEEE")
+    raw_norm = str(raw).strip()
+    if not raw_norm:
+        return "IEEE" if "IEEE" in available else (available[0] if available else "IEEE")
+
+    # Case-insensitive match to avoid client-side casing bugs
+    m = {c.lower(): c for c in available}
+    return m.get(raw_norm.lower(), raw_norm)
+
+
+def _get_builder_for_journal(journal_code: str):
+    """Return the build_document callable for a known template code."""
+    available = _available_journals()
+    m = {c.lower(): c for c in available}
+    canonical = m.get(journal_code.lower())
+    if not canonical:
+        raise ValueError(f"Unknown journal template: {journal_code}")
+    mod = importlib.import_module(f"tools.Journal.{canonical}gen")
+    builder = getattr(mod, "build_document", None)
+    if not callable(builder):
+        raise ValueError(f"Template generator missing build_document: {canonical}gen")
+    return canonical, builder
+
+
+AIOTOMASI_MODEL = get_primary_generate_model()
+
+# Initialize shared job helpers so background threads can use them.
+_init_job_core(app, AIOTOMASI_MODEL)
+
+# ─── DB Init ──────────────────────────────────────────────────────────────────
+with app.app_context():
+    db.create_all()
+    log.info("Database tables created/verified")
+
+
+# ─── AiJob sweeper (mark stuck pending jobs as errored) ──────────────────────
+AIJOB_PENDING_TIMEOUT_SECONDS = 15 * 60  # 15 minutes
+
+
+def _sweep_stuck_jobs():
+    """Best-effort: mark AiJob rows stuck in 'pending' beyond the timeout
+    as errored so the frontend stops polling forever after a worker crash.
+    Runs in-process from a daemon thread; safe under multi-worker because the
+    UPDATE is conditional on status='pending'.
+    """
+    while True:
+        try:
+            time.sleep(60)
+            with app.app_context():
+                cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(
+                    seconds=AIJOB_PENDING_TIMEOUT_SECONDS
+                )
+                stuck = AiJob.query.filter(
+                    AiJob.status == "pending",
+                    AiJob.started_at < cutoff,
+                ).all()
+                if not stuck:
+                    continue
+                for j in stuck:
+                    j.status = "error"
+                    j.error = (
+                        f"Job stuck >{AIJOB_PENDING_TIMEOUT_SECONDS//60}min — worker likely crashed"
+                    )
+                    j.timeout = True
+                db.session.commit()
+                log.warning("Swept %d stuck AI jobs", len(stuck))
+        except Exception:
+            log.exception("AiJob sweeper iteration failed")
+
+
+threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").start()
+
+# ─── Image generation worker pool (4 workers, 1 per Gemini account) ──────
+# Lazy-started so the import-only path (CLI / tests / migrations) doesn't try
+# to spin up Playwright. Started here on app boot.
+try:
+    from tools.image_generation.worker import start_image_workers as _start_image_workers  # noqa: PLC0415
+
+    _start_image_workers(app)
+except Exception:
+    log.exception("Failed to start image worker pool — generate-image will not work")
+
+# ─── SLR worker pool (max 10 workers, FIFO DB-backed queue) ─────────────
+# Pulls SlrJob rows and runs the multi-source academic search + AI
+# summarization pipeline. Idempotent across gunicorn worker processes.
+# Skipped under TESTING so unit tests don't spin up the executor / pump.
+if not app.config.get("TESTING"):
+    try:
+        from tools.Literatur.worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
+
+        _start_slr_workers(app)
+    except Exception:
+        log.exception(
+            "Failed to start SLR worker pool — Literature/SLR jobs will queue but not run"
+        )
+
+# ─── Health Check ────────────────────────────────────────────────────────────
+
+
+@app.route("/api/health", methods=["GET"])
+@limiter.exempt
+def health():
+    return jsonify(
+        {"status": "ok", "model": AIOTOMASI_MODEL, "timestamp": datetime.now().isoformat()}
+    )
+
+
+# ─── AI Generate (Section) ───────────────────────────────────────────────────
+
+
+@app.route("/api/generate", methods=["POST"])
+@limiter.limit("20 per minute")  # AI calls are expensive; 20/min per IP
+@jwt_required()
+def generate():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        prompt = data.get("prompt", "")
+        last_text = data.get("lastText", "")
+        paper_context = data.get("paperContext", {})
+        section = data.get("section", "").lower()
+
+        if not prompt:
+            return jsonify({"error": "Prompt is required"}), 400
+
+        # AI Mocking for testing (rate limiting still enforced by decorator)
+        from tests.helpers.mock_ai import get_mock_generate_response, should_mock_ai
+
+        if should_mock_ai():
+            mock_response = get_mock_generate_response(prompt=prompt, section=section)
+            return jsonify(mock_response)
+
+        api_key = os.getenv("AIOTOMASI_APIKEY")
+        base_url = os.getenv("AIOTOMASI_API")
+        if not api_key:
+            return jsonify({"error": "AIOTOMASI_APIKEY not configured"}), 500
+        if not base_url:
+            return jsonify({"error": "AIOTOMASI_API not configured"}), 500
+
+        prompts_by_section = {
+            "title": "You are an IEEE conference paper title writer. Generate a concise, specific paper title (max 15 words). Return ONLY the title.",
+            "abstract": "You are an IEEE conference paper writer. Generate a 150-200 word abstract. Start with problem statement, then method, then results. Return ONLY the abstract text.",
+            "introduction": "You are an IEEE conference researcher. Write an INTRODUCTION section (200-300 words): 1) Motivate the problem 2) Identify research gap 3) State contributions. Include citations as [1], [2].",
+            "methodology": "You are a systems researcher. Write a METHODOLOGY section describing: 1) Problem formulation 2) Proposed method/algorithm 3) Implementation details. Use IEEE notation.",
+            "results": "You are a research scientist. Write EXPERIMENTAL RESULTS: 1) Datasets used 2) Metrics with values 3) Comparison with baselines 4) Analysis.",
+            "conclusion": "You are an academic writer. Write CONCLUSION (100-150 words): 1) Summarize contributions 2) Highlight metrics 3) Future work.",
+            "acknowledgment": "Write 2-3 sentences of paper acknowledgments thanking funding agencies, collaborators. Professional and concise.",
+        }
+
+        system_prompt = prompts_by_section.get(
+            section,
+            "You are an expert academic writer for IEEE papers. Generate content for the specified section. Use LaTeX notation for formulas. Return ONLY the content.",
+        )
+
+        messages = [{"role": "system", "content": system_prompt}]
+        context_parts = []
+        if paper_context:
+            context_parts.append(f"Paper title: {paper_context.get('title', 'Untitled')}")
+            if paper_context.get("abstract"):
+                context_parts.append(f"Abstract: {paper_context['abstract'][:500]}")
+        if last_text:
+            context_parts.append(f"\n--- Current content ---\n{last_text}\n--- End ---")
+        if context_parts:
+            messages.append({"role": "user", "content": "\n".join(context_parts)})
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": "I understand the context. What would you like me to do?",
+                }
+            )
+        messages.append({"role": "user", "content": prompt})
+
+        from tools.editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
+
+        result, model_used = _call_aiotomasi_with_fallback(
+            messages,
+            api_key,
+            base_url,
+            AIOTOMASI_MODEL,
+        )
+        # Upstream SSE doesn't return token counts; report char-derived estimate
+        # so the frontend keeps its existing usage shape without claiming false
+        # token totals. _log_api_usage records 0/0/0 which is harmless.
+        usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        user_id = _get_current_user_id()
+        threading.Thread(
+            target=_log_api_usage, args=("generate", usage, user_id), daemon=True
+        ).start()
+        return jsonify(
+            {
+                "success": True,
+                "content": result,
+                "text": result,
+                "model": model_used,
+                "usage": usage,
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("unhandled error")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Generate Full Paper ─────────────────────────────────────────────────────
+
+
+def _run_generate_full_job(
+    job_id,
+    prompt,
+    user_id=None,
+    topic=None,
+    style=None,
+    pdf_texts=None,
+    custom_prompt=None,
+    paper_id=None,
+    conv_id=None,
+    resume_state=None,
+    **_legacy_kwargs,
+):
+    """Generate a full paper via single-shot generation.
+
+    Legacy callers may still pass ``model=`` or ``chunked=`` — both are now
+    silently ignored. The model is read from MODELGENERATE env var (VIOLA-GENERATE).
+    See paper_generation/single.py for implementation details.
+    """
+    t_start = time.time()
+    log.info("[job:%s] started, prompt=%r (single-shot generation)", job_id, prompt[:80])
+    if _legacy_kwargs:
+        log.info("[job:%s] ignoring legacy kwargs: %s", job_id, sorted(_legacy_kwargs.keys()))
+    uid = None
+    try:
+        uid = int(user_id) if user_id is not None else None
+    except Exception:
+        uid = None
+
+    # ── checkpoint + cancel wiring ─────────────────────────────────────────
+    # In single-shot mode we still maintain the AiJob row + Redis SSE channel
+    # so existing UI code keeps working. The single round-trip means there's
+    # no mid-flight checkpoint cadence — we publish "running" once at start
+    # and "complete" once at the end. Cancellation is checked once before we
+    # call out so a user who hit Cancel before the API was reached is honoured.
+    def _publish(stage, percent, status):
+        try:
+            from tools.paperfull.jobs import publish_progress
+
+            publish_progress(
+                job_id,
+                {
+                    "stage": stage,
+                    "percent": int(percent),
+                    "status": status,
+                },
+            )
+        except Exception:
+            pass
+
+    def _cancel_check():
+        try:
+            with app.app_context():
+                j = AiJob.query.filter_by(id=job_id).first()
+                return bool(j and j.status == "cancelled")
+        except Exception:
+            return False
+
+    def _checkpoint(stage, progress):
+        try:
+            with app.app_context():
+                j = AiJob.query.filter_by(id=job_id).first()
+                if not j:
+                    return
+                j.stage = stage
+                j.progress = max(0, min(100, int(progress)))
+                db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            log.exception("[job:%s] checkpoint failed at stage=%s", job_id, stage)
+        _publish(stage, progress, "running" if int(progress) < 100 else "complete")
+
+    try:
+        api_key = os.getenv("AIOTOMASI_APIKEY")
+        if not api_key:
+            raise Exception("AIOTOMASI_APIKEY not configured")
+
+        extra_parts = []
+        if custom_prompt:
+            extra_parts.append(custom_prompt)
+        if pdf_texts:
+            combined = "\n\n".join(pdf_texts[:5])
+            extra_parts.append(f"[REFERENCE DOCUMENTS]\n{combined}")
+        extra = ("\n\n".join(extra_parts)).strip()
+
+        # Pre-flight cancel check — honour the user pressing Cancel before we
+        # hit the upstream API. Mirrors the behaviour of the chunked path.
+        if _cancel_check():
+            raise GenerationCancelled("start")
+
+        _checkpoint("generating", 5)
+
+        paper_data = generate_paper_json_single(
+            judul=prompt,
+            custom_prompt=extra,
+            topic=topic,
+            style=style,
+            paper_id=paper_id,
+            conv_id=conv_id,
+            job_id=job_id,
+            user_id=user_id,
+        )
+
+        # Validate that the model returned a complete paper before persisting.
+        # Without this, an upstream truncation (e.g. the model stopped at
+        # section1 because of `max_tokens`) silently produces a stub paper that
+        # only the user discovers after waiting 5–10 minutes.
+        from tools.editor.single import _validate_paper_shape as _vps
+
+        validation = _vps(paper_data)
+        if not validation["ok"]:
+            log.warning(
+                "[job:%s] generated paper INCOMPLETE: %s",
+                job_id,
+                validation["issues"],
+            )
+            # We still save the partial result (better than nothing), but mark
+            # the job stage so the chat surfaces the issue rather than
+            # silently calling it "done".
+            try:
+                with app.app_context():
+                    j = AiJob.query.filter_by(id=job_id).first()
+                    if j:
+                        existing = (j.error or "").strip()
+                        warn = "Generated paper incomplete: " + ", ".join(validation["issues"])
+                        j.error = (existing + "\n" if existing else "") + warn
+                        db.session.commit()
+            except Exception:
+                pass
+
+        paper_data.setdefault(
+            "authors",
+            [
+                {
+                    "name": "Author Name",
+                    "affiliation": "Department, University",
+                    "location": "City, Country",
+                    "email": "author@example.com",
+                }
+            ],
+        )
+        paper_data.setdefault("keywords", [])
+        paper_data.setdefault("sections", [])
+        paper_data.setdefault("acknowledgment", "")
+        paper_data.setdefault("references", [])
+        paper_data.setdefault("figures", [])
+        paper_data.setdefault("tables", [])
+        paper_data.setdefault("equations", [])
+
+        for auth in paper_data["authors"]:
+            auth.setdefault("name", "")
+            auth.setdefault("affiliation", "")
+            auth.setdefault("location", "")
+            auth.setdefault("email", "")
+
+        for i, sec in enumerate(paper_data["sections"]):
+            sec.setdefault("id", f"id-sec{i+1}")
+            sec.setdefault("number", "")
+            sec.setdefault("title", "")
+            sec.setdefault("content", "")
+            sec.setdefault("subsections", [])
+            for j, sub in enumerate(sec["subsections"]):
+                sub.setdefault("id", f"id-sub{i+1}{chr(97+j)}")
+                sub.setdefault("letter", chr(65 + j))
+                sub.setdefault("title", "")
+                sub.setdefault("content", "")
+                sub.setdefault("numberedItems", [])
+
+        for i, fig in enumerate(paper_data["figures"]):
+            fig.setdefault("id", f"figure-{i+1}")
+            fig.setdefault("caption", f"Fig. {i+1}. ")
+            fig.setdefault("filename", "")
+            fig.setdefault("url", "")
+
+        for i, tbl in enumerate(paper_data["tables"]):
+            tbl.setdefault("id", f"table-{i+1}")
+            tbl.setdefault("caption", f"TABLE {i+1}. ")
+            tbl.setdefault("headers", [])
+            tbl.setdefault("rows", [])
+
+        for i, eq in enumerate(paper_data["equations"]):
+            eq.setdefault("id", f"eq-{i+1}")
+            eq.setdefault("latex", "")
+            eq.setdefault("number", i + 1)
+
+        try:
+            output_dir = Path(__file__).parent / "output"
+            output_dir.mkdir(exist_ok=True)
+            safe_title = re.sub(r"[^a-zA-Z0-9_]", "_", prompt[:50]).strip("_")
+            ts_str = time.strftime("%Y%m%d_%H%M%S")
+            json_out = output_dir / f"{ts_str}_{safe_title}.json"
+            json_out.write_text(
+                json.dumps(paper_data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except Exception as save_err:
+            log.warning("[job:%s] Could not save JSON: %s", job_id, save_err)
+
+        # Save paper.json to user storage
+        if uid is not None:
+            try:
+                from utils.core.user_storage import get_username, save_paper_json, save_paper_json_by_id
+                username = get_username(user_id=uid)
+                paper_title = (paper_data.get("title") or "").strip() or prompt[:60]
+                if paper_id:
+                    save_paper_json_by_id(username, paper_id, paper_data)
+                else:
+                    save_paper_json(username, paper_title, paper_data)
+            except Exception:
+                log.warning("[job:%s] Could not save paper.json to user storage", job_id, exc_info=True)
+
+        # Single end-of-run checkpoint — stage="complete", progress=100.
+        _checkpoint("complete", 100)
+
+        elapsed = time.time() - t_start
+        _log_api_usage(
+            "generate-full",
+            {"total_tokens": 0, "prompt_tokens": 0, "completion_tokens": 0},
+            user_id,
+        )
+        with app.app_context():
+            # Persist into Paper.data when chat-tool flow gave us a paper_id —
+            # this prevents the result being lost if the one-shot /api/job
+            # response is consumed before the editor reloads the paper.
+            if paper_id and uid is not None:
+                try:
+                    paper = Paper.query.filter_by(id=paper_id, user_id=uid).first()
+                    if paper:
+                        paper.data = paper_data
+                        paper.title = (
+                            (paper_data.get("title") or "").strip()
+                            or paper.title
+                            or "Untitled"
+                        )
+                        paper.updated_at = datetime.now(timezone.utc)
+                        db.session.commit()
+                        log.info("[job:%s] persisted into paper %s", job_id, paper_id)
+                except Exception:
+                    db.session.rollback()
+                    log.exception("[job:%s] failed to persist into paper %s", job_id, paper_id)
+            if uid is not None:
+                _job_set_done(job_id, uid, paper_data, int(elapsed))
+        log.info("[job:%s] DONE in %.1fs", job_id, elapsed)
+
+    except GenerationCancelled as gc:
+        # Cooperative cancel: persist whatever was already checkpointed and
+        # mark the job cancelled (so the UI bubble can surface the partial
+        # result + a Resume button).
+        elapsed = time.time() - t_start
+        log.info("[job:%s] CANCELLED at stage=%s after %.1fs", job_id, gc.stage, elapsed)
+        with app.app_context():
+            try:
+                j = AiJob.query.filter_by(id=job_id).first()
+                if j:
+                    j.status = "cancelled"
+                    j.stage = gc.stage
+                    existing = j.result if isinstance(j.result, dict) else {}
+                    j.result = {
+                        **existing,
+                        "cancelled_at_stage": gc.stage,
+                        "elapsed_seconds": int(elapsed),
+                    }
+                    db.session.commit()
+            except Exception:
+                db.session.rollback()
+                log.exception("[job:%s] failed to persist cancellation", job_id)
+        try:
+            from tools.paperfull.jobs import publish_progress
+
+            publish_progress(job_id, {"stage": gc.stage, "status": "cancelled"})
+        except Exception:
+            pass
+
+    except Exception as e:
+        elapsed = time.time() - t_start
+        err_str = str(e)
+        timeout_flag = (
+            "timeout" in type(e).__name__.lower()
+            or "timeout" in err_str.lower()
+            or "timed out" in err_str.lower()
+        )
+        log.error("[job:%s] FAILED after %.1fs: %s", job_id, elapsed, e, exc_info=True)
+        with app.app_context():
+            if uid is not None:
+                _job_set_error(
+                    job_id,
+                    uid,
+                    (
+                        f"Generation timed out after {int(elapsed)}s. Try a shorter topic."
+                        if timeout_flag
+                        else err_str
+                    ),
+                    timeout_flag=timeout_flag,
+                )
+    finally:
+        pass
+
+
+@app.route("/api/generate-full", methods=["POST"])
+@limiter.limit("10 per minute")  # Full paper generation: heavier, stricter limit
+@jwt_required()
+def generate_full():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        prompt = data.get("prompt", "").strip()
+        if not prompt:
+            return jsonify({"error": "Prompt is required"}), 400
+
+        # AI Mocking for testing (rate limiting still enforced by decorator)
+        from tests.helpers.mock_ai import get_mock_generate_full_response, should_mock_ai
+
+        if should_mock_ai():
+            job_id = uuid.uuid4().hex[:12]
+            mock_response = get_mock_generate_full_response(prompt=prompt, job_id=job_id)
+            return jsonify(mock_response)
+
+        topic = data.get("topic") or None
+        style = data.get("style") or None
+        pdf_texts = data.get("pdf_texts") or []
+        model = data.get("model") or None
+        if model is not None:
+            allowed_models = {"VIOLA-CHAT", "VIOLA-GENERATE"}
+            if model not in allowed_models:
+                return jsonify({"error": f"Invalid model. Allowed: {sorted(allowed_models)}"}), 400
+
+        api_key = os.getenv("AIOTOMASI_APIKEY")
+        if not api_key:
+            raise Exception("AIOTOMASI_APIKEY not configured")
+
+        user_id = _get_current_user_id()
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        job_id = uuid.uuid4().hex[:12]
+        paper_id = data.get("paper_id") or None
+        conv_id = data.get("conv_id") or None
+        _job_create(job_id, int(user_id), prompt, paper_id=paper_id)
+        threading.Thread(
+            target=_run_generate_full_job,
+            args=(job_id, prompt, user_id),
+            kwargs={"topic": topic, "style": style, "pdf_texts": pdf_texts, "paper_id": paper_id, "conv_id": conv_id},
+            daemon=True,
+        ).start()
+        return jsonify({"success": True, "job_id": job_id})
+
+    except Exception as e:
+        log.exception("unhandled error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/job/<job_id>", methods=["GET"])
+@jwt_required()
+def get_job_status(job_id):
+    try:
+
+        user_id = int(get_jwt_identity())
+
+    except (ValueError, TypeError):
+
+        return jsonify({"error": "Invalid user identity"}), 401
+    job = _job_get(job_id, user_id)
+    if job is None:
+        return jsonify({"error": "Job not found or already retrieved"}), 404
+
+    elapsed = int(
+        (
+            datetime.now(timezone.utc)
+            - (
+                job.started_at.replace(tzinfo=timezone.utc)
+                if job.started_at and job.started_at.tzinfo is None
+                else (job.started_at or datetime.now(timezone.utc))
+            )
+        ).total_seconds()
+    )
+    if job.status == "pending":
+        return jsonify({"status": "pending", "elapsed": elapsed})
+    # Don't delete the row on done/error any more — the badge inbox
+    # (/api/me/ai-jobs/recent) and the active-job lookup both need the row to
+    # stay around. Cleanup of stale rows is handled by a future cron sweep.
+    if job.status == "done":
+        paper = (job.result or {}).get("partial_paper") or job.result or {}
+        # Backwards-compat: legacy callers expected the full paper dict here.
+        # The chunked path stores the canonical paper under partial_paper at
+        # the final 'combine' checkpoint; older legacy path stored the dict
+        # directly. Both shapes are tolerated.
+        if isinstance(paper, dict) and "sections" not in paper and isinstance(job.result, dict):
+            paper = job.result
+        return jsonify(
+            {"status": "done", "success": True, "paper": paper, "usage": {}, "elapsed": elapsed}
+        )
+
+    err = job.error or "Unknown error"
+    timeout_flag = bool(job.timeout)
+    return jsonify({"status": "error", "error": err, "timeout": timeout_flag})
+
+
+# ─── Topics / Styles / PDF Upload ─────────────────────────────────────────────
+
+
+@app.route("/api/topics", methods=["GET"])
+def list_topics():
+    """Return sorted list of available topic slugs (cached)."""
+    from utils.core.cache import cached
+
+    @cached(ttl_seconds=3600)  # Cache for 1 hour
+    def _get_topics():
+        topic_dir = Path(__file__).parent / "tools" / "paperfull" / "prompt" / "topic"
+        return sorted(p.stem for p in topic_dir.glob("*.txt") if not p.stem.startswith("_"))
+
+    topics = _get_topics()
+    return jsonify({"topics": topics})
+
+
+@app.route("/api/styles", methods=["GET"])
+def list_styles():
+    """Return sorted list of available citation style slugs (cached)."""
+    from utils.core.cache import cached
+
+    @cached(ttl_seconds=3600)  # Cache for 1 hour
+    def _get_styles():
+        style_dir = Path(__file__).parent / "tools" / "paperfull" / "prompt" / "style"
+        return sorted(p.stem for p in style_dir.glob("*.txt"))
+
+    styles = _get_styles()
+    return jsonify({"styles": styles})
+
+
+MAX_PDF_FILES = 10
+MAX_WORDS_PER_FILE = 5000
+
+
+@app.route("/api/upload-pdfs", methods=["POST"])
+@limiter.limit("20 per minute")
+@jwt_required()
+def upload_pdfs():
+    """Extract text from up to 5 uploaded PDF/DOCX files (max 5000 words each).
+
+    Routes through the shared 20-worker extraction pool in files_bp so a chat
+    upload doesn't block a Files-tab upload (and vice versa).
+    """
+    import io  # noqa: PLC0415
+
+    from docx import Document  # noqa: PLC0415
+    # _EXTRACT_POOL imported at top from tools.File
+
+    from tools.File.extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
+
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
+    if len(files) > MAX_PDF_FILES:
+        return jsonify({"error": f"Max {MAX_PDF_FILES} files allowed"}), 400
+
+    # Read bytes synchronously (cheap), then extract in parallel.
+    payloads = []
+    warnings = []
+    MAX_PDF_SIZE = 30 * 1024 * 1024  # 30MB per file
+    for f in files:
+        filename = (f.filename or "").lower()
+        try:
+            # BUG FIX: Add size check before reading entire file
+            f.stream.seek(0, 2)
+            size = f.stream.tell()
+            f.stream.seek(0)
+            if size > MAX_PDF_SIZE:
+                warnings.append(f"{f.filename}: file terlalu besar (max 30MB)")
+                continue
+            if size == 0:
+                warnings.append(f"{f.filename}: file kosong")
+                continue
+            data = f.stream.read()
+        except Exception as e:
+            warnings.append(f"{f.filename}: gagal baca stream ({e})")
+            continue
+        if filename.endswith(".pdf"):
+            payloads.append(("pdf", f.filename, data))
+        elif filename.endswith(".docx") or filename.endswith(".doc"):
+            payloads.append(("docx", f.filename, data))
+        else:
+            warnings.append(f"{f.filename}: format tidak didukung (hanya PDF dan DOCX)")
+
+    def _extract(kind, name, blob):
+        try:
+            if kind == "pdf":
+                return extract_text_from_pdf(io.BytesIO(blob))
+            doc = Document(io.BytesIO(blob))
+            return "\n".join(p.text for p in doc.paragraphs)
+        except Exception as e:
+            return f"[Error reading {name}: {e}]"
+
+    futures = [
+        (name, _EXTRACT_POOL.submit(_extract, kind, name, blob)) for kind, name, blob in payloads
+    ]
+
+    results = []
+    for name, fut in futures:
+        try:
+            text = fut.result(timeout=120)
+        except Exception as e:
+            warnings.append(f"{name}: gagal mengekstrak ({e})")
+            continue
+        words = text.split()
+        if len(words) > MAX_WORDS_PER_FILE:
+            warnings.append(f"{name}: file terlalu besar, dibatasi ke {MAX_WORDS_PER_FILE} kata")
+            text = " ".join(words[:MAX_WORDS_PER_FILE])
+        results.append(text)
+
+    return jsonify({"pdf_texts": results, "warnings": warnings})
+
+
+# ─── Paper Files (PDF/DOCX/DOC/TXT/MD) ────────────────────────────────────
+# Moved to files_bp.py — registered above.
+
+# ─── Paper-specific Image Upload + signed URLs + image serving ───────────
+# Moved to images_bp.py — registered above (paper_images_bp + image_serve_bp).
+
+_PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_FILENAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
+
+
+@app.route("/api/journals", methods=["GET"])
+@jwt_required()
+def list_journals():
+    try:
+        return jsonify({"journals": _available_journals()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Legacy Image Upload ──────────────────────────────────────────────────────
+
+
+@app.route("/api/upload-image", methods=["POST"])
+@limiter.limit("30 per minute")
+@jwt_required()
+def upload_image_legacy():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+        ext = Path(file.filename).suffix.lower()
+        allowed_image_exts = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+        if ext not in allowed_image_exts:
+            return jsonify({"error": "Invalid image format"}), 400
+        # BUG FIX: Add size check before processing
+        file.stream.seek(0, 2)
+        size = file.stream.tell()
+        file.stream.seek(0)
+        if size > 10 * 1024 * 1024:
+            return jsonify({"error": "Ukuran file > 10 MB"}), 413
+
+        head = file.stream.read(16)
+        file.stream.seek(0)
+        if not _is_image_bytes(head, ext):
+            return jsonify({"error": "Invalid image file"}), 400
+        legacy_dir = UPLOAD_FOLDER / "legacy"
+        legacy_dir.mkdir(exist_ok=True)
+        filename = f"{uuid.uuid4().hex}{ext}"
+        filepath = legacy_dir / filename
+        file.save(str(filepath))
+        return jsonify(
+            {
+                "success": True,
+                "filename": filename,
+                "url": f"/api/images/legacy/{filename}",
+                "originalName": file.filename[:255],
+            }
+        )
+    except Exception as e:
+        log.exception("unhandled error")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Export DOCX ──────────────────────────────────────────────────────────────
+
+
+@app.route("/api/export", methods=["POST"])
+@jwt_required()
+def export_docx():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No paper data provided"}), 400
+        paper = data.get("paper", data)
+
+        journal_raw = data.get("journal")
+        if isinstance(paper, dict) and not journal_raw:
+            journal_raw = paper.get("journal")
+        journal_code = _resolve_journal_code(journal_raw)
+        try:
+            canonical_journal, builder = _get_builder_for_journal(journal_code)
+        except Exception as e:
+            return jsonify({"error": str(e), "available": _available_journals()}), 400
+
+        json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
+        json_filepath = EXPORT_FOLDER / json_filename
+        json_filepath.write_text(json.dumps(paper, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            output_path = EXPORT_FOLDER / f"{canonical_journal}_{uuid.uuid4().hex[:8]}.docx"
+            builder(json_filepath, output_path)
+
+            try:
+                from utils.core.user_storage import get_username, save_docx, update_judul_paper
+                user_id = get_jwt_identity()
+                username = get_username(user_id=user_id)
+                judul = data.get("title", paper.get("title", "untitled"))
+                save_docx(username, judul, output_path, canonical_journal)
+                update_judul_paper(username, judul, data)
+            except Exception:
+                log.warning("Gagal simpan ke user storage", exc_info=True)
+
+            safe_title = re.sub(r"[^a-zA-Z0-9_\-]+", "_", str(paper.get("title", "paper"))).strip(
+                "_"
+            )
+            if not safe_title:
+                safe_title = "paper"
+            download_name = f"{canonical_journal}_{safe_title[:60]}.docx"
+            response = send_file(
+                str(output_path),
+                as_attachment=True,
+                download_name=download_name,
+                mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+
+            @response.call_on_close
+            def _cleanup():
+                try:
+                    output_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+            return response
+        finally:
+            json_filepath.unlink(missing_ok=True)
+    except Exception as e:
+        log.exception("unhandled error")
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Paper CRUD ───────────────────────────────────────────────────────────────
+# Moved to papers_bp.py — registered above. Keeping this header as a breadcrumb.
+
+# ─── Word Add-on ─────────────────────────────────────────────────────────────
+
+WORD_ADDON_DIR = Path(__file__).parent / "word_addon"
+
+
+def _office_cors(resp):
+    """Add CORS headers required by Office.js add-in runtime."""
+    resp.headers["Access-Control-Allow-Origin"] = "http://localhost:1000,http://localhost:5173,http://localhost:3001,http://localhost:8000"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-CSRF-TOKEN"
+    resp.headers["Access-Control-Allow-Credentials"] = "true"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
+@limiter.exempt
+@app.route("/api/word-addon/manifest.xml", methods=["GET", "OPTIONS"])
+def word_addon_manifest():
+    """Serve add-in manifest for sideloading into Word."""
+    if request.method == "OPTIONS":
+        return _office_cors(Response())
+    manifest_path = WORD_ADDON_DIR / "manifest.xml"
+    if not manifest_path.is_file():
+        return jsonify({"error": "Manifest not found"}), 404
+    base_url = f"{request.scheme}://{request.host}"
+    manifest_content = manifest_path.read_text(encoding="utf-8").replace("{BASE_URL}", base_url)
+    return _office_cors(Response(manifest_content, mimetype="application/xml"))
+
+
+@limiter.exempt
+@app.route("/api/word-addon/download-manifest", methods=["GET", "OPTIONS"])
+def word_addon_download_manifest():
+    """Force download manifest.xml for Word Add-in installation."""
+    if request.method == "OPTIONS":
+        return _office_cors(Response())
+    manifest_path = WORD_ADDON_DIR / "manifest.xml"
+    if not manifest_path.is_file():
+        return jsonify({"error": "Manifest not found"}), 404
+    base_url = f"{request.scheme}://{request.host}"
+    manifest_content = manifest_path.read_text(encoding="utf-8").replace("{BASE_URL}", base_url)
+    resp = Response(manifest_content, mimetype="application/xml")
+    resp.headers["Content-Disposition"] = 'attachment; filename="VIOLA-AI-Assistant.xml"'
+    return _office_cors(resp)
+
+
+@limiter.exempt
+@app.route("/api/word-addon/<path:filepath>", methods=["GET", "OPTIONS"])
+def word_addon_static(filepath):
+    """Serve add-in static files from word_addon/ directory (supports subdirectories)."""
+    if request.method == "OPTIONS":
+        return _office_cors(Response())
+
+    try:
+        safe_path = (WORD_ADDON_DIR / filepath).resolve()
+        if not str(safe_path).startswith(str(WORD_ADDON_DIR.resolve())):
+            return jsonify({"error": "Invalid path"}), 403
+    except ValueError:
+        return jsonify({"error": "Invalid path"}), 403
+
+    allowed_extensions = {'.html', '.js', '.css', '.png', '.json'}
+    if safe_path.suffix not in allowed_extensions:
+        return jsonify({"error": "File type not allowed"}), 403
+
+    if not safe_path.is_file():
+        return jsonify({"error": "File not found"}), 404
+
+    mime_map = {
+        ".html": "text/html",
+        ".js": "application/javascript",
+        ".css": "text/css",
+        ".png": "image/png",
+        ".json": "application/json",
+    }
+    mimetype = mime_map.get(safe_path.suffix, "application/octet-stream")
+    return _office_cors(send_file(str(safe_path), mimetype=mimetype))
+
+
+@limiter.limit("10 per minute")
+@app.route("/api/word-addon/extract", methods=["POST", "OPTIONS"])
+@jwt_required(optional=True)
+def word_addon_extract():
+    """Extract text from uploaded PDF, DOCX, or TXT file."""
+    if request.method == "OPTIONS":
+        return _office_cors(jsonify({}))
+    import io  # noqa: PLC0415
+    from docx import Document  # noqa: PLC0415
+    from tools.File.extract_pdfs import extract_text_from_pdf  # noqa: PLC0415
+
+    if "file" not in request.files:
+        return _office_cors(jsonify({"error": "No file uploaded"})), 400
+    file = request.files["file"]
+    if not file.filename:
+        return _office_cors(jsonify({"error": "No file selected"})), 400
+    filename = file.filename.lower()
+    try:
+        data = file.read()
+        if len(data) > 30 * 1024 * 1024:
+            return _office_cors(jsonify({"error": "File too large (max 30MB)"})), 413
+        if filename.endswith(".pdf"):
+            text = extract_text_from_pdf(io.BytesIO(data))
+        elif filename.endswith((".docx", ".doc")):
+            doc = Document(io.BytesIO(data))
+            text = "\n".join(p.text for p in doc.paragraphs)
+        elif filename.endswith(".txt"):
+            text = data.decode("utf-8", errors="replace")
+        else:
+            return _office_cors(jsonify({"error": "Unsupported format (PDF, DOCX, TXT only)"})), 400
+        max_words = 5000
+        words = text.split()
+        if len(words) > max_words:
+            words = words[:max_words]
+            text = " ".join(words)
+        return _office_cors(jsonify({"text": text}))
+    except Exception as e:
+        return _office_cors(jsonify({"error": f"Extraction failed: {str(e)[:200]}"})), 500
+
+
+_INSTALL_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PaperFull — Install Word Add-in</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: #f0f4f8; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.08); padding: 36px 40px; max-width: 600px; width: 100%; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { color: #666; margin-bottom: 24px; font-size: 14px; }
+    h2 { font-size: 15px; font-weight: 600; margin: 24px 0 8px; color: #1a73e8; }
+    ol, ul { padding-left: 20px; line-height: 1.8; }
+    li { font-size: 14px; }
+    code { background: #f1f3f5; padding: 2px 6px; border-radius: 3px; font-size: 12px; word-break: break-all; }
+    .btn { display: block; width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; margin-top: 12px; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-secondary { background: #e8f0fe; color: #1a73e8; }
+    .btn-secondary:hover { background: #d2e3fc; }
+    .btn-success { background: #0f9d58; color: #fff; }
+    .btn-success:hover { background: #0b8043; }
+    .btn-outline { background: transparent; color: #1a73e8; border: 1px solid #1a73e8; }
+    .btn-outline:hover { background: #e8f0fe; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-row .btn { margin-top: 0; }
+    .btn-half { flex: 1; }
+    .note { margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5; }
+    .divider { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
+    .badge { display: inline-block; background: #e8f0fe; color: #1a73e8; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+    .step-icon { display: inline-block; width: 22px; height: 22px; background: #1a73e8; color: #fff; border-radius: 50%; text-align: center; line-height: 22px; font-size: 12px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+    .step { display: flex; align-items: flex-start; margin-bottom: 8px; }
+    .step-content { flex: 1; font-size: 14px; line-height: 1.6; }
+    #copy-toast { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 6px; font-size: 13px; z-index: 1000; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>PaperFull for Word</h1>
+    <p class="subtitle">Install the PaperFull add-in for Microsoft Word</p>
+
+    <h2>Word Desktop (2019 / Microsoft 365)</h2>
+    <div class="step">
+      <span class="step-icon">1</span>
+      <span class="step-content">Download the <strong>manifest.xml</strong> file using the button below.</span>
+    </div>
+    <div class="step">
+      <span class="step-icon">2</span>
+      <span class="step-content">Open Word → <strong>Insert</strong> tab → <strong>Add-ins</strong> → <strong>My Add-ins</strong>.</span>
+    </div>
+    <div class="step">
+      <span class="step-icon">3</span>
+      <span class="step-content">Click <strong>Upload My Add-in</strong>, select the downloaded <code>manifest.xml</code>.</span>
+    </div>
+    <div class="step">
+      <span class="step-icon">4</span>
+      <span class="step-content">The PaperFull taskpane opens in the <strong>Home</strong> tab ribbon.</span>
+    </div>
+    <a class="btn btn-primary" href="/api/word-addon/manifest.xml" download>Download manifest.xml</a>
+
+    <hr class="divider" />
+
+    <h2>Word for the web <span class="badge">Quick Install</span></h2>
+    <p style="font-size:13px;color:#666;margin-bottom:8px;">
+      Open a document in Word for the web, then click the button below to sideload the add-in.
+    </p>
+    <a id="install-link" class="btn btn-success" href="#" target="_blank">
+      Install to Word for the web
+    </a>
+
+    <hr class="divider" />
+
+    <h2>Need the URL?</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:8px;">
+      Copy the manifest URL for use with <strong>Office Admin Center</strong> or centralized deployment.
+    </p>
+    <div class="btn-row">
+      <button id="copy-btn" class="btn btn-outline btn-half">Copy Manifest URL</button>
+      <button id="open-btn" class="btn btn-outline btn-half">Open Manifest</button>
+    </div>
+
+    <p class="note">
+      Requirements: Word 2019 or later, Word for Microsoft 365, or Word for the web.
+      An active PaperFull account is required.
+    </p>
+  </div>
+
+  <div id="copy-toast">Copied to clipboard!</div>
+
+  <script>
+    (function() {
+      var manifestUrl = window.location.origin + "/api/word-addon/manifest.xml";
+
+      var installLink = document.getElementById("install-link");
+      installLink.href = "https://office.live.com/start/Word.aspx?omkt=en-US&ui=en-US&installaddin=" + encodeURIComponent(manifestUrl);
+
+      var copyBtn = document.getElementById("copy-btn");
+      copyBtn.addEventListener("click", function() {
+        navigator.clipboard.writeText(manifestUrl).then(function() {
+          var toast = document.getElementById("copy-toast");
+          toast.style.display = "block";
+          setTimeout(function() { toast.style.display = "none"; }, 2000);
+        });
+      });
+
+      var openBtn = document.getElementById("open-btn");
+      openBtn.addEventListener("click", function() {
+        window.open(manifestUrl, "_blank");
+      });
+    })();
+  </script>
+</body>
+</html>"""
+
+
+@limiter.exempt
+@app.route("/api/word-addon/install", methods=["GET", "OPTIONS"])
+def word_addon_install():
+    """Serve add-in installation instructions page."""
+    if request.method == "OPTIONS":
+        return _office_cors(Response())
+    return _office_cors(Response(_INSTALL_HTML, mimetype="text/html"))
+
+
+@limiter.exempt
+@app.route("/api/word-addon/content", methods=["GET", "OPTIONS"])
+@jwt_required(optional=True)
+def word_addon_content():
+    """Return placeholder content snippets for insert-into-document buttons."""
+    if request.method == "OPTIONS":
+        return _office_cors(jsonify({}))
+    content_type = request.args.get("type", "").lower()
+    snippets = {
+        "title": {"text": "Your Paper Title Here"},
+        "abstract": {"text": "This paper presents a novel approach to..."},
+        "section": {"text": "## Introduction\n\nThis section introduces the problem statement and motivation behind this work."},
+    }
+    snippet = snippets.get(content_type)
+    if not snippet:
+        return _office_cors(jsonify({"error": "Unknown content type"})), 400
+    return _office_cors(jsonify(snippet))
+
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    port = int(os.getenv("BACKEND_PORT", 8001))
+    debug = os.getenv("FLASK_DEBUG", "true").lower() == "true"
+    log.info("=" * 60)
+    log.info("PaperFull API starting on port %d", port)
+    log.info("🚀 PaperFull API running on http://localhost:%d", port)
+    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False, threaded=True)

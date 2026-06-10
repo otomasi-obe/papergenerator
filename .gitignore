@@ -2,6 +2,9 @@
 .env
 .env.local
 .env.*.local
+.hypothesis/
+.kilo/
+tools_repo/
 
 # Encrypted environment files (these ARE tracked in git)
 !.env.enc

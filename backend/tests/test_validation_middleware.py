@@ -9,8 +9,8 @@ import json
 import pytest
 from flask import Flask, jsonify, request
 
-from middleware.error_handler import format_validation_error
-from middleware.validation import validate_data, validate_query, validate_request
+from utils.middleware.error_handler import format_validation_error
+from utils.middleware.validation import validate_data, validate_query, validate_request
 
 
 @pytest.fixture

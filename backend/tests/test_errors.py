@@ -17,7 +17,7 @@ if str(HERE) not in sys.path:
 os.environ.setdefault("FLASK_ENV", "testing")
 
 try:
-    from core.errors import (
+    from utils.core.errors import (
         AppError,
         AuthError,
         ConflictError,

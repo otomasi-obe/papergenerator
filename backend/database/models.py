@@ -174,6 +174,7 @@ class Conversation(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=True)
     title = db.Column(db.Text, default="New Chat")
+    mode = db.Column(db.String(30), nullable=True, default=None)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -191,6 +192,7 @@ class Conversation(db.Model):
             "user_id": self.user_id,
             "paper_id": self.paper_id,
             "title": self.title,
+            "mode": self.mode,
             "message_count": len(self.messages),
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),

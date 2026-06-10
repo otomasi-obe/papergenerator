@@ -33,7 +33,7 @@ if not _url.startswith("sqlite:"):
 # ── Pytest Fixtures ──────────────────────────────────────────────────────────
 import pytest
 
-from app import app as flask_app
+from main import app as flask_app
 from database.models import User, db
 
 

@@ -193,8 +193,9 @@ const form = reactive({
 })
 
 const errorMessages: Record<string, string> = {
-  auth_failed: 'Google sign-in failed. Please try again.',
+  auth_failed: 'Google sign-in failed. Please try again or use email instead.',
   google_denied: 'You denied access. Please click "Continue with Google" and accept the permissions.',
+  email_not_allowed: 'This Google account is not authorized. Only specific emails can log in.',
   invalid_state: 'Sign-in session invalid. Please close this tab and sign in again.',
   csrf_detected: 'Security check failed. Please sign in again.',
   session_expired: 'Sign-in session expired. Please try again.',

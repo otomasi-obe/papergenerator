@@ -23,7 +23,7 @@ class TestCookieValidation:
 
     def test_missing_psidts_raises_error(self):
         """Should raise RuntimeError if PSIDTS cookie missing after 90s"""
-        from image_generation.GeminiCookies import _wait_for_required_cookies
+        from tools.image_generation.GeminiCookies import _wait_for_required_cookies
 
         mock_page = Mock()
         mock_context = Mock()
@@ -40,7 +40,7 @@ class TestCookieValidation:
 
     def test_complete_cookies_returns_true(self):
         """Should return True when all required cookies present"""
-        from image_generation.GeminiCookies import _has_required_cookies
+        from tools.image_generation.GeminiCookies import _has_required_cookies
 
         mock_context = Mock()
         mock_context.cookies.return_value = [
@@ -77,10 +77,10 @@ class TestImageInterceptTimeout:
 class TestBrowserLaunchRetry:
     """Test Fix #3: Browser launch retry logic"""
 
-    @patch("image_worker._get_pool")
+    @patch("tools.image_generation.worker._get_pool")
     def test_browser_launch_retries_on_failure(self, mock_get_pool):
         """Should retry browser launch up to 3 times"""
-        from workers.image_worker import _Worker
+        from tools.image_generation.worker import _Worker
 
         mock_app = Mock()
         mock_app.app_context.return_value.__enter__ = Mock()

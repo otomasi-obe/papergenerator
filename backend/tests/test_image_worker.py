@@ -36,22 +36,22 @@ os.environ.setdefault("JWT_COOKIE_SECURE", "false")
 os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 
 try:
-    from workers import slr_worker
+    from tools.Literatur import worker as slr_worker
 
     slr_worker._started = True
 except Exception:
     pass
 try:
-    from workers import image_worker
+    from tools.image_generation import worker as image_worker
 
     image_worker._started = True
 except Exception:
     pass
 
 try:
-    from app import app as flask_app
+    from main import app as flask_app
     from database.models import ImageGenJob, Paper, PaperImage, User, db
-    from workers import image_worker as iw
+    from tools.image_generation import worker as iw
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed: {e}", allow_module_level=True)
 
@@ -140,7 +140,7 @@ def test_only_one_worker_claims_a_queued_job(app_ctx):
 
     with (
         patch.object(iw, "_get_pool"),
-        patch("paper_generation.utils.safe_paper_dir", side_effect=fake_safe_paper_dir),
+        patch("tools.editor.utils.safe_paper_dir", side_effect=fake_safe_paper_dir),
     ):
         t1 = threading.Thread(target=w1._process, args=(job_id,))
         t2 = threading.Thread(target=w2._process, args=(job_id,))
@@ -222,7 +222,7 @@ def test_happy_path_creates_paperimage_and_finishes_job(app_ctx, tmp_path):
 
     with (
         patch.object(iw, "_get_pool", return_value=FakePool()),
-        patch("image_generation.compress.compress_image", side_effect=lambda *a, **k: None),
+        patch("tools.image_generation.compress.compress_image", side_effect=lambda *a, **k: None),
     ):
         w = iw._Worker(flask_app, "account1")
         w._process(job_id)

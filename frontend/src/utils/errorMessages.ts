@@ -81,6 +81,40 @@ const ERROR_MESSAGES: ErrorMessages = {
       showDetails: true
     }
   },
+  RESOURCE_NOT_FOUND: {
+    beginner: {
+      message: 'Halaman atau data yang kamu cari tidak ditemukan.',
+      action: 'Back',
+      showDetails: false
+    },
+    intermediate: {
+      message: 'Resource tidak ditemukan. Mungkin sudah dihapus atau URL salah.',
+      action: 'Back',
+      showDetails: true
+    },
+    advanced: {
+      message: 'Resource not found (404). Verify the URL or resource existence.',
+      action: 'Back',
+      showDetails: true
+    }
+  },
+  NOT_FOUND: {
+    beginner: {
+      message: 'Halaman atau data yang kamu cari tidak ditemukan.',
+      action: 'Back',
+      showDetails: false
+    },
+    intermediate: {
+      message: 'Resource tidak ditemukan. Mungkin sudah dihapus atau URL salah.',
+      action: 'Back',
+      showDetails: true
+    },
+    advanced: {
+      message: 'Resource not found (404). Verify the URL or resource existence.',
+      action: 'Back',
+      showDetails: true
+    }
+  },
   QUOTA_EXCEEDED: {
     beginner: {
       message: 'Kuota kamu habis. Hubungi admin ya.',

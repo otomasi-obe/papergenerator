@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from api.auth_bp import _strong_password
+from utils.auth_bp.auth import _strong_password
 
 
 def test_too_short_rejected():

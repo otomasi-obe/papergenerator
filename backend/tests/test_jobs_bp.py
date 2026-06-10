@@ -27,7 +27,7 @@ try:
     from flask_jwt_extended import JWTManager, create_access_token
     from sqlalchemy import JSON
 
-    from api.jobs_bp import jobs_bp
+    from tools.paperfull.jobs import jobs as jobs_bp
     from database.models import AiJob, Paper, User, db
 
     Paper.__table__.c.data.type = JSON()
@@ -64,7 +64,7 @@ def client(app):
 
 @pytest.fixture()
 def mock_redis():
-    with patch("api.jobs_bp._REDIS") as mock:
+    with patch("tools.paperfull.jobs._REDIS") as mock:
         mock.publish = MagicMock()
         mock.setex = MagicMock()
         mock.delete = MagicMock()
@@ -91,7 +91,7 @@ def _auth_headers(user):
     return {"Authorization": f"Bearer {tok}"}
 
 
-@patch("api.jobs_bp.Queue")
+@patch("tools.paperfull.jobs.Queue")
 def test_enqueue_generate_success(mock_queue, app, client, mock_redis):
     with app.app_context():
         user = _make_user()
@@ -379,7 +379,7 @@ def test_ai_jobs_resume(app, client, mock_redis):
         db.session.add(job)
         db.session.commit()
 
-        with patch("api.jobs_bp._enqueue_resume"):
+        with patch("tools.paperfull.jobs._enqueue_resume"):
             headers = _auth_headers(user)
             resp = client.post(f"/api/ai-jobs/{job.id}/resume", headers=headers)
 
@@ -441,7 +441,7 @@ def test_ai_jobs_retry_section(app, client, mock_redis):
         db.session.add(job)
         db.session.commit()
 
-        with patch("api.jobs_bp._enqueue_resume"):
+        with patch("tools.paperfull.jobs._enqueue_resume"):
             headers = _auth_headers(user)
             resp = client.post(
                 f"/api/ai-jobs/{job.id}/retry-section",

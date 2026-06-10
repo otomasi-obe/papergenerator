@@ -1019,91 +1019,39 @@ export const usePaperStore = defineStore('paper', () => {
 
   // ─── AI ───────────────────────────────────────────────────────────────
 
-  /** Shared polling loop — used by both new generation and resume-after-refresh */
-  async function _pollJob(jobId, t0) {
-    while (true) {
-      await new Promise((r) => setTimeout(r, 3000))
-      const el = Math.round((Date.now() - t0) / 1000)
-      const m = Math.floor(el / 60),
-        s = el % 60
-      aiLoadingMessage.value = `AI sedang membuat paper... (${m > 0 ? m + 'm ' : ''}${s}s)`
-      let poll
-      try {
-        poll = await api.get(`${API_BASE}/job/${jobId}`, { timeout: 10000 })
-      } catch {
-        continue
-      }
-      if (poll.data.status === 'done') {
-        paper.value = fromPaperJsonRaw(poll.data.paper)
-        lsRemove(LS_JOB)
-        showToast('Paper berhasil dibuat!', 'success')
-        return true
-      }
-      if (poll.data.status === 'error') throw new Error(poll.data.error || 'Failed')
-      if (Date.now() - t0 > 25 * 60 * 1000) throw new Error('Timeout: > 25 menit')
-    }
-  }
-
   async function aiGenerateFullPaper(prompt, { topic, style, pdfTexts } = {}) {
     try {
-      aiLoading.value = true
-      aiLoadingMessage.value = 'Menghubungi AI...'
       const payload = { prompt }
       if (topic) payload.topic = topic
       if (style) payload.style = style
       if (pdfTexts && pdfTexts.length) payload.pdf_texts = pdfTexts
+      if (currentPaperId.value) payload.paper_id = currentPaperId.value
       const startRes = await api.post(`${API_BASE}/generate-full`, payload, { timeout: 15000 })
       if (!startRes.data?.job_id) throw new Error(startRes.data?.error || 'No job_id')
       const jobId = startRes.data.job_id
       lsSet(LS_JOB, { jobId, t0: Date.now() })
-      return await _pollJob(jobId, Date.now())
+      showToast('Paper generation started! Check the bell icon for progress.', 'info')
+      return jobId
     } catch (err) {
       showToast('AI Error: ' + err.message, 'error')
-      return false
-    } finally {
-      aiLoading.value = false
-      aiLoadingMessage.value = ''
+      return null
     }
   }
 
   /**
-   * Attach to a generate-full job that was started by the chat AI tool. The
-   * regular spinner + polling kicks in, and when the job finishes the result
-   * lands in the editor — same path as a manual /api/generate-full call.
+   * Attach to a generate-full job that was started by the chat AI tool.
+   * Non-blocking — the paperJobs store handles polling and result delivery.
    */
   async function attachAiJob(jobId, prompt = '') {
     if (!jobId) return false
-    const t0 = Date.now()
-    lsSet(LS_JOB, { jobId, t0 })
-    aiLoading.value = true
-    aiLoadingMessage.value = prompt
-      ? `AI sedang membuat paper: "${prompt.slice(0, 50)}${prompt.length > 50 ? '…' : ''}"`
-      : 'AI sedang membuat paper...'
-    try {
-      const ok = await _pollJob(jobId, t0)
-      // Refresh from DB if attached to a paper — backend persists into Paper.data,
-      // so reloading guarantees the editor shows the saved version (including
-      // anything the user might have edited concurrently in another tab).
-      if (ok && currentPaperId.value) {
-        try {
-          await loadPaperFromDb(currentPaperId.value)
-        } catch {
-          /* keep _pollJob result */
-        }
-      }
-      return ok
-    } catch (err) {
-      showToast('AI Error: ' + err.message, 'error')
-      return false
-    } finally {
-      aiLoading.value = false
-      aiLoadingMessage.value = ''
-    }
+    lsSet(LS_JOB, { jobId, t0: Date.now() })
+    showToast('Paper generation started! Check the bell icon for progress.', 'info')
+    return true
   }
 
   /**
    * Call this on app mount. If a job was in-flight when the page was refreshed,
-   * resume polling and restore the result automatically.
+   * check its status and let the paperJobs store handle active polling.
    */
   async function resumePendingJob() {
     const jobInfo = lsGet(LS_JOB)
@@ -1129,20 +1077,9 @@ export const usePaperStore = defineStore('paper', () => {
         showToast('Paper dipulihkan dari proses sebelumnya!', 'success')
         return
       }
+      // Still running — the paperJobs store will pick it up via its polling
     } catch {
       lsRemove(LS_JOB)
-      return
-    }
-
-    aiLoading.value = true
-    aiLoadingMessage.value = 'Melanjutkan proses AI...'
-    try {
-      await _pollJob(jobId, t0)
-    } catch (err) {
-      showToast('AI Error (resumed): ' + err.message, 'error')
-    } finally {
-      aiLoading.value = false
-      aiLoadingMessage.value = ''
     }
   }
 
@@ -1184,7 +1121,17 @@ export const usePaperStore = defineStore('paper', () => {
       loadPaperCharts(paperId)
       return true
     } catch (err) {
-      showToast('Load failed: ' + (err.response?.data?.error || err.message), 'error')
+      const status = err.response?.status
+      const errMsg = err.response?.data?.error || err.message
+      // If the paper no longer exists (404), purge stale cache so the editor
+      // doesn't keep trying to load a deleted paper on every revisit.
+      if (status === 404) {
+        lsRemove(LS_LAST_PAPER_ID)
+        currentPaperId.value = null
+        showToast('Paper tidak ditemukan. Mungkin sudah dihapus.', 'error')
+      } else {
+        showToast('Load failed: ' + errMsg, 'error')
+      }
       return false
     } finally {
       loading.value = false

@@ -24,7 +24,7 @@ try:
     from flask_jwt_extended import JWTManager, create_access_token
     from sqlalchemy import JSON
 
-    from api.admin_bp import admin_bp
+    from tools.admin import admin as admin_bp
     from database.models import ApiUsageLog, Paper, PaperImage, User, db
 
     Paper.__table__.c.data.type = JSON()

@@ -31,7 +31,7 @@ function _safeErrorMessage(raw) {
 
   // Connection timeout (from our retry logic)
   if (/connection timeout/i.test(s)) {
-    return '⏱️ Koneksi ke server timeout setelah 60 detik. Coba kirim lagi atau periksa koneksi internet Anda.'
+    return '⏱️ Koneksi ke server timeout. Periksa koneksi internet Anda.'
   }
 
   // Network errors
@@ -77,7 +77,7 @@ function _safeErrorMessage(raw) {
 
   // HTTP-status / upstream API hiccups
   if (/^api error: \d+|^http \d{3}$|status_code|upstream/i.test(s)) {
-    return 'AI sedang sibuk. Coba kirim lagi sebentar.'
+    return 'AI belum berhasil merespons setelah semua model dicoba.'
   }
 
   // Truncate very long messages
@@ -246,6 +246,32 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function _hydrateMessageMetadata(message) {
+    if (!message || message.metadata?.kind) return message
+    const calls = Array.isArray(message.tool_calls) ? message.tool_calls : []
+    for (let index = calls.length - 1; index >= 0; index -= 1) {
+      const result = calls[index]?.result
+      if (typeof result !== 'string' || !result.startsWith(PROPOSAL_PREFIX)) continue
+      try {
+        const proposal = JSON.parse(result.slice(PROPOSAL_PREFIX.length))
+        if (proposal.kind === 'multi_question') {
+          return {
+            ...message,
+            metadata: {
+              ...(message.metadata || {}),
+              kind: 'multi_question',
+              questions: Array.isArray(proposal.questions) ? proposal.questions : [],
+              phase: proposal.phase,
+              phase_name: proposal.phase_name,
+              description: proposal.description,
+            },
+          }
+        }
+      } catch { /* ignore malformed persisted proposal */ }
+    }
+    return message
+  }
+
   async function loadPaperChats() {
     try {
       const res = await api.get('/api/chat/papers')
@@ -264,7 +290,11 @@ export const useChatStore = defineStore('chat', () => {
       conversations.value = res.data || []
       return conversations.value
     } catch (e) {
-      error.value = e.message
+      // 404 = paper doesn't exist (deleted). Don't surface as a chat error;
+      // the editor page handles stale-paper cleanup.
+      if (e?.response?.status !== 404) {
+        error.value = e.message
+      }
       conversations.value = []
       return []
     }
@@ -352,7 +382,7 @@ export const useChatStore = defineStore('chat', () => {
       // messages (which include the partial assistant bubble). Otherwise,
       // hydrate from the server-saved transcript.
       if (!s.isStreaming) {
-        s.messages = res.data.messages || []
+        s.messages = (res.data.messages || []).map(_hydrateMessageMetadata)
         s.streamingMessage = null
       }
       _bindActive(convId)
@@ -368,7 +398,11 @@ export const useChatStore = defineStore('chat', () => {
       }
       return res.data
     } catch (e) {
-      error.value = e.message
+      // 404 = conversation doesn't exist. Suppress for stale refs; only
+      // surface unexpected errors.
+      if (e?.response?.status !== 404) {
+        error.value = e.message
+      }
       return null
     }
   }
@@ -388,7 +422,10 @@ export const useChatStore = defineStore('chat', () => {
       }
       return conv
     } catch (e) {
-      error.value = e.message
+      // 404 = paper doesn't exist. Suppress — editor handles stale-paper cleanup.
+      if (e?.response?.status !== 404) {
+        error.value = e.message
+      }
       return null
     }
   }
@@ -467,225 +504,225 @@ export const useChatStore = defineStore('chat', () => {
     _sendingLock = true
     error.value = null
 
-    // Block sending while another chat in this paper is generating a paper.
-    // Show an inline assistant warning instead of a silent no-op so the user
-    // understands why their message did not go through.
-    if (activeJob.value && activeJob.value.active) {
+    try {
+
+      // Block sending while another chat in this paper is generating a paper.
+      // Show an inline assistant warning instead of a silent no-op so the user
+      // understands why their message did not go through.
+      if (activeJob.value && activeJob.value.active) {
+        stream.messages.push({
+          id: Date.now(),
+          role: 'user',
+          content,
+          created_at: new Date().toISOString(),
+        })
+        stream.messages.push({
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.',
+          created_at: new Date().toISOString(),
+        })
+        _syncFromStream(convId)
+        return
+      }
+
+      // Auto-rename a fresh chat from its first user message — the backend already
+      // does this on its side, but updating the local state immediately keeps the
+      // sidebar and the toolbar title in sync without waiting for a full reload.
+      const conv = conversations.value.find(c => c.id === convId)
+      if (conv && (!conv.title || conv.title === 'New Chat')) {
+        const newTitle = content.length > 60
+          ? content.slice(0, 60) + '…'
+          : content
+        conv.title = newTitle
+      }
+
       stream.messages.push({
         id: Date.now(),
         role: 'user',
         content,
         created_at: new Date().toISOString(),
       })
-      stream.messages.push({
-        id: Date.now() + 1,
+
+      stream.isStreaming = true
+      stream.connectionState = 'connecting'
+      stream.streamingMessage = {
+        id: null,
         role: 'assistant',
-        content: '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.',
+        content: '',
+        thinking: '',
+        tool_calls: [],
         created_at: new Date().toISOString(),
-      })
+      }
+      stream.messages.push(stream.streamingMessage)
+
+      let memoryTouched = false
+      stream.abortCtrl = new AbortController()
       _syncFromStream(convId)
-      return
-    }
 
-    // Auto-rename a fresh chat from its first user message — the backend already
-    // does this on its side, but updating the local state immediately keeps the
-    // sidebar and the toolbar title in sync without waiting for a full reload.
-    const conv = conversations.value.find(c => c.id === convId)
-    if (conv && (!conv.title || conv.title === 'New Chat')) {
-      const newTitle = content.length > 60
-        ? content.slice(0, 60) + '…'
-        : content
-      conv.title = newTitle
-    }
+      // Backend handles AI retries: 3-model chain × 5 attempts × 30s each.
+      // Keep the browser request alive long enough and avoid showing retry text.
+      const MAX_RETRIES = 1
+      const RETRY_DELAYS = []
+      const CONNECTION_TIMEOUT = 540000 // 9 minutes
 
-    stream.messages.push({
-      id: Date.now(),
-      role: 'user',
-      content,
-      created_at: new Date().toISOString(),
-    })
-
-    stream.isStreaming = true
-    stream.connectionState = 'connecting'
-    stream.streamingMessage = {
-      id: null,
-      role: 'assistant',
-      content: '',
-      thinking: '',
-      tool_calls: [],
-      created_at: new Date().toISOString(),
-    }
-    stream.messages.push(stream.streamingMessage)
-
-    let memoryTouched = false
-    stream.abortCtrl = new AbortController()
-    _syncFromStream(convId)
-
-    // Retry logic with exponential backoff
-    const MAX_RETRIES = 3
-    const RETRY_DELAYS = [1000, 2000, 4000] // 1s, 2s, 4s
-    const CONNECTION_TIMEOUT = 60000 // 60 seconds
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const csrf = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
-        const payload = { content }
-
-        // Create timeout that will abort the connection after CONNECTION_TIMEOUT
-        const timeoutId = setTimeout(() => {
-          if (stream.abortCtrl && !stream.abortCtrl.signal.aborted) {
-            stream.abortCtrl.abort(new Error('Connection timeout'))
-          }
-        }, CONNECTION_TIMEOUT)
-
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-          const response = await fetch(
-            `/api/chat/conversations/${convId}/messages`,
-            {
-              method: 'POST',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': decodeURIComponent(csrf),
-              },
-              body: JSON.stringify(payload),
-              signal: stream.abortCtrl.signal,
+          const csrf = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
+          const payload = { content }
+
+          // Create timeout that will abort the connection after CONNECTION_TIMEOUT
+          const timeoutId = setTimeout(() => {
+            if (stream.abortCtrl && !stream.abortCtrl.signal.aborted) {
+              stream.abortCtrl.abort(new Error('Connection timeout'))
             }
-          )
+          }, CONNECTION_TIMEOUT)
 
-          clearTimeout(timeoutId)
-          stream.connectionState = 'connected'
-          _syncFromStream(convId)
-
-          if (!response.ok) {
-            // Backend may reject the request because another chat is already
-            // running a full-paper generation for this paper. Surface a friendly
-            // explanation and refresh the active-job state so the banner appears.
-            if (response.status === 409) {
-              let payload = null
-              try { payload = await response.json() } catch { /* ignore */ }
-              if (payload && payload.code === 'GENERATION_IN_PROGRESS') {
-                if (stream.streamingMessage) {
-                  stream.streamingMessage.content =
-                    '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.'
-                }
-                stream.connectionState = 'idle'
-                checkActiveJob()
-                return
+          try {
+            const response = await fetch(
+              `/api/chat/conversations/${convId}/messages`,
+              {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-TOKEN': decodeURIComponent(csrf),
+                },
+                body: JSON.stringify(payload),
+                signal: stream.abortCtrl.signal,
               }
-            }
-            throw new Error(`HTTP ${response.status}`)
-          }
+            )
 
-          const reader = response.body.getReader()
-          const decoder = new TextDecoder()
-          let buffer = ''
-          let currentEvent = ''
+            clearTimeout(timeoutId)
+            stream.connectionState = 'connected'
+            _syncFromStream(convId)
 
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop()
-            for (const line of lines) {
-              if (line.startsWith('event: ')) {
-                currentEvent = line.slice(7).trim()
-              } else if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6))
-                  _handleSSEEvent(convId, currentEvent, data)
-                  if (
-                    currentEvent === 'tool_call' &&
-                    ['SaveMemory', 'DeleteMemory'].includes(data.name)
-                  ) {
-                    memoryTouched = true
+            if (!response.ok) {
+              // Backend may reject the request because another chat is already
+              // running a full-paper generation for this paper. Surface a friendly
+              // explanation and refresh the active-job state so the banner appears.
+              if (response.status === 409) {
+                let payload = null
+                try { payload = await response.json() } catch { /* ignore */ }
+                if (payload && payload.code === 'GENERATION_IN_PROGRESS') {
+                  if (stream.streamingMessage) {
+                    stream.streamingMessage.content =
+                      '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.'
                   }
-                } catch { /* skip malformed */ }
+                  stream.connectionState = 'idle'
+                  checkActiveJob()
+                  return
+                }
+              }
+              throw new Error(`HTTP ${response.status}`)
+            }
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+            let currentEvent = ''
+
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split('\n')
+              buffer = lines.pop()
+              for (const line of lines) {
+                if (line.startsWith('event: ')) {
+                  currentEvent = line.slice(7).trim()
+                } else if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6))
+                    _handleSSEEvent(convId, currentEvent, data)
+                    if (
+                      currentEvent === 'tool_call' &&
+                      ['SaveMemory', 'DeleteMemory'].includes(data.name)
+                    ) {
+                      memoryTouched = true
+                    }
+                  } catch { /* skip malformed */ }
+                }
               }
             }
+
+            // Update conversation list ordering / counts
+            const cIdx = conversations.value.findIndex(c => c.id === convId)
+            if (cIdx >= 0) {
+              const cConv = conversations.value[cIdx]
+              cConv.message_count = (cConv.message_count || 0) + 2
+              cConv.updated_at = new Date().toISOString()
+              // float to top
+              conversations.value = [
+                cConv,
+                ...conversations.value.filter(c => c.id !== cConv.id),
+              ]
+            }
+            const row = paperChats.value.find(c => c.paper_id === currentPaperId.value)
+            if (row) {
+              row.message_count = (row.message_count || 0) + 2
+              row.updated_at = new Date().toISOString()
+              paperChats.value = [
+                row,
+                ...paperChats.value.filter(c => c.paper_id !== currentPaperId.value),
+              ]
+            }
+
+            if (memoryTouched && currentPaperId.value) {
+              await loadMemory(currentPaperId.value)
+            }
+
+            // Success - break retry loop
+            break
+          } finally {
+            clearTimeout(timeoutId)
+          }
+        } catch (e) {
+          const isLastAttempt = attempt === MAX_RETRIES - 1
+          const isUserAbort = e.name === 'AbortError' && e.message !== 'Connection timeout'
+
+          if (isUserAbort) {
+            // User manually stopped - don't retry
+            if (stream.streamingMessage) {
+              stream.streamingMessage.content += '\n\n_(dihentikan oleh pengguna)_'
+            }
+            stream.connectionState = 'idle'
+            break
           }
 
-          // Update conversation list ordering / counts
-          const cIdx = conversations.value.findIndex(c => c.id === convId)
-          if (cIdx >= 0) {
-            const cConv = conversations.value[cIdx]
-            cConv.message_count = (cConv.message_count || 0) + 2
-            cConv.updated_at = new Date().toISOString()
-            // float to top
-            conversations.value = [
-              cConv,
-              ...conversations.value.filter(c => c.id !== cConv.id),
-            ]
-          }
-          const row = paperChats.value.find(c => c.paper_id === currentPaperId.value)
-          if (row) {
-            row.message_count = (row.message_count || 0) + 2
-            row.updated_at = new Date().toISOString()
-            paperChats.value = [
-              row,
-              ...paperChats.value.filter(c => c.paper_id !== currentPaperId.value),
-            ]
-          }
+          if (isLastAttempt) {
+            // Final attempt failed - show error
+            const friendly = _safeErrorMessage(e && e.message)
+            error.value = friendly
+            if (stream.streamingMessage) {
+              stream.streamingMessage.content += `\n\n_${friendly}_`
+            }
+            stream.connectionState = 'disconnected'
+            break
+          } else {
+            // Silent frontend retry fallback; normally unused because backend retries.
+            stream.connectionState = 'retrying'
+            _syncFromStream(convId)
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]))
 
-          if (memoryTouched && currentPaperId.value) {
-            await loadMemory(currentPaperId.value)
+            // Create new abort controller for next attempt
+            stream.connectionState = 'connecting'
+            stream.abortCtrl = new AbortController()
           }
-
-          // Success - break retry loop
-          break
-        } finally {
-          clearTimeout(timeoutId)
-        }
-      } catch (e) {
-        const isLastAttempt = attempt === MAX_RETRIES - 1
-        const isUserAbort = e.name === 'AbortError' && e.message !== 'Connection timeout'
-
-        if (isUserAbort) {
-          // User manually stopped - don't retry
-          if (stream.streamingMessage) {
-            stream.streamingMessage.content += '\n\n_(dihentikan oleh pengguna)_'
-          }
-          stream.connectionState = 'idle'
-          break
-        }
-
-        if (isLastAttempt) {
-          // Final attempt failed - show error
-          const friendly = _safeErrorMessage(e && e.message)
-          error.value = friendly
-          if (stream.streamingMessage) {
-            stream.streamingMessage.content += `\n\n_${friendly}_`
-          }
-          stream.connectionState = 'disconnected'
-          break
-        } else {
-          // Retry with exponential backoff
-          stream.connectionState = 'retrying'
-          if (stream.streamingMessage) {
-            stream.streamingMessage.content = `⏳ Koneksi terputus, mencoba lagi (${attempt + 1}/${MAX_RETRIES})...`
-          }
-          _syncFromStream(convId)
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]))
-
-          // Create new abort controller for next attempt
-          stream.connectionState = 'connecting'
-          stream.abortCtrl = new AbortController()
         }
       }
-    }
 
-    // Cleanup
-    stream.isStreaming = false
-    stream.streamingMessage = null
-    stream.abortCtrl = null
-    if (stream.connectionState !== 'disconnected') {
-      stream.connectionState = 'idle'
+    } finally {
+      // Guaranteed cleanup
+      _sendingLock = false
+      stream.isStreaming = false
+      stream.streamingMessage = null
+      stream.abortCtrl = null
+      if (stream.connectionState !== 'disconnected') {
+        stream.connectionState = 'idle'
+      }
+      _syncFromStream(convId)
     }
-    _syncFromStream(convId)
-    
-    // Always clear lock in finally
-    _sendingLock = false
   }
 
   function stopStreaming() {
@@ -818,6 +855,9 @@ export const useChatStore = defineStore('chat', () => {
         break
       case 'thinking':
         msg.thinking += data.content
+        break
+      case 'replace_text':
+        msg.content = data.content || ''
         break
       case 'tool_call':
         msg.tool_calls.push({

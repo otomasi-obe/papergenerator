@@ -1,0 +1,8 @@
+{
+  "ts": "2026-06-03T17:39:37.601506+00:00",
+  "direction": "recv",
+  "user_id": 292,
+  "paper_id": "328e38a30e5f",
+  "conv_id": "2b60ed6d2833494c",
+  "content": "Maaf, belum bisa generate langsung. Sebelumnya ada langkah yang terlewat:\n\n1. **Cek tab Preview** — proposal ringkasan paper sudah siap di sana.\n2. **Klik Accept** — setelah di-accept, sistem akan lanjut ke **Fase 2: Topik & Research Gap**.\n3. Baru setelah Fase 2–7 selesai, sistem bisa **generate draf full paper**.\n\nJadi, tolong **Accept proposal** dulu ya. Setelah itu pertanyaan Fase 2 akan muncul otomatis dengan opsi AI-generate. Kalau butuh bantuan, bilang."
+}

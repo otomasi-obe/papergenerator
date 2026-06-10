@@ -22,22 +22,22 @@ os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 
 # Pin started=True so importing app doesn't spin up the pump thread.
 try:
-    from workers import slr_worker
+    from tools.Literatur import worker as slr_worker
 
     slr_worker._started = True
 except Exception:  # pragma: no cover
     pass
 try:
-    from workers import image_worker
+    from tools.image_generation import worker as image_worker
 
     image_worker._started = True
 except Exception:
     pass
 
 try:
-    from app import app as flask_app
+    from main import app as flask_app
     from database.models import Paper, SlrJob, User, db
-    from workers import slr_worker as sw
+    from tools.Literatur import worker as sw
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed: {e}", allow_module_level=True)
 

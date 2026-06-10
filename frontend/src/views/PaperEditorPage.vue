@@ -55,16 +55,16 @@
 
             <!-- Editor / Preview / Tools — three buttons -->
             <div class="flex items-center gap-1 shrink-0">
-              <button @click="activeTab = 'editor'"
+              <button @click="toggleEditor"
                 :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap active:scale-95 transition-transform',
-                  activeTab === 'editor'
+                  activeTab === 'editor' && editorVisible
                     ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
                     : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
                 📝 Editor
               </button>
-              <button @click="activeTab = 'preview'"
+              <button @click="togglePreview"
                 :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap active:scale-95 transition-transform',
-                  activeTab === 'preview'
+                  activeTab === 'preview' && editorVisible
                     ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
                     : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
                 👁 Preview
@@ -82,19 +82,20 @@
       </div>
     </div>
 
-    <!-- Generation status banner (non-blocking) -->
-    <div v-if="store.aiLoading"
+    <!-- Generation status banner (non-blocking, driven by paperJobs) -->
+    <div v-if="currentActiveJob"
          class="bg-cream-100 dark:bg-ash-700 border-b border-cream-300 dark:border-ash-600 px-4 lg:px-8 py-2.5 flex items-center gap-3 text-ink-700 dark:text-ink-200 text-sm shrink-0">
       <div class="relative w-6 h-6 shrink-0">
         <div class="absolute inset-0 rounded-full border-2 border-cream-300 dark:border-ash-500"></div>
         <div class="absolute inset-0 rounded-full border-2 border-t-ink-700 dark:border-t-ink-200 animate-spin"></div>
       </div>
       <div class="flex-1 min-w-0 leading-snug">
-        <span class="font-medium">{{ store.aiLoadingMessage || 'AI sedang generate paper...' }}</span>
+        <span class="font-medium">AI sedang membuat paper...</span>
         <span class="opacity-70 ml-2">· Elapsed: {{ aiElapsedLabel }}</span>
+        <span v-if="currentActiveJob.progress" class="opacity-70 ml-2">· {{ currentActiveJob.progress }}%</span>
         <span v-if="aiElapsedSeconds > 600" class="ml-2 opacity-80">(masih bekerja — paper besar bisa sampai 15 menit)</span>
       </div>
-      <button v-if="canCancelAi" @click="chatStore.stopStreaming()"
+      <button @click="cancelCurrentJob"
               class="shrink-0 px-2.5 py-1 rounded text-xs font-medium border border-cream-400 dark:border-ash-500 hover:bg-cream-200 dark:hover:bg-ash-600 active:scale-95 transition-transform">Cancel</button>
     </div>
 
@@ -102,7 +103,7 @@
          Tools sidebar is always visible; chat is always on the right. -->
     <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
       <!-- LEFT pane: editor / preview. -->
-      <div class="overflow-y-auto border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="rightPanel || toolsOpen ? 'w-1/2' : 'w-full'">
+      <div v-show="editorVisible" class="overflow-y-auto border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="rightPanel || toolsOpen ? 'w-1/2' : 'w-full'">
         <div class="px-4 lg:px-8 py-6">
 
           <!-- TAB: EDITOR -->
@@ -273,14 +274,20 @@
 
       <!-- TAB: PREVIEW -->
       <div v-show="activeTab === 'preview'" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview">
-        <PreviewTab />
+        <PreviewTab :show-zoom="!rightPanel && !toolsOpen && editorVisible" />
       </div>
         </div>
       </div>
 
-      <!-- RIGHT: Tools menu / Chat / Journal / Literatur / Files / Data / Tool workspace -->
-      <div v-if="toolsOpen" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+      <!-- RIGHT: Tools menu / Paperfull / Chat / Journal / Literatur / Files / Data / Image / Tool workspace -->
+      <div v-if="toolsOpen" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-4 space-y-1">
+          <!-- Paperfull -->
+          <button @click="openRightPanel('paperfull')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <img src="/assets/logo.png" alt="" class="h-5 w-5 rounded object-contain" />
+            <span class="text-xs font-medium">Paperfull</span>
+          </button>
           <!-- Chat -->
           <button @click="openRightPanel('chat')"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
@@ -311,6 +318,12 @@
             <span class="text-base">📊</span>
             <span class="text-xs font-medium">Data</span>
           </button>
+          <!-- Image -->
+          <button @click="openRightPanel('image')"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+            <span class="text-base">🖼</span>
+            <span class="text-xs font-medium">Image</span>
+          </button>
           <div class="h-px bg-cream-300 dark:bg-ash-600 my-3"></div>
           <!-- Writing tools -->
           <button v-for="tool in toolsStore.TOOLS" :key="tool.id" @click="openToolWorkspace(tool)"
@@ -321,27 +334,35 @@
         </div>
       </div>
 
-      <div v-else-if="rightPanel === 'chat'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
-        <ChatTab :paper-id="store.currentPaperId" @open-preview="activeTab = 'preview'" />
+      <div v-else-if="rightPanel === 'chat'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col border-l border-cream-300 dark:border-ash-700">
+        <ChatTab :paper-id="store.currentPaperId" @open-preview="activeTab = 'preview'; editorVisible = true" />
       </div>
 
-      <div v-else-if="rightPanel === 'journal'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+      <div v-else-if="rightPanel === 'journal'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-6"><JournalTab /></div>
       </div>
 
-      <div v-else-if="rightPanel === 'literature'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+      <div v-else-if="rightPanel === 'literature'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-6"><LiteratureTab /></div>
       </div>
 
-      <div v-else-if="rightPanel === 'files'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+      <div v-else-if="rightPanel === 'files'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-6"><FilesTab /></div>
       </div>
 
-      <div v-else-if="rightPanel === 'data'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+      <div v-else-if="rightPanel === 'data'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-6"><DataTab /></div>
       </div>
 
-      <div v-else-if="rightPanel === 'tool-workspace'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col w-1/2 border-l border-cream-300 dark:border-ash-700">
+      <div v-else-if="rightPanel === 'paperfull'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><PaperfullTab /></div>
+      </div>
+
+      <div v-else-if="rightPanel === 'image'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><ImageTab /></div>
+      </div>
+
+      <div v-else-if="rightPanel === 'tool-workspace'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-6"><ToolsTab /></div>
       </div>
     </div>
@@ -388,6 +409,11 @@
       :shortcuts="shortcuts"
       @close="showShortcutsHelp = false"
     />
+
+    <WordAddonInstallModal 
+      :show="showWordAddonModal" 
+      @close="showWordAddonModal = false" 
+    />
   </div>
 </template>
 
@@ -409,7 +435,10 @@ import LiteratureTab from '../components/LiteratureTab.vue'
 import PreviewTab from '../components/PreviewTab.vue'
 import ChatTab from '../components/ChatTab.vue'
 import DataTab from '../components/DataTab.vue'
+import PaperfullTab from '../components/PaperfullTab.vue'
+import ImageTab from '../components/ImageTab.vue'
 import ToolsTab from '../components/ToolsTab.vue'
+import WordAddonInstallModal from '@/components/WordAddonInstallModal.vue'
 import { useToolsStore } from '../stores/tools.ts'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
@@ -451,21 +480,30 @@ const abstractRef = ref<HTMLTextAreaElement | null>(null)
 const saveStatus = ref('saved')
 const lastSavedAt = ref<number | null>(null)
 const nowTick = ref(Date.now())
-const aiStartedAt = ref<number | null>(null)
 
 // ─── Split layout state ───────────────────────────────────────────────────
-// rightPanel: '' = closed | 'chat' | 'journal' | 'literature' | 'files' | 'data' | 'tool-workspace'
+// rightPanel: '' = closed | 'chat' | 'journal' | 'literature' | 'files' | 'data' | 'paperfull' | 'image' | 'tool-workspace'
 const rightPanel = ref('chat')
 const toolsOpen = ref(false) // shows the tools menu list
+const editorVisible = ref(true) // left pane (editor/preview) visibility
+const showWordAddonModal = ref(false)
 
 function openRightPanel(panel) {
   toolsOpen.value = false
   rightPanel.value = panel
   // Ensure left pane shows something (default to editor if nothing selected)
   if (!activeTab.value) activeTab.value = 'editor'
+  if (!editorVisible.value) editorVisible.value = true
 }
 
 function openToolWorkspace(tool) {
+  if (tool.external) {
+    if (tool.id === 'word-addon') {
+      showWordAddonModal.value = true
+    }
+    return
+  }
+  
   toolsOpen.value = false
   toolsStore.setActiveTool(tool)
   rightPanel.value = 'tool-workspace'
@@ -475,18 +513,47 @@ function openToolWorkspace(tool) {
 function toggleTools() {
   if (toolsOpen.value) {
     toolsOpen.value = false
+    // If no right panel is open, re-show editor so page isn't blank
+    if (!rightPanel.value) editorVisible.value = true
   } else {
     rightPanel.value = ''
     toolsOpen.value = true
+    // Don't re-show editor — user wants tools full-width
+  }
+}
+
+function toggleEditor() {
+  if (activeTab.value === 'editor' && editorVisible.value) {
+    editorVisible.value = false
+    // Ensure something is open on the right so page isn't blank
+    if (!toolsOpen.value && !rightPanel.value) {
+      toolsOpen.value = true
+    }
+  } else {
+    editorVisible.value = true
+    activeTab.value = 'editor'
+  }
+}
+
+function togglePreview() {
+  if (activeTab.value === 'preview' && editorVisible.value) {
+    editorVisible.value = false
+    if (!toolsOpen.value && !rightPanel.value) {
+      toolsOpen.value = true
+    }
+  } else {
+    editorVisible.value = true
+    activeTab.value = 'preview'
   }
 }
 
 function handlePapersBack() {
-  const onPaperChatHome = rightPanel.value === 'chat' && !toolsOpen.value && !chatStore.currentConversationId && activeTab.value === 'editor'
+  const onPaperChatHome = rightPanel.value === 'chat' && !toolsOpen.value && !chatStore.currentConversationId && activeTab.value === 'editor' && editorVisible.value
   if (!onPaperChatHome && store.currentPaperId) {
     rightPanel.value = 'chat'
     toolsOpen.value = false
     activeTab.value = 'editor'
+    editorVisible.value = true
     chatStore.currentConversationId = null
     return
   }
@@ -498,7 +565,18 @@ const shortcuts: KeyboardShortcut[] = [
   {
     key: 'k',
     ctrl: true,
-    handler: () => { rightPanel.value = rightPanel.value === 'chat' ? '' : 'chat'; toolsOpen.value = false },
+    handler: () => {
+      if (rightPanel.value === 'chat') {
+        // Closing chat → ensure left pane is visible so page isn't empty
+        rightPanel.value = ''
+        toolsOpen.value = false
+        if (!editorVisible.value) editorVisible.value = true
+      } else {
+        rightPanel.value = 'chat'
+        toolsOpen.value = false
+        if (!editorVisible.value) editorVisible.value = true
+      }
+    },
     description: 'Toggle AI Chat panel'
   },
   {
@@ -616,13 +694,25 @@ function stableKey(obj: any) {
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 let tickTimer: ReturnType<typeof setInterval> | null = null
 const savedRelative = computed(() => lastSavedAt.value ? 'just now' : 'just now')
-const aiElapsedSeconds = computed(() => aiStartedAt.value ? Math.floor((nowTick.value - aiStartedAt.value) / 1000) : 0)
-const aiElapsedLabel = computed(() => aiElapsedSeconds.value < 60 ? `0:${String(aiElapsedSeconds.value).padStart(2, '0')}` : `${Math.floor(aiElapsedSeconds.value / 60)}m ${aiElapsedSeconds.value % 60}s`)
-const canCancelAi = computed(() => typeof chatStore.stopStreaming === 'function')
 
-watch(() => store.aiLoading, (v) => {
-  aiStartedAt.value = v ? Date.now() : null
+const currentActiveJob = computed(() => {
+  if (!store.currentPaperId) return null
+  return paperJobsStore.activeByPaper[store.currentPaperId] || null
 })
+
+const aiElapsedSeconds = computed(() => {
+  const job = currentActiveJob.value
+  if (!job?.created_at) return 0
+  return Math.floor((nowTick.value - new Date(job.created_at).getTime()) / 1000)
+})
+const aiElapsedLabel = computed(() => aiElapsedSeconds.value < 60 ? `0:${String(aiElapsedSeconds.value).padStart(2, '0')}` : `${Math.floor(aiElapsedSeconds.value / 60)}m ${aiElapsedSeconds.value % 60}s`)
+
+function cancelCurrentJob() {
+  const job = currentActiveJob.value
+  if (job?.id) {
+    paperJobsStore.cancel(job.id)
+  }
+}
 
 watch(() => store.paper, () => {
   if (!store.paper.title?.trim() && !store.currentPaperId) return
@@ -659,7 +749,16 @@ onMounted(async () => {
   const paperId = route.params.paperId
   if (paperId && paperId !== 'null' && paperId !== 'undefined') {
     const paperIdStr = Array.isArray(paperId) ? paperId[0] : paperId
-    await store.loadPaperFromDb(paperIdStr)
+    const loaded = await store.loadPaperFromDb(paperIdStr)
+    if (!loaded && !store.currentPaperId) {
+      // Paper no longer exists — start a fresh paper instead of leaving the
+      // user on a broken editor with cascading 404s.
+      store.newPaper()
+      const newId = await store.savePaperToDb(true)
+      if (newId) {
+        router.replace({ name: 'editor', params: { paperId: newId } })
+      }
+    }
     rightPanel.value = 'chat'
   } else {
     store.newPaper()
@@ -702,7 +801,12 @@ watch(() => rightPanel.value, () => resizeAbstract())
 watch(() => route.params.paperId, async (newId, oldId) => {
   if (newId && newId !== 'null' && newId !== 'undefined' && newId !== oldId && newId !== store.currentPaperId) {
     const newIdStr = Array.isArray(newId) ? newId[0] : newId
-    await store.loadPaperFromDb(newIdStr)
+    const loaded = await store.loadPaperFromDb(newIdStr)
+    if (!loaded && !store.currentPaperId) {
+      // Paper deleted — redirect to dashboard to pick a valid paper.
+      router.replace({ name: 'dashboard' })
+      return
+    }
     rightPanel.value = 'chat'
     resizeAbstract()
   }

@@ -1,0 +1,17 @@
+{
+  "ts": "2026-06-09T12:45:21.199685Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "eacfb30254fa",
+  "conv_id": "ed17a184fae84476",
+  "model": "liquid/lfm-2.5-1.2b-instruct:free",
+  "content": "3",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 82,
+    "completion_tokens": 2,
+    "total_tokens": 84
+  },
+  "status": "ok"
+}

@@ -23,7 +23,7 @@ try:
     from flask import Flask
     from flask_jwt_extended import JWTManager, create_access_token
 
-    from api.quota_bp import quota_bp, quota_exceeded
+    from utils.quota import quota as quota_bp, quota_exceeded
     from database.models import ApiUsageLog, User, db
 except Exception as e:
     pytest.skip(f"Quota blueprint bootstrap failed: {e}", allow_module_level=True)

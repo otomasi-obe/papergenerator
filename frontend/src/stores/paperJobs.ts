@@ -21,10 +21,14 @@ import { usePaperStore } from './paper.js'
 export const usePaperJobsStore = defineStore('paperJobs', () => {
   // paperId → active job object
   const activeByPaper = ref({})
+  // All active jobs across all papers (for bell icon)
+  const globalActiveJobs = ref([])
   // Most recent done jobs across all the user's papers
   const recentDone = ref([])
   // Job ids the user has already been notified about (or pre-seeded on first load)
   const seenDoneIds = ref(new Set())
+  // Job ids that have been clicked/viewed by the user (to hide from bell dropdown)
+  const clickedJobIds = ref(new Set())
   // Job ids that have already triggered the post-done chat injection. We
   // track this separately from seenDoneIds because notifications and the
   // chat hook have different lifecycles (e.g. seenDoneIds is seeded on the
@@ -188,15 +192,19 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
   async function fetchRecentDone() {
     try {
       const r = await api.get('/api/me/ai-jobs/recent', {
-        params: { status: 'done', limit: 10 },
+        params: { limit: 20 },
       })
       const list = Array.isArray(r?.data) ? r.data : (r?.data?.jobs || [])
+      // Split into active and done jobs
+      const active = list.filter(j => j.status === 'running' || j.status === 'pending' || j.status === 'queued')
+      const done = list.filter(j => j.status === 'done')
+      globalActiveJobs.value = active
       const firstLoad = seenDoneIds.value.size === 0
-      const newOnes = list.filter(j => !seenDoneIds.value.has(j.id))
+      const newOnes = done.filter(j => !seenDoneIds.value.has(j.id))
       if (firstLoad) {
         // Don't fire notifs for the back-fill on first load — user already
         // knows about them. Just seed the seen-set.
-        list.forEach(j => seenDoneIds.value.add(j.id))
+        done.forEach(j => seenDoneIds.value.add(j.id))
       } else {
         newOnes.forEach(j => {
           seenDoneIds.value.add(j.id)
@@ -204,7 +212,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
           _onJobDone(j)
         })
       }
-      recentDone.value = list
+      recentDone.value = done
     } catch (e) {
       console.warn('paperJobs.fetchRecentDone failed', e)
     }
@@ -233,9 +241,17 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     }
   }
 
+  function markJobAsClicked(jobId) {
+    if (jobId) {
+      clickedJobIds.value.add(jobId)
+    }
+  }
+
   return {
     activeByPaper,
+    globalActiveJobs,
     recentDone,
+    clickedJobIds,
     fetchActive,
     startPolling,
     stopPolling,
@@ -246,5 +262,6 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     startGlobalPolling,
     stopGlobalPolling,
     requestNotifPermission,
+    markJobAsClicked,
   }
 })

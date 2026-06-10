@@ -1,0 +1,17 @@
+{
+  "ts": "2026-06-09T13:54:48.491596Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "eacfb30254fa",
+  "conv_id": "a3c14c64fff347e0",
+  "model": "openai/gpt-oss-120b:free",
+  "content": "Now call StartWorkflow.Okay.Now final.✅ Memulai proses pembuatan paper. \n\n<AskQuestions> \n{\n  \"questions\": [\n    {\n      \"id\": \"0.1\",\n      \"text\": \"Seberapa jauh progres penelitian Anda?\",\n      \"options\": [\n        {\"key\":\"A\",\"text\":\"Masih di konsepsi\"},\n        {\"key\":\"B\",\"text\":\"Sudah ada data awal\"},\n        {\"key\":\"C\",\"text\":\"Dalam tahap analisis\"},\n        {\"key\":\"D\",\"text\":\"Sudah hampir selesai\"},\n        {\"key\":\"E\",\"text\":\"Ceritakan sendiri...\"}\n      ]\n    },\n    {\n      \"id\": \"0.2\",\n      \"text\": \"Apakah data yang Anda miliki sudah siap pakai?\",\n      \"options\": [\n        {\"key\":\"A\",\"text\":\"Belum ada data\"},\n        {\"key\":\"B\",\"text\":\"Data mentah belum dibersihkan\"},\n        {\"key\":\"C\",\"text\":\"Data sudah bersih dan siap\"},\n        {\"key\":\"D\",\"text\":\"Data dalam proses pengumpulan\"},\n        {\"key\":\"E\",\"text\":\"Ceritakan sendiri...\"}\n      ]\n    },\n    {\n      \"id\": \"0.3\",\n      \"text\": \"Berapa ukuran tim peneliti Anda?\",\n      \"options\": [\n        {\"key\":\"A\",\"text\":\"Saya sendiri\"},\n        {\"key\":\"B\",\"text\":\"2-3 orang\"},\n        {\"key\":\"C\",\"text\":\"4-6 orang\"},\n        {\"key\":\"D\",\"text\":\"Lebih dari 6 orang\"},\n        {\"key\":\"E\",\"text\":\"Ceritakan sendiri...\"}\n      ]\n    }\n  ]\n}\n</AskQuestions>",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 1839,
+    "completion_tokens": 712,
+    "total_tokens": 2551
+  },
+  "status": "ok"
+}

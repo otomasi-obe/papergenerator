@@ -14,7 +14,7 @@
         v-for="tool in store.TOOLS"
         :key="tool.id"
         class="bg-white dark:bg-ash-800 rounded-2xl border border-cream-300 dark:border-ash-700 p-4 cursor-pointer hover:border-navy-500 dark:hover:border-cream-400 transition-all active:scale-[0.98] shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)]"
-        @click="store.setActiveTool(tool)"
+        @click="handleToolClick(tool)"
       >
         <div
           class="w-[38px] h-[38px] rounded-lg flex items-center justify-center text-lg mb-3 text-white"
@@ -26,14 +26,32 @@
         <p class="text-xs text-ink-500 dark:text-ink-300 leading-relaxed">{{ tool.desc }}</p>
       </div>
     </div>
+
+    <WordAddonInstallModal
+      :show="showWordAddonModal"
+      @close="showWordAddonModal = false"
+    />
   </div>
 
   <ToolWorkspace v-else />
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useToolsStore } from '../stores/tools.ts'
 import ToolWorkspace from './ToolWorkspace.vue'
+import WordAddonInstallModal from './WordAddonInstallModal.vue'
 
 const store = useToolsStore()
+const showWordAddonModal = ref(false)
+
+function handleToolClick(tool) {
+  if (tool.external) {
+    if (tool.id === 'word-addon') {
+      showWordAddonModal.value = true
+    }
+    return
+  }
+  store.setActiveTool(tool)
+}
 </script>

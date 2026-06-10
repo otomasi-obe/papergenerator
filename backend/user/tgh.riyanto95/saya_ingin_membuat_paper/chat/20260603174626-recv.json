@@ -1,0 +1,8 @@
+{
+  "ts": "2026-06-03T17:46:26.907967+00:00",
+  "direction": "recv",
+  "user_id": 292,
+  "paper_id": "328e38a30e5f",
+  "conv_id": "2b60ed6d2833494c",
+  "content": "Fase 5 ✅\n\n**Fase 6: Metodologi Review**\n\nUsulan:\n\n- **Jenis review**: Scoping review / systematic literature review (SLR) — mengingat belum banyak paper review soal ini, scoping review lebih cocok untuk memetakan literatur yang ada.\n- **Database**: Scopus, PubMed, Google Scholar, ScienceDirect.\n- **Kata kunci**: \"biobutanol\", \"sugarcane bagasse\", \"pretreatment\", \"ABE fermentation\", \"yield optimization\".\n- **Kriteria inklusi**: Paper tahun 2015–2025, bahasa Inggris/Indonesia, full-text, membahas pretreatment, fermentasi, atau optimasi yield biobutanol dari ampas tebu.\n- **Kriteria eksklusi**: Review paper lain, tidak membahas ampas tebu secara spesifik.\n- **Screening**: Title/abstract → full-text → ekstraksi data.\n\n**Setuju?** Jika ya, Fase 7 — saya buatkan daftar 10–15 pustaka awal (poin kunci dari paper yang relevan)."
+}

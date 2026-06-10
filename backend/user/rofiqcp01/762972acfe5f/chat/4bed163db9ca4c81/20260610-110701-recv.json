@@ -1,0 +1,8 @@
+{
+  "ts": "2026-06-10T11:07:01.139733+00:00",
+  "direction": "recv",
+  "content": "[SAVE_MEMORY: user_preference=respons_singkat]\n\nHalo! OWL siap bantu.",
+  "message_id": 1456,
+  "model": "@preset/otomasi",
+  "conv_id": "4bed163db9ca4c81"
+}

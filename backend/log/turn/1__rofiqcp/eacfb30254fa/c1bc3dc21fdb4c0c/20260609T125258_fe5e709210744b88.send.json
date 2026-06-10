@@ -1,0 +1,10 @@
+{
+  "ts": "2026-06-09T12:52:58.938854Z",
+  "kind": "send",
+  "user_id": 1,
+  "paper_id": "eacfb30254fa",
+  "conv_id": "c1bc3dc21fdb4c0c",
+  "model": "openai/gpt-oss-120b:free",
+  "content": "Generate paper lengkap (auto full paper).",
+  "len": 41
+}

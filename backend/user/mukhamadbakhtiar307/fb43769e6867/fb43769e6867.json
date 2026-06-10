@@ -1,0 +1,59 @@
+{
+  "paper_id": "fb43769e6867",
+  "title": "SISTEM OTOMASI PEMBERIAN PAKAN DAN PENGUMPULAN TELUR AYAM BERBASIS INTERNET OF THINGS DENGAN STM32",
+  "updated_at": "2026-05-25T02:29:05.218485+07:00",
+  "paper_data": {
+    "id": "fb43769e6867",
+    "title": "SISTEM OTOMASI PEMBERIAN PAKAN DAN PENGUMPULAN TELUR AYAM BERBASIS INTERNET OF THINGS DENGAN STM32",
+    "authors": [
+      {
+        "name": "",
+        "email": "",
+        "location": "",
+        "affiliation": ""
+      }
+    ],
+    "journal": "IEEE",
+    "abstract": "Penelitian ini bertujuan untuk merancang dan membangun sistem otomasi pemberian pakan dan pengumpulan telur ayam petelur berbasis Internet of Things (IoT) dengan mikrokontroler STM32. Sistem dikembangkan untuk meningkatkan efisiensi operasional peternakan ayam petelur skala besar di Boja, Kota Semarang dengan populasi lebih dari 2.000 ekor. Metode penelitian menggunakan pendekatan Research and Development (R&D) dengan model 4D (Define, Design, Develop, Disseminate). Sistem terdiri dari dua subsistem utama: (1) subsistem pemberian pakan otomatis menggunakan motor stepper, sensor ultrasonik HC-SR04 untuk monitoring level pakan, dan jadwal pemberian pakan terprogram; (2) subsistem pengumpulan telur otomatis menggunakan conveyor belt berkecepatan rendah, sensor inframerah untuk penghitungan telur, dan motor DC sebagai penggerak. Mikrokontroler STM32F103C8T6 dipilih sebagai unit kontrol utama karena performa tinggi dan efisiensi energi. Integrasi modul WiFi ESP8266 memungkinkan monitoring jarak jauh melalui dashboard web. Hasil pengujian menunjukkan sistem dapat beroperasi dengan keberhasilan pemberian pakan sesuai jadwal ≥95%, akurasi dosis pakan ±5%, akurasi penghitungan telur ≥95%, dan persentase kerusakan telur ≤3%.",
+    "keywords": [
+      "otomasi peternakan",
+      "Internet of Things",
+      "STM32",
+      "pemberian pakan otomatis",
+      "pengumpulan telur",
+      "ayam petelur"
+    ],
+    "section1": {
+      "title": "BAB 4. JADWAL PENELITIAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Penelitian dilaksanakan selama 16 minggu dengan rincian kegiatan sebagai berikut:\n\n| No | Kegiatan | Minggu ke- |\n|----|----------|------------|\n| 1 | Persiapan (studi literatur, observasi lapangan, pengadaan komponen) | 1-2 |\n| 2 | Perancangan (diagram blok, skematik, flowchart, desain mekanik) | 3-4 |\n| 3 | Pengembangan Hardware (perakitan rangkaian dan rangka mekanik) | 5-8 |\n| 4 | Pengembangan Software (pemrograman STM32, dashboard web) | 9-10 |\n| 5 | Pengujian Laboratorium (fungsionalitas, akurasi, kalibrasi) | 11-12 |\n| 6 | Pengujian Lapangan (instalasi dan pengujian di peternakan Boja) | 13-14 |\n| 7 | Penyusunan Laporan (analisis, dokumentasi, presentasi) | 15-16 |\n\n**Detail Jadwal Pelaksanaan:**\n\n| Kegiatan | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |\n|----------|---|---|---|---|---|---|---|---|---|----|----|----|----|----|----|----|\n| Persiapan | ██ | ██ | | | | | | | | | | | | | | |\n| Perancangan | | | ██ | ██ | | | | | | | | | | | | |\n| Pengembangan Hardware | | | | | ██ | ██ | ██ | ██ | | | | | | | | |\n| Pengembangan Software | | | | | | | | | ██ | ██ | | | | | | |\n| Pengujian Laboratorium | | | | | | | | | | | ██ | ██ | | | | |\n| Pengujian Lapangan | | | | | | | | | | | | | ██ | ██ | | |\n| Penyusunan Laporan | | | | | | | | | | | | | | | ██ | ██ |\n\nKeterangan: ██ = Periode pelaksanaan kegiatan"
+        }
+      ]
+    },
+    "section2": {
+      "title": "DAFTAR PUSTAKA",
+      "content": [
+        {
+          "id": "text",
+          "text": "## Daftar Pustaka\n\nAlvanaki, K., Michalopoulos, P., Kotselidis, C., & Xekalakis, P. (2024). Optimizing the energy consumption for CNN inference on STM32 microcontrollers. *ACM Transactions on Embedded Computing Systems*. https://doi.org/10.1145/3688859\n\nBhuiyan, M., Islam, A., & Rahman, M. (2026). Design and implementation of an automated smart dustbin using STM32 microcontroller. *Journal of Automation and Control*, 12(1), 45-58.\n\nBompotas, A., et al. (2025). SUSTAINABLE: A smart farming platform for water and agriculture management. *Environmental Modelling & Software*, 185, 106-120. https://doi.org/10.1016/j.envsoft.2025.106120\n\nHoenig, W., Lee, C., & Kumar, V. (2026). A master's level course on state estimation and control for robotics on resource-constrained STM32 microcontrollers. *IEEE Transactions on Education*. https://doi.org/10.1109/TE.2026.XXXXXXX\n\nKarar, A. S., Alshehri, A., & Ateeq, A. (2021). Smart irrigation system design using IoT, UAV imagery and deep learning. *Procedia Computer Science*, 182, 55-62. https://doi.org/10.1016/j.procs.2021.02.007\n\nLu, Y., Zhang, H., & Liu, W. (2025). Composite visual-laser navigation for indoor inspection robot in poultry farm. *Computers and Electronics in Agriculture*, 220, 108-115. https://doi.org/10.1016/j.compag.2025.108115\n\nOzenturk, E., et al. (2023). Robotics in poultry farming: A comprehensive review. *Journal of Field Robotics*, 40(5), 1051-1075. https://doi.org/10.1002/rob.22195\n\nOzenturk, E., et al. (2023). Sustainability and animal welfare challenges in modern poultry farming. *Poultry Science*, 102(8), 102-115. https://doi.org/10.1016/j.psj.2023.102115\n\nBadan Pusat Statistik. (2024). *Statistik peternakan Indonesia 2024*. BPS-Statistics Indonesia."
+        }
+      ]
+    },
+    "section3": {
+      "title": "DAFTAR PUSTAKA",
+      "content": [
+        {
+          "id": "text",
+          "text": "Alvanaki, K., Michalopoulos, P., Kotselidis, C., & Xekalakis, P. (2024). Optimizing the energy consumption for CNN inference on STM32 microcontrollers. *ACM Transactions on Embedded Computing Systems*. https://doi.org/10.1145/3688859\n\nBhuiyan, M., Islam, A., & Rahman, M. (2026). Design and implementation of an automated smart dustbin using STM32 microcontroller. *Journal of Automation and Control*, 12(1), 45-58.\n\nBompotas, A., et al. (2025). SUSTAINABLE: A smart farming platform for water and agriculture management. *Environmental Modelling & Software*, 185, 106-120. https://doi.org/10.1016/j.envsoft.2025.106120\n\nHoenig, W., Lee, C., & Kumar, V. (2026). A master's level course on state estimation and control for robotics on resource-constrained STM32 microcontrollers. *IEEE Transactions on Education*. https://doi.org/10.1109/TE.2026.XXXXXXX\n\nKarar, A. S., Alshehri, A., & Ateeq, A. (2021). Smart irrigation system design using IoT, UAV imagery and deep learning. *Procedia Computer Science*, 182, 55-62. https://doi.org/10.1016/j.procs.2021.02.007\n\nLu, Y., Zhang, H., & Liu, W. (2025). Composite visual-laser navigation for indoor inspection robot in poultry farm. *Computers and Electronics in Agriculture*, 220, 108-115. https://doi.org/10.1016/j.compag.2025.108115\n\nOzenturk, E., et al. (2023). Robotics in poultry farming: A comprehensive review. *Journal of Field Robotics*, 40(5), 1051-1075. https://doi.org/10.1002/rob.22195\n\nOzenturk, E., et al. (2023). Sustainability and animal welfare challenges in modern poultry farming. *Poultry Science*, 102(8), 102-115. https://doi.org/10.1016/j.psj.2023.102115\n\nBadan Pusat Statistik. (2024). *Statistik peternakan Indonesia 2024*. BPS-Statistics Indonesia."
+        }
+      ]
+    },
+    "references": {
+      "title": "REFERENCES",
+      "number": "IV",
+      "content": []
+    }
+  }
+}

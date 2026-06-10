@@ -1,5 +1,8 @@
 <template>
-  <div :class="['flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start']">
+  <div
+    v-if="shouldRenderMessage"
+    :class="['flex gap-3', message.role === 'user' ? 'justify-end' : 'justify-start']"
+  >
     <!-- AI Avatar -->
     <div v-if="message.role === 'assistant'" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 dark:from-cream-300 dark:to-cream-400 flex items-center justify-center mt-1 shadow-sm">
       <svg class="w-4 h-4 text-cream-50 dark:text-ash-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,15 +311,7 @@
         </div>
       </div>
 
-      <!-- Streaming cursor -->
-      <span
-        v-if="isStreaming && message.role === 'assistant' && !message.content && !message.thinking"
-        class="inline-flex items-center gap-1 py-1"
-      >
-        <span class="w-1.5 h-1.5 bg-navy-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-        <span class="w-1.5 h-1.5 bg-navy-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-        <span class="w-1.5 h-1.5 bg-navy-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
-      </span>
+
     </div>
 
     <!-- User Avatar -->
@@ -353,6 +348,7 @@ interface ToolCall {
   status?: string
   error?: string
   result?: string
+  arguments?: any
 }
 
 interface MessageMetadata {
@@ -541,6 +537,16 @@ const renderedContent = computed(() => {
   } catch {
     return sanitizeHtml(visibleContent.value, { USE_PROFILES: { html: true } })
   }
+})
+
+const shouldRenderMessage = computed(() => {
+  if (props.message.role === 'user') return true
+  if (visibleContent.value) return true
+  if ((props.message.thinking || '').trim()) return true
+  if (generatingPaper.value) return true
+  if (metaKind.value) return true
+  if (errorToolCalls.value.length > 0) return true
+  return false
 })
 </script>
 

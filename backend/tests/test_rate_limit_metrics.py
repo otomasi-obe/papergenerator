@@ -12,7 +12,7 @@ from prometheus_client import REGISTRY
 
 def test_rate_limit_metrics_exist():
     """Test that rate limit metrics are registered in Prometheus."""
-    from monitoring.observability_v2 import (
+    from utils.monitoring.observability_v2 import (
         RATE_LIMIT_BREACHES,
         RATE_LIMIT_CURRENT_USAGE,
         RATE_LIMIT_REQUESTS,
@@ -30,7 +30,7 @@ def test_rate_limit_metrics_exist():
 
 def test_rate_limit_requests_metric_on_success(client):
     """Test that RATE_LIMIT_REQUESTS increments on successful requests."""
-    from monitoring.observability_v2 import RATE_LIMIT_REQUESTS
+    from utils.monitoring.observability_v2 import RATE_LIMIT_REQUESTS
 
     before = RATE_LIMIT_REQUESTS.labels(endpoint='health', status='allowed')._value.get()
 
@@ -43,7 +43,7 @@ def test_rate_limit_requests_metric_on_success(client):
 
 def test_rate_limit_requests_metric_on_blocked(client, app):
     """Test that RATE_LIMIT_REQUESTS increments with status=blocked on 429."""
-    from monitoring.observability_v2 import RATE_LIMIT_REQUESTS
+    from utils.monitoring.observability_v2 import RATE_LIMIT_REQUESTS
 
     with app.test_request_context():
         from flask import Response
@@ -60,7 +60,7 @@ def test_rate_limit_requests_metric_on_blocked(client, app):
             mock_request.endpoint = 'test_endpoint'
             mock_request.path = '/api/test'
 
-            from app import _security_headers
+            from main import _security_headers
             _security_headers(response)
 
         after_blocked = RATE_LIMIT_REQUESTS.labels(
@@ -73,8 +73,8 @@ def test_rate_limit_requests_metric_on_blocked(client, app):
 
 def test_rate_limit_breaches_metric_on_breach(app):
     """Test that RATE_LIMIT_BREACHES increments when rate limit handler is called."""
-    from app import rate_limit_handler
-    from monitoring.observability_v2 import RATE_LIMIT_BREACHES
+    from main import rate_limit_handler
+    from utils.monitoring.observability_v2 import RATE_LIMIT_BREACHES
 
     with app.test_request_context('/api/test'):
         from flask import request
@@ -98,7 +98,7 @@ def test_rate_limit_breaches_metric_on_breach(app):
 
 def test_rate_limit_metrics_labels():
     """Test that metrics have correct labels."""
-    from monitoring.observability_v2 import (
+    from utils.monitoring.observability_v2 import (
         RATE_LIMIT_BREACHES,
         RATE_LIMIT_CURRENT_USAGE,
         RATE_LIMIT_REQUESTS,
@@ -113,7 +113,7 @@ def test_rate_limit_metrics_types():
     """Test that metrics are of correct Prometheus types."""
     from prometheus_client import Counter, Gauge
 
-    from monitoring.observability_v2 import (
+    from utils.monitoring.observability_v2 import (
         RATE_LIMIT_BREACHES,
         RATE_LIMIT_CURRENT_USAGE,
         RATE_LIMIT_REQUESTS,
@@ -179,7 +179,7 @@ def test_metrics_endpoint_includes_rate_limit_metrics(client):
 
 def test_rate_limit_handler_returns_correct_response(app):
     """Test that rate_limit_handler returns proper JSON error response."""
-    from app import rate_limit_handler
+    from main import rate_limit_handler
 
     with app.test_request_context('/api/test'):
         from flask import request
@@ -208,7 +208,7 @@ def test_security_headers_tracks_metrics_safely(client, app):
 
 def test_rate_limit_metrics_documentation():
     """Test that metrics have proper documentation strings."""
-    from monitoring.observability_v2 import (
+    from utils.monitoring.observability_v2 import (
         RATE_LIMIT_BREACHES,
         RATE_LIMIT_CURRENT_USAGE,
         RATE_LIMIT_REQUESTS,

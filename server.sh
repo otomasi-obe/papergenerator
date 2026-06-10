@@ -17,7 +17,8 @@ NC='\033[0m'
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/frontend"
-LOGS_DIR="$APP_DIR/logs"
+BACKEND_LOG_DIR="$BACKEND_DIR/log"
+FRONTEND_LOG_DIR="$FRONTEND_DIR/log"
 
 FRONTEND_PORT=8000
 BACKEND_PORT=8001
@@ -89,26 +90,26 @@ start_server() {
 
     stop_all
 
-    mkdir -p "$LOGS_DIR"
+    mkdir -p "$BACKEND_LOG_DIR"
+    mkdir -p "$FRONTEND_LOG_DIR"
 
     build_frontend
     echo ""
 
     echo -e "${YELLOW}Starting Frontend...${NC}"
     cd "$FRONTEND_DIR"
-    pm2 start npm --name "paper-frontend" \
-        --log "$LOGS_DIR/frontend-out.log" \
-        --error "$LOGS_DIR/frontend-error.log" \
-        -- run preview -- --port $FRONTEND_PORT --host 0.0.0.0
+    pm2 start proxy-server.cjs --name "paper-frontend" \
+        --log "$FRONTEND_LOG_DIR/frontend-out.log" \
+        --error "$FRONTEND_LOG_DIR/frontend-error.log"
     echo -e "   ${GREEN}✓${NC} Frontend started on port $FRONTEND_PORT"
     echo ""
 
     echo -e "${YELLOW}Starting Backend...${NC}"
     cd "$BACKEND_DIR"
     pm2 start python3 --name "paper-backend-flask" --interpreter none \
-        --log "$LOGS_DIR/backend-out.log" \
-        --error "$LOGS_DIR/backend-error.log" \
-        -- app.py
+        --log "$BACKEND_LOG_DIR/backend-out.log" \
+        --error "$BACKEND_LOG_DIR/backend-error.log" \
+        -- main.py
     echo -e "   ${GREEN}✓${NC} Backend started on port $BACKEND_PORT"
     echo ""
 

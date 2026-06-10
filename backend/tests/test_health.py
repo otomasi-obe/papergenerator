@@ -21,7 +21,7 @@ os.environ.setdefault("FLASK_ENV", "testing")
 try:
     from flask import Flask
 
-    from api.health_bp import health_bp
+    from utils.health import health as health_bp
     from database.models import db
 except Exception as e:
     pytest.skip(f"Health blueprint bootstrap failed: {e}", allow_module_level=True)

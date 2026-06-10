@@ -98,11 +98,9 @@ class Logger {
       console[consoleMethod](`[${level}]`, message, data)
     }
 
-    if (LOG_LEVELS[level] >= LOG_LEVELS.ERROR) {
-      this.buffer.push(logEntry)
-      if (this.buffer.length >= this.maxBufferSize) {
-        this._flush()
-      }
+    this.buffer.push(logEntry)
+    if (this.buffer.length >= this.maxBufferSize) {
+      this._flush()
     }
   }
 

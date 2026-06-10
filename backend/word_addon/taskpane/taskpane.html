@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>VIOLA AI Assistant</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="header-logo">V</div>
+        <span class="header-title">VIOLA AI</span>
+      </div>
+      <select id="modelSelector" class="model-selector">
+        <option value="viola-chat">VIOLA-CHAT</option>
+        <option value="viola-generate">VIOLA-GENERATE</option>
+      </select>
+    </div>
+
+    <!-- Chat Area -->
+    <div id="chatContainer" class="chat-container">
+      <div id="welcomeMessage" class="welcome-message">
+        <div class="welcome-icon">&#x1F4DD;</div>
+        <h3>VIOLA AI Assistant</h3>
+        <p>Chat with AI, read your document, or upload files.<br/>AI can help edit your Word document directly.</p>
+      </div>
+
+      <div id="typingIndicator" class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="info-bar">
+      <button id="btnReadAll" class="info-btn" title="Read all document text">
+        <span class="btn-icon">&#x1F4D6;</span>
+        <span>Read Document</span>
+      </button>
+      <button id="btnReadSel" class="info-btn" title="Read selected text">
+        <span class="btn-icon">&#x2B1B;</span>
+        <span>Read Selection</span>
+      </button>
+      <button id="btnUpload" class="info-btn" title="Upload file (PDF, DOCX, TXT)">
+        <span class="btn-icon">&#x1F4C1;</span>
+        <span>Upload File</span>
+      </button>
+      <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.doc" style="display:none" />
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="input-wrapper">
+        <div class="input-row">
+          <textarea
+            id="userInput"
+            class="text-input"
+            placeholder="Type a message..."
+            rows="1"
+          ></textarea>
+          <button id="btnSend" class="send-btn" title="Send message">
+            &#x27A4;
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script src="taskpane.js"></script>
+</body>
+</html>

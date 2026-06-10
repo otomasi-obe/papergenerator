@@ -21,7 +21,7 @@ import pytest
 @pytest.fixture(scope='module')
 def rate_limiting_app():
     """Flask app with rate limiting ENABLED for testing."""
-    from app import app as flask_app
+    from main import app as flask_app
     from database.models import db
 
     original_config = flask_app.config.copy()
@@ -96,7 +96,7 @@ def reset_rate_limits(rate_limiting_app):
     """Reset rate limit storage between tests to ensure isolation."""
     yield
     try:
-        from app import limiter
+        from main import limiter
         limiter.reset()
     except (ImportError, AttributeError) as e:
         # Limiter may not be available in all test contexts

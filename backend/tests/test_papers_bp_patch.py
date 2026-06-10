@@ -15,28 +15,28 @@ if str(HERE) not in sys.path:
 
 
 def test_jsonpatch_validation_rejects_invalid_op():
-    from papers_bp import _validate_patch_ops
+    from tools.editor.papers import _validate_patch_ops
 
     err = _validate_patch_ops([{"op": "frobnicate", "path": "/title", "value": "x"}])
     assert err is not None and "invalid" in err.lower()
 
 
 def test_jsonpatch_validation_rejects_unknown_top_field():
-    from papers_bp import _validate_patch_ops
+    from tools.editor.papers import _validate_patch_ops
 
     err = _validate_patch_ops([{"op": "replace", "path": "/secret_field", "value": "x"}])
     assert err is not None and "unknown" in err.lower()
 
 
 def test_jsonpatch_validation_accepts_valid_replace():
-    from papers_bp import _validate_patch_ops
+    from tools.editor.papers import _validate_patch_ops
 
     err = _validate_patch_ops([{"op": "replace", "path": "/title", "value": "New"}])
     assert err is None
 
 
 def test_jsonpatch_validation_accepts_array_index_path():
-    from papers_bp import _validate_patch_ops
+    from tools.editor.papers import _validate_patch_ops
 
     err = _validate_patch_ops(
         [
@@ -48,7 +48,7 @@ def test_jsonpatch_validation_accepts_array_index_path():
 
 
 def test_jsonpatch_validation_rejects_empty_array():
-    from papers_bp import _validate_patch_ops
+    from tools.editor.papers import _validate_patch_ops
 
     err = _validate_patch_ops([])
     assert err is not None

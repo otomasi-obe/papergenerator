@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-06-06T01:17:01.817297",
+  "config": {
+    "num_papers": 10,
+    "convs_per_paper": 5
+  },
+  "optimised_results": [
+    {
+      "endpoint": "list_paper_chats",
+      "papers_returned": 10,
+      "db_queries": 3,
+      "time_ms": 88.47,
+      "peak_memory_kb": 1687.6,
+      "queries": "3 queries"
+    },
+    {
+      "endpoint": "get_conversation",
+      "db_queries": 2,
+      "time_ms": 8.16,
+      "peak_memory_kb": 107.5
+    },
+    {
+      "endpoint": "list_paper_conversations",
+      "convs_returned": 5,
+      "db_queries": 7,
+      "time_ms": 14.79,
+      "peak_memory_kb": 190.0
+    }
+  ]
+}

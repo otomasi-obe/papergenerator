@@ -1,0 +1,17 @@
+{
+  "ts": "2026-06-08T03:45:28.614820Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "eacfb30254fa",
+  "conv_id": "32030243b0c7453a",
+  "model": "VIOLA-CHAT",
+  "content": "1 + 1 = 2.",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 2256,
+    "completion_tokens": 39,
+    "total_tokens": 2295
+  },
+  "status": "ok"
+}

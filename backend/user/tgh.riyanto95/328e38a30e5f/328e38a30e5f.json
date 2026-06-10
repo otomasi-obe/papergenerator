@@ -1,0 +1,62 @@
+{
+  "paper_id": "328e38a30e5f",
+  "title": "Produksi Biobutanol dari Ampas Tebu: Review Pretreatment, Fermentasi, dan Optimasi Yield",
+  "updated_at": "2026-06-04T00:52:13.201569+07:00",
+  "paper_data": {
+    "id": "328e38a30e5f",
+    "title": "Produksi Biobutanol dari Ampas Tebu: Review Pretreatment, Fermentasi, dan Optimasi Yield",
+    "authors": [
+      {
+        "name": "",
+        "email": "",
+        "location": "",
+        "affiliation": ""
+      }
+    ],
+    "journal": "IEEE",
+    "abstract": "Krisis energi global mendorong pencarian alternatif bahan bakar terbarukan yang ramah lingkungan. Biobutanol, sebagai bahan bakar generasi kedua yang dihasilkan dari fermentasi biomassa lignoselulosa, menawarkan keunggulan energi yang lebih tinggi dibandingkan etanol. Ampas tebu merupakan salah satu biomassa lignoselulosa yang melimpah dan belum dimanfaatkan secara optimal. Review ini membahas secara komprehensif produksi biobutanol dari ampas tebu yang mencakup tiga aspek utama: metode pretreatment (fisik, kimia, biologis) untuk delignifikasi dan hidrolisis, kondisi fermentasi ABE (aseton-butanol-etanol) menggunakan bakteri Clostridium spp., serta strategi optimasi yield melalui rekayasa genetika, integrasi proses, dan teknik recovery in-situ. Berdasarkan kajian literatur tahun 2015–2025, pretreatment alkali dan steam explosion menunjukkan efektivitas tertinggi dalam meningkatkan gula fermentable. Fermentasi dengan Clostridium acetobutylicum dan C. beijerinckii pada pH 5,5–6,0 dan suhu 35°C menghasilkan yield butanol 12–18 g/L. Strategi optimasi seperti gas stripping recovery dan rekayasa genetika mampu meningkatkan yield hingga 40%. Review ini menyimpulkan bahwa ampas tebu berpotensi besar sebagai substrat biobutanol, meskipun tantangan ekonomi dan teknis masih perlu diatasi untuk mencapai produksi skala komersial.",
+    "keywords": [
+      "biobutanol",
+      "ampas tebu",
+      "pretreatment lignoselulosa",
+      "fermentasi ABE",
+      "Clostridium",
+      "optimasi yield"
+    ],
+    "section1": {
+      "title": "Metodologi Review",
+      "content": [
+        {
+          "id": "text",
+          "text": "Review ini menggunakan pendekatan scoping review untuk memetakan literatur yang tersedia mengenai produksi biobutanol dari ampas tebu. Pencarian literatur dilakukan pada basis data Scopus, PubMed, Google Scholar, dan ScienceDirect dengan rentang tahun 2015–2025. Kata kunci yang digunakan meliputi kombinasi: \"biobutanol\", \"sugarcane bagasse\", \"pretreatment\", \"ABE fermentation\", dan \"yield optimization\".\n\nKriteria inklusi meliputi: (1) artikel penelitian asli berbahasa Inggris atau Indonesia, (2) tersedia dalam format full-text, (3) membahas pretreatment ampas tebu untuk fermentasi ABE, (4) melaporkan kondisi fermentasi dan/atau yield butanol. Artikel review, buku, dan prosiding konferensi dieksklusikan. Proses screening dilakukan dalam dua tahap: seleksi berdasarkan judul dan abstrak, diikuti oleh penilaian full-text. Ekstraksi data mencakup jenis pretreatment, mikroorganisme, kondisi fermentasi, yield butanol, dan strategi optimasi yang digunakan.\n\nSebanyak 87 artikel diidentifikasi dari pencarian awal, 52 artikel lolos screening abstrak, dan 30 artikel memenuhi kriteria untuk dianalisis secara penuh. Diagram alur PRISMA disajikan pada Gambar 1."
+        }
+      ]
+    },
+    "section2": {
+      "title": "Metodologi Review",
+      "content": [
+        {
+          "id": "text",
+          "text": "Review ini menggunakan pendekatan scoping review untuk memetakan literatur yang tersedia mengenai produksi biobutanol dari ampas tebu. Pencarian literatur dilakukan pada basis data Scopus, PubMed, Google Scholar, dan ScienceDirect dengan rentang tahun 2015–2025. Kata kunci yang digunakan meliputi kombinasi: \"biobutanol\", \"sugarcane bagasse\", \"pretreatment\", \"ABE fermentation\", dan \"yield optimization\".\n\nKriteria inklusi meliputi: (1) artikel penelitian asli berbahasa Inggris atau Indonesia, (2) tersedia dalam format full-text, (3) membahas pretreatment ampas tebu untuk fermentasi ABE, (4) melaporkan kondisi fermentasi dan/atau yield butanol. Artikel review, buku, dan prosiding konferensi dieksklusikan. Proses screening dilakukan dalam dua tahap: seleksi berdasarkan judul dan abstrak, diikuti oleh penilaian full-text. Ekstraksi data mencakup jenis pretreatment, mikroorganisme, kondisi fermentasi, yield butanol, dan strategi optimasi yang digunakan.\n\nSebanyak 87 artikel diidentifikasi dari pencarian awal, 52 artikel lolos screening abstrak, dan 30 artikel memenuhi kriteria untuk dianalisis secara penuh. Diagram alur PRISMA disajikan pada Gambar 1."
+        }
+      ]
+    },
+    "section3": {
+      "title": "Kesimpulan",
+      "content": [
+        {
+          "id": "text",
+          "text": "Review ini mengkaji tiga aspek utama produksi biobutanol dari ampas tebu: pretreatment, fermentasi ABE, dan strategi optimasi yield. Berdasarkan analisis literatur tahun 2015–2025, beberapa kesimpulan dapat ditarik:\n\n1. **Pretreatment**: Metode kombinasi steam explosion dan alkali merupakan pretreatment paling efektif untuk ampas tebu, menghasilkan delignifikasi >90% dan yield gula fermentable 85–95%. Pretreatment organosolv dan DES juga menunjukkan potensi sebagai alternatif ramah lingkungan.\n\n2. **Fermentasi ABE**: Kondisi optimal fermentasi dicapai pada pH 5,5–6,0 dan suhu 35–37°C menggunakan *C. acetobutylicum* atau *C. beijerinckii*, dengan yield butanol berkisar 12–18 g/L. Co-fermentasi dengan molase dapat meningkatkan konsentrasi butanol.\n\n3. **Optimasi yield**: Strategi rekayasa genetika, fermentasi terintegrasi dengan gas stripping recovery, imobilisasi sel, dan SSF mampu meningkatkan yield butanol hingga 40%. Tantangan utama yang masih perlu diatasi meliputi biaya pretreatment, inhibisi produk, dan kompetisi mikroba.\n\nProduksi biobutanol dari ampas tebu memiliki potensi besar sebagai bahan bakar terbarukan. Namun, penelitian lebih lanjut diperlukan untuk menekan biaya produksi dan meningkatkan skala proses menuju tingkat komersial."
+        }
+      ]
+    },
+    "references": {
+      "title": "REFERENCES",
+      "number": "IV",
+      "content": [
+        "[2] A. Rahnama et al., \"ABE fermentation from sugarcane bagasse hydrolysate by Clostridium acetobutylicum,\" *Renewable Energy*, vol. 175, pp. 872–880, 2021.",
+        "[3] V. Kumar et al., \"Pretreatment strategies for sugarcane bagasse: A review,\" *Biotechnology Advances*, vol. 42, art. 107559, 2020."
+      ]
+    }
+  }
+}

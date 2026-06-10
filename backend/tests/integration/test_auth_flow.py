@@ -4,6 +4,9 @@ Integration Tests: Authentication Flow
 Test complete authentication flows including register, login, logout.
 """
 
+from importlib import import_module
+from unittest.mock import patch
+
 
 class TestAuthenticationFlow:
     """Test complete authentication flows."""
@@ -125,3 +128,86 @@ class TestAuthenticationFlow:
 
         response = client.get('/api/auth/me')
         assert response.status_code == 401
+
+    def test_google_login_stores_allowed_redirect_to(self, client, monkeypatch):
+        monkeypatch.setenv('GOOGLE_CLIENT_ID', 'test-google-client-id')
+        monkeypatch.setenv('GOOGLE_CLIENT_SECRET', 'test-google-client-secret')
+        monkeypatch.setenv('FRONTEND_URL_ALLOWLIST', 'https://paperfull.app,http://localhost:1000')
+
+        auth_module = import_module('utils.auth_bp.auth')
+        with patch.object(auth_module.oauth.google, 'authorize_redirect') as authorize_redirect:
+            authorize_redirect.return_value = client.application.response_class('', 302)
+            response = client.get(
+                '/api/auth/google/login?redirect_to=https%3A%2F%2Fpaperfull.app%2Fauth%2Fcallback',
+                base_url='https://paperfull.app',
+            )
+
+        assert response.status_code == 302
+        with client.session_transaction(base_url='https://paperfull.app') as sess:
+            redirect_keys = [key for key in sess if key.startswith('oauth_redirect:')]
+            assert len(redirect_keys) == 1
+            assert sess[redirect_keys[0]] == 'https://paperfull.app/auth/callback'
+
+    def test_google_login_rejects_unallowed_redirect_to(self, client, monkeypatch):
+        monkeypatch.setenv('GOOGLE_CLIENT_ID', 'test-google-client-id')
+        monkeypatch.setenv('GOOGLE_CLIENT_SECRET', 'test-google-client-secret')
+        monkeypatch.setenv('FRONTEND_URL_ALLOWLIST', 'https://paperfull.app')
+
+        auth_module = import_module('utils.auth_bp.auth')
+        with patch.object(auth_module.oauth.google, 'authorize_redirect') as authorize_redirect:
+            authorize_redirect.return_value = client.application.response_class('', 302)
+            response = client.get(
+                '/api/auth/google/login?redirect_to=https%3A%2F%2Fevil.example%2Fauth%2Fcallback',
+                base_url='https://paperfull.app',
+            )
+
+        assert response.status_code == 302
+        with client.session_transaction(base_url='https://paperfull.app') as sess:
+            redirect_keys = [key for key in sess if key.startswith('oauth_redirect:')]
+            assert redirect_keys == []
+
+    def test_google_callback_accepts_valid_signed_state_without_session(self, app, client, monkeypatch):
+        monkeypatch.setenv('FRONTEND_URL', 'https://paperfull.app')
+        monkeypatch.setenv('GOOGLE_ALLOWED_EMAILS', 'rofiqcp01@gmail.com')
+
+        auth_module = import_module('utils.auth_bp.auth')
+        with app.app_context():
+            signed_state = auth_module._make_signed_state()
+
+        monkeypatch.setattr(auth_module, '_exchange_google_code', lambda code, redirect_uri: {
+            'sub': 'google-user-1',
+            'email': 'rofiqcp01@gmail.com',
+            'name': 'Rofiq CP',
+            'picture': 'https://example.com/avatar.png',
+        })
+
+        response = client.get(
+            f'/api/auth/google/callback?state={signed_state}&code=test-code',
+            base_url='https://paperfull.app',
+        )
+
+        assert response.status_code == 302
+        assert response.location == 'https://paperfull.app/auth/callback'
+        assert 'access_token_cookie' in response.headers.get('Set-Cookie', '')
+
+    def test_google_callback_rejects_unallowed_google_email(self, app, client, monkeypatch):
+        monkeypatch.setenv('FRONTEND_URL', 'https://paperfull.app')
+        monkeypatch.setenv('GOOGLE_ALLOWED_EMAILS', 'rofiqcp01@gmail.com')
+
+        auth_module = import_module('utils.auth_bp.auth')
+        with app.app_context():
+            signed_state = auth_module._make_signed_state()
+
+        monkeypatch.setattr(auth_module, '_exchange_google_code', lambda code, redirect_uri: {
+            'sub': 'google-user-2',
+            'email': 'other@example.com',
+            'name': 'Other User',
+        })
+
+        response = client.get(
+            f'/api/auth/google/callback?state={signed_state}&code=test-code',
+            base_url='https://paperfull.app',
+        )
+
+        assert response.status_code == 302
+        assert response.location == 'https://paperfull.app/login?error=google_denied'

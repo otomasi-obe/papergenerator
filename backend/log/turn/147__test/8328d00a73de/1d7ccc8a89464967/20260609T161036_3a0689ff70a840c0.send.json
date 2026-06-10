@@ -1,0 +1,10 @@
+{
+  "ts": "2026-06-09T16:10:36.395261Z",
+  "kind": "send",
+  "user_id": 147,
+  "paper_id": "8328d00a73de",
+  "conv_id": "1d7ccc8a89464967",
+  "model": "openai/gpt-oss-120b:free",
+  "content": "Halo, saya mau buat paper tentang AI",
+  "len": 36
+}

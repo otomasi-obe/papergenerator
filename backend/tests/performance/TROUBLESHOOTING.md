@@ -28,7 +28,7 @@ Cycle 41 focused on running actual performance tests using the infrastructure cr
 **Impact:** Cannot run performance tests against actual application
 
 **Attempted Solutions:**
-1. ✗ Start app with FLASK_PORT=5000 environment variable
+1. ✗ Start app with BACKEND_PORT=5000 environment variable
 2. ✗ Kill conflicting processes on ports 8001 and 5000
 3. ✓ Created simplified mock server as workaround
 

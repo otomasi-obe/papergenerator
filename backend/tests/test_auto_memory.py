@@ -16,7 +16,9 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-not-real-and-not-short")
 os.environ.setdefault("SECRET_KEY", "test-secret-not-real-and-not-default")
 
-from chat.auto_memory import (  # noqa: E402
+import tools.chat.auto_memory as auto_memory
+
+from tools.chat.auto_memory import (  # noqa: E402
     ExtractedFact,
     _confidence_ok,
     _llm_fallback_layer,
@@ -298,7 +300,7 @@ def test_llm_fallback_parses_json(monkeypatch):
     monkeypatch.setenv("AIOTOMASI_API", "https://example.test")
     monkeypatch.setenv("AIOTOMASI_APIKEY", "k")
     payload = {"choices": [{"message": {"content": '{"value": "Teknik Elektro"}'}}]}
-    with patch("auto_memory.requests.post", return_value=_FakeResp(200, payload)):
+    with patch("tools.chat.auto_memory.requests.post", return_value=_FakeResp(200, payload)):
         out = _llm_fallback_layer("jurusan", "Saya kuliah Teknik Elektro di UGM")
     assert out is not None
     assert out.key == "jurusan"
@@ -310,7 +312,7 @@ def test_llm_fallback_handles_null(monkeypatch):
     monkeypatch.setenv("AIOTOMASI_API", "https://example.test")
     monkeypatch.setenv("AIOTOMASI_APIKEY", "k")
     payload = {"choices": [{"message": {"content": "null"}}]}
-    with patch("auto_memory.requests.post", return_value=_FakeResp(200, payload)):
+    with patch("tools.chat.auto_memory.requests.post", return_value=_FakeResp(200, payload)):
         out = _llm_fallback_layer("jurusan", "saya tidak yakin sebenarnya")
     assert out is None
 
@@ -321,7 +323,7 @@ def test_llm_fallback_handles_code_fence(monkeypatch):
     payload = {
         "choices": [{"message": {"content": '```json\n{"value": "Manajemen Operasional"}\n```'}}]
     }
-    with patch("auto_memory.requests.post", return_value=_FakeResp(200, payload)):
+    with patch("tools.chat.auto_memory.requests.post", return_value=_FakeResp(200, payload)):
         out = _llm_fallback_layer("jurusan", "Sebenarnya jurusan saya manajemen operasional di FEB")
     assert out is not None
     assert out.value == "Manajemen Operasional"
@@ -334,7 +336,7 @@ def test_llm_fallback_swallows_exceptions(monkeypatch):
     def boom(*a, **k):
         raise TimeoutError("upstream slow")
 
-    with patch("auto_memory.requests.post", side_effect=boom):
+    with patch("tools.chat.auto_memory.requests.post", side_effect=boom):
         out = _llm_fallback_layer("jurusan", "panjang sekali kalimat ini")
     assert out is None
 

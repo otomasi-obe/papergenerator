@@ -18,14 +18,14 @@ os.environ.setdefault("SIGNED_URL_SECRET", "test-signed-url-secret")
 @pytest.fixture(autouse=True)
 def _app_ctx():
     """All sign/verify calls touch current_app — push a context once."""
-    from app import app
+    from main import app
 
     with app.app_context():
         yield
 
 
 def _import_helpers():
-    from paper_generation.utils import sign_resource_token, verify_resource_token
+    from tools.editor.utils import sign_resource_token, verify_resource_token
 
     return sign_resource_token, verify_resource_token
 

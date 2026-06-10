@@ -28,8 +28,8 @@ if str(HERE) not in sys.path:
 os.environ.setdefault("AIOTOMASI_API", "https://example.invalid/api")
 os.environ.setdefault("AIOTOMASI_APIKEY", "test-key-not-real")
 
-import paper_generation.chunked as gpc  # noqa: E402
-from paper_generation.chunked import (  # noqa: E402
+import tools.editor.chunked as gpc  # noqa: E402
+from tools.editor.chunked import (  # noqa: E402
     GenerationCancelled,
     generate_paper_json_chunked,
 )

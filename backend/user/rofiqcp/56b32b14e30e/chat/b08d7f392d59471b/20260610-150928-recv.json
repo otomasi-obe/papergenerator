@@ -1,0 +1,8 @@
+{
+  "ts": "2026-06-10T15:09:28.455628+00:00",
+  "direction": "recv",
+  "content": "Halo! 👋\n\nSelamat datang di PaperFull. Saya siap membantu Anda dengan kebutuhan penulisan paper akademik, riset, dan publikasi ilmiah.\n\nAda yang bisa saya bantu hari ini? Misalnya:\n\n- 📝 **Menyusun paper** dari awal\n- ✏️ **Mengedit atau merevisi** draft yang sudah ada\n- 🔍 **Mencari topik atau literatur** yang relevan\n- 📚 **Format sitasi** (APA, IEEE, dll.)\n- 💡 **Konsultasi** tentang metode penelitian\n\nSilakan ceritakan kebutuhan Anda! 😊",
+  "message_id": 1464,
+  "model": "@preset/otomasi",
+  "conv_id": "b08d7f392d59471b"
+}

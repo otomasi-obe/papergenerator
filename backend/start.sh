@@ -12,4 +12,4 @@ fi
 
 source /home/sirobo/papergenerator/.venv/bin/activate
 cd /home/sirobo/papergenerator/backend
-exec gunicorn --config gunicorn.conf.py "app:app"
+exec gunicorn --config gunicorn.conf.py "main:app"

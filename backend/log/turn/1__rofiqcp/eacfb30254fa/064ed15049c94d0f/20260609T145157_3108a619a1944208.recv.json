@@ -1,0 +1,17 @@
+{
+  "ts": "2026-06-09T14:52:02.977535Z",
+  "kind": "recv",
+  "user_id": 1,
+  "paper_id": "eacfb30254fa",
+  "conv_id": "064ed15049c94d0f",
+  "model": "openai/gpt-oss-120b:free",
+  "content": "**[RouteIntent: discovery]**",
+  "thinking": null,
+  "tool_calls": [],
+  "usage": {
+    "prompt_tokens": 186,
+    "completion_tokens": 32,
+    "total_tokens": 218
+  },
+  "status": "ok"
+}

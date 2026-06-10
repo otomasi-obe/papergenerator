@@ -17,8 +17,8 @@ if str(HERE) not in sys.path:
 os.environ.setdefault("FLASK_ENV", "testing")
 
 try:
-    from core import storage_helper
-    from core.storage_helper import (
+    from utils.core import storage_helper
+    from utils.core.storage_helper import (
         _safe_path_seg,
         get_docx_path,
         get_generation_log_path,

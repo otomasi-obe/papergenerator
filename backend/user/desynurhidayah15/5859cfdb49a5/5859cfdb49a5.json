@@ -1,0 +1,43 @@
+{
+  "paper_id": "5859cfdb49a5",
+  "title": "saya ingin buat paper",
+  "updated_at": "2026-05-22T09:51:21.629407+07:00",
+  "paper_data": {
+    "id": "5859cfdb49a5",
+    "title": "saya ingin buat paper",
+    "authors": [
+      {
+        "name": "",
+        "email": "",
+        "location": "",
+        "affiliation": ""
+      }
+    ],
+    "journal": "IEEE",
+    "abstract": "",
+    "keywords": [],
+    "section1": {
+      "title": "",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ]
+    },
+    "section2": {
+      "title": "",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ]
+    },
+    "references": {
+      "title": "REFERENCES",
+      "number": "III",
+      "content": []
+    }
+  }
+}

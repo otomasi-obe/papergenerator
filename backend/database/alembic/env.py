@@ -7,14 +7,15 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # Make project importable so we can grab models metadata
-HERE = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent.parent.parent  # backend/
+PROJECT_ROOT = HERE.parent  # papergenerator/
 sys.path.insert(0, str(HERE))
 
 # Load .env so DATABASE_URL is available
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(HERE / ".env")
+    load_dotenv(PROJECT_ROOT / ".env")
 except ImportError:
     pass
 

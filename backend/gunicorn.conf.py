@@ -18,12 +18,12 @@ threads = 8  # 8 threads per worker = 32 total concurrent requests
 # Each thread handles one request; OS schedules I/O
 
 # ── Timeouts ─────────────────────────────────────────────────────────────────
-timeout = 120  # AI generation can take up to 60s, give 120s headroom
-graceful_timeout = 30  # give in-flight requests 30s to finish during reload
-keepalive = 5  # keep connection alive 5s between requests (nginx upstream)
+timeout = 1800  # AI generation max worst-case: 1 model × 3 retry × 600s = 1800s
+graceful_timeout = 120  # give in-flight requests 120s to finish during reload
+keepalive = 10  # keep connection alive 10s between requests (nginx upstream)
 
 # ── Binding ──────────────────────────────────────────────────────────────────
-bind = "127.0.0.1:8001"
+bind = f"127.0.0.1:{os.getenv('BACKEND_PORT', '8001')}"
 backlog = 2048  # OS-level queue for unaccepted connections
 
 # ── Security ─────────────────────────────────────────────────────────────────
@@ -36,20 +36,65 @@ proc_name = "paper-generator-api"
 default_proc_name = "paper-generator-api"
 
 # ── Logging ──────────────────────────────────────────────────────────────────
-# Allow overriding paths via env (CI doesn't have the absolute /home/sirobo/...
-# directory baked into the production config). Fallback creates the dir if
-# missing so first-boot in fresh environments doesn't blow up.
+# Per-hour logging via logconfig_dict with HourlyFileHandler.
+# Gunicorn's built-in accesslog/errorlog are disabled; all logging goes through
+# Python's logging.config.dictConfig to backend/log/YYYY-MM-DD-HH/
 from pathlib import Path
 
 _log_dir_env = os.getenv("GUNICORN_LOG_DIR")
-_default_log_dir = Path(__file__).resolve().parent / "data" / "logs"
+_default_log_dir = Path(__file__).resolve().parent / "log"
 _log_dir = Path(_log_dir_env) if _log_dir_env else _default_log_dir
 _log_dir.mkdir(parents=True, exist_ok=True)
 
-accesslog = str(_log_dir / "gunicorn-access.log")
-errorlog = str(_log_dir / "gunicorn-error.log")
+# Disable gunicorn's built-in flat-file logging
+accesslog = None
+errorlog = None
 loglevel = "info"
-access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)sµs'
+
+logconfig_dict = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "utils.core.hourly_log_handler.HourlyJSONFormatter",
+        }
+    },
+    "handlers": {
+        "gunicorn_access": {
+            "()": "utils.core.hourly_log_handler.HourlyFileHandler",
+            "base_dir": str(_log_dir),
+            "filename": "gunicorn-access.log",
+            "level": "INFO",
+        },
+        "gunicorn_error": {
+            "()": "utils.core.hourly_log_handler.HourlyFileHandler",
+            "base_dir": str(_log_dir),
+            "filename": "gunicorn-error.log",
+            "level": "INFO",
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "level": "INFO",
+        },
+    },
+    "loggers": {
+        "gunicorn.access": {
+            "handlers": ["gunicorn_access"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "gunicorn.error": {
+            "handlers": ["gunicorn_error", "console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
 
 # ── Performance ──────────────────────────────────────────────────────────────
 # NOTE: preload_app disabled — causes issues with gevent/thread workers + SQLAlchemy

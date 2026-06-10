@@ -24,19 +24,13 @@ onMounted(async () => {
     const errorMessages: Record<string, string> = {
       auth_failed: 'Google sign-in failed.',
       google_denied: 'Access was denied.',
+      email_not_allowed: 'This email is not authorized.',
       invalid_state: 'Session invalid.',
       csrf_detected: 'Security check failed.',
       session_expired: 'Session expired.',
     }
     statusMsg.value = errorMessages[errorCode] || 'Sign-in failed.'
     setTimeout(() => router.push('/login?error=' + errorCode), 2000)
-    return
-  }
-
-  // Direct access to /auth/callback without OAuth flow — no code param
-  if (!route.query.code) {
-    statusMsg.value = 'Invalid sign-in attempt.'
-    setTimeout(() => router.push('/login'), 1500)
     return
   }
 

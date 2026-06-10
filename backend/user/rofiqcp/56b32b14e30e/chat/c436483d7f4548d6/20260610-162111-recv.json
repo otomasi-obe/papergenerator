@@ -1,0 +1,8 @@
+{
+  "ts": "2026-06-10T16:21:11.780417+00:00",
+  "direction": "recv",
+  "content": "Halo! 👋\n\nSelamat datang di **PaperFull**, asisten AI khusus untuk penulisan paper akademik, riset, dan publikasi ilmiah.\n\nSaya melihat Anda sudah memulai sebuah proyek paper dengan ID **56b32b14e30e** dan target jurnal **IEEE**.\n\nSaat ini, paper Anda masih dalam tahap awal — judul, abstrak, penulis, kata kunci, dan referensi masih kosong.\n\nAyo kita mulai mengisinya! 🙂\n\nUntuk memulai, saya perlu tahu beberapa hal:\n\n1. **Apa judul paper Anda yang sebenarnya?** (Saat ini tertulis \"halo\" — saya asumsikan ini hanya placeholder)\n2. **Apa bidang/topik riset Anda?** (misalnya: Machine Learning, Computer Vision, Security, dll.)\n3. **Apa tujuan paper ini?** (misalnya: conference, journal, thesis, preprint)\n\nBerikan info di atas, dan saya akan bantu susun paper Anda secara profesional! ✍️",
+  "message_id": 1466,
+  "model": "@preset/otomasi",
+  "conv_id": "c436483d7f4548d6"
+}

@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from database.models import PaperFile, db
-from paper_generation.utils import upload_folder
+from tools.editor.utils import upload_folder
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

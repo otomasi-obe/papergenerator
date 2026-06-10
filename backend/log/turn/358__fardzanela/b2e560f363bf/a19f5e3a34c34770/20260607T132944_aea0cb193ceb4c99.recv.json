@@ -1,0 +1,28 @@
+{
+  "ts": "2026-06-07T13:29:53.562732Z",
+  "kind": "recv",
+  "user_id": 358,
+  "paper_id": "b2e560f363bf",
+  "conv_id": "a19f5e3a34c34770",
+  "model": "VIOLA-CHAT",
+  "content": "✅ Literatur sedang diproses dan akan muncul di tab **Literature** dalam beberapa menit. Sementara itu, apa saja yang ingin Anda fokuskan dalam paper (misalnya: tujuan, metodologi, atau target jurnal)?",
+  "thinking": null,
+  "tool_calls": [
+    {
+      "name": "RunSLR",
+      "arguments": {
+        "query": "Road Pavement Management",
+        "per_source": 60,
+        "top_k": 50,
+        "year_from": 2015
+      },
+      "result": "<<PROPOSAL>>{\"kind\": \"slr_job\", \"job_id\": \"fd8b6929826e\", \"query\": \"Road Pavement Management\", \"top_k\": 50, \"ai_model\": \"VIOLA-GENERATE\", \"sources\": \"auto\"}"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 5786,
+    "completion_tokens": 49,
+    "total_tokens": 5835
+  },
+  "status": "ok"
+}

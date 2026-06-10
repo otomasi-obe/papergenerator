@@ -18,7 +18,7 @@ if str(HERE) not in sys.path:
 os.environ.setdefault("FLASK_ENV", "testing")
 
 try:
-    from core.cache import cached, get_cache_stats, invalidate_cache
+    from utils.core.cache import cached, get_cache_stats, invalidate_cache
 except Exception as e:
     pytest.skip(f"Cache module bootstrap failed: {e}", allow_module_level=True)
 

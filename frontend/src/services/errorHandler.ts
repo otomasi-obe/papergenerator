@@ -114,12 +114,19 @@ class ErrorHandler {
 
     if (axiosError.response?.data) {
       const data = axiosError.response.data
+      const status = axiosError.response.status
+
+      let code = data.code || 'UNKNOWN'
+      if (status === 404) {
+        code = data.code || 'RESOURCE_NOT_FOUND'
+      }
+
       return {
-        message: data.error || data.message || 'Terjadi kesalahan',
-        code: data.code || 'UNKNOWN',
+        message: data.error || data.message || (status === 404 ? 'Resource tidak ditemukan' : 'Terjadi kesalahan'),
+        code,
         category: data.category || 'SERVER',
         details: data.details || null,
-        statusCode: axiosError.response.status,
+        statusCode: status,
         originalError: error
       }
     }
@@ -143,6 +150,17 @@ class ErrorHandler {
           code: 'UPSTREAM_TIMEOUT',
           category: 'EXTERNAL',
           details: null,
+          originalError: error
+        }
+      }
+
+      if (axiosError.response?.status === 404) {
+        return {
+          message: 'Resource tidak ditemukan',
+          code: 'RESOURCE_NOT_FOUND',
+          category: 'CLIENT',
+          details: null,
+          statusCode: 404,
           originalError: error
         }
       }

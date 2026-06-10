@@ -1,0 +1,10 @@
+{
+  "ts": "2026-06-09T13:52:35.261133Z",
+  "kind": "send",
+  "user_id": 1,
+  "paper_id": "eacfb30254fa",
+  "conv_id": "c5ec44eb70554b16",
+  "model": "openai/gpt-oss-120b:free",
+  "content": "halo",
+  "len": 4
+}

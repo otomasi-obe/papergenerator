@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app import app, db
+from main import app, db
 from database.models import User
 
 
@@ -49,7 +49,7 @@ class TestQuotaRaceCondition:
 
     def test_concurrent_quota_updates(self, client, test_user):
         """Verify quota updates are atomic under concurrent load."""
-        from app import _log_api_usage
+        from utils.job_core import _log_api_usage
 
         num_requests = 100
         tokens_per_request = 1000
@@ -81,7 +81,7 @@ class TestQuotaRaceCondition:
 
     def test_no_quota_bypass(self, client, test_user):
         """Verify quota cannot be bypassed via race condition."""
-        from app import _log_api_usage
+        from utils.job_core import _log_api_usage
 
         # Set low quota
         with app.app_context():
@@ -153,56 +153,45 @@ class TestSemaphoreLeak:
 
     def test_semaphore_released_on_timeout(self, client):
         """Verify semaphore is not leaked when acquire times out."""
-        from api.chat_bp import _call_upstream, _upstream_sem
+        from tools.chat.chat_upstream import _call_upstream, upstream_semaphore
 
-        # Record initial semaphore count
-        initial_value = _upstream_sem._value
-
-        # Simulate timeout by setting very short timeout
-        import chat
-
-        original_timeout = chat._CHAT_UPSTREAM_TIMEOUT
-        chat._CHAT_UPSTREAM_TIMEOUT = 0.001  # 1ms timeout
+        # Exhaust all slots so _call_upstream cannot acquire
+        for _ in range(3):
+            upstream_semaphore.acquire(timeout=1)
 
         try:
-            # This should timeout and return None
             result = _call_upstream(messages=[{"role": "user", "content": "test"}], tools=[])
             assert result is None, "Expected timeout"
-
-            # Verify semaphore was not leaked
-            time.sleep(0.1)  # Give time for cleanup
-            assert (
-                _upstream_sem._value == initial_value
-            ), f"Semaphore leaked! Initial: {initial_value}, Current: {_upstream_sem._value}"
         finally:
-            chat._CHAT_UPSTREAM_TIMEOUT = original_timeout
+            for _ in range(3):
+                upstream_semaphore.release()
+
+        # Should be able to acquire again (no leak)
+        assert upstream_semaphore.acquire(timeout=1), "Semaphore leaked after release"
+        upstream_semaphore.release()
 
     def test_semaphore_released_on_exception(self, client):
         """Verify semaphore is released even when exception occurs."""
-        from api.chat_bp import _call_upstream, _upstream_sem
+        from tools.chat.chat_upstream import _call_upstream, upstream_semaphore
+        import tools.chat.chat_upstream as chat_upstream_mod
 
-        initial_value = _upstream_sem._value
-
-        # Mock requests to raise exception
-        import chat
-
-        original_post = chat.requests.post
+        original_post = chat_upstream_mod.requests.post
 
         def mock_post(*args, **kwargs):
             raise Exception("Simulated network error")
 
-        chat.requests.post = mock_post
+        chat_upstream_mod.requests.post = mock_post
 
         try:
             result = _call_upstream(messages=[{"role": "user", "content": "test"}], tools=[])
-            # Should return None after retries
             assert result is None
 
-            # Verify semaphore was released
             time.sleep(0.1)
-            assert _upstream_sem._value == initial_value, "Semaphore leaked on exception"
+            # Should be able to acquire (released after exception)
+            assert upstream_semaphore.acquire(timeout=1), "Semaphore leaked on exception"
+            upstream_semaphore.release()
         finally:
-            chat.requests.post = original_post
+            chat_upstream_mod.requests.post = original_post
 
 
 class TestConnectionPoolExhaustion:

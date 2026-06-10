@@ -24,13 +24,13 @@ os.environ.setdefault("SESSION_COOKIE_SECURE", "false")
 
 # Prevent background worker pools from booting on import
 try:
-    import slr_worker
+    from tools.Literatur import worker as slr_worker
 
     slr_worker._started = True
 except Exception:
     pass
 try:
-    import image_worker
+    from tools.image_generation import worker as image_worker
 
     image_worker._started = True
 except Exception:
@@ -39,7 +39,7 @@ except Exception:
 try:
     from flask_jwt_extended import create_access_token
 
-    from app import app as flask_app
+    from main import app as flask_app
     from database.models import Paper, SlrJob, User, db
 except Exception as e:  # pragma: no cover
     pytest.skip(f"App bootstrap failed (likely missing deps): {e}", allow_module_level=True)
