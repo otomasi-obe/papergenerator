@@ -491,6 +491,53 @@ def get_me():
     return jsonify(user.to_dict())
 
 
+@auth.route("/me/settings", methods=["PATCH"])
+@jwt_required()
+def update_settings():
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    body = request.get_json(silent=True) or {}
+
+    # Update profile fields
+    if "name" in body:
+        name = (body["name"] or "").strip()
+        if name:
+            user.name = name
+
+    if "nickname" in body:
+        user.nickname = (body["nickname"] or "").strip()
+
+    if "institution" in body:
+        user.institution = (body["institution"] or "").strip()
+
+    if "preferred_language" in body:
+        lang = (body["preferred_language"] or "").strip().lower()
+        if lang in ("id", "en"):
+            user.preferred_language = lang
+
+    # Change password
+    if "new_password" in body:
+        new_pw = body["new_password"] or ""
+        if len(new_pw) < 6:
+            return jsonify({"error": "Password minimal 6 karakter"}), 400
+        # If user has existing password, require current password
+        if user.password_hash:
+            current_pw = body.get("current_password") or ""
+            if not user.check_password(current_pw):
+                return jsonify({"error": "Password saat ini salah"}), 400
+        user.set_password(new_pw)
+
+    db.session.commit()
+    return jsonify(user.to_dict())
+
+
 @auth.route("/logout", methods=["POST"])
 @jwt_required(optional=True)
 def logout():

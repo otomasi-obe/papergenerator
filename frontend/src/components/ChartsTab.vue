@@ -131,7 +131,7 @@
           <button @click="editChart(chart)"
              class="text-navy-600 dark:text-ash-300 hover:text-navy-800 dark:hover:text-ash-100 text-sm">Edit</button>
           <button @click="deleteChart(chart.image_id)"
-            class="text-red-400 hover:text-red-600 text-sm">Delete</button>
+            class="text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200 text-sm">Delete</button>
         </div>
       </div>
 

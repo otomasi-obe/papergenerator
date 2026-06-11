@@ -19,7 +19,7 @@
         </p>
 
         <!-- Error Alert -->
-        <div v-if="errorMsg" class="mb-5 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-300 text-sm rounded-xl p-3">
+        <div v-if="errorMsg" class="mb-5 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-300 dark:text-red-400 text-sm rounded-xl p-3">
           <span>⚠️</span>
           <span>{{ errorMsg }}</span>
         </div>
@@ -68,7 +68,7 @@
               data-callback="onTurnstileSuccess"></div>
           </div>
           <button type="submit" :disabled="submitting"
-            class="w-full px-6 py-3.5 bg-cream-100 dark:bg-ash-700 hover:bg-cream-50 dark:hover:bg-ash-600 text-navy-800 dark:text-ash-100 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform">
+            class="w-full px-6 py-3.5 bg-cream-50 hover:bg-cream-100 text-navy-800 rounded-xl font-semibold transition-colors text-sm disabled:opacity-50 active:scale-95 transition-transform shadow-lg">
             {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
           </button>
         </form>
@@ -83,7 +83,7 @@
         <!-- Google Login Button -->
         <button
           @click="auth.loginWithGoogle()"
-          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-cream-50 text-navy-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-lg text-sm active:scale-95 transition-transform"
+          class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-cream-100 text-navy-900 rounded-xl font-semibold transition-all shadow-lg text-sm active:scale-95 transition-transform border border-cream-300/30"
         >
           <svg class="w-5 h-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>

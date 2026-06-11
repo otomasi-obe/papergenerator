@@ -98,19 +98,32 @@ start_server() {
 
     echo -e "${YELLOW}Starting Frontend...${NC}"
     cd "$FRONTEND_DIR"
+    # Nginx sudah serve dist/ di port 8000, PM2 frontend sebagai fallback saja
     pm2 start proxy-server.cjs --name "paper-frontend" \
         --log "$FRONTEND_LOG_DIR/frontend-out.log" \
-        --error "$FRONTEND_LOG_DIR/frontend-error.log"
-    echo -e "   ${GREEN}✓${NC} Frontend started on port $FRONTEND_PORT"
+        --error "$FRONTEND_LOG_DIR/frontend-error.log" 2>/dev/null
+    if port_listening $FRONTEND_PORT; then
+        echo -e "   ${GREEN}✓${NC} Frontend started on port $FRONTEND_PORT (nginx primary, PM2 fallback)"
+    else
+        echo -e "   ${YELLOW}⚠${NC} Port $FRONTEN_PORT sudah dipakai nginx (normal — nginx serve langsung)"
+    fi
     echo ""
 
     echo -e "${YELLOW}Starting Backend...${NC}"
     cd "$BACKEND_DIR"
-    pm2 start python3 --name "paper-backend-flask" --interpreter none \
+    pm2 start gunicorn --name "paper-backend-flask" --interpreter python3 \
         --log "$BACKEND_LOG_DIR/backend-out.log" \
         --error "$BACKEND_LOG_DIR/backend-error.log" \
-        -- main.py
-    echo -e "   ${GREEN}✓${NC} Backend started on port $BACKEND_PORT"
+        -- -c gunicorn.conf.py main:app
+    echo -e "   ${GREEN}✓${NC} Backend started on port $BACKEND_PORT (gunicorn 16w×4t)"
+    echo ""
+
+    echo -e "${YELLOW}Starting RQ Worker...${NC}"
+    cd "$BACKEND_DIR"
+    pm2 start worker.py --name paper-worker --interpreter python3 \
+        --log "$BACKEND_LOG_DIR/worker-out.log" \
+        --error "$BACKEND_LOG_DIR/worker-error.log" 2>/dev/null
+    echo -e "   ${GREEN}✓${NC} RQ Worker started (queue: paper)"
     echo ""
 
     pm2 save

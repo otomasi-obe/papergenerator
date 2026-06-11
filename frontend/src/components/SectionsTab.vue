@@ -39,7 +39,7 @@
           <button @click.stop="store.addSubsection(Number(sIdx))"
             class="text-xs bg-cream-100 dark:bg-anthracite-600 text-navy-700 dark:text-anthracite-100 px-2 py-1 rounded hover:bg-cream-300 dark:hover:bg-anthracite-500 active:scale-95 transition-transform">+ Sub</button>
           <button @click.stop="store.removeSection(Number(sIdx))"
-            class="text-xs text-red-400 hover:text-red-600">✕ Remove</button>
+            class="text-xs text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200">✕ Remove</button>
         </div>
       </div>
 
@@ -69,7 +69,7 @@
               <button @click="store.addNumberedItem(Number(sIdx), Number(subIdx))"
                 class="text-xs bg-cream-200 dark:bg-anthracite-600 text-navy-700 dark:text-anthracite-100 px-2 py-1 rounded hover:bg-cream-300 dark:hover:bg-anthracite-500 active:scale-95 transition-transform"># Item</button>
               <button @click="store.removeSubsection(Number(sIdx), Number(subIdx))"
-                class="text-xs text-red-400 hover:text-red-600">✕</button>
+                class="text-xs text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200">✕</button>
             </div>
           </div>
 
@@ -91,7 +91,7 @@
               <div class="flex items-center gap-1">
                 <AiButton @click="aiNumberedItem(Number(sIdx), Number(subIdx), Number(itemIdx))" label="AI" :loading="store.aiLoading" />
                 <button @click="store.removeNumberedItem(Number(sIdx), Number(subIdx), Number(itemIdx))"
-                  class="text-xs text-red-400 hover:text-red-600">✕</button>
+                  class="text-xs text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200">✕</button>
               </div>
             </div>
             <textarea v-model="item.content" rows="3" v-autosize

@@ -50,7 +50,7 @@
             type="text"
             autocomplete="off"
             placeholder="Ketik topik (mis. 'reinforcement learning untuk navigasi AGV')"
-            class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
+            class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
             :disabled="slrRunning"
           />
           <select
@@ -282,7 +282,7 @@
                     {{ it.pinned ? '📌' : '📍' }}
                   </button>
                 </td>
-                <td class="px-2 py-2 align-top text-ink-500">{{ i + 1 }}</td>
+                <td class="px-2 py-2 align-top text-ink-500 dark:text-anthracite-200">{{ i + 1 }}</td>
                 <td class="px-2 py-2 align-top">
                   <div v-if="editingId === it.id">
                     <input v-model="editDraft.title" autocomplete="off" class="input-sm w-full" />
@@ -311,7 +311,7 @@
                     <input v-model="editDraft.url" placeholder="URL" autocomplete="url" inputmode="url" class="input-sm w-full mt-1" />
                   </template>
                   <template v-else>
-                    <a v-if="it.doi" :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 hover:underline">{{ it.doi }}</a>
+                    <a v-if="it.doi" :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">{{ it.doi }}</a>
                     <a v-else-if="it.url" :href="safeUrl(it.url)" target="_blank" rel="noopener" class="text-blue-600 hover:underline truncate inline-block max-w-full">{{ it.url }}</a>
                     <span v-else>–</span>
                   </template>
@@ -343,7 +343,7 @@
                       🔗 URL
                     </a>
                   </template>
-                  <span v-else class="text-ink-400 text-[10px]">–</span>
+                  <span v-else class="text-ink-400 dark:text-anthracite-300 text-[10px]">–</span>
                 </td>
                 <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100">{{ it.citations ?? '–' }}</td>
                 <td class="px-2 py-2 align-top">
@@ -354,7 +354,7 @@
                   >
                     {{ (it.score_total).toFixed(2) }}
                   </span>
-                  <span v-else class="text-ink-400">–</span>
+                  <span v-else class="text-ink-400 dark:text-anthracite-300">–</span>
                 </td>
                 <td class="px-2 py-2 align-top">
                   <button @click="toggleMustRead(it)" :title="it.must_read ? 'Tandai biasa' : 'Tandai must-read'">
@@ -367,7 +367,7 @@
                     <button @click="cancelEdit" class="btn-cancel text-[10px] px-2 py-0.5 ml-1">Cancel</button>
                   </template>
                   <template v-else>
-                    <button @click="startEdit(it)" title="Edit" class="text-ink-600 hover:text-ink-900 px-1">✎</button>
+                    <button @click="startEdit(it)" title="Edit" class="text-ink-600 dark:text-anthracite-200 hover:text-ink-900 dark:hover:text-anthracite-50 px-1">✎</button>
                     <button @click="deleteItem(it)" title="Hapus" class="text-red-500 hover:text-red-700 px-1">✕</button>
                   </template>
                 </td>
@@ -1213,7 +1213,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
+.input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
 .btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform; }
 .btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700; }
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

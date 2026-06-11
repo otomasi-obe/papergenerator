@@ -76,53 +76,27 @@
             ><span aria-hidden="true">🗑</span></button>
           </div>
         </div>
-
-        <!-- Memory section (collapsible) -->
-        <div v-if="currentPaperId" class="mt-5 border-t border-[var(--border-soft)] pt-3">
-          <button
-            @click="memoryOpen = !memoryOpen"
-             class="w-full flex items-center justify-between min-h-[44px] text-xs font-medium text-[var(--text-base)] hover:text-[var(--text-strong)] active:scale-95 transition-transform"
-            :title="`Project memory (${memory.length} items)`"
-          >
-            <span class="flex items-center gap-1.5">
-              🧠
-              <span
-                v-if="memory.length"
-                class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-navy-100 dark:bg-navy-900/30 text-navy-700 dark:text-navy-300 text-[10px] font-semibold"
-              >{{ memory.length }}</span>
-            </span>
-            <span class="text-[var(--text-muted)]">{{ memoryOpen ? '▾' : '▸' }}</span>
-          </button>
-          <div v-if="memoryOpen" class="mt-2 space-y-1.5">
-            <div v-if="memory.length === 0" class="text-[11px] text-[var(--text-muted)] px-1">
-              Empty. AI akan menyimpan fakta penting paper ini secara otomatis.
-            </div>
-            <div
-              v-for="m in memory"
-              :key="m.id"
-              class="bg-[var(--bg-surface)] border border-[var(--border-soft)] rounded-md px-2 py-1.5 text-[11px] flex items-start gap-1.5 group/mem"
-            >
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-1.5 mb-0.5">
-                  <span class="text-[var(--text-muted)] text-[10px] uppercase tracking-wide">{{ m.kind }}</span>
-                  <span class="text-[var(--text-strong)] font-medium truncate">{{ m.key }}</span>
-                </div>
-                <div class="text-[var(--text-base)] leading-snug">{{ m.value }}</div>
-              </div>
-              <button
-                @click="chatStore.deleteMemoryEntry(m.id)"
-                 class="opacity-0 group-hover/mem:opacity-100 text-[var(--text-muted)] hover:text-red-500 min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform"
-                title="Forget"
-                aria-label="Forget memory entry"
-              ><span aria-hidden="true">✕</span></button>
-            </div>
-          </div>
-        </div>
       </div>
     </template>
 
     <!-- ─── ACTIVE CHAT VIEW ─── -->
     <template v-else>
+      <!-- Header bar with clear chat -->
+      <header class="px-4 py-2 bg-cream-50 dark:bg-ash-800 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
+        <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1 truncate">
+          {{ currentChat?.title || 'AI Chat' }}
+        </h3>
+        <button
+          @click="chatStore.clearCurrentChat()"
+          :disabled="isStreaming"
+          class="flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] text-[11px] font-medium text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors active:scale-95"
+          title="Clear chat — hapus semua pesan"
+        >
+          <span aria-hidden="true">🧹</span>
+          <span>Clear</span>
+        </button>
+      </header>
+
       <!-- Messages -->
       <div ref="messagesContainer" @scroll="checkScrollPosition" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         <!-- Empty-state hero: no messages yet. Offers entry chips + quick
@@ -134,7 +108,7 @@
         >
           <div class="text-3xl mb-4" aria-hidden="true">📝</div>
           <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">
-            Halo saya paperfully siap menjadi asisten anda, sudah sampai mana progres anda ?
+            {{ greeting }}
           </h2>
           <ActionChips
             :chips="entryChips"
@@ -507,6 +481,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted, onBeforeUnmount
 import { storeToRefs } from 'pinia'
 import { useChatStore } from '../stores/chat'
 import { usePaperStore } from '../stores/paper'
+import { useAuthStore } from '../stores/auth'
 import api from '../api/index'
 import ChatMessage from './ChatMessage.vue'
 import AppDialog from './AppDialog.vue'
@@ -591,16 +566,22 @@ const emit = defineEmits<{
 
 const chatStore = useChatStore()
 const paperStore = usePaperStore()
+const auth = useAuthStore()
 const {
   currentPaperId,
   conversations,
   currentConversationId,
   messages,
-  memory,
   isStreaming,
   currentChat,
   activeJob,
 } = storeToRefs(chatStore)
+
+// Greeting with nickname
+const greeting = computed(() => {
+  const nickname = auth.user?.nickname || auth.user?.name?.split(' ')[0] || auth.user?.email?.split('@')[0] || 'Anda'
+  return `Halo ${nickname}! Saya PaperFull, siap menjadi asisten Anda. Sudah sampai mana progres Anda?`
+})
 
 const inputText = ref('')
 const inputRef = ref<HTMLTextAreaElement | null>(null)
@@ -616,7 +597,6 @@ const uploadProgress = computed(() => {
 const messagesContainer = ref<HTMLElement | null>(null)
 const deleteTarget = ref<Conversation | null>(null)
 const creatingChat = ref(false)
-const memoryOpen = ref(false)
 const showSuggestions = ref(false)
 
 const renamingId = ref<number | null>(null)
@@ -651,13 +631,13 @@ const lastUserMessage = ref<string>('')
 // the AI is slow ("lebih lama dari biasanya") — that just makes waiting feel
 // worse. Instead we cycle light, on-brand messages so the wait feels alive.
 const FUN_WAIT_MESSAGES = [
-  'Meramu ide terbaik untukmu',
-  'Menyusun kata demi kata',
-  'Merapikan argumen biar tajam',
-  'Mengecek detail biar rapi',
-  'Menyeduh insight akademik',
-  'Menambahkan sentuhan akhir',
-  'Sebentar lagi siap',
+  'Masih berpikir... (meramu ide)',
+  'Masih berpikir... (menyusun kata)',
+  'Masih berpikir... (merapikan argumen)',
+  'Masih berpikir... (mengecek detail)',
+  'Masih berpikir... (menyeduh insight)',
+  'Masih berpikir... (sentuhan akhir)',
+  'Hampir selesai...',
 ]
 const streamingFunMessage = ref(FUN_WAIT_MESSAGES[0])
 let _funMsgIndex = 0
@@ -990,7 +970,7 @@ const statusMessage = computed(() => {
   if (!isStreaming.value) return 'Online'
 
   const msg = messages.value[messages.value.length - 1]
-  if (msg?.role !== 'assistant') return 'Processing...'
+  if (msg?.role !== 'assistant') return 'Menghubungkan...'
 
   // Check for active tool calls
   if (msg.tool_calls && msg.tool_calls.length > 0) {
@@ -1013,15 +993,15 @@ const statusMessage = computed(() => {
         'ReviewLargeFile': 'Meninjau berkas',
         'ClassifyFile': 'Memproses berkas',
       }
-      return toolNames[lastTool.name] || 'Memproses'
+      return toolNames[lastTool.name] || 'Memproses...'
     }
   }
 
   // Check for thinking vs typing
-  if (msg.thinking && !msg.content) return 'Sedang berpikir'
-  if (msg.content) return 'Sedang mengetik'
+  if (msg.thinking && !msg.content) return 'Masih berpikir...'
+  if (msg.content) return 'Mengetik...'
 
-  return 'Memproses'
+  return 'Masih berpikir...'
 })
 
 const lastAssistantMessage = computed(() => {

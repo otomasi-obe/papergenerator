@@ -10,10 +10,13 @@ broad sources (openalex/crossref/semantic_scholar).
 
 from . import (
     arxiv,
+    core,
     crossref,
     dblp,
+    dimensions,
     europepmc,
     ieee,
+    lens,
     openalex,
     pubmed,
     sciencedirect,
@@ -36,7 +39,10 @@ ALL = {
     # Free with optional API key (higher rate limits)
     "pubmed": pubmed,
     # Requires API key (free tier available)
+    "core": core,
+    "dimensions": dimensions,
     "ieee": ieee,
+    "lens": lens,
     "scopus": scopus,
     "sciencedirect": sciencedirect,
     "springer": springer,
@@ -45,15 +51,19 @@ ALL = {
 }
 
 # Each source's strength. Used by orchestrator.pick_sources_for_topic.
-# NOTE: orchestrator._detect_topics currently emits only:
-#   ai, cs, engineering, medical, indonesia, general
-# Other keys below (physics, math, stats, electrical, robotics, biology, health)
-# are unused until matching keyword groups are added in orchestrator._TOPIC_KEYWORDS.
+# NOTE: orchestrator._detect_topics currently emits:
+#   ai, cs, engineering, medical, indonesia, biology, physics, economics,
+#   social, education, law, agriculture, general
+# Other keys below (math, stats, electrical, robotics, health, business)
+# are matched via the expanded keyword groups in orchestrator._TOPIC_KEYWORDS.
 SOURCE_TOPICS: dict[str, set[str]] = {
     # Broad coverage
     "openalex": {"general", "any"},
     "crossref": {"general", "any"},
     "semantic_scholar": {"general", "cs", "ai", "any"},
+    "core": {"general", "any", "social", "education", "law"},
+    "dimensions": {"general", "any", "economics", "social", "medical"},
+    "lens": {"general", "any", "engineering", "agriculture", "economics"},
     # Computer Science & AI
     "arxiv": {"cs", "ai", "physics", "math", "stats"},
     "dblp": {"cs", "ai"},

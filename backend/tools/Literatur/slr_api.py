@@ -12,6 +12,8 @@ Endpoints:
 - DELETE /api/papers/<paper_id>/literature/<id>     — delete a row
 - POST   /api/papers/<paper_id>/literature/from-files — import attached PDFs/DOCXs
                                                        as Literature rows
+- GET    /api/papers/<paper_id>/literature/pinned   — pinned items formatted
+                                                       for prompt injection
 
 The legacy `POST /api/papers/<paper_id>/slr` is now async-only: it enqueues
 a job and returns 202 + job_id immediately. Callers must poll
@@ -35,11 +37,66 @@ from sqlalchemy.orm import defer
 from database.models import LiteratureItem, Paper, PaperFile, SlrJob, db
 from tools.editor.utils import PAPER_ID_RE
 from tools.Literatur.worker import enqueue_slr_job
+from utils.ai_tools.model_config import get_primary_generate_model
 
 log = logging.getLogger(__name__)
 slr_api = Blueprint("slr_api", __name__)
 
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9]{6,32}$")
+
+
+# ─── Pinned literature helper ────────────────────────────────────────────
+
+
+def get_pinned_literature(paper_id: str, user_id: int, max_items: int = 10) -> str:
+    """Ambil literature yang di-pin user, format sebagai blok teks utk
+    injeksi ke system prompt (chat / paperfull).
+
+    Returns empty string kalau tidak ada pinned item atau query gagal.
+    """
+    if not paper_id or not user_id:
+        return ""
+    try:
+        items = (
+            db.session.query(LiteratureItem)
+            .filter_by(paper_id=paper_id, user_id=user_id, pinned=True)
+            .order_by(LiteratureItem.updated_at.desc())
+            .limit(max_items)
+            .all()
+        )
+        if not items:
+            return ""
+
+        lines: list[str] = []
+        for i, it in enumerate(items, 1):
+            authors_list = it.authors or []
+            authors = ", ".join(authors_list[:3])
+            if len(authors_list) > 3:
+                authors += " et al."
+
+            header_parts = [f"[{i}] {it.title or 'Untitled'}"]
+            if authors:
+                header_parts.append(f"— {authors}")
+            if it.year:
+                header_parts.append(f"({it.year})")
+            lines.append(" ".join(header_parts))
+
+            if it.doi:
+                lines.append(f"    DOI: {it.doi}")
+            elif it.url:
+                lines.append(f"    URL: {it.url}")
+
+            # Prefer summary (AI-generated) over raw abstract
+            description = (it.summary or it.abstract or "").strip()
+            if description:
+                # Cap at 300 chars per item to keep prompt budget sane
+                lines.append(f"    {description[:300]}")
+            lines.append("")  # blank separator
+
+        return "\n".join(lines).strip()
+    except Exception as e:
+        log.warning("[get_pinned_literature] failed for paper=%s: %s", paper_id, e)
+        return ""
 
 _DOI_RE = re.compile(r"^10\.\d{4,9}/[^\s]+$")
 _URL_RE = re.compile(r"^(https?://|/)", re.IGNORECASE)
@@ -894,6 +951,38 @@ def run_slr_legacy(paper_id: str):
         ai_model=ai_model,
     )
     return jsonify({"job_id": job.id, "status": job.status}), 202
+
+
+# ─── PINNED LITERATURE (prompt preview) ───────────────────────────────────
+
+
+@slr_api.route("/api/papers/<paper_id>/literature/pinned", methods=["GET"])
+@jwt_required()
+def get_pinned_literature_endpoint(paper_id: str):
+    """Return pinned items formatted for prompt injection.
+
+    Frontend bisa pakai ini untuk preview apa yang akan dikirim ke
+    chat / paperfull sebagai SLR context.
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    try:
+        max_items = int(request.args.get("max_items", 10))
+    except (TypeError, ValueError):
+        max_items = 10
+    max_items = max(1, min(max_items, 50))
+
+    formatted = get_pinned_literature(paper_id, user_id, max_items=max_items)
+    return jsonify({
+        "formatted": formatted,
+        "has_items": bool(formatted),
+        "paper_id": paper_id,
+    })
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────

@@ -36,7 +36,7 @@
       <div class="flex flex-col gap-1">
         <AiButton @click="aiEditRef(Number(index))" label="AI" :loading="store.aiLoading" />
         <button @click="store.removeReference(Number(index))"
-          class="text-red-400 hover:text-red-600 text-xs opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+          class="text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200 text-xs opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
       </div>
     </div>
 

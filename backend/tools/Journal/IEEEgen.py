@@ -237,15 +237,33 @@ def _sanitize_latex(latex: str) -> str:
     if not latex:
         return latex
     s = latex
+    # Strip display-math delimiters if present (renderer handles layout)
+    s = s.strip()
+    if s.startswith("$$") and s.endswith("$$"):
+        s = s[2:-2].strip()
+    elif s.startswith("\[") and s.endswith("\]"):
+        s = s[2:-2].strip()
+    elif s.startswith("\(") and s.endswith("\)"):
+        s = s[2:-2].strip()
     s = s.replace("\\text{", "\\mathrm{")
     s = s.replace("\\textbf{", "\\mathbf{")
     s = s.replace("\\textit{", "\\mathit{")
-    s = s.replace("\\mathbb{", "\\mathrm{")
-    s = re.sub(r"\\displaystyle", "", s)
-    s = s.replace("\\Big(", "\\left(").replace("\\Bigr)", "\\right)")
-    s = s.replace("\\big(", "\\left(").replace("\\bigr)", "\\right)")
+    # \mathbb, \mathcal, \mathscr, \mathfrak are supported by latex2mathml - keep them
+    s = re.sub(r"\\displaystyle\s*", "", s)
+    s = s.replace("\\Big(", "\\left(").replace("\\Big)", "\\right)")
+    s = s.replace("\\big(", "\\left(").replace("\\big)", "\\right)")
     s = s.replace("\\Bigl(", "\\left(").replace("\\Biggr)", "\\right)")
+    # Remove \label, \ref, \eqref, \tag (not needed, numbering is automatic)
+    s = re.sub(r"\\label\{[^}]*\}", "", s)
+    s = re.sub(r"\\eqref\{[^}]*\}", "", s)
+    s = re.sub(r"\\ref\{[^}]*\}", "", s)
+    s = re.sub(r"\\tag\{[^}]*\}", "", s)
+    # Replace \boxed with plain content
+    s = re.sub(r"\\boxed\{([^}]*)\}", r"\1", s)
+    # Replace \color{...}{content} with content
+    s = re.sub(r"\\color\{[^}]*\}\{([^}]*)\}", r"\1", s)
     return s
+
 
 
 def _latex_to_omml(latex: str):
@@ -359,6 +377,17 @@ def _iter_rich_tokens(text: str):
                 underline = not underline
                 index += 2
                 continue
+        # $$...$$ display math (check before $...$)
+        if char == "$" and index + 1 < len(normalized) and normalized[index + 1] == "$":
+            closing = normalized.find("$$", index + 2)
+            if closing != -1:
+                yield from flush_buffer()
+                formula = normalized[index + 2 : closing]
+                if formula:
+                    yield {"kind": "math", "value": formula}
+                index = closing + 2
+                continue
+        # $...$ inline math
         if char == "$":
             closing = normalized.find("$", index + 1)
             if closing != -1:
@@ -367,6 +396,26 @@ def _iter_rich_tokens(text: str):
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
+                continue
+        # \(...\) inline math
+        if char == "\\" and index + 1 < len(normalized) and normalized[index + 1] == "(":
+            closing = normalized.find("\\)", index + 2)
+            if closing != -1:
+                yield from flush_buffer()
+                formula = normalized[index + 2 : closing]
+                if formula:
+                    yield {"kind": "math", "value": formula}
+                index = closing + 2
+                continue
+        # \[...\] display math
+        if char == "\\" and index + 1 < len(normalized) and normalized[index + 1] == "[":
+            closing = normalized.find("\\]", index + 2)
+            if closing != -1:
+                yield from flush_buffer()
+                formula = normalized[index + 2 : closing]
+                if formula:
+                    yield {"kind": "math", "value": formula}
+                index = closing + 2
                 continue
         buffer.append(char)
         index += 1
@@ -697,7 +746,10 @@ def _set_full_cell_borders(cell):
     tc_pr = cell._tc.get_or_add_tcPr()
     tc_borders = tc_pr.find(qn("w:tcBorders"))
     if tc_borders is None:
+
         tc_borders = OxmlElement("w:tcBorders")
+
+
         tc_pr.append(tc_borders)
     border_spec = {
         "top": {"val": "single", "sz": "8", "space": "0", "color": "auto"},
@@ -725,10 +777,12 @@ def _set_horizontal_cell_borders(cell, top=False, bottom=False):
     border_spec["top"] = (
         {"val": "single", "sz": "8", "space": "0", "color": "auto"} if top else {"val": "none"}
     )
+
     border_spec["bottom"] = (
         {"val": "single", "sz": "8", "space": "0", "color": "auto"} if bottom else {"val": "none"}
     )
     border_spec["left"] = {"val": "none"}
+
     border_spec["right"] = {"val": "none"}
 
     for edge, values in border_spec.items():
@@ -1195,6 +1249,9 @@ def _render_subsection(doc: Document, subsection: dict, json_path: Path, sub_key
         _add_subsection_heading(doc, heading_text)
 
     # Render content items
+
+
+
     content_items = subsection.get("content", [])
     if isinstance(content_items, list):
         for item in content_items:
@@ -1225,9 +1282,11 @@ def build_document(
     _add_title(doc, config)
     _embed_sectpr(
         doc, _build_sectpr(1, 36.0, 27.0, 72.0, 44.65, 44.65, title_pg=True), style_id="Author"
+
     )
     _add_authors(doc, config)
     _embed_sectpr(doc, _build_sectpr(3, 36.0, 22.5, 72.0, 44.65, 44.65))
+
     _embed_sectpr(doc, _build_sectpr(3, 36.0, 22.5, 72.0, 44.65, 44.65))
     _add_abstracts(doc, config)
 

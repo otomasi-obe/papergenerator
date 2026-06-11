@@ -9,7 +9,7 @@
     <div class="flex gap-2">
       <input v-model="prompt" type="text"
         :placeholder="`e.g.: Rewrite to be more formal, Add more detail about methodology...`"
-        class="flex-1 px-3 py-1.5 border rounded text-sm focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 focus:border-[var(--accent)] outline-none"
+        class="flex-1 px-3 py-1.5 border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 text-ink-900 dark:text-ink-50 rounded text-sm focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 dark:focus-visible:ring-[#4eb2a3]/30 focus:border-[var(--accent)] outline-none placeholder:text-ink-400 dark:placeholder:text-ink-400"
         @keyup.enter="generate" :disabled="loading" />
       <button @click="generate"
         :disabled="loading || !prompt.trim()"

@@ -153,14 +153,16 @@ h1, h2, h3, .display-serif {
   background: #ffffff;
   color: #0c0a07;
   padding: 40px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
   max-width: 900px;
   margin: 0 auto;
+  border-radius: 16px;
 }
 
 .dark .paper-preview {
+  background: #0b1f3e;
   color: #f0f5fb;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 32px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
 }
 
 :focus-visible {
@@ -225,5 +227,149 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
   background: var(--bg-surface);
   border: 1px solid var(--border-soft);
   border-radius: 16px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 20px rgba(21, 36, 49, 0.05), 0 1px 3px rgba(21, 36, 49, 0.03);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card:hover {
+  box-shadow: 0 6px 28px rgba(21, 36, 49, 0.08), 0 1px 3px rgba(21, 36, 49, 0.04);
+}
+
+/* ─── Shared component classes used across the editor ─── */
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  color: var(--text-strong);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
+}
+.input::placeholder { color: var(--text-muted); opacity: 0.55; }
+
+.input-sm {
+  padding: 7px 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-sm:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
+}
+.input-sm::placeholder { color: var(--text-muted); opacity: 0.55; }
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-add:hover { background: color-mix(in srgb, var(--accent-primary) 85%, #000); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.btn-add:active { transform: scale(0.96); }
+
+.btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  color: var(--text-base);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.btn-content:hover {
+  background: var(--border-soft);
+  border-color: var(--border-strong);
+}
+
+/* ─── Dark mode safety: ensure no white-on-white / black-on-black ─── */
+.dark .bg-cream-50, .dark .bg-ivory-100, .dark .bg-ivory-200 {
+  background-color: var(--bg-card);
+}
+.dark .text-ink-900, .dark .text-ink-800, .dark .text-ink-700 {
+  color: var(--text-base);
+}
+.dark .text-cream-50 { color: var(--text-strong); }
+
+/* ─── Smooth tab transitions ─── */
+.tab-panel-enter-active,
+.tab-panel-leave-active {
+  transition: opacity 0.15s ease;
+}
+.tab-panel-enter-from,
+.tab-panel-leave-to {
+  opacity: 0;
+}
+
+/* ─── Skeleton loading shimmer ─── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-elev) 25%, var(--bg-surface) 50%, var(--bg-elev) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ─── Misc UI utilities ─── */
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-base);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-cancel:hover { background: var(--bg-elev); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--bg-elev);
+  color: var(--text-base);
 }

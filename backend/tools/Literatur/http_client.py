@@ -64,6 +64,37 @@ def fetch_json(
     return None
 
 
+def fetch_post_json(
+    client: httpx.Client,
+    url: str,
+    json_body: dict | None = None,
+    headers: dict | None = None,
+    retries: int = 2,
+) -> dict | None:
+    for attempt in range(retries + 1):
+        try:
+            r = client.post(url, json=json_body, headers=headers)
+            if r.status_code == 200:
+                return r.json()
+            if r.status_code in (429, 503) and attempt < retries:
+                time.sleep(2 * (attempt + 1))
+                continue
+            return None
+        except httpx.TimeoutException:
+            print(f"⚠️  Timeout on POST attempt {attempt + 1}/{retries + 1}")
+            if attempt < retries:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            return None
+        except (httpx.HTTPError, ValueError) as e:
+            print(f"⚠️  Error on POST attempt {attempt + 1}/{retries + 1}: {e}")
+            if attempt < retries:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            return None
+    return None
+
+
 def fetch_text(
     client: httpx.Client, url: str, params: dict | None = None, retries: int = 2
 ) -> str | None:

@@ -126,8 +126,8 @@
               <div class="group bg-ivory-100 dark:bg-anthracite-800 border border-ivory-300 dark:border-anthracite-500 rounded-lg p-3 flex gap-2 items-start">
                 <span role="button" aria-label="Drag to reorder" class="author-drag cursor-grab active:cursor-grabbing text-ivory-500 dark:text-anthracite-200 hover:text-ink-700 dark:hover:text-anthracite-50 select-none text-xl leading-tight pt-1">⠿</span>
                 <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                  <button @click="moveItem(store.paper.authors, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
-                  <button @click="moveItem(store.paper.authors, i, i + 1)" :disabled="i === store.paper.authors.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
+                  <button @click="moveItem(store.paper.authors, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
+                  <button @click="moveItem(store.paper.authors, i, i + 1)" :disabled="i === store.paper.authors.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
                 </div>
                 <div class="flex-1">
                   <div class="flex justify-between mb-2">
@@ -180,8 +180,8 @@
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none text-xl leading-tight shrink-0">⠿</span>
                   <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                    <button @click="moveItem(store.paper.sections, sIdx, sIdx - 1)" :disabled="sIdx === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
-                    <button @click="moveItem(store.paper.sections, sIdx, sIdx + 1)" :disabled="sIdx === store.paper.sections.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
+                    <button @click="moveItem(store.paper.sections, sIdx, sIdx - 1)" :disabled="sIdx === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
+                    <button @click="moveItem(store.paper.sections, sIdx, sIdx + 1)" :disabled="sIdx === store.paper.sections.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
                   </div>
                   <span class="text-[10px] text-ink-500 dark:text-ink-300 font-medium uppercase tracking-wide bg-transparent border-l-2 border-ivory-300 pl-2 shrink-0">
                     Section {{ toRoman(sIdx + 1) }}
@@ -209,8 +209,8 @@
                       <div class="flex items-center gap-2 flex-1 min-w-0">
                         <span role="button" aria-label="Drag to reorder" class="sub-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none shrink-0">⠿</span>
                         <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                          <button @click="moveItem(section.subsections, subIdx, subIdx - 1)" :disabled="subIdx === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
-                          <button @click="moveItem(section.subsections, subIdx, subIdx + 1)" :disabled="subIdx === section.subsections.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
+                          <button @click="moveItem(section.subsections, subIdx, subIdx - 1)" :disabled="subIdx === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
+                          <button @click="moveItem(section.subsections, subIdx, subIdx + 1)" :disabled="subIdx === section.subsections.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
                         </div>
                         <span class="text-[10px] text-ink-500 dark:text-ink-300 font-medium uppercase tracking-wide bg-transparent border-l-2 border-ivory-300 pl-2 shrink-0">
                           {{ String.fromCharCode(65 + subIdx) }}
@@ -255,15 +255,15 @@
                      :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
             <template #item="{ element: ref, index: i }">
               <div class="group flex gap-2 items-center">
-                <span role="button" aria-label="Drag to reorder" class="ref-drag cursor-grab active:cursor-grabbing text-ink-300 hover:text-ink-500 select-none shrink-0">⠿</span>
+                <span role="button" aria-label="Drag to reorder" class="ref-drag cursor-grab active:cursor-grabbing text-ink-300 dark:text-anthracite-300 hover:text-ink-500 dark:hover:text-anthracite-200 select-none shrink-0">⠿</span>
                 <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-                  <button @click="moveItem(store.paper.references, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move up">↑</button>
-                  <button @click="moveItem(store.paper.references, i, i + 1)" :disabled="i === store.paper.references.length - 1" class="text-[10px] text-ink-500 disabled:opacity-30" aria-label="Move down">↓</button>
+                  <button @click="moveItem(store.paper.references, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
+                  <button @click="moveItem(store.paper.references, i, i + 1)" :disabled="i === store.paper.references.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
                 </div>
-                <span class="text-[11px] text-ink-400 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
+                <span class="text-[11px] text-ink-400 dark:text-anthracite-300 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
                 <input :value="ref" @input="store.paper.references[i] = $event.target.value"
                   class="input-sm flex-1 text-xs" placeholder="Reference text..." />
-                <button @click="store.removeReference(i)" class="text-red-300 hover:text-red-500 text-xs shrink-0">✕</button>
+                <button @click="store.removeReference(i)" class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-xs shrink-0">✕</button>
               </div>
             </template>
           </draggable>
@@ -425,6 +425,7 @@ import draggable from 'vuedraggable'
 import { usePaperStore } from '../stores/paper.js'
 import { useUiStore } from '../stores/ui.js'
 import { useChatStore } from '../stores/chat.js'
+import { useAuthStore } from '../stores/auth.ts'
 import AppHeader from '../components/AppHeader.vue'
 import AppDialog from '../components/AppDialog.vue'
 import ShortcutsHelp from '../components/ShortcutsHelp.vue'
@@ -447,6 +448,7 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useK
 const store = usePaperStore()
 const ui = useUiStore()
 const chatStore = useChatStore()
+const authStore = useAuthStore()
 const toolsStore = useToolsStore()
 const imageGenStore = useImageGenStore()
 const paperJobsStore = usePaperJobsStore()
@@ -747,13 +749,14 @@ onMounted(async () => {
   // Global recent-done poller (10s); guarded so multiple mounts don't stack.
   paperJobsStore.startGlobalPolling()
   const paperId = route.params.paperId
+  const lang = authStore.user?.preferred_language || 'id'
   if (paperId && paperId !== 'null' && paperId !== 'undefined') {
     const paperIdStr = Array.isArray(paperId) ? paperId[0] : paperId
     const loaded = await store.loadPaperFromDb(paperIdStr)
     if (!loaded && !store.currentPaperId) {
       // Paper no longer exists — start a fresh paper instead of leaving the
       // user on a broken editor with cascading 404s.
-      store.newPaper()
+      await store.newPaper(lang)
       const newId = await store.savePaperToDb(true)
       if (newId) {
         router.replace({ name: 'editor', params: { paperId: newId } })
@@ -761,7 +764,7 @@ onMounted(async () => {
     }
     rightPanel.value = 'chat'
   } else {
-    store.newPaper()
+    await store.newPaper(lang)
     rightPanel.value = 'chat'
     const newId = await store.savePaperToDb(true)
     if (newId) {
@@ -899,10 +902,12 @@ function cancelDelete() {
 </script>
 
 <style scoped>
-.card { @apply bg-white dark:bg-anthracite-700 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] border border-ivory-300 dark:border-anthracite-500 p-5; }
+.card { @apply bg-white dark:bg-anthracite-700 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_2px_8px_rgba(0,0,0,0.3)] border border-ivory-300 dark:border-anthracite-500 p-5 transition-shadow duration-200; }
+.card:hover { box-shadow: 0 1px 0 rgba(15,14,11,0.04), 0 4px 12px rgba(15,14,11,0.1); }
+.dark .card:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.4); }
 .label { @apply block text-sm font-medium font-serif text-ink-900 dark:text-ink-50 mb-1.5; }
-.input { @apply w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none; }
-.input-sm { @apply px-2.5 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-ivory-300 dark:focus:ring-anthracite-500 focus:border-ink-700 dark:focus:border-anthracite-100 outline-none; }
+.input { @apply w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition-colors duration-150; }
+.input-sm { @apply px-2.5 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition-colors duration-150; }
 .btn-add { @apply px-3 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded-lg text-xs font-medium transition-colors active:scale-95 transition-transform; }
 .btn-content { @apply px-2.5 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded text-xs transition-colors active:scale-95 transition-transform; }
 </style>

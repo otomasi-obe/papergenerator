@@ -195,7 +195,7 @@
                         class="w-full bg-transparent text-center text-ink-900 dark:text-ink-50 focus:outline-none focus:bg-cream-100 dark:focus:bg-ash-700 px-1" />
                     </td>
                     <td class="border border-cream-300 dark:border-ash-600 px-1 py-1 text-center">
-                      <button @click="removeRow(table, rIdx)" class="text-red-400 hover:text-red-600 text-xs" title="Hapus baris">✕</button>
+                      <button @click="removeRow(table, rIdx)" class="text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200 text-xs" title="Hapus baris">✕</button>
                     </td>
                   </tr>
                 </tbody>
@@ -286,7 +286,7 @@
                   <span class="text-xs font-semibold text-ink-700 dark:text-ink-100 truncate">
                     {{ chart.title || `Grafik ${idx + 1}` }} · {{ chart.kind }}
                   </span>
-                  <button @click="deleteChart(table, chart.image_id)" class="text-red-400 hover:text-red-600 text-xs shrink-0">Hapus</button>
+                  <button @click="deleteChart(table, chart.image_id)" class="text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200 text-xs shrink-0">Hapus</button>
                 </div>
                 <div class="p-3">
                   <img :src="chart.url" :alt="chart.title || `Grafik ${idx + 1}`" class="max-w-full h-auto rounded border border-cream-300 dark:border-ash-600" />
@@ -318,7 +318,7 @@
             <span class="text-xs font-semibold text-ink-700 dark:text-ink-100 truncate">
               {{ chart.title || `Grafik ${idx + 1}` }} · {{ chart.kind }}
             </span>
-            <button @click="deleteOrphanChart(chart.image_id)" class="text-red-400 hover:text-red-600 text-xs shrink-0">Hapus</button>
+            <button @click="deleteOrphanChart(chart.image_id)" class="text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200 text-xs shrink-0">Hapus</button>
           </div>
           <div class="p-3">
             <img :src="chart.url" :alt="chart.title || `Grafik ${idx + 1}`" class="max-w-full h-auto rounded border border-cream-300 dark:border-ash-600" />

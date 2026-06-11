@@ -7,7 +7,7 @@
         <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium ml-1">Multi-Journal</span>
       </div>
       <router-link to="/login"
-        class="flex items-center gap-2 px-5 py-2.5 bg-cream-100 text-navy-800 rounded-full font-medium hover:bg-cream-50 transition-colors shadow-lg text-sm active:scale-95 transition-transform"
+        class="flex items-center gap-2 px-5 py-2.5 bg-cream-50 text-navy-800 rounded-full font-medium hover:bg-cream-100 transition-colors shadow-lg text-sm active:scale-95 transition-transform"
       >
         Sign In
       </router-link>
@@ -32,7 +32,7 @@
           </p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <router-link to="/login"
-              class="flex items-center justify-center gap-3 px-8 py-4 bg-cream-100 text-navy-800 rounded-xl font-semibold hover:bg-cream-50 transition-all shadow-2xl text-base active:scale-95 transition-transform"
+              class="flex items-center justify-center gap-3 px-8 py-4 bg-cream-50 text-navy-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-2xl text-base active:scale-95 transition-transform"
             >
               Get Started
             </router-link>

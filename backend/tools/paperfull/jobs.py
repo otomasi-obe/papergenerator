@@ -41,7 +41,8 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import logging
 from typing import Optional
 
 import redis
@@ -89,33 +90,72 @@ def publish_progress(job_id: str, payload: dict) -> None:
 @jwt_required()
 def enqueue_generate(paper_id: str):
     try:
-
         user_id = int(get_jwt_identity())
-
     except (ValueError, TypeError):
-
         return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "paper not found"}), 404
 
-    body = request.get_json(silent=True) or {}
-    prompt = (body.get("prompt") or "").strip()
+    # Check if there's already an active job for this paper (prevent double-generate)
+    active_job = AiJob.query.filter_by(
+        paper_id=paper_id,
+        user_id=user_id
+    ).filter(
+        AiJob.status.in_(["queued", "running", "pending"])
+    ).first()
+    if active_job:
+        return jsonify({
+            "error": "Paper ini sedang dalam proses generate. Tunggu sampai selesai.",
+            "existing_job_id": active_job.id,
+        }), 409  # Conflict
+
+    # Support both JSON and multipart/form-data
+    pdf_texts = []
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        prompt = (request.form.get("prompt") or "").strip()
+        topic = request.form.get("topic") or None
+        style = request.form.get("style") or None
+        language = request.form.get("language") or None
+        include_status = request.form.get("include_status", "true").lower() == "true"
+        selected_facts_raw = request.form.get("selected_facts")
+        selected_files_raw = request.form.get("selected_files")
+        selected_tables_raw = request.form.get("selected_tables")
+        selected_facts = json.loads(selected_facts_raw) if selected_facts_raw else None
+        selected_files = json.loads(selected_files_raw) if selected_files_raw else None
+        selected_tables = json.loads(selected_tables_raw) if selected_tables_raw else None
+        
+        # Extract text from uploaded files
+        uploaded_files = request.files.getlist("files")
+        if uploaded_files:
+            from main import _extract_texts_from_files
+            pdf_texts = _extract_texts_from_files(uploaded_files)
+    else:
+        body = request.get_json(silent=True) or {}
+        prompt = (body.get("prompt") or "").strip()
+        topic = body.get("topic") or None
+        style = body.get("style") or None
+        language = body.get("language") or None
+        include_status = body.get("include_status", True)
+        selected_facts = body.get("selected_facts")
+        selected_files = body.get("selected_files")
+        selected_tables = body.get("selected_tables")
+        pdf_texts = body.get("pdf_texts") or []
+    
     if not prompt:
         return jsonify({"error": "prompt required"}), 400
 
     # Build custom_prompt dengan status context dari status.json
-    custom_prompt = body.get("custom_prompt", "")
+    custom_prompt = ""
+    
+    # Append extracted file texts to custom_prompt
+    if pdf_texts:
+        custom_prompt += "\n\n## Extracted File Contents\n" + "\n".join(pdf_texts)
     
     # Check if user wants to include status.json data
-    include_status = body.get("include_status", True)  # Default True untuk auto-include
     if include_status:
         try:
             from utils.core.user_storage import build_status_context, get_username
-            
-            selected_facts = body.get("selected_facts")  # None = all
-            selected_files = body.get("selected_files")  # None = all
-            selected_tables = body.get("selected_tables")  # None = all
             
             username = get_username(user_id=user_id)
             status_context = build_status_context(
@@ -160,8 +200,9 @@ def enqueue_generate(paper_id: str):
         user_id,
         paper_id,
         prompt,
-        body.get("topic"),
-        body.get("style"),
+        topic,
+        style,
+        language,
         custom_prompt=custom_prompt,
         job_id=job_id,
         job_timeout=900,  # 15 min hard cap; UX shows progress so user knows it's alive
@@ -567,6 +608,46 @@ def ai_jobs_retry_section(job_id: str):
     return jsonify({"job": job.to_dict()})
 
 
+def _cleanup_orphaned_jobs(user_id: int) -> None:
+    """Mark orphaned/stuck jobs as error.
+
+    Orphaned = job in DB with status queued/running/pending but:
+      - Not in Redis RQ queue (worker crashed/lost it), OR
+      - Stuck at 0% progress for > 10 minutes with no RQ job backing it
+    """
+    try:
+        from rq import Queue
+        q = Queue("paper", connection=_REDIS)
+        rq_job_ids = {j.id for j in q.jobs}
+    except Exception:
+        rq_job_ids = set()
+
+    now = datetime.now(timezone.utc)
+    stuck_threshold = timedelta(minutes=10)
+
+    active_jobs = AiJob.query.filter_by(
+        user_id=user_id,
+        kind="generate_paper"
+    ).filter(
+        AiJob.status.in_(["queued", "running", "pending"])
+    ).all()
+
+    for job in active_jobs:
+        # Check if job is in RQ queue
+        in_rq = job.id in rq_job_ids
+
+        # Check age
+        age = now - (job.started_at or job.updated_at or now)
+        is_old = age > stuck_threshold
+
+        # Mark as error if orphaned (not in RQ) AND old enough
+        if not in_rq and is_old:
+            job.status = "error"
+            job.error = "Job lost — worker not available or crashed"
+            db.session.commit()
+            logging.getLogger(__name__).warning(f"Auto-marked orphaned job {job.id} as error (age={age})")
+
+
 @jobs.route("/api/me/ai-jobs/recent", methods=["GET"])
 @jwt_required()
 def ai_jobs_recent():
@@ -578,12 +659,13 @@ def ai_jobs_recent():
       - limit:  default 20, max 50
     """
     try:
-
         user_id = int(get_jwt_identity())
-
     except (ValueError, TypeError):
-
         return jsonify({"error": "Invalid user identity"}), 401
+
+    # Auto-cleanup orphaned/stuck jobs before returning
+    _cleanup_orphaned_jobs(user_id)
+
     status_filter = (request.args.get("status") or "").strip()
     since_raw = request.args.get("since")
     try:
@@ -595,8 +677,8 @@ def ai_jobs_recent():
     if status_filter:
         q = q.filter_by(status=status_filter)
     else:
-        # Show both active and done jobs for the bell icon
-        q = q.filter(AiJob.status.in_(["done", "running", "queued", "pending"]))
+        # Show all job states for the bell icon (active + done + failed)
+        q = q.filter(AiJob.status.in_(["done", "running", "queued", "pending", "error", "cancelled"]))
 
     if since_raw:
         try:

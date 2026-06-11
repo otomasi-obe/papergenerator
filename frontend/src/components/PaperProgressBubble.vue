@@ -6,12 +6,18 @@
     <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
         <span class="text-base" aria-hidden="true">{{ statusEmoji }}</span>
-        <span class="text-sm font-medium text-ink-800 dark:text-ink-100">{{ stageLabel }}</span>
+        <span class="text-sm font-medium text-ink-800 dark:text-ink-100"
+              :class="{ 'gen-pulse': job.status === 'running' || job.status === 'queued' }">
+          {{ stageLabel }}
+          <span v-if="job.status === 'running' || job.status === 'queued'" class="gen-dots">
+            <span>.</span><span>.</span><span>.</span>
+          </span>
+        </span>
       </div>
-      <span class="text-xs text-ink-500 dark:text-ink-300 tabular-nums">{{ progress }}%</span>
+      <span class="text-xs font-mono font-bold text-ink-500 dark:text-ink-300 tabular-nums">{{ progress }}%</span>
     </div>
-    <div class="h-1.5 rounded-full bg-cream-200 dark:bg-ash-700 overflow-hidden">
-      <div class="h-full bg-navy-500 dark:bg-cream-300 transition-all"
+    <div class="h-2 rounded-full bg-cream-200 dark:bg-ash-700 overflow-hidden">
+      <div class="h-full bg-gradient-to-r from-navy-500 to-emerald-500 dark:from-cream-300 dark:to-emerald-400 transition-all duration-1000"
            :style="{ width: progress + '%' }" />
     </div>
     <div v-if="job.status !== 'done'" class="mt-2 flex gap-2 text-xs">
@@ -112,3 +118,38 @@ async function onRetry(): Promise<void> {
   await store.retryJob(job.value.id)
 }
 </script>
+
+<style scoped>
+@keyframes gen-pulse-anim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes gen-dots-blink {
+  0%, 20% { opacity: 0; }
+  40% { opacity: 1; }
+  60%, 100% { opacity: 0; }
+}
+
+.gen-pulse {
+  animation: gen-pulse-anim 1.5s ease-in-out infinite;
+}
+
+.gen-dots {
+  display: inline-flex;
+  gap: 0;
+}
+
+.gen-dots span {
+  font-weight: bold;
+  animation: gen-dots-blink 1.4s ease-in-out infinite;
+}
+
+.gen-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.gen-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+</style>

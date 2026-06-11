@@ -12,10 +12,10 @@
       <div v-if="resolvedOpen" class="mt-2 space-y-1.5">
         <div v-for="c in resolvedChanges" :key="c.id"
           class="text-[11px] flex items-center gap-2 bg-cream-50 dark:bg-ash-800 rounded px-2 py-1">
-          <span :class="c.status === 'accepted' ? 'text-emerald-600' : 'text-rose-500'">
+          <span :class="c.status === 'accepted' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'">
             {{ c.status === 'accepted' ? '✓' : '✕' }}
           </span>
-          <span class="font-medium text-ink-600 dark:text-ink-100">{{ kindLabel(c.kind) }}</span>
+          <span class="font-medium text-ink-600 dark:text-anthracite-100">{{ kindLabel(c.kind) }}</span>
         </div>
       </div>
     </div>
@@ -30,7 +30,7 @@
               : 'text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 border border-cream-300 dark:border-ash-600']">
           <span>{{ editMode ? '👁 View' : '✏️ Edit' }}</span>
         </button>
-        <span v-if="editMode" class="text-[11px] text-amber-600 dark:text-amber-400 animate-pulse">Editing — perubahan auto-save</span>
+        <span v-if="editMode" class="text-[11px] text-amber-600 dark:text-amber-300 animate-pulse">Editing — perubahan auto-save</span>
       </div>
       <div class="flex items-center gap-2">
         <!-- Zoom controls (only when tools panel is closed) -->
@@ -205,11 +205,14 @@
                   </tbody>
                 </table>
               </div>
-              <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center font-mono text-sm">
+              <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center text-sm">
                 <input v-if="editMode" v-model="item.latex"
-                  class="text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 font-mono dark:text-ash-100"
+                  class="w-full text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 font-mono dark:text-ash-100"
                   placeholder="LaTeX formula..." />
-                <span v-else>({{ getItemNum(item) }}) &nbsp; {{ item.latex }}</span>
+                <div v-else class="flex items-center justify-center gap-2">
+                  <span v-html="renderFormula(item.latex)"></span>
+                  <span class="text-xs opacity-50 ml-2">({{ getItemNum(item) }})</span>
+                </div>
               </div>
             </template>
 
@@ -296,6 +299,15 @@
 import { ref, computed, nextTick } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import DiffBlock from './DiffBlock.vue'
+import { renderLatex, renderRichText } from '../composables/useMathRender'
+
+function renderFormula(latex: string): string {
+  return renderLatex(latex, true)
+}
+
+function renderInlineText(text: string): string {
+  return renderRichText(text)
+}
 
 interface Props {
   showZoom?: boolean

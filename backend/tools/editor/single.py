@@ -430,10 +430,14 @@ def _normalize_paper_shape(raw: dict) -> dict:
     for sec in sections_array:
         _lift_subsections(sec)
 
-    # references can come back as a list, a {"items": [...]} dict, the
-    # prompt.txt {"title": "REFERENCES", "content": [...]} shape, or a
-    # bare dict-of-strings. Handle each without confusing the title for
-    # a reference entry.
+    # references can come back in multiple shapes:
+    # 1. New structured format: {"title": "DAFTAR PUSTAKA", "items": [{...objects...}]}
+    # 2. Legacy format: {"title": "REFERENCES", "content": ["[1] ...", "[2] ..."]}
+    # 3. Simple list: ["[1] ...", "[2] ..."]
+    # 4. Dict with "items" key containing objects or strings
+    # 5. Bare dict-of-strings (rare)
+    # Objects (dicts) are kept as-is for downstream style formatting.
+    # Strings are kept as-is for backward compat.
     refs = raw.get("references", [])
     if isinstance(refs, dict):
         if isinstance(refs.get("items"), list):
@@ -441,7 +445,7 @@ def _normalize_paper_shape(raw: dict) -> dict:
         elif isinstance(refs.get("content"), list):
             refs = refs["content"]
         else:
-            refs = [v for k, v in refs.items() if isinstance(v, str) and k.lower() != "title"]
+            refs = [v for k, v in refs.items() if k.lower() not in ("title", "_catatan", "_aturan_referensi") and (isinstance(v, (str, dict)))]
     if not isinstance(refs, list):
         refs = []
 
@@ -581,6 +585,19 @@ def generate_paper_json_single(
         lit_block = _load_literature(paper_id, limit=50)
         if lit_block:
             user_parts.append(lit_block)
+
+    # ── Pinned SLR literature (always injected for paperfull) ────────────
+    # Literatur yang di-pin user selalu dimasukkan ke konteks paperfull
+    # supaya AI punya akses ke referensi kurasi user.
+    if paper_id and user_id:
+        try:
+            from tools.Literatur.slr_api import get_pinned_literature
+            pinned_block = get_pinned_literature(paper_id, user_id, max_items=10)
+            if pinned_block:
+                user_parts.append(f"## SLR References (Pinned by user)\n{pinned_block}")
+                log.info("[generate_paper_json_single] Injected pinned SLR literature for paper=%s", paper_id)
+        except Exception as e:
+            log.warning("[generate_paper_json_single] Failed to load pinned SLR literature: %s", e)
 
     # Same dedup logic for attached files: if app._run_generate_full_job
     # already inlined PDF extracts via [REFERENCE DOCUMENTS], skip the DB load.

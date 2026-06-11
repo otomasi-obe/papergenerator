@@ -23,6 +23,8 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
   const activeByPaper = ref({})
   // All active jobs across all papers (for bell icon)
   const globalActiveJobs = ref([])
+  // Failed/error jobs (shown in bell until clicked)
+  const failedJobs = ref([])
   // Most recent done jobs across all the user's papers
   const recentDone = ref([])
   // Job ids the user has already been notified about (or pre-seeded on first load)
@@ -35,6 +37,11 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
   // first load to suppress back-fill notifs, but we still want the hook to
   // fire exactly once per job).
   const _processedJobIds = new Set()
+
+  // Stuck job detection: track when we first saw each active job at 0% progress
+  // Map<jobId, { firstSeenAt: number, lastProgress: number }>
+  const _stuckTracker = new Map()
+  const STUCK_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes at 0% = stuck
 
   let activePollInterval = null
   let globalPollInterval = null
@@ -188,17 +195,24 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       console.warn('paperJobs._onJobDone hook failed', e)
     }
   }
-
   async function fetchRecentDone() {
     try {
       const r = await api.get('/api/me/ai-jobs/recent', {
         params: { limit: 20 },
       })
       const list = Array.isArray(r?.data) ? r.data : (r?.data?.jobs || [])
-      // Split into active and done jobs
+
+      // Split into active, done, and failed jobs
       const active = list.filter(j => j.status === 'running' || j.status === 'pending' || j.status === 'queued')
       const done = list.filter(j => j.status === 'done')
+      const failed = list.filter(j => j.status === 'error' || j.status === 'cancelled')
       globalActiveJobs.value = active
+      // Only add new failures that aren't already clicked/dismissed
+      failedJobs.value = failed.filter(j => !clickedJobIds.value.has(j.id))
+
+      // Check for stuck jobs (0% progress for too long)
+      _checkStuckJobs()
+
       const firstLoad = seenDoneIds.value.size === 0
       const newOnes = done.filter(j => !seenDoneIds.value.has(j.id))
       if (firstLoad) {
@@ -247,9 +261,62 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     }
   }
 
+  // Check if any active jobs are stuck at 0% progress for too long.
+  // If so, mark them as failed and notify the user.
+  async function _checkStuckJobs() {
+    const now = Date.now()
+    const stuckJobIds = []
+
+    // Check global active jobs
+    for (const job of globalActiveJobs.value) {
+      const progress = job.progress || 0
+      const existing = _stuckTracker.get(job.id)
+
+      if (progress > 0) {
+        // Job is making progress, remove from tracker
+        _stuckTracker.delete(job.id)
+        continue
+      }
+
+      if (!existing) {
+        // First time seeing this job at 0%, start tracking
+        _stuckTracker.set(job.id, { firstSeenAt: now, lastProgress: 0 })
+      } else {
+        // Check if it's been stuck too long
+        const elapsed = now - existing.firstSeenAt
+        if (elapsed >= STUCK_TIMEOUT_MS) {
+          stuckJobIds.push(job.id)
+        }
+      }
+    }
+
+    // Mark stuck jobs as failed
+    for (const jobId of stuckJobIds) {
+      try {
+        await api.post(`/api/ai-jobs/${jobId}/cancel`)
+        // Add to failed jobs list (will be shown in bell)
+        const stuckJob = globalActiveJobs.value.find(j => j.id === jobId)
+        if (stuckJob) {
+          const failedJob = {
+            ...stuckJob,
+            status: 'error',
+            error: 'Job stuck at 0% — auto-cancelled after 5 minutes',
+          }
+          if (!clickedJobIds.value.has(jobId)) {
+            failedJobs.value = [failedJob, ...failedJobs.value]
+          }
+        }
+        _stuckTracker.delete(jobId)
+      } catch (e) {
+        console.warn('Failed to cancel stuck job', jobId, e)
+      }
+    }
+  }
+
   return {
     activeByPaper,
     globalActiveJobs,
+    failedJobs,
     recentDone,
     clickedJobIds,
     fetchActive,

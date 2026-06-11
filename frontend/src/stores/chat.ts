@@ -29,6 +29,11 @@ function _safeErrorMessage(raw) {
   const s = String(raw || '').trim()
   if (!s) return 'Terjadi kendala teknis. Coba kirim lagi sebentar.'
 
+  // Already user-friendly (from backend SSE 'error' events — Indonesian messages)
+  if (/^(gagal|terjadi|ai belum|ai terlalu|koneksi|server sedang|terlalu banyak|api key|model ai|anda tidak|sesi anda|resource tidak|data yang)/i.test(s)) {
+    return s
+  }
+
   // Connection timeout (from our retry logic)
   if (/connection timeout/i.test(s)) {
     return '⏱️ Koneksi ke server timeout. Periksa koneksi internet Anda.'
@@ -75,9 +80,9 @@ function _safeErrorMessage(raw) {
     return 'Terjadi kendala teknis. Coba kirim lagi sebentar.'
   }
 
-  // HTTP-status / upstream API hiccups
-  if (/^api error: \d+|^http \d{3}$|status_code|upstream/i.test(s)) {
-    return 'AI belum berhasil merespons setelah semua model dicoba.'
+  // HTTP-status / upstream API hiccups (only match exact patterns, not "upstream" as substring)
+  if (/^api error: \d+|^http \d{3}$|^status_code:/i.test(s)) {
+    return 'AI belum berhasil merespons. Coba lagi atau ubah permintaan Anda.'
   }
 
   // Truncate very long messages
@@ -177,6 +182,74 @@ export const useChatStore = defineStore('chat', () => {
   // streams[convId] = { messages, isStreaming, streamingMessage, abortCtrl, connectionState }
   const streams = ref({})
 
+  // Session persistence for streaming state
+  const SESSION_KEY = 'chat_streams_state'
+
+  function _saveStreamsToSession() {
+    try {
+      const serializable = {}
+      for (const [convId, s] of Object.entries(streams.value)) {
+        if (s.isStreaming && s.streamingMessage) {
+          serializable[convId] = {
+            isStreaming: true,
+            streamingMessage: {
+              content: s.streamingMessage.content || '',
+              thinking: s.streamingMessage.thinking || '',
+              tool_calls: s.streamingMessage.tool_calls || [],
+              created_at: s.streamingMessage.created_at || new Date().toISOString(),
+            },
+            savedAt: Date.now(),
+          }
+        }
+      }
+      if (Object.keys(serializable).length) {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(serializable))
+      } else {
+        sessionStorage.removeItem(SESSION_KEY)
+      }
+    } catch { /* ignore */ }
+  }
+
+  function _restoreStreamsFromSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY)
+      if (!raw) return
+      const saved = JSON.parse(raw)
+      // Only restore streams saved within last 15 minutes
+      const cutoff = Date.now() - 15 * 60 * 1000
+      for (const [convId, data] of Object.entries(saved)) {
+        if (data.savedAt && data.savedAt > cutoff && data.isStreaming) {
+          const stream = _ensureStream(convId)
+          stream.isStreaming = true
+          stream.connectionState = 'reconnecting'
+          stream.streamingMessage = {
+            id: null,
+            role: 'assistant',
+            content: data.streamingMessage?.content || '',
+            thinking: data.streamingMessage?.thinking || '',
+            tool_calls: data.streamingMessage?.tool_calls || [],
+            created_at: data.streamingMessage?.created_at || new Date().toISOString(),
+          }
+          stream.messages = [...stream.messages, stream.streamingMessage]
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  function _clearSessionStream(convId) {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY)
+      if (!raw) return
+      const saved = JSON.parse(raw)
+      delete saved[convId]
+      if (Object.keys(saved).length) {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(saved))
+      } else {
+        sessionStorage.removeItem(SESSION_KEY)
+      }
+    } catch { /* ignore */ }
+  }
+
   // Lock to prevent concurrent sendMessage calls (race condition guard).
   // Set true while a send is in-flight, cleared in finally.
   let _sendingLock = false
@@ -189,9 +262,6 @@ export const useChatStore = defineStore('chat', () => {
   const streamingMessage = ref(null)
   const connectionState = ref('idle') // 'idle' | 'connecting' | 'connected' | 'disconnected' | 'retrying'
   const error = ref(null)
-
-  // Memory for the current paper
-  const memory = ref([])
 
   // Active background job (full-paper generation) belonging to the current
   // paper but possibly started in a different chat. While this is set, the
@@ -243,6 +313,10 @@ export const useChatStore = defineStore('chat', () => {
       isStreaming.value = s.isStreaming
       streamingMessage.value = s.streamingMessage
       connectionState.value = s.connectionState
+    }
+    // Persist streaming state to sessionStorage
+    if (s.isStreaming) {
+      _saveStreamsToSession()
     }
   }
 
@@ -300,21 +374,6 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function loadMemory(paperId) {
-    if (!paperId) {
-      memory.value = []
-      return []
-    }
-    try {
-      const res = await api.get(`/api/papers/${paperId}/memory`)
-      memory.value = res.data || []
-      return memory.value
-    } catch (e) {
-      memory.value = []
-      return []
-    }
-  }
-
   async function checkActiveJob() {
     if (!currentPaperId.value) { activeJob.value = null; return null }
     try {
@@ -335,30 +394,21 @@ export const useChatStore = defineStore('chat', () => {
     if (_activeJobTimer) { clearInterval(_activeJobTimer); _activeJobTimer = null }
   }
 
-  async function deleteMemoryEntry(memId) {
-    if (!currentPaperId.value || !memId) return
-    try {
-      await api.delete(`/api/papers/${currentPaperId.value}/memory/${memId}`)
-      memory.value = memory.value.filter(m => m.id !== memId)
-    } catch (e) {
-      error.value = e.message
-    }
-  }
-
   /**
-   * Open a paper: load its chats and memory, then open the latest chat
+   * Open a paper: load its chats, then open the latest chat
    * (or auto-create one if none exist).
    */
   async function openPaper(paperId) {
     if (!paperId) return null
+    // Immediately wipe all paper-scoped state BEFORE any async work so the
+    // UI never shows conversations/messages from the previous paper.
     currentPaperId.value = paperId
     messages.value = []
     currentConversationId.value = null
+    conversations.value = []
+    streams.value = {}
 
-    await Promise.all([
-      loadConversations(paperId),
-      loadMemory(paperId),
-    ])
+    await loadConversations(paperId)
 
     startActiveJobPolling(paperId)
 
@@ -384,6 +434,57 @@ export const useChatStore = defineStore('chat', () => {
       if (!s.isStreaming) {
         s.messages = (res.data.messages || []).map(_hydrateMessageMetadata)
         s.streamingMessage = null
+        
+        // Check if there's a saved streaming state in sessionStorage
+        try {
+          const raw = sessionStorage.getItem(SESSION_KEY)
+          if (raw) {
+            const saved = JSON.parse(raw)
+            const savedStream = saved[convId]
+            const cutoff = Date.now() - 15 * 60 * 1000
+            if (savedStream && savedStream.savedAt > cutoff && savedStream.isStreaming) {
+              // Restore streaming state
+              s.isStreaming = true
+              s.connectionState = 'reconnecting'
+              s.streamingMessage = {
+                id: null,
+                role: 'assistant',
+                content: savedStream.streamingMessage?.content || '',
+                thinking: savedStream.streamingMessage?.thinking || '',
+                tool_calls: savedStream.streamingMessage?.tool_calls || [],
+                created_at: savedStream.streamingMessage?.created_at || new Date().toISOString(),
+              }
+              s.messages = [...s.messages, s.streamingMessage]
+              
+              // Check backend stream status to see if still active
+              try {
+                const statusRes = await api.get(`/api/chat/conversations/${convId}/stream-status`)
+                const status = statusRes.data
+                if (status.status === 'streaming') {
+                  // Backend still has active stream - update with latest content
+                  s.streamingMessage.content = status.content || savedStream.streamingMessage?.content || ''
+                  s.streamingMessage.thinking = status.thinking || savedStream.streamingMessage?.thinking || ''
+                  s.connectionState = 'connected'
+                } else if (status.status === 'done') {
+                  // Stream finished - mark as done
+                  s.isStreaming = false
+                  s.connectionState = 'idle'
+                  s.streamingMessage = null
+                  // Remove the partial message we added
+                  s.messages = s.messages.filter(m => m.role !== 'assistant' || m.id !== null)
+                } else if (status.status === 'error') {
+                  // Stream had error
+                  s.isStreaming = false
+                  s.connectionState = 'disconnected'
+                  s.streamingMessage.content += `\n\n_${status.error || 'Error'}_`
+                }
+              } catch {
+                // Backend check failed - keep the restored state but mark as idle
+                s.connectionState = 'idle'
+              }
+            }
+          }
+        } catch { /* ignore */ }
       }
       _bindActive(convId)
 
@@ -556,7 +657,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       stream.messages.push(stream.streamingMessage)
 
-      let memoryTouched = false
+      let memoryTouched = false  // kept for compat but unused
       stream.abortCtrl = new AbortController()
       _syncFromStream(convId)
 
@@ -635,12 +736,6 @@ export const useChatStore = defineStore('chat', () => {
                   try {
                     const data = JSON.parse(line.slice(6))
                     _handleSSEEvent(convId, currentEvent, data)
-                    if (
-                      currentEvent === 'tool_call' &&
-                      ['SaveMemory', 'DeleteMemory'].includes(data.name)
-                    ) {
-                      memoryTouched = true
-                    }
                   } catch { /* skip malformed */ }
                 }
               }
@@ -666,10 +761,6 @@ export const useChatStore = defineStore('chat', () => {
                 row,
                 ...paperChats.value.filter(c => c.paper_id !== currentPaperId.value),
               ]
-            }
-
-            if (memoryTouched && currentPaperId.value) {
-              await loadMemory(currentPaperId.value)
             }
 
             // Success - break retry loop
@@ -721,15 +812,46 @@ export const useChatStore = defineStore('chat', () => {
       if (stream.connectionState !== 'disconnected') {
         stream.connectionState = 'idle'
       }
+      // Clear saved streaming state from sessionStorage
+      _clearSessionStream(convId)
       _syncFromStream(convId)
+      // Refresh quota after every chat message (token usage changes)
+      try {
+        const { useQuotaStore } = await import('./quota')
+        useQuotaStore().fetchQuota()
+      } catch { /* non-critical */ }
     }
   }
 
-  function stopStreaming() {
+  async function stopStreaming() {
     const convId = currentConversationId.value
     const s = convId && streams.value[convId]
-    if (s && s.abortCtrl) {
+    if (!s) return
+    
+    // If we have an active abort controller, use it (local abort)
+    if (s.abortCtrl) {
       try { s.abortCtrl.abort() } catch { /* ignore */ }
+      return
+    }
+    
+    // No abort controller but isStreaming is true (e.g., after refresh)
+    // Call backend to cancel the stream
+    if (s.isStreaming) {
+      try {
+        await api.post(`/api/chat/conversations/${convId}/cancel-stream`)
+        // Update local state
+        s.isStreaming = false
+        s.connectionState = 'idle'
+        if (s.streamingMessage) {
+          s.streamingMessage.content += '\n\n_(dihentikan oleh pengguna)_\n\n'
+        }
+        _syncFromStream(convId)
+      } catch {
+        // Cancel failed - mark as idle anyway
+        s.isStreaming = false
+        s.connectionState = 'idle'
+        _syncFromStream(convId)
+      }
     }
   }
 
@@ -828,6 +950,18 @@ export const useChatStore = defineStore('chat', () => {
           }
         }
       } catch { /* defensive: never break the SSE loop */ }
+      return
+    }
+
+    // 'paper_applied' — AI edited the paper data directly via [APPLY_PAPER] tags.
+    // Reload the paper from DB so the editor reflects the changes.
+    if (event === 'paper_applied') {
+      try {
+        const paperStore = usePaperStore()
+        if (paperStore.currentPaperId) {
+          paperStore.loadPaperFromDb(paperStore.currentPaperId)
+        }
+      } catch { /* defensive */ }
       return
     }
 
@@ -1034,7 +1168,6 @@ export const useChatStore = defineStore('chat', () => {
     currentConversationId.value = null
     conversations.value = []
     messages.value = []
-    memory.value = []
     streamingMessage.value = null
     streams.value = {}
     error.value = null
@@ -1048,7 +1181,6 @@ export const useChatStore = defineStore('chat', () => {
     currentChat,
     conversations,
     messages,
-    memory,
     isStreaming,
     streamingMessage,
     connectionState,
@@ -1058,8 +1190,6 @@ export const useChatStore = defineStore('chat', () => {
     setModel,
     loadPaperChats,
     loadConversations,
-    loadMemory,
-    deleteMemoryEntry,
     openPaper,
     openConversation,
     createConversation,

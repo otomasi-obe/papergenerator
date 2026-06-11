@@ -38,9 +38,27 @@ function lsRemove(key) {
 }
 
 // ─── Standalone helpers (needed before store init) ────────────────────────
+
+// Language templates loaded from backend prompt files
+let _langTemplates: Record<string, any> = {}
+
+async function _fetchLangTemplate(lang: string): Promise<any | null> {
+  if (_langTemplates[lang]) return _langTemplates[lang]
+  try {
+    const res = await fetch(`/api/papers/template/${lang}`)
+    if (res.ok) {
+      const data = await res.json()
+      _langTemplates[lang] = data
+      return data
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
 function createEmptyPaper() {
   return {
     journal: 'IEEE',
+    citation_style: 'ieee',
     title: '',
     authors: [{ name: '', affiliation: '', location: '', email: '' }],
     abstract: '',
@@ -64,6 +82,7 @@ function normContent(content) {
 function fromPaperJsonRaw(json) {
   const p = createEmptyPaper()
   p.journal = json.journal || json.template || 'IEEE'
+  p.citation_style = json.citation_style || 'ieee'
   p.title = json.title || ''
   p.authors = (json.authors || []).length
     ? json.authors
@@ -941,8 +960,14 @@ export const usePaperStore = defineStore('paper', () => {
   }
 
   // ─── Import / Export ──────────────────────────────────────────────────
-  function newPaper() {
-    paper.value = createEmptyPaper()
+  async function newPaper(language: string = 'id') {
+    // Try to load language template for initial structure
+    const template = await _fetchLangTemplate(language)
+    if (template) {
+      paper.value = fromPaperJsonRaw(template)
+    } else {
+      paper.value = createEmptyPaper()
+    }
     currentPaperId.value = null
     paperImages.value = []
     lsRemove(LS_PAPER)

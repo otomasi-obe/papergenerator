@@ -34,6 +34,10 @@ class User(db.Model):
     token_quota_monthly = db.Column(db.Integer, default=1000000, nullable=False)
     token_used_month = db.Column(db.Integer, default=0, nullable=False)
     usage_month_key = db.Column(db.String(7), default="")  # 'YYYY-MM'
+    # Settings
+    nickname = db.Column(db.String(100), nullable=True, default="")
+    institution = db.Column(db.String(255), nullable=True, default="")
+    preferred_language = db.Column(db.String(10), nullable=True, default="id")  # 'id' or 'en'
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -58,6 +62,9 @@ class User(db.Model):
             "token_quota_monthly": self.token_quota_monthly,
             "token_used_month": self.token_used_month,
             "usage_month_key": self.usage_month_key,
+            "nickname": self.nickname or "",
+            "institution": self.institution or "",
+            "preferred_language": self.preferred_language or "id",
         }
 
 

@@ -192,10 +192,39 @@ def _open_image_tool(page, *, timeout_s: int = 30) -> None:
     page.wait_for_timeout(1500)
 
 
+def _dismiss_gemini_overlays(page) -> None:
+    """Dismiss any cdk-overlay dialogs (e.g. 'Memulai' / Getting Started) that block the composer."""
+    try:
+        page.evaluate(
+            """() => {
+                // Close all cdk-overlay backdrops and panes (Angular Material dialogs, snackbars, etc.)
+                document.querySelectorAll('.cdk-overlay-backdrop, .cdk-overlay-container .cdk-overlay-backdrop-showing').forEach(el => {
+                    try { el.click(); } catch(e) {}
+                });
+                // Also try pressing Escape to dismiss any open overlay
+                document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+                // Remove overlay panes directly
+                document.querySelectorAll('.cdk-overlay-pane, .mat-mdc-dialog-container, .mat-dialog-container').forEach(el => {
+                    try { el.remove(); } catch(e) {}
+                });
+            }"""
+        )
+        page.wait_for_timeout(500)
+    except Exception:
+        pass
+
+
 def _send_prompt(page, prompt: str, *, timeout_s: int = 30) -> None:
     try:
         box = page.locator('div[contenteditable="true"]').first
-        box.click(timeout=timeout_s * 1000)
+        # Dismiss overlays (e.g. "Memulai" dialog) that may intercept clicks
+        _dismiss_gemini_overlays(page)
+        try:
+            box.click(timeout=timeout_s * 1000)
+        except PlaywrightTimeoutError:
+            # Retry after another overlay dismiss + force click via JS
+            _dismiss_gemini_overlays(page)
+            page.evaluate('(el) => el.click()', box.element_handle())
         box.fill(prompt)
         page.wait_for_timeout(500)
         if not _click_via_js(page, ["Kirim pesan", "Send message"]):

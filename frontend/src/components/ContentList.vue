@@ -21,7 +21,7 @@
             </span>
           </div>
           <button @click="store.removeContent(items, idx)"
-            class="text-red-300 hover:text-red-500 text-xs px-1 opacity-60 group-hover:opacity-100">✕</button>
+            class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-xs px-1 opacity-60 group-hover:opacity-100">✕</button>
         </div>
 
         <!-- TEXT -->
@@ -30,7 +30,7 @@
             @input="item.text = ($event.target as HTMLTextAreaElement).value"
             v-autosize
             rows="2"
-             class="w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-navy-400 outline-none break-words"
+             class="content-textarea-auto w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-navy-400 outline-none break-words resize-none overflow-hidden"
             placeholder="Write text content... Use [1], [2] for citations."></textarea>
         </template>
 
@@ -71,7 +71,7 @@
                 generating…
               </span>
               <button v-if="item.Path" @click="removeImagePath(item)" type="button"
-                class="ml-auto px-2 py-1 text-red-400 hover:text-red-600 rounded text-[11px]">✕ Lepas image</button>
+                class="ml-auto px-2 py-1 text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-200 rounded text-[11px]">✕ Lepas image</button>
             </div>
 
             <!-- Filename hint after upload -->
@@ -118,7 +118,7 @@
                 @input="item.Prompt = ($event.target as HTMLTextAreaElement).value"
                 v-autosize
                 rows="2"
-                 class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 rounded text-xs outline-none focus:border-navy-400 text-navy-700 dark:text-anthracite-100 dark:placeholder-anthracite-300"
+                 class="content-textarea-auto w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 rounded text-xs outline-none focus:border-navy-400 text-navy-700 dark:text-anthracite-100 dark:placeholder-anthracite-300 resize-none overflow-hidden"
                 placeholder="AI Image Prompt (deskripsi gambar untuk Gemini)"></textarea>
               <button @click="generateImage(item)" type="button"
                 :disabled="!String(item.Prompt || '').trim() || !!generating[stableKey(item)]"
@@ -161,7 +161,7 @@
                     </td>
                     <td class="w-8 text-center">
                       <button @click="store.removeTableRow(item, ri)"
-                        class="text-red-300 hover:text-red-500 text-[10px]">✕</button>
+                        class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-[10px]">✕</button>
                     </td>
                   </tr>
                 </tbody>
@@ -176,9 +176,7 @@
         <template v-else-if="item.id === 'rumus'">
            <input v-model="item.latex" class="w-full px-2.5 py-1.5 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm font-mono outline-none focus:border-navy-400"
             placeholder="LaTeX formula, e.g. T_{total} \approx \max(T_{cap}, T_{inf}, T_{modbus})" />
-           <div v-if="item.latex" class="mt-1.5 text-xs text-navy-400 dark:text-anthracite-300 font-mono bg-cream-100 dark:bg-anthracite-700 dark:text-anthracite-100 px-2 py-1 rounded break-all">
-            Preview: {{ item.latex }}
-          </div>
+           <div v-if="item.latex" class="mt-1.5 text-center text-sm bg-cream-100 dark:bg-anthracite-700 dark:text-anthracite-100 px-2 py-2 rounded" v-html="renderFormula(item.latex)"></div>
         </template>
       </div>
 
@@ -217,6 +215,11 @@ import { onMounted, nextTick, reactive, ref, watch } from 'vue'
 import draggable from 'vuedraggable'
 import { usePaperStore } from '../stores/paper'
 import { useImageGenStore } from '../stores/imageGen'
+import { renderLatex } from '../composables/useMathRender'
+
+function renderFormula(latex: string): string {
+  return renderLatex(latex, true)
+}
 
 interface ContentItem {
   id: 'text' | 'gambar' | 'tabel' | 'rumus'

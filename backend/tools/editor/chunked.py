@@ -18,6 +18,7 @@ import os
 import re
 import time
 from pathlib import Path
+from typing import Optional
 
 from json_repair import repair_json
 
@@ -54,6 +55,7 @@ AIOTOMASI_MODEL = get_primary_generate_model()
 # Prompt files
 PROMPT_FILE = BASE_DIR.parent / "paperfull" / "prompt" / "prompt.txt"
 HUMANIZE_FILE = BASE_DIR.parent / "tools" / "paperfull" / "prompt" / "humanize.txt"
+LANG_PROMPT_DIR = BASE_DIR.parent / "paperfull" / "prompt"  # en.json, id.json
 
 
 # ── Helper: Load prompt sections ──────────────────────────────────────────────
@@ -88,6 +90,20 @@ def _load_topic_guide(topic: str = None):
     topic_file = BASE_DIR.parent / "tools" / "paperfull" / "prompt" / "topic" / f"{topic}.txt"
     if topic_file.exists():
         return topic_file.read_text(encoding="utf-8")
+    return ""
+
+
+def _load_language_template(language: Optional[str] = None):
+    """Load language-specific section title template (en.json or id.json).
+    
+    Returns the JSON template as a string to be prepended to the system prompt,
+    instructing the AI to use the correct section titles for the language.
+    """
+    if not language:
+        return ""
+    lang_file = LANG_PROMPT_DIR / f"{language}.json"
+    if lang_file.exists():
+        return lang_file.read_text(encoding="utf-8")
     return ""
 
 
@@ -352,8 +368,9 @@ def _parse_json_response(raw_content: str) -> dict:
 def _generate_outline(
     judul: str,
     custom_prompt: str,
-    topic: str,
-    style: str,
+    topic: Optional[str],
+    style: Optional[str],
+    language: Optional[str],
     api_key: str,
     base_url: str,
     model: str,
@@ -425,6 +442,20 @@ Return ONLY the JSON object, no markdown fences.
         style_guide = _load_style_guide(style)
         if style_guide:
             system_prompt += f"\n\nCITATION STYLE GUIDE:\n{style_guide}"
+
+    # Add language template for section titles
+    if language:
+        lang_template = _load_language_template(language)
+        if lang_template:
+            system_prompt = f"""USE THIS JSON TEMPLATE STRUCTURE FOR SECTION TITLES:
+{lang_template}
+
+The section titles above MUST be used exactly as shown (in the specified language).
+Adapt content to the specific topic, but keep section titles in the correct language.
+
+---
+
+{system_prompt}"""
 
     # Inject full context
     if context_block:
@@ -740,85 +771,112 @@ def _generate_references(
         num_refs = len(lit_entries)
         lit_inline = _format_lit_for_refs(lit_entries)
 
-        system_prompt = f"""You are converting a curated literature list into the IEEE/APA reference list of an academic paper.
+        system_prompt = f"""Kamu mengkonversi daftar literatur terkurasi menjadi daftar pustaka terstruktur untuk paper akademik.
 
-Use ONLY the entries below as references. DO NOT invent, fabricate, or add references not in the list. Match the requested citation style. If the paper text uses [N] markers higher than the catalog size, ignore them.
+Gunakan HANYA entri di bawah sebagai referensi. JANGAN mengarang, membuat, atau menambahkan referensi yang tidak ada di daftar. Cocokkan style sitasi yang diminta. Jika teks paper menggunakan penanda [N] melebihi ukuran katalog, abaikan.
 
-PAPER CONTEXT:
-Title: {outline.get('title', '')}
-Abstract: {outline.get('abstract', '')}
-Keywords: {', '.join(outline.get('keywords', []))}
+KONTEKS PAPER:
+Judul: {outline.get('title', '')}
+Abstrak: {outline.get('abstract', '')}
+Kata kunci: {', '.join(outline.get('keywords', []))}
 
 CITATION STYLE:
-{style_guide if style_guide else "Use numbered IEEE format: [1], [2], etc."}
+{style_guide if style_guide else "Gunakan format IEEE bernomor: [1], [2], dst."}
 
-CURATED LITERATURE LIST (authoritative — use exactly these {num_refs} entries, in this order, numbered [1]..[{num_refs}]):
+DAFTAR LITERATUR TERKURASI (otoritatif — gunakan persis {num_refs} entri ini, dalam urutan ini):
 {lit_inline}
 
-RULES:
-- Output exactly {num_refs} references, numbered [1]..[{num_refs}], matching the order above.
-- Reformat each entry into the requested citation style (authors, title, venue, year, DOI/URL).
-- Do NOT add, remove, merge, or invent references.
-- Do NOT drop DOIs or URLs that are present in the source entry.
-- Preserve author names, year, and venue exactly as given.
+ATURAN:
+- Output persis {num_refs} referensi, sesuai urutan di atas.
+- Format setiap entri sebagai objek JSON terstruktur dengan field metadata LENGKAP.
+- JANGAN menambah, menghapus, menggabungkan, atau mengarang referensi.
+- JANGAN menghilangkan DOI atau URL yang ada di entri sumber.
+- Pertahankan nama penulis, tahun, dan venue persis seperti yang diberikan.
 
-OUTPUT SCHEMA:
+SKEMA OUTPUT:
 {{
   "references": [
-    "[1] <reformatted reference 1>",
-    "[2] <reformatted reference 2>",
-    ...
-    "[{num_refs}] <reformatted reference {num_refs}>"
+    {{
+      "authors": ["Nama Belakang1, Inisial1", "Nama Belakang2, Inisial2"],
+      "year": 2023,
+      "title": "Judul lengkap artikel",
+      "type": "journal|conference|book|book_chapter|thesis|website",
+      "journal": "Nama Jurnal (untuk journal)",
+      "conference": "Nama Konferensi (untuk conference)",
+      "volume": "XX",
+      "issue": "Y",
+      "pages": "AAA-BBB",
+      "doi": "10.XXXX/XXXXXXX",
+      "publisher": "Nama Penerbit (untuk book/thesis)",
+      "location": "Kota, Negara (untuk book/thesis)",
+      "url": "https://... (untuk website)",
+      "accessed": "DD Mon YYYY (untuk website)",
+      "institution": "Nama Universitas (untuk thesis)"
+    }}
   ]
 }}
 
-Return ONLY the JSON object, no markdown fences."""
+Hanya sertakan field yang relevan untuk tipe referensi. Kembalikan HANYA objek JSON, tanpa pagar markdown."""
 
-        user_message = f"""Reformat the {num_refs} curated literature entries above into the citation style for this paper.
-Topic: {outline.get('title', '')}
+        user_message = f"""Format ulang {num_refs} entri literatur terkurasi di atas menjadi objek referensi terstruktur untuk paper ini.
+Topik: {outline.get('title', '')}
 
-Return the references as a JSON object with a "references" array of {num_refs} items."""
+Kembalikan referensi sebagai objek JSON dengan array "references" berisi {num_refs} item."""
 
     else:
-        # Fallback: no curated literature — generate plausible references.
+        # Fallback: no curated literature — generate plausible references as structured JSON.
         max_citation = max(citations) if citations else 20
         num_refs = max(max_citation, 20)
 
-        system_prompt = f"""You are generating references for an academic paper.
+        system_prompt = f"""Kamu menghasilkan referensi untuk paper akademik.
 
-TASK: Generate {num_refs} references in the required citation format.
+TUGAS: Hasilkan {num_refs} referensi dalam format JSON terstruktur.
 
-PAPER CONTEXT:
-Title: {outline.get('title', '')}
-Abstract: {outline.get('abstract', '')}
-Keywords: {', '.join(outline.get('keywords', []))}
+KONTEKS PAPER:
+Judul: {outline.get('title', '')}
+Abstrak: {outline.get('abstract', '')}
+Kata kunci: {', '.join(outline.get('keywords', []))}
 
 CITATION STYLE:
-{style_guide if style_guide else "Use numbered IEEE format: [1], [2], etc."}
+{style_guide if style_guide else "Gunakan format IEEE bernomor: [1], [2], dst."}
 
-RULES:
-- Generate exactly {num_refs} references
-- All references must be realistic and plausible for this topic
-- Use realistic author names, plausible titles, correct venue names
-- Years should be 2010-2025
-- Every reference must be relevant to the paper topic
-- Format: Return a JSON array of strings, each string is one reference
+ATURAN:
+- Hasilkan persis {num_refs} referensi
+- Setiap referensi WAJIB berupa objek JSON terstruktur dengan field metadata
+- Semua referensi harus realistis dan masuk akal untuk topik ini
+- Gunakan nama penulis realistis, judul yang masuk akal, nama venue yang benar
+- Tahun 2010-2025
+- Setiap referensi harus relevan dengan topik paper
 
-OUTPUT SCHEMA:
+SKEMA OUTPUT:
 {{
   "references": [
-    "[1] A. Author, B. Coauthor, 'Title of Paper,' Journal Name, vol. X, no. Y, pp. ZZ-ZZ, Year.",
-    "[2] C. Author, 'Title of Book,' Publisher, City, Year.",
-    ...
+    {{
+      "authors": ["Nama Belakang1, Inisial1", "Nama Belakang2, Inisial2"],
+      "year": 2023,
+      "title": "Judul lengkap artikel",
+      "type": "journal|conference|book|book_chapter|thesis|website",
+      "journal": "Nama Jurnal (untuk journal)",
+      "conference": "Nama Konferensi (untuk conference)",
+      "volume": "XX",
+      "issue": "Y",
+      "pages": "AAA-BBB",
+      "doi": "10.XXXX/XXXXXXX",
+      "publisher": "Nama Penerbit (untuk book/thesis)",
+      "location": "Kota, Negara (untuk book/thesis)",
+      "url": "https://... (untuk website)",
+      "accessed": "DD Mon YYYY (untuk website)",
+      "institution": "Nama Universitas (untuk thesis)"
+    }}
   ]
 }}
 
-Return ONLY the JSON object."""
+Hanya sertakan field yang relevan untuk tipe referensi. Kembalikan HANYA objek JSON."""
 
-        user_message = f"""Generate {num_refs} references for this paper following the citation style above.
-The paper is about: {outline.get('title', '')}
+        user_message = f"""Hasilkan {num_refs} referensi terstruktur untuk paper ini mengikuti style sitasi di atas.
+Paper tentang: {outline.get('title', '')}
 
-Return the references as a JSON object with a "references" array."""
+Kembalikan referensi sebagai objek JSON dengan array "references"."""
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -854,8 +912,9 @@ def generate_paper_json_chunked(
     api_key: str = None,
     base_url: str = None,
     model: str = None,
-    topic: str = None,
-    style: str = None,
+    topic: Optional[str] = None,
+    style: Optional[str] = None,
+    language: Optional[str] = None,
     progress_cb=None,
     *,
     checkpoint_cb=None,
@@ -957,6 +1016,7 @@ def generate_paper_json_chunked(
             custom_prompt,
             topic,
             style,
+            language,
             _api_key,
             _base_url,
             _model,

@@ -13,7 +13,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from flask import Blueprint, jsonify, request, send_file
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 
 files = Blueprint("files", __name__, url_prefix="/api/papers")
 
-ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv"}
+ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"}
 # Per-file size cap. Reference papers (esp. scanned PDFs from journals) easily
 # breach 10 MB; cap raised to 30 MB so users don't get rejected for normal
 # academic PDFs. The whole multipart payload is still bounded by Flask's
@@ -48,6 +48,8 @@ FILE_SIGNATURES = {
     ".doc": [b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"],  # OLE2 format
     ".xlsx": [b"PK\x03\x04"],  # ZIP format
     ".xls": [b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"],  # OLE2 format
+    ".pptx": [b"PK\x03\x04"],  # ZIP format
+    ".ppt": [b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"],  # OLE2 format
     ".txt": None,  # No signature check for plain text
     ".md": None,
     ".csv": None,
@@ -104,124 +106,18 @@ def _read_file_with_limit(stream, max_bytes: int) -> tuple[bytes | None, str | N
 
 
 def _extract_text_for_preview(filepath: Path, ext: str) -> str:
-    """Best-effort plain-text extraction. PDF prefers PyMuPDF (fitz) for
-    layout-aware output; Excel uses openpyxl multi-sheet flatten; DOCX uses
-    python-docx with table/paragraph traversal so cells aren't dropped.
-    rofiq.txt #6: 'extraksi ke text yang presisi'.
+    """Best-effort plain-text extraction via file_extractor module.
+    Supports PDF, DOCX, DOC, XLSX, XLS, PPTX, CSV, TXT, MD.
+    Output is Markdown-formatted text suitable for AI context injection.
     """
     try:
-        if ext == ".pdf":
-            try:
-                import fitz  # PyMuPDF — better fidelity than pdfminer for tables
-
-                parts = []
-                with fitz.open(str(filepath)) as doc:
-                    for page in doc:
-                        parts.append(page.get_text("text"))
-                        if sum(len(p) for p in parts) >= MAX_PREVIEW_CHARS:
-                            break
-                txt = "\n\n".join(parts)
-                if txt.strip():
-                    return txt[:MAX_PREVIEW_CHARS]
-            except Exception:
-                pass
-            from tools.File.extract_pdfs import extract_text_from_pdf
-
-            with open(filepath, "rb") as f:
-                txt = extract_text_from_pdf(f)
-            return txt[:MAX_PREVIEW_CHARS]
-
-        if ext in (".docx", ".doc"):
-            try:
-                from docx import Document
-
-                doc = Document(str(filepath))
-                chunks: list[str] = []
-                for p in doc.paragraphs:
-                    if p.text.strip():
-                        chunks.append(p.text)
-                for tbl in doc.tables:
-                    for row in tbl.rows:
-                        cells = [c.text.strip() for c in row.cells]
-                        if any(cells):
-                            chunks.append(" | ".join(cells))
-                txt = "\n".join(chunks).strip()
-                if txt:
-                    return txt[:MAX_PREVIEW_CHARS]
-            except Exception as e:
-                # python-docx fails on .docx files with missing/extra relationships
-                # (we've seen this with files exported by Pages, LibreOffice, and
-                # some Word web variants). Fallback: parse word/document.xml from
-                # the zip directly. Loses table structure but keeps paragraph
-                # text, which is what the AI actually consumes.
-                log.info(
-                    "docx_fallback",
-                    extra={"file": str(filepath), "err": str(e)[:200]},
-                )
-            try:
-                import zipfile
-
-                import defusedxml.ElementTree as ET
-
-                ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
-                with zipfile.ZipFile(str(filepath)) as zf:
-                    candidates = [
-                        n
-                        for n in zf.namelist()
-                        if n.endswith("/document.xml") or n == "word/document.xml"
-                    ]
-                    if not candidates:
-                        return ""
-                    with zf.open(candidates[0]) as raw:
-                        tree = ET.parse(raw)
-                lines: list[str] = []
-                for para in tree.iter(f"{{{ns['w']}}}p"):
-                    parts = [(t.text or "") for t in para.iter(f"{{{ns['w']}}}t")]
-                    line = "".join(parts).strip()
-                    if line:
-                        lines.append(line)
-                return "\n".join(lines)[:MAX_PREVIEW_CHARS]
-            except Exception as e2:
-                log.info(
-                    "docx_zip_fallback_failed",
-                    extra={"file": str(filepath), "err": str(e2)[:200]},
-                )
-                return ""
-
-        if ext in (".xlsx", ".xls"):
-            from openpyxl import load_workbook
-
-            wb = load_workbook(str(filepath), read_only=True, data_only=True)
-            out: list[str] = []
-            for sheet_name in wb.sheetnames:
-                ws = wb[sheet_name]
-                out.append(f"# Sheet: {sheet_name}")
-                row_count = 0
-                for row in ws.iter_rows(values_only=True):
-                    cells = ["" if v is None else str(v) for v in row]
-                    if any(cells):
-                        out.append("\t".join(cells))
-                    row_count += 1
-                    if row_count >= 500:  # cap per sheet to keep extraction fast
-                        out.append("... (truncated)")
-                        break
-                out.append("")
-                if sum(len(s) for s in out) >= MAX_PREVIEW_CHARS:
-                    break
-            return "\n".join(out)[:MAX_PREVIEW_CHARS]
-
-        if ext == ".csv":
-            # BUG FIX: Add size check before reading CSV to prevent memory exhaustion
-            if filepath.stat().st_size > MAX_FILE_BYTES:
-                return f"[CSV file too large: {filepath.stat().st_size // (1024*1024)}MB, preview skipped]"
-            return filepath.read_text(encoding="utf-8", errors="replace")[:MAX_PREVIEW_CHARS]
-
-        if ext in (".txt", ".md"):
-            return filepath.read_text(encoding="utf-8", errors="replace")[:MAX_PREVIEW_CHARS]
+        from tools.File.file_extractor import extract_to_markdown, MAX_EXTRACT_CHARS
+        
+        text = extract_to_markdown(filepath, max_chars=MAX_PREVIEW_CHARS)
+        return text[:MAX_EXTRACT_CHARS] if text else ""
     except Exception as e:
-        log.info("extract_failed", extra={"file": str(filepath), "ext": ext, "err": str(e)})
+        log.warning("extract_failed", extra={"file": str(filepath), "ext": ext, "err": str(e)})
         return ""
-    return ""
 
 
 @files.route("/<paper_id>/files", methods=["GET"])
@@ -312,6 +208,8 @@ def upload_paper_files(paper_id: str):
             ".doc": "application/msword",
             ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ".xls": "application/vnd.ms-excel",
+            ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".ppt": "application/vnd.ms-powerpoint",
             ".csv": "text/csv",
             ".txt": "text/plain",
             ".md": "text/markdown",
@@ -341,14 +239,8 @@ def upload_paper_files(paper_id: str):
             filepath = files_dir / name
             filepath.write_bytes(data)
 
-        # Simpan raw file ke user storage
-        if _ustor_ok:
-            try:
-                from utils.core.user_storage import save_uploaded_file, update_judul_paper
-                save_uploaded_file(_ustor_username, _ustor_judul, str(filepath), f.filename or name)
-                update_judul_paper(_ustor_username, _ustor_judul)
-            except Exception:
-                pass
+        # Raw binary tidak disimpan ke user storage — hanya txt-nya nanti
+        # (user_storage save dihapus, hanya save txt setelah extract)
 
         accepted.append(
             {
@@ -396,7 +288,9 @@ def upload_paper_files(paper_id: str):
                     pass
 
             # Store S3 key or local path depending on storage mode
-            file_path = item["s3_key"] if s3_storage.is_s3_enabled() else f"{paper_id}/files/{item['name']}"
+            # file_path is empty because raw binary is deleted after extraction.
+            # Only extracted_text is persisted.
+            file_path = ""
 
             entry = PaperFile(
                 paper_id=paper_id,
@@ -410,6 +304,21 @@ def upload_paper_files(paper_id: str):
             )
             db.session.add(entry)
             db.session.flush()
+            
+            # Add to status.json so PaperfullTab can see it
+            if _ustor_ok:
+                try:
+                    from utils.core.user_storage import add_status_file
+                    txt_filename = Path(item["original_name"]).stem + ".txt"
+                    add_status_file(
+                        _ustor_username, 
+                        paper_id, 
+                        txt_filename, 
+                        f"user/{_ustor_username}/{paper_id}/file/{txt_filename}",
+                        metadata={"original_name": item["original_name"], "file_id": entry.id}
+                    )
+                except Exception:
+                    pass
             # Include extracted text so the chat upload path can inline it
             # into the user's message in one round trip. The Files-tab UI
             # ignores this field — it calls /preview on demand.
@@ -417,7 +326,17 @@ def upload_paper_files(paper_id: str):
 
         db.session.commit()
 
-        # Clean up temp files after successful commit
+        # Delete raw binary files — only extracted text is persisted.
+        # S3 uploads and local files are removed after successful extraction.
+        for item in accepted:
+            try:
+                if s3_storage.is_s3_enabled():
+                    s3_storage.delete_file(item["s3_key"])
+                elif item["filepath"].exists():
+                    item["filepath"].unlink()
+            except Exception:
+                log.warning("upload_paper_files: could not clean raw %s", item["filepath"])
+        # Clean up temp files
         for temp_file in temp_files:
             try:
                 if temp_file.exists():
@@ -470,7 +389,7 @@ def delete_paper_file(paper_id: str, file_id: int):
 
     filepath = upload_folder() / entry.file_path
     try:
-        if filepath.exists():
+        if filepath.exists() and filepath.is_file():
             filepath.unlink()
     except Exception:
         log.warning("delete_paper_file: could not unlink %s", filepath)
@@ -481,7 +400,8 @@ def delete_paper_file(paper_id: str, file_id: int):
 
 @files.route("/<paper_id>/files/<int:file_id>/raw", methods=["GET"])
 def serve_paper_file(paper_id: str, file_id: int):
-    """Serve original file. Auth: Bearer/cookie, ?s=signed, or legacy ?t=jwt."""
+    """Serve extracted text as plain text. Raw binaries are no longer stored.
+    Auth: Bearer/cookie, ?s=signed, or legacy ?t=jwt."""
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
 
@@ -497,46 +417,26 @@ def serve_paper_file(paper_id: str, file_id: int):
         except Exception:
             return jsonify({"error": "Unauthorized"}), 401
         try:
-
             user_id = int(get_jwt_identity())
-
         except (ValueError, TypeError):
-
             return jsonify({"error": "Invalid user identity"}), 401
 
     entry = PaperFile.query.filter_by(id=file_id, paper_id=paper_id, user_id=user_id).first()
     if not entry:
         return jsonify({"error": "File not found"}), 404
 
-    paper_dir = safe_paper_dir(paper_id)
-    if not paper_dir:
-        return jsonify({"error": "Invalid path"}), 400
-    filepath = (paper_dir / "files" / entry.filename).resolve()
-    try:
-        filepath.relative_to(paper_dir.resolve())
-    except ValueError:
-        return jsonify({"error": "Invalid path"}), 400
-    if not filepath.is_file():
-        return jsonify({"error": "File not found"}), 404
+    # Raw binary not stored — serve extracted text
+    if not entry.extracted_text:
+        return jsonify({"error": "No extracted text available"}), 404
 
-    mime_map = {
-        ".pdf": "application/pdf",
-        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ".doc": "application/msword",
-        # BUG FIX: Add missing MIME types for Excel and CSV
-        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ".xls": "application/vnd.ms-excel",
-        ".csv": "text/csv; charset=utf-8",
-        ".txt": "text/plain; charset=utf-8",
-        ".md": "text/markdown; charset=utf-8",
-    }
-    inline_ok = entry.ext == ".pdf"  # arbitrary uploads inline can become XSS surfaces
-    return send_file(
-        str(filepath),
-        mimetype=mime_map.get(entry.ext, "application/octet-stream"),
-        as_attachment=not inline_ok,
-        download_name=entry.original_name,
+    from flask import make_response
+    response = make_response(entry.extracted_text)
+    response.headers["Content-Type"] = "text/plain; charset=utf-8"
+    # Use inline disposition so browser can display it; frontend adds download attr where needed
+    response.headers["Content-Disposition"] = (
+        f'inline; filename="{Path(entry.original_name).stem}.txt"'
     )
+    return response
 
 
 @files.route("/<paper_id>/files/<int:file_id>/preview", methods=["GET"])

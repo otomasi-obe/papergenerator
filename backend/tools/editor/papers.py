@@ -6,9 +6,11 @@ Extracted from app.py to keep route concerns isolated.
 from __future__ import annotations
 
 import copy
+import json
 import logging
 import shutil
 import uuid
+from pathlib import Path
 from datetime import datetime, timezone
 
 import jsonpatch
@@ -357,3 +359,24 @@ def get_paper_status(paper_id):
     except Exception as e:
         log.error(f"Failed to get status for paper {paper_id}: {e}")
         return jsonify({"error": "Failed to retrieve status"}), 500
+
+
+@papers.route("/template/<lang>", methods=["GET"])
+@jwt_required()
+def get_paper_template(lang: str):
+    """Return the language-specific paper template JSON (en.json / id.json)."""
+    if lang not in ("en", "id"):
+        return jsonify({"error": "Unsupported language"}), 400
+
+    prompt_dir = Path(__file__).resolve().parent.parent / "paperfull" / "prompt"
+    template_path = prompt_dir / f"{lang}.json"
+
+    if not template_path.exists():
+        return jsonify({"error": "Template not found"}), 404
+
+    try:
+        data = json.loads(template_path.read_text(encoding="utf-8"))
+        return jsonify(data)
+    except Exception as e:
+        log.error(f"Failed to read template {lang}: {e}")
+        return jsonify({"error": "Failed to read template"}), 500

@@ -54,7 +54,7 @@
             class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg relative active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
             aria-haspopup="menu"
             :aria-expanded="bellOpen"
-            :title="recentCount > 0 ? `${activeJobs.length} diproses, ${recentDone.length} selesai` : 'Belum ada paper yang diproses'">
+            :title="recentCount > 0 ? `${activeJobs.length} diproses, ${failedJobs.length} gagal, ${recentDone.length} selesai` : 'Belum ada paper yang diproses'">
             <svg class="w-5 h-5 text-ink-700 dark:text-ink-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -92,6 +92,21 @@
                 </div>
               </div>
 
+              <!-- Failed/error jobs -->
+              <div v-if="failedJobs.length" class="mb-2">
+                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-red-500 dark:text-red-400 font-semibold">Gagal</div>
+                <div v-for="j in failedJobs" :key="'failed-' + j.id"
+                   class="block p-2 rounded-lg text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 mb-1 cursor-pointer hover:bg-red-100 dark:hover:bg-red-800/30"
+                   @click="onFailedJobClick(j)">
+                  <div class="flex items-center gap-2">
+                    <span class="text-red-600 dark:text-red-400 shrink-0">✗</span>
+                    <div class="font-medium truncate text-red-800 dark:text-red-200 flex-1">{{ j.result?.partial_paper?.title || j.paper_title || 'Generating...' }}</div>
+                  </div>
+                  <div class="text-[10px] text-red-600 dark:text-red-400 mt-1 truncate">{{ j.error || j.prompt || 'Error' }}</div>
+                  <div class="text-[10px] text-red-500 dark:text-red-500 mt-0.5">{{ formatTime(j.updated_at) }}</div>
+                </div>
+              </div>
+
               <!-- Completed jobs -->
               <div v-if="recentDone.length">
                 <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold">Selesai</div>
@@ -108,7 +123,7 @@
               </div>
 
               <!-- Empty state -->
-              <div v-if="!activeJobs.length && !recentDone.length" class="text-xs text-ink-500 dark:text-ink-300 p-3 text-center">
+              <div v-if="!activeJobs.length && !failedJobs.length && !recentDone.length" class="text-xs text-ink-500 dark:text-ink-300 p-3 text-center">
                 Belum ada paper yang diproses.
               </div>
             </div>
@@ -161,6 +176,9 @@
             <router-link to="/dashboard" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
               <span aria-hidden="true">📄</span> My Papers
             </router-link>
+            <router-link to="/settings" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+              <span aria-hidden="true">⚙️</span> Settings
+            </router-link>
             <router-link v-if="auth.isAdmin" to="/admin" @click="menuOpen = false" class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink-800 dark:text-ink-100 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
               <span aria-hidden="true">📊</span> Admin
             </router-link>
@@ -204,7 +222,8 @@ const recentDone = computed(() => {
   return jobsStore.recentDone.filter(j => !clicked.has(j.id))
 })
 const activeJobs = computed(() => jobsStore.globalActiveJobs || [])
-const recentCount = computed(() => recentDone.value.length + activeJobs.value.length)
+const failedJobs = computed(() => jobsStore.failedJobs || [])
+const recentCount = computed(() => recentDone.value.length + activeJobs.value.length + failedJobs.value.length)
 
 const quotaStore = useQuotaStore()
 const quota = computed(() => quotaStore.quota)
@@ -221,6 +240,14 @@ function navigateToPaper(paperId: string): void {
 function onJobClick(jobId: string): void {
   jobsStore.markJobAsClicked(jobId)
   bellOpen.value = false
+}
+
+function onFailedJobClick(job: any): void {
+  jobsStore.markJobAsClicked(job.id)
+  bellOpen.value = false
+  if (job.paper_id) {
+    router.push({ name: 'editor', params: { paperId: job.paper_id } })
+  }
 }
 
 function formatTime(iso: string | null | undefined): string {

@@ -1,0 +1,93 @@
+{
+  "title": "",
+  "authors": [
+    {
+      "name": "",
+      "affiliation": "",
+      "location": "",
+      "email": ""
+    }
+  ],
+  "abstract": "",
+  "keywords": [],
+
+  "section1": {
+    "title": "Introduction",
+    "content": [
+      {"id": "text", "text": ""}
+    ]
+  },
+
+  "section2": {
+    "title": "Literature Review",
+    "content": [
+      {"id": "text", "text": ""}
+    ],
+    "section2a": {
+      "title": "Prior Research Review",
+      "content": [
+        {"id": "text", "text": ""}
+      ]
+    },
+    "section2b": {
+      "title": "Theoretical Framework",
+      "content": [
+        {"id": "text", "text": ""}
+      ]
+    }
+  },
+
+  "section3": {
+    "title": "Methodology",
+    "content": [
+      {"id": "text", "text": ""}
+    ],
+    "section3a": {
+      "title": "System Design and Architecture",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "gambar", "ImageNumber": "1", "Title": "", "Path": "gambar/system_architecture.png", "Prompt": "(create an image \"\")"}
+      ]
+    },
+    "section3b": {
+      "title": "Implementation and Experimental Procedure",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "tabel", "TableNumber": "I", "Title": "", "Headers": [], "Rows": []}
+      ]
+    }
+  },
+
+  "section4": {
+    "title": "Results and Discussion",
+    "content": [
+      {"id": "text", "text": ""}
+    ],
+    "section4a": {
+      "title": "Experimental Results",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "tabel", "TableNumber": "II", "Title": "", "Headers": [], "Rows": []},
+        {"id": "gambar", "ImageNumber": "2", "Title": "", "Path": "gambar/results.png", "Prompt": "(create an image \"\")"}
+      ]
+    },
+    "section4b": {
+      "title": "Analysis and Discussion",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "tabel", "TableNumber": "III", "Title": "", "Headers": [], "Rows": []}
+      ]
+    }
+  },
+
+  "section5": {
+    "title": "Conclusion",
+    "content": [
+      {"id": "text", "text": ""}
+    ]
+  },
+
+  "references": {
+    "items": []
+  }
+}

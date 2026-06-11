@@ -1,0 +1,93 @@
+{
+  "title": "",
+  "authors": [
+    {
+      "name": "",
+      "affiliation": "",
+      "location": "",
+      "email": ""
+    }
+  ],
+  "abstract": "",
+  "keywords": [],
+
+  "section1": {
+    "title": "Pendahuluan",
+    "content": [
+      {"id": "text", "text": ""}
+    ]
+  },
+
+  "section2": {
+    "title": "Tinjauan Pustaka",
+    "content": [
+      {"id": "text", "text": ""}
+    ],
+    "section2a": {
+      "title": "Tinjauan Penelitian Terdahulu",
+      "content": [
+        {"id": "text", "text": ""}
+      ]
+    },
+    "section2b": {
+      "title": "Kerangka Teoritis",
+      "content": [
+        {"id": "text", "text": ""}
+      ]
+    }
+  },
+
+  "section3": {
+    "title": "Metodologi",
+    "content": [
+      {"id": "text", "text": ""}
+    ],
+    "section3a": {
+      "title": "Desain dan Arsitektur Sistem",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "gambar", "ImageNumber": "1", "Title": "", "Path": "gambar/system_architecture.png", "Prompt": "(create an image \"\")"}
+      ]
+    },
+    "section3b": {
+      "title": "Implementasi dan Prosedur Eksperimen",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "tabel", "TableNumber": "I", "Title": "", "Headers": [], "Rows": []}
+      ]
+    }
+  },
+
+  "section4": {
+    "title": "Hasil dan Pembahasan",
+    "content": [
+      {"id": "text", "text": ""}
+    ],
+    "section4a": {
+      "title": "Hasil Eksperimen",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "tabel", "TableNumber": "II", "Title": "", "Headers": [], "Rows": []},
+        {"id": "gambar", "ImageNumber": "2", "Title": "", "Path": "gambar/results.png", "Prompt": "(create an image \"\")"}
+      ]
+    },
+    "section4b": {
+      "title": "Analisis dan Pembahasan",
+      "content": [
+        {"id": "text", "text": ""},
+        {"id": "tabel", "TableNumber": "III", "Title": "", "Headers": [], "Rows": []}
+      ]
+    }
+  },
+
+  "section5": {
+    "title": "Kesimpulan",
+    "content": [
+      {"id": "text", "text": ""}
+    ]
+  },
+
+  "references": {
+    "items": []
+  }
+}

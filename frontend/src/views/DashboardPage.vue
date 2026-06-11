@@ -76,7 +76,7 @@
       </p>
       <template #actions>
         <button @click="deleteTarget = null"
-          class="px-4 py-2.5 min-h-[44px] border border-cream-400 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+          class="px-4 py-2.5 min-h-[44px] border border-cream-400 dark:border-ash-500 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
           Cancel
         </button>
         <button @click="doDelete()"
@@ -89,20 +89,80 @@
     <Teleport to="body">
       <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div>
     </Teleport>
+
+    <!-- Onboarding Wizard for new users -->
+    <OnboardingWizard
+      :open="showOnboarding"
+      :user="auth.user"
+      @complete="onOnboardingComplete"
+    />
+
+    <!-- Tour Guide overlay -->
+    <TourGuide
+      :active="showTour"
+      :steps="tourSteps"
+      @finish="onTourFinish"
+      @skip="onTourFinish"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '../api/index.js'
 import AppHeader from '../components/AppHeader.vue'
 import AppDialog from '../components/AppDialog.vue'
 import StateView from '../components/StateView.vue'
+import OnboardingWizard from '../components/OnboardingWizard.vue'
+import TourGuide from '../components/TourGuide.vue'
 import { usePaperStore } from '../stores/paper.js'
+import { useAuthStore } from '../stores/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 const store = usePaperStore()
+const auth = useAuthStore()
+
+// Onboarding wizard state
+const showOnboarding = ref(false)
+const showTour = ref(false)
+
+// Tour steps for dashboard
+const tourSteps = [
+  { target: 'a[href="/editor"]', title: 'Buat Paper Baru', description: 'Klik tombol ini untuk membuat paper baru dengan AI.', position: 'bottom' },
+  { target: '.grid', title: 'Daftar Paper Anda', description: 'Semua paper yang Anda buat akan muncul di sini. Klik untuk membuka.', position: 'top' },
+]
+
+// Check if user needs onboarding
+async function checkOnboarding() {
+  await auth.fetchMe()
+  const user = auth.user
+  // Show onboarding if profile is incomplete
+  if (user && (!user.nickname || !user.institution)) {
+    showOnboarding.value = true
+  }
+}
+
+// Check if tour should run
+function checkTour() {
+  // Show tour if query param ?tour=1 or not done yet
+  if (route.query.tour === '1' || !localStorage.getItem('pf_tour_done')) {
+    showTour.value = true
+    localStorage.setItem('pf_tour_done', '1')
+  }
+}
+
+function onTourFinish() {
+  showTour.value = false
+  localStorage.setItem('pf_tour_done', '1')
+}
+
+function onOnboardingComplete() {
+  showOnboarding.value = false
+  // Start tour after onboarding completes
+  checkTour()
+}
 
 const papers = ref([])
 const loading = ref(true)
@@ -189,7 +249,20 @@ function formatDate(iso) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-onMounted(loadPapers)
+onMounted(async () => {
+  await checkOnboarding()
+  if (!showOnboarding.value) {
+    checkTour()
+  }
+  loadPapers()
+})
+
+// Reload papers whenever the route changes (e.g. navigating back from editor)
+watch(() => route.path, (newPath) => {
+  if (newPath === '/dashboard') {
+    loadPapers()
+  }
+})
 
 onUnmounted(() => {
   clearTimeout(toastTimer)

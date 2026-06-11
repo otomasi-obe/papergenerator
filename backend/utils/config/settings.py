@@ -72,6 +72,7 @@ def configure_app(app):
     app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
+    app.config["JWT_SESSION_COOKIE"] = False  # Persist cookies beyond browser close
     app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "true").lower() == "true"
     app.config["JWT_COOKIE_HTTPONLY"] = True
     app.config["JWT_COOKIE_SAMESITE"] = "Lax"  # Lax keeps SSO callback redirects working

@@ -65,6 +65,26 @@
         <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-3">
           Pilihan ini menentukan template generator yang dipakai saat klik "Export DOCX".
         </p>
+
+        <!-- Citation Style Selector -->
+        <div class="mt-6">
+          <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">Gaya Sitasi</label>
+          <select
+            v-model="store.paper.citation_style"
+            class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
+          >
+            <option value="ieee">IEEE — Nomor dalam kurung [1]</option>
+            <option value="apa">APA 7th — Author (Year)</option>
+            <option value="mla">MLA 9th — Author Page</option>
+            <option value="chicago">Chicago 17th — Author-Year</option>
+            <option value="harvard">Harvard — Author (Year)</option>
+            <option value="vancouver">Vancouver — Nomor berurutan (medis)</option>
+            <option value="acs">ACS — Nomor superscript (kimia)</option>
+          </select>
+          <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-2">
+            Gaya sitasi menentukan format referensi dalam teks dan daftar pustaka.
+          </p>
+        </div>
       </div>
     </div>
   </div>

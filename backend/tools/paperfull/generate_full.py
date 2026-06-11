@@ -203,13 +203,16 @@ def generate_paper(
     return paper_data
 
 
-def export_docx(paper_data: dict, journal_code: str = "IEEE") -> Optional[Path]:
+def export_docx(paper_data: dict, journal_code: str = "IEEE", citation_style: Optional[str] = None) -> Optional[Path]:
     """
     Export paper ke DOCX menggunakan template jurnal.
 
     Args:
         paper_data: Paper data dict
         journal_code: Kode template jurnal (IEEE, APA, dll)
+        citation_style: Citation style slug untuk memformat referensi
+                        (ieee, apa, harvard, chicago, vancouver, mla, acs).
+                        Jika None, default ke journal_code.lower().
 
     Returns:
         Path ke file DOCX yang dihasilkan
@@ -234,6 +237,10 @@ def export_docx(paper_data: dict, journal_code: str = "IEEE") -> Optional[Path]:
         log.error("Failed to import template %sgen: %s", canonical, e)
         return None
 
+    # Pre-process structured references into formatted strings
+    # so generators that expect string references continue to work.
+    paper_data = _preprocess_references(paper_data, citation_style or journal_code.lower())
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
         json.dump(paper_data, f, ensure_ascii=False, indent=2)
         json_path = Path(f.name)
@@ -248,6 +255,52 @@ def export_docx(paper_data: dict, journal_code: str = "IEEE") -> Optional[Path]:
         return None
     finally:
         json_path.unlink(missing_ok=True)
+
+
+def _preprocess_references(paper_data: dict, style: str) -> dict:
+    """Convert structured reference objects into formatted strings.
+
+    If references are already strings (legacy format), returns paper_data unchanged.
+    This ensures backward compatibility with all journal generators.
+    """
+    refs = paper_data.get("references", [])
+
+    # Handle dict-wrapped references (new format: {"title": "...", "items": [...]})
+    if isinstance(refs, dict):
+        items = refs.get("items", refs.get("content", []))
+    elif isinstance(refs, list):
+        items = refs
+    else:
+        return paper_data
+
+    # If items are already strings, nothing to do
+    if not items or not isinstance(items[0], dict):
+        return paper_data
+
+    # Check if items are structured objects (have "authors", "title", etc.)
+    # vs. already-formatted dicts with a "text" key
+    first = items[0]
+    if "text" in first and "authors" not in first:
+        return paper_data  # Already formatted dict with "text" key
+
+    # Format structured objects into strings
+    try:
+        from tools.preview.reference_formatter import format_reference
+        formatted = []
+        for i, ref in enumerate(items, 1):
+            if isinstance(ref, dict) and "authors" in ref:
+                formatted.append(format_reference(ref, style=style, index=i))
+            elif isinstance(ref, dict) and "text" in ref:
+                formatted.append(ref["text"])
+            elif isinstance(ref, str):
+                formatted.append(ref)
+            else:
+                formatted.append(str(ref))
+        paper_data["references"] = formatted
+    except ImportError:
+        log.warning("reference_formatter not available, keeping raw references")
+
+    return paper_data
 
 
 if __name__ == "__main__":

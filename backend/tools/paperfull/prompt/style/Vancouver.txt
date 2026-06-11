@@ -60,3 +60,34 @@ dentistry, pharmacy, and biomedical sciences.
       Dentistry   : J Dent Res, J Clin Periodontol, Oral Dis
       Pharmacy    : J Clin Pharm Ther, Br J Clin Pharmacol
       Public Health: Am J Public Health, Bull World Health Organ
+
+── STRUCTURED REFERENCE OUTPUT (CRITICAL) ─────────────────────────────────────
+  References MUST be output as structured JSON objects with full metadata,
+  NOT as pre-formatted strings. This allows the system to reformat references
+  to ANY citation style automatically.
+
+  Each reference in the "references"."items" array MUST be an object:
+  {
+    "authors": ["Lastname1, Initials1", "Lastname2, Initials2"],
+    "year": 2023,
+    "title": "Full title of the article/paper/book",
+    "type": "journal|conference|book|book_chapter|thesis|website",
+    "journal": "Journal Name (for journal articles)",
+    "conference": "Conference Name (for conference papers)",
+    "volume": "XX",
+    "issue": "Y",
+    "pages": "AAA-BBB",
+    "doi": "10.XXXX/XXXXXXX",
+    "publisher": "Publisher Name (for books/theses)",
+    "location": "City, Country (for books/theses)",
+    "url": "https://... (for websites)",
+    "accessed": "DD Mon YYYY (for websites)",
+    "editors": ["Editor Name (for book chapters)"],
+    "book_title": "Book Title (for book chapters)",
+    "institution": "University Name (for theses)"
+  }
+
+  Only include fields relevant to the reference type.
+  DO NOT output references as formatted strings like "[1] A. Smith, 'Title'..."
+  DO NOT include "_CATATAN" or "_ATURAN_REFERENSI" fields in output.
+──────────────────────────────────────────────────────────────────────────────

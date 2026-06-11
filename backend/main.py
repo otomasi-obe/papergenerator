@@ -135,6 +135,7 @@ from datetime import timedelta as _td
 app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = _td(hours=1)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = _td(days=7)
+app.config["JWT_SESSION_COOKIE"] = False  # Persist cookies beyond browser close
 app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "true").lower() == "true"
 app.config["JWT_COOKIE_HTTPONLY"] = True
 app.config["JWT_COOKIE_SAMESITE"] = "Lax"  # Lax keeps SSO callback redirects working
@@ -726,6 +727,73 @@ def generate():
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
 
 
+def _extract_texts_from_files(files):
+    """Extract text from uploaded files (PDF/DOCX/Excel/CSV). Returns list of text strings."""
+    import tempfile
+    texts = []
+    for f in files:
+        if not f.filename:
+            continue
+        ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+        try:
+            suffix = '.' + ext
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                f.save(tmp)
+                tmp_path = tmp.name
+            text = ''
+            if ext == 'pdf':
+                try:
+                    import pymupdf
+                    doc = pymupdf.open(tmp_path)
+                    text = '\n'.join(page.get_text() for page in doc)
+                    doc.close()
+                except ImportError:
+                    try:
+                        from pdfminer.high_level import extract_text
+                        text = extract_text(tmp_path) or ''
+                    except ImportError:
+                        text = f'[PDF extraction unavailable for {f.filename}]'
+            elif ext in ('docx', 'doc'):
+                try:
+                    from docx import Document
+                    doc = Document(tmp_path)
+                    text = '\n'.join(p.text for p in doc.paragraphs)
+                except ImportError:
+                    text = f'[DOCX extraction unavailable for {f.filename}]'
+            elif ext in ('xlsx', 'xls'):
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(tmp_path, read_only=True, data_only=True)
+                    lines = []
+                    for sheet_name in wb.sheetnames:
+                        ws = wb[sheet_name]
+                        lines.append(f'--- Sheet: {sheet_name} ---')
+                        for row in ws.iter_rows(values_only=True):
+                            lines.append('\t'.join(str(c) if c is not None else '' for c in row))
+                    text = '\n'.join(lines)
+                    wb.close()
+                except ImportError:
+                    text = f'[Excel extraction unavailable for {f.filename}]'
+            elif ext == 'csv':
+                with open(tmp_path, 'r', encoding='utf-8', errors='replace') as csvf:
+                    text = csvf.read()
+            else:
+                text = f'[Unsupported file type: {ext} for {f.filename}]'
+
+            if text.strip():
+                header = f'\n\n=== Extracted from: {f.filename} ===\n'
+                texts.append(header + text[:20000])  # cap per file at 20k chars
+            try:
+                import os as _os
+                _os.unlink(tmp_path)
+            except Exception:
+                pass
+        except Exception as e:
+            log.warning("Failed to extract text from %s: %s", f.filename, e)
+            texts.append(f'\n\n=== {f.filename} ===\n[Extraction failed: {e}]')
+    return texts
+
+
 def _run_generate_full_job(
     job_id,
     prompt,
@@ -747,6 +815,29 @@ def _run_generate_full_job(
     """
     t_start = time.time()
     log.info("[job:%s] started, prompt=%r (single-shot generation)", job_id, prompt[:80])
+
+    # ── Progress ticker: 0→95% over 15 minutes (900s), jumps to 100% on done ──
+    _ticker_stop = threading.Event()
+    def _progress_ticker():
+        """Tick progress from 5% to 95% over 900s (15 min). Stops when event set."""
+        elapsed = 0
+        while not _ticker_stop.wait(timeout=10):
+            elapsed += 10
+            pct = min(95, 5 + int((elapsed / 900.0) * 90))
+            try:
+                with app.app_context():
+                    j = AiJob.query.filter_by(id=job_id).first()
+                    if j and j.status == "running":
+                        j.progress = pct
+                        db.session.commit()
+                _publish("generating", pct, "running")
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+    _ticker_thread = threading.Thread(target=_progress_ticker, daemon=True)
+
     if _legacy_kwargs:
         log.info("[job:%s] ignoring legacy kwargs: %s", job_id, sorted(_legacy_kwargs.keys()))
     uid = None
@@ -820,6 +911,24 @@ def _run_generate_full_job(
             raise GenerationCancelled("start")
 
         _checkpoint("generating", 5)
+
+        # Start progress ticker (5%→95% over 15 min)
+        _ticker_thread.start()
+
+        # Save send.json to paperfull history
+        if uid is not None and paper_id:
+            try:
+                from utils.core.user_storage import get_username, save_paperfull_send_by_id
+                username = get_username(user_id=uid)
+                save_paperfull_send_by_id(username, paper_id, {
+                    "job_id": job_id,
+                    "prompt": prompt[:4000],
+                    "topic": topic,
+                    "style": style,
+                    "has_pdf_texts": bool(pdf_texts),
+                })
+            except Exception:
+                log.warning("[job:%s] Could not save paperfull send.json", job_id, exc_info=True)
 
         paper_data = generate_paper_json_single(
             judul=prompt,
@@ -939,8 +1048,27 @@ def _run_generate_full_job(
             except Exception:
                 log.warning("[job:%s] Could not save paper.json to user storage", job_id, exc_info=True)
 
+        # Stop progress ticker
+        _ticker_stop.set()
+
         # Single end-of-run checkpoint — stage="complete", progress=100.
         _checkpoint("complete", 100)
+
+        # Save recv.json to paperfull history
+        if uid is not None and paper_id:
+            try:
+                from utils.core.user_storage import get_username, save_paperfull_recv_by_id
+                username = get_username(user_id=uid)
+                save_paperfull_recv_by_id(username, paper_id, {
+                    "job_id": job_id,
+                    "status": "done",
+                    "title": (paper_data.get("title") or "").strip(),
+                    "sections_count": len(paper_data.get("sections", [])),
+                    "references_count": len(paper_data.get("references", [])),
+                    "elapsed_seconds": int(time.time() - t_start),
+                })
+            except Exception:
+                log.warning("[job:%s] Could not save paperfull recv.json", job_id, exc_info=True)
 
         elapsed = time.time() - t_start
         _log_api_usage(
@@ -973,6 +1101,8 @@ def _run_generate_full_job(
         log.info("[job:%s] DONE in %.1fs", job_id, elapsed)
 
     except GenerationCancelled as gc:
+        # Stop progress ticker
+        _ticker_stop.set()
         # Cooperative cancel: persist whatever was already checkpointed and
         # mark the job cancelled (so the UI bubble can surface the partial
         # result + a Resume button).
@@ -1002,6 +1132,8 @@ def _run_generate_full_job(
             pass
 
     except Exception as e:
+        # Stop progress ticker
+        _ticker_stop.set()
         elapsed = time.time() - t_start
         err_str = str(e)
         timeout_flag = (
@@ -1031,10 +1163,32 @@ def _run_generate_full_job(
 @jwt_required()
 def generate_full():
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-        prompt = data.get("prompt", "").strip()
+        # Support both JSON and multipart/form-data (for file uploads)
+        pdf_texts = []
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            prompt = (request.form.get("prompt") or "").strip()
+            topic = request.form.get("topic") or None
+            style = request.form.get("style") or None
+            paper_id = request.form.get("paper_id") or None
+            conv_id = request.form.get("conv_id") or None
+            model = request.form.get("model") or None
+
+            # Extract text from uploaded files (PDF/DOCX/Excel/CSV)
+            uploaded_files = request.files.getlist("files")
+            if uploaded_files:
+                pdf_texts = _extract_texts_from_files(uploaded_files)
+        else:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+            prompt = data.get("prompt", "").strip()
+            topic = data.get("topic") or None
+            style = data.get("style") or None
+            pdf_texts = data.get("pdf_texts") or []
+            paper_id = data.get("paper_id") or None
+            conv_id = data.get("conv_id") or None
+            model = data.get("model") or None
+
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
 
@@ -1046,10 +1200,6 @@ def generate_full():
             mock_response = get_mock_generate_full_response(prompt=prompt, job_id=job_id)
             return jsonify(mock_response)
 
-        topic = data.get("topic") or None
-        style = data.get("style") or None
-        pdf_texts = data.get("pdf_texts") or []
-        model = data.get("model") or None
         if model is not None:
             allowed_models = {"VIOLA-CHAT", "VIOLA-GENERATE"}
             if model not in allowed_models:
@@ -1063,8 +1213,6 @@ def generate_full():
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
         job_id = uuid.uuid4().hex[:12]
-        paper_id = data.get("paper_id") or None
-        conv_id = data.get("conv_id") or None
         _job_create(job_id, int(user_id), prompt, paper_id=paper_id)
         threading.Thread(
             target=_run_generate_full_job,

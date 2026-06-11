@@ -141,12 +141,16 @@ class BaseExporter(ABC):
             paper_data: Paper data dictionary
             
         Returns:
-            List of reference dictionaries
+            List of reference dictionaries or strings
         """
         refs = paper_data.get('references', {})
         
         # Handle different reference formats
         if isinstance(refs, dict):
+            # New structured format: {"title": "...", "items": [...]}
+            if 'items' in refs:
+                return refs['items']
+            # Legacy format: {"content": [...]}
             return refs.get('content', [])
         elif isinstance(refs, list):
             return refs

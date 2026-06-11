@@ -60,8 +60,46 @@ _TOPIC_KEYWORDS = {
         "diagnosis",
         "kesehatan",
         "kedokteran",
+        "hospital",
+        "rumah sakit",
+        "surgery",
+        "bedah",
+        "vaccine",
+        "vaksin",
+        "epidemiol",
+        "public health",
+        "mental health",
+        "nutrition",
+        "gizi",
+        "patolog",
+        "anatomy",
+        "anatomi",
+        "immunol",
+        "cardio",
+        "jantung",
     ),
-    "biology": ("biolog", "gene", "protein", "cell", "neuron"),
+    "biology": (
+        "biolog",
+        "gene",
+        "protein",
+        "cell",
+        "neuron",
+        "genome",
+        "genom",
+        "ecosystem",
+        "ekosistem",
+        "species",
+        "spesies",
+        "evolution",
+        "evolusi",
+        "microbio",
+        "mikroba",
+        "molecular",
+        "molekuler",
+        "bioinform",
+        "biodiversity",
+        "biodiversitas",
+    ),
     "cs": (
         "software",
         "algorit",
@@ -75,6 +113,22 @@ _TOPIC_KEYWORDS = {
         "kernel",
         "komputer",
         "informatika",
+        "computing",
+        "cyber",
+        "security",
+        "keamanan",
+        "blockchain",
+        "cryptography",
+        "kriptografi",
+        "web",
+        "mobile",
+        "operating system",
+        "sistem operasi",
+        "data mining",
+        "tambang data",
+        "big data",
+        "information system",
+        "sistem informasi",
     ),
     "ai": (
         "machine learning",
@@ -91,6 +145,24 @@ _TOPIC_KEYWORDS = {
         "kecerdasan buatan",
         "pembelajaran mesin",
         "pembelajaran mendalam",
+        "artificial intelligence",
+        "generative",
+        "llm",
+        "large language model",
+        "gpt",
+        "bert",
+        "chatbot",
+        "natural language",
+        "bahasa alami",
+        "image recognition",
+        "pengenalan citra",
+        "speech recognition",
+        "pengenalan suara",
+        "autonomous",
+        "otonom",
+        "knowledge graph",
+        "expert system",
+        "sistem pakar",
     ),
     "engineering": (
         "engineering",
@@ -106,8 +178,38 @@ _TOPIC_KEYWORDS = {
         "rekayasa",
         "elektronika",
         "mesin",
+        "renewable",
+        "terbarukan",
+        "solar",
+        "energi",
+        "energy",
+        "material",
+        "structural",
+        "infrastruktur",
+        "infrastructure",
+        "manufacturing",
+        "manufaktur",
+        "aerospace",
+        "dirgantara",
+        "automotive",
+        "otomotif",
     ),
-    "physics": ("physics", "quantum", "particle", "astro"),
+    "physics": (
+        "physics",
+        "quantum",
+        "particle",
+        "astro",
+        "fisika",
+        "optics",
+        "optik",
+        "thermo",
+        "relativity",
+        "relativitas",
+        "nuclear",
+        "nuklir",
+        "plasma",
+        "condensed matter",
+    ),
     "indonesia": (
         "indonesia",
         "sinta",
@@ -116,8 +218,232 @@ _TOPIC_KEYWORDS = {
         "lokal",
         "akreditasi sinta",
         "lokal indonesia",
+        "nusantara",
+        "jawa",
+        "sumatera",
+        "kalimantan",
+        "sulawesi",
+    ),
+    "economics": (
+        "econom",
+        "ekonomi",
+        "finance",
+        "keuangan",
+        "market",
+        "pasar",
+        "inflation",
+        "inflasi",
+        "gdp",
+        "pib",
+        "monetary",
+        "moneter",
+        "fiscal",
+        "fiskal",
+        "banking",
+        "perbankan",
+        "trade",
+        "perdagangan",
+        "investment",
+        "investasi",
+        "stock",
+        "saham",
+        "cryptocurrency",
+        "crypto",
+    ),
+    "social": (
+        "social",
+        "sosial",
+        "society",
+        "masyarakat",
+        "culture",
+        "budaya",
+        "politic",
+        "politik",
+        "governance",
+        "tata kelola",
+        "democracy",
+        "demokrasi",
+        "gender",
+        "poverty",
+        "kemiskinan",
+        "inequality",
+        "ketimpangan",
+        "migration",
+        "migrasi",
+        "community",
+        "komunitas",
+        "psycholog",
+        "psikolog",
+    ),
+    "education": (
+        "education",
+        "pendidikan",
+        "learning",
+        "pembelajaran",
+        "teaching",
+        "pengajaran",
+        "curriculum",
+        "kurikulum",
+        "school",
+        "sekolah",
+        "university",
+        "universitas",
+        "student",
+        "siswa",
+        "mahasiswa",
+        "pedagog",
+        "e-learning",
+        "pembelajaran daring",
+        "assessment",
+        "asesmen",
+        "literacy",
+        "literasi",
+    ),
+    "law": (
+        "law",
+        "hukum",
+        "legal",
+        "regulation",
+        "regulasi",
+        "policy",
+        "kebijakan",
+        "constitutional",
+        "konstitusi",
+        "criminal",
+        "pidana",
+        "civil",
+        "perdata",
+        "human rights",
+        "hak asasi",
+        "intellectual property",
+        "hak kekayaan intelektual",
+        "compliance",
+        "kepatuhan",
+        "justice",
+        "keadilan",
+    ),
+    "agriculture": (
+        "agriculture",
+        "pertanian",
+        "crop",
+        "tanaman",
+        "farming",
+        "tani",
+        "food security",
+        "ketahanan pangan",
+        "irrigation",
+        "irigasi",
+        "soil",
+        "tanah",
+        "pest",
+        "hama",
+        "fertilizer",
+        "pupuk",
+        "agronomy",
+        "agronomi",
+        "livestock",
+        "peternakan",
+        "fishery",
+        "perikanan",
+        "forestry",
+        "kehutanan",
     ),
 }
+
+
+# Indonesian → English term mapping for query expansion
+_ID_TO_EN = {
+    "kecerdasan buatan": "artificial intelligence",
+    "pembelajaran mesin": "machine learning",
+    "pembelajaran mendalam": "deep learning",
+    "jaringan saraf": "neural network",
+    "pengolahan bahasa alami": "natural language processing",
+    "penglihatan komputer": "computer vision",
+    "sistem pakar": "expert system",
+    "penambangan data": "data mining",
+    "keamanan siber": "cyber security",
+    "komputasi awan": "cloud computing",
+    "internet segala": "internet of things",
+    "pembelajaran daring": "e-learning",
+    "sistem informasi": "information system",
+    "rekayasa perangkat lunak": "software engineering",
+    "kesehatan masyarakat": "public health",
+    "ketahanan pangan": "food security",
+    "energi terbarukan": "renewable energy",
+    "perubahan iklim": "climate change",
+    "pembangunan berkelanjutan": "sustainable development",
+    "hak asasi manusia": "human rights",
+    "kebijakan publik": "public policy",
+}
+
+# Common academic synonym expansion (English → additional terms)
+_SYNONYMS = {
+    "machine learning": "ml",
+    "deep learning": "dl",
+    "natural language processing": "nlp",
+    "artificial intelligence": "ai",
+    "internet of things": "iot",
+    "cloud computing": "cloud",
+    "data mining": "knowledge discovery",
+    "neural network": "neural net",
+    "computer vision": "image recognition",
+    "reinforcement learning": "rl",
+    "software engineering": "software development",
+    "information retrieval": "search",
+    "sentiment analysis": "opinion mining",
+    "image classification": "image recognition",
+    "object detection": "object recognition",
+    "climate change": "global warming",
+    "renewable energy": "green energy",
+    "sustainable development": "sustainability",
+    "public health": "epidemiology",
+    "mental health": "psychological well-being",
+}
+
+
+def expand_query(query: str) -> str:
+    """Expand a search query with Indonesian→English translations and synonyms.
+
+    - Detects Indonesian terms and adds English equivalents.
+    - Adds common synonyms for academic terms.
+    - Preserves existing boolean operators (AND, OR) if user already used them.
+    - Returns expanded query string suitable for academic search APIs.
+    """
+    if not query or not query.strip():
+        return query
+
+    q_lower = query.lower().strip()
+
+    # If user already uses boolean operators, respect their structure
+    has_booleans = bool(re.search(r'\b(AND|OR|NOT)\b', query))
+
+    terms_added: list[str] = []
+
+    # Indonesian → English translation
+    for id_term, en_term in _ID_TO_EN.items():
+        if id_term in q_lower and en_term not in q_lower:
+            terms_added.append(en_term)
+
+    # Synonym expansion
+    for base_term, syn in _SYNONYMS.items():
+        if base_term in q_lower and syn not in q_lower:
+            terms_added.append(syn)
+
+    # Reverse synonym lookup (if user typed the short form, add the full form)
+    for base_term, syn in _SYNONYMS.items():
+        if syn in q_lower and base_term not in q_lower:
+            terms_added.append(base_term)
+
+    if not terms_added:
+        return query
+
+    if has_booleans:
+        # Append with OR to broaden results without breaking user's boolean logic
+        expansion = " OR ".join(terms_added)
+        return f"({query}) OR ({expansion})"
+    else:
+        # Simple space-separated append — most academic APIs treat spaces as AND
+        return f"{query} {' '.join(terms_added)}"
 
 
 def _detect_topics(query: str) -> set[str]:
@@ -126,6 +452,16 @@ def _detect_topics(query: str) -> set[str]:
     for topic, kws in _TOPIC_KEYWORDS.items():
         if any(f" {k.strip()} " in q for k in kws):
             found.add(topic)
+    # Also check partial matches for longer keywords
+    q_stripped = (query or "").lower().strip()
+    for topic, kws in _TOPIC_KEYWORDS.items():
+        if topic in found:
+            continue
+        for k in kws:
+            k_stripped = k.strip()
+            if len(k_stripped) >= 5 and k_stripped in q_stripped:
+                found.add(topic)
+                break
     if not found:
         found.add("any")
     return found
@@ -192,6 +528,11 @@ def fetch_titles(
     if not sources:
         return []
 
+    # Expand query with Indonesian→English translations and synonyms
+    expanded = expand_query(query)
+    if expanded != query:
+        log.debug("Query expanded: %r → %r", query, expanded)
+
     workers = min(MAX_WORKERS, max(1, len(sources)))
     all_papers: list[Paper] = []
 
@@ -201,7 +542,7 @@ def fetch_titles(
     completed = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
         futures = {
-            ex.submit(fetch_from_source, name, query, limit_per_source, filters): name
+            ex.submit(fetch_from_source, name, expanded, limit_per_source, filters): name
             for name in sources
         }
         try:

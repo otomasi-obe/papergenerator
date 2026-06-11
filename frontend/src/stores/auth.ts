@@ -6,6 +6,9 @@ interface User {
   id: string
   email: string
   name: string
+  nickname?: string
+  institution?: string
+  preferred_language?: string
   role: 'user' | 'admin'
   [key: string]: unknown
 }
@@ -49,6 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Even if the call fails (cookie expired etc.), clear local state.
     }
     setUser(null)
+    window.location.href = '/'
   }
 
   fetchMe()

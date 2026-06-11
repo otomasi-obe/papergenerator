@@ -435,6 +435,32 @@ def add_status_note(username, paper_id, content):
     return save_status_json(username, paper_id, status)
 
 
+def save_paperfull_send_by_id(username, paper_id, data):
+    """Save paperfull request to user/<username>/<paper_id>/paperfull/YYYYMMDD-HHMMSS-send.json"""
+    base = get_paper_base_by_id(username, paper_id)
+    pf_dir = _ensure_dir(base / "paperfull")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    filepath = pf_dir / f"{ts}-send.json"
+    payload = {"ts": datetime.now(timezone.utc).isoformat(), "direction": "send", **data}
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    log.debug("Saved paperfull send: %s", filepath)
+    return filepath
+
+
+def save_paperfull_recv_by_id(username, paper_id, data):
+    """Save paperfull completion to user/<username>/<paper_id>/paperfull/YYYYMMDD-HHMMSS-recv.json"""
+    base = get_paper_base_by_id(username, paper_id)
+    pf_dir = _ensure_dir(base / "paperfull")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    filepath = pf_dir / f"{ts}-recv.json"
+    payload = {"ts": datetime.now(timezone.utc).isoformat(), "direction": "recv", **data}
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    log.debug("Saved paperfull recv: %s", filepath)
+    return filepath
+
+
 def build_status_context(username, paper_id, selected_facts=None, selected_files=None, selected_tables=None):
     """Build context string dari status.json untuk paperfull generation.
     
