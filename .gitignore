@@ -5,6 +5,10 @@
 .hypothesis/
 .kilo/
 tools_repo/
+backend/tools/image_generation/account1/
+backend/tools/image_generation/account2/
+backend/tools/image_generation/account3/
+backend/tools/image_generation/account4/
 
 # Encrypted environment files (these ARE tracked in git)
 !.env.enc
@@ -117,6 +121,15 @@ infra/observability/data/
 
 # Cookie files for image generator
 backend/imageGenerator/cookies-account*.json
+
+# Image generation browser profiles and test output
+backend/tools/image_generation/account[1-9]*/
+backend/tools/image_generation/test/
+backend/tools/image_generation/.rr-state.json
+
+# Runtime user data
+backend/user/
+backend/gunicorn.pid
 
 # User-specific template downloads (large binary/template files)
 prompt/riset/template/

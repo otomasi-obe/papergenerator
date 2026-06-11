@@ -1,8 +1,0 @@
-{
-  "ts": "2026-06-03T17:40:44.163648+00:00",
-  "direction": "recv",
-  "user_id": 292,
-  "paper_id": "328e38a30e5f",
-  "conv_id": "2b60ed6d2833494c",
-  "content": "\"Accept proposal\" biasanya muncul di **tab Preview** setelah data fase awal dan judul terisi lengkap.\n\nCoba cek:\n\n1. Apakah sudah **mengisi semua pertanyaan**? (progress_level, data_readiness, team_size, field, paper_type, target_publication, ditambah **title**)\n2. Apakah ada **tombol/tab \"Preview\"** di atas atau samping layar?\n3. Mungkin perlu **refresh halaman** dulu.\n\nKalau masih tidak muncul, tolong screenshot atau jelaskan apa yang terlihat di layar saat ini (judul halaman, tombol apa saja yang ada). Saya bantu analisis.\n\nAlternatif, saya bisa langsung bantu **Fase 2 manual** — tapi butuh konfirmasi dari kamu:\n\n1. **Topik spesifik** dalam biobutanol dari ampas tebu?\n2. **Problem statement** (masalah apa yang mau diselesaikan)?\n3. **Research gap** (celah penelitian yang belum terjawab)?\n\nMau lanjut manual?"
-}

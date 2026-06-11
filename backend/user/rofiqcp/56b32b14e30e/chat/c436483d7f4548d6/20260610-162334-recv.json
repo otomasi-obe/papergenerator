@@ -1,8 +1,0 @@
-{
-  "ts": "2026-06-10T16:23:34.200146+00:00",
-  "direction": "recv",
-  "content": "Baik! Saat ini paper Anda masih kosong selain judul placeholder **\"halo\"**.\n\nUntuk bisa membantu mengedit/menyusun paper Anda, saya butuh informasi minimal seperti yang saya sebutkan sebelumnya. Mohon berikan:\n\n1. **Judul paper Anda yang sebenarnya** — apa topik/riset yang Anda angkat?\n2. **Apakah Anda sudah memiliki draft paper?** (bisa dikirim sebagai teks, file referensi, atau data)\n3. **Atau apakah Anda ingin saya bantu dari nol?** — Jika ya, jelaskan topik dan tujuan paper-nya.\n\nDengan informasi tersebut, saya bisa langsung bantu Anda menyusun atau mengedit paper secara profesional sesuai standar jurnal **IEEE**! 📝",
-  "message_id": 1468,
-  "model": "@preset/otomasi",
-  "conv_id": "c436483d7f4548d6"
-}

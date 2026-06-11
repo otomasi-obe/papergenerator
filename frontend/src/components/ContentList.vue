@@ -291,7 +291,10 @@ const vClickOutsideContent = {
 
 function resizeAllTextareas(): void {
   nextTick(() => {
-    document.querySelectorAll('.content-textarea-auto').forEach(el => {
+    // Target textareas with v-autosize (content-textarea-auto class) and
+    // also any textarea inside ContentList that has resize-none (v-autosize sets it)
+    const els = document.querySelectorAll('textarea.content-textarea-auto, textarea[style*="resize: none"]')
+    els.forEach(el => {
       const textarea = el as HTMLTextAreaElement
       textarea.style.height = 'auto'
       textarea.style.height = textarea.scrollHeight + 'px'
