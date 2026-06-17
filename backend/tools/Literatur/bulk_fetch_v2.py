@@ -1480,7 +1480,7 @@ def run_daemon(workers: int = WORKERS, continuous: bool = True):
     log(f"   Workers: {workers} | Continuous: {continuous}")
 
     stats = get_stats()
-    log(f"   DB papers: {stats['actual_papers']:,} | Target: 1,000,000")
+    log(f"   DB papers: {stats['actual_papers']:,} | Target: 5,000,000")
     log(f"   Topics: {stats['total_topics']} total, {stats['pending_topics']} pending, "
         f"{stats['running_topics']} running, {stats['done_topics']} done")
     log(f"   Progress: {stats['total_fetched']:,} / {stats['total_target']:,} ({stats['pct']}%)")
@@ -1525,7 +1525,7 @@ def run_daemon(workers: int = WORKERS, continuous: bool = True):
                     continue
                 # Check if target reached
                 stats = get_stats()
-                if stats['actual_papers'] >= 1_000_000:
+                if stats['actual_papers'] >= 5_000_000:
                     log(f"🎉 TARGET REACHED! {stats['actual_papers']:,} papers in DB!")
                     break
                 if stats['pending_topics'] == 0 and stats['running_topics'] == 0:

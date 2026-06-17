@@ -1,0 +1,18 @@
+{
+  "name": "viola-ai-word-addin",
+  "version": "1.0.0",
+  "description": "PaperFull Word - asisten AI di dalam Microsoft Word (baca seleksi/paragraf/dokumen, edit langsung, terjemah, ringkas, poles, track-changes, chat).",
+  "private": true,
+  "scripts": {
+    "certs": "npx office-addin-dev-certs install --machine",
+    "start": "node server.js",
+    "validate": "npx office-addin-manifest validate manifest.xml",
+    "sideload": "npx office-addin-debugging start manifest.xml desktop"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "office-addin-dev-certs": "^1.13.0",
+    "office-addin-manifest": "^1.13.0",
+    "office-addin-debugging": "^5.1.0"
+  }
+}
