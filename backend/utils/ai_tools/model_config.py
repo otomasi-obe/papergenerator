@@ -276,6 +276,17 @@ def get_endpoint_chain(heavy: bool = False) -> list[tuple[str, str, str]]:
 
 # ── Direct model lookups (for logging / display purposes) ────────────────────
 
+def get_image_endpoint() -> tuple[str, str, str]:
+    """Return ``(model, base_url, api_key)`` for image analysis (MODELIMAGE).
+
+    Falls back to bare AIOTOMASI_API / AIOTOMASI_APIKEY when MODELIMAGE-specific
+    endpoint vars are absent.
+    """
+    model = os.getenv("MODELIMAGE", "VIOLA-IMAGE").strip()
+    base, key = _endpoint_for_index(1)  # uses AIOTOMASI_API1 → AIOTOMASI_API
+    return model, base, key
+
+
 def get_primary_chat_model() -> str:
     """Return the first configured chat model (or fallback default)."""
     chain = get_chat_model_chain()

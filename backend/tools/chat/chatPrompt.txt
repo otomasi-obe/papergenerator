@@ -72,6 +72,28 @@ ACTIONS & format content:
 • update_keywords    → content = array ["kw1","kw2"] atau string "kw1, kw2"
 • update_references  → content = array referensi (string per item)
 
+PAPER JSON STRUCTURE (dari Paper Context):
+{
+  "title": "Judul Paper",
+  "abstract": "Abstrak...",
+  "keywords": ["kw1", "kw2"],
+  "sections": [
+    {"title": "Pendahuluan", "content": [{"id": "text", "text": "..."}]},
+    {"title": "Metodologi", "content": [{"id": "text", "text": "..."}, {"id": "equation", "latex": "..."}]}
+  ],
+  "references": [{"authors": [...], "year": 2023, "title": "...", "type": "journal", ...}]
+}
+
+• Section content adalah ARRAY of blocks, bukan string tunggal
+• Block types: {"id": "text", "text": "..."} atau {"id": "equation", "latex": "...", "number": "N"}
+• References adalah array of objects (bukan string)
+
+LATEX DI JSON:
+• Di dalam JSON string, backslash harus di-escape: \frac → \\frac
+• Tapi di dalam [APPLY_PAPER] content, tulis LaTeX normal: $\frac{a}{b}$
+• Sistem akan otomatis handle escaping saat parsing
+• Contoh content dengan rumus: "Menurut rumus $E = mc^2$, energi..."
+
 MATCHING SECTION: target dicocokkan TOLERAN — abaikan huruf besar/kecil dan
 prefix nomor ("I.", "1.", "BAB II"). Jadi target "pendahuluan" cocok dengan
 section "I. PENDAHULUAN". Pakai nama section apa adanya dari paper.

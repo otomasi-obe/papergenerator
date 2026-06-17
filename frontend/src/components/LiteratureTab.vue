@@ -12,11 +12,19 @@
         </div>
         <div class="flex items-center gap-2">
           <button
-            @click="importFromFiles"
+            @click="triggerPdfUpload"
             :disabled="loading"
             class="px-3 py-1.5 rounded-lg text-xs font-medium bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 disabled:opacity-50"
-            title="Import file PDF/DOCX yang sudah diupload"
-          >📂 Import dari File</button>
+            title="Upload file PDF untuk ekstraksi metadata dan sinkronisasi"
+          >📄 Upload File PDF</button>
+          <input
+            ref="pdfFileInput"
+            type="file"
+            multiple
+            accept=".pdf,application/pdf"
+            class="hidden"
+            @change="handlePdfUpload"
+          />
           <button
             @click="showAddManual = !showAddManual"
             class="px-3 py-1.5 rounded-lg text-xs font-medium bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
@@ -500,6 +508,7 @@ const lastSlrJob = ref<SLRJob | null>(null)
 const slrCardRef = ref<HTMLElement | null>(null)
 let _pollTimer: ReturnType<typeof setTimeout> | null = null
 let _extraFastPolls = 0
+let _loadItemsInFlight = false
 
 // SLR live stream: items that arrived during active SLR
 const slrStreamItems = ref<LiteratureItem[]>([])
@@ -769,6 +778,9 @@ watch(
 
 async function loadItems(): Promise<void> {
   if (!currentPaperId.value) return
+  // Re-entrancy guard: skip if already fetching
+  if (_loadItemsInFlight) return
+  _loadItemsInFlight = true
   // Don't show full loading spinner during SLR streaming
   if (!slrRunning.value) loading.value = true
   try {
@@ -805,6 +817,7 @@ async function loadItems(): Promise<void> {
     loadError.value = 'Gagal memuat literatur: ' + (e?.response?.data?.error || e?.message || 'network error')
   } finally {
     loading.value = false
+    _loadItemsInFlight = false
   }
 }
 
@@ -861,15 +874,18 @@ async function loadJobs(): Promise<void> {
       _extraFastPolls = 1
       await loadItems()
       if (newlyDone.length > 0) {
-        const n = items.value.length
-        toast(`SLR selesai. ${n} literatur masuk.`, 'success')
+        // Show how many items this SLR job added (not total)
+        const newCount = _knownIdsBeforeSlr
+          ? items.value.filter(i => !_knownIdsBeforeSlr.has(i.id)).length
+          : items.value.length
+        toast(`SLR selesai. ${newCount} literatur masuk.`, 'success')
         try {
           const { useChatStore } = await import('../stores/chat')
           const chatStore = useChatStore()
           const j = newlyDone[0]
           const q = j?.query || ''
           const body = [
-            `✅ **SLR selesai.** ${n} literatur berhasil dikumpulkan` +
+            `✅ **SLR selesai.** ${newCount} literatur berhasil dikumpulkan` +
               (q ? ` untuk query *"${q}"*.` : '.'),
             '',
             'Mau lanjut yang mana?',
@@ -962,14 +978,17 @@ async function runSLR(): Promise<void> {
       sources: slrSources.value.length > 0 && slrSources.value.length < availableSources.value.length ? slrSources.value : null,
       year_from: slrYearFrom.value || null,
     })
+    // loadJobs() updates slrRunning based on server state — don't override
     await loadJobs()
     schedulePoll()
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'SLR failed'
     toast('SLR error: ' + msg, 'error')
-  } finally {
-    slrRunning.value = false
   }
+  // NOTE: removed `finally { slrRunning.value = false }` — loadJobs() above
+  // and schedulePoll() already set slrRunning from actual server state.
+  // The old finally caused a brief flicker where slrRunning was false between
+  // loadJobs() setting it true and finally resetting it.
 }
 
 async function cancelJob(jobId: number): Promise<void> {
@@ -993,16 +1012,77 @@ async function startSLRFromPaperTopic(): Promise<void> {
   await runSLR()
 }
 
+const pdfFileInput = ref<HTMLInputElement | null>(null)
+
+function triggerPdfUpload(): void {
+  pdfFileInput.value?.click()
+}
+
+async function handlePdfUpload(event: Event): Promise<void> {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0 || !currentPaperId.value) return
+  
+  loading.value = true
+  try {
+    const formData = new FormData()
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i])
+    }
+    
+    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/upload-pdf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    
+    const data = res?.data || {}
+    const createdCount = (data.created || []).length
+    const matchedCount = (data.matched || []).length
+    const total = data.total || 0
+    
+    if (total === 0) {
+      toast('Tidak ada file yang berhasil diupload', 'info')
+    } else {
+      const parts: string[] = []
+      if (createdCount > 0) parts.push(`${createdCount} literatur baru`)
+      if (matchedCount > 0) parts.push(`${matchedCount} file cocok dengan SLR`)
+      toast(`✅ ${parts.join(', ')} ditambahkan`, 'success')
+    }
+    
+    await loadItems()
+  } catch (e: any) {
+    toast('Upload gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+  } finally {
+    loading.value = false
+    // Reset file input so same file can be uploaded again
+    if (pdfFileInput.value) {
+      pdfFileInput.value.value = ''
+    }
+  }
+}
+
 async function importFromFiles(): Promise<void> {
+  // Legacy: import from Tools File (uses stored metadata)
   if (!currentPaperId.value) return
   loading.value = true
   try {
     const res = await api.post(`/api/papers/${currentPaperId.value}/literature/from-files`)
-    const created = (res?.data?.created || []).length
-    toast(created > 0 ? `Imported ${created} file${created === 1 ? '' : 's'}` : '0 new files', created > 0 ? 'success' : 'info')
+    const data = res?.data || {}
+    const createdCount = (data.created || []).length
+    const matchedCount = (data.matched || []).length
+    const total = data.total || 0
+    
+    if (total === 0) {
+      toast('Tidak ada file baru untuk diimport', 'info')
+    } else {
+      const parts: string[] = []
+      if (createdCount > 0) parts.push(`${createdCount} literatur baru`)
+      if (matchedCount > 0) parts.push(`${matchedCount} file cocok dengan SLR`)
+      toast(`✅ ${parts.join(', ')} ditambahkan`, 'success')
+    }
+    
     await loadItems()
   } catch (e: any) {
-    toast('Import failed: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+    toast('Import gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   } finally {
     loading.value = false
   }

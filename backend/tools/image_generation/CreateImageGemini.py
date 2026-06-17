@@ -81,7 +81,8 @@ LOG_DIR_ENV = os.environ.get("GEMINI_LOG_DIR")
 if LOG_DIR_ENV:
     LOG_DIR = Path(LOG_DIR_ENV)
 else:
-    LOG_DIR = REPO_DIR.parent / "log"
+    # Use backend/log/ for all generation logs
+    LOG_DIR = REPO_DIR.parent.parent / "log"
 
 _LOGGERS: dict[str, logging.Logger] = {}
 

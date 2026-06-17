@@ -320,7 +320,7 @@ def add_empty_para(doc, line=240):
 
 
 def _normalize_text(text: str) -> str:
-    text = text.replace("\\n", "\n")
+    text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text

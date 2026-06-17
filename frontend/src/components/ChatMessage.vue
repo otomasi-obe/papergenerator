@@ -20,6 +20,24 @@
         :stream-phase="streamPhase"
       />
 
+      <!-- Attached Images (user messages only) -->
+      <div v-if="message.images && message.images.length" class="mb-3 flex flex-wrap gap-2">
+        <div
+          v-for="(img, i) in message.images"
+          :key="i"
+          class="relative rounded-lg overflow-hidden border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 shadow-sm"
+        >
+          <img
+            :src="img.data.startsWith('data:') ? img.data : `data:image/jpeg;base64,${img.data}`"
+            :alt="img.name"
+            class="max-w-[200px] max-h-[150px] object-cover"
+          />
+          <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1.5 py-0.5 truncate">
+            {{ img.name }}
+          </div>
+        </div>
+      </div>
+
       <!-- Composing indicator: shown BELOW thinking when reasoning is done but content hasn't started -->
       <div
         v-if="streamPhase === 'composing'"
@@ -56,7 +74,11 @@
         </div>
       </div>
 
-      <!-- Text Content: RAW during streaming, RENDERED when done -->
+      <!-- Text Content: RAW during streaming, RENDERED when done.
+           NOTE (BUG-29): LaTeX/math is intentionally NOT rendered during
+           streaming to avoid flickering from incomplete LaTeX tokens.
+           Content renders as plain text with a cursor, then switches to
+           full markdown+KaTeX rendering once streaming completes. -->
       <div
         v-if="visibleContent && isActivelyStreaming"
         class="prose prose-sm max-w-none break-words whitespace-pre-wrap text-ink-900 dark:text-ink-100"

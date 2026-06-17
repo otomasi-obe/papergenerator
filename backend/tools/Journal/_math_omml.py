@@ -66,7 +66,7 @@ def _sanitize_latex(latex: str) -> str:
     s = re.sub(r"\\color\{[^}]*\}\{([^}]*)\}", r"\1", s)
     # Decode stray tab escapes but preserve LaTeX commands (\theta, \times, etc.)
     if "\\t" in s:
-        s = re.sub(r"\\t(?![a-zA-Z])", " ", s)
+        s = re.sub(r"\\t(?![a-z])", " ", s)
     if "\\u" in s:
         def _u(m):
             try:

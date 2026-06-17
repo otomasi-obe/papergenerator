@@ -22,7 +22,7 @@ import tempfile
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import redis
@@ -50,6 +50,16 @@ def get_redis():
             )
         except Exception:
             return None
+    # Health check: reconnect if stale
+    try:
+        _REDIS.ping()
+    except Exception:
+        try:
+            _REDIS.close()
+        except Exception:
+            pass
+        _REDIS = None
+        return get_redis()
     return _REDIS
 
 
@@ -99,6 +109,22 @@ def create_data_job(paper_id: str):
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
+
+    # ── Bug fix #1: Auto-mark stale data_extract jobs as error ────────
+    # Jobs stuck >10 min without progress update (worker died, restart, etc.)
+    stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=10)
+    stale_jobs = AiJob.query.filter_by(
+        paper_id=paper_id, user_id=user_id, kind="data_extract"
+    ).filter(
+        AiJob.status.in_(["queued", "running"]),
+        AiJob.updated_at < stale_threshold,
+    ).all()
+    for sj in stale_jobs:
+        sj.status = "error"
+        sj.stage = "error"
+        sj.error = "Job timeout — worker tidak respons (>10 menit tanpa update)"
+        safe_commit()
+        log.info("Auto-marked stale data job %s as error", sj.id)
 
     # Check for active job
     active = AiJob.query.filter_by(
@@ -303,7 +329,8 @@ def stream_data_job(job_id: str):
 
             # Stream live events
             try:
-                deadline = time.time() + 600  # 10 min max
+                deadline = time.time() + 900  # 15 min max (data tools AI calls can take time)
+                _hb_counter = [0]  # mutable counter for DB polling
                 while time.time() < deadline:
                     msg = pubsub.get_message(timeout=3)
                     if msg and msg["type"] == "message":
@@ -318,8 +345,24 @@ def stream_data_job(job_id: str):
                         except (json.JSONDecodeError, KeyError):
                             pass
                     else:
-                        # Heartbeat
+                        # Heartbeat — also check DB periodically for terminal status
                         yield f": heartbeat\n\n"
+                        # Every 5th heartbeat (~15s), poll DB for job completion
+                        # This catches cases where Redis pub/sub event was missed
+                        _hb_counter[0] += 1
+                        if _hb_counter[0] % 5 == 0:
+                            try:
+                                with app.app_context():
+                                    j = AiJob.query.get(job_id)
+                                    if j and j.status in ("done", "error", "cancelled"):
+                                        result_data = json.dumps({
+                                            'status': j.status, 'progress': j.progress,
+                                            'result': j.result, 'error': j.error
+                                        }, default=str)
+                                        yield f"event: {j.status}\ndata: {result_data}\n\n"
+                                        return
+                            except Exception:
+                                pass
             except GeneratorExit:
                 pass
             finally:

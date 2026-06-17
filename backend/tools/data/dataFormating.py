@@ -243,7 +243,9 @@ def format_data_with_ai(
     }
 
     try:
-        resp, model_used = route_chat_call(json=payload)
+        # Use shorter timeout for data tools (60s per endpoint, not default 180s)
+        # Data formatting should complete quickly; long hangs indicate upstream issues
+        resp, model_used = route_chat_call(json=payload, timeout=90)
         # Robust JSON parsing — AI API may return malformed response (streaming chunks, extra text)
         try:
             resp_data = resp.json()

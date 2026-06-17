@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Callable
 
 import requests
-from flask import Blueprint, Response, request, stream_with_context
+from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from .ai_client import chat as _ai_chat, stream_chat as _ai_stream

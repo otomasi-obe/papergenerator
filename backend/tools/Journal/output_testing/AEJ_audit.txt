@@ -1,0 +1,8 @@
+============================================================
+[SKOR KECOCOKAN: 82%] -> STATUS: REVISI DIBUTUHKAN
+  Base: 100 | Penalty: -18 | Akhir: 82%
+   - Section Break Waste (MINOR): -3 x 6 = -18
+============================================================
+[INFO] WARNING: Skor 82% tapi ditemukan 1 kejanggalan visual.
+[INFO] Master prompt perbaikan ditulis: audit-unik_AEJ.txt
+Audit selesai. Detail tersimpan: audit_AEJ_output.txt

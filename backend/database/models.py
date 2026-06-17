@@ -189,6 +189,14 @@ class PaperFile(db.Model):
     size_bytes = db.Column(db.Integer, default=0)
     file_path = db.Column(db.String(500), nullable=False)  # relative path in data/uploads/
     extracted_text = db.Column(db.Text, default="")  # cached text for preview
+    # PDF metadata — extracted during upload before file is deleted
+    meta_title = db.Column(db.Text, default="")
+    meta_authors = db.Column(db.Text, default="")  # JSON array
+    meta_doi = db.Column(db.String(500), default="")
+    meta_year = db.Column(db.Integer, nullable=True)
+    meta_abstract = db.Column(db.Text, default="")
+    meta_venue = db.Column(db.String(500), default="")
+    meta_publisher = db.Column(db.String(500), default="")
     created_at = db.Column(db.DateTime, default=_utcnow)
 
     def to_dict(self, include_text=False):

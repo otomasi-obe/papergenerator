@@ -31,7 +31,7 @@ def _parse_article(article) -> Paper | None:
         return None
 
     title_elem = article_elem.find(".//ArticleTitle")
-    title = title_elem.text if title_elem is not None else None
+    title = "".join(title_elem.itertext()) if title_elem is not None else None
     if not title:
         return None
 
@@ -47,9 +47,16 @@ def _parse_article(article) -> Paper | None:
             elif last is not None:
                 authors.append(last.text)
 
-    # Abstract
-    abstract_elem = article_elem.find(".//Abstract/AbstractText")
-    abstract = abstract_elem.text if abstract_elem is not None else None
+    # Abstract — join ALL AbstractText sections with itertext (handles structured abstracts)
+    abstract_parts = []
+    for at in article_elem.findall(".//Abstract/AbstractText"):
+        label = at.get("Label", "")
+        full = "".join(at.itertext())
+        if label:
+            abstract_parts.append(f"{label}: {full}")
+        else:
+            abstract_parts.append(full)
+    abstract = " ".join(abstract_parts) if abstract_parts else None
 
     # Year
     year = None

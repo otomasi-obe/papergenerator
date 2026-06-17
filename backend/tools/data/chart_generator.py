@@ -481,10 +481,11 @@ RENDERERS = {
 
 
 def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=None) -> str:
-    """Generate a chart PNG and return absolute path."""
+    """Generate a chart PNG and return absolute path (thread-safe)."""
     import matplotlib
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    import matplotlib.figure
+    import matplotlib.style
 
     if not spec.kind:
         raise ValueError("spec.kind is required")
@@ -500,30 +501,28 @@ def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=Non
     chart_id = str(uuid.uuid4())[:8]
     out_path = os.path.join(out_dir, f"{chart_id}.png")
 
+    # Apply style to figure directly (thread-safe, no global state mutation)
     _theme_name = MPL_THEMES.get(spec.theme, "default")
-    try:
-        import matplotlib.pyplot as _plt_test
-        _plt_test.style.library[_theme_name]
-    except Exception:
-        _theme_name = "default"
-
-    with plt.style.context(_theme_name):
+    style_dict = matplotlib.style.library.get(_theme_name, {})
+    with matplotlib.rc_context(style_dict):
         n_series = len(spec.data)
         colors = _get_colors(spec, max(n_series, len(spec.data[0]) if spec.data[0] else 1))
 
         is_polar = spec.kind == "radar"
         subplot_kw = {"projection": "polar"} if is_polar else {}
-        fig, ax = plt.subplots(figsize=spec.figsize, dpi=spec.dpi, subplot_kw=subplot_kw)
+        fig = matplotlib.figure.Figure(figsize=spec.figsize, dpi=spec.dpi)
+        ax = fig.add_subplot(111, **subplot_kw)
 
         try:
             _setup_axes(fig, ax, spec, is_polar=is_polar)
             renderer = RENDERERS[spec.kind]
             renderer(ax, spec, colors)
 
-            plt.tight_layout()
-            plt.savefig(out_path, bbox_inches="tight", dpi=spec.dpi, facecolor='white')
+            fig.tight_layout()
+            fig.savefig(out_path, bbox_inches="tight", dpi=spec.dpi, facecolor='white')
         finally:
-            plt.close(fig)
+            fig.clear()
+            del fig
 
     # Save to user storage
     try:
@@ -538,10 +537,13 @@ def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=Non
 
 
 def render_chart_base64(spec: ChartSpec) -> str:
-    """Render chart to base64 PNG string (for preview without saving to DB)."""
+    """Render chart to base64 PNG string (for preview without saving to DB). Thread-safe."""
     import matplotlib
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    import matplotlib.figure
+    import matplotlib.style
+    import io
+    import base64
 
     if not spec.kind:
         raise ValueError("spec.kind is required")
@@ -552,35 +554,33 @@ def render_chart_base64(spec: ChartSpec) -> str:
 
     _apply_theme(spec)
 
+    # Apply style to figure directly (thread-safe, no global state mutation)
     _theme_name = MPL_THEMES.get(spec.theme, "default")
-    try:
-        import matplotlib.pyplot as _plt_test
-        _plt_test.style.library[_theme_name]
-    except Exception:
-        _theme_name = "default"
-
-    with plt.style.context(_theme_name):
+    style_dict = matplotlib.style.library.get(_theme_name, {})
+    with matplotlib.rc_context(style_dict):
         n_series = len(spec.data)
         colors = _get_colors(spec, max(n_series, len(spec.data[0]) if spec.data[0] else 1))
 
         is_polar = spec.kind == "radar"
         subplot_kw = {"projection": "polar"} if is_polar else {}
-        fig, ax = plt.subplots(figsize=spec.figsize, dpi=min(spec.dpi, 100), subplot_kw=subplot_kw)
+        fig = matplotlib.figure.Figure(figsize=spec.figsize, dpi=min(spec.dpi, 100))
+        ax = fig.add_subplot(111, **subplot_kw)
 
         try:
             _setup_axes(fig, ax, spec, is_polar=is_polar)
             renderer = RENDERERS[spec.kind]
             renderer(ax, spec, colors)
 
-            plt.tight_layout()
+            fig.tight_layout()
 
             buf = io.BytesIO()
-            plt.savefig(buf, format='png', bbox_inches="tight",
+            fig.savefig(buf, format='png', bbox_inches="tight",
                         dpi=min(spec.dpi, 100), facecolor='white')
             buf.seek(0)
             b64 = base64.b64encode(buf.read()).decode('utf-8')
         finally:
-            plt.close(fig)
+            fig.clear()
+            del fig
 
     return f"data:image/png;base64,{b64}"
 

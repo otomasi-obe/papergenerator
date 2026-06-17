@@ -39,8 +39,20 @@ def list_users():
     total = q.count()
     users = q.limit(limit).offset(offset).all()
 
+    # Pre-load paper counts in a single query to avoid N+1
+    user_ids = [u.id for u in users]
+    paper_counts = {}
+    if user_ids:
+        rows = (
+            db.session.query(Paper.user_id, func.count(Paper.id))
+            .filter(Paper.user_id.in_(user_ids))
+            .group_by(Paper.user_id)
+            .all()
+        )
+        paper_counts = dict(rows)
+
     return jsonify({
-        "users": [{**u.to_dict(), "paper_count": len(u.papers)} for u in users],
+        "users": [{**u.to_dict(), "paper_count": paper_counts.get(u.id, 0)} for u in users],
         "pagination": {
             "limit": limit,
             "offset": offset,
@@ -123,10 +135,22 @@ def list_all_papers():
     total = q.count()
     papers = q.limit(limit).offset(offset).all()
 
+    # Pre-load image counts in a single query to avoid N+1
+    paper_ids = [p.id for p in papers]
+    image_counts = {}
+    if paper_ids:
+        rows = (
+            db.session.query(PaperImage.paper_id, func.count(PaperImage.id))
+            .filter(PaperImage.paper_id.in_(paper_ids))
+            .group_by(PaperImage.paper_id)
+            .all()
+        )
+        image_counts = dict(rows)
+
     return jsonify({
         "papers": [
             {
-                **p.to_dict(),
+                **p.to_dict(image_count=image_counts.get(p.id, 0)),
                 "user_email": p.user.email,
                 "user_name": p.user.name,
             }

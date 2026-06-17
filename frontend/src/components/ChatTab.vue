@@ -256,8 +256,8 @@
         >
           <div class="text-center">
             <div class="text-2xl mb-1">📂</div>
-            <p class="text-xs font-medium text-navy-700 dark:text-navy-300">Drop file di sini</p>
-            <p class="text-[10px] text-navy-500 dark:text-navy-400">PDF, DOCX, atau DOC</p>
+            <p class="text-xs font-medium text-navy-700 dark:text-navy-300">Drop file atau gambar di sini</p>
+            <p class="text-[10px] text-navy-500 dark:text-navy-400">PDF, DOCX, DOC, JPG, PNG, GIF, WebP</p>
           </div>
         </div>
         <!-- Upload progress bar (prominent) -->
@@ -317,6 +317,29 @@
         </div>
         <p v-if="attachWarning" class="text-[10px] text-amber-700 dark:text-amber-300 mb-1">{{ attachWarning }}</p>
 
+        <!-- Attached images preview -->
+        <div v-if="attachedImages.length" class="mb-2 flex flex-wrap gap-1.5">
+          <div
+            v-for="(img, i) in attachedImages"
+            :key="'img-' + i"
+            class="relative group rounded-md overflow-hidden border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700"
+          >
+            <img
+              :src="img.preview"
+              :alt="img.name"
+              class="w-14 h-14 object-cover"
+            />
+            <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] px-1 py-0.5 truncate">
+              {{ img.name }}
+            </div>
+            <button
+              @click="removeAttachedImage(i)"
+              class="absolute top-0 right-0 w-4 h-4 bg-red-600 text-white text-[10px] rounded-bl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Remove"
+            >✕</button>
+          </div>
+        </div>
+
         <div class="rounded-xl border-2 border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-sm focus-within:border-navy-500 dark:focus-within:border-navy-400 focus-within:ring-4 focus-within:ring-[#238f7f]/30 dark:focus-within:ring-[#4eb2a3]/30 transition-all">
           <div class="flex items-center gap-2 p-2">
             <div class="relative">
@@ -339,6 +362,11 @@
                 ><span>📤</span><span>Upload file</span></button>
                 <button
                   type="button"
+                  @click="pickImage()"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600"
+                ><span>🖼️</span><span>Upload gambar</span></button>
+                <button
+                  type="button"
                   @click="openExistingFiles()"
                   :disabled="!currentPaperId"
                   class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 disabled:opacity-40 border-t border-cream-300 dark:border-ash-600"
@@ -352,6 +380,14 @@
               multiple
               class="hidden"
               @change="onFileChange"
+            />
+            <input
+              type="file"
+              ref="imageInput"
+              accept=".jpg,.jpeg,.png,.gif,.webp"
+              multiple
+              class="hidden"
+              @change="onImageChange"
             />
             <textarea
               ref="inputRef"
@@ -376,7 +412,7 @@
             <button
               v-else
               @click="handleSend"
-              :disabled="(!inputText.trim() && !attachedFiles.length) || (activeJob && activeJob.active) || (uploadingFiles && !isStreaming)"
+              :disabled="(!inputText.trim() && !attachedFiles.length && !attachedImages.length) || (activeJob && activeJob.active) || (uploadingFiles && !isStreaming)"
                class="shrink-0 min-h-[44px] min-w-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 transition-transform flex items-center justify-center"
               title="Send"
               aria-label="Send message"
@@ -579,7 +615,16 @@ const inputText = computed({
 })
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const imageInput = ref<HTMLInputElement | null>(null)
 const attachedFiles = ref<AttachedFile[]>([])
+// ─── Attached images (base64) for VIOLA-IMAGE analysis ───
+interface AttachedImage {
+  name: string
+  data: string       // base64 data (without data URL prefix)
+  preview: string    // data URL for thumbnail display
+  size: number       // original file size in bytes
+}
+const attachedImages = ref<AttachedImage[]>([])
 const attachWarning = ref('')
 let _attachWarningTimer: number | null = null
 const uploadingFiles = ref(false)
@@ -656,6 +701,63 @@ const attachMenuOpen = ref(false)
 function pickUpload(): void {
   attachMenuOpen.value = false
   fileInput.value?.click()
+}
+
+function pickImage(): void {
+  attachMenuOpen.value = false
+  imageInput.value?.click()
+}
+
+const _MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10 MB
+
+function onImageChange(e: Event): void {
+  const target = e.target as HTMLInputElement
+  const files = Array.from(target.files || [])
+  addAttachedImages(files)
+  if (imageInput.value) imageInput.value.value = ''
+}
+
+function addAttachedImages(files: File[]): void {
+  const imageFiles = files.filter(f => /^image\/(jpeg|jpg|png|gif|webp|bmp)$/i.test(f.type))
+  if (files.length !== imageFiles.length) {
+    attachWarning.value = 'Hanya gambar JPG, PNG, GIF, WebP yang didukung.'
+    if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
+    _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+  }
+  const remaining = 5 - attachedImages.value.length
+  const toAdd = imageFiles.slice(0, remaining)
+  if (toAdd.length < imageFiles.length) {
+    attachWarning.value = 'Maksimal 5 gambar per pesan. Sisanya diabaikan.'
+    if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
+    _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+  }
+
+  for (const file of toAdd) {
+    if (file.size > _MAX_IMAGE_SIZE) {
+      attachWarning.value = `Gambar "${file.name}" terlalu besar (maks 10 MB).`
+      if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
+      _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+      continue
+    }
+    // Read file as base64
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string || ''
+      // Strip "data:image/jpeg;base64," prefix for backend
+      const b64 = dataUrl.includes(',') ? dataUrl.split(',').slice(1).join(',') : dataUrl
+      attachedImages.value.push({
+        name: file.name,
+        data: b64,
+        preview: dataUrl,
+        size: file.size,
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+function removeAttachedImage(i: number): void {
+  attachedImages.value = attachedImages.value.filter((_, idx) => idx !== i)
 }
 
 const filePickerOpen = ref(false)
@@ -1326,7 +1428,7 @@ async function doExportDraft(): Promise<void> {
 
 async function handleSend(): Promise<void> {
   const text = inputText.value.trim()
-  if ((!text && !attachedFiles.value.length) || isStreaming.value || !currentConversationId.value) return
+  if ((!text && !attachedFiles.value.length && !attachedImages.value.length) || isStreaming.value || !currentConversationId.value) return
   if (activeJob.value && activeJob.value.active) return
   let composed = text
 
@@ -1487,8 +1589,14 @@ async function handleSend(): Promise<void> {
   
   inputText.value = ''
   
+  // Collect images for VIOLA-IMAGE analysis
+  const imagesPayload = attachedImages.value.length
+    ? attachedImages.value.map(img => ({ name: img.name, data: img.data }))
+    : []
+  attachedImages.value = []
+  
   try {
-    await chatStore.sendMessage(composed)
+    await chatStore.sendMessage(composed, imagesPayload.length ? imagesPayload : undefined)
   } catch (e: any) {
     lastError.value = e.message || 'Gagal mengirim pesan'
     showToast('Gagal mengirim pesan', 'error')
@@ -1503,14 +1611,26 @@ function onFileChange(e: Event): void {
 }
 
 function addAttachedFiles(files: File[]): void {
-  const allowed = files.filter(f => /\.(pdf|docx|doc)$/i.test(f.name))
-  if (files.length !== allowed.length) {
-    attachWarning.value = 'Hanya PDF, DOCX, dan DOC yang didukung.'
-  } else {
-    attachWarning.value = ''
+  // Separate images from documents
+  const imageFiles = files.filter(f => /^image\/(jpeg|jpg|png|gif|webp|bmp)$/i.test(f.type))
+  const docFiles = files.filter(f => /\.(pdf|docx|doc)$/i.test(f.name))
+  const unsupported = files.filter(f => !imageFiles.includes(f) && !docFiles.includes(f))
+
+  // Route images to image handler
+  if (imageFiles.length) {
+    addAttachedImages(imageFiles)
   }
-  const merged = [...attachedFiles.value, ...allowed].slice(0, 5)
-  if (merged.length === 5 && (attachedFiles.value.length + allowed.length) > 5) {
+
+  if (unsupported.length) {
+    attachWarning.value = 'File tidak didukung. Gunakan PDF, DOCX, DOC, atau gambar (JPG, PNG, GIF, WebP).'
+    if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
+    _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+  }
+
+  if (!docFiles.length) return
+
+  const merged = [...attachedFiles.value, ...docFiles].slice(0, 5)
+  if (merged.length === 5 && (attachedFiles.value.length + docFiles.length) > 5) {
     attachWarning.value = 'Maksimal 5 file. Sisanya diabaikan.'
   }
   attachedFiles.value = merged as AttachedFile[]

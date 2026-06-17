@@ -248,20 +248,44 @@ def _sanitize_latex(latex: str) -> str:
     s = s.replace("\\text{", "\\mathrm{")
     s = s.replace("\\textbf{", "\\mathbf{")
     s = s.replace("\\textit{", "\\mathit{")
-    # \mathbb, \mathcal, \mathscr, \mathfrak are supported by latex2mathml - keep them
+    # \\mathbb, \\mathcal, \\mathscr, \\mathfrak are supported by latex2mathml - keep them
     s = re.sub(r"\\displaystyle\s*", "", s)
     s = s.replace("\\Big(", "\\left(").replace("\\Big)", "\\right)")
     s = s.replace("\\big(", "\\left(").replace("\\big)", "\\right)")
     s = s.replace("\\Bigl(", "\\left(").replace("\\Biggr)", "\\right)")
-    # Remove \label, \ref, \eqref, \tag (not needed, numbering is automatic)
+    # Remove \\label, \\ref, \\eqref, \\tag (not needed, numbering is automatic)
     s = re.sub(r"\\label\{[^}]*\}", "", s)
     s = re.sub(r"\\eqref\{[^}]*\}", "", s)
     s = re.sub(r"\\ref\{[^}]*\}", "", s)
     s = re.sub(r"\\tag\{[^}]*\}", "", s)
-    # Replace \boxed with plain content
+    # Replace \\boxed with plain content
     s = re.sub(r"\\boxed\{([^}]*)\}", r"\1", s)
-    # Replace \color{...}{content} with content
+    # Replace \\color{...}{content} with content
     s = re.sub(r"\\color\{[^}]*\}\{([^}]*)\}", r"\1", s)
+    # Convert Unicode superscript digits to LaTeX ^{N} (e.g. ⁸ → ^{8})
+    _sup_map = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+    sup_run = re.compile(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+")
+    parts = []
+    pos = 0
+    for m in sup_run.finditer(s):
+        parts.append(s[pos:m.start()])
+        digits = m.group().translate(_sup_map)
+        parts.append("^{" + digits + "}")
+        pos = m.end()
+    parts.append(s[pos:])
+    s = "".join(parts)
+    # Convert Unicode subscript digits to LaTeX _{N} (e.g. ₁ → _{1})
+    _sub_map = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+    sub_run = re.compile(r"[₀₁₂₃₄₅₆₇₈₉]+")
+    parts = []
+    pos = 0
+    for m in sub_run.finditer(s):
+        parts.append(s[pos:m.start()])
+        digits = m.group().translate(_sub_map)
+        parts.append("_{" + digits + "}")
+        pos = m.end()
+    parts.append(s[pos:])
+    s = "".join(parts)
     return s
 
 
@@ -333,6 +357,8 @@ def _decode_stray_escapes(text: str) -> str:
     """
     if not text:
         return text
+    # Strip literal backspace char (U+0008) — shows as empty box in Word
+    text = text.replace("\x08", "")
     if "\\u" in text:
         def _u(m):
             try:
@@ -342,10 +368,10 @@ def _decode_stray_escapes(text: str) -> str:
                 return m.group(0)
         text = re.sub(r"\\u([0-9a-fA-F]{4})", _u, text)
     if "\\t" in text:
-        # Replace literal tab escape \t with space, but NOT when it's part of
-        # a LaTeX command like \theta, \times, \text, \tan, etc.
-        # Negative lookahead: only replace \t NOT followed by a letter.
-        text = re.sub(r"\\t(?![a-zA-Z])", " ", text)
+        # Replace literal tab escape \\t with space, but NOT when it's part of
+        # a LaTeX command like \\theta, \\times, \\text, \\tan, etc.
+        # Negative lookahead: only replace \\t NOT followed by a letter.
+        text = re.sub(r"\\t(?![a-z])", " ", text)
     return text
 
 
@@ -374,7 +400,7 @@ def _clean_image_prompt(prompt: str) -> str:
 
 def _normalize_text_commands(text: str) -> str:
     text = _decode_stray_escapes(text)
-    text = text.replace("\\n", "\n")
+    text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)

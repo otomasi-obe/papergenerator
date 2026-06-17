@@ -22,20 +22,35 @@ import time
 import uuid
 from pathlib import Path
 
+import threading
 import redis
 import traceback
 
 log = logging.getLogger(__name__)
 
 _REDIS = None
+_REDIS_LOCK = threading.Lock()
 
 def get_redis():
     global _REDIS
     if _REDIS is None:
-        try:
-            _REDIS = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
-        except Exception:
-            return None
+        with _REDIS_LOCK:
+            if _REDIS is None:
+                try:
+                    _REDIS = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"), decode_responses=True)
+                except Exception:
+                    return None
+    # Health check: if connection went stale (Redis restart etc.), reconnect
+    try:
+        _REDIS.ping()
+    except Exception:
+        with _REDIS_LOCK:
+            try:
+                _REDIS.close()
+            except Exception:
+                pass
+            _REDIS = None
+        return get_redis()
     return _REDIS
 
 
@@ -150,8 +165,7 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                 return
 
             # ── Step 2: AI formatting ────────────────────────────────────────
-            job.stage = "ai_formatting"
-            job.progress = 25
+            # FIX: Do NOT close session - just commit and let SQLAlchemy manage connections
             try:
                 safe_commit()
             except Exception:
@@ -161,18 +175,32 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
 
             from tools.data.dataFormating import format_data_with_ai
 
-            if file_paths:
-                # File mode: combine user prompt with extracted file text
-                ai_prompt = combined_text
-                if user_prompt:
-                    ai_prompt = f"### Instruksi User:\n{user_prompt}\n\n### Data dari file:\n{combined_text}"
-                result = format_data_with_ai(ai_prompt, filename=", ".join(file_names))
-            else:
-                # Text-only mode: send user prompt directly
-                if not user_prompt:
-                    _finish_error(job, "Tidak ada instruksi atau file yang diberikan.")
-                    return
-                result = format_data_with_ai(user_prompt, filename="Text Input")
+            # Heartbeat thread: publish progress every 10s during AI call
+            # so SSE stream doesn't appear stuck and frontend knows job is alive
+            _ai_stop = threading.Event()
+            def _heartbeat():
+                prog = 25
+                while not _ai_stop.wait(10):
+                    prog = min(prog + 2, 48)  # slowly advance to 48%
+                    _publish(job_id, {"status": "running", "stage": "ai_formatting", "progress": prog, "message": "AI sedang menganalisis data..."})
+            _hb_thread = threading.Thread(target=_heartbeat, daemon=True)
+            _hb_thread.start()
+
+            try:
+                if file_paths:
+                    # File mode: combine user prompt with extracted file text
+                    ai_prompt = combined_text
+                    if user_prompt:
+                        ai_prompt = f"### Instruksi User:\n{user_prompt}\n\n### Data dari file:\n{combined_text}"
+                    result = format_data_with_ai(ai_prompt, filename=", ".join(file_names))
+                else:
+                    # Text-only mode: send user prompt directly
+                    if not user_prompt:
+                        _finish_error(job, "Tidak ada instruksi atau file yang diberikan.")
+                        return
+                    result = format_data_with_ai(user_prompt, filename="Text Input")
+            finally:
+                _ai_stop.set()
 
             if not result.get("tables"):
                 _finish_error(job, "AI tidak bisa memformat data dari file ini.", result=result)
@@ -197,6 +225,12 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                 return
 
             # ── Step 3: Generate charts ───────────────────────────────────────
+            # FIX: Do NOT close session - just commit and let SQLAlchemy manage connections
+            try:
+                safe_commit()
+            except Exception:
+                db.session.rollback()
+                raise
             job.stage = "generating_charts"
             job.progress = 55
             try:
@@ -206,8 +240,8 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                 raise
 
             paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            from tools.editor.utils import safe_paper_dir
-            paper_dir = safe_paper_dir(paper_id)
+            from tools.editor.utils import safe_paper_image_dir
+            paper_dir = safe_paper_image_dir(paper_id)
             if paper_dir:
                 paper_dir.mkdir(parents=True, exist_ok=True)
 
@@ -238,6 +272,12 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
 
             # ── Step 4: Finalize ──────────────────────────────────────────────
             _publish(job_id, {"status": "running", "stage": "finalizing", "progress": 95, "message": "Menyimpan hasil..."})
+
+            # Re-attach job to session (may have been detached by chart gen session ops)
+            job = AiJob.query.get(job_id)
+            if not job:
+                log.error("DataJob %s not found at finalize", job_id)
+                return
 
             table_results = []
             for t in tables:
@@ -371,8 +411,9 @@ def _extract_excel(filepath):
             parts.append("| " + " | ".join(header) + " |")
             parts.append("| " + " | ".join(["---"] * len(header)) + " |")
             for row in rows[1:]:
-                while len(row) < len(header):
-                    row.append("")
+                # Copy row before padding to avoid mutating shared list entries
+                row = list(row)
+                row += [""] * (len(header) - len(row))
                 parts.append("| " + " | ".join(row[:len(header)]) + " |")
             parts.append("")
         wb.close()
@@ -506,6 +547,14 @@ def _generate_chart_from_rec(rec, tables, paper_id, user_id, paper, paper_dir):
         shutil.move(str(out_path), str(dest))
     else:
         filename = out_path.name
+
+    # Cleanup: remove temp chart dir if empty
+    try:
+        temp_chart_dir = out_path.parent
+        if temp_chart_dir.exists() and not any(temp_chart_dir.iterdir()):
+            temp_chart_dir.rmdir()
+    except Exception:
+        pass
 
     img = PaperImage(
         paper_id=paper_id,

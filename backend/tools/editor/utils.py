@@ -58,6 +58,18 @@ def safe_paper_dir(paper_id: str) -> Path | None:
     return target
 
 
+def safe_paper_image_dir(paper_id: str) -> Path | None:
+    """Return image directory under user storage: user/<username>/<paper_id>/image/.
+
+    Falls back to legacy data/uploads/<paper_id>/ if paper/user not found.
+    All images (generated, uploaded, charts) go here.
+    """
+    base_dir = safe_paper_dir(paper_id)
+    if base_dir is None:
+        return None
+    return base_dir / "image"
+
+
 def is_image_bytes(head: bytes, ext: str) -> bool:
     """Magic-byte sniff so a renamed .exe doesn't pass as .png."""
     if not head:

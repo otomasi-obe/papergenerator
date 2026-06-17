@@ -36,6 +36,28 @@ stop_all() {
     echo ""; echo -e "${GREEN}Semua service dihentikan!${NC}"; echo ""
 }
 
+check_python_syntax() {
+    echo -e "${YELLOW}Memeriksa sintaks Python...${NC}"
+    local errors=0
+    local venv_present=false
+    [ -d "$BACKEND_DIR/.venv" ] && venv_present=true
+    while IFS= read -r -d '' f; do
+        # Skip .venv files
+        if $venv_present && [[ "$f" == "$BACKEND_DIR/.venv"* ]]; then continue; fi
+        python3 -m py_compile "$f" 2>/dev/null || {
+            echo -e "   ${RED}✗${NC} Syntax error: $f"
+            python3 -m py_compile "$f" 2>&1 | head -3
+            ((errors++))
+        }
+    done < <(find "$BACKEND_DIR" -name '*.py' -print0)
+    if [ $errors -eq 0 ]; then
+        echo -e "   ${GREEN}✓${NC} Tidak ada error sintaks Python"
+    else
+        echo -e "   ${RED}✗${NC} Ditemukan $errors error sintaks Python"
+        return 1
+    fi
+}
+
 build_frontend() {
     echo -e "${YELLOW}Building Frontend...${NC}"
     cd "$FRONTEND_DIR"; [ ! -d node_modules ] && npm install
@@ -62,18 +84,13 @@ do_start_services() {
     echo -e "${YELLOW}Starting Backend...${NC}"
     cd "$BACKEND_DIR"
     killall -9 gunicorn 2>/dev/null || true
-    pm2 start .venv/bin/gunicorn --name "paper-backend-flask" --interpreter .venv/bin/python \
-        --log "$BACKEND_LOG_DIR/backend-out.log" \
-        --error "$BACKEND_LOG_DIR/backend-error.log" \
-        -- -c gunicorn.conf.py main:app
+    pm2 start ../ecosystem.config.cjs --only paper-backend-flask 2>&1
     echo -e "   ${GREEN}✓${NC} Backend started on port $BACKEND_PORT"
     echo ""
 
     echo -e "${YELLOW}Starting RQ Worker...${NC}"
     cd "$BACKEND_DIR"
-    pm2 start worker.py --name paper-worker --interpreter .venv/bin/python \
-        --log "$BACKEND_LOG_DIR/worker-out.log" \
-        --error "$BACKEND_LOG_DIR/worker-error.log" 2>/dev/null
+    pm2 start ../ecosystem.config.cjs --only paper-worker 2>&1
     echo -e "   ${GREEN}✓${NC} RQ Worker started"
     echo ""
 
@@ -105,7 +122,8 @@ build_and_start() {
     echo -e "${CYAN}  Memulai Paper Generator (Build + Start)${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════${NC}"; echo ""
 
-    stop_all; build_frontend; echo ""
+    stop_all; check_python_syntax; echo ""
+    build_frontend; echo ""
     do_start_services
 }
 
@@ -122,12 +140,13 @@ check_status() {
 show_menu() {
     echo -e "${CYAN}Pilih opsi:${NC}"; echo ""
     echo "  1) Start (skip kalau sudah jalan)"
-    echo "  2) Build + Start"
+    echo "  2) Build + Start (cek Python + build frontend)"
     echo "  3) Stop semua service"
     echo "  4) Cek status"
-    echo ""; read -rp "Masukkan pilihan [1-4]: " choice
+    echo "  5) Cek sintaks Python saja"
+    echo ""; read -rp "Masukkan pilihan [1-5]: " choice
     case $choice in
-        1) do_start ;; 2) build_and_start ;; 3) stop_all ;; 4) check_status ;;
+        1) do_start ;; 2) build_and_start ;; 3) stop_all ;; 4) check_status ;; 5) check_python_syntax ;;
         *) echo -e "${RED}Pilihan tidak valid${NC}" ;;
     esac
 }
@@ -138,5 +157,6 @@ case "$1" in
     2|build)  build_and_start ;;
     3|stop)   stop_all ;;
     4|status) check_status ;;
+    5|syntax) check_python_syntax ;;
     *)        show_menu ;;
 esac

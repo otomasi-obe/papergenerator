@@ -1,0 +1,7 @@
+============================================================
+[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT
+  Base: 100 | Penalty: -0 | Akhir: 100%
+============================================================
+[INFO] WARNING: Skor 100% tapi ditemukan 2 kejanggalan visual.
+[INFO] Master prompt perbaikan ditulis: audit-unik_ELCTRICES.txt
+Audit selesai. Detail tersimpan: audit_ELCTRICES_output.txt

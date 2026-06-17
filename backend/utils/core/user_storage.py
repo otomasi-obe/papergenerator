@@ -252,18 +252,17 @@ def get_data_dir(username, judul_paper):
 
 
 def save_file_as_txt(username, judul_paper, text_content, filename):
-    """Save extracted text content as .txt file in file/ directory."""
+    """Save extracted text content as .txt file in file/ directory.
+
+    If a file with the same name already exists, it is overwritten (no
+    ``_1`` duplicates) because extracted text from the same source is
+    idempotent.
+    """
     base = get_paper_base(username, judul_paper)
     file_dir = _ensure_dir(base / "file")
     txt_name = Path(filename).stem + ".txt"
     safe_name = _safe(txt_name)
     filepath = file_dir / safe_name
-    if filepath.exists():
-        stem = filepath.stem
-        counter = 1
-        while filepath.exists():
-            filepath = file_dir / f"{stem}_{counter}.txt"
-            counter += 1
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(text_content)
     return filepath

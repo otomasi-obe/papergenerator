@@ -1,0 +1,7 @@
+============================================================
+[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT
+  Base: 100 | Penalty: -0 | Akhir: 100%
+============================================================
+[INFO] WARNING: Skor 100% tapi ditemukan 30 kejanggalan visual.
+[INFO] Master prompt perbaikan ditulis: audit-unik_ICIMECE.txt
+Audit selesai. Detail tersimpan: audit_ICIMECE_output.txt

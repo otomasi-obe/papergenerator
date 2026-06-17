@@ -1,0 +1,9 @@
+============================================================
+[SKOR KECOCOKAN: 20%] -> STATUS: REVISI MAYOR
+  Base: 100 | Penalty: -80 | Akhir: 20%
+   - Placeholder/Prompt Gambar Salah (MINOR): -5 x 14 = -70
+   - Blank Page / Section Kosong (MAYOR): -10
+============================================================
+[INFO] WARNING: Skor 20% tapi ditemukan 1 kejanggalan visual.
+[INFO] Master prompt perbaikan ditulis: audit-unik_IJITEE.txt
+Audit selesai. Detail tersimpan: audit_IJITEE_output.txt

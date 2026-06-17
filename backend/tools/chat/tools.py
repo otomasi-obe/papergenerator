@@ -26,10 +26,68 @@ def parse_completion(text: str) -> dict:
             "has_ask_user": bool,
         }
     """
+    # ── Brace-counting JSON extractor ────────────────────────────────────
+    def _extract_tagged_json(text: str, tag: str) -> list[str]:
+        """Extract JSON objects between [TAG]...[/TAG] using brace counting.
+
+        Handles nested braces inside JSON (which .*? regex breaks on).
+        Returns list of raw JSON strings found.
+        """
+        start_tag = f'[{tag}]'
+        results = []
+        search_from = 0
+        while True:
+            idx = text.find(start_tag, search_from)
+            if idx == -1:
+                break
+            json_start = idx + len(start_tag)
+            brace_start = text.find('{', json_start)
+            if brace_start == -1:
+                break
+            depth = 0
+            in_string = False
+            escape = False
+            found = False
+            for i in range(brace_start, len(text)):
+                ch = text[i]
+                if escape:
+                    escape = False
+                    continue
+                if ch == '\\':
+                    escape = True
+                    continue
+                if ch == '"' and not escape:
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        results.append(text[brace_start:i+1])
+                        search_from = i + 1
+                        found = True
+                        break
+            if not found:
+                break
+        return results
+
     # Parse [APPLY_PAPER]
-    apply_pattern = r"\[APPLY_PAPER\]\s*(\{.*?\})\s*\[/APPLY_PAPER\]"
-    apply_matches = re.findall(apply_pattern, text, re.DOTALL)
+    apply_matches = _extract_tagged_json(text, 'APPLY_PAPER')
     operations = []
+
+    def _fix_json_escapes(raw: str) -> str:
+        """AI puts LaTeX \\frac, \\times, \\beta etc. inside JSON strings.
+        \\f, \\t, \\b are invalid JSON escapes → json.loads crashes.
+        Even valid ones like \\t (tab), \\b (backspace) corrupt LaTeX.
+        Fix: escape ALL bare backslashes followed by letters, preserving
+        only legitimate JSON escapes (\\\\ and \\\")."""
+        # Strategy: double every backslash that is NOT part of \\\\ or \\"
+        # This turns \\frac → \\\\frac, \\times → \\\\times, \\n → \\\\n
+        # After JSON parse: \\\\frac → \\frac (literal), which is correct.
+        return re.sub(r'\\(?![\\"])', r'\\\\', raw)
 
     for match in apply_matches:
         try:
@@ -37,11 +95,58 @@ def parse_completion(text: str) -> dict:
             if isinstance(op, dict) and op.get("action"):
                 operations.append(op)
         except json.JSONDecodeError as e:
-            log.warning("Failed to parse APPLY_PAPER JSON: %s | Error: %s", match[:200], e)
+            # Retry with escaped backslashes (common LaTeX-in-JSON issue)
+            try:
+                fixed = _fix_json_escapes(match)
+                op = json.loads(fixed)
+                if isinstance(op, dict) and op.get("action"):
+                    operations.append(op)
+                    log.info("Recovered APPLY_PAPER via backslash escaping: %s", op.get("action"))
+            except json.JSONDecodeError as e2:
+                log.warning("Failed to parse APPLY_PAPER JSON: %s | Error: %s", match[:200], e2)
 
-    # Parse [ASK_USER]
-    ask_pattern = r"\[ASK_USER\]\s*(\{.*?\})\s*\[/ASK_USER\]"
-    ask_matches = re.findall(ask_pattern, text, re.DOTALL)
+    # Fallback: handle truncated [APPLY_PAPER] blocks (missing closing tag)
+    # This happens when AI runs out of tokens mid-output
+    if not operations:
+        truncated_pattern = r"\[APPLY_PAPER\]\s*(\{.*?)(?:\[/APPLY_PAPER\]|$)"
+        truncated_matches = re.findall(truncated_pattern, text, re.DOTALL)
+        for match in truncated_matches:
+            # Try to find the complete JSON object by counting braces
+            brace_count = 0
+            end_idx = 0
+            in_string = False
+            escape_next = False
+            for i, char in enumerate(match):
+                if escape_next:
+                    escape_next = False
+                    continue
+                if char == '\\':
+                    escape_next = True
+                    continue
+                if char == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end_idx = i + 1
+                        break
+            if end_idx > 0:
+                partial_json = match[:end_idx]
+                try:
+                    op = json.loads(partial_json)
+                    if isinstance(op, dict) and op.get("action"):
+                        operations.append(op)
+                        log.info("Recovered truncated APPLY_PAPER: %s", op.get("action"))
+                except json.JSONDecodeError as e:
+                    log.warning("Failed to parse truncated APPLY_PAPER: %s | Error: %s", partial_json[:200], e)
+
+    # Parse [ASK_USER] — same brace-counting approach
+    ask_matches = _extract_tagged_json(text, 'ASK_USER')
     ask_user = None
 
     for match in ask_matches:
@@ -54,8 +159,9 @@ def parse_completion(text: str) -> dict:
             log.warning("Failed to parse ASK_USER JSON: %s | Error: %s", match[:200], e)
 
     # Clean text: remove all [APPLY_PAPER]...[/APPLY_PAPER] and [ASK_USER]...[/ASK_USER] blocks
-    cleaned = re.sub(apply_pattern, "", text, flags=re.DOTALL)
-    cleaned = re.sub(ask_pattern, "", cleaned, flags=re.DOTALL).strip()
+    # Use greedy-but-bounded regex for cleanup (brace-counting above handles extraction)
+    cleaned = re.sub(r"\[APPLY_PAPER\].*?\[/APPLY_PAPER\]", "", text, flags=re.DOTALL)
+    cleaned = re.sub(r"\[ASK_USER\].*?\[/ASK_USER\]", "", cleaned, flags=re.DOTALL).strip()
 
     return {
         "operations": operations,

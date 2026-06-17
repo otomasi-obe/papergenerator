@@ -1,0 +1,240 @@
+{
+  "timestamp": "2026-06-17T23:55:03",
+  "json_used": "/home/sirobo/papergenerator/backend/tools/Journal/_template.json",
+  "results": [
+    {
+      "journal": "AEJ",
+      "status": "OK",
+      "score": 82,
+      "detail": "REVISI DIBUTUHKAN"
+    },
+    {
+      "journal": "AMORI",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "CCJ",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "CERiMRE",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "DJLIT",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "EASR",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ELCTRICES",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ELKOLIND",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ENERGIUPM",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "El-Usrah",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ICET",
+      "status": "OK",
+      "score": 87,
+      "detail": "REVISI DIBUTUHKAN"
+    },
+    {
+      "journal": "ICIMECE",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ICONIE",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ICOSEG",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "IJB",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "IJECE",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "IJEECS",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "IJIMS",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "IJITEE",
+      "status": "OK",
+      "score": 20,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "IJRED",
+      "status": "OK",
+      "score": 0,
+      "detail": "GAGAL TOTAL"
+    },
+    {
+      "journal": "IJT",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JAMRIS",
+      "status": "OK",
+      "score": 27,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JAT",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "JCEF",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JEEMECS",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JIEB",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "JMEM",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JNTETI",
+      "status": "OK",
+      "score": 97,
+      "detail": "REVISI MINOR"
+    },
+    {
+      "journal": "JOKI",
+      "status": "OK",
+      "score": 10,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JRC",
+      "status": "OK",
+      "score": 27,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JTMM",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JTRANSIENT",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "JTUNDIP",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "KKCK",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "MEV",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "ROTASI",
+      "status": "OK",
+      "score": 30,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "UITM",
+      "status": "OK",
+      "score": 100,
+      "detail": "EXCELLENT"
+    },
+    {
+      "journal": "ULTIMACOMP",
+      "status": "OK",
+      "score": 27,
+      "detail": "REVISI MAYOR"
+    },
+    {
+      "journal": "IEEE",
+      "status": "OK",
+      "score": 27,
+      "detail": "REVISI MAYOR"
+    }
+  ]
+}

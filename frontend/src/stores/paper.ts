@@ -1231,6 +1231,9 @@ export const usePaperStore = defineStore('paper', () => {
     }
   }
 
+  // Loading flag to prevent auto-save during DB reload
+  const _loadingFromDb = ref(false)
+
   async function loadPaperFromDb(paperId) {
     if (!paperId || paperId === 'null' || paperId === 'undefined') {
       showToast('Invalid paper ID', 'error')
@@ -1238,9 +1241,13 @@ export const usePaperStore = defineStore('paper', () => {
     }
     try {
       loading.value = true
+      _loadingFromDb.value = true
       const res = await api.get(`${API_BASE}/papers/${paperId}`)
       paper.value = fromPaperJsonRaw(res.data)
       currentPaperId.value = paperId
+      // Clear undo/redo stacks so Ctrl+Z doesn't revert to pre-reload state
+      undoStack.value = []
+      redoStack.value = []
       lsSet(LS_LAST_PAPER_ID, paperId)
       await loadPaperImages(paperId)
       loadPaperCharts(paperId)
@@ -1260,6 +1267,9 @@ export const usePaperStore = defineStore('paper', () => {
       return false
     } finally {
       loading.value = false
+      // Defer clearing the flag so the watcher has time to see it
+      // and skip the auto-save that would otherwise overwrite the loaded data
+      setTimeout(() => { _loadingFromDb.value = false }, 50)
     }
   }
 
@@ -1425,6 +1435,7 @@ export const usePaperStore = defineStore('paper', () => {
     resumePendingJob,
     savePaperToDb,
     loadPaperFromDb,
+    _loadingFromDb,
     applyPaperData,
     loadPaperImages,
     loadPaperCharts,

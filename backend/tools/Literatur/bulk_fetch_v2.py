@@ -12,6 +12,7 @@ Improvements over v2:
 """
 import argparse
 import json
+import logging
 import os
 import signal
 import sys
@@ -22,8 +23,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-# ── Path setup ──────────────────────────────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).parent))
+# Load API keys from .env
+from dotenv import load_dotenv
+load_dotenv("/home/sirobo/papergenerator/.env")
+
 from tor_rotator import TorRotator, get_tor, get_tor_client, rotate_ip
 
 import httpx
@@ -284,7 +287,7 @@ def parse_openalex_work(work: dict) -> dict | None:
     if not pdf_url and best_oa.get("pdf_url"):
         pdf_url = best_oa["pdf_url"]
     abstract = decode_abstract(work.get("abstract_inverted_index"))
-    doi = work.get("doi") or ""
+    doi = (work.get("doi") or "").removeprefix("https://doi.org/").removeprefix("http://doi.org/")
     work_id = work.get("id") or ""
     return {
         "doi": doi[:1000] if doi else "",
@@ -378,13 +381,19 @@ def fetch_ss_page(query: str, offset: int = 0, limit: int = 100) -> list[dict]:
                         ext = item.get("externalIds", {}) or {}
                         authors = [a.get("name", "") for a in (item.get("authors") or [])[:20]]
                         oa_pdf = item.get("openAccessPdf", {}) or {}
+                        pub_types = item.get("publicationTypes") or []
+                        venue_type = ""
+                        if pub_types:
+                            pt = pub_types[0] if isinstance(pub_types, list) and pub_types else ""
+                            if pt:
+                                venue_type = "conference" if "conference" in pt.lower() else "journal" if "journal" in pt.lower() else pt
                         papers.append({
                             "doi": ext.get("DOI", "") or "",
                             "title": title[:2000],
                             "authors": json.dumps(authors)[:5000],
                             "year": item.get("year"),
                             "venue": (item.get("venue") or "")[:500],
-                            "venue_type": "",
+                            "venue_type": venue_type[:100],
                             "abstract": item.get("abstract", "") or "",
                             "citations": item.get("citationCount", 0),
                             "is_open_access": item.get("isOpenAccess", False),
@@ -392,7 +401,7 @@ def fetch_ss_page(query: str, offset: int = 0, limit: int = 100) -> list[dict]:
                             "pdf_url": (oa_pdf.get("url") or "")[:1000],
                             "source": "semantic_scholar",
                             "source_id": item.get("paperId", ""),
-                            "paper_type": "",
+                            "paper_type": venue_type[:100],
                             "publisher": "",
                         })
                     return papers
@@ -435,16 +444,30 @@ def fetch_crossref_page(query: str, offset: int = 0, page_size: int = 20) -> lis
             doi = item.get('DOI', '')
             container = (item.get('container-title') or [''])[0] if item.get('container-title') else ''
             abstract = re.sub(r'<[^>]+>', '', item.get('abstract', '') or '')[:5000]
+            # Extract PDF URL and OA status from link array
+            pdf_url = ""
+            is_oa = False
+            for link in (item.get("link") or []):
+                url = link.get("URL", "")
+                content_type = link.get("content-type", "")
+                if "pdf" in content_type.lower() or "application/pdf" in content_type:
+                    pdf_url = url
+                    is_oa = True
+                    break
+                if "openaccess" in (link.get("intended-application") or "").lower():
+                    is_oa = True
+            if not pdf_url and doi:
+                pdf_url = f"https://doi.org/{doi}"
             papers.append({
                 "doi": doi[:1000] if doi else "",
                 "title": title[:2000],
                 "authors": json.dumps(authors)[:5000],
-                "year": year, "venue": container[:500], "venue_type": "",
+                "year": year, "venue": container[:500], "venue_type": item.get("type", "")[:100],
                 "abstract": abstract,
                 "citations": item.get("is-referenced-by-count", 0),
-                "is_open_access": False,
+                "is_open_access": is_oa,
                 "url": f"https://doi.org/{doi}" if doi else "",
-                "pdf_url": "", "source": "crossref",
+                "pdf_url": pdf_url[:1000], "source": "crossref",
                 "source_id": doi or "",
                 "paper_type": (item.get("type", "") or "")[:100],
                 "publisher": (item.get("publisher") or "")[:500],
@@ -455,9 +478,10 @@ def fetch_crossref_page(query: str, offset: int = 0, page_size: int = 20) -> lis
 
 
 def fetch_pubmed_page(query: str, retstart: int = 0, retmax: int = 50) -> list[dict]:
-    """PubMed E-utilities, free."""
+    """PubMed E-utilities — uses efetch XML to get full abstracts."""
     _rate_wait('pubmed')
     try:
+        from xml.etree import ElementTree as ET
         r = httpx.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
             params={"db": "pubmed", "term": query, "retmax": retmax,
                     "retstart": retstart, "format": "json", "sort": "relevance",
@@ -468,33 +492,73 @@ def fetch_pubmed_page(query: str, retstart: int = 0, retmax: int = 50) -> list[d
         pmids = r.json().get("esearchresult", {}).get("idlist", [])
         if not pmids:
             return []
-        r2 = httpx.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
-            params={"db": "pubmed", "id": ",".join(pmids), "format": "json"},
-            timeout=20.0)
+        r2 = httpx.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi",
+            params={"db": "pubmed", "id": ",".join(pmids), "retmode": "xml"},
+            timeout=30.0)
         if r2.status_code != 200:
             return []
-        d2 = r2.json().get("result", {})
+        root = ET.fromstring(r2.content)
         papers = []
-        for pmid in pmids:
-            doc = d2.get(pmid)
-            if not doc:
+        for article in root.findall('.//PubmedArticle'):
+            pmid_elem = article.find('.//PMID')
+            pmid = pmid_elem.text if pmid_elem is not None else None
+            if not pmid:
                 continue
-            title = doc.get('title', '')
+            title_elem = article.find('.//ArticleTitle')
+            title = ''.join(title_elem.itertext()) if title_elem is not None else ''
             if not title:
                 continue
-            authors = [a.get('name', '') for a in doc.get('authors', [])[:20]]
-            dois = [x.get('value', '') for x in doc.get('articleids', []) if x.get('idtype') == 'doi']
-            doi = dois[0] if dois else ''
-            pubdate = doc.get('pubdate', '')
-            year = int(pubdate[:4]) if pubdate and pubdate[:4].isdigit() else None
+            # Authors
+            authors = []
+            for author in article.findall('.//AuthorList/Author'):
+                last = author.find('LastName')
+                first = author.find('ForeName')
+                if last is not None and last.text:
+                    name = f"{first.text} {last.text}" if first is not None and first.text else last.text
+                    authors.append(name)
+            # Abstract — join ALL AbstractText sections with itertext
+            abstract_parts = []
+            for at in article.findall('.//Abstract/AbstractText'):
+                label = at.get('Label', '')
+                full = ''.join(at.itertext())
+                if label:
+                    abstract_parts.append(f'{label}: {full}')
+                else:
+                    abstract_parts.append(full)
+            abstract = ' '.join(abstract_parts)
+            # Year
+            year_elem = article.find('.//Journal/JournalIssue/PubDate/Year')
+            year = None
+            if year_elem is not None and year_elem.text:
+                try:
+                    year = int(year_elem.text)
+                except (ValueError, TypeError):
+                    pass
+            # Venue
+            journal_elem = article.find('.//Journal/Title')
+            venue = journal_elem.text if journal_elem is not None else ''
+            # DOI + PMC
+            doi = ''
+            pmc_id = ''
+            for aid in article.findall('.//PubmedData/ArticleIdList/ArticleId'):
+                if aid.get('IdType') == 'doi':
+                    doi = aid.text or ''
+                elif aid.get('IdType') == 'pmc':
+                    pmc_id = aid.text or ''
+            pdf_url = ''
+            if pmc_id:
+                pdf_url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}/pdf/"
+            elif doi:
+                pdf_url = f"https://doi.org/{doi}"
             papers.append({
                 "doi": doi[:1000] if doi else "", "title": title[:2000],
                 "authors": json.dumps(authors)[:5000], "year": year,
-                "venue": (doc.get('source', '') or '')[:500], "venue_type": "",
-                "abstract": "", "citations": 0, "is_open_access": False,
-                "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else "",
-                "pdf_url": "", "source": "pubmed", "source_id": pmid,
-                "paper_type": "journal-article", "publisher": "",
+                "venue": (venue or '')[:500], "venue_type": "journal",
+                "abstract": abstract[:5000], "citations": 0,
+                "is_open_access": bool(pmc_id),
+                "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                "pdf_url": pdf_url[:1000], "source": "pubmed", "source_id": pmid,
+                "paper_type": "journal-article", "publisher": "NLM",
             })
         return papers
     except Exception:
@@ -944,17 +1008,47 @@ def fetch_openaire_page(query: str, page: int = 1, per_page: int = 50) -> list[d
                 abstract = abstract_raw.get("$", "")
             journal = oaf.get("journal") or {}
             venue = journal.get("name") or journal.get("$") or "" if isinstance(journal, dict) else ""
+            # Extract PDF URL and OA status from instance
+            instances = oaf.get("instance") or []
+            if isinstance(instances, dict):
+                instances = [instances]
+            pdf_url = ""
+            is_oa = False
+            for inst in instances:
+                accessright = inst.get("accessright") or {}
+                if accessright.get("code") == "OPEN":
+                    is_oa = True
+                host_url = inst.get("hostedby") or {}
+                if isinstance(host_url, dict):
+                    host_url = host_url.get("$") or ""
+                ref_url = inst.get("url") or {}
+                if isinstance(ref_url, dict):
+                    ref_url = ref_url.get("$") or ""
+                if ref_url and ".pdf" in ref_url.lower():
+                    pdf_url = ref_url
+                    is_oa = True
+                    break
+                if host_url and ".pdf" in host_url.lower():
+                    pdf_url = host_url
+                    is_oa = True
+                    break
+            if not pdf_url and doi:
+                pdf_url = f"https://doi.org/{doi}"
+            # Extract publisher from journal or collectedfrom
+            publisher = ""
+            if isinstance(journal, dict):
+                publisher = journal.get("publisher") or ""
             papers.append({
                 "doi": (doi or "")[:1000], "title": str(title)[:2000],
                 "authors": json.dumps(authors[:20])[:5000], "year": year,
                 "venue": str(venue)[:500], "venue_type": "journal" if venue else "",
                 "abstract": str(abstract)[:5000],
-                "citations": 0, "is_open_access": False,
+                "citations": 0, "is_open_access": is_oa,
                 "url": f"https://doi.org/{doi}" if doi else "",
-                "pdf_url": "", "source": "openaire",
+                "pdf_url": pdf_url[:1000], "source": "openaire",
                 "source_id": str(oaf.get("id", doi or "")),
                 "paper_type": (oaf.get("type") or "")[:100],
-                "publisher": "",
+                "publisher": str(publisher)[:500],
             })
         return papers
     except Exception:
@@ -994,16 +1088,26 @@ def fetch_datacite_page(query: str, page: int = 1, per_page: int = 50) -> list[d
             publisher = attr.get("publisher")
             if isinstance(publisher, dict):
                 publisher = publisher.get("name")
+            # Extract venue from containerTitle
+            container = attr.get("containerTitle") or {}
+            venue = container.get("title", "") if isinstance(container, dict) else str(container) if container else ""
+            if not venue:
+                # Fallback: publisher as venue
+                venue = publisher or ""
+            # Extract URL
+            landing_url = attr.get("url") or ""
+            if not landing_url and doi:
+                landing_url = f"https://doi.org/{doi}"
             papers.append({
                 "doi": (doi or "")[:1000], "title": title[:2000],
                 "authors": json.dumps(authors[:20])[:5000], "year": year,
-                "venue": "", "venue_type": "",
+                "venue": str(venue)[:500], "venue_type": attr.get("types", {}).get("resourceTypeGeneral", "")[:100] if isinstance(attr.get("types"), dict) else "",
                 "abstract": abstract[:5000],
                 "citations": 0, "is_open_access": False,
-                "url": f"https://doi.org/{doi}" if doi else "",
-                "pdf_url": "", "source": "datacite",
+                "url": landing_url[:1000],
+                "pdf_url": landing_url[:1000], "source": "datacite",
                 "source_id": str(item.get("id", doi or "")),
-                "paper_type": "", "publisher": (publisher or "")[:500],
+                "paper_type": (attr.get("types", {}).get("resourceType", "") if isinstance(attr.get("types"), dict) else "")[:100], "publisher": (publisher or "")[:500],
             })
         return papers
     except Exception:
@@ -1044,15 +1148,21 @@ def fetch_zenodo_page(query: str, page: int = 1, per_page: int = 50) -> list[dic
                     break
             landing = hit.get("links", {}).get("self_html") or (f"https://doi.org/{doi}" if doi else "")
             abstract = re.sub(r'<[^>]+>', '', metadata.get("description") or "")[:5000]
+            # Extract venue from journal
+            journal = metadata.get("journal") or {}
+            venue = journal.get("title", "") if isinstance(journal, dict) else str(journal) if journal else ""
+            # Extract resource type
+            res_type = metadata.get("resource_type") or {}
+            paper_type = res_type.get("type", "") if isinstance(res_type, dict) else str(res_type) if res_type else ""
             papers.append({
                 "doi": (doi or "")[:1000], "title": title[:2000],
                 "authors": json.dumps(authors[:20])[:5000], "year": year,
-                "venue": "", "venue_type": "",
+                "venue": str(venue)[:500], "venue_type": paper_type[:100],
                 "abstract": abstract,
                 "citations": 0, "is_open_access": True,
                 "url": landing[:1000], "pdf_url": pdf_url[:1000],
                 "source": "zenodo", "source_id": str(hit.get("id", "")),
-                "paper_type": "", "publisher": (metadata.get("publisher") or "")[:500],
+                "paper_type": paper_type[:100], "publisher": (metadata.get("publisher") or "")[:500],
             })
         return papers
     except Exception:
@@ -1333,8 +1443,153 @@ def _run_zenodo(topic, target, counter, lock):
             'skipped': fails >= MAX_CONSECUTIVE_FAIL}
 
 
+def _run_scopus(topic, target, counter, lock):
+    """Scopus fetcher - uses Scopus API with ELSEVIER_API_KEY."""
+    global _warned
+    api_key = os.getenv("ELSEVIER_API_KEY")
+    if not api_key:
+        if not _warned:
+            logging.getLogger(__name__).info("scopus fetcher skipped: ELSEVIER_API_KEY not set")
+            _warned = True
+        return {'source': 'scopus', 'fetched': 0, 'offset': 0, 'skipped': True}
+
+    total = 0; start = 0; fails = 0
+    headers = {"X-ELS-APIKey": api_key, "Accept": "application/json"}
+    url = "https://api.elsevier.com/content/search/scopus"
+
+    while not shutdown_requested and total < 1000 and start < 5000:
+        with lock:
+            if counter['total'] >= target: break
+        _rate_wait('scopus')
+        try:
+            client = httpx.Client(timeout=20.0)
+            r = client.get(url, params={
+                "query": topic, "count": min(25, 1000 - total), "start": start, "sort": "-relevancy",
+            }, headers=headers)
+            if r.status_code != 200:
+                fails += 1
+                logging.getLogger(__name__).error(f"scopus API returned {r.status_code}: {r.text[:100]}")
+                if fails >= MAX_CONSECUTIVE_FAIL: break
+                continue
+            data = r.json()
+            entries = data.get("search-results", {}).get("entry", [])
+            if not entries:
+                break
+            papers = []
+            for entry in entries:
+                if entry.get("error"): continue
+                title = entry.get("dc:title", "")
+                if not title: continue
+                doi = entry.get("prism:doi", "")
+                papers.append({
+                    "doi": doi[:1000] if doi else "",
+                    "title": title[:2000],
+                    "authors": json.dumps([entry.get("dc:creator", "")])[:5000],
+                    "year": int(str(entry.get("prism:coverDate", "2020"))[:4]),
+                    "venue": entry.get("prism:publicationName", "")[:500],
+                    "venue_type": "journal" if entry.get("prism:aggregationType") == "Journal" else "conference" if "conference" in entry.get("prism:aggregationType", "").lower() else "",
+                    "abstract": "",  # Scopus search doesn't return abstracts
+                    "citations": int(entry.get("citedby-count", 0)) if entry.get("citedby-count") else 0,
+                    "is_open_access": entry.get("openaccess") == "1",
+                    "url": f"https://doi.org/{doi}" if doi else "",
+                    "pdf_url": "",
+                    "source": "scopus",
+                    "source_id": entry.get("dc:identifier", "").replace("SCOPUS_ID:", ""),
+                    "paper_type": entry.get("prism:aggregationType", "")[:100],
+                    "publisher": entry.get("dc:publisher", "")[:500],
+                })
+            if papers:
+                inserted = upsert_papers(papers)
+                logging.getLogger(__name__).info(f"scopus: fetched {len(papers)}, inserted {inserted}")
+                with lock: counter['total'] += inserted
+                total += inserted
+            start += len(entries)
+            time.sleep(0.5)
+        except Exception as e:
+            fails += 1
+            logging.getLogger(__name__).error(f"scopus exception: {e}")
+            if fails >= MAX_CONSECUTIVE_FAIL: break
+            time.sleep(1)
+    return {'source': 'scopus', 'fetched': total, 'offset': start,
+            'skipped': fails >= MAX_CONSECUTIVE_FAIL}
+
+
+def _run_core(topic, target, counter, lock):
+    """CORE fetcher - uses CORE API with CORE_API_KEY."""
+    global _warned
+    api_key = os.getenv("CORE_API_KEY")
+    if not api_key:
+        if not _warned:
+            logging.getLogger(__name__).info("core fetcher skipped: CORE_API_KEY not set")
+            _warned = True
+        return {'source': 'core', 'fetched': 0, 'offset': 0, 'skipped': True}
+
+    total = 0; offset = 0; fails = 0
+    headers = {"Authorization": f"Bearer {api_key}"}
+    url = "https://api.core.ac.uk/v3/search/works"
+
+    while not shutdown_requested and total < 1000:
+        with lock:
+            if counter['total'] >= target: break
+        _rate_wait('core')
+        try:
+            client, port = get_tor_client(timeout=20.0)
+            r = client.post(url, json={
+                "q": topic, "limit": min(100, 1000 - total), "offset": offset, "sort": [],
+            }, headers=headers)
+            if r.status_code != 200:
+                fails += 1
+                if fails >= MAX_CONSECUTIVE_FAIL: break
+                continue
+            data = r.json()
+            results = data.get("results", [])
+            if not results:
+                break
+            papers = []
+            for item in results:
+                title = item.get("title", "")
+                if not title: continue
+                doi = item.get("doi")
+                if not doi and isinstance(item.get("identifiers"), list):
+                    for ident in item["identifiers"]:
+                        if isinstance(ident, dict) and ident.get("type") == "doi":
+                            doi = ident.get("identifier"); break
+                pdf_url = item.get("downloadUrl") or (item.get("sourceFulltextUrls") or [None])[0] if item.get("sourceFulltextUrls") else ""
+                landing = item.get("urls", [None])[0] if item.get("urls") else ""
+                if not landing and doi: landing = f"https://doi.org/{doi}"
+                authors = [a.get("name", "") for a in (item.get("authors") or [])[:20]]
+                year = None
+                y = item.get("yearPublished")
+                if y:
+                    try: year = int(str(y)[:4])
+                    except: pass
+                papers.append({
+                    "doi": (doi or "")[:1000], "title": title[:2000],
+                    "authors": json.dumps(authors)[:5000], "year": year,
+                    "venue": (item.get("publisher") or "")[:500], "venue_type": "",
+                    "abstract": (item.get("abstract") or "")[:5000],
+                    "citations": 0, "is_open_access": True,
+                    "url": (landing or "")[:1000], "pdf_url": (pdf_url or "")[:1000],
+                    "source": "core",
+                    "source_id": str(item.get("id", "")),
+                    "paper_type": "", "publisher": (item.get("publisher") or "")[:500],
+                })
+            if papers:
+                upsert_papers(papers)
+                with lock: counter['total'] += len(papers)
+                total += len(papers)
+            offset += len(results)
+            time.sleep(0.5)
+        except Exception:
+            fails += 1
+            if fails >= MAX_CONSECUTIVE_FAIL: break
+            time.sleep(1)
+    return {'source': 'core', 'fetched': total, 'offset': offset,
+            'skipped': fails >= MAX_CONSECUTIVE_FAIL}
+
+
 # ═══════════════════════════════════════════════════════════════════════════
-# TOPIC PROCESSOR — spawns all 15 fetchers in parallel
+# TOPIC PROCESSOR — spawns all 17 fetchers in parallel
 # ═══════════════════════════════════════════════════════════════════════════
 
 ALL_FETCHERS = [
@@ -1352,6 +1607,8 @@ ALL_FETCHERS = [
     ('openaire', _run_openaire),
     ('datacite', _run_datacite),
     ('zenodo', _run_zenodo),
+    ('scopus', _run_scopus),
+    ('core', _run_core),
 ]
 
 
@@ -1476,7 +1733,7 @@ def run_daemon(workers: int = WORKERS, continuous: bool = True):
     global shutdown_requested
 
     log("=" * 60)
-    log("🚀 MEGA FETCH DAEMON V3 — 15 SOURCES PARALLEL")
+    log("🚀 MEGA FETCH DAEMON V3 — 17 SOURCES PARALLEL")
     log(f"   Workers: {workers} | Continuous: {continuous}")
 
     stats = get_stats()
@@ -1574,7 +1831,7 @@ def run_daemon(workers: int = WORKERS, continuous: bool = True):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Mega Fetch Daemon V3 — 15 sources")
+    parser = argparse.ArgumentParser(description="Mega Fetch Daemon V3 — 17 sources")
     parser.add_argument("--workers", type=int, default=WORKERS, help="Parallel topic workers")
     parser.add_argument("--stats", action="store_true", help="Show stats and exit")
     parser.add_argument("--once", action="store_true", help="Run one cycle only (no continuous)")

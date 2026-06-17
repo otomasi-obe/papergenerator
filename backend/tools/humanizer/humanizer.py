@@ -46,21 +46,21 @@ log = logging.getLogger(__name__)
 # Tier 1: Dead giveaways (3pts each) - these appear 5-25x more in AI text
 _SLOP_REPLACEMENTS = {
     # === ORIGINAL PATTERNS ===
-    r'\bfurthermore\b': ['Moreover,', 'Also,', 'And', ''],
-    r'\bmoreover\b': ['Also,', 'Plus,', 'And', ''],
-    r'\badditionally\b': ['Also,', 'Plus,', 'On top of that,', ''],
-    r'\bconsequently\b': ['So,', 'As a result,', 'Thus,', ''],
-    r'\bnevertheless\b': ['Still,', 'Even so,', 'But', ''],
-    r'\bnonetheless\b': ['Still,', 'Even so,', 'But', ''],
-    r'\bhowever\b': ['But', 'Yet', 'Still,', ''],
-    r'\btherefore\b': ['So,', 'Thus,', 'Hence,', ''],
-    r'\bthus\b': ['So,', 'Hence,', 'This means', ''],
-    r'\bhence\b': ['So,', 'This means', 'For this reason,', ''],
-    r'\bsubsequently\b': ['Then,', 'After that,', 'Later,', ''],
-    r'\bspecifically\b': ['In particular,', 'Namely,', ''],
-    r'\bnotably\b': ['Notably,', 'Interestingly,', ''],
-    r'\bsignificantly\b': ['Notably,', 'Importantly,', ''],
-    r'\bimportantly\b': ['Notably,', 'Crucially,', ''],
+    r'\bfurthermore,?\b': ['Moreover,', 'Also,', 'And', ''],
+    r'\bmoreover,?\b': ['Also,', 'Plus,', 'And', ''],
+    r'\badditionally,?\b': ['Also,', 'Plus,', 'On top of that,', ''],
+    r'\bconsequently,?\b': ['So,', 'As a result,', 'Thus,', ''],
+    r'\bnevertheless,?\b': ['Still,', 'Even so,', 'But', ''],
+    r'\bnonetheless,?\b': ['Still,', 'Even so,', 'But', ''],
+    r'\bhowever,?\b': ['But', 'Yet', 'Still,', ''],
+    r'\btherefore,?\b': ['So,', 'Thus,', 'Hence,', ''],
+    r'\bthus,?\b': ['So,', 'Hence,', 'This means', ''],
+    r'\bhence,?\b': ['So,', 'This means', 'For this reason,', ''],
+    r'\bsubsequently,?\b': ['Then,', 'After that,', 'Later,', ''],
+    r'\bspecifically,?\b': ['In particular,', 'Namely,', ''],
+    r'\bnotably,?\b': ['Notably,', 'Interestingly,', ''],
+    r'\bsignificantly,?\b': ['Notably,', 'Importantly,', ''],
+    r'\bimportantly,?\b': ['Notably,', 'Crucially,', ''],
     r'\bit is important to note that\b': ['Note that', 'Note:', ''],
     r'\bit should be noted that\b': ['Note that', 'Note:', ''],
     r'\bit is worth mentioning that\b': ['', 'Worth noting:', ''],
@@ -258,20 +258,26 @@ _INTENSITY_CONFIGS = {
 _AI_TIER1_PATTERNS = [
     r'\bdelve\b', r'\btapestry\b', r'\btestament\b', r'\binterplay\b',
     r'\bintricac', r'\bvibrant\b', r'\bshowcas', r'\bundercor',
-    r'\bfoster', r'\bgarners\b', r'\bcornerstone\b']
+    r'\bfoster', r'\bgarners?\b', r'\bcornerstone\b',
+    r'\bembark (on|upon)\b', r'\bharness', r'\bunlock', r'\bunveil',
+    r'\bever-(evolving|changing|growing)\b', r'\bnavigate\b']
 
 _AI_TIER2_PATTERNS = [
     r'\bsynergy\b', r'\bleverage\b', r'\bparadigm\b', r'\becosystem\b',
     r'\brobust\b', r'\bscalable\b', r'\bseamless\b', r'\bcutting-edge\b',
     r'\bstate-of-the-art\b', r'\bever-evolving\b', r'\bmultifaceted\b',
     r'\bpivotal\b', r'\btransformative\b', r'\bgroundbreaking\b',
-    r'\brevolutionary\b', r'\bholistic\b']
+    r'\brevolutionary\b', r'\bholistic\b', r'\bprofound\b',
+    r'\bseamless integration\b', r'\bvaluable insights\b',
+    r'\bplays a (key|pivotal|crucial|vital) role\b']
 
 _AI_TIER3_PATTERNS = [
     r'\bfurthermore\b', r'\bmoreover\b', r'\badditionally\b',
     r'\bnevertheless\b', r'\bnonetheless\b', r'\bsubsequently\b',
-    r'\bspecifically\b', r'\bnotably\b', r'\bsignificantly\b'
-]
+    r'\bspecifically\b', r'\bnotably\b', r'\bsignificantly\b',
+    r'\bit is important to note\b', r'\bit is worth noting\b',
+    r'\bit should be noted\b', r'\bin conclusion\b',
+    r'\bto summarize\b', r'\bin summary\b']
 
 
 class TextHumanizer:
@@ -326,6 +332,9 @@ class TextHumanizer:
 
         # Clean up double spaces
         result = re.sub(r'  +', ' ', result)
+        # Clean up double commas from replacement artifacts
+        result = re.sub(r',,\s*', ', ', result)
+        result = re.sub(r',\s*,\s*', ', ', result)
         # Clean up empty lines from removed phrases
         result = re.sub(r'\n{3,}', '\n\n', result)
         return result.strip()
@@ -697,6 +706,12 @@ class TextHumanizer:
         if config["vary_sentences"]:
             result = self.vary_sentences(result, intensity=effective_intensity)
 
+        # Always apply transition reduction (major Turnitin signal)
+        result = self._reduce_transitions(result)
+
+        # Always apply uniformity breaking
+        result = self._break_uniformity(result)
+
         if config["grammar_prepass"]:
             result = self._grammar_prepass_low_risk(result)
 
@@ -704,6 +719,114 @@ class TextHumanizer:
         result = re.sub(r'  +', ' ', result)
         result = re.sub(r'\n{3,}', '\n\n', result)
         return result.strip()
+
+    def _reduce_transitions(self, text: str) -> str:
+        """Reduce excessive explicit transition words — fold them into sentence structure.
+        
+        Turnitin AIR-1 specifically measures transition word density.
+        Target: max 2 per paragraph, 30%+ of paragraphs open without a transition."""
+        if not text or not text.strip():
+            return text
+        
+        paragraphs = text.split('\n')
+        result_paragraphs = []
+        
+        # Transition words that are most AI-signaling at sentence/paragraph start
+        _SENTENCE_START_TRANSITIONS = [
+            (r'^(Furthermore,\s*)', ''),
+            (r'^(Moreover,\s*)', ''),
+            (r'^(Additionally,\s*)', ''),
+            (r'^(Consequently,\s*)', ''),
+            (r'^(Nevertheless,\s*)', ''),
+            (r'^(Nonetheless,\s*)', ''),
+            (r'^(Subsequently,\s*)', ''),
+            (r'^(Importantly,\s*)', ''),
+        ]
+        
+        transition_count = 0
+        for para in paragraphs:
+            if not para.strip():
+                result_paragraphs.append(para)
+                continue
+            
+            sentences = re.split(r'(?<=[.!?])\s+', para)
+            new_sentences = []
+            para_transition_count = 0
+            
+            for j, sent in enumerate(sentences):
+                modified = sent
+                # Only strip transitions from sentence starts (not mid-sentence)
+                if para_transition_count < 2:  # Keep max 2 per paragraph
+                    for pattern, repl in _SENTENCE_START_TRANSITIONS:
+                        if re.match(pattern, modified, re.IGNORECASE):
+                            # 50% chance to keep, 50% to remove (for variety)
+                            if j % 2 == 0:
+                                modified = re.sub(pattern, repl, modified, flags=re.IGNORECASE)
+                                if modified and modified[0].islower():
+                                    modified = modified[0].upper() + modified[1:]
+                            para_transition_count += 1
+                            break
+                else:
+                    # Already hit max, strip all remaining
+                    for pattern, repl in _SENTENCE_START_TRANSITIONS:
+                        modified = re.sub(pattern, repl, modified, flags=re.IGNORECASE)
+                        if modified and modified[0].islower():
+                            modified = modified[0].upper() + modified[1:]
+                
+                new_sentences.append(modified)
+            
+            result_paragraphs.append(' '.join(new_sentences))
+        
+        return '\n'.join(result_paragraphs)
+
+    def _break_uniformity(self, text: str) -> str:
+        """Break paragraph and sentence uniformity patterns.
+        
+        Targets:
+        - 3+ consecutive paragraphs of similar sentence count
+        - 3+ consecutive sentences of similar word count
+        - Identical paragraph arc patterns
+        """
+        if not text or not text.strip():
+            return text
+        
+        paragraphs = text.split('\n')
+        result_paragraphs = []
+        
+        for i, para in enumerate(paragraphs):
+            if not para.strip():
+                result_paragraphs.append(para)
+                continue
+            
+            sentences = re.split(r'(?<=[.!?])\s+', para)
+            
+            # If we have 3+ consecutive short sentences, merge the last two
+            if len(sentences) >= 3:
+                new_sentences = []
+                j = 0
+                while j < len(sentences):
+                    sent = sentences[j]
+                    word_count = len(sent.split())
+                    
+                    # Check if next sentence is also short
+                    if (j + 1 < len(sentences) and 
+                        word_count < 8 and 
+                        len(sentences[j + 1].split()) < 8):
+                        # Merge with comma or conjunction
+                        next_sent = sentences[j + 1]
+                        next_lower = next_sent[0].lower() + next_sent[1:]
+                        merged = sent.rstrip('.!?') + ', and ' + next_lower
+                        new_sentences.append(merged)
+                        j += 2
+                    else:
+                        new_sentences.append(sent)
+                        j += 1
+                
+                result_paragraphs.append(' '.join(new_sentences))
+            else:
+                result_paragraphs.append(para)
+        
+        return '\n'.join(result_paragraphs)
 
     def _grammar_prepass_low_risk(self, text: str) -> str:
         """Apply ONLY wordy + academic tone suggestions from GrammarChecker.

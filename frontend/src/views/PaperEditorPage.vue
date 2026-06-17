@@ -419,7 +419,7 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import draggable from 'vuedraggable'
 import { usePaperStore } from '../stores/paper.js'
@@ -430,21 +430,23 @@ import AppHeader from '../components/AppHeader.vue'
 import AppDialog from '../components/AppDialog.vue'
 import ShortcutsHelp from '../components/ShortcutsHelp.vue'
 import ContentList from '../components/ContentList.vue'
-import FilesTab from '../components/FilesTab.vue'
-import JournalTab from '../components/JournalTab.vue'
-import LiteratureTab from '../components/LiteratureTab.vue'
-import PreviewTab from '../components/PreviewTab.vue'
-import ChatTab from '../components/ChatTab.vue'
-import DataTab from '../components/DataTab.vue'
-import PaperfullTab from '../components/PaperfullTab.vue'
-import ImageTab from '../components/ImageTab.vue'
-import ToolsTab from '../components/ToolsTab.vue'
-import WordAddonInstallModal from '@/components/WordAddonInstallModal.vue'
 import { useToolsStore } from '../stores/tools.ts'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
 import { useUserStateStore } from '../stores/userState'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useKeyboardShortcuts'
+
+// Lazy-loaded tab components (shown conditionally; no need to bundle eagerly)
+const PreviewTab = defineAsyncComponent(() => import('../components/PreviewTab.vue'))
+const ChatTab = defineAsyncComponent(() => import('../components/ChatTab.vue'))
+const JournalTab = defineAsyncComponent(() => import('../components/JournalTab.vue'))
+const LiteratureTab = defineAsyncComponent(() => import('../components/LiteratureTab.vue'))
+const FilesTab = defineAsyncComponent(() => import('../components/FilesTab.vue'))
+const DataTab = defineAsyncComponent(() => import('../components/DataTab.vue'))
+const PaperfullTab = defineAsyncComponent(() => import('../components/PaperfullTab.vue'))
+const ImageTab = defineAsyncComponent(() => import('../components/ImageTab.vue'))
+const ToolsTab = defineAsyncComponent(() => import('../components/ToolsTab.vue'))
+const WordAddonInstallModal = defineAsyncComponent(() => import('@/components/WordAddonInstallModal.vue'))
 
 const store = usePaperStore()
 const ui = useUiStore()
@@ -749,6 +751,9 @@ function cancelCurrentJob() {
 
 watch(() => store.paper, () => {
   if (_justLoaded) { _justLoaded = false; return }
+  // Skip auto-save when paper is being reloaded from DB (e.g., paper_applied event)
+  // to prevent the stale frontend data from overwriting the AI's edits
+  if (store._loadingFromDb) return
   if (!store.paper.title?.trim() && !store.currentPaperId) return
   clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(async () => {

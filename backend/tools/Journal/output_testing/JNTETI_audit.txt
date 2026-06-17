@@ -1,0 +1,7 @@
+============================================================
+[SKOR KECOCOKAN: 97%] -> STATUS: REVISI MINOR
+  Base: 100 | Penalty: -3 | Akhir: 97%
+   - Section Break Waste (MINOR): -3
+============================================================
+[INFO] Master prompt perbaikan ditulis: audit-unik_JNTETI.txt
+Audit selesai. Detail tersimpan: audit_JNTETI_output.txt

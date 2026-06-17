@@ -1,0 +1,7 @@
+============================================================
+[SKOR KECOCOKAN: 10%] -> STATUS: REVISI MAYOR
+  Base: 100 | Penalty: -90 | Akhir: 10%
+   - Placeholder/Prompt Gambar Salah (MINOR): -5 x 14 = -70
+   - Logo Jurnal Hilang (MAYOR): -10 x 2 = -20
+============================================================
+Audit selesai. Detail tersimpan: audit_JOKI_output.txt

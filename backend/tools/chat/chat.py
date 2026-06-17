@@ -45,6 +45,17 @@ def get_redis():
                     )
                 except Exception:
                     return None
+    # Health check: if connection went stale (Redis restart etc.), reconnect
+    try:
+        _REDIS.ping()
+    except Exception:
+        with _REDIS_LOCK:
+            try:
+                _REDIS.close()
+            except Exception:
+                pass
+            _REDIS = None
+        return get_redis()
     return _REDIS
 
 
@@ -86,8 +97,8 @@ def load_system_prompt() -> str:
     except FileNotFoundError:
         log.warning("chatPrompt.txt not found at %s, using fallback prompt", path)
         _system_prompt_cache = (
-            "You are a helpful academic writing assistant. "
-            "Answer the user's questions clearly and concisely."
+            "Anda adalah asisten AI yang membantu pengguna menulis paper akademik. "
+            "Jawab pertanyaan pengguna dengan jelas dan ringkas."
         )
     return _system_prompt_cache
 
@@ -98,6 +109,10 @@ def get_paper_context(paper_id: str | None) -> str:
     Returns the complete paper JSON so the AI always has up-to-date
     context (title, abstract, sections with full content, references, etc.)
     and can edit it via [APPLY_PAPER] tags.
+
+    Smart truncation: progressively trims section text content and
+    reference count while keeping valid JSON structure. This ensures
+    the AI can always parse the paper data.
     """
     if not paper_id:
         return ""
@@ -113,17 +128,65 @@ def get_paper_context(paper_id: str | None) -> str:
     # Always include paper_id in the context for [APPLY_PAPER] operations
     data["_paper_id"] = paper_id
 
-    # Serialize full paper JSON — AI sees everything
+    # Serialize full paper data
     try:
         paper_json = json.dumps(data, indent=2, ensure_ascii=False)
     except (TypeError, ValueError):
         paper_json = str(data)
 
-    # Cap at ~30000 chars to avoid blowing up context window on very large papers
-    if len(paper_json) > 30000:
-        paper_json = paper_json[:30000] + "\n... [TRUNCATED — paper data exceeds 30K chars]"
+    MAX_CONTEXT = 80000  # raised from 30K — full papers with 60+ refs need this
 
-    return paper_json
+    if len(paper_json) <= MAX_CONTEXT:
+        return paper_json
+
+    # Smart truncation: trim section text content progressively
+    import copy as _copy
+
+    d = _copy.deepcopy(data)
+    truncated = False
+
+    # Step 1: trim long text blocks in sections (keep 2000 chars per block)
+    for sec in d.get("sections", []):
+        for block in sec.get("content", []):
+            if isinstance(block, dict) and block.get("text") and len(block["text"]) > 2000:
+                block["text"] = block["text"][:2000] + "... [dipotong — terlalu panjang]"
+                truncated = True
+
+    result = json.dumps(d, indent=2, ensure_ascii=False)
+    if len(result) <= MAX_CONTEXT:
+        if truncated:
+            result += "\n// Beberapa konten section dipotong. Gunakan [APPLY_PAPER] untuk membaca/mengedit section lengkap."
+        return result
+
+    # Step 2: trim references (keep 40)
+    refs = d.get("references", [])
+    if refs and len(refs) > 40:
+        kept = refs[:40]
+        omitted = len(refs) - 40
+        d["references"] = kept
+        if "sections" not in d or not isinstance(d.get("sections"), list):
+            d["sections"] = []
+        d["sections"].append({
+            "title": "_SYSTEM_NOTE",
+            "content": [{"id": "text", "text": f"… dan {omitted} referensi lain dihilangkan dari konteks untuk menghemat ruang. Tanyakan user jika butuh detail."}],
+        })
+        truncated = True
+
+    result = json.dumps(d, indent=2, ensure_ascii=False)
+    if len(result) <= MAX_CONTEXT:
+        if truncated:
+            result += "\n// Paper context dipotong. Gunakan [APPLY_PAPER] untuk mengedit section di luar konteks yang terlihat."
+        return result
+
+    # Step 3: harder trim (1000 chars per text block)
+    for sec in d.get("sections", []):
+        for block in sec.get("content", []):
+            if isinstance(block, dict) and block.get("text") and len(block["text"]) > 1000:
+                block["text"] = block["text"][:1000] + "... [dipotong]"
+
+    result = json.dumps(d, indent=2, ensure_ascii=False)
+    result += "\n// [Truncated: sections beyond 80K chars not shown — some content was aggressively trimmed. Use [APPLY_PAPER] to edit specific sections.]"
+    return result
 
 
 # ─── Conversation CRUD ─────────────────────────────────────────────────────
@@ -286,12 +349,23 @@ def send_message(conv_id: str):
 
     data = request.get_json(silent=True) or {}
     content = (data.get("content") or "").strip()
+    images = data.get("images") or []  # base64 images: [{"data": "...", "name": "..."}]
+
+    # Detect image-only request (no text, just images)
+    image_only = not content and images
+
+    # Auto-generate prompt for image-only
+    if image_only:
+        content = "Analisis gambar yang saya lampirkan."
+
     if not content:
         return jsonify({"error": "Message content is required"}), 400
     if len(content) > 100000:
         return jsonify({"error": "Message is too long (max 100000 chars)"}), 400
+    if len(images) > 5:
+        return jsonify({"error": "Maksimal 5 gambar per pesan"}), 400
 
-    log.info("simple_chat.send conv=%s user=%s len=%d", conv_id, user_id, len(content))
+    log.info("simple_chat.send conv=%s user=%s len=%d images=%d image_only=%s", conv_id, user_id, len(content), len(images), image_only)
 
     # Save user message to database
     try:
@@ -370,22 +444,28 @@ def send_message(conv_id: str):
 
     # ── @slr tag: inject pinned literature into system prompt ────────────
     # User ketik @slr di pesan → ambil literatur yang di-pin dan injeksi
-    # sebagai reference context. Tag @slr dihapus dari pesan sebelum ke AI.
+    # sebagai reference context. Tag @slr dihapus dari pesan sebelum ke AI
+    # HANYA jika literatur berhasil diinjeksi.
     slr_tag_detected = False
     if "@slr" in content.lower():
         slr_tag_detected = True
-        # Hapus @slr dari konten user (case-insensitive)
-        content = re.sub(r"@slr\b", "", content, flags=re.IGNORECASE).strip()
         if conv.paper_id:
             try:
                 pinned_text = get_pinned_literature(conv.paper_id, user_id, max_items=10)
                 if pinned_text:
                     system_content += f"## SLR References (Pinned)\n{pinned_text}\n\n"
+                    # Only strip @slr if literature was actually injected
+                    content = re.sub(r"@slr\b", "", content, flags=re.IGNORECASE).strip()
                     log.info("@slr tag: injected %d pinned literature items for paper=%s", pinned_text.count("\n[") + 1, conv.paper_id)
                 else:
-                    log.info("@slr tag: no pinned literature for paper=%s", conv.paper_id)
+                    # No pinned literature — keep @slr so AI sees it, add a note
+                    system_content += "## SLR Note\nUser used @slr but no pinned literature found for this paper. Suggest running an SLR search.\n\n"
+                    log.info("@slr tag: no pinned literature for paper=%s, keeping tag in message", conv.paper_id)
             except Exception as e:
                 log.warning("@slr tag: failed to load pinned literature: %s", e)
+        else:
+            # No paper_id — strip @slr to avoid confusion
+            content = re.sub(r"@slr\b", "", content, flags=re.IGNORECASE).strip()
 
     # ── @draft tag: inject named chat drafts into system prompt ───────────
     # User writes "@draft <name>" or "@draft name1,name2" → fetch those drafts
@@ -433,6 +513,91 @@ def send_message(conv_id: str):
                 log.info("@tabel/@grafik tag: no data items for paper=%s", conv.paper_id)
         except Exception as e:
             log.warning("@tabel/@grafik tag: failed to load data items: %s", e)
+
+    # ── 📷 Image analysis: VIOLA-IMAGE ────────────────────────────────────
+    # Image-only request → call VIOLA-IMAGE directly and return as response
+    # Image + text → inject analysis into system prompt for chat model
+    image_analysis_text = ""
+    if images:
+        try:
+            from tools.chat.image_analysis import analyze_images
+            image_analysis_text = analyze_images(images, user_prompt=content)
+
+            # Check if analysis failed (returned error messages instead of actual analysis)
+            if "[Image analysis failed" in image_analysis_text or "[Image analysis:" in image_analysis_text:
+                log.warning("Image analysis returned errors for conv=%s: %s", conv_id, image_analysis_text[:200])
+                # Return error to user instead of continuing with failed analysis
+                def error_stream():
+                    yield _sse("error", {"message": f"Gagal menganalisa gambar. Error: {image_analysis_text[:200]}"})
+                    yield _sse("done", {"message_id": None})
+                return Response(
+                    stream_with_context(error_stream()),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                )
+
+            if image_only and image_analysis_text:
+                # Image-only: return analysis directly as assistant response
+                log.info("Image-only request: returning VIOLA-IMAGE analysis directly for conv=%s", conv_id)
+
+                # Save user message to filesystem (already done at lines 346-354, but re-save with image metadata)
+                # Note: user message already saved by standard flow above, skip duplicate
+
+                # Save assistant message to DB
+                try:
+                    assistant_msg = ChatMessage(
+                        conversation_id=conv_id,
+                        role="assistant",
+                        content=image_analysis_text
+                    )
+                    db.session.add(assistant_msg)
+                    safe_commit()
+                except Exception as e:
+                    log.exception("Failed to save assistant message: %s", e)
+                    db.session.rollback()
+                    # Return error as SSE stream
+                    def error_stream():
+                        yield _sse("error", {"message": "Gagal menyimpan hasil analisa gambar."})
+                        yield _sse("done", {"message_id": None})
+                    return Response(
+                        stream_with_context(error_stream()),
+                        mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                    )
+
+                # Save assistant message to filesystem
+                try:
+                    save_chat_recv_by_id(
+                        username=username,
+                        paper_id=conv.paper_id,
+                        data={
+                            "content": image_analysis_text,
+                            "role": "assistant",
+                            "message_id": assistant_msg.id,
+                        },
+                        conv_id=conv_id
+                    )
+                except Exception as e:
+                    log.warning("Failed to save assistant message to filesystem: %s", e)
+
+                # Return as SSE stream (direct response)
+                def image_analysis_stream():
+                    yield _sse("text", {"content": image_analysis_text})
+                    yield _sse("done", {"message_id": assistant_msg.id})
+
+                return Response(
+                    stream_with_context(image_analysis_stream()),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                )
+
+            elif image_analysis_text:
+                # Image + text: inject analysis into system prompt
+                system_content += image_analysis_text + "\n\n"
+                log.info("Image analysis injected: %d images, %d chars for conv=%s",
+                         len(images), len(image_analysis_text), conv_id)
+        except Exception as e:
+            log.warning("Image analysis failed for conv=%s: %s", conv_id, e)
 
     # ── Search tool integration ───────────────────────────────────────────
     # Detect user intent and run searches BEFORE calling AI, so the AI
@@ -742,7 +907,7 @@ def send_message(conv_id: str):
                 json={
                     "messages": messages_phase1,
                     "stream": True,
-                    "max_tokens": 4096,
+                    "max_tokens": 8192,
                 },
                 stream=True,
                 timeout=900,
@@ -915,7 +1080,7 @@ def send_message(conv_id: str):
                     json={
                         "messages": messages_phase2,
                         "stream": True,
-                        "max_tokens": 4096,
+                        "max_tokens": 8192,
                     },
                     stream=True,
                     timeout=900,

@@ -136,10 +136,16 @@ def _collect_gambar_prompts(paper_data: dict) -> list[dict]:
 def _collect_section4_chart_specs(paper_data: dict) -> list[dict]:
     """Collect section 4 gambar items with chart specifications.
 
-    Returns list of dicts: {ImageNumber, Title, Path, Prompt (chart spec)}.
+    Returns list of dicts: {
+        ImageNumber, Title, Path, Prompt (chart spec text),
+        data_tools_payload (structured chart JSON from LLM, OPTIONAL),
+        source_tables (list of table dicts from section 4, OPTIONAL),
+    }.
     These are fed into the data tools pipeline for matplotlib chart generation.
     """
     specs = []
+    _section4_tables: list[dict] = []
+
     if not isinstance(paper_data, dict):
         return specs
 
@@ -147,12 +153,23 @@ def _collect_section4_chart_specs(paper_data: dict) -> list[dict]:
         if isinstance(obj, dict):
             if obj.get("id") == "gambar" and in_section4:
                 p = obj.get("Prompt") or obj.get("prompt") or ""
-                specs.append({
+                payload = obj.get("data_tools_payload") or obj.get("data_tools")
+                spec = {
                     "ImageNumber": obj.get("ImageNumber", ""),
                     "Title": obj.get("Title", ""),
                     "Path": obj.get("Path", ""),
                     "Prompt": p.strip() if isinstance(p, str) else "",
-                })
+                }
+                # Attach structured data_tools_payload if present
+                if isinstance(payload, dict):
+                    spec["data_tools_payload"] = payload
+                # Attach source tables from section 4 for data context
+                if _section4_tables:
+                    spec["source_tables"] = list(_section4_tables)
+                specs.append(spec)
+            # Collect tables in section 4 for chart context
+            if (obj.get("id") == "tabel" or obj.get("type") == "table") and in_section4:
+                _section4_tables.append(obj)
             for k, v in obj.items():
                 child_in_section4 = in_section4 or (isinstance(k, str) and bool(
                     re.match(r'section4[a-z]?$', k)
@@ -183,8 +200,16 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
     if not isinstance(paper_data, dict):
         return
 
-    # Find all generated images for this paper
-    paper_upload_dir = upload_base / paper_id
+    # Find all generated images for this paper (check primary user storage first, then legacy)
+    try:
+        from tools.editor.utils import safe_paper_image_dir
+        primary_dir = safe_paper_image_dir(paper_id)
+        if primary_dir and primary_dir.exists():
+            paper_upload_dir = primary_dir
+        else:
+            paper_upload_dir = upload_base / paper_id
+    except ImportError:
+        paper_upload_dir = upload_base / paper_id
     if not paper_upload_dir.exists():
         log.debug("[reconcile_sections] No upload folder for paper %s", paper_id)
         return
@@ -287,7 +312,7 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
                 # Find matching image
                 matched = _find_matching_image(obj)
                 if matched:
-                    obj["Path"] = matched.name
+                    obj["Path"] = str(matched.resolve())
                     used_images.add(str(matched.resolve()))
                     log.debug("[reconcile_sections] Mapped gambar to %s", matched.name)
             # Recurse into all dict values
@@ -333,6 +358,7 @@ def _auto_generate_data_charts(paper_id: str, user_id: int, data_texts: list[str
     )
     db.session.add(job)
     if not safe_commit():
+        log.warning("[paperfull] Chart job creation failed: safe_commit returned False for job %s", job_id)
         return None
 
     # Fire background thread
@@ -344,7 +370,19 @@ def _auto_generate_data_charts(paper_id: str, user_id: int, data_texts: list[str
         args=(app, job_id, paper_id, user_id, combined),
         daemon=True,
     )
-    thread.start()
+    try:
+        thread.start()
+    except Exception as e:
+        # Thread start failed (e.g., resource exhaustion) — mark job as error
+        try:
+            job = AiJob.query.get(job_id)
+            if job:
+                job.status = "error"
+                job.error = f"Thread start failed: {e}"
+                safe_commit()
+        except Exception:
+            db.session.rollback()
+        return None
 
     return job_id
 
@@ -385,6 +423,7 @@ def _auto_generate_section4_charts(
     )
     db.session.add(job)
     if not safe_commit():
+        log.warning("[paperfull] Chart job creation failed: safe_commit returned False for job %s", job_id)
         return None
 
     # Fire background thread
@@ -397,7 +436,19 @@ def _auto_generate_section4_charts(
         args=(app, job_id, paper_id, user_id, valid_specs, combined_data),
         daemon=True,
     )
-    thread.start()
+    try:
+        thread.start()
+    except Exception as e:
+        # Thread start failed (e.g., resource exhaustion) — mark job as error
+        try:
+            job = AiJob.query.get(job_id)
+            if job:
+                job.status = "error"
+                job.error = f"Thread start failed: {e}"
+                safe_commit()
+        except Exception:
+            db.session.rollback()
+        return None
 
     return job_id
 
@@ -408,28 +459,121 @@ def _run_section4_chart_render(
 ):
     """Background worker: Generate matplotlib charts from section 4 specs.
 
-    Each spec contains a Prompt with:
-    - Chart type (bar/line/scatter/pie/stacked_bar/heatmap)
-    - Data (actual numbers from Excel)
-    - Axis labels
-    - Title
-    - Style preferences
+    Each spec may contain:
+    - data_tools_payload: structured JSON chart spec (from LLM) → use chart_generator directly
+    - Prompt: text with chart type + markdown table data → use legacy _render_matplotlib_chart
+    - source_tables: section 4 table data → use chart_generator with section 4 data
 
-    This reads the spec directly and generates the chart via matplotlib,
-    without needing a separate AI formatting step.
+    Falls back to VIOLA-CHAT (via format_data_with_ai) when no structured data is available.
     """
     import logging
     logger = logging.getLogger(__name__)
 
     with app.app_context():
         from database.models import AiJob, PaperImage, Paper, db, safe_commit
-        from tools.editor.utils import safe_paper_dir
+        from tools.editor.utils import safe_paper_image_dir
         from pathlib import Path
         import re
 
         job = AiJob.query.get(job_id)
         if not job:
             return
+
+        def _save_paper_image_record(chart_path: str, title: str, idx: int, img_num: str):
+            """Save PaperImage DB record for a generated chart."""
+            if not chart_path or not paper:
+                return
+            try:
+                safe_num = re.sub(r'[^0-9]', '', str(img_num)) or str(idx + 1)
+                chart_filename = Path(chart_path).name
+                img_record = PaperImage(
+                    paper_id=paper_id,
+                    user_id=user_id,
+                    filename=chart_filename,
+                    original_name=title or f"Chart {safe_num}",
+                    file_path=f"{paper_id}/{chart_filename}",
+                )
+                db.session.add(img_record)
+                safe_commit()
+                logger.info("[sec4_charts] Saved PaperImage record for %s", chart_filename)
+            except Exception as e_img:
+                logger.warning("[sec4_charts] Failed to save image record: %s", e_img)
+                db.session.rollback()
+
+        def _render_from_payload(payload: dict, idx: int, img_num: str) -> str | None:
+            """Render chart directly from data_tools_payload via chart_generator."""
+            try:
+                from tools.data.auto_data_tools import _payload_to_chart_spec, _generate_chart_from_spec
+                spec_dict = _payload_to_chart_spec(payload, paper_id)
+                if not spec_dict:
+                    logger.warning("[sec4_charts] _payload_to_chart_spec returned None for spec %d", idx)
+                    return None
+                chart_title = payload.get("title") or title or f"Chart {img_num}"
+                result = _generate_chart_from_spec(
+                    spec_dict, user_id, paper_id, chart_title
+                )
+                if result:
+                    return result.get("path")
+            except Exception as e:
+                logger.warning("[sec4_charts] _render_from_payload failed for spec %d: %s", idx, e)
+            return None
+
+        def _render_from_tables(tables: list[dict], idx: int, img_num: str, chart_kind: str = "bar") -> str | None:
+            """Render chart from section 4 table data via chart_generator."""
+            if not tables:
+                return None
+            try:
+                from tools.data.chart_generator import ChartSpec, generate_chart
+                import shutil
+
+                tbl = tables[0]
+                cols = tbl.get("columns") or tbl.get("headers") or []
+                rows = tbl.get("rows") or tbl.get("data") or []
+                if not cols or not rows:
+                    return None
+
+                # First column is categories, rest are series
+                categories = [str(r[0]) if isinstance(r, list) and r else str(r) for r in rows]
+                data_rows = []
+                for col_idx in range(1, len(cols)):
+                    series = []
+                    for r in rows:
+                        if isinstance(r, list) and col_idx < len(r):
+                            v = str(r[col_idx]).replace("%", "").replace(",", "").strip()
+                            try:
+                                series.append(float(v))
+                            except (ValueError, TypeError):
+                                series.append(0.0)
+                        else:
+                            series.append(0.0)
+                    data_rows.append(series)
+
+                if not data_rows:
+                    return None
+
+                spec = ChartSpec(
+                    kind=chart_kind,
+                    title=title or f"Chart {img_num}",
+                    xlabel=cols[0] if cols else "",
+                    ylabel=cols[1] if len(cols) > 1 else "",
+                    data=data_rows,
+                    series_labels=cols[1:] if len(cols) > 1 else ["Value"],
+                    x_data=categories,
+                    color_palette="academic",
+                    theme="clean",
+                )
+
+                safe_num = re.sub(r'[^0-9]', '', str(img_num)) or str(idx + 1)
+                out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=title))
+                # Move to paper image directory
+                if paper_dir:
+                    dest = paper_dir / out_path.name
+                    shutil.move(str(out_path), str(dest))
+                    return str(dest)
+                return str(out_path)
+            except Exception as e:
+                logger.warning("[sec4_charts] _render_from_tables failed for spec %d: %s", idx, e)
+            return None
 
         try:
             job.status = "running"
@@ -438,69 +582,101 @@ def _run_section4_chart_render(
             safe_commit()
 
             paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            paper_dir = safe_paper_dir(paper_id)
+            paper_dir = safe_paper_image_dir(paper_id)
             if paper_dir:
                 paper_dir.mkdir(parents=True, exist_ok=True)
 
             created_charts = []
             for idx, spec in enumerate(chart_specs):
+                chart_path = None
                 try:
-                    prompt = spec["Prompt"]
+                    prompt = spec.get("Prompt", "")
                     title = spec.get("Title", "")
                     img_num = spec.get("ImageNumber", str(idx + 1))
-                    path_hint = spec.get("Path", "")
 
-                    # Parse chart type from prompt
-                    chart_type = "bar"  # default
-                    type_match = re.search(
-                        r'(bar|line|scatter|pie|stacked_bar|heatmap|area)\s*(chart|plot|graph)?',
-                        prompt, re.IGNORECASE
-                    )
-                    if type_match:
-                        chart_type = type_match.group(1).lower()
+                    # ── PATH 1: data_tools_payload present → use chart_generator directly ──
+                    payload = spec.get("data_tools_payload")
+                    if payload and isinstance(payload, dict):
+                        logger.info("[sec4_charts] Spec %d: using data_tools_payload (kind=%s)",
+                                   idx, payload.get("kind", "?"))
+                        chart_path = _render_from_payload(payload, idx, img_num)
 
-                    # Extract data table from prompt (markdown table format)
-                    data_table = _extract_data_from_spec(prompt)
-                    if not data_table:
-                        # Try to extract from combined_data as fallback
-                        logger.warning("[sec4_charts] No data in spec %d prompt, trying combined_data", idx)
-                        data_table = _extract_data_from_spec(combined_data)
+                    # ── PATH 2: source_tables present → render from section 4 table data ──
+                    if not chart_path:
+                        source_tables = spec.get("source_tables", [])
+                        if source_tables:
+                            # Parse chart kind from prompt
+                            chart_kind = "bar"
+                            type_match = re.search(
+                                r'(bar|line|scatter|pie|stacked_bar|heatmap|area)\s*(chart|plot|graph)?',
+                                prompt, re.IGNORECASE
+                            )
+                            if type_match:
+                                chart_kind = type_match.group(1).lower()
+                            logger.info("[sec4_charts] Spec %d: using source_tables (%d tables, kind=%s)",
+                                       idx, len(source_tables), chart_kind)
+                            chart_path = _render_from_tables(source_tables, idx, img_num, chart_kind)
 
-                    if not data_table:
-                        logger.warning("[sec4_charts] No data found for spec %d, skipping", idx)
-                        continue
+                    # ── PATH 3: Parse markdown table from Prompt text ──
+                    if not chart_path and prompt:
+                        chart_type = "bar"
+                        type_match = re.search(
+                            r'(bar|line|scatter|pie|stacked_bar|heatmap|area)\s*(chart|plot|graph)?',
+                            prompt, re.IGNORECASE
+                        )
+                        if type_match:
+                            chart_type = type_match.group(1).lower()
 
-                    # Generate chart via matplotlib
-                    chart_info = _render_matplotlib_chart(
-                        chart_type=chart_type,
-                        data_table=data_table,
-                        title=title or _extract_title_from_prompt(prompt),
-                        prompt=prompt,
-                        paper_id=paper_id,
-                        paper_dir=paper_dir,
-                        img_num=img_num,
-                    )
-                    if chart_info:
-                        created_charts.append(chart_info)
-                        # Save PaperImage record with correct model fields
+                        data_table = _extract_data_from_spec(prompt)
+                        if not data_table and combined_data:
+                            logger.warning("[sec4_charts] Spec %d: no data in prompt, trying combined_data", idx)
+                            data_table = _extract_data_from_spec(combined_data)
+
+                        if data_table:
+                            logger.info("[sec4_charts] Spec %d: using legacy markdown parse", idx)
+                            chart_info = _render_matplotlib_chart(
+                                chart_type=chart_type,
+                                data_table=data_table,
+                                title=title or _extract_title_from_prompt(prompt),
+                                prompt=prompt,
+                                paper_id=paper_id,
+                                paper_dir=paper_dir,
+                                img_num=img_num,
+                            )
+                            if chart_info:
+                                chart_path = chart_info.get("path")
+
+                    # ── PATH 4: VIOLA-CHAT fallback — analyze combined_data ──
+                    if not chart_path and combined_data:
                         try:
-                            img_path = chart_info.get("path", "")
-                            if img_path and paper:
-                                safe_num = re.sub(r'[^0-9]', '', str(img_num)) or str(idx + 1)
-                                chart_filename = f"fig{safe_num}_chart.png"
-                                img_record = PaperImage(
-                                    paper_id=paper_id,
-                                    user_id=user_id,
-                                    filename=chart_filename,
-                                    original_name=title or f"Chart {safe_num}",
-                                    file_path=f"{paper_id}/{chart_filename}",
-                                )
-                                db.session.add(img_record)
-                                safe_commit()
-                                logger.info("[sec4_charts] Saved PaperImage record for %s", chart_filename)
-                        except Exception as e_img:
-                            logger.warning("[sec4_charts] Failed to save image record: %s", e_img)
-                            db.session.rollback()
+                            logger.info("[sec4_charts] Spec %d: VIOLA-CHAT fallback for data analysis", idx)
+                            from tools.data.dataFormating import format_data_with_ai
+                            result = format_data_with_ai(
+                                f"### Instruksi: Data untuk grafik section 4 paper akademik\n"
+                                f"### Gambar: {title or prompt[:80]}\n\n{combined_data}",
+                                filename=title or f"chart_{img_num}",
+                            )
+                            tables = result.get("tables", [])
+                            recs = result.get("chart_recommendations", [])
+                            if tables and recs:
+                                rec = recs[0]
+                                chart_kind = rec.get("kind", "bar")
+                                logger.info("[sec4_charts] Spec %d: VIOLA-CHAT returned %d tables, %d recs (kind=%s)",
+                                           idx, len(tables), len(recs), chart_kind)
+                                chart_path = _render_from_tables(tables, idx, img_num, chart_kind)
+                        except Exception as e_ai:
+                            logger.warning("[sec4_charts] Spec %d: VIOLA-CHAT fallback failed: %s", idx, e_ai)
+
+                    if chart_path:
+                        chart_filename = Path(chart_path).name
+                        created_charts.append({
+                            "path": chart_path,
+                            "filename": chart_filename,
+                            "title": title or f"Chart {img_num}",
+                        })
+                        _save_paper_image_record(chart_path, title, idx, img_num)
+                    else:
+                        logger.warning("[sec4_charts] Spec %d: all render paths failed, skipping", idx)
 
                     progress = 10 + int(80 * (idx + 1) / len(chart_specs))
                     job.progress = progress
@@ -547,6 +723,33 @@ def _extract_data_from_spec(prompt: str) -> list[dict] | None:
     import re
 
     # Try markdown table
+    lines = prompt.strip().split('\n')
+    if len(lines) >= 2:
+        header_line = lines[0].strip('|')
+        headers = [h.strip() for h in header_line.split('|')]
+        if len(headers) >= 2:
+            # Skip separator row (contains only dashes), rest = data rows
+            data_rows = []
+            for line in lines[1:]:
+                row_str = line.strip().strip('|')
+                if not row_str:
+                    continue
+                cells = [c.strip() for c in row_str.split('|')]
+                # Skip separator rows
+                if all(c.replace('-', '').replace(':', '').strip() == '' for c in cells):
+                    continue
+                if len(cells) == len(headers):
+                    data_rows.append(dict(zip(headers, cells)))
+                elif len(cells) > 0:
+                    # Pad or trim
+                    padded = cells[:len(headers)]
+                    while len(padded) < len(headers):
+                        padded.append("")
+                    data_rows.append(dict(zip(headers, padded)))
+            if data_rows:
+                return data_rows
+
+    # Legacy fallback: regex-based parsing
     md_pattern = re.findall(r'\|(.+?)\|', prompt)
     if len(md_pattern) >= 3:
         # First row = headers, rest = data rows
@@ -780,7 +983,7 @@ def _run_data_chart_render(app, job_id: str, paper_id: str, user_id: int, combin
 
     with app.app_context():
         from database.models import AiJob, PaperImage, Paper, db, safe_commit
-        from tools.editor.utils import safe_paper_dir
+        from tools.editor.utils import safe_paper_image_dir
         from pathlib import Path
 
         job = AiJob.query.get(job_id)
@@ -871,7 +1074,7 @@ def _run_data_chart_render(app, job_id: str, paper_id: str, user_id: int, combin
             safe_commit()
 
             paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            paper_dir = safe_paper_dir(paper_id)
+            paper_dir = safe_paper_image_dir(paper_id)
             if paper_dir:
                 paper_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1279,6 +1482,27 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
     environments without an RQ worker still progress. Both paths read the
     same resume_state shape.
     """
+    # Resolve language for resume — AiJob has no language column, so we
+    # check resume_state first (where the orchestrator stashes it), then
+    # user preference. Limitation: if neither source has it, language
+    # defaults to None and the worker uses the orchestrator's fallback
+    # (typically "id" based on the prompt filename). The original request
+    # language is not accessible here because _enqueue_resume only receives
+    # the job object and resume_state.
+    _resume_lang = None
+    # 1. Try resume_state (set by the chunked orchestrator).
+    if resume_state and isinstance(resume_state, dict):
+        _resume_lang = resume_state.get("language") or resume_state.get("lang")
+    # 2. Try user's preferred_language.
+    if not _resume_lang:
+        try:
+            from database.models import User as _UserModel
+            _u = _UserModel.query.get(job.user_id)
+            if _u and _u.preferred_language:
+                _resume_lang = _u.preferred_language
+        except Exception:
+            pass
+
     # Lazy imports so this module stays importable in alembic/test contexts.
     try:
         from rq import Queue
@@ -1291,15 +1515,9 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
         q = Queue("paper", connection=_r)
         q.enqueue(
             run_generate_paper,
-            args=(
-                job.id,
-                job.user_id,
-                job.paper_id,
-                job.prompt or "",
-                None,
-                None,
-            ),
-            kwargs={"resume_state": resume_state} if resume_state else {},
+            job.id, job.user_id, job.paper_id, job.prompt or "",
+            None, None, _resume_lang,
+            resume_state=resume_state,
             job_id=job.id,
             job_timeout=3600,  # 60 min for resume
             result_ttl=3600,
@@ -1324,7 +1542,7 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
             kwargs={
                 "paper_id": job.paper_id,
                 "resume_state": resume_state,
-                "chunked": True,
+                "language": _resume_lang,
             },
             daemon=True,
         ).start()
@@ -1607,7 +1825,8 @@ def ai_jobs_recent():
         q = q.filter(AiJob.status.in_(["done", "running", "queued", "pending", "error", "cancelled"]))
 
     # Exclude orphan jobs: paper deleted or paper_id is null
-    valid_paper_ids = db.session.query(Paper.id).filter_by(user_id=user_id)
+    # Use JOIN instead of IN subquery for better performance
+    valid_paper_ids = db.session.query(Paper.id).filter(Paper.user_id == user_id)
     q = q.filter(
         AiJob.paper_id.isnot(None),
         AiJob.paper_id.in_(valid_paper_ids),
@@ -1674,7 +1893,9 @@ def _persist_paper_data(paper_id: str, user_id: int, paper_data: dict, max_retri
                 except Exception:
                     existing_data = {}
             
-            # Merge: new data overwrites, but preserve _data_texts if not in new data
+            # Merge: new data overwrites, but preserve _data_texts if not in new data.
+            # Copy to avoid mutating the caller's dict (which is used downstream).
+            paper_data = {**paper_data}
             if '_data_texts' not in paper_data and '_data_texts' in existing_data:
                 paper_data['_data_texts'] = existing_data['_data_texts']
                 paper_data['_data_files_count'] = existing_data.get('_data_files_count', 0)
@@ -1804,8 +2025,8 @@ def generate_stream(paper_id: str):
         #   reference_files → paper sitasi ATAU draft user. Diproses sebagai
         #                      referensi/konteks penulisan.
         # Backward-compat: field lama "files" diperlakukan sebagai referensi.
+        from main import _extract_texts_from_files
         try:
-            from main import _extract_texts_from_files
             data_uploads = request.files.getlist("data_files")
             ref_uploads = request.files.getlist("reference_files")
             legacy_uploads = request.files.getlist("files")
@@ -1849,7 +2070,7 @@ def generate_stream(paper_id: str):
         # Files uploaded during paperfull generate were only extracted for text
         # but never saved. Now we save them so they appear in the file list.
         try:
-            from database.models import PaperFile, db, safe_commit
+            from database.models import PaperFile
             from utils.core.user_storage import save_file_as_txt, get_username as _pf_get_username
             _pf_username = _pf_get_username(user_id=user_id)
             _pf_judul = paper.title if paper else "untitled"
@@ -1868,20 +2089,32 @@ def generate_stream(paper_id: str):
                             save_file_as_txt(_pf_username, _pf_judul, _extracted, _orig_name)
                         except Exception:
                             pass
-                        # Save to PaperFile DB
-                        _hash_name = f"{uuid.uuid4().hex}{_ext}"
-                        _pf_entry = PaperFile(
+                        # Save to PaperFile DB — upsert by original_name to
+                        # avoid duplicate rows when the same file is uploaded
+                        # again (e.g. retry after network hiccup).
+                        _pf_existing = PaperFile.query.filter_by(
                             paper_id=paper_id,
                             user_id=user_id,
-                            filename=_hash_name,
                             original_name=_orig_name[:255],
-                            ext=_ext,
-                            size_bytes=len(_extracted.encode("utf-8")),
-                            file_path="",
-                            extracted_text=_extracted,
-                        )
-                        db.session.add(_pf_entry)
+                        ).first()
+                        if _pf_existing:
+                            _pf_existing.extracted_text = _extracted
+                            _pf_existing.size_bytes = len(_extracted.encode("utf-8"))
+                        else:
+                            _hash_name = f"{uuid.uuid4().hex}{_ext}"
+                            _pf_entry = PaperFile(
+                                paper_id=paper_id,
+                                user_id=user_id,
+                                filename=_hash_name,
+                                original_name=_orig_name[:255],
+                                ext=_ext,
+                                size_bytes=len(_extracted.encode("utf-8")),
+                                file_path="",
+                                extracted_text=_extracted,
+                            )
+                            db.session.add(_pf_entry)
             safe_commit()
+            db.session.remove()  # Release DB connection back to pool (BUG-31: avoid idle 900s timeout)
             log.info("[paperfull] Persisted %d data + %d ref files to DB for paper %s",
                      len(data_uploads), len(ref_uploads), paper_id)
         except Exception as _pf_e:
@@ -2006,9 +2239,27 @@ def generate_stream(paper_id: str):
         import time as _time
         from pathlib import Path as _Path
 
+        # Early-init accumulators so GeneratorExit handler can always reference them (BUG-35).
+        full_content = ""
+        reasoning_acc = ""
+
         try:
-            # ── Load prompt files ──────────────────────────────────────
+            # ── Load prompt files (language-aware) ─────────────────────
             prompt_dir = _Path(__file__).resolve().parent / "prompt"
+
+            # Determine language early: request param > user DB > default "id"
+            _lang = language
+            if not _lang:
+                try:
+                    from database.models import User as _UserModel
+                    _lu = _UserModel.query.get(user_id)
+                    if _lu and _lu.preferred_language:
+                        _lang = _lu.preferred_language
+                except Exception:
+                    pass
+            _lang = _lang or "id"
+
+            # Load single unified prompt file (language injected at runtime)
             prompt_file = prompt_dir / "prompt.txt"
             humanize_file = prompt_dir / "humanize.txt"
 
@@ -2016,9 +2267,20 @@ def generate_stream(paper_id: str):
                 yield f"event: error\ndata: {_json.dumps({'error': 'prompt.txt not found'})}\n\n"
                 return
 
-            system_parts = [prompt_file.read_text(encoding="utf-8")]
+            # Inject language directive at the top
+            if _lang == "en":
+                lang_instruction = "⚠️ LANGUAGE: This paper MUST be written ENTIRELY in ENGLISH.\n\n"
+            else:
+                lang_instruction = "⚠️ BAHASA: Paper ini WAJIB ditulis SELURUHNYA dalam BAHASA INDONESIA.\n\n"
+
+            system_parts = [lang_instruction + prompt_file.read_text(encoding="utf-8")]
             if humanize_file.exists():
                 system_parts.append(humanize_file.read_text(encoding="utf-8"))
+
+            # Language-specific section titles template
+            lang_template = prompt_dir / f"{_lang}.json"
+            if lang_template.exists():
+                system_parts.append(f"USE THESE SECTION TITLES:\n{lang_template.read_text(encoding='utf-8')}\nThe section titles above MUST be used exactly as shown.")
 
             # Style guide
             if style:
@@ -2047,7 +2309,7 @@ def generate_stream(paper_id: str):
                     institution = current_user.institution or ""
                     if institution:
                         prefs.append(f"- Institusi user: **{institution}**")
-                    lang = language or current_user.preferred_language or "id"
+                    lang = _lang
                     if lang == "en":
                         prefs.append("- SELALU gunakan Bahasa Inggris (English) untuk respons dan penulisan paper, kecuali user meminta bahasa lain.")
                     else:
@@ -2309,8 +2571,17 @@ def generate_stream(paper_id: str):
                     resp.close()
                     resp = None
                 # Try to parse and save even if incomplete
-                if full_content:
-                    try:
+                # Wrap in app_context since Flask may have torn down on GeneratorExit
+                try:
+                    from flask import current_app
+                    _bg_app = current_app._get_current_object()
+                except Exception:
+                    _bg_app = None
+                _bg_ctx = _bg_app.app_context() if _bg_app else None
+                if _bg_ctx:
+                    _bg_ctx.__enter__()
+                try:
+                    if full_content:
                         import re as _re2
                         clean2 = _re2.sub(r"^```(?:json)?\s*", "", full_content.strip(), flags=_re2.IGNORECASE)
                         clean2 = _re2.sub(r"\s*```$", "", clean2)
@@ -2339,10 +2610,16 @@ def generate_stream(paper_id: str):
                         else:
                             _update_bell_job("error", 100, error="Background save: no parseable content")
                             _pf_snapshot("error", reasoning_acc, full_content, error="no parseable content", force=True)
-                    except Exception as e_bg:
-                        _update_bell_job("error", 100, error=f"Background save failed: {e_bg}")
-                        _pf_snapshot("error", reasoning_acc, full_content, error=str(e_bg), force=True)
-                        log.warning("Background save failed for paper %s: %s", paper_id, e_bg)
+                except Exception as e_bg:
+                    _update_bell_job("error", 100, error=f"Background save failed: {e_bg}")
+                    _pf_snapshot("error", reasoning_acc, full_content, error=str(e_bg), force=True)
+                    log.warning("Background save failed for paper %s: %s", paper_id, e_bg)
+                finally:
+                    if _bg_ctx:
+                        try:
+                            _bg_ctx.__exit__(None, None, None)
+                        except Exception:
+                            pass
                 return
             finally:
                 if resp:
@@ -2378,13 +2655,17 @@ def generate_stream(paper_id: str):
 
             # Fix JSON keys with embedded newlines (AI corruption: "s\ne\nc\nt\ni\no\nn3" → "section3")
             def _fix_newline_keys(raw_str):
-                """Remove newlines inside quoted JSON keys."""
+                """Remove ALL newlines inside quoted JSON keys (loops until clean).
+                Fixes AI corruption: multi-byte splits like "s\ne\nc\nt\ni\no\nn3" -> "section3"
+                """
                 import re as _rfix
-                return _rfix.sub(
-                    r'"([^"]*?)\s*\n\s*([^"]*?)"\s*:',
-                    lambda m: '"' + m.group(1).replace('\n', '').replace(' ', '') + m.group(2).replace('\n', '').replace(' ', '') + '":',
-                    raw_str
-                )
+                _pat = _rfix.compile(r'"([^"]*?)\s*\n\s*([^"]*?)":')
+                prev = None
+                cur = raw_str
+                while cur != prev:
+                    prev = cur
+                    cur = _pat.sub(lambda m: '"' + m.group(1).replace('\n', '').replace(' ', '') + m.group(2).replace('\n', '').replace(' ', '') + '":', cur)
+                return cur
             clean = _fix_newline_keys(clean)
             try:
                 raw_paper = _json.loads(clean)
@@ -2408,6 +2689,156 @@ def generate_stream(paper_id: str):
             # ── Normalize paper shape ───────────────────────────────
             from PaperRiset.eks.editor.single import _normalize_paper_shape
             paper_data = _normalize_paper_shape(raw_paper)
+
+            # ── Post-process: fix mojibake + clean LaTeX artifacts ────
+            # AI output can contain:
+            #   1) Mojibake: UTF-8 multi-byte chars decoded as Latin-1
+            #      (e.g. "5â€"15°C" → should be "5–15°C")
+            #   2) Raw LaTeX notation that wasn't converted
+            #      (e.g. "^\circ" → "°", "^{\\circ}" → "°")
+            def _fix_mojibake(text):
+                """Attempt to recover UTF-8 mojibake (bytes decoded as Latin-1/CP1252)."""
+                if not isinstance(text, str):
+                    return text
+                try:
+                    return text.encode('latin-1').decode('utf-8')
+                except (UnicodeDecodeError, UnicodeEncodeError):
+                    return text
+
+            def _clean_latex_notation(text):
+                """Convert common LaTeX notation to Unicode equivalents."""
+                if not isinstance(text, str):
+                    return text
+                import re as _rl
+                # Degree symbol variants
+                _rl_patterns = [
+                    (r'\^\{\\circ\}', '°'),
+                    (r'\^\\circ', '°'),
+                    (r'\\degree\b', '°'),
+                    (r'\\circ\b', '°'),
+                    # Common math symbols
+                    (r'\\times\b', '×'),
+                    (r'\\div\b', '÷'),
+                    (r'\\pm\b', '±'),
+                    (r'\\leq\b', '≤'),
+                    (r'\\geq\b', '≥'),
+                    (r'\\neq\b', '≠'),
+                    (r'\\approx\b', '≈'),
+                    (r'\\infty\b', '∞'),
+                    (r'\\mu\b', 'μ'),
+                    (r'\\alpha\b', 'α'),
+                    (r'\\beta\b', 'β'),
+                    (r'\\gamma\b', 'γ'),
+                    (r'\\delta\b', 'δ'),
+                    (r'\\lambda\b', 'λ'),
+                    (r'\\sigma\b', 'σ'),
+                    (r'\\pi\b', 'π'),
+                    (r'\\omega\b', 'ω'),
+                    (r'\\Omega\b', 'Ω'),
+                    (r'\\Delta\b', 'Δ'),
+                    (r'\\Sigma\b', 'Σ'),
+                    (r'\\rightarrow\b', '→'),
+                    (r'\\leftarrow\b', '←'),
+                    (r'\\Rightarrow\b', '⇒'),
+                    (r'\\Leftarrow\b', '⇐'),
+                    # Em/en dashes (LaTeX style)
+                    (r'---', '—'),
+                    (r'--', '–'),
+                    # LaTeX spacing commands → remove
+                    (r'\\[,;:!]\s*', ''),
+                    (r'\\quad\b\s*', ' '),
+                    (r'\\qquad\b\s*', '  '),
+                    (r'\\hspace\{[^}]*\}\s*', ''),
+                    (r'\\vspace\{[^}]*\}\s*', ''),
+                    # LaTeX text formatting → extract content
+                    (r'\\textit\{([^}]*)\}', r'\1'),
+                    (r'\\textbf\{([^}]*)\}', r'\1'),
+                    (r'\\emph\{([^}]*)\}', r'\1'),
+                    (r'\\underline\{([^}]*)\}', r'\1'),
+                    (r'\\mathrm\{([^}]*)\}', r'\1'),
+                    (r'\\mathbf\{([^}]*)\}', r'\1'),
+                    (r'\\mathit\{([^}]*)\}', r'\1'),
+                    # Broken LaTeX commands (missing braces, e.g. "\textit text")
+                    (r'\\(?:textit|textbf|emph|underline|mathrm|mathbf|mathit)\s+', ''),
+                    # Inline math mode $...$ → extract and clean content
+                    # Process subscript/superscript inside $ first
+                    # $X_1$ → X₁, $X_2$ → X₂, $Z$% → Z%, etc.
+                    # Quotes
+                    (r'``', '"'),
+                    (r"''", '"'),
+                    # Superscript/subscript cleanup for simple cases
+                    (r'\^{(\d+)}', lambda m: ''.join('⁰¹²³⁴⁵⁶⁷⁸⁹'[int(c)] for c in m.group(1))),
+                    (r'_{(\d+)}', lambda m: ''.join('₀₁₂₃₄₅₆₇₈₉'[int(c)] for c in m.group(1))),
+                ]
+                for pattern, repl in _rl_patterns:
+                    text = _rl.sub(pattern, repl, text)
+                # Handle $...$ math delimiters (after subscript/superscript already converted)
+                # Strip remaining unconverted $...$ by extracting content
+                def _strip_math_dollar(m):
+                    inner = m.group(1).replace('\\', '')
+                    # Convert remaining subscript/superscript without braces inside $
+                    _sup = '⁰¹²³⁴⁵⁶⁷⁸⁹'
+                    _sub = '₀₁₂₃₄₅₆₇₈₉'
+                    # _N without braces (e.g. X_1 → X₁)
+                    inner = _rl.sub(r'_(\d)', lambda x: _sub[int(x.group(1))], inner)
+                    # ^N without braces (e.g. X^2 → X²)
+                    inner = _rl.sub(r'\^(\d)', lambda x: _sup[int(x.group(1))], inner)
+                    # Remove leftover _ or ^ without digits
+                    inner = _rl.sub(r'[_^]([a-zA-Z])', r'\1', inner)
+                    return inner
+                text = _rl.sub(r'\$([^$]*)\$', _strip_math_dollar, text)
+                return text
+
+            def _clean_paper_data(data):
+                """Recursively clean all string values in paper data dict."""
+                if isinstance(data, dict):
+                    return {k: _clean_paper_data(v) for k, v in data.items()}
+                elif isinstance(data, list):
+                    return [_clean_paper_data(item) for item in data]
+                elif isinstance(data, str):
+                    # Only clean content fields, not keys/IDs/paths
+                    return _clean_latex_notation(_fix_mojibake(data))
+                return data
+
+            # Apply cleanup to paper_data (all string values)
+            paper_data = _clean_paper_data(paper_data)
+            log.info("[paperfull] Applied mojibake fix + LaTeX cleanup to paper_data")
+
+            # ── Post-process: programmatic humanization (anti-Turnitin) ────
+            try:
+                from tools.humanizer.humanizer import TextHumanizer
+                _humanizer = TextHumanizer()
+                
+                _HUMANIZER_SKIP_KEYS = {
+                    'doi', 'url', 'year', 'volume', 'issue', 'pages',
+                    'email', 'affiliation', 'institution', 'city',
+                    'country', 'location', 'index', 'type', 'format',
+                    'file', 'caption_ref', 'source',
+                }
+                
+                def _humanize_text_val(text):
+                    if not isinstance(text, str) or not text.strip():
+                        return text
+                    return _humanizer.humanize_program(text, option="Standard", intensity="medium")
+                
+                def _humanize_recursive(data):
+                    if isinstance(data, dict):
+                        return {k: (v if k in _HUMANIZER_SKIP_KEYS else _humanize_recursive(v))
+                                for k, v in data.items()}
+                    elif isinstance(data, list):
+                        return [_humanize_recursive(item) for item in data]
+                    elif isinstance(data, str):
+                        if len(data.split()) > 20:
+                            return _humanize_text_val(data)
+                        return data
+                    return data
+                
+                paper_data = _humanize_recursive(paper_data)
+                log.info("[paperfull] Applied post-generation humanization (programmatic, anti-Turnitin)")
+            except ImportError:
+                log.info("[paperfull] Humanizer not available, skipping post-humanization")
+            except Exception as _hum_e:
+                log.warning("[paperfull] Post-humanization failed, continuing: %s", _hum_e)
 
             # ── Inject data_texts for chart generation ──────────────
             # Priority: closure var → paper_data from LLM → pre-stored in Paper.data
@@ -2602,6 +3033,13 @@ def generate_stream(paper_id: str):
                 from tools.image_generation.reconcile import reconcile_figure_images
                 _upload_base = Path(__file__).resolve().parent.parent.parent / "data" / "uploads"
                 reconcile_figure_images(paper_id, paper_data, _upload_base)
+                # Collect resolved paths from figures to prevent double-assignment
+                _used_by_figures: set[str] = set()
+                for fig in paper_data.get("figures", []):
+                    if isinstance(fig, dict):
+                        p = str(fig.get("Path") or fig.get("path") or "")
+                        if p and os.path.isabs(p) and os.path.exists(p):
+                            _used_by_figures.add(p)
                 # Also walk sections for gambar items (not just top-level figures)
                 _reconcile_section_images(paper_data, paper_id, _upload_base)
                 # Re-save updated paper_data with resolved image paths
@@ -2617,6 +3055,14 @@ def generate_stream(paper_id: str):
             # Client disconnected before SSE finished. Do NOT try to write to
             # the response stream (yields RuntimeError). Just ensure any
             # in-flight DB state is cleaned up.
+            log.warning("[paperfull] GeneratorExit: client disconnected before SSE completed for paper %s. "
+                        "Image reconciliation may have been skipped.", paper_id)
+            # Best-effort: snapshot whatever we accumulated so the user doesn't lose everything.
+            try:
+                _pf_snapshot("error", reasoning_acc, full_content,
+                             error="client disconnected during streaming", force=True)
+            except Exception:
+                pass
             try:
                 _update_bell_job("error", 100, error="client disconnected")
             except Exception:

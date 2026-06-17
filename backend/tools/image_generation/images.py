@@ -26,6 +26,7 @@ from tools.editor.utils import (
     FILENAME_RE,
     PAPER_ID_RE,
     is_image_bytes,
+    safe_paper_image_dir,
     safe_paper_dir,
     sign_resource_token,
     verify_resource_token,
@@ -78,7 +79,7 @@ def upload_paper_image(paper_id: str):
     if not is_image_bytes(head, ext):
         return jsonify({"error": "Invalid image file"}), 400
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if not paper_dir:
         return jsonify({"error": "Invalid paper id"}), 400
     paper_dir.mkdir(parents=True, exist_ok=True)
@@ -170,7 +171,7 @@ def upload_user_image(paper_id: str):
     if not is_image_bytes(head, ext):
         return jsonify({"error": "Invalid image file"}), 400
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if not paper_dir:
         return jsonify({"error": "Invalid paper id"}), 400
     paper_dir.mkdir(parents=True, exist_ok=True)
@@ -251,7 +252,7 @@ def delete_paper_image(paper_id: str, image_id: int):
     img = PaperImage.query.filter_by(id=image_id, paper_id=paper_id, user_id=user_id).first()
     if not img:
         return jsonify({"error": "Image not found"}), 404
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if not paper_dir:
         return jsonify({"error": "Invalid paper id"}), 400
     filepath = (paper_dir / img.filename).resolve()
@@ -349,7 +350,7 @@ def get_paper_image(paper_id: str, filename: str):
     if img.user_id != user_id:
         return jsonify({"error": "Unauthorized"}), 403
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if not paper_dir:
         return jsonify({"error": "Invalid path"}), 400
 

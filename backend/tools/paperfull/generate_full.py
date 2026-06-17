@@ -27,7 +27,7 @@ PROMPT_DIR = BASE_DIR / "prompt"
 BACKEND_DIR = BASE_DIR.parent
 JOURNAL_DIR = BASE_DIR.parent.parent / "tools" / "Journal"
 
-# Prompt file paths
+# Prompt file paths (single unified files, language injected at runtime)
 PROMPT_FILE = PROMPT_DIR / "prompt.txt"
 HUMANIZE_FILE = PROMPT_DIR / "humanize.txt"
 
@@ -60,16 +60,20 @@ def get_available_journals():
     return sorted(set(codes), key=str.lower)
 
 
-def load_system_prompt():
-    """Load system prompt dari file."""
+def load_system_prompt(language: str = "id"):
+    """Load system prompt (single unified file, language injected at runtime)."""
     if PROMPT_FILE.exists():
-        return PROMPT_FILE.read_text(encoding="utf-8")
+        content = PROMPT_FILE.read_text(encoding="utf-8")
+        if language == "en":
+            return f"⚠️ LANGUAGE: This paper MUST be written ENTIRELY in ENGLISH.\n\n{content}"
+        else:
+            return f"⚠️ BAHASA: Paper ini WAJIB ditulis SELURUHNYA dalam BAHASA INDONESIA.\n\n{content}"
     log.warning("System prompt not found at %s", PROMPT_FILE)
     return ""
 
 
-def load_humanize_prompt():
-    """Load humanizer prompt dari file."""
+def load_humanize_prompt(language: str = "id"):
+    """Load humanizer prompt (single unified file)."""
     if HUMANIZE_FILE.exists():
         return HUMANIZE_FILE.read_text(encoding="utf-8")
     log.warning("Humanize prompt not found at %s", HUMANIZE_FILE)
@@ -102,6 +106,7 @@ def generate_paper(
     job_id: Optional[str] = None,
     user_id: Optional[int] = None,
     mode: str = "single",
+    language: str = "id",
     checkpoint_fn=None,
     cancel_fn=None,
 ):
@@ -118,6 +123,7 @@ def generate_paper(
         job_id: ID job (untuk progress tracking)
         user_id: ID user
         mode: "single" atau "chunked"
+        language: "id" untuk Bahasa Indonesia, "en" untuk English
         checkpoint_fn: Callback fn(stage, progress) untuk progress
         cancel_fn: Callback fn() -> bool untuk cek cancel
 
@@ -162,6 +168,7 @@ def generate_paper(
             custom_prompt=extra,
             topic=topic,
             style=style,
+            language=language,
             paper_id=paper_id,
             conv_id=conv_id,
             user_id=user_id,
@@ -176,6 +183,7 @@ def generate_paper(
             custom_prompt=extra,
             topic=topic,
             style=style,
+            language=language,
             paper_id=paper_id,
             conv_id=conv_id,
             job_id=job_id,
@@ -184,6 +192,145 @@ def generate_paper(
 
     elapsed = time.time() - t_start
     log.info("generate_full: DONE in %.1fs", elapsed)
+
+    # ── Post-process: fix mojibake + clean LaTeX artifacts ────
+    def _fix_mojibake(text):
+        """Attempt to recover UTF-8 mojibake (bytes decoded as Latin-1/CP1252)."""
+        if not isinstance(text, str):
+            return text
+        try:
+            return text.encode('latin-1').decode('utf-8')
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            return text
+
+    def _clean_latex_notation(text):
+        """Convert common LaTeX notation to Unicode equivalents."""
+        if not isinstance(text, str):
+            return text
+        import re as _rl
+        _rl_patterns = [
+            (r'\^\{\\circ\}', '°'),
+            (r'\^\\circ', '°'),
+            (r'\\degree\b', '°'),
+            (r'\\circ\b', '°'),
+            (r'\\times\b', '×'),
+            (r'\\div\b', '÷'),
+            (r'\\pm\b', '±'),
+            (r'\\leq\b', '≤'),
+            (r'\\geq\b', '≥'),
+            (r'\\neq\b', '≠'),
+            (r'\\approx\b', '≈'),
+            (r'\\infty\b', '∞'),
+            (r'\\mu\b', 'μ'),
+            (r'\\alpha\b', 'α'),
+            (r'\\beta\b', 'β'),
+            (r'\\gamma\b', 'γ'),
+            (r'\\delta\b', 'δ'),
+            (r'\\lambda\b', 'λ'),
+            (r'\\sigma\b', 'σ'),
+            (r'\\pi\b', 'π'),
+            (r'\\omega\b', 'ω'),
+            (r'\\Omega\b', 'Ω'),
+            (r'\\Delta\b', 'Δ'),
+            (r'\\Sigma\b', 'Σ'),
+            (r'\\rightarrow\b', '→'),
+            (r'\\leftarrow\b', '←'),
+            (r'\\Rightarrow\b', '⇒'),
+            (r'\\Leftarrow\b', '⇐'),
+            (r'---', '—'),
+            (r'--', '–'),
+            # LaTeX spacing commands → remove
+            (r'\\[,;:!]\s*', ''),
+            (r'\\quad\b\s*', ' '),
+            (r'\\qquad\b\s*', '  '),
+            (r'\\hspace\{[^}]*\}\s*', ''),
+            (r'\\vspace\{[^}]*\}\s*', ''),
+            # LaTeX text formatting → extract content
+            (r'\\textit\{([^}]*)\}', r'\1'),
+            (r'\\textbf\{([^}]*)\}', r'\1'),
+            (r'\\emph\{([^}]*)\}', r'\1'),
+            (r'\\underline\{([^}]*)\}', r'\1'),
+            (r'\\mathrm\{([^}]*)\}', r'\1'),
+            (r'\\mathbf\{([^}]*)\}', r'\1'),
+            (r'\\mathit\{([^}]*)\}', r'\1'),
+            # Broken LaTeX commands (missing braces)
+            (r'\\(?:textit|textbf|emph|underline|mathrm|mathbf|mathit)\s+', ''),
+            (r'``', '"'),
+            (r"''", '"'),
+            (r'\^{(\d+)}', lambda m: ''.join('⁰¹²³⁴⁵⁶⁷⁸⁹'[int(c)] for c in m.group(1))),
+            (r'_{(\d+)}', lambda m: ''.join('₀₁₂₃₄₅₆₇₈₉'[int(c)] for c in m.group(1))),
+        ]
+        for pattern, repl in _rl_patterns:
+            text = _rl.sub(pattern, repl, text)
+        # Handle $...$ inline math delimiters
+        import re as _rl2
+        def _strip_math_dollar(m):
+            inner = m.group(1).replace('\\', '')
+            _sup = '⁰¹²³⁴⁵⁶⁷⁸⁹'
+            _sub = '₀₁₂₃₄₅₆₇₈₉'
+            inner = _rl2.sub(r'_(\d)', lambda x: _sub[int(x.group(1))], inner)
+            inner = _rl2.sub(r'\^(\d)', lambda x: _sup[int(x.group(1))], inner)
+            inner = _rl2.sub(r'[_^]([a-zA-Z])', r'\1', inner)
+            return inner
+        text = _rl2.sub(r'\$([^$]*)\$', _strip_math_dollar, text)
+        return text
+
+    def _clean_paper_data(data):
+        """Recursively clean all string values in paper data dict."""
+        if isinstance(data, dict):
+            return {k: _clean_paper_data(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [_clean_paper_data(item) for item in data]
+        elif isinstance(data, str):
+            return _clean_latex_notation(_fix_mojibake(data))
+        return data
+
+    paper_data = _clean_paper_data(paper_data)
+
+    # ── Post-process: programmatic humanization (anti-Turnitin) ────
+    try:
+        from tools.humanizer.humanizer import TextHumanizer
+        _humanizer = TextHumanizer()
+        
+        def _humanize_text(text):
+            """Run programmatic humanizer on a text string (no LLM, fast)."""
+            if not isinstance(text, str) or not text.strip():
+                return text
+            return _humanizer.humanize_program(text, option="Standard", intensity="medium")
+        
+        def _humanize_paper_data(data):
+            """Recursively humanize all text content fields in paper data.
+            
+            Skips structural fields (authors, references metadata, figure/table
+            captions are included since they're prose).
+            """
+            if isinstance(data, dict):
+                result = {}
+                for k, v in data.items():
+                    # Skip reference metadata, author info, structural fields
+                    if k in ('doi', 'url', 'year', 'volume', 'issue', 'pages',
+                             'email', 'affiliation', 'institution', 'city',
+                             'country', 'location', 'index', 'type', 'format',
+                             'file', 'caption_ref', 'source'):
+                        result[k] = v
+                    else:
+                        result[k] = _humanize_paper_data(v)
+                return result
+            elif isinstance(data, list):
+                return [_humanize_paper_data(item) for item in data]
+            elif isinstance(data, str):
+                # Only humanize text longer than 20 words (skip labels, short metadata)
+                if len(data.split()) > 20:
+                    return _humanize_text(data)
+                return data
+            return data
+        
+        paper_data = _humanize_paper_data(paper_data)
+        log.info("generate_full: post-generation humanization applied (programmatic)")
+    except ImportError as e:
+        log.warning("generate_full: humanizer not available, skipping post-processing: %s", e)
+    except Exception as e:
+        log.warning("generate_full: humanization failed, continuing without it: %s", e)
 
     # Ensure defaults
     paper_data.setdefault("authors", [{

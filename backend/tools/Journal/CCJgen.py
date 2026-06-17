@@ -1358,16 +1358,25 @@ def _block_subsection(doc, sub_data, sec_num, sub_idx):
 # ============================================================
 
 
-def generate():
-    if not TEMPLATE_DOCX.exists():
-        raise FileNotFoundError(f"Template tidak ditemukan: {TEMPLATE_DOCX}")
-    if not TEMPLATE_JSON.exists():
-        raise FileNotFoundError(f"JSON tidak ditemukan: {TEMPLATE_JSON}")
+def build_document(
+    json_path: Path = TEMPLATE_JSON,
+    output_path: Path = OUTPUT_DOCX,
+    template_path: Path = TEMPLATE_DOCX,
+) -> Path:
+    """
+    Export paper ke DOCX menggunakan template CCJ.
+    Signature sesuai ekspektasi export pipeline: build_document(json_path, output_path).
+    """
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template tidak ditemukan: {template_path}")
+    if not Path(json_path).exists():
+        raise FileNotFoundError(f"JSON tidak ditemukan: {json_path}")
 
-    data = load_json()
+    with open(json_path, encoding="utf-8") as f:
+        data = json.load(f)
 
-    shutil.copy2(TEMPLATE_DOCX, OUTPUT_DOCX)
-    doc = Document(str(OUTPUT_DOCX))
+    shutil.copy2(template_path, output_path)
+    doc = Document(str(output_path))
     clear_body(doc)
 
     # Heading utama dan paragraf intro (gaya CCJ asli)
@@ -1460,9 +1469,14 @@ def generate():
                 placeholder.cell(ri, ci).text = f"Placeholder {ri},{ci}"
 
     _set_ai_prompt_color_red(doc)
-    doc.save(str(OUTPUT_DOCX))
-    print(f"Generated: {OUTPUT_DOCX}")
-    return str(OUTPUT_DOCX)
+    doc.save(str(output_path))
+    print(f"Generated: {output_path}")
+    return output_path
+
+
+def generate():
+    """Legacy wrapper untuk CLI/standalone use."""
+    return build_document(TEMPLATE_JSON, OUTPUT_DOCX, TEMPLATE_DOCX)
 
 
 if __name__ == "__main__":

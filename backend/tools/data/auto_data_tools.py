@@ -102,7 +102,7 @@ def _generate_chart_from_spec(spec_dict: dict, user_id: int, paper_id: str, judu
         from tools.data.chart_generator import ChartSpec, generate_chart
         import shutil
         from pathlib import Path
-        from tools.editor.utils import safe_paper_dir
+        from tools.editor.utils import safe_paper_image_dir, safe_paper_dir
 
         spec = ChartSpec(
             kind=spec_dict["kind"],
@@ -119,8 +119,8 @@ def _generate_chart_from_spec(spec_dict: dict, user_id: int, paper_id: str, judu
         out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=judul))
         log.info("[auto_data_tools] Generated chart: %s", out_path)
 
-        # Move to paper directory
-        paper_dir = safe_paper_dir(paper_id)
+        # Move to paper image directory: user/<username>/<paper_id>/image/
+        paper_dir = safe_paper_image_dir(paper_id)
         if paper_dir is None:
             log.warning("[auto_data_tools] Invalid paper_id: %s", paper_id)
             return None
@@ -162,26 +162,51 @@ def auto_generate_data_charts(
     paper_data: dict,
 ) -> dict:
     """
-    Auto-generate charts from data_tools_payload in paper_data figures/tables.
+    Auto-generate charts from data_tools_payload in paper_data.
 
-    This runs AFTER paperfull generation and image enqueue. It:
-    1. Scans all figures for data_tools_payload
-    2. Scans all tables for data_tools_payload
-    3. Generates PNG charts in parallel
-    4. Updates figure entries with generated_image_path
+    Walks:
+    1. Top-level figures[] with data_tools_payload
+    2. Top-level tables[] with data_tools_payload
+    3. Section 4 nested content (section4a, section4b, etc.) — where LLM actually places gambar items
+
+    Generates PNG charts via chart_generator and updates figure entries with generated paths.
 
     Returns: {charts_generated: int, errors: int}
     """
+    import re
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     judul = paper_data.get("title") or "Paper"
     figures = paper_data.get("figures", [])
     tables = paper_data.get("tables", [])
 
+    # Also collect gambar items from section 4 nested content
+    section4_figures: list[dict] = []
+    section4_tables: list[dict] = []
+
+    def _walk_section4(obj, in_section4=False):
+        """Walk paper_data and find gambar/tabel items in section 4 content."""
+        if isinstance(obj, dict):
+            if in_section4:
+                if obj.get("id") == "gambar":
+                    section4_figures.append(obj)
+                elif obj.get("id") == "tabel" or obj.get("type") == "table":
+                    section4_tables.append(obj)
+            for k, v in obj.items():
+                child_in_section4 = in_section4 or (isinstance(k, str) and bool(
+                    re.match(r'section4[a-z]?$', k)
+                ))
+                _walk_section4(v, in_section4=child_in_section4)
+        elif isinstance(obj, list):
+            for item in obj:
+                _walk_section4(item, in_section4=in_section4)
+
+    _walk_section4(paper_data)
+
     # Collect all chart specs from figures and tables
     chart_tasks: List[Dict[str, Any]] = []
 
-    # From figures (section 4 grafik)
+    # From top-level figures (section 4 grafik)
     for i, fig in enumerate(figures):
         payload = fig.get("data_tools_payload")
         if not payload:
@@ -194,9 +219,10 @@ def auto_generate_data_charts(
                 "type": "figure",
                 "index": i,
                 "title": fig.get("Title") or spec_dict["title"],
+                "ref": fig,  # reference to update in paper_data
             })
 
-    # From tables (section 4 tabel with analysis + optional chart)
+    # From top-level tables (section 4 tabel with analysis + optional chart)
     for i, tbl in enumerate(tables):
         payload = tbl.get("data_tools_payload")
         if not payload:
@@ -212,13 +238,31 @@ def auto_generate_data_charts(
                     "type": "table_chart",
                     "index": i,
                     "title": spec_dict["title"],
+                    "ref": tbl,
                 })
+
+    # From section 4 nested gambar items (where LLM actually puts them)
+    for i, fig in enumerate(section4_figures):
+        payload = fig.get("data_tools_payload") or fig.get("data_tools")
+        if not payload:
+            continue
+
+        spec_dict = _payload_to_chart_spec(payload, paper_id)
+        if spec_dict:
+            chart_tasks.append({
+                "spec": spec_dict,
+                "type": "section4_figure",
+                "index": i,
+                "title": fig.get("Title") or spec_dict["title"],
+                "ref": fig,
+            })
 
     if not chart_tasks:
         log.info("[auto_data_tools] No data_tools_payload found in paper_data for paper_id=%s", paper_id)
         return {"charts_generated": 0, "errors": 0}
 
-    log.info("[auto_data_tools] Found %d chart tasks for paper_id=%s", len(chart_tasks), paper_id)
+    log.info("[auto_data_tools] Found %d chart tasks for paper_id=%s (top=%d figures, %d tables; sec4=%d nested)",
+             len(chart_tasks), paper_id, len(figures), len(tables), len(section4_figures))
 
     # Generate charts in parallel (max 4 workers)
     results = {"charts_generated": 0, "errors": 0}
@@ -238,19 +282,12 @@ def auto_generate_data_charts(
                 results["charts_generated"] += 1
 
                 # Update the figure/table entry with the generated path and url
-                if task["type"] == "figure":
-                    fig_idx = task["index"]
-                    if fig_idx < len(figures):
-                        figures[fig_idx]["generated_image_path"] = result["path"]
-                        figures[fig_idx]["generated_image_url"] = result["url"]
-                        figures[fig_idx]["image_source"] = "data_tools"
-                        figures[fig_idx]["image_id"] = result["image_id"]
-                elif task["type"] == "table_chart":
-                    tbl_idx = task["index"]
-                    if tbl_idx < len(tables):
-                        tables[tbl_idx]["generated_chart_path"] = result["path"]
-                        tables[tbl_idx]["generated_chart_url"] = result["url"]
-                        tables[tbl_idx]["chart_image_id"] = result["image_id"]
+                ref = task.get("ref")
+                if ref and isinstance(ref, dict):
+                    ref["generated_image_path"] = result["path"]
+                    ref["generated_image_url"] = result["url"]
+                    ref["image_source"] = "data_tools"
+                    ref["image_id"] = result["image_id"]
             else:
                 results["errors"] += 1
 

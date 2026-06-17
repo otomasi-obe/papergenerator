@@ -31,7 +31,7 @@ from tools.data.chart_generator import (
     parse_data_file, CHART_KINDS, COLOR_PALETTES,
 )
 from database.models import Paper, PaperImage, db, safe_commit
-from tools.editor.utils import safe_paper_dir, PAPER_ID_RE
+from tools.editor.utils import safe_paper_image_dir, safe_paper_dir, PAPER_ID_RE
 
 log = logging.getLogger(__name__)
 
@@ -192,7 +192,7 @@ def create_chart(paper_id: str):
         log.exception("chart.generate failed paper=%s", paper_id)
         return _err(f"Chart generation failed: {e}", "GENERATE_ERROR", 500)
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if paper_dir is None:
         return _err("Invalid paper id", "BAD_REQUEST", 400)
     paper_dir.mkdir(parents=True, exist_ok=True)
@@ -310,7 +310,7 @@ def update_chart(paper_id: str, chart_id: int):
         log.exception("chart.regenerate failed paper=%s chart=%s", paper_id, chart_id)
         return _err(f"Chart regeneration failed: {e}", "GENERATE_ERROR", 500)
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if paper_dir is None:
         return _err("Invalid paper id", "BAD_REQUEST", 400)
 
@@ -360,7 +360,7 @@ def delete_chart(paper_id: str, chart_id: int):
     if not chart or not chart.original_name.startswith("chart-"):
         return _err("Chart not found", "NOT_FOUND", 404)
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_image_dir(paper_id)
     if paper_dir:
         chart_file = paper_dir / chart.filename
         if chart_file.exists():

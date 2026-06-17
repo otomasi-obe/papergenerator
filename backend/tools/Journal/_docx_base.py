@@ -1,5 +1,4 @@
-"""
-_docx_base.py — Shared utilities for template generators.
+"""_docx_base.py — Shared utilities for template generators.
 
 Provides common functions for building DOCX papers from JSON configs.
 Extracted from IEEEgen.py patterns to be reused by other template generators.
@@ -269,14 +268,22 @@ def _latex_to_omml(latex: str):
         mathml = latex2mathml.converter.convert(cleaned)
         root = etree.fromstring(mathml.encode("utf-8"))
         return xslt(root).getroot()
-    except Exception:
+    except Exception as exc:
+        # Log the error so silent failures are visible
+        import logging
+        logging.getLogger(__name__).warning(
+            "latex2mathml failed for %r: %s", cleaned[:80], exc
+        )
         return None
 
 
 def _append_inline_math(paragraph, latex: str) -> bool:
     omml = _latex_to_omml(latex)
     if omml is None:
-        return False
+        # Fallback: render raw LaTeX as italic text so formula is NOT silently lost
+        run = paragraph.add_run(latex)
+        run.italic = True
+        return True
     tag = omml.tag.split("}")[-1] if "}" in omml.tag else omml.tag
     if tag == "oMath":
         paragraph._p.append(omml)
@@ -286,6 +293,9 @@ def _append_inline_math(paragraph, latex: str) -> bool:
         wrapper = etree.fromstring(f'<m:oMath xmlns:m="{MATH_NS}"/>')
         wrapper.append(omml)
         paragraph._p.append(wrapper)
+    # Append zero-width space to prevent Word from normalizing standalone
+    # inline math to display equation mode (pandoc/python-docx known bug)
+    paragraph.add_run("\u200b")
     return True
 
 
@@ -305,7 +315,18 @@ def append_line_break(paragraph):
 
 
 def _normalize_text_commands(text: str) -> str:
-    text = text.replace("\\n", "\n")
+    # Replace literal escape sequences left after JSON parsing.
+    # JSON spec consumes \n, \t, \b, \r, \f as real chars.
+    # After json.loads, any REMAINING literal \n (backslash+n) was double-escaped
+    # by the AI and should become a real newline.
+    # BUT: LaTeX commands like \nu, \nabla, \neg, \notin must be preserved.
+    # LaTeX commands always start with \n followed by a lowercase letter.
+    text = re.sub(r'\\n(?![a-z])', '\n', text)
+    # Same for \t (tab) — preserve \tau, \theta, \times, \tan, \text etc.
+    text = re.sub(r'\\t(?![a-z])', '\t', text)
+    # Note: \b and \r are NOT stripped here because \b is used as bold toggle
+    # by the **markdown** conversion below, and \rho/\right are valid LaTeX.
+    # Bold/italic markdown → rich text markers
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
@@ -374,10 +395,19 @@ def _iter_rich_tokens(text: str):
         if char == "$":
             closing = normalized.find("$", index + 1)
             if closing != -1:
-                yield from flush_buffer()
                 formula = normalized[index + 1 : closing]
-                if formula:
+                # Heuristic: skip if content looks like currency (e.g., "$5", "$100")
+                # Real math always has LaTeX commands or operators
+                is_currency = bool(re.match(r'^[0-9,.]+(\s+(and|or|to|per))?$', formula.strip()))
+                if formula and not is_currency:
+                    yield from flush_buffer()
                     yield {"kind": "math", "value": formula}
+                elif is_currency:
+                    # Render as plain text
+                    yield from flush_buffer()
+                    buffer.extend(['$', formula, '$'])
+                    yield {"kind": "text", "value": ''.join(buffer), "bold": bold, "italic": italic, "underline": underline}
+                    buffer = []
                 index = closing + 1
                 continue
         # \\(...\\) inline math
@@ -605,6 +635,8 @@ def _add_equation_line(doc: Document, formula: str, number: str | None = None, s
             wrapper = etree.fromstring(f'<m:oMath xmlns:m="{MATH_NS}"/>')
             wrapper.append(omml)
             p._p.append(wrapper)
+        # Zero-width space to prevent Word display-mode normalization
+        p.add_run("\u200b")
     else:
         p.add_run(formula).italic = True
     if number:

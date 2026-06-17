@@ -171,7 +171,7 @@
           title="Dismiss"
         >✕</button>
       </div>
-      <div class="max-h-[600px] overflow-y-auto p-4 scroll-smooth">
+      <div ref="contentScrollRef" class="max-h-[600px] overflow-y-auto p-4 scroll-smooth">
         <div 
           ref="contentRenderEl"
           class="content-render text-[12px] leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap break-words"
@@ -469,6 +469,7 @@ const reasoningText = ref('')
 const contentText = ref('')
 const imageGenProgress = ref({ total: 0, done: 0, message: '' })
 const reasoningScroll = ref<HTMLElement | null>(null)
+const contentScrollRef = ref<HTMLElement | null>(null)
 const contentRenderEl = ref<HTMLElement | null>(null)
 
 // Render contentText with LaTeX support — uses bundled KaTeX via composable
@@ -1292,10 +1293,13 @@ function startSSEPolling(jobId) {
     while (true) {
       if (!_sseCtrl || _sseCtrl.signal.aborted) return
       try {
+        const csrfMatch = document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/)
+        const headers: Record<string, string> = { 'Accept': 'text/event-stream' }
+        if (csrfMatch) headers['X-CSRF-TOKEN'] = decodeURIComponent(csrfMatch[1])
         const res = await fetch(`/api/jobs/${jobId}/stream`, {
           signal: _sseCtrl.signal,
           credentials: 'include',
-          headers: { 'Accept': 'text/event-stream' },
+          headers,
         })
         if (!res.ok) return
         
@@ -1481,6 +1485,7 @@ function _startDbPolling() {
       _stopDbPolling()
       connectionLost.value = false
       generating.value = false
+      displayProgress.value = store.paper?.sections?.length > 0 ? 100 : 0
       stopProgressTicker()
       stopTimeTracker()
       jobsStore.clearStreamState()
@@ -1541,7 +1546,7 @@ async function manualCheckDb() {
   }
 }
 
-function finishGeneration(paperData?: any) {
+async function finishGeneration(paperData?: any) {
   generating.value = false
   displayProgress.value = 100
   generatingTopic.value = ''
@@ -1559,7 +1564,7 @@ function finishGeneration(paperData?: any) {
   if (paperData) {
     store.applyPaperData(paperData)
   } else if (store.currentPaperId) {
-    store.loadPaperFromDb(store.currentPaperId)
+    await store.loadPaperFromDb(store.currentPaperId)
   }
   // Start polling for chart generation (runs in background after paper is shown)
   _startChartRefreshPolling()
@@ -1599,6 +1604,7 @@ watch(() => store.currentPaperId, (newId, oldId) => {
     generating.value = false
     generatingTopic.value = ''
     displayProgress.value = 0
+    imageGenProgress.value = { total: 0, done: 0, message: '' }
     _startTime = null
     _resetLiveState()
     jobsStore.clearStreamState()
@@ -1620,10 +1626,14 @@ watch([reasoningText, contentText], () => {
     if (reasoningScroll.value) {
       reasoningScroll.value.scrollTop = reasoningScroll.value.scrollHeight
     }
+    if (contentScrollRef.value) {
+      contentScrollRef.value.scrollTop = contentScrollRef.value.scrollHeight
+    }
   })
 })
 
 async function stopGeneration() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null }
   const jobId = activeJob.value?.id || activeJob.value?.job_id
   if (jobId) {
     // RQ job — cancel via API
@@ -1808,6 +1818,7 @@ const _liveState = {
   currentKey: '',                      // key currently being parsed
   keyBuffer: '',                       // buffer for key name
   lastPushedAt: 0,                     // timestamp of last push (throttle)
+  accumulatedPaper: null as Record<string, any> | null,  // accumulated paper for live editor
 }
 
 function _resetLiveState() {
@@ -1819,6 +1830,7 @@ function _resetLiveState() {
   _liveState.currentKey = ''
   _liveState.keyBuffer = ''
   _liveState.lastPushedAt = 0
+  _liveState.accumulatedPaper = null
 }
 
 // Scan content tokens to find complete top-level JSON sections.
@@ -1854,9 +1866,13 @@ function tryLiveUpdateEditor() {
   if (!hasNew) return
   _liveState.lastPushedAt = now
   
+  // Accumulate sections so applyPaperData gets all previously pushed sections too
+  if (!_liveState.accumulatedPaper) _liveState.accumulatedPaper = {}
+  Object.assign(_liveState.accumulatedPaper, partial)
+  
   // Apply to editor — use applyPaperData which handles full paper shape
   try {
-    store.applyPaperData(partial)
+    store.applyPaperData({ ..._liveState.accumulatedPaper })
   } catch {
     // Partial may be incomplete for editor — ignore
   }
@@ -1886,6 +1902,11 @@ function _extractCompleteSections(json: string): Array<{ key: string, value: any
     
     if (esc) {
       esc = false
+      // Handle \uXXXX: skip the 'u' and 4 hex digits
+      if (ch === 'u') {
+        i += 5 // skip u + 4 hex chars
+        continue
+      }
       i++
       continue
     }
@@ -2041,7 +2062,7 @@ async function consumeSSEStream(res) {
             })
           } else if (currentEvent === 'content') {
             contentText.value += payload.token ?? ''
-            displayProgress.value = Math.min(95, Math.floor((payload.total_tokens || 0) / 10))
+            if (payload.total_tokens && (payload.total_tokens / 10) > displayProgress.value) displayProgress.value = Math.min(95, Math.floor(payload.total_tokens / 10))
             jobsStore.updateStreamProgress(displayProgress.value)
             // Sync to store every ~2 seconds via timer (reliable, not lossy)
             _syncStreamIfNeeded()

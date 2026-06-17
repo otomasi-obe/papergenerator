@@ -81,7 +81,7 @@ try:
             release=os.getenv("SENTRY_RELEASE", "dev"),
             environment=os.getenv("FLASK_ENV", "production"),
         )
-except (ImportError, ValueError, Exception) as e:
+except Exception as e:
     logging.getLogger(__name__).warning(f"Failed to initialize Sentry: {e}")
 from PaperRiset.eks.editor.chunked import GenerationCancelled
 from PaperRiset.eks.editor.single import generate_paper_json_single
@@ -570,7 +570,9 @@ limiter.limit("10 per minute")(auth)
 
 # Rate limit expensive generation endpoints to prevent API exhaustion under load.
 # Paper generation triggers AI API calls — limit to prevent overwhelming upstream.
-limiter.limit("15 per minute")(jobs)
+# Note: ai_jobs_active is polled every 3s by frontend (20 req/min), so blanket limit
+# must be high enough. Expensive endpoints have individual limits already.
+limiter.limit("60 per minute")(jobs)
 
 # Rate limit image generation — Playwright workers are very resource-intensive.
 limiter.limit("10 per minute")(image_jobs)
@@ -585,10 +587,12 @@ log = logging.getLogger(__name__)
 
 UPLOAD_FOLDER = Path(__file__).parent / "data/uploads"
 UPLOAD_FOLDER.mkdir(exist_ok=True)
-EXPORT_FOLDER = Path(__file__).parent / "data" / "exports"
-EXPORT_FOLDER.mkdir(exist_ok=True)
 USER_BASE = Path(__file__).parent / "user"
 USER_BASE.mkdir(exist_ok=True)
+
+# Legacy export folder (kept for backward compat, new exports use per-user paths)
+EXPORT_FOLDER = Path(__file__).parent / "data" / "exports"
+EXPORT_FOLDER.mkdir(exist_ok=True)
 
 TEMPLATE_FOLDER = Path(__file__).parent / "tools" / "Journal"
 
@@ -998,6 +1002,7 @@ def _run_generate_full_job(
     paper_id=None,
     conv_id=None,
     resume_state=None,
+    language=None,
     **_legacy_kwargs,
 ):
     """Generate a full paper via single-shot generation.
@@ -1128,6 +1133,7 @@ def _run_generate_full_job(
             custom_prompt=extra,
             topic=topic,
             style=style,
+            language=language or "id",
             paper_id=paper_id,
             conv_id=conv_id,
             job_id=job_id,
@@ -1677,7 +1683,6 @@ def export_docx():
         # If paper_id provided but no paper data, fetch from DB
         paper_id = data.get("paper_id") or (paper.get("id") if isinstance(paper, dict) else None)
         if paper_id and (not isinstance(paper, dict) or "figures" not in paper):
-            from flask_jwt_extended import get_jwt_identity
             from database.models import Paper
             user_id = int(get_jwt_identity())
             db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
@@ -1716,21 +1721,33 @@ def export_docx():
         except Exception:
             log.warning("reference normalization failed", exc_info=True)
 
+        # Get user info for per-user export path
+        user_id = get_jwt_identity()
+        try:
+            from utils.core.user_storage import get_username
+            username = get_username(user_id=user_id)
+        except Exception:
+            username = f"user_{user_id}"
+        
+        # Use per-user export path: user/<username>/<paper_id>/export/
+        paper_id = str(paper.get("id") or data.get("paper_id") or "unknown")
+        user_export_dir = USER_BASE / username / paper_id / "export"
+        user_export_dir.mkdir(parents=True, exist_ok=True)
+        
         json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
-        json_filepath = EXPORT_FOLDER / json_filename
+        json_filepath = user_export_dir / json_filename
         json_filepath.write_text(json.dumps(paper, ensure_ascii=False, indent=2), encoding="utf-8")
         output_path = None
         _export_ok = False
         try:
-            output_path = EXPORT_FOLDER / f"{canonical_journal}_{uuid.uuid4().hex[:8]}.docx"
+            # Generate timestamp-based filename: ieee_YYYYMMDD-HHMMSS.docx
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            output_path = user_export_dir / f"{canonical_journal}_{ts}.docx"
             builder(json_filepath, output_path)
 
             try:
-                from utils.core.user_storage import get_username, save_docx, update_judul_paper
-                user_id = get_jwt_identity()
-                username = get_username(user_id=user_id)
+                from utils.core.user_storage import update_judul_paper
                 judul = data.get("title", paper.get("title", "untitled"))
-                save_docx(username, judul, output_path, canonical_journal)
                 update_judul_paper(username, judul, data)
             except Exception:
                 log.warning("Gagal simpan ke user storage", exc_info=True)
@@ -1751,15 +1768,15 @@ def export_docx():
             @response.call_on_close
             def _cleanup():
                 try:
-                    output_path.unlink(missing_ok=True)
+                    # Don't delete - keep for user history
+                    pass
                 except Exception as _e:
-                    log.warning("Cleanup unlink failed for %s: %s", output_path, _e)
+                    log.warning("Cleanup failed: %s", _e)
 
             _export_ok = True
             return response
         finally:
             # Clean up partial output file only if the response was not returned
-            # (on success, call_on_close handles cleanup after Flask serves the file)
             if not _export_ok:
                 try:
                     if output_path is not None:

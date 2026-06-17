@@ -73,9 +73,22 @@ def list_papers():
     # Get total count efficiently - only if we need it for pagination
     total = q.count()
 
+    # Pre-load image counts in a single query to avoid N+1
+    paper_ids = [p.id for p in papers]
+    image_counts = {}
+    if paper_ids:
+        from database.models import PaperImage
+        rows = (
+            db.session.query(PaperImage.paper_id, db.func.count(PaperImage.id))
+            .filter(PaperImage.paper_id.in_(paper_ids))
+            .group_by(PaperImage.paper_id)
+            .all()
+        )
+        image_counts = dict(rows)
+
     return jsonify(
         {
-            "papers": [p.to_dict() for p in papers],
+            "papers": [p.to_dict(image_count=image_counts.get(p.id, 0)) for p in papers],
             "pagination": {
                 "limit": limit,
                 "offset": offset,

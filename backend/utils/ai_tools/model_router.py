@@ -60,11 +60,18 @@ def _default_api_call(
 
     timeout = kwargs.pop("timeout", 180)
 
+    # SSL verify: skip if env var set (upstream cert may be self-signed/expired)
+    verify = kwargs.pop("verify", None)
+    if verify is None:
+        import os as _os
+        verify = _os.getenv("AI_SSL_VERIFY", "true").lower() not in ("false", "0", "no")
+
     resp = requests.post(
         api_url,
         headers=headers,
         json=payload,
         timeout=timeout,
+        verify=verify,
         **kwargs,
     )
     resp.raise_for_status()
@@ -155,6 +162,76 @@ def route_chat_call(
         get_endpoint_chain(heavy=False),
         api_func, retry_count, "route_chat", **kwargs,
     )
+
+
+def route_image_call(
+    messages: list[dict],
+    *,
+    timeout: int = 120,
+    max_retries: int = 3,
+    **kwargs: Any,
+) -> tuple[Any, str]:
+    """Call the upstream API for image analysis (MODELIMAGE).
+
+    Uses a single endpoint from ``get_image_endpoint()`` — no failover chain
+    since image models are typically a dedicated vision endpoint.
+
+    ``messages`` follows OpenAI multimodal format with ``image_url`` content parts.
+    Returns ``(response, model_used)``.
+
+    Includes retry logic with exponential backoff for transient failures.
+    """
+    from utils.ai_tools.model_config import get_image_endpoint
+    import time
+
+    model, base_url, api_key = get_image_endpoint()
+    if not base_url or not api_key:
+        raise RuntimeError("route_image: MODELIMAGE endpoint not configured")
+
+    api_url = base_url.rstrip("/") + "/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": kwargs.pop("max_tokens", 2048),
+        "stream": False,
+    }
+
+    import os as _os
+    verify = _os.getenv("AI_SSL_VERIFY", "true").lower() not in ("false", "0", "no")
+
+    # Remove stream from kwargs to prevent override
+    kwargs.pop("stream", None)
+
+    last_exception = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.post(
+                api_url,
+                headers=headers,
+                json=payload,
+                timeout=timeout,
+                verify=verify,
+                **kwargs,
+            )
+            resp.raise_for_status()
+            return resp, model
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) + 1  # Exponential backoff: 1s, 3s, 5s
+                log.warning("Image API call failed (attempt %d/%d), retrying in %ds: %s",
+                           attempt + 1, max_retries, wait_time, e)
+                time.sleep(wait_time)
+
+    # All retries exhausted
+    raise RuntimeError(f"Image API call failed after {max_retries} attempts: {last_exception}")
 
 
 def route_generate_call(

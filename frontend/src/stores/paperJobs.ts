@@ -421,6 +421,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     streamState,
     setStreamState,
     updateStreamProgress,
+    setConnectionLost,
     clearStreamState,
     clearStaleStreamState,
     fetchActive,

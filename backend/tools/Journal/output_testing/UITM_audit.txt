@@ -1,0 +1,5 @@
+============================================================
+[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT
+  Base: 100 | Penalty: -0 | Akhir: 100%
+============================================================
+Audit selesai. Detail tersimpan: audit_UITM_output.txt

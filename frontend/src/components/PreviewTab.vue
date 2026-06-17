@@ -152,13 +152,13 @@
               <h2 class="text-center font-bold mb-2 text-sm">
                 {{ toRoman(sIdx + 1) }}. {{ section.title?.toUpperCase() }}
               </h2>
-              <p class="text-justify whitespace-pre-wrap text-sm">{{ sectionText(section) }}</p>
+              <p class="text-justify whitespace-pre-wrap text-sm" v-html="renderInlineText(sectionText(section))"></p>
             </template>
             <template #after>
               <h2 class="text-center font-bold mb-2 text-sm">
                 {{ toRoman(sIdx + 1) }}. {{ (pendingSectionByIdx[sIdx].payload.title || '').toUpperCase() }}
               </h2>
-              <p class="text-justify whitespace-pre-wrap text-sm">{{ pendingSectionByIdx[sIdx].payload.content || '' }}</p>
+              <p class="text-justify whitespace-pre-wrap text-sm" v-html="renderInlineText(pendingSectionByIdx[sIdx].payload.content || '')"></p>
             </template>
           </DiffBlock>
 
@@ -179,7 +179,7 @@
               </div>
               <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                 <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
-                  <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
+                  <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="$event.target.style.display='none'" />
                   <div v-else class="w-48 h-32 bg-cream-100 dark:bg-ash-800 flex items-center justify-center opacity-50 dark:opacity-40 text-xs">No image</div>
                 </div>
                 <input v-if="editMode" v-model="item.Title"
@@ -235,13 +235,23 @@
                 </div>
                 <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                   <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
-                    <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" />
+                    <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="$event.target.style.display='none'" />
                     <div v-else class="w-48 h-32 bg-cream-100 dark:bg-ash-800 flex items-center justify-center opacity-50 dark:opacity-40 text-xs">No image</div>
                   </div>
                   <input v-if="editMode" v-model="item.Title"
                     class="text-xs mt-1 opacity-70 dark:opacity-60 text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1"
                     placeholder="Caption gambar..." />
                   <p v-else-if="item.Title" class="text-xs mt-1 opacity-70 dark:opacity-60">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
+                </div>
+                <div v-else-if="item.id === 'tabel'" class="my-3">
+                  <p class="text-xs text-center font-semibold mb-1">{{ item.Title || 'Table ' + item.TableNumber }}</p>
+                  <table class="text-xs border-collapse w-full mx-auto">
+                    <thead><tr><th v-for="(h,i) in item.Headers" :key="i" class="border border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 px-2 py-1 text-center font-semibold">{{ h }}</th></tr></thead>
+                    <tbody><tr v-for="(row,ri) in item.Rows" :key="ri"><td v-for="(cell,ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center">{{ cell }}</td></tr></tbody>
+                  </table>
+                </div>
+                <div v-else-if="item.id === 'rumus'" class="my-3 text-center">
+                  <span v-html="renderFormula(item.latex || item.text)"></span>
                 </div>
               </template>
             </div>
@@ -257,7 +267,7 @@
             <h2 class="text-center font-bold mb-2 text-sm">
               + {{ (change.payload.title || '').toUpperCase() }}
             </h2>
-            <p class="text-justify whitespace-pre-wrap text-sm">{{ change.payload.content || '' }}</p>
+            <p class="text-justify whitespace-pre-wrap text-sm" v-html="renderInlineText(change.payload.content || '')"></p>
           </template>
         </DiffBlock>
 

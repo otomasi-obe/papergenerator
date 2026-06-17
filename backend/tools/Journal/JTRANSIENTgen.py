@@ -210,14 +210,14 @@ def _set_paragraph_spacing(
 
 
 def _split_text_blocks(text: str) -> list[str]:
-    normalized = text.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
+    normalized = re.sub(r'\\\\n(?![a-z])', '\n', text).replace("\r\n", "\n").replace("\r", "\n")
     parts = [part.strip() for part in re.split(r"\n\s*\n", normalized) if part.strip()]
     return parts or [normalized.strip()]
 
 
 def _iter_rich_tokens(text: str):
     # Normalize newlines and convert Markdown bold/italic to toggle-escape format
-    normalized = text.replace("\\n", "\n")
+    normalized = re.sub(r'\\\\n(?![a-z])', '\n', text)
     normalized = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", normalized, flags=re.DOTALL)
     normalized = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", normalized)
     buffer: list[str] = []
@@ -443,7 +443,7 @@ def _assign_inline_drawing_id(inline) -> None:
 
 def _strip_markup(text: str) -> str:
     value = text.replace("\\b", "").replace("\\i", "").replace("\\u", "")
-    value = value.replace("\\n", " ")
+    value = re.sub(r'\\\\n(?![a-z])', ' ', value)
     value = re.sub(r"\$[^$]+\$", "MM", value)
     return value
 

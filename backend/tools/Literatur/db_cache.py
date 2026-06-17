@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from datetime import datetime
 from typing import Iterable
 
@@ -24,26 +25,30 @@ log = logging.getLogger(__name__)
 
 # Database connection settings
 DB_CONFIG = {
-    "host": os.getenv("PAPER_DB_HOST", "localhost"),
+    "host": os.getenv("PAPER_DB_HOST", "/var/run/postgresql"),
     "port": int(os.getenv("PAPER_DB_PORT", "5432")),
     "database": os.getenv("PAPER_DB_NAME", "paper_database"),
     "user": os.getenv("PAPER_DB_USER", "sirobo"),
-    "password": os.getenv("PAPER_DB_PASS", "paper2026"),
+    "password": os.getenv("PAPER_DB_PASS", ""),
 }
 
-# Connection pool — thread-safe, supports up to 50 concurrent connections
+# Connection pool — thread-safe, supports up to 5 concurrent connections per process.
+# With 16 gunicorn workers: max 80 connections. PG max_connections=300, safe headroom.
 _pool: pool.ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
 
 
 def _get_pool() -> pool.ThreadedConnectionPool:
-    """Lazy-init connection pool."""
+    """Lazy-init connection pool with double-checked locking."""
     global _pool
     if _pool is None:
-        _pool = pool.ThreadedConnectionPool(
-            minconn=2,
-            maxconn=50,
-            **DB_CONFIG,
-        )
+        with _pool_lock:
+            if _pool is None:
+                _pool = pool.ThreadedConnectionPool(
+                    minconn=1,
+                    maxconn=5,
+                    **DB_CONFIG,
+                )
     return _pool
 
 

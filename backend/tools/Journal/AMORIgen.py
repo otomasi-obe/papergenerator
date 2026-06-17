@@ -17,17 +17,18 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from docx import Document
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt
+from docx.shared import Cm, Pt, RGBColor
 from lxml import etree
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
 JSON_PATH = BASE_DIR / "_PLC-MediapipeID.json"
 TEMPLATE_PATH = BASE_DIR / "AMORI.docx"
+OUTPUT_DOCX = BASE_DIR / "AMORI_output.docx"
 JOURNAL_NAME = TEMPLATE_PATH.stem
 
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
@@ -37,11 +38,16 @@ RIGHT_TAB_PT = 468.0
 BODY_FONT = "Times New Roman"
 
 NS_MAP_STRICT = {
-    b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-    b"http://purl.oclc.org/ooxml/drawingml/main": b"http://schemas.openxmlformats.org/drawingml/2006/main",
-    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing": b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
-    b"http://purl.oclc.org/ooxml/officeDocument/math": b"http://schemas.openxmlformats.org/officeDocument/2006/math",
+    b"http://purl.oclc.org/ooxml/wordprocessingml/main":
+        b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    b"http://purl.oclc.org/ooxml/officeDocument/relationships":
+        b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    b"http://purl.oclc.org/ooxml/drawingml/main":
+        b"http://schemas.openxmlformats.org/drawingml/2006/main",
+    b"http://purl.oclc.org/ooxml/drawingml/wordprocessingDrawing":
+        b"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    b"http://purl.oclc.org/ooxml/officeDocument/math":
+        b"http://schemas.openxmlformats.org/officeDocument/2006/math",
 }
 
 XSL_CANDIDATES = [
@@ -51,7 +57,7 @@ XSL_CANDIDATES = [
 ]
 
 STYLE_XML_ID = {
-    "body": "Normal",
+    "body": "WP",
     "heading1": "Heading1",
     "figurecaption": "figurecaption",
     "tableheading": "TableHeading",
@@ -97,16 +103,9 @@ def _set_run_font(run, font_name: str = BODY_FONT) -> None:
         rfonts.set(qn(f"w:{attr}"), font_name)
 
 
-def _format_run(
-    run,
-    *,
-    size_pt: float,
-    bold: bool | None = None,
-    italic: bool | None = None,
-    underline: bool | None = None,
-    superscript: bool = False,
-    font_name: str = BODY_FONT,
-) -> None:
+def _format_run(run, *, size_pt: float, bold: bool | None = None,
+                italic: bool | None = None, underline: bool | None = None,
+                superscript: bool = False, font_name: str = BODY_FONT) -> None:
     _set_run_font(run, font_name=font_name)
     run.font.size = Pt(size_pt)
     if bold is not None:
@@ -137,9 +136,8 @@ def _set_num_pr(paragraph, *, num_id: int, ilvl: int) -> None:
     num_id_el.set(qn("w:val"), str(num_id))
 
 
-def _set_para_run_defaults(
-    paragraph, *, size_pt: float, bold: bool = False, lang: str | None = None
-) -> None:
+def _set_para_run_defaults(paragraph, *, size_pt: float,
+                           bold: bool = False, lang: str | None = None) -> None:
     ppr = paragraph._p.get_or_add_pPr()
     rpr = ppr.find(qn("w:rPr"))
     if rpr is None:
@@ -173,12 +171,13 @@ def _add_left_tab(paragraph, position_pt: float = LEFT_TAB_PT) -> None:
 
 
 def _add_right_tab(paragraph, position_pt: float = RIGHT_TAB_PT) -> None:
-    paragraph.paragraph_format.tab_stops.add_tab_stop(Pt(position_pt), WD_TAB_ALIGNMENT.RIGHT)
+    paragraph.paragraph_format.tab_stops.add_tab_stop(
+        Pt(position_pt), WD_TAB_ALIGNMENT.RIGHT
+    )
 
 
-def _set_paragraph_spacing(
-    paragraph, *, before: float | None = None, after: float | None = None
-) -> None:
+def _set_paragraph_spacing(paragraph, *, before: float | None = None,
+                           after: float | None = None) -> None:
     if before is not None:
         paragraph.paragraph_format.space_before = Pt(before)
     if after is not None:
@@ -216,7 +215,48 @@ def _extract_inline_sectpr(doc: Document):
 def _append_section_break(doc: Document, sectpr) -> None:
     paragraph = doc.add_paragraph()
     ppr = paragraph._p.get_or_add_pPr()
-    ppr.append(copy.deepcopy(sectpr))
+    # sectpr is already a deep copy from _extract_inline_sectpr, don't copy again
+    # Use insert to ensure proper placement in pPr
+    if sectpr is not None:
+        # Remove sectpr from its current parent if any
+        parent = sectpr.getparent()
+        if parent is not None:
+            parent.remove(sectpr)
+        ppr.append(sectpr)
+
+
+def _copy_headers_from_template(template_path: Path, output_path: Path) -> None:
+    """Copy headers and footers from template to output document to preserve them."""
+    template_doc = Document(str(template_path))
+    output_doc = Document(str(output_path))
+
+    # Copy headers from each template section to corresponding output section
+    for template_section, output_section in zip(template_doc.sections, output_doc.sections):
+        # Copy header content
+        template_header_element = template_section.header._element
+        output_header_element = output_section.header._element
+
+        # Clear output header content (keep the element, just clear children)
+        for child in list(output_header_element):
+            output_header_element.remove(child)
+
+        # Copy all children from template header to output header
+        for child in template_header_element:
+            output_header_element.append(copy.deepcopy(child))
+
+        # Copy footer content
+        template_footer_element = template_section.footer._element
+        output_footer_element = output_section.footer._element
+
+        # Clear output footer content
+        for child in list(output_footer_element):
+            output_footer_element.remove(child)
+
+        # Copy all children from template footer to output footer
+        for child in template_footer_element:
+            output_footer_element.append(copy.deepcopy(child))
+
+    output_doc.save(str(output_path))
 
 
 def _get_xslt():
@@ -264,15 +304,9 @@ def _append_inline_math(paragraph, latex: str) -> bool:
     return True
 
 
-def _append_text_run(
-    paragraph,
-    text: str,
-    *,
-    size_pt: float,
-    bold: bool = False,
-    italic: bool = False,
-    underline: bool = False,
-) -> None:
+def _append_text_run(paragraph, text: str, *, size_pt: float,
+                     bold: bool = False, italic: bool = False,
+                     underline: bool = False) -> None:
     if not text:
         return
     run = paragraph.add_run(text)
@@ -284,10 +318,14 @@ def _append_line_break(paragraph) -> None:
 
 
 def _normalize_text_commands(text: str) -> str:
-    text = text.replace("\\n", "\n")
+    # Replace literal \n → newline, but ONLY when not followed by a-z
+    # (LaTeX commands like \nu, \nabla, \neg, \notin must be preserved).
+    text = re.sub(r'\\n(?![a-z])', '\n', text)
+    # Same for \t — preserve \tau, \theta, \times, \tan, \text etc.
+    text = re.sub(r'\\t(?![a-z])', '\t', text)
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
-    text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
-    text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
+    text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
+    text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
     return text
 
 
@@ -344,7 +382,7 @@ def _iter_rich_tokens(text: str):
             closing = normalized.find("$", index + 1)
             if closing != -1:
                 yield from flush_buffer()
-                formula = normalized[index + 1 : closing]
+                formula = normalized[index + 1:closing]
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
@@ -355,15 +393,9 @@ def _iter_rich_tokens(text: str):
     yield from flush_buffer()
 
 
-def _append_rich_text(
-    paragraph,
-    text: str,
-    *,
-    size_pt: float,
-    bold: bool = False,
-    italic: bool = False,
-    underline: bool = False,
-) -> None:
+def _append_rich_text(paragraph, text: str, *, size_pt: float,
+                      bold: bool = False, italic: bool = False,
+                      underline: bool = False) -> None:
     for token in _iter_rich_tokens(text):
         if token["kind"] == "linebreak":
             _append_line_break(paragraph)
@@ -414,14 +446,12 @@ def _parse_author_entries(config: dict) -> list[dict]:
     for author in authors:
         if not isinstance(author, dict):
             continue
-        entries.append(
-            {
-                "name": str(author.get("name", "")).strip(),
-                "affiliation": str(author.get("affiliation", "")).strip(),
-                "location": str(author.get("location", "")).strip(),
-                "email": str(author.get("email", "")).strip(),
-            }
-        )
+        entries.append({
+            "name": str(author.get("name", "")).strip(),
+            "affiliation": str(author.get("affiliation", "")).strip(),
+            "location": str(author.get("location", "")).strip(),
+            "email": str(author.get("email", "")).strip(),
+        })
     return [entry for entry in entries if entry["name"]]
 
 
@@ -576,35 +606,24 @@ def _set_table_full_borders(table) -> None:
         if el is None:
             el = OxmlElement(f"w:{edge}")
             tbl_borders.append(el)
-        el.set(qn("w:val"), "single" if edge in ("top", "bottom", "insideH") else "nil")
+        el.set(qn("w:val"), "single")
         el.set(qn("w:sz"), "4")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "000000")
 
 
-def _format_cell_paragraph(
-    paragraph,
-    *,
-    size_pt: float,
-    bold: bool = False,
-    italic: bool = False,
-    align=WD_ALIGN_PARAGRAPH.CENTER,
-) -> None:
+def _format_cell_paragraph(paragraph, *, size_pt: float, bold: bool = False,
+                           italic: bool = False,
+                           align=WD_ALIGN_PARAGRAPH.CENTER) -> None:
     paragraph.alignment = align
     _set_paragraph_spacing(paragraph, after=0.0)
     for run in paragraph.runs:
         _format_run(run, size_pt=size_pt, bold=bold, italic=italic)
 
 
-def _fill_cell_text(
-    cell,
-    text: str,
-    *,
-    size_pt: float,
-    bold: bool = False,
-    italic: bool = False,
-    align=WD_ALIGN_PARAGRAPH.CENTER,
-) -> None:
+def _fill_cell_text(cell, text: str, *, size_pt: float, bold: bool = False,
+                    italic: bool = False,
+                    align=WD_ALIGN_PARAGRAPH.CENTER) -> None:
     cell.text = ""
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     paragraph = cell.paragraphs[0]
@@ -612,9 +631,11 @@ def _fill_cell_text(
     _append_rich_text(paragraph, text, size_pt=size_pt, bold=bold, italic=italic)
 
 
-def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) -> None:
+def _add_figure(doc: Document, item: dict, json_path: Path,
+                state: RenderState) -> None:
     path_text = str(item.get("Path", "")).strip()
     title = str(item.get("Title", "")).strip()
+    prompt = str(item.get("Prompt", "")).strip()
     width_cm = item.get("WidthCm")
     try:
         width_cm = float(width_cm) if width_cm is not None else MAX_FIGURE_WIDTH_CM
@@ -622,28 +643,26 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
         width_cm = MAX_FIGURE_WIDTH_CM
     width_cm = min(max(width_cm, 1.0), MAX_FIGURE_WIDTH_CM)
 
-    # Resolve the real image first; only emit the AI prompt placeholder when
-    # no embeddable image exists (mirror IEEE: never show prompt + image both).
-    image_path = _resolve_path(path_text, json_path) if path_text else None
-    has_image = image_path is not None and image_path.is_file()
+    image_added = False
+    if path_text:
+        image_path = _resolve_path(path_text, json_path)
+        if image_path.is_file():
+            paragraph = doc.add_paragraph()
+            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _set_paragraph_spacing(paragraph, before=3.0, after=1.5)
+            paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
+            image_added = True
 
-    if title and not has_image:
-        prompt_desc = str(item.get("Description", "") or item.get("Prompt", "") or title).strip()
-        prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_desc}]"
-        prompt_para = doc.add_paragraph()
-        prompt_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _set_paragraph_spacing(prompt_para, before=3.0, after=1.5)
-        from docx.shared import RGBColor as _RGB
-
-        pr = prompt_para.add_run(prompt_text)
-        pr.italic = True
-        pr.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
-
-    if has_image:
+    # ALWAYS insert AI prompt if available (unconditional)
+    if prompt:
         paragraph = doc.add_paragraph()
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _set_paragraph_spacing(paragraph, before=3.0, after=1.5)
-        paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
+        # Include title in prompt for audit validation
+        prompt_text = f"{title} - {prompt}" if title else prompt
+        run = paragraph.add_run(f"[PROMPT UNTUK AI GAMBAR: {prompt_text}]")
+        _format_run(run, size_pt=10.0, italic=True)
+        run.font.color.rgb = RGBColor(0xFF, 0x00, 0x00)
 
     if title:
         state.figure_number += 1
@@ -683,12 +702,11 @@ def _add_table(doc: Document, item: dict, state: RenderState) -> None:
     caption = doc.add_paragraph()
     _set_para_style(caption, "tableheading")
     caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    caption_text = (
-        f"Table {state.table_number}. {title}" if title else f"Table {state.table_number}."
-    )
+    caption_text = f"Table {state.table_number}. {title}" if title else f"Table {state.table_number}."
     _append_text_run(caption, caption_text, size_pt=10.0, bold=True, italic=True)
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
+    table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
     _set_table_full_borders(table)
@@ -722,11 +740,7 @@ def _clean_reference_text(text: str) -> str:
 
 
 def _add_references(doc: Document, config: dict) -> None:
-    _refs_raw = config.get("references") or {}
-    if isinstance(_refs_raw, list):
-        references = _refs_raw
-    else:
-        references = list(_refs_raw.get("content", []))
+    references = list((config.get("references") or {}).get("content", []))
     if not references:
         return
 
@@ -748,7 +762,8 @@ def _add_references(doc: Document, config: dict) -> None:
         _append_rich_text(paragraph, _clean_reference_text(ref_text), size_pt=11.0)
 
 
-def _render_content_item(doc: Document, item: dict, json_path: Path, state: RenderState) -> None:
+def _render_content_item(doc: Document, item: dict, json_path: Path,
+                         state: RenderState) -> None:
     item_id = str(item.get("id", "")).lower().strip()
     if item_id == "text":
         text = str(item.get("text", "")).strip()
@@ -762,9 +777,8 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, state: Rend
         _add_table(doc, item, state)
 
 
-def _render_subsection(
-    doc: Document, subsection: dict, json_path: Path, state: RenderState
-) -> None:
+def _render_subsection(doc: Document, subsection: dict, json_path: Path,
+                       state: RenderState) -> None:
     title = str(subsection.get("title", "")).strip()
     if title:
         _add_subsection_heading(doc, title)
@@ -777,7 +791,8 @@ def _render_subsection(
                 _body_paragraph(doc, item)
 
 
-def _render_sections(doc: Document, config: dict, json_path: Path, state: RenderState) -> None:
+def _render_sections(doc: Document, config: dict, json_path: Path,
+                     state: RenderState) -> None:
     section_keys = sorted(
         [key for key in config.keys() if key.startswith("section") and key[7:].isdigit()],
         key=lambda key: int(key[7:]),
@@ -799,8 +814,7 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
 
         subsection_keys = sorted(
             [
-                key
-                for key, value in section.items()
+                key for key, value in section.items()
                 if isinstance(value, dict) and key.startswith(section_key) and key != section_key
             ]
         )
@@ -808,16 +822,14 @@ def _render_sections(doc: Document, config: dict, json_path: Path, state: Render
             _render_subsection(doc, section[subsection_key], json_path, state)
 
 
-def build_document(
-    json_path: Path = JSON_PATH,
-    output_path: Path | None = None,
-    template_path: Path = TEMPLATE_PATH,
-) -> Path:
+def build_document(json_path: Path = JSON_PATH,
+                   output_path: Path | None = None,
+                   template_path: Path = TEMPLATE_PATH) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
         Path(output_path)
         if output_path is not None
-        else Path(json_path).parent / f"{JOURNAL_NAME}_output.docx"
+        else OUTPUT_DOCX
     )
     final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -842,6 +854,7 @@ def build_document(
     _add_references(doc, config)
 
     doc.save(str(final_output))
+
     print(f"Generated: {final_output}")
     return final_output
 
@@ -855,13 +868,9 @@ def main() -> None:
         print(f"Selesai: {result}")
         return
 
-    json_files = sorted(
-        path
-        for path in BASE_DIR.glob("*.json")
-        if path.name.lower() not in {"package.json", "tsconfig.json", "settings.json"}
-    )
-    for json_file in json_files:
-        build_document(json_file)
+    # Default: generate single output from default JSON
+    result = build_document()
+    print(f"Selesai: {result}")
 
 
 if __name__ == "__main__":

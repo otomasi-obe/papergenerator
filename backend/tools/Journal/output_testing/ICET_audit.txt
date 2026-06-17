@@ -1,0 +1,9 @@
+============================================================
+[SKOR KECOCOKAN: 87%] -> STATUS: REVISI DIBUTUHKAN
+  Base: 100 | Penalty: -13 | Akhir: 87%
+   - Blank Page / Section Kosong (MAYOR): -10
+   - Section Break Waste (MINOR): -3
+============================================================
+[INFO] WARNING: Skor 87% tapi ditemukan 9 kejanggalan visual.
+[INFO] Master prompt perbaikan ditulis: audit-unik_ICET.txt
+Audit selesai. Detail tersimpan: audit_ICET_output.txt

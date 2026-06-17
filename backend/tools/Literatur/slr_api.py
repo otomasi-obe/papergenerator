@@ -29,7 +29,9 @@ import threading
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 
+import redis
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy.exc import DBAPIError, OperationalError
@@ -44,6 +46,23 @@ log = logging.getLogger(__name__)
 slr_api = Blueprint("slr_api", __name__)
 
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9]{6,32}$")
+
+# Redis client for cross-process rate limiting.
+# Falls back to in-memory if Redis unavailable.
+_redis_client: redis.Redis | None = None
+try:
+    _redis_client = redis.Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", "6379")),
+        db=0,
+        decode_responses=True,
+        socket_connect_timeout=1.0,
+        socket_timeout=1.0,
+    )
+    _redis_client.ping()
+except Exception:
+    log.warning("Redis unavailable for rate limiter, falling back to in-memory")
+    _redis_client = None
 
 
 # ─── Prompt-injection sanitizer ──────────────────────────────────────────
@@ -95,7 +114,16 @@ def get_pinned_literature(paper_id: str, user_id: int, max_items: int = 10) -> s
             .all()
         )
         if not items:
-            return ""
+            # Fallback: use top-scored items when nothing is pinned
+            items = (
+                LiteratureItem.query
+                .filter_by(paper_id=paper_id, user_id=user_id)
+                .order_by(LiteratureItem.score_total.desc())
+                .limit(10)
+                .all()
+            )
+            if not items:
+                return ""
 
         lines: list[str] = []
         for i, it in enumerate(items, 1):
@@ -133,20 +161,16 @@ _URL_RE = re.compile(r"^(https?://|/)", re.IGNORECASE)
 _VALID_SOURCE_KINDS = {"slr", "manual", "file"}
 _VALID_JOB_STATUSES = {"queued", "running", "done", "error", "cancelled"}
 
-# In-memory token bucket for rate limiting. Keyed by (user_id, endpoint).
-# Each value is a list of unix-epoch timestamps (floats) of recent requests
-# within the current 60-second window. Sufficient for single-process Flask;
-# replaced by a real limiter (F-28) when sharing across workers becomes
-# necessary.
+# Rate limiter: Redis-backed (cross-process) with in-memory fallback.
+# Keyed by (user_id, endpoint). Sliding window: count requests in last N seconds.
 _RATE_BUCKETS: "defaultdict[tuple[int, str], list[float]]" = defaultdict(list)
 _RATE_LOCK = threading.Lock()
 _RATE_WINDOW_SEC = 60.0
 _RATE_MAX_REQUESTS = 10
 
-
-def _err(message: str, code: str, status: int):
-    """Build a JSON error response with stable `code` for frontend i18n."""
-    return jsonify({"error": message, "code": code}), status
+# Long-poll concurrency cap: max simultaneous long-poll connections.
+# Prevents thread starvation — with 128 gunicorn threads, cap at 80.
+_LONGPOLL_SEMAPHORE = threading.Semaphore(80)
 
 
 def _check_rate_limit(
@@ -155,26 +179,59 @@ def _check_rate_limit(
     max_requests: int = _RATE_MAX_REQUESTS,
     window_sec: float = _RATE_WINDOW_SEC,
 ):
-    """Simple per-user token bucket. Returns (ok, retry_after_seconds)."""
-    now = time.monotonic()
-    key = (user_id, endpoint)
+    """Cross-process rate limit via Redis sorted set. Falls back to in-memory."""
+    key = f"rl:{user_id}:{endpoint}"
+    now = time.time()
+
+    if _redis_client:
+        try:
+            pipe = _redis_client.pipeline()
+            # Remove expired entries
+            pipe.zremrangebyscore(key, 0, now - window_sec)
+            # Count remaining
+            pipe.zcard(key)
+            # Add current request
+            pipe.zadd(key, {f"{now}": now})
+            # Set expiry on key
+            pipe.expire(key, int(window_sec) + 5)
+            results = pipe.execute()
+            count = results[1]  # zcard result
+
+            if count >= max_requests:
+                # Over limit — remove the request we just added
+                _redis_client.zrem(key, f"{now}")
+                # Calculate retry_after from oldest entry
+                oldest = _redis_client.zrange(key, 0, 0, withscores=True)
+                if oldest:
+                    retry_after = max(1, int(window_sec - (now - oldest[0][1])) + 1)
+                else:
+                    retry_after = int(window_sec)
+                return False, retry_after
+            return True, 0
+        except Exception as e:
+            log.warning("Redis rate limiter failed, falling back to in-memory: %s", e)
+            # Fall through to in-memory
+
+    # In-memory fallback (per-process only, weaker but functional)
     with _RATE_LOCK:
-        bucket = _RATE_BUCKETS[key]
-        cutoff = now - window_sec
-        # drop expired timestamps
+        mono_now = time.monotonic()
+        bucket = _RATE_BUCKETS[(user_id, endpoint)]
+        cutoff = mono_now - window_sec
         while bucket and bucket[0] < cutoff:
             bucket.pop(0)
-
-        # Cleanup: remove empty buckets to prevent memory leak
-        if not bucket and key in _RATE_BUCKETS:
-            del _RATE_BUCKETS[key]
+        if not bucket and (user_id, endpoint) in _RATE_BUCKETS:
+            del _RATE_BUCKETS[(user_id, endpoint)]
             return True, 0
-
         if len(bucket) >= max_requests:
-            retry_after = max(1, int(window_sec - (now - bucket[0])) + 1)
+            retry_after = max(1, int(window_sec - (mono_now - bucket[0])) + 1)
             return False, retry_after
-        bucket.append(now)
+        bucket.append(mono_now)
         return True, 0
+
+
+def _err(message: str, code: str, status: int):
+    """Build a JSON error response with stable `code` for frontend i18n."""
+    return jsonify({"error": message, "code": code}), status
 
 
 def _validate_year(value):
@@ -361,13 +418,14 @@ def list_slr_jobs(paper_id: str):
 def wait_slr_jobs(paper_id: str):
     """Long-poll for SlrJob changes for this paper.
 
-    Holds the connection for up to 30 s, returning as soon as `max(updated_at)`
+    Holds the connection for up to 10 s, returning as soon as `max(updated_at)`
     moves past the caller's `?after=<unix_ts>` cursor. Frontend uses this to
     avoid hammering the DB with 2-3 s polls — and to dodge the proxy 524 the
     cheap polls were causing under load.
 
-    NOTE (BUG-6.2): Long-poll currently blocks a Flask worker thread per client.
-    Capped at 10 s (was 30 s). Should be replaced with async/SSE in future.
+    Concurrency cap: semaphore limits simultaneous long-pollers to 80 (out of
+    128 gunicorn threads). Excess clients get immediate 503 with fallback to
+    short-poll. Prevents thread starvation under heavy concurrent use.
     """
     user_id = _current_user_id()
     if user_id is None:
@@ -376,12 +434,24 @@ def wait_slr_jobs(paper_id: str):
     if err:
         return err
 
+    # Semaphore: if all slots taken, return immediately — client falls back to short-poll
+    acquired = _LONGPOLL_SEMAPHORE.acquire(blocking=False)
+    if not acquired:
+        return jsonify({"jobs": [], "ts": 0, "noop": True, "busy": True}), 503
+    try:
+        return _wait_slr_jobs_inner(paper_id, user_id)
+    finally:
+        _LONGPOLL_SEMAPHORE.release()
+
+
+def _wait_slr_jobs_inner(paper_id: str, user_id: int):
+    """Inner long-poll logic after semaphore is acquired."""
     try:
         after = float(request.args.get("after", "0"))
     except (TypeError, ValueError):
         after = 0.0
 
-    deadline = time.monotonic() + 10.0  # BUG-6.2: was 30s, reduced to 10s
+    deadline = time.monotonic() + 10.0
     poll_step = 2.0
     try:
         while time.monotonic() < deadline:
@@ -859,12 +929,213 @@ def bulk_patch_literature(paper_id: str):
     return jsonify({"updated": int(updated or 0)})
 
 
+@slr_api.route("/api/papers/<paper_id>/literature/upload-pdf", methods=["POST"])
+@jwt_required()
+def upload_pdf_literature(paper_id: str):
+    """Upload PDF files directly to Literature tab.
+    
+    For each PDF:
+    1. Extract metadata (title, authors, DOI, year, abstract, venue)
+    2. Match against existing SLR entries (by DOI or normalized title)
+    3. If match found: attach file to existing entry, mark as checked
+    4. If no match: create new LiteratureItem with extracted metadata
+    
+    Returns: {created: [...], matched: [...], total: N}
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+    
+    # Get uploaded files
+    files = request.files.getlist('files')
+    if not files:
+        return _err("No files uploaded", "NO_FILES", 400)
+    
+    # Get existing SLR entries for matching
+    existing_items = (
+        db.session.query(LiteratureItem)
+        .filter_by(paper_id=paper_id, user_id=user_id)
+        .all()
+    )
+    existing_dois = {
+        (i.doi or "").lower().strip() 
+        for i in existing_items if i.doi
+    }
+    existing_titles_norm = {
+        _normalize_title_for_match(i.title)
+        for i in existing_items if i.title
+    }
+    doi_to_item = {(i.doi or "").lower().strip(): i for i in existing_items if i.doi}
+    title_norm_to_item = {_normalize_title_for_match(i.title): i for i in existing_items if i.title}
+    
+    created = []
+    matched = []
+    
+    import json as _json
+    import uuid
+    from tools.Literatur.pdf_metadata_extractor import extract_metadata_from_pdf, _normalize_title as _norm_title
+    
+    # Save files temporarily and extract metadata
+    for f in files:
+        if not f.filename:
+            continue
+        
+        # Save to temp location
+        temp_dir = Path('/tmp/papergenerator_uploads')
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = temp_dir / f"{uuid.uuid4()}.pdf"
+        
+        try:
+            f.save(str(temp_path))
+        except Exception as e:
+            log.error("Failed to save uploaded file: %s", e)
+            continue
+        
+        # Extract metadata from PDF
+        try:
+            meta = extract_metadata_from_pdf(
+                temp_path,
+                existing_dois=existing_dois,
+                existing_titles_norm=existing_titles_norm,
+            )
+        except Exception as e:
+            log.error("Metadata extraction failed: %s", e)
+            meta = {
+                'title': f.filename or "Untitled",
+                'authors': [],
+                'year': None,
+                'doi': None,
+                'abstract': '',
+                'venue': '',
+                'publisher': '',
+            }
+        finally:
+            # Clean up temp file
+            try:
+                temp_path.unlink()
+            except Exception:
+                pass
+        
+        # Check for match against existing SLR entries
+        matched_item = None
+        match_type = None
+        
+        # Priority 1: Match by DOI
+        if meta.get('doi'):
+            doi_key = meta['doi'].lower().strip()
+            matched_item = doi_to_item.get(doi_key)
+            if matched_item:
+                match_type = 'doi'
+        
+        # Priority 2: Match by normalized title
+        if not matched_item and meta.get('title'):
+            title_key = _norm_title(meta['title'])
+            matched_item = title_norm_to_item.get(title_key)
+            if matched_item:
+                match_type = 'title'
+        
+        if matched_item:
+            # Attach to existing SLR entry
+            if not matched_item.file_id:
+                # Store PDF metadata in PaperFile for future reference
+                pf = PaperFile(
+                    paper_id=paper_id,
+                    user_id=user_id,
+                    filename=f"{uuid.uuid4()}.pdf",
+                    original_name=f.filename or "Untitled.pdf",
+                    ext='.pdf',
+                    size_bytes=0,
+                    file_path='',
+                    extracted_text='',
+                    meta_title=(meta.get('title') or '')[:5000],
+                    meta_authors=_json.dumps(meta.get('authors') or [])[:5000],
+                    meta_doi=(meta.get('doi') or '')[:500],
+                    meta_year=meta.get('year'),
+                    meta_abstract=(meta.get('abstract') or '')[:10000],
+                    meta_venue=(meta.get('venue') or '')[:500],
+                    meta_publisher=(meta.get('publisher') or '')[:500],
+                )
+                db.session.add(pf)
+                db.session.flush()
+                matched_item.file_id = pf.id
+                matched_item.url = f"/api/papers/{paper_id}/files/{pf.id}/preview"
+            # Enrich sparse SLR entries
+            if not matched_item.authors and meta.get('authors'):
+                matched_item.authors = meta['authors']
+            if not matched_item.year and meta.get('year'):
+                matched_item.year = meta['year']
+            if not matched_item.venue and meta.get('venue'):
+                matched_item.venue = meta['venue'][:200]
+            if not matched_item.publisher and meta.get('publisher'):
+                matched_item.publisher = meta['publisher'][:200]
+            matched.append({
+                'id': matched_item.id,
+                'title': matched_item.title,
+                'match_type': match_type,
+                'doi': matched_item.doi,
+            })
+        else:
+            # Create new LiteratureItem
+            # Store PDF metadata in PaperFile
+            pf = PaperFile(
+                paper_id=paper_id,
+                user_id=user_id,
+                filename=f"{uuid.uuid4()}.pdf",
+                original_name=f.filename or "Untitled.pdf",
+                ext='.pdf',
+                size_bytes=0,
+                file_path='',
+                extracted_text='',
+                meta_title=(meta.get('title') or '')[:5000],
+                meta_authors=_json.dumps(meta.get('authors') or [])[:5000],
+                meta_doi=(meta.get('doi') or '')[:500],
+                meta_year=meta.get('year'),
+                meta_abstract=(meta.get('abstract') or '')[:10000],
+                meta_venue=(meta.get('venue') or '')[:500],
+                meta_publisher=(meta.get('publisher') or '')[:500],
+            )
+            db.session.add(pf)
+            db.session.flush()
+            
+            item = LiteratureItem(
+                paper_id=paper_id,
+                user_id=user_id,
+                source_kind='file',
+                source='pdf',
+                title=(meta.get('title') or f.filename or 'Untitled')[:300],
+                authors=meta.get('authors') or [],
+                year=meta.get('year'),
+                venue=(meta.get('venue') or '')[:200],
+                publisher=(meta.get('publisher') or '')[:200],
+                doi=meta.get('doi'),
+                url=f"/api/papers/{paper_id}/files/{pf.id}/preview",
+                abstract=(meta.get('abstract') or '')[:3000],
+                summary=(meta.get('abstract') or '')[:600],
+                file_id=pf.id,
+                pinned=True,
+            )
+            db.session.add(item)
+            created.append(item)
+    
+    db.session.commit()
+    
+    return jsonify({
+        "created": [i.to_dict() for i in created],
+        "matched": matched,
+        "total": len(created) + len(matched),
+    })
+
+
 @slr_api.route("/api/papers/<paper_id>/literature/from-files", methods=["POST"])
 @jwt_required()
 def import_from_files(paper_id: str):
-    """Buat satu LiteratureItem per file PaperFile (yang sudah punya
-    extracted_text). Aman dipanggil berkali-kali — kita skip kalau file_id
-    sudah pernah diimport."""
+    """Import from existing PaperFile records (legacy, uses stored metadata).
+    
+    Returns: {created: [...], matched: [...], total: N}
+    """
     user_id = _current_user_id()
     if user_id is None:
         return _err("Unauthorized", "UNAUTHORIZED", 401)
@@ -872,11 +1143,14 @@ def import_from_files(paper_id: str):
     if err:
         return err
 
+    # Get all files for this paper
     files = (
         PaperFile.query.filter_by(paper_id=paper_id, user_id=user_id)
         .order_by(PaperFile.created_at.desc())
         .all()
     )
+    
+    # Get existing file_ids that are already imported
     existing_file_ids = {
         i.file_id
         for i in db.session.query(LiteratureItem)
@@ -884,35 +1158,126 @@ def import_from_files(paper_id: str):
         .filter(LiteratureItem.file_id.isnot(None))
         .all()
     }
+    
+    # Get existing SLR entries for matching
+    existing_items = (
+        db.session.query(LiteratureItem)
+        .filter_by(paper_id=paper_id, user_id=user_id)
+        .all()
+    )
+    existing_dois = {
+        (i.doi or "").lower().strip() 
+        for i in existing_items if i.doi
+    }
+    existing_titles_norm = {
+        _normalize_title_for_match(i.title)
+        for i in existing_items if i.title
+    }
+    # Map for quick lookup
+    doi_to_item = {(i.doi or "").lower().strip(): i for i in existing_items if i.doi}
+    title_norm_to_item = {_normalize_title_for_match(i.title): i for i in existing_items if i.title}
+    
     created = []
+    matched = []
+    
+    import json as _json
+    
     for f in files:
         if f.id in existing_file_ids:
             continue
-        excerpt = (f.extracted_text or "").strip()
-        # Use first non-empty line as title; cap.
-        title = excerpt.split("\n", 1)[0] if excerpt else f.original_name
-        title = (title or f.original_name)[:300]
-        item = LiteratureItem(
-            paper_id=paper_id,
-            user_id=user_id,
-            source_kind="file",
-            source=f.ext.lstrip("."),
-            title=title,
-            authors=[],
-            year=None,
-            venue="",
-            publisher="",
-            doi=None,
-            url=f"/api/papers/{paper_id}/files/{f.id}/preview",
-            abstract=excerpt[:3000],
-            summary=excerpt[:600],
-            file_id=f.id,
-            pinned=True,
-        )
-        db.session.add(item)
-        created.append(item)
+        
+        # Use stored metadata from PaperFile (extracted during upload)
+        # No need for file on disk!
+        meta_authors = []
+        if f.meta_authors:
+            try:
+                meta_authors = _json.loads(f.meta_authors)
+            except (ValueError, TypeError):
+                pass
+        
+        meta = {
+            'title': f.meta_title or f.original_name or f"File {f.id}",
+            'authors': meta_authors or [],
+            'year': f.meta_year,
+            'doi': f.meta_doi or None,
+            'abstract': f.meta_abstract or (f.extracted_text or "")[:3000],
+            'venue': f.meta_venue or "",
+            'publisher': f.meta_publisher or "",
+        }
+        
+        # Check for match against existing SLR entries
+        matched_item = None
+        match_type = None
+        
+        # Priority 1: Match by DOI
+        if meta.get('doi'):
+            doi_key = meta['doi'].lower().strip()
+            matched_item = doi_to_item.get(doi_key)
+            if matched_item:
+                match_type = 'doi'
+        
+        # Priority 2: Match by normalized title
+        if not matched_item and meta.get('title'):
+            from tools.Literatur.pdf_metadata_extractor import _normalize_title as _norm_title
+            title_key = _norm_title(meta['title'])
+            matched_item = title_norm_to_item.get(title_key)
+            if matched_item:
+                match_type = 'title'
+        
+        if matched_item:
+            # Attach file to existing SLR entry
+            if not matched_item.file_id:  # Don't overwrite existing file attachment
+                matched_item.file_id = f.id
+                matched_item.url = f"/api/papers/{paper_id}/files/{f.id}/preview"
+            # Enrich sparse SLR entries
+            if not matched_item.authors and meta.get('authors'):
+                matched_item.authors = meta['authors']
+            if not matched_item.year and meta.get('year'):
+                matched_item.year = meta['year']
+            if not matched_item.venue and meta.get('venue'):
+                matched_item.venue = meta['venue'][:200]
+            if not matched_item.publisher and meta.get('publisher'):
+                matched_item.publisher = meta['publisher'][:200]
+            matched.append({
+                'id': matched_item.id,
+                'title': matched_item.title,
+                'match_type': match_type,
+                'doi': matched_item.doi,
+            })
+        else:
+            # Create new LiteratureItem
+            item = LiteratureItem(
+                paper_id=paper_id,
+                user_id=user_id,
+                source_kind="file",
+                source=f.ext.lstrip(".") if f.ext else "pdf",
+                title=(meta.get('title') or f.original_name or f"File {f.id}")[:300],
+                authors=meta.get('authors') or [],
+                year=meta.get('year'),
+                venue=(meta.get('venue') or "")[:200],
+                publisher=(meta.get('publisher') or "")[:200],
+                doi=meta.get('doi'),
+                url=f"/api/papers/{paper_id}/files/{f.id}/preview",
+                abstract=(meta.get('abstract') or "")[:3000],
+                summary=(meta.get('abstract') or "")[:600],
+                file_id=f.id,
+                pinned=True,
+            )
+            db.session.add(item)
+            created.append(item)
+    
     db.session.commit()
-    return jsonify({"created": [i.to_dict() for i in created]})
+    
+    return jsonify({
+        "created": [i.to_dict() for i in created],
+        "matched": matched,
+        "total": len(created) + len(matched),
+    })
+
+
+def _normalize_title_for_match(title: str) -> str:
+    """Normalize title for matching: lowercase, strip non-alphanumeric."""
+    return re.sub(r'[^a-z0-9]+', '', (title or "").lower())
 
 
 # ─── Legacy /slr endpoint (now async-only) ────────────────────────────────

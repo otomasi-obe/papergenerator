@@ -1,0 +1,8 @@
+============================================================
+[SKOR KECOCOKAN: 27%] -> STATUS: REVISI MAYOR
+  Base: 100 | Penalty: -73 | Akhir: 27%
+   - Placeholder/Prompt Gambar Salah (MINOR): -5 x 14 = -70
+   - Section Break Waste (MINOR): -3
+============================================================
+[INFO] Master prompt perbaikan ditulis: audit-unik_ULTIMACOMP.txt
+Audit selesai. Detail tersimpan: audit_ULTIMACOMP_output.txt

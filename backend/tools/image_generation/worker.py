@@ -51,14 +51,14 @@ class _Worker(threading.Thread):
         self.app = app
         self.account_name = account_name
         self.q: "queue.Queue[str]" = queue.Queue()
-        self._stop = threading.Event()
+        self._stop_event = threading.Event()
         # Per-worker Playwright + Account (created in run() thread)
         self._pw_cm = None
         self._pw = None
         self._acc = None
 
     def stop(self):
-        self._stop.set()
+        self._stop_event.set()
         self.q.put(None)  # unblock get()
 
     def submit(self, job_id: str):
@@ -106,7 +106,7 @@ class _Worker(threading.Thread):
             return
 
         try:
-            while not self._stop.is_set():
+            while not self._stop_event.is_set():
                 try:
                     job_id = self.q.get(timeout=1.0)
                 except queue.Empty:
@@ -139,7 +139,7 @@ class _Worker(threading.Thread):
             from sqlalchemy import update  # noqa: PLC0415
 
             from database.models import ImageGenJob, PaperImage, db, safe_commit  # noqa: PLC0415
-            from tools.editor.utils import safe_paper_dir  # noqa: PLC0415
+            from tools.editor.utils import safe_paper_image_dir  # noqa: PLC0415
 
             with self.app.app_context():
                 # Atomic claim: only the FIRST worker that flips status from
@@ -167,9 +167,8 @@ class _Worker(threading.Thread):
                 # Track retry count
                 retry_count = getattr(job, "retry_count", 0) or 0
 
-                # Resolve paper dir under app_context (safe_paper_dir uses
-                # current_app.root_path).
-                paper_dir = safe_paper_dir(paper_id)
+                # Resolve paper image dir under app_context: user/<username>/<paper_id>/image/
+                paper_dir = safe_paper_image_dir(paper_id)
 
             if paper_dir is None:
                 with self.app.app_context():
@@ -283,7 +282,7 @@ class _Worker(threading.Thread):
                         paper_id=paper_id,
                         user_id=user_id,
                         filename=filename,
-                        original_name=f"generated_{filename}",
+                        original_name=filename,
                         # file_path is relative reference only; actual serving
                         # uses safe_paper_dir(paper_id) / filename, not this field.
                         file_path=f"{paper_id}/{filename}",
@@ -319,8 +318,8 @@ class _Worker(threading.Thread):
                     from database.models import Paper
                     username = get_username(user_id=user_id)
                     with self.app.app_context():
-                        _paper_img = db.session.get(Paper, paper_id) if paper_id else None
-                        judul_paper = _paper_img.title if _paper_img else "untitled"
+                        _paper = db.session.get(Paper, paper_id) if paper_id else None
+                        judul_paper = _paper.title if _paper else "untitled"
                     save_image(username, judul_paper, str(out_path))
                     update_judul_paper(username, judul_paper)
                 except Exception:
@@ -389,13 +388,13 @@ class _Dispatcher(threading.Thread):
         self.app = app
         self.workers = workers
         self.poll_interval = poll_interval
-        self._stop = threading.Event()
+        self._stop_event = threading.Event()
         # Track which job_ids are already submitted to avoid double-dispatch.
         self._dispatched: set[str] = set()
         self._lock = threading.Lock()
 
     def stop(self):
-        self._stop.set()
+        self._stop_event.set()
 
     def mark_dispatched(self, job_id: str):
         with self._lock:
@@ -418,7 +417,7 @@ class _Dispatcher(threading.Thread):
                     j.worker = None
             safe_commit()
 
-        while not self._stop.is_set():
+        while not self._stop_event.is_set():
             try:
                 with self.app.app_context():
                     queued = (
@@ -494,6 +493,19 @@ def submit_now(job_id: str):
     if not _dispatcher or not _workers:
         return
     with _dispatcher._lock:
+        # Periodic cleanup: if _dispatched grows too large, prune completed jobs
+        if len(_dispatcher._dispatched) > 100:
+            try:
+                from database.models import ImageGenJob, db
+                active_ids = {
+                    r[0] for r in db.session.query(ImageGenJob.id).filter(
+                        ImageGenJob.id.in_(list(_dispatcher._dispatched)),
+                        ImageGenJob.status.in_(('queued', 'running'))
+                    ).all()
+                }
+                _dispatcher._dispatched = active_ids
+            except Exception:
+                pass  # Best effort cleanup
         if job_id in _dispatcher._dispatched:
             return
         _dispatcher._dispatched.add(job_id)

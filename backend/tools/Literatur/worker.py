@@ -44,6 +44,9 @@ _pump_thread: threading.Thread | None = None
 _inflight: set[str] = set()
 _inflight_lock = threading.Lock()
 
+# Lock FD held at module level to prevent GC releasing the fcntl lock
+_slr_lock_fd = None
+
 
 class WorkerCancelled(Exception):
     """Raised inside the progress callback when a job has been cancelled."""
@@ -141,11 +144,38 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
 
 
 def start_slr_workers(app) -> None:
-    """Idempotent: launch the pump thread once per process."""
-    global _started, _executor, _pump_thread
+    """Idempotent: launch the pump thread once per process.
+
+    Uses fcntl lock so only ONE gunicorn worker runs the SLR pump.
+    This prevents 16 workers × 10 SLR threads = 160 concurrent SLR jobs
+    (which would overwhelm PostgreSQL and external APIs).
+    The DB-backed atomic claim still works for multi-process safety.
+    """
+    global _started, _executor, _pump_thread, _slr_lock_fd
     with _lock:
         if _started:
             return
+
+        # Acquire exclusive fcntl lock — only one gunicorn worker gets this.
+        _slr_marker = "/tmp/papergenerator-slr-workers.lock"
+        try:
+            import fcntl as _fcntl
+            _fd = open(_slr_marker, "w")
+            try:
+                _fcntl.flock(_fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+                # We got the lock — this worker runs the SLR pool
+                _fd.write(str(os.getpid()))
+                _fd.flush()
+                _slr_lock_fd = _fd  # hold ref to prevent GC
+            except (IOError, OSError):
+                # Another worker already has it — skip
+                _fd.close()
+                log.info("SLR worker pool already running in another process, skipping")
+                return
+        except Exception:
+            log.exception("Failed to acquire SLR worker lock")
+            return
+
         _started = True
 
         # Boot recovery: kill orphaned 'running' jobs from a previous process.
@@ -163,7 +193,7 @@ def start_slr_workers(app) -> None:
             target=_pump_loop, args=(app,), daemon=True, name="slr-pump"
         )
         _pump_thread.start()
-        log.info("SLR worker pool started (max=%d)", SLR_MAX_WORKERS)
+        log.info("SLR worker pool started (max=%d, single-process)", SLR_MAX_WORKERS)
 
 
 def _pump_loop(app):
@@ -279,39 +309,39 @@ def _run_job(app, job_id: str):
             # Re-check status on every callback. Conditional UPDATE so we never
             # overwrite a 'cancelled' / 'error' / 'done' row, and signal the
             # pipeline by raising WorkerCancelled when the user cancelled.
+            # NOTE: already inside outer app_context from _run_job
             try:
-                with app.app_context():
-                    if cancel_event.is_set():
-                        try:
-                            info["cancelled"] = True
-                        except Exception:
-                            pass
-                        raise WorkerCancelled()
-                    j = (
-                        db.session.query(SlrJob)
-                        .filter_by(id=job_id)
-                        .with_for_update(skip_locked=True)
-                        .first()
-                    )
-                    if not j:
-                        return
-                    if j.status == "cancelled":
-                        cancel_event.set()
-                        try:
-                            info["cancelled"] = True
-                        except Exception:
-                            pass
-                        raise WorkerCancelled()
-                    if j.status != "running":
-                        return
+                if cancel_event.is_set():
                     try:
-                        info["cancelled"] = cancel_event.is_set()
+                        info["cancelled"] = True
                     except Exception:
                         pass
-                    j.stage = stage[:40]
-                    j.progress_message = _stage_message(stage, info)[:200]
-                    j.progress = _stage_to_pct(stage, info)
-                    _safe_commit(job_id, where="progress")
+                    raise WorkerCancelled()
+                j = (
+                    db.session.query(SlrJob)
+                    .filter_by(id=job_id)
+                    .with_for_update(skip_locked=True)
+                    .first()
+                )
+                if not j:
+                    return
+                if j.status == "cancelled":
+                    cancel_event.set()
+                    try:
+                        info["cancelled"] = True
+                    except Exception:
+                        pass
+                    raise WorkerCancelled()
+                if j.status != "running":
+                    return
+                try:
+                    info["cancelled"] = cancel_event.is_set()
+                except Exception:
+                    pass
+                j.stage = stage[:40]
+                j.progress_message = _stage_message(stage, info)[:200]
+                j.progress = _stage_to_pct(stage, info)
+                _safe_commit(job_id, where="progress")
             except WorkerCancelled:
                 raise
             except Exception:
@@ -319,70 +349,70 @@ def _run_job(app, job_id: str):
 
         def save_cb(records: list[dict]):
             """Final save: update scores/summaries for existing rows, insert new ones."""
+            # NOTE: already inside outer app_context from _run_job
             try:
-                with app.app_context():
-                    # Re-fetch job to get fresh state
-                    j = db.session.query(SlrJob).filter_by(id=job_id).first()
-                    if not j or j.status != "running":
-                        return
+                # Re-fetch job to get fresh state
+                j = db.session.query(SlrJob).filter_by(id=job_id).first()
+                if not j or j.status != "running":
+                    return
 
-                    # Load existing DOIs for this job
-                    existing = db.session.query(LiteratureItem.id, LiteratureItem.doi).filter_by(
-                        slr_job_id=job_id
-                    ).all()
-                    existing_by_doi = {d.lower(): id for id, d in existing if d}
+                # Load existing DOIs for this job
+                existing = db.session.query(LiteratureItem.id, LiteratureItem.doi).filter_by(
+                    slr_job_id=job_id
+                ).all()
+                existing_by_doi = {d.lower(): id for id, d in existing if d}
 
-                    seen_dois: set[str] = set()
-                    for rec in records:
-                        title = (rec.get("title") or "").strip()
-                        if not title:
-                            continue
-                        doi_raw = rec.get("doi") or None
-                        doi_key = (doi_raw or "").strip().lower()
-                        if doi_key and doi_key in seen_dois:
-                            continue
+                seen_dois: set[str] = set()
+                for rec in records:
+                    title = (rec.get("title") or "").strip()
+                    if not title:
+                        continue
+                    doi_raw = rec.get("doi") or None
+                    doi_key = (doi_raw or "").strip().lower()
+                    if doi_key and doi_key in seen_dois:
+                        continue
 
-                        pi = rec.get("publisher_info") or {}
-                        
-                        # Update existing or insert new
-                        if doi_key and doi_key in existing_by_doi:
-                            item = db.session.get(LiteratureItem, existing_by_doi[doi_key])
-                            if item:
-                                item.score_total = rec.get("score_total")
-                                item.score_breakdown = rec.get("score_breakdown") or {}
-                                item.summary = rec.get("summary") or ""
-                                item.gap_riset = rec.get("gap_riset") or ""
-                                item.citations = rec.get("citations")
-                                item.is_relevant = bool(rec.get("is_relevant", True))
-                        else:
-                            item = LiteratureItem(
-                                paper_id=job.paper_id,
-                                user_id=job.user_id,
-                                source_kind="slr",
-                                source=rec.get("venue") or rec.get("publisher") or rec.get("source") or "",
-                                title=title,
-                                authors=rec.get("authors") or [],
-                                year=rec.get("year") or pi.get("year"),
-                                venue=rec.get("venue") or pi.get("venue") or "",
-                                publisher=rec.get("publisher") or pi.get("publisher") or "",
-                                doi=doi_raw,
-                                url=rec.get("url") or "",
-                                pdf_url=rec.get("pdf_url") or None,
-                                abstract=rec.get("abstract") or "",
-                                summary=rec.get("summary") or "",
-                                gap_riset=rec.get("gap_riset") or "",
-                                citations=rec.get("citations"),
-                                score_total=rec.get("score_total"),
-                                score_breakdown=rec.get("score_breakdown") or {},
-                                must_read=False,
-                                is_relevant=bool(rec.get("is_relevant", True)),
-                                slr_job_id=job_id,
-                            )
-                            db.session.add(item)
-                            if doi_key:
-                                seen_dois.add(doi_key)
-                    _safe_commit(job_id, where="save_cb.final")
-                    log.info("slr.save_cb: updated %d papers for job=%s", len(records), job_id)
+                    pi = rec.get("publisher_info") or {}
+                    
+                    # Update existing or insert new
+                    if doi_key and doi_key in existing_by_doi:
+                        item = db.session.get(LiteratureItem, existing_by_doi[doi_key])
+                        if item:
+                            item.score_total = rec.get("score_total")
+                            item.score_breakdown = rec.get("score_breakdown") or {}
+                            item.summary = rec.get("summary") or ""
+                            item.gap_riset = rec.get("gap_riset") or ""
+                            item.citations = rec.get("citations")
+                            item.is_relevant = bool(rec.get("is_relevant", True))
+                    else:
+                        item = LiteratureItem(
+                            paper_id=job.paper_id,
+                            user_id=job.user_id,
+                            source_kind="slr",
+                            source=rec.get("venue") or rec.get("publisher") or rec.get("source") or "",
+                            title=title,
+                            authors=rec.get("authors") or [],
+                            year=rec.get("year") or pi.get("year"),
+                            venue=rec.get("venue") or pi.get("venue") or "",
+                            publisher=rec.get("publisher") or pi.get("publisher") or "",
+                            doi=doi_raw,
+                            url=rec.get("url") or "",
+                            pdf_url=rec.get("pdf_url") or None,
+                            abstract=rec.get("abstract") or "",
+                            summary=rec.get("summary") or "",
+                            gap_riset=rec.get("gap_riset") or "",
+                            citations=rec.get("citations"),
+                            score_total=rec.get("score_total"),
+                            score_breakdown=rec.get("score_breakdown") or {},
+                            must_read=bool(rec.get("score_total", 0) >= 85),
+                            is_relevant=bool(rec.get("is_relevant", True)),
+                            slr_job_id=job_id,
+                        )
+                        db.session.add(item)
+                        if doi_key:
+                            seen_dois.add(doi_key)
+                _safe_commit(job_id, where="save_cb.final")
+                log.info("slr.save_cb: updated %d papers for job=%s", len(records), job_id)
             except Exception as e:
                 log.exception("slr.save_cb failed job=%s: %s", job_id, e)
 
@@ -391,8 +421,8 @@ def _run_job(app, job_id: str):
 
         def source_save_cb(papers: list):
             """Streaming save per-source: insert papers immediately after fetch."""
+            # NOTE: already inside outer app_context from _run_job
             try:
-                with app.app_context():
                     j = db.session.query(SlrJob).filter_by(id=job_id).first()
                     if not j or j.status != "running":
                         return

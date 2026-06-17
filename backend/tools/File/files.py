@@ -106,18 +106,27 @@ def _read_file_with_limit(stream, max_bytes: int) -> tuple[bytes | None, str | N
 
 
 def _extract_text_for_preview(filepath: Path, ext: str) -> str:
-    """Best-effort plain-text extraction via file_extractor module.
-    Supports PDF, DOCX, DOC, XLSX, XLS, PPTX, CSV, TXT, MD.
-    Output is Markdown-formatted text suitable for AI context injection.
-    """
+    """Best-effort plain-text extraction via file_extractor module."""
     try:
         from tools.File.file_extractor import extract_to_markdown, MAX_EXTRACT_CHARS
-        
         text = extract_to_markdown(filepath, max_chars=MAX_PREVIEW_CHARS)
         return text[:MAX_EXTRACT_CHARS] if text else ""
     except Exception as e:
-        log.warning("extract_failed", extra={"file": str(filepath), "ext": ext, "err": str(e)})
+        log.warning("extract_failed", extra={"file": str(filepath), "err": str(e)})
         return ""
+
+
+def _extract_pdf_metadata(filepath: Path) -> dict:
+    """Extract structured metadata from a PDF while it's still on disk.
+    Called during upload before raw binary is deleted.
+    Returns dict with title, authors, doi, year, abstract, venue, publisher.
+    """
+    try:
+        from tools.Literatur.pdf_metadata_extractor import extract_metadata_from_pdf
+        return extract_metadata_from_pdf(filepath)
+    except Exception as e:
+        log.warning("metadata_extract_failed", extra={"file": str(filepath), "err": str(e)})
+        return {}
 
 
 @files.route("/<paper_id>/files", methods=["GET"])
@@ -263,21 +272,33 @@ def upload_paper_files(paper_id: str):
                 log.warning("upload_paper_files: could not clean temp %s: %s", temp_file, _e)
         return jsonify({"success": True, "files": [], "warnings": warnings})
 
-    # Phase 2: extract text in parallel via the shared 20-worker pool. Each call
-    # is independent and DB-free; we collect texts then commit in one batch.
-    futures = [
-        (item, _EXTRACT_POOL.submit(_extract_text_for_preview, item["filepath"], item["ext"]))
-        for item in accepted
-    ]
+    # Phase 2: extract text + metadata in parallel via the shared 20-worker pool.
+    # Each call is independent and DB-free; we collect results then commit in one batch.
+    futures = []
+    for item in accepted:
+        text_future = _EXTRACT_POOL.submit(_extract_text_for_preview, item["filepath"], item["ext"])
+        # Also extract PDF metadata while file is still on disk
+        meta_future = None
+        if item["ext"].lstrip(".").lower() == "pdf":
+            meta_future = _EXTRACT_POOL.submit(_extract_pdf_metadata, item["filepath"])
+        futures.append((item, text_future, meta_future))
 
     saved = []
     try:
-        for item, fut in futures:
+        for item, text_fut, meta_fut in futures:
             try:
-                extracted = fut.result(timeout=30)
+                extracted = text_fut.result(timeout=30)
             except Exception as e:
                 log.info("extract_failed", extra={"file": item["name"], "err": str(e)})
                 extracted = ""
+
+            # Extract metadata result
+            meta = {}
+            if meta_fut is not None:
+                try:
+                    meta = meta_fut.result(timeout=15)
+                except Exception as e:
+                    log.info("meta_extract_failed", extra={"file": item["name"], "err": str(e)})
 
             # Save extracted text as .txt to user storage
             if _ustor_ok and extracted:
@@ -292,17 +313,53 @@ def upload_paper_files(paper_id: str):
             # Only extracted_text is persisted.
             file_path = ""
 
-            entry = PaperFile(
+            # Serialize metadata authors list to JSON string
+            import json as _json
+            meta_authors_json = _json.dumps(meta.get("authors") or []) if meta else ""
+
+            # Upsert: if a PaperFile with the same original_name already
+            # exists for this paper, update it instead of creating a
+            # duplicate (same source file → idempotent extraction).
+            entry = PaperFile.query.filter_by(
                 paper_id=paper_id,
                 user_id=user_id,
-                filename=item["name"],
-                original_name=item["original_name"],
-                ext=item["ext"],
-                size_bytes=item["size"],
-                file_path=file_path,
-                extracted_text=extracted,
-            )
-            db.session.add(entry)
+                original_name=item["original_name"][:255],
+            ).first()
+            if entry:
+                entry.filename = item["name"]
+                entry.ext = item["ext"]
+                entry.size_bytes = item["size"]
+                entry.file_path = file_path
+                entry.extracted_text = extracted
+                # Store extracted metadata
+                if meta:
+                    entry.meta_title = (meta.get("title") or "")[:5000]
+                    entry.meta_authors = meta_authors_json[:5000]
+                    entry.meta_doi = (meta.get("doi") or "")[:500]
+                    entry.meta_year = meta.get("year")
+                    entry.meta_abstract = (meta.get("abstract") or "")[:10000]
+                    entry.meta_venue = (meta.get("venue") or "")[:500]
+                    entry.meta_publisher = (meta.get("publisher") or "")[:500]
+            else:
+                entry = PaperFile(
+                    paper_id=paper_id,
+                    user_id=user_id,
+                    filename=item["name"],
+                    original_name=item["original_name"],
+                    ext=item["ext"],
+                    size_bytes=item["size"],
+                    file_path=file_path,
+                    extracted_text=extracted,
+                    # Store extracted metadata
+                    meta_title=(meta.get("title") or "")[:5000] if meta else "",
+                    meta_authors=meta_authors_json[:5000] if meta else "",
+                    meta_doi=(meta.get("doi") or "")[:500] if meta else "",
+                    meta_year=meta.get("year") if meta else None,
+                    meta_abstract=(meta.get("abstract") or "")[:10000] if meta else "",
+                    meta_venue=(meta.get("venue") or "")[:500] if meta else "",
+                    meta_publisher=(meta.get("publisher") or "")[:500] if meta else "",
+                )
+                db.session.add(entry)
             db.session.flush()
             
             # Add to status.json so PaperfullTab can see it

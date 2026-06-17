@@ -223,6 +223,7 @@ export const useChatStore = defineStore('chat', () => {
       const saved = JSON.parse(raw)
       // Only restore streams saved within last 15 minutes
       const cutoff = Date.now() - 15 * 60 * 1000
+      const restoredConvIds = []
       for (const [convId, data] of Object.entries(saved)) {
         if (data.savedAt && data.savedAt > cutoff && data.isStreaming) {
           const stream = _ensureStream(convId)
@@ -237,7 +238,13 @@ export const useChatStore = defineStore('chat', () => {
             created_at: data.streamingMessage?.created_at || new Date().toISOString(),
           }
           stream.messages = [...stream.messages, stream.streamingMessage]
+          restoredConvIds.push(convId)
         }
+      }
+      // BUG 1/2: Start resume poller for each restored stream so the spinner
+      // doesn't stay stuck and content updates from Redis snapshots.
+      for (const convId of restoredConvIds) {
+        _startResumePoll(convId)
       }
     } catch { /* ignore */ }
   }
@@ -259,6 +266,9 @@ export const useChatStore = defineStore('chat', () => {
   // Lock to prevent concurrent sendMessage calls (race condition guard).
   // Set true while a send is in-flight, cleared in finally.
   let _sendingLock = false
+
+  // Throttle for userState DB writes during streaming (BUG 4)
+  let _lastUserStateSync = 0
 
   // Reactive view of the active conversation. The component reads
   // `messages` / `isStreaming` / `streamingMessage` directly, but they are
@@ -325,7 +335,9 @@ export const useChatStore = defineStore('chat', () => {
       streamPhase.value = s.streamPhase || 'idle'
     }
     // Persist streaming state to userState (DB) for cross-device/refresh survival
-    if (s.isStreaming && s.streamingMessage) {
+    // Throttle: max once per 5 seconds to avoid DB write flood (BUG 4)
+    if (s.isStreaming && s.streamingMessage && Date.now() - _lastUserStateSync > 5000) {
+      _lastUserStateSync = Date.now()
       try {
         const { useUserStateStore } = await import('./userState')
         const userState = useUserStateStore()
@@ -430,12 +442,19 @@ export const useChatStore = defineStore('chat', () => {
     // Abort any in-flight streaming fetch from the previous paper.
     // Without this, the old fetch keeps running in background and mutates
     // an orphaned stream object that is no longer in `streams.value`.
+    // BUG 13: Only abort streams from the OLD paper; preserve other data.
+    const oldPaperId = currentPaperId.value
+    const oldConvIds = new Set(conversations.value.map(c => c.id))
     for (const convId in streams.value) {
       const s = streams.value[convId]
-      if (s?.abortCtrl && !s.abortCtrl.signal.aborted) {
+      if (oldConvIds.has(convId) && s?.abortCtrl && !s.abortCtrl.signal.aborted) {
         try { s.abortCtrl.abort() } catch { /* ignore */ }
       }
-      _stopResumePoll(convId)
+      if (oldConvIds.has(convId)) _stopResumePoll(convId)
+    }
+    // Only wipe streams for old paper's conversations; preserve others
+    for (const convId of oldConvIds) {
+      delete streams.value[convId]
     }
     // Immediately wipe all paper-scoped state BEFORE any async work so the
     // UI never shows conversations/messages from the previous paper.
@@ -443,7 +462,7 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     currentConversationId.value = null
     conversations.value = []
-    streams.value = {}
+    // streams.value preserved for non-old-paper conversations (BUG 13)
 
     await loadConversations(paperId)
     if (gen !== _openPaperGen) return null
@@ -499,6 +518,7 @@ export const useChatStore = defineStore('chat', () => {
     _stopResumePoll(convId)
     const startedAt = Date.now()
     const MAX_RESUME_MS = 15 * 60 * 1000  // stop trying after 15 min
+    let consecutiveFailures = 0  // BUG 14: track consecutive failures
     _resumePollers[convId] = setInterval(async () => {
       const s = streams.value[convId]
       if (!s || !s.isStreaming) { _stopResumePoll(convId); return }
@@ -508,6 +528,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       try {
         const res = await api.get(`/api/chat/conversations/${convId}/stream-status`)
+        consecutiveFailures = 0  // BUG 14: reset on success
         const status = res.data || {}
         if (status.status === 'streaming') {
           if (s.streamingMessage) {
@@ -532,8 +553,17 @@ export const useChatStore = defineStore('chat', () => {
           // The final message lives in the DB, so reload the transcript.
           await _finalizeResumedStream(convId)
         }
-      } catch {
-        // Transient network error — keep polling, don't kill the stream.
+      } catch (err) {
+        // BUG 14: Track consecutive failures and warn user after 10
+        consecutiveFailures++
+        if (consecutiveFailures === 10) {
+          console.warn(`[ResumePoll] ${convId}: 10 consecutive failures. Stream may be stuck. Consider refreshing or stopping manually.`, err)
+          const s2 = streams.value[convId]
+          if (s2) {
+            s2.connectionState = 'disconnected'
+            _syncFromStream(convId)
+          }
+        }
       }
     }, 2000)
   }
@@ -726,7 +756,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function sendMessage(content) {
+  async function sendMessage(content, images?: Array<{name: string, data: string}>) {
     // Prevent concurrent sends (race condition / double-click guard)
     if (_sendingLock) return
     const convId = currentConversationId.value
@@ -773,6 +803,7 @@ export const useChatStore = defineStore('chat', () => {
         id: _nextMsgId(),
         role: 'user',
         content,
+        images: images && images.length ? images : undefined,
         created_at: new Date().toISOString(),
       })
 
@@ -795,14 +826,17 @@ export const useChatStore = defineStore('chat', () => {
 
       // Backend handles AI retries: 3-model chain × 5 attempts × 30s each.
       // Keep the browser request alive long enough and avoid showing retry text.
-      const MAX_RETRIES = 1
-      const RETRY_DELAYS = []
+      const MAX_RETRIES = 3
+      const RETRY_DELAYS = [2000, 5000, 10000]
       const CONNECTION_TIMEOUT = 540000 // 9 minutes
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
           const csrf = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
-          const payload = { content }
+          const payload: any = { content }
+          if (images && images.length) {
+            payload.images = images
+          }
 
           // Create timeout that will abort the connection after CONNECTION_TIMEOUT
           const timeoutId = setTimeout(() => {
@@ -877,10 +911,12 @@ export const useChatStore = defineStore('chat', () => {
             }
 
             // Update conversation list ordering / counts
+            // BUG 26: Use actual message count from done event or stream, not hardcoded +2
+            const _actualCount = stream._finalMessageCount ?? stream.messages.length
             const cIdx = conversations.value.findIndex(c => c.id === convId)
             if (cIdx >= 0) {
               const cConv = conversations.value[cIdx]
-              cConv.message_count = (cConv.message_count || 0) + 2
+              cConv.message_count = _actualCount
               cConv.updated_at = new Date().toISOString()
               // float to top
               conversations.value = [
@@ -890,7 +926,7 @@ export const useChatStore = defineStore('chat', () => {
             }
             const row = paperChats.value.find(c => c.paper_id === currentPaperId.value)
             if (row) {
-              row.message_count = (row.message_count || 0) + 2
+              row.message_count = (row.message_count || 0) + 1  // BUG 26: +1 for user msg; assistant count updated by done event
               row.updated_at = new Date().toISOString()
               paperChats.value = [
                 row,
@@ -1076,7 +1112,7 @@ export const useChatStore = defineStore('chat', () => {
     return await sendMessage(`Jawaban saya:\n${lines}`)
   }
 
-  function _handleSSEEvent(convId, event, data) {
+  async function _handleSSEEvent(convId, event, data) {
     // 'open_tab' is paper-scoped, not chat-scoped: it can fire even after the
     // streamingMessage has been finalised. Handle it before the early-return
     // guard below so it doesn't get swallowed.
@@ -1108,9 +1144,9 @@ export const useChatStore = defineStore('chat', () => {
       try {
         const paperStore = usePaperStore()
         if (paperStore.currentPaperId) {
-          paperStore.loadPaperFromDb(paperStore.currentPaperId)
+          await paperStore.loadPaperFromDb(paperStore.currentPaperId)
         }
-      } catch { /* defensive */ }
+      } catch { /* defensive: never break the SSE loop */ }
       return
     }
 
@@ -1325,6 +1361,8 @@ export const useChatStore = defineStore('chat', () => {
       }
       case 'done':
         if (data.message_id) msg.id = data.message_id
+        // BUG 26: Capture actual message count from done event if available
+        if (data.message_count != null) stream._finalMessageCount = data.message_count
         stream.streamPhase = 'done'
         break
       case 'error':
