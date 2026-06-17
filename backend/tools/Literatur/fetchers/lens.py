@@ -1,5 +1,6 @@
 """Fetcher untuk Lens.org API - https://api.lens.org/scholarly"""
 
+import logging
 import os
 from typing import Iterable
 
@@ -7,6 +8,8 @@ from ..http_client import RateLimiter, fetch_post_json
 from ..paper import Paper
 
 BASE = "https://api.lens.org/scholarly/search"
+
+_warned = False
 
 
 def _parse(item: dict) -> Paper | None:
@@ -76,8 +79,12 @@ def _parse(item: dict) -> Paper | None:
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search Lens.org. Requires LENS_API_KEY environment variable."""
+    global _warned
     api_key = os.getenv("LENS_API_KEY")
     if not api_key:
+        if not _warned:
+            logging.getLogger(__name__).info("lens fetcher skipped: LENS_API_KEY not set (free at lens.org/lens/user/subscriptions)")
+            _warned = True
         return
     
     rl = RateLimiter(1.0)  # Conservative rate limiting
@@ -96,6 +103,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             },
             "size": min(page_size, limit - fetched),
             "from": offset,
+            "sort": [],
         }
         
         # Add filters if provided

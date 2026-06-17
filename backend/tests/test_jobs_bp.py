@@ -91,7 +91,9 @@ def _auth_headers(user):
     return {"Authorization": f"Bearer {tok}"}
 
 
-@patch("tools.paperfull.jobs.Queue")
+# jobs.py imports Queue lazily (`from rq import Queue` inside the handler), so
+# patch it at the source module `rq.Queue` to intercept that lazy import.
+@patch("rq.Queue")
 def test_enqueue_generate_success(mock_queue, app, client, mock_redis):
     with app.app_context():
         user = _make_user()

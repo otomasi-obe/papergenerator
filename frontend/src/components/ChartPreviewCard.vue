@@ -24,7 +24,7 @@
     </div>
     <div
       v-else
-      class="text-xs text-ink-500 dark:text-ink-400 italic px-2 py-3 rounded-md border border-dashed border-cream-300 dark:border-ash-700"
+      class="text-xs text-ink-500 dark:text-ink-300 italic px-2 py-3 rounded-md border border-dashed border-cream-300 dark:border-ash-700"
     >
       Preview belum tersedia.
     </div>

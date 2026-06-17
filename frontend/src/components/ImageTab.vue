@@ -131,6 +131,7 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import { useImageGenStore } from '../stores/imageGen'
+import { useUserStateStore } from '../stores/userState'
 import api from '../api/index'
 import AppDialog from './AppDialog.vue'
 
@@ -144,15 +145,24 @@ interface ImageItem {
 
 const store = usePaperStore()
 const imageGen = useImageGenStore()
+const userState = useUserStateStore()
 
 const images = ref<ImageItem[]>([])
 const loading = ref(false)
 const generating = ref(false)
 const warning = ref('')
-const genPrompt = ref('')
+
+// Persisted state via userState store (per-paper)
+const genPrompt = computed({
+  get: () => userState.get('image.gen_prompt', store.currentPaperId, ''),
+  set: (val) => userState.set('image.gen_prompt', store.currentPaperId, val),
+})
 
 const uploadInput = ref<HTMLInputElement | null>(null)
-const activeImageId = ref<number | null>(null)
+const activeImageId = computed({
+  get: () => userState.get('image.active_id', store.currentPaperId, null),
+  set: (val) => userState.set('image.active_id', store.currentPaperId, val),
+})
 const deleteTarget = ref<ImageItem | null>(null)
 
 const activeImage = computed(() => images.value.find(i => i.id === activeImageId.value))
@@ -163,8 +173,12 @@ async function loadImages(): Promise<void> {
   try {
     const res = await api.get(`/api/papers/${store.currentPaperId}/images`)
     images.value = res.data.images || []
+    // Sync with paper store's paperImages for gallery/figureSources
+    if (store.currentPaperId) {
+      store.loadPaperImages(store.currentPaperId)
+    }
     if (images.value.length && !activeImageId.value) {
-      selectImage(images.value[0])
+      selectImage(images.value[images.value.length - 1])
     }
   } catch (e: any) {
     warning.value = e.message
@@ -231,7 +245,7 @@ async function generateImage(): Promise<void> {
         await loadImages()
         // Select the newest image
         if (images.value.length) {
-          selectImage(images.value[0])
+          selectImage(images.value[images.value.length - 1])
         }
       },
       onError: (err: any) => {
@@ -265,7 +279,7 @@ async function onUploadChange(e: Event): Promise<void> {
   await loadImages()
   // Select the newest image
   if (images.value.length) {
-    selectImage(images.value[0])
+    selectImage(images.value[images.value.length - 1])
   }
 }
 

@@ -8,8 +8,9 @@ import json
 import logging
 import os
 import re
+import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import redis
 from flask import Blueprint, Response, request, stream_with_context, jsonify
@@ -17,7 +18,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from sqlalchemy import desc
 
-from database.models import ChatMessage, Conversation, Paper, db
+from database.models import ChatMessage, Conversation, Paper, db, safe_commit
 from utils.ai_tools.model_router import route_chat_call
 from utils.core.user_storage import get_username, save_chat_send_by_id, save_chat_recv_by_id
 from tools.chat.tools import parse_completion, apply_operations, save_thinking_to_fs
@@ -28,10 +29,23 @@ log = logging.getLogger(__name__)
 simple_chat = Blueprint("simple_chat", __name__)
 
 # Redis connection for streaming state
-_REDIS = redis.Redis.from_url(
-    os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-    decode_responses=True,
-)
+_REDIS = None
+_REDIS_LOCK = threading.Lock()
+
+
+def get_redis():
+    global _REDIS
+    if _REDIS is None:
+        with _REDIS_LOCK:
+            if _REDIS is None:
+                try:
+                    _REDIS = redis.Redis.from_url(
+                        os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+                        decode_responses=True,
+                    )
+                except Exception:
+                    return None
+    return _REDIS
 
 
 def _stream_key(conv_id: str) -> str:
@@ -115,21 +129,39 @@ def get_paper_context(paper_id: str | None) -> str:
 # ─── Conversation CRUD ─────────────────────────────────────────────────────
 
 
+@simple_chat.route("/api/chat/papers", methods=["GET"])
+@jwt_required()
+def list_chat_papers():
+    """List papers that have conversations for the current user."""
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({'error': 'invalid identity'}), 400
+    papers = (
+        db.session.query(Paper)
+        .join(Conversation, Conversation.paper_id == Paper.id)
+        .filter(Conversation.user_id == user_id)
+        .distinct()
+        .all()
+    )
+    return jsonify([{"id": p.id, "title": p.title} for p in papers])
+
+
 @simple_chat.route("/api/papers/<paper_id>/conversations", methods=["GET"])
 @jwt_required()
 def list_paper_conversations(paper_id):
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
-        return {"error": "Paper not found"}, 404
+        return jsonify({"error": "Paper not found"}), 404
     convs = (
         Conversation.query.filter_by(user_id=user_id, paper_id=paper_id)
         .order_by(Conversation.updated_at.desc())
         .all()
     )
-    return [c.to_dict() for c in convs]
+    return jsonify([c.to_dict() for c in convs])
 
 
 @simple_chat.route("/api/papers/<paper_id>/conversations", methods=["POST"])
@@ -137,10 +169,10 @@ def list_paper_conversations(paper_id):
 def create_paper_conversation(paper_id):
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
-        return {"error": "Paper not found"}, 404
+        return jsonify({"error": "Paper not found"}), 404
     data = request.get_json(silent=True) or {}
     title = (data.get("title") or "New Chat").strip() or "New Chat"
     conv = Conversation(
@@ -150,8 +182,12 @@ def create_paper_conversation(paper_id):
         title=title,
     )
     db.session.add(conv)
-    db.session.commit()
-    return conv.to_dict()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify(conv.to_dict())
 
 
 @simple_chat.route("/api/chat/conversations/<conv_id>", methods=["GET"])
@@ -159,19 +195,19 @@ def create_paper_conversation(paper_id):
 def get_conversation(conv_id: str):
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
     conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
     if not conv:
-        return {"error": "Conversation not found"}, 404
+        return jsonify({"error": "Conversation not found"}), 404
     msgs = (
         ChatMessage.query.filter_by(conversation_id=conv_id)
         .order_by(ChatMessage.created_at.asc())
         .all()
     )
-    return {
+    return jsonify({
         **conv.to_dict(),
         "messages": [m.to_dict() for m in msgs],
-    }
+    })
 
 
 @simple_chat.route("/api/chat/conversations/<conv_id>", methods=["PATCH"])
@@ -179,17 +215,21 @@ def get_conversation(conv_id: str):
 def rename_conversation(conv_id: str):
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
     conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
     if not conv:
-        return {"error": "Conversation not found"}, 404
+        return jsonify({"error": "Conversation not found"}), 404
     data = request.get_json(silent=True) or {}
     title = (data.get("title") or "").strip()
     if not title:
-        return {"error": "Title is required"}, 400
+        return jsonify({"error": "Title is required"}), 400
     conv.title = title
-    db.session.commit()
-    return {"ok": True}
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify({"ok": True})
 
 
 @simple_chat.route("/api/chat/conversations/<conv_id>", methods=["DELETE"])
@@ -197,14 +237,18 @@ def rename_conversation(conv_id: str):
 def delete_conversation(conv_id: str):
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
     conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
     if not conv:
-        return {"error": "Conversation not found"}, 404
-    ChatMessage.query.filter_by(conversation_id=conv_id).delete()
+        return jsonify({"error": "Conversation not found"}), 404
+    # cascade="all, delete-orphan" on relationship handles message deletion
     db.session.delete(conv)
-    db.session.commit()
-    return {"ok": True}
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify({"ok": True})
 
 
 @simple_chat.route("/api/chat/conversations/<conv_id>/clear", methods=["POST"])
@@ -213,15 +257,20 @@ def clear_conversation(conv_id: str):
     """Delete all messages in a conversation but keep the conversation itself."""
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
     conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
     if not conv:
-        return {"error": "Conversation not found"}, 404
+        return jsonify({"error": "Conversation not found"}), 404
     deleted = ChatMessage.query.filter_by(conversation_id=conv_id).delete()
     conv.title = "New Chat"
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        log.exception("clear_conversation: commit failed for conv=%s", conv_id)
+        return jsonify({"error": "Failed to clear conversation"}), 500
     log.info("Cleared %d messages from conv=%s", deleted, conv_id)
-    return {"ok": True, "deleted": deleted}
+    return jsonify({"ok": True, "deleted": deleted})
 
 
 @simple_chat.route("/api/chat/conversations/<conv_id>/messages", methods=["POST"])
@@ -229,18 +278,18 @@ def clear_conversation(conv_id: str):
 def send_message(conv_id: str):
     user_id = _current_user_id()
     if user_id is None:
-        return {"error": "Unauthorized"}, 401
+        return jsonify({"error": "Unauthorized"}), 401
 
     conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
     if not conv:
-        return {"error": "Conversation not found"}, 404
+        return jsonify({"error": "Conversation not found"}), 404
 
     data = request.get_json(silent=True) or {}
     content = (data.get("content") or "").strip()
     if not content:
-        return {"error": "Message content is required"}, 400
-    if len(content) > 16000:
-        return {"error": "Message is too long (max 16000 chars)"}, 400
+        return jsonify({"error": "Message content is required"}), 400
+    if len(content) > 100000:
+        return jsonify({"error": "Message is too long (max 100000 chars)"}), 400
 
     log.info("simple_chat.send conv=%s user=%s len=%d", conv_id, user_id, len(content))
 
@@ -251,7 +300,7 @@ def send_message(conv_id: str):
 
         if conv.title in (None, "", "New Chat"):
             conv.title = (content[:60] + ("\u2026" if len(content) > 60 else "")) or "New Chat"
-        db.session.commit()
+        safe_commit()
     except Exception as e:
         log.exception("Failed to save user message: %s", e)
         try:
@@ -338,6 +387,53 @@ def send_message(conv_id: str):
             except Exception as e:
                 log.warning("@slr tag: failed to load pinned literature: %s", e)
 
+    # ── @draft tag: inject named chat drafts into system prompt ───────────
+    # User writes "@draft <name>" or "@draft name1,name2" → fetch those drafts
+    # and inject as context. Tag removed from message before AI call.
+    draft_tag_detected = False
+    if conv.paper_id:
+        # BUG-23: Limit input before regex to prevent ReDoS (max 500 chars)
+        _draft_search_input = content[:500]
+        # Match "@draft name" or "@draft name1,name2" (comma-separated names)
+        draft_match = re.search(r"@draft\s+([^\s@]+(?:\s*,\s*[^\s@]+)*)", _draft_search_input, flags=re.IGNORECASE)
+        if draft_match:
+            draft_tag_detected = True
+            raw_names = draft_match.group(1)
+            # Split by comma, strip, filter empty
+            names = [n.strip() for n in raw_names.split(",") if n.strip()]
+            # Remove the whole "@draft ..." from user content
+            content = content[: draft_match.start()].strip() + " " + content[draft_match.end():].strip()
+            content = re.sub(r"\s+", " ", content).strip()
+            try:
+                from tools.chat.drafts import get_drafts_by_names
+                draft_block = get_drafts_by_names(conv.paper_id, user_id, names, max_items=5)
+                if draft_block:
+                    system_content += f"## Chat Drafts (user-curated context)\n{draft_block}\n\n"
+                    log.info("@draft tag: injected %d draft(s) for paper=%s names=%s", draft_block.count("### Draft:"), conv.paper_id, names)
+                else:
+                    log.info("@draft tag: no matching drafts found for names=%s paper=%s", names, conv.paper_id)
+            except Exception as e:
+                log.warning("@draft tag: failed to load drafts: %s", e)
+
+    # ── @tabel / @grafik tag: inject data items into system prompt ──────
+    # User ketik @tabel atau @grafik di pesan → ambil data items dari paper
+    # dan injeksi sebagai context. Tag dihapus dari pesan sebelum ke AI.
+    data_tag_detected = False
+    if conv.paper_id and ("@tabel" in content.lower() or "@grafik" in content.lower()):
+        data_tag_detected = True
+        # Hapus tag dari konten user
+        content = re.sub(r"@(tabel|grafik)\b", "", content, flags=re.IGNORECASE).strip()
+        try:
+            from tools.data.data_jobs import get_data_items_for_paper
+            data_text = get_data_items_for_paper(conv.paper_id, user_id, max_tables=10, max_charts=10)
+            if data_text:
+                system_content += f"## Data Items (Tabel & Grafik)\n{data_text}\n\n"
+                log.info("@tabel/@grafik tag: injected data items for paper=%s", conv.paper_id)
+            else:
+                log.info("@tabel/@grafik tag: no data items for paper=%s", conv.paper_id)
+        except Exception as e:
+            log.warning("@tabel/@grafik tag: failed to load data items: %s", e)
+
     # ── Search tool integration ───────────────────────────────────────────
     # Detect user intent and run searches BEFORE calling AI, so the AI
     # has real data to work with.
@@ -410,6 +506,8 @@ def send_message(conv_id: str):
         assistant_content = ""
         thinking_content = ""
         model_used = ""
+        _token_count = 0
+        _r = get_redis()
         log.info("Chat generate started for conv_id=%s", conv_id)
 
         # Save streaming state to Redis (for reconnect after refresh)
@@ -421,7 +519,8 @@ def send_message(conv_id: str):
             "started_at": datetime.now(timezone.utc).isoformat(),
         }
         try:
-            _REDIS.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))  # 30 min TTL
+            if _r:
+                _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))  # 30 min TTL
         except Exception as e:
             log.warning("Failed to save initial stream state: %s", e)
 
@@ -437,6 +536,182 @@ def send_message(conv_id: str):
                 "error": slr_job_info.get("error", "Unknown error"),
                 "message": "Gagal memulai SLR job. Coba lagi atau gunakan tab Literatur secara manual."
             })
+
+        # ── Resilience tracking (item: streaming must finish in backend even
+        #    if the frontend errors / navigates away mid-stream) ─────────────
+        # The AI response handles + current phase are captured so that, on a
+        # client disconnect (GeneratorExit), we can drain the remaining AI
+        # tokens and still persist the completion to the DB.
+        response_p1 = None
+        response_p2 = None
+        _phase = 0           # 1 = collecting phase-1, 2 = synthesizing phase-2
+        _finalized = False   # guard so finalization runs at most once
+
+        def _persist_chat_final(final_content: str, thinking: str) -> dict:
+            """Parse ops + apply to paper + save assistant message to DB/FS +
+            mark Redis 'done'. NON-yielding so it is safe to call from both the
+            normal completion path and the client-disconnect path. Runs once.
+
+            DB write uses a fresh connection with retry to survive the stale
+            'SSL connection has been closed unexpectedly' that long streams hit.
+            """
+            nonlocal _finalized, model_used
+            out = {"message_id": None, "content": final_content,
+                   "paper_applied": None, "ask_user": None, "empty": False}
+            if _finalized:
+                return out
+            _finalized = True
+            try:
+                parsed = parse_completion(final_content or "")
+                content = final_content or ""
+                if parsed["has_operations"] and conv.paper_id:
+                    try:
+                        result = apply_operations(conv.paper_id, parsed["operations"])
+                        out["paper_applied"] = {
+                            "operations": parsed["operations"],
+                            "results": result.get("results"),
+                            "errors": result.get("errors"),
+                        }
+                    except Exception:
+                        log.exception("apply_operations failed during finalize")
+                    content = parsed["cleaned_text"] or content
+                if parsed["has_ask_user"] and parsed["ask_user"]:
+                    out["ask_user"] = parsed["ask_user"]
+                    if parsed["cleaned_text"]:
+                        content = parsed["cleaned_text"]
+                out["content"] = content
+
+                if content and content.strip():
+                    from sqlalchemy.exc import DBAPIError, OperationalError
+                    import time as _t
+                    mid = None
+                    for _attempt in range(3):
+                        try:
+                            try:
+                                db.session.rollback()
+                            except Exception:
+                                pass
+                            msg = ChatMessage(
+                                conversation_id=conv_id,
+                                role="assistant",
+                                content=content,
+                                thinking=thinking if thinking else None,
+                            )
+                            db.session.add(msg)
+                            db.session.commit()
+                            mid = msg.id
+                            break
+                        except (OperationalError, DBAPIError) as _e:
+                            try:
+                                db.session.rollback()
+                            except Exception:
+                                pass
+                            log.warning("Chat DB save attempt %d failed (stale conn): %s", _attempt + 1, _e)
+                            _t.sleep(0.3 * (_attempt + 1))
+                        except Exception:
+                            try:
+                                db.session.rollback()
+                            except Exception:
+                                pass
+                            log.exception("Chat DB save failed (non-retryable)")
+                            break
+                    out["message_id"] = mid
+                    if mid:
+                        try:
+                            fs_data = {"content": content, "message_id": mid,
+                                       "model": model_used, "conv_id": conv_id}
+                            if thinking:
+                                fs_data["thinking"] = thinking
+                            save_chat_recv_by_id(username=username, paper_id=conv.paper_id,
+                                                 data=fs_data, conv_id=conv_id)
+                        except Exception as _e:
+                            log.warning("FS save failed during finalize: %s", _e)
+                        stream_state["status"] = "done"
+                        stream_state["message_id"] = mid
+                        stream_state["content"] = content
+                        try:
+                            if _r:
+                                _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                        except Exception as _e:
+                            log.warning("Redis setex (finalize done) failed conv=%s: %s", conv_id, _e)
+                    else:
+                        stream_state["status"] = "error"
+                        stream_state["error"] = "DB save failed"
+                        try:
+                            if _r:
+                                _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                        except Exception as _e:
+                            log.warning("Redis setex (finalize error) failed conv=%s: %s", conv_id, _e)
+                else:
+                    out["empty"] = True
+                    stream_state["status"] = "error"
+                    stream_state["error"] = "Empty response"
+                    try:
+                        if _r:
+                            _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                    except Exception as _e:
+                        log.warning("Redis setex (finalize empty) failed conv=%s: %s", conv_id, _e)
+            except Exception:
+                log.exception("Finalize failed for conv=%s", conv_id)
+            return out
+
+        def _drain_remaining():
+            """Client disconnected — keep consuming the open AI stream so the
+            completion is captured, then persist. No yields."""
+            nonlocal assistant_content, thinking_content
+            try:
+                _acc = ""
+                _resp = response_p2 if (_phase == 2 and response_p2 is not None) else None
+                if _resp is None and _phase == 1 and response_p1 is not None and not assistant_content:
+                    _resp = response_p1
+                if _resp is not None:
+                    for _line in _resp.iter_lines():
+                        if not _line:
+                            continue
+                        if isinstance(_line, bytes):
+                            _line = _line.decode("utf-8", "ignore")
+                        if not _line.startswith("data: "):
+                            continue
+                        _ds = _line[6:]
+                        if _ds == "[DONE]":
+                            break
+                        try:
+                            _chunk = json.loads(_ds)
+                        except json.JSONDecodeError:
+                            continue
+                        _ch = _chunk.get("choices", [])
+                        if not _ch:
+                            continue
+                        _delta = _ch[0].get("delta", {})
+                        _c = _delta.get("content")
+                        if _c:
+                            _acc += _c
+                        _t = (_delta.get("thinking") or _delta.get("reasoning_content")
+                              or _delta.get("reasoning") or _delta.get("thinking_content"))
+                        if _t:
+                            if isinstance(_t, dict):
+                                _t = _t.get("content", "")
+                            if _t:
+                                thinking_content += _t
+                    if _resp is response_p2:
+                        assistant_content += _acc
+                    else:
+                        assistant_content = (assistant_content or "") + _acc
+            except Exception:
+                log.warning("Drain after disconnect failed for conv=%s", conv_id, exc_info=True)
+            finally:
+                # Close response connections to release underlying sockets
+                try:
+                    if response_p1:
+                        response_p1.close()
+                except Exception as _e:
+                    log.warning("response_p1.close failed conv=%s: %s", conv_id, _e)
+                try:
+                    if response_p2:
+                        response_p2.close()
+                except Exception as _e:
+                    log.warning("response_p2.close failed conv=%s: %s", conv_id, _e)
+            _persist_chat_final(assistant_content, thinking_content)
 
         try:
             # Build message list: system + history + current user message
@@ -462,6 +737,7 @@ def send_message(conv_id: str):
             phase1_text = ""
             phase1_thinking = ""
 
+            _phase = 1
             response_p1, model_used = route_chat_call(
                 json={
                     "messages": messages_phase1,
@@ -503,6 +779,22 @@ def send_message(conv_id: str):
                         thinking_raw = thinking_raw.get("content", "")
                     if thinking_raw:
                         phase1_thinking += thinking_raw
+                        # Stream thinking character-by-character
+                        yield _sse("thinking", {"content": thinking_raw})
+                        # Update Redis state (throttle: every 20 chunks or ~160 chars)
+                        _token_count += 1
+                        if _token_count % 20 == 0:
+                            stream_state["thinking"] = phase1_thinking
+                            try:
+                                if _r:
+                                    _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                            except Exception as _e:
+                                log.warning("Redis setex (thinking) failed conv=%s: %s", conv_id, _e)
+
+            # Signal end of thinking phase (before content starts)
+            if phase1_thinking:
+                yield _sse("thinking_done", {})
+                thinking_content = phase1_thinking
 
             # ── Check for search tags in phase 1 response ─────────────
             search_tags = []
@@ -514,24 +806,49 @@ def send_message(conv_id: str):
 
             # ── If no search tags → single-phase: stream phase 1 directly ─
             if not search_tags:
-                # Stream phase 1 thinking
-                if phase1_thinking:
-                    thinking_content = phase1_thinking
-                    yield _sse("thinking", {"content": phase1_thinking})
-                    # Update Redis state
-                    stream_state["thinking"] = thinking_content
-                    try:
-                        _REDIS.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
-                    except Exception:
-                        pass
-
-                # Stream phase 1 text
+                # Signal composing phase, then stream text in chunks
                 assistant_content = phase1_text
-                yield _sse("text", {"content": phase1_text})
+                yield _sse("composing_start", {})
+                import time as _time
+                _time.sleep(0.3)  # Brief pause so "Menyusun jawaban..." is visible
+
+                # Stream text in small chunks (not all at once)
+                _chunk_size = 8
+                _text_to_stream = phase1_text
+                # Persist thinking up-front so a refresh mid-replay can render
+                # the reasoning block immediately (it's already complete here).
+                if phase1_thinking:
+                    stream_state["thinking"] = phase1_thinking
+                for _i in range(0, len(_text_to_stream), _chunk_size):
+                    _chunk = _text_to_stream[_i:_i + _chunk_size]
+                    _token_count += 1
+                    yield _sse("text", {"content": _chunk})
+                    _time.sleep(0.01)  # Tiny delay for smooth streaming feel
+                    # Persist progressive content to Redis every ~20 chunks so a
+                    # page refresh mid-replay resumes from the live position
+                    # instead of showing nothing until the stream completes.
+                    if _token_count % 20 == 0:
+                        stream_state["content"] = _text_to_stream[:_i + _chunk_size]
+                        if _r:
+                            try:
+                                _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                            except Exception:
+                                pass
+                            # Check cancel using the same fetch cadence
+                            try:
+                                _raw = _r.get(_stream_key(conv_id))
+                                if _raw:
+                                    _st = json.loads(_raw)
+                                    if _st.get("status") == "cancelled":
+                                        yield _sse("done", {"message_id": None, "cancelled": True})
+                                        return
+                            except (json.JSONDecodeError, KeyError):
+                                pass
                 # Update Redis state
                 stream_state["content"] = assistant_content
                 try:
-                    _REDIS.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                    if _r:
+                        _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
                 except Exception:
                     pass
 
@@ -539,10 +856,7 @@ def send_message(conv_id: str):
                 # ── PHASE 1.5: Execute searches with real-time progress ──
                 log.info("Search tags found: %d — executing for conv=%s", len(search_tags), conv_id)
 
-                # Show phase 1 thinking as reasoning (user sees AI's plan)
-                if phase1_thinking:
-                    thinking_content = phase1_thinking
-                    yield _sse("thinking", {"content": phase1_thinking})
+                # Thinking already streamed above during phase 1 loop
 
                 from tools.chat.search_tools import (
                     execute_tag_search,
@@ -578,6 +892,9 @@ def send_message(conv_id: str):
                 search_results_context = format_search_results_for_ai(all_search_results)
                 yield _sse("search_phase_end", {"message": "Menyusun jawaban..."})
 
+                # Signal composing phase to frontend
+                yield _sse("composing_start", {})
+
                 # ── PHASE 2: AI synthesizes final answer with search data ──
                 phase2_system = system_content + "\n\n" + search_results_context
 
@@ -593,6 +910,7 @@ def send_message(conv_id: str):
                 if phase1_clean:
                     messages_phase2.append({"role": "assistant", "content": phase1_clean})
 
+                _phase = 2
                 response_p2, model_used = route_chat_call(
                     json={
                         "messages": messages_phase2,
@@ -624,13 +942,26 @@ def send_message(conv_id: str):
                     if "content" in delta and delta["content"]:
                         text = delta["content"]
                         assistant_content += text
+                        _token_count += 1
                         yield _sse("text", {"content": text})
                         # Update Redis state (batch updates, not every chunk)
                         stream_state["content"] = assistant_content
                         try:
-                            _REDIS.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                            if _r:
+                                _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
                         except Exception:
                             pass
+                        # Check cancel every ~20 tokens
+                        if _token_count % 20 == 0 and _r:
+                            try:
+                                _raw = _r.get(_stream_key(conv_id))
+                                if _raw:
+                                    _st = json.loads(_raw)
+                                    if _st.get("status") == "cancelled":
+                                        yield _sse("done", {"message_id": None, "cancelled": True})
+                                        return
+                            except (json.JSONDecodeError, KeyError):
+                                pass
                     thinking_raw = (
                         delta.get("thinking")
                         or delta.get("reasoning_content")
@@ -643,12 +974,15 @@ def send_message(conv_id: str):
                         if thinking_raw:
                             thinking_content += thinking_raw
                             yield _sse("thinking", {"content": thinking_raw})
-                            # Update Redis state
-                            stream_state["thinking"] = thinking_content
-                            try:
-                                _REDIS.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
-                            except Exception:
-                                pass
+                            # Update Redis state (throttle: every 20 chunks)
+                            _token_count += 1
+                            if _token_count % 20 == 0:
+                                stream_state["thinking"] = thinking_content
+                                try:
+                                    if _r:
+                                        _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                                except Exception:
+                                    pass
 
             # Save thinking to filesystem if any
             if thinking_content and conv.paper_id:
@@ -663,63 +997,109 @@ def send_message(conv_id: str):
                 except Exception as e:
                     log.warning("Failed to save thinking: %s", e)
 
-            # Parse [APPLY_PAPER] tags using tools.py
-            parsed = parse_completion(assistant_content)
-            if parsed["has_operations"] and conv.paper_id:
-                result = apply_operations(conv.paper_id, parsed["operations"])
-                yield _sse("paper_applied", {
-                    "operations": parsed["operations"],
-                    "results": result["results"],
-                    "errors": result["errors"],
-                })
-                assistant_content = parsed["cleaned_text"] if parsed["cleaned_text"] else assistant_content
-                yield _sse("replace_text", {"content": assistant_content})
-
-            # Streaming done — save assistant message to DB
-            if assistant_content:
-                assistant_msg = ChatMessage(
-                    conversation_id=conv_id,
-                    role="assistant",
-                    content=assistant_content,
+            # ── FALLBACK: If content empty but thinking has text, retry ──
+            if not assistant_content.strip() and thinking_content.strip():
+                log.warning(
+                    "Chat returned empty content with %d chars thinking — "
+                    "making fallback call for conv=%s",
+                    len(thinking_content), conv_id,
                 )
-                db.session.add(assistant_msg)
-                db.session.commit()
-
+                yield _sse("composing_start", {})
                 try:
-                    fs_data = {
-                        "content": assistant_content,
-                        "message_id": assistant_msg.id,
-                        "model": model_used,
-                        "conv_id": conv_id,
-                    }
-                    if thinking_content:
-                        fs_data["thinking"] = thinking_content
-                    save_chat_recv_by_id(
-                        username=username,
-                        paper_id=conv.paper_id,
-                        data=fs_data,
-                        conv_id=conv_id,
+                    fallback_messages = [
+                        {"role": "system", "content": (
+                            "You are a concise academic writing assistant. "
+                            "Based on the reasoning below, produce a direct, helpful response "
+                            "in the same language the user is using. "
+                            "Output ONLY the final answer — no thinking, no tags."
+                        )},
+                        {"role": "user", "content": thinking_content[-4000:]},
+                    ]
+                    fb_resp, _ = route_chat_call(
+                        json={"messages": fallback_messages, "stream": False, "max_tokens": 4096},
+                        stream=False,
+                        timeout=120,
                     )
+                    fb_choices = fb_resp.json().get("choices", [])
+                    if fb_choices:
+                        fb_content = (
+                            fb_choices[0].get("message", {}).get("content", "")
+                            or fb_choices[0].get("delta", {}).get("content", "")
+                        ).strip()
+                        if fb_content:
+                            assistant_content = fb_content
+                            import time as _time
+                            _time.sleep(0.2)
+                            # Mirror the normal replay: persist progressively to
+                            # Redis so a refresh mid-replay resumes from the live
+                            # position instead of showing nothing until completion.
+                            stream_state["content"] = ""
+                            for _i in range(0, len(assistant_content), 8):
+                                yield _sse("text", {"content": assistant_content[_i:_i + 8]})
+                                _time.sleep(0.01)
+                                _token_count += 1
+                                if _token_count % 20 == 0:
+                                    stream_state["content"] = assistant_content[:_i + 8]
+                                    if _r:
+                                        try:
+                                            _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                                        except Exception:
+                                            pass
+                            stream_state["content"] = assistant_content
+                            if _r:
+                                try:
+                                    _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                                except Exception:
+                                    pass
                 except Exception as e:
-                    log.warning("Failed to save assistant message to filesystem: %s", e)
+                    log.warning("Fallback chat call failed: %s", e)
 
-                yield _sse("done", {"message_id": assistant_msg.id})
-                # Mark stream as done in Redis
-                stream_state["status"] = "done"
-                stream_state["message_id"] = assistant_msg.id
-                try:
-                    _REDIS.setex(_stream_key(conv_id), 60, json.dumps(stream_state))  # 1 min TTL for done state
-                except Exception:
-                    pass
-            else:
+                # Last resort: if still empty, extract last sentence of thinking
+                if not assistant_content.strip():
+                    lines = thinking_content.rstrip().split("\n")
+                    meaningful = [l for l in lines if l.strip() and not l.strip().startswith(("#", "//", "/*", "*"))][-5:]
+                    if meaningful:
+                        assistant_content = "\n".join(meaningful)[:2000]
+                        log.info("Fallback: using last meaningful lines from thinking (%d chars)", len(assistant_content))
+                        yield _sse("replace_text", {"content": assistant_content})
+
+            # ── Finalize: parse ops, apply to paper, save to DB/FS, mark Redis.
+            # Done in a NON-yielding helper so the same path runs whether the
+            # client is still connected OR disconnected mid-stream (see the
+            # GeneratorExit handler below). Guarded to run exactly once.
+            _fin = _persist_chat_final(assistant_content, thinking_content)
+
+            if _fin.get("paper_applied"):
+                yield _sse("paper_applied", {
+                    "operations": _fin["paper_applied"].get("operations"),
+                    "results": _fin["paper_applied"].get("results"),
+                    "errors": _fin["paper_applied"].get("errors"),
+                })
+                yield _sse("replace_text", {"content": _fin["content"]})
+
+            if _fin.get("ask_user"):
+                yield _sse("ask_user", _fin["ask_user"])
+                yield _sse("replace_text", {"content": _fin["content"]})
+
+            if _fin.get("message_id"):
+                yield _sse("done", {"message_id": _fin["message_id"]})
+            elif _fin.get("empty"):
                 yield _sse("error", {"message": "AI returned an empty response."})
-                # Mark stream as error in Redis
-                stream_state["status"] = "error"
-                stream_state["error"] = "Empty response"
-                try:
-                    _REDIS.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
-                except Exception:
-                    pass
+            else:
+                yield _sse("error", {"message": "Gagal menyimpan pesan ke database."})
+
+        except GeneratorExit:
+            # ── Client disconnected / frontend errored mid-stream ─────────
+            # The browser closed the SSE connection (refresh, navigation, JS
+            # error, network drop). We MUST still finish: drain the remaining
+            # AI tokens off the open upstream stream and persist the completion
+            # so it is never lost. No yields allowed here (socket is gone).
+            log.info("Client disconnected mid-stream for conv=%s — finishing in background", conv_id)
+            try:
+                _drain_remaining()
+            except Exception:
+                log.exception("Background finalize after disconnect failed for conv=%s", conv_id)
+            raise
 
         except Exception as e:
             log.exception("Error in AI call: %s", e)
@@ -731,7 +1111,8 @@ def send_message(conv_id: str):
             stream_state["status"] = "error"
             stream_state["error"] = str(e)[:200]
             try:
-                _REDIS.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                if _r:
+                    _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
             except Exception:
                 pass
             err_str = str(e)
@@ -784,7 +1165,8 @@ def get_stream_status(conv_id: str):
         return jsonify({"status": "not_found"}), 404
 
     try:
-        raw = _REDIS.get(_stream_key(conv_id))
+        _r = get_redis()
+        raw = _r.get(_stream_key(conv_id)) if _r else None
         if not raw:
             return jsonify({"status": "not_found"})
         
@@ -820,7 +1202,8 @@ def cancel_stream(conv_id: str):
         return jsonify({"error": "Conversation not found"}), 404
 
     try:
-        raw = _REDIS.get(_stream_key(conv_id))
+        _r = get_redis()
+        raw = _r.get(_stream_key(conv_id)) if _r else None
         if not raw:
             return jsonify({"status": "not_found", "message": "No active stream"})
         
@@ -831,9 +1214,93 @@ def cancel_stream(conv_id: str):
         # Mark as cancelled
         state["status"] = "cancelled"
         state["cancelled_at"] = datetime.now(timezone.utc).isoformat()
-        _REDIS.setex(_stream_key(conv_id), 60, json.dumps(state))
+        if _r:
+            _r.setex(_stream_key(conv_id), 60, json.dumps(state))
         
         return jsonify({"status": "cancelled", "message": "Stream cancelled successfully"})
     except Exception as e:
         log.warning("Failed to cancel stream: %s", e)
         return jsonify({"error": "Failed to cancel stream"}), 500
+
+
+# ── FAQ Analytics ────────────────────────────────────────────────────────────
+@simple_chat.route("/api/chat/faq", methods=["GET"])
+@jwt_required()
+def get_faq_analytics():
+    """Return top user questions asked to AI, grouped by normalized content.
+
+    Query params:
+        paper_id: optional — scope to a specific paper
+        period:   'day' | 'week' | 'month' | 'all' (default: month)
+        limit:    max items to return (default: 20)
+
+    Returns:
+        {
+            "faq": [
+                { "question": "...", "count": N },
+                ...
+            ],
+            "period": "...",
+            "total_messages": N
+        }
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Invalid user"}), 401
+
+    paper_id = request.args.get("paper_id")
+    period = request.args.get("period", "month")
+    try:
+        limit = min(int(request.args.get("limit", 20)), 50)
+    except (ValueError, TypeError):
+        limit = 20
+
+    from sqlalchemy import func, text
+
+    # Date filter
+    now = datetime.now(timezone.utc)
+    period_map = {
+        "day": now - timedelta(days=1),
+        "week": now - timedelta(days=7),
+        "month": now - timedelta(days=30),
+    }
+    since = period_map.get(period)
+
+    q = (
+        db.session.query(
+            ChatMessage.content,
+            func.count(ChatMessage.id).label("cnt"),
+        )
+        .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+        .filter(ChatMessage.role == "user")
+        .filter(ChatMessage.content.isnot(None))
+        .filter(ChatMessage.content != "")
+    )
+
+    if paper_id:
+        q = q.filter(Conversation.paper_id == paper_id)
+    if since:
+        q = q.filter(ChatMessage.created_at >= since)
+
+    q = q.group_by(ChatMessage.content).order_by(text("cnt DESC")).limit(limit)
+    rows = q.all()
+
+    # Total user messages in period
+    total_q = (
+        db.session.query(func.count(ChatMessage.id))
+        .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+        .filter(ChatMessage.role == "user")
+    )
+    if paper_id:
+        total_q = total_q.filter(Conversation.paper_id == paper_id)
+    if since:
+        total_q = total_q.filter(ChatMessage.created_at >= since)
+    total_messages = total_q.scalar() or 0
+
+    faq = [{"question": r.content.strip(), "count": r.cnt} for r in rows if r.content]
+
+    return jsonify({
+        "faq": faq,
+        "period": period,
+        "total_messages": total_messages,
+    })

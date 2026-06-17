@@ -51,7 +51,7 @@
               :value="auth.user?.email"
               type="email"
               disabled
-              class="w-full px-3 py-2 border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 text-ink-500 dark:text-ink-400 rounded-lg text-sm cursor-not-allowed opacity-70"
+              class="w-full px-3 py-2 border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 text-ink-500 dark:text-ink-300 rounded-lg text-sm cursor-not-allowed opacity-70"
             />
           </div>
         </div>
@@ -60,7 +60,7 @@
       <!-- Language Section -->
       <div class="bg-white dark:bg-ash-800 rounded-xl border border-cream-300 dark:border-ash-700 p-6 mb-6">
         <h2 class="text-base font-semibold text-ink-900 dark:text-ink-50 mb-4">🌐 Bahasa & Gaya Penulisan</h2>
-        <p class="text-xs text-ink-500 dark:text-ink-400 mb-3">
+        <p class="text-xs text-ink-500 dark:text-ink-300 mb-3">
           AI akan menggunakan gaya bahasa ini saat menulis paper dan merespons chat.
         </p>
         <div class="grid grid-cols-2 gap-3">
@@ -78,7 +78,7 @@
             <span class="text-2xl">{{ lang.icon }}</span>
             <div class="text-left">
               <div class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ lang.label }}</div>
-              <div class="text-[11px] text-ink-500 dark:text-ink-400">{{ lang.desc }}</div>
+              <div class="text-[11px] text-ink-500 dark:text-ink-300">{{ lang.desc }}</div>
             </div>
           </button>
         </div>
@@ -137,7 +137,7 @@
           <span>🧭</span>
           <span>Panduan Saya</span>
         </span>
-        <span class="text-[11px] text-ink-500 dark:text-ink-400 block mt-1">Mulai ulang tur panduan penggunaan PaperFull</span>
+        <span class="text-[11px] text-ink-500 dark:text-ink-300 block mt-1">Mulai ulang tur panduan penggunaan PaperFull</span>
       </button>
     </div>
   </div>

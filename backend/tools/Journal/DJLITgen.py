@@ -923,13 +923,35 @@ def add_figure_placeholder(doc, fig):
         line_rule="auto",
         keep_next=True,
     )
-    _add_run(
-        img_p,
-        f"[PROMPT UNTUK AI GAMBAR: {title} -- {prompt}]",
-        font_name=CFG["font_main"],
-        size_pt=CFG["size_caption"],
-        italic=True,
-    )
+
+    # Embed the real image when a usable Path was wired in (reconcile step);
+    # otherwise fall back to the AI-prompt placeholder.
+    path_text = str(fig.get("Path") or "").strip()
+    image_path = None
+    if path_text:
+        from pathlib import Path as _P
+        cand = _P(path_text)
+        if not cand.is_absolute():
+            cand = BASE / path_text
+        if cand.is_file():
+            image_path = cand
+
+    if image_path is not None:
+        try:
+            from docx.shared import Cm as _Cm
+            run = img_p.add_run()
+            run.add_picture(str(image_path), width=_Cm(12.0))
+        except Exception:
+            image_path = None
+
+    if image_path is None:
+        _add_run(
+            img_p,
+            f"[PROMPT UNTUK AI GAMBAR: {title} -- {prompt}]",
+            font_name=CFG["font_main"],
+            size_pt=CFG["size_caption"],
+            italic=True,
+        )
 
     cap_p = doc.add_paragraph()
     _set_para_style(cap_p, "BodyText")
@@ -967,7 +989,15 @@ def add_formula(doc, formula):
         line_tw=240,
         line_rule="auto",
     )
-    _add_run(p, body, font_name=CFG["font_main"], size_pt=CFG["size_body"], italic=True)
+    _omml_done = False
+    try:
+        from _math_omml import append_omml_math as _omml_fn
+        _lx = (formula.get("latex") or "")
+        _omml_done = bool(str(_lx or "").strip()) and _omml_fn(p, _lx)
+    except Exception:
+        _omml_done = False
+    if not _omml_done:
+        _add_run(p, body, font_name=CFG["font_main"], size_pt=CFG["size_body"], italic=True)
     _add_run(p, f"     ({num})", font_name=CFG["font_main"], size_pt=CFG["size_body"])
 
 
@@ -1059,6 +1089,8 @@ def add_table_block(doc, table_data):
 
 def add_references(doc, data):
     refs = data.get("references") or {}
+    if isinstance(refs, list):
+        refs = {"title": "REFERENCES", "content": refs}
     title = (refs.get("title") or "REFERENCES").strip()
     items = refs.get("content") or ["[1] Author, Title, Journal, Year."]
 
@@ -1083,7 +1115,7 @@ def add_references(doc, data):
     )
 
     for ref in items:
-        ref_str = clean_inline_text(str(ref).strip())
+        ref_str = clean_inline_text((str(ref.get("text") or ref.get("Text") or "").strip() if isinstance(ref, dict) else str(ref)).strip())
         rp = doc.add_paragraph()
         _set_para_style(rp, "BodyText")
         _set_para_format(

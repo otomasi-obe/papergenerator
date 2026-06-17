@@ -153,7 +153,7 @@ import { useRoute } from 'vue-router'
 import chartsApi, { type Chart, type ChartSpec } from '../api/charts'
 
 const route = useRoute()
-const paperId = computed(() => route.params.id as string)
+const paperId = computed(() => route.params.paperId as string)
 
 const charts = ref<Chart[]>([])
 const loading = ref(false)

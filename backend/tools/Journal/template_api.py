@@ -72,7 +72,7 @@ def get_template_detail(template_code: str):
 @template_bp.route("/<template_code>/validate", methods=["POST"])
 def validate_paper(template_code: str):
     """Validate paper data against template requirements"""
-    paper_data = request.get_json()
+    paper_data = request.get_json(silent=True)
     if not paper_data:
         return jsonify({"error": "No paper data provided"}), 400
     
@@ -135,7 +135,7 @@ def search_templates():
 @template_bp.route("/recommend", methods=["POST"])
 def recommend_template():
     """Recommend templates based on paper metadata"""
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "No data provided"}), 400
     

@@ -21,14 +21,13 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
 )
 
-from database.models import Paper, PaperImage, db
+from database.models import Paper, PaperImage, db, safe_commit
 from tools.editor.utils import (
     FILENAME_RE,
     PAPER_ID_RE,
     is_image_bytes,
     safe_paper_dir,
     sign_resource_token,
-    upload_folder,
     verify_resource_token,
 )
 
@@ -107,7 +106,7 @@ def upload_paper_image(paper_id: str):
             file_path=f"{paper_id}/{filename}",
         )
         db.session.add(img)
-        db.session.commit()
+        safe_commit()
         return jsonify({"success": True, "image": img.to_dict()})
     except Exception:
         # Clean up orphaned file if DB commit fails
@@ -199,7 +198,7 @@ def upload_user_image(paper_id: str):
             file_path=f"{paper_id}/{filename}",
         )
         db.session.add(img)
-        db.session.commit()
+        safe_commit()
 
         d = img.to_dict()
         return jsonify(
@@ -245,18 +244,27 @@ def list_paper_images(paper_id: str):
 def delete_paper_image(paper_id: str, image_id: int):
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
-    user_id = int(get_jwt_identity())
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
     img = PaperImage.query.filter_by(id=image_id, paper_id=paper_id, user_id=user_id).first()
     if not img:
         return jsonify({"error": "Image not found"}), 404
-    filepath = upload_folder() / img.file_path
+    paper_dir = safe_paper_dir(paper_id)
+    if not paper_dir:
+        return jsonify({"error": "Invalid paper id"}), 400
+    filepath = (paper_dir / img.filename).resolve()
     try:
-        if filepath.exists():
+        filepath.relative_to(paper_dir)
+        if filepath.is_file():
             filepath.unlink()
+    except ValueError:
+        return jsonify({'error': 'invalid path'}), 400
     except Exception:
         log.warning("delete_paper_image: could not unlink %s", filepath)
     db.session.delete(img)
-    db.session.commit()
+    safe_commit()
     return jsonify({"success": True})
 
 
@@ -316,15 +324,23 @@ def get_paper_image(paper_id: str, filename: str):
     else:
         token_qs = request.args.get("t")
         if token_qs and "Authorization" not in request.headers:
-            request.headers.environ["HTTP_AUTHORIZATION"] = f"Bearer {token_qs}"
-        try:
-            verify_jwt_in_request()
-        except Exception:
-            return jsonify({"error": "Unauthorized"}), 401
-        try:
-            user_id = int(get_jwt_identity())
-        except (ValueError, TypeError):
-            return jsonify({"error": "Invalid user identity"}), 401
+            # Extract identity directly from the query-string token
+            # instead of mutating request.headers.environ (unsafe side effect)
+            try:
+                from flask_jwt_extended import decode_token
+                decoded = decode_token(token_qs)
+                user_id = int(decoded.get("sub"))
+            except Exception:
+                return jsonify({"error": "Unauthorized"}), 401
+        else:
+            try:
+                verify_jwt_in_request()
+            except Exception:
+                return jsonify({"error": "Unauthorized"}), 401
+            try:
+                user_id = int(get_jwt_identity())
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid user identity"}), 401
 
     # Verify both paper ownership AND image belongs to that paper (security fix)
     img = PaperImage.query.filter_by(paper_id=paper_id, filename=filename).first()

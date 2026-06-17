@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl">
+  <div class="w-full">
     <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6 space-y-5">
       <!-- Header -->
       <div class="flex items-start justify-between gap-3 flex-wrap">
@@ -53,16 +53,15 @@
             class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
             :disabled="slrRunning"
           />
-          <select
-            v-model="slrTopK"
-            class="px-2 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+          <input
+            v-model.number="slrTopK"
+            type="number"
+            min="5"
+            max="500"
+            class="w-20 px-2 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
             :disabled="slrRunning"
-          >
-            <option :value="20">Top 20</option>
-            <option :value="30">Top 30</option>
-            <option :value="50">Top 50</option>
-            <option :value="80">Top 80</option>
-          </select>
+            title="Jumlah paper yang ditampilkan"
+          />
           <button
             @click="runSLR"
             :disabled="slrRunning || !slrQuery.trim()"
@@ -70,6 +69,52 @@
           >
             {{ slrRunning ? 'Mencari…' : 'Jalankan SLR' }}
           </button>
+        </div>
+
+        <!-- Setting button + collapsible panel -->
+        <div class="mt-2">
+          <button
+            @click="showSlrSettings = !showSlrSettings"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-700 dark:text-anthracite-100 active:scale-95 transition-transform"
+          >⚙️ Setting {{ showSlrSettings ? '▲' : '▼' }}</button>
+          <div v-if="showSlrSettings" class="mt-2 rounded-lg border border-cream-300 dark:border-ash-600 bg-white dark:bg-anthracite-700 p-3 space-y-3">
+            <!-- Source checkboxes -->
+            <div>
+              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Source:</div>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  v-for="src in availableSources"
+                  :key="src"
+                  class="flex items-center gap-1 text-[11px] text-ink-700 dark:text-anthracite-100 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    :value="src"
+                    v-model="slrSources"
+                    class="rounded border-ivory-300 dark:border-anthracite-500"
+                  />
+                  {{ src }}
+                </label>
+              </div>
+              <div class="flex gap-2 mt-1">
+                <button @click="slrSources = [...availableSources]" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">Pilih semua</button>
+                <button @click="slrSources = []" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">Hapus semua</button>
+              </div>
+            </div>
+            <!-- Year input -->
+            <div>
+              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun terakhir:</div>
+              <input
+                v-model.number="slrYearFrom"
+                type="number"
+                :min="1900"
+                :max="new Date().getFullYear() + 1"
+                placeholder="Contoh: 2020"
+                class="w-28 px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+              />
+              <button v-if="slrYearFrom" @click="slrYearFrom = null" class="ml-2 text-[10px] text-red-500 hover:underline">Reset</button>
+            </div>
+          </div>
         </div>
 
         <!-- Active jobs -->
@@ -98,6 +143,8 @@
             </div>
           </div>
         </div>
+
+      <!-- SLR stream notification removed -->
       </div>
 
       <!-- Add manual form -->
@@ -118,83 +165,71 @@
         </div>
       </div>
 
-      <!-- Filters -->
+      <!-- Filters row -->
       <div class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="flex items-center gap-2 flex-wrap">
-          <input v-model="filter" placeholder="🔍 Filter judul / penulis / venue / DOI" autocomplete="off" class="input-sm w-72" />
-          <select v-model="filterSource" class="input-sm">
-            <option value="">Semua sumber</option>
-            <option v-for="s in availableSources" :key="s" :value="s">{{ s }}</option>
-          </select>
-          <label class="flex items-center gap-1 text-xs text-ink-700 dark:text-anthracite-100">
-            <input v-model="onlyMustRead" type="checkbox" class="rounded" />
-            Hanya must-read
-          </label>
-          <label class="flex items-center gap-1 text-xs text-ink-700 dark:text-anthracite-100">
-            <input v-model="onlyPinned" type="checkbox" class="rounded" />
-            Hanya pinned
-          </label>
-          <label class="flex items-center gap-1 text-xs text-ink-700 dark:text-anthracite-100">
-            Tahun ≥
-            <input
-              v-model.number="minYear"
-              type="number"
-              min="1500"
-              max="2100"
-              placeholder="ex: 2018"
-              autocomplete="off"
-              inputmode="numeric"
-              class="input-sm w-24"
-            />
-          </label>
-        </div>
         <div class="text-[11px] text-ink-500 dark:text-anthracite-200 flex items-center gap-2">
-          <span
-            v-if="lastSlrJob && lastSlrJob.status === 'done'"
-            :class="aiSummaryUsed
-              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700'
-              : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700'"
-            :title="aiSummaryUsed
-              ? 'AI summaries enabled — top-K papers received LLM-generated summaries.'
-              : 'AI summary not configured. Set AIOTOMASI_API + AIOTOMASI_APIKEY for AI-generated summaries.'"
-            class="px-2 py-0.5 rounded text-[10px] font-medium"
-          >{{ aiSummaryUsed ? '✨ AI summaries' : 'Summary: extractive only' }}</span>
+          <button
+            @click="reviewAllPinned"
+            :disabled="reviewBusy || pinnedCount === 0"
+            class="px-2 py-1 rounded-lg text-[10px] font-semibold bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 active:scale-95 transition-transform"
+            title="Review semua pinned literatur dengan AI"
+          >🤖 Review Pinned</button>
           <span>{{ filteredItems.length }} / {{ items.length }} literatur · {{ pinnedCount }} pinned</span>
+        </div>
+        <!-- Page size selector -->
+        <div class="flex items-center gap-1 text-[11px]">
+          <span class="text-ink-500 dark:text-anthracite-200">Tampilkan:</span>
+          <button @click="setPageSize(100)" :class="['px-2 py-0.5 rounded text-[10px] font-medium border transition-colors', pageSize === 100 ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']">100</button>
+          <button @click="setPageSize(200)" :class="['px-2 py-0.5 rounded text-[10px] font-medium border transition-colors', pageSize === 200 ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']">200</button>
         </div>
       </div>
 
-      <!-- Bulk action toolbar -->
-      <div
-        v-if="selectionCount > 0"
-        class="flex items-center gap-2 flex-wrap rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs"
-      >
-        <span class="font-medium text-amber-900 dark:text-amber-100">{{ selectionCount }} dipilih</span>
-        <button
-          @click="bulkSetPinned(true)"
-          :disabled="bulkBusy"
-          class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50"
-        >Pin</button>
-        <button
-          @click="bulkSetPinned(false)"
-          :disabled="bulkBusy"
-          class="px-2 py-1 rounded bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 hover:bg-amber-300 dark:hover:bg-amber-700 disabled:opacity-50"
-        >Unpin</button>
-        <button
-          @click="bulkToggleMustRead"
-          :disabled="bulkBusy"
-          class="px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50"
-        >Toggle must-read</button>
-        <button
-          @click="bulkDelete"
-          :disabled="bulkBusy"
-          class="px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
-        >Hapus</button>
-        <button
-          @click="clearSelection"
-          :disabled="bulkBusy"
-          class="px-2 py-1 rounded text-amber-800 dark:text-amber-200 hover:underline"
-        >Bersihkan</button>
-        <span v-if="bulkMsg" class="ml-auto text-amber-800 dark:text-amber-200">{{ bulkMsg }}</span>
+      <!-- Quick sort buttons -->
+      <div class="flex items-center gap-1 flex-wrap">
+        <span class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mr-1">Filter:</span>
+        <button @click="setSort('year')" class="sort-btn" :class="{ active: sortKey === 'year' }">Tahun {{ sortIndicator('year') }}</button>
+        <button @click="setSort('citations')" class="sort-btn" :class="{ active: sortKey === 'citations' }">Sitasi {{ sortIndicator('citations') }}</button>
+        <button @click="setSort('title')" class="sort-btn" :class="{ active: sortKey === 'title' }">Judul A-Z {{ sortIndicator('title') }}</button>
+        <button @click="setSort('authors')" class="sort-btn" :class="{ active: sortKey === 'authors' }">Penulis A-Z {{ sortIndicator('authors') }}</button>
+      </div>
+
+      <!-- Bulk action toolbar removed: checkbox now = pin -->
+
+      <!-- Pagination bar (top) -->
+      <div v-if="totalPages > 1" class="flex items-center justify-end gap-2 flex-wrap">
+        <div class="text-[11px] text-ink-500 dark:text-anthracite-200">
+          Baris {{ pageOffset + 1 }}–{{ Math.min(pageOffset + pageSize, filteredItems.length) }} dari {{ filteredItems.length }}
+        </div>
+        <div class="flex items-center gap-1">
+          <button
+            @click="currentPage = 1"
+            :disabled="currentPage <= 1"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >««</button>
+          <button
+            @click="currentPage--"
+            :disabled="currentPage <= 1"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >« Prev</button>
+          <template v-for="p in visiblePageNumbers" :key="'top-' + p">
+            <button
+              v-if="p !== '...'"
+              @click="currentPage = p as number"
+              :class="['px-2 py-1 rounded text-[10px] font-medium border transition-colors', currentPage === p ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']"
+            >{{ p }}</button>
+            <span v-else class="px-1 text-[10px] text-ink-400 dark:text-anthracite-300">…</span>
+          </template>
+          <button
+            @click="currentPage++"
+            :disabled="currentPage >= totalPages"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >Next »</button>
+          <button
+            @click="currentPage = totalPages"
+            :disabled="currentPage >= totalPages"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >»»</button>
+        </div>
       </div>
 
       <!-- Table -->
@@ -205,49 +240,24 @@
               <th class="px-2 py-2 text-left w-6">
                 <input
                   type="checkbox"
-                  :checked="allVisibleSelected"
-                  :indeterminate.prop="someVisibleSelected && !allVisibleSelected"
-                  @change="toggleSelectAllVisible"
-                  title="Pilih semua di tampilan ini"
+                  @change="togglePinAllVisible"
+                  title="Pin/unpin semua di halaman ini"
                 />
               </th>
-              <th class="px-2 py-2 text-left">📌</th>
               <th class="px-2 py-2 text-left w-10">#</th>
-              <th class="px-2 py-2 text-left">
-                <button @click="setSort('title')" class="hover:underline font-semibold">
-                  Judul{{ sortIndicator('title') }}
-                </button>
-              </th>
-              <th class="px-2 py-2 text-left">Penulis</th>
-              <th class="px-2 py-2 text-left w-16">
-                <button @click="setSort('year')" class="hover:underline font-semibold">
-                  Tahun{{ sortIndicator('year') }}
-                </button>
-              </th>
-              <th class="px-2 py-2 text-left">Venue</th>
-              <th class="px-2 py-2 text-left">DOI / URL</th>
-              <th class="px-2 py-2 text-left">Sumber</th>
-              <th class="px-2 py-2 text-left w-24">📥 PDF</th>
-              <th class="px-2 py-2 text-left">
-                <button @click="setSort('citations')" class="hover:underline font-semibold">
-                  Sitasi{{ sortIndicator('citations') }}
-                </button>
-              </th>
-              <th class="px-2 py-2 text-left">
-                <button @click="setSort('score')" class="hover:underline font-semibold">
-                  Skor{{ sortIndicator('score') }}
-                </button>
-              </th>
-              <th class="px-2 py-2 text-left">⭐</th>
-              <th class="px-2 py-2 text-left">Aksi</th>
+              <th class="px-2 py-2 text-left min-w-[260px]">Judul</th>
+              <th class="px-2 py-2 text-left min-w-[220px]">Info</th>
+              <th class="px-2 py-2 text-left min-w-[280px]">Abstract</th>
+              <th class="px-2 py-2 text-left min-w-[280px]">Review</th>
+              <th class="px-2 py-2 text-left w-20">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading">
-              <td colspan="14" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
+            <tr v-if="loading && items.length === 0">
+              <td colspan="7" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
             </tr>
             <tr v-else-if="items.length === 0">
-              <td colspan="14" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="7" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
                 <div class="space-y-3">
                   <div>Belum ada literatur. Jalankan SLR atau tambah manual untuk mulai.</div>
                   <button
@@ -259,13 +269,13 @@
               </td>
             </tr>
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="14" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="7" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
                 Tidak ada literatur yang cocok dengan filter ini. Coba ubah / kosongkan filter.
               </td>
             </tr>
             <template v-else>
               <tr
-                v-for="(it, i) in displayedItems"
+                v-for="(it, i) in paginatedItems"
                 :key="it.id"
                 :class="['border-t border-ivory-200 dark:border-anthracite-600',
                          it.pinned ? 'bg-cream-100 dark:bg-anthracite-700/60' : 'hover:bg-cream-50 dark:hover:bg-anthracite-700/30']"
@@ -273,108 +283,128 @@
                 <td class="px-2 py-2 align-top">
                   <input
                     type="checkbox"
-                    :checked="selectedIds.has(it.id)"
-                    @change="toggleSelect(it.id)"
+                    :checked="it.pinned"
+                    @change="togglePin(it)"
+                    title="Centang = pin (prioritas tinggi)"
                   />
                 </td>
+                <td class="px-2 py-2 align-top text-ink-500 dark:text-anthracite-200">{{ pageOffset + i + 1 }}</td>
+                <!-- Judul -->
                 <td class="px-2 py-2 align-top">
-                  <button @click="togglePin(it)" class="text-base leading-none" :title="it.pinned ? 'Unpin' : 'Pin ke atas'">
-                    {{ it.pinned ? '📌' : '📍' }}
-                  </button>
+                  <div class="font-medium text-ink-900 dark:text-anthracite-50 leading-snug break-words">{{ it.title }}</div>
                 </td>
-                <td class="px-2 py-2 align-top text-ink-500 dark:text-anthracite-200">{{ i + 1 }}</td>
-                <td class="px-2 py-2 align-top">
-                  <div v-if="editingId === it.id">
-                    <input v-model="editDraft.title" autocomplete="off" class="input-sm w-full" />
-                    <textarea v-model="editDraft.summary" rows="2" class="input-sm w-full mt-1 resize-y" placeholder="Summary"></textarea>
+                <!-- Info: Tahun, Sitasi, Penulis, Jurnal, DOI, PDF -->
+                <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed">
+                  <div class="space-y-0.5">
+                    <div v-if="it.year"><span class="text-ink-500 dark:text-anthracite-300">Tahun:</span> {{ it.year }}</div>
+                    <div><span class="text-ink-500 dark:text-anthracite-300">Sitasi:</span> {{ it.citations ?? '–' }}</div>
+                    <div v-if="it.authors && it.authors.length">
+                      <span class="text-ink-500 dark:text-anthracite-300">Penulis:</span>
+                      <span :title="(it.authors||[]).join(', ')">{{ formatAuthors(it.authors) }}</span>
+                    </div>
+                    <div v-if="it.venue || it.publisher" class="text-ink-500 dark:text-anthracite-200 italic">
+                      {{ it.venue || it.publisher }}
+                    </div>
+                    <div v-if="it.doi">
+                      <a :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline break-all text-[10px]">https://doi.org/{{ it.doi }}</a>
+                    </div>
+                    <div v-if="it.pdf_url">
+                      <a :href="it.pdf_url" target="_blank" rel="noopener" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 text-[10px] font-medium transition-colors" title="Download PDF">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6h-4V2H4v16zm8-14.5V6h2.5L12 3.5zM6 16V4h4v4h4v8H6z"/><path d="M8 12h1.5v-2h1v2H12v-3.5h-1v1h-1v-1H8.5v1H8V12z"/></svg>
+                        PDF
+                      </a>
+                    </div>
+                    <div v-if="!it.pdf_url && !it.doi && it.url">
+                      <a :href="safeUrl(it.url)" target="_blank" rel="noopener" class="text-blue-600 hover:underline break-all text-[10px]">🔗 URL</a>
+                    </div>
                   </div>
-                  <div v-else>
-                    <div class="font-medium text-ink-900 dark:text-anthracite-50 leading-snug line-clamp-2" :title="it.title">{{ it.title }}</div>
-                    <div v-if="it.summary" class="mt-1 text-[11px] text-ink-700 dark:text-anthracite-200 leading-snug line-clamp-3">{{ it.summary }}</div>
-                  </div>
                 </td>
-                <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100 max-w-[180px] truncate" :title="(it.authors||[]).join(', ')">
-                  <input v-if="editingId === it.id" v-model="editDraft.authors_str" autocomplete="off" class="input-sm w-full" />
-                  <span v-else>{{ (it.authors || []).slice(0,3).join(', ') }}{{ (it.authors||[]).length > 3 ? ' …' : '' }}</span>
+                <!-- Abstract (expandable) -->
+                <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed break-words max-w-[360px]">
+                  <template v-if="it.abstract">
+                    <div :class="expandedAbstract.has(it.id) ? '' : 'line-clamp-3'" class="whitespace-pre-wrap">{{ it.abstract }}</div>
+                    <button
+                      v-if="isLongText(it.abstract)"
+                      @click="toggleExpand('abstract', it.id)"
+                      class="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                    >{{ expandedAbstract.has(it.id) ? '▲ sembunyikan' : '▼ tampilkan semua' }}</button>
+                  </template>
+                  <span v-else class="text-ink-400 dark:text-anthracite-300 italic">—</span>
                 </td>
-                <td class="px-2 py-2 align-top">
-                  <input v-if="editingId === it.id" v-model.number="editDraft.year" type="number" autocomplete="off" inputmode="numeric" class="input-sm w-20" />
-                  <span v-else>{{ it.year || '–' }}</span>
-                </td>
-                <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100 max-w-[200px] truncate" :title="it.venue">
-                  <input v-if="editingId === it.id" v-model="editDraft.venue" autocomplete="off" class="input-sm w-full" />
-                  <span v-else>{{ it.venue || '–' }}</span>
-                </td>
-                <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100 max-w-[180px] truncate">
-                  <template v-if="editingId === it.id">
-                    <input v-model="editDraft.doi" placeholder="DOI" autocomplete="off" class="input-sm w-full" />
-                    <input v-model="editDraft.url" placeholder="URL" autocomplete="url" inputmode="url" class="input-sm w-full mt-1" />
+                <!-- Review (expandable) -->
+                <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed break-words max-w-[360px]">
+                  <template v-if="reviewingId === it.id">
+                    <span class="text-amber-600 dark:text-amber-400 animate-pulse">⏳ Mereview…</span>
+                  </template>
+                  <template v-else-if="it.review">
+                    <div :class="expandedReview.has(it.id) ? '' : 'line-clamp-3'" class="whitespace-pre-wrap">{{ it.review }}</div>
+                    <button
+                      v-if="isLongText(it.review)"
+                      @click="toggleExpand('review', it.id)"
+                      class="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                    >{{ expandedReview.has(it.id) ? '▲ sembunyikan' : '▼ tampilkan semua' }}</button>
                   </template>
                   <template v-else>
-                    <a v-if="it.doi" :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline">{{ it.doi }}</a>
-                    <a v-else-if="it.url" :href="safeUrl(it.url)" target="_blank" rel="noopener" class="text-blue-600 hover:underline truncate inline-block max-w-full">{{ it.url }}</a>
-                    <span v-else>–</span>
+                    <span class="text-ink-400 dark:text-anthracite-300 italic">Belum di-review</span>
                   </template>
                 </td>
+                <!-- Actions -->
                 <td class="px-2 py-2 align-top">
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-medium" :class="sourceBadgeClass(it.source_kind)">
-                    {{ it.source || it.source_kind }}
-                  </span>
-                </td>
-                <td class="px-2 py-2 align-top">
-                  <template v-if="it.pdf_url">
-                    <a :href="it.pdf_url" target="_blank" rel="noopener"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 transition-colors"
-                      title="Download PDF">
-                      📥 PDF
-                    </a>
-                  </template>
-                  <template v-else-if="it.doi">
-                    <a :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800/60 transition-colors"
-                      title="Buka DOI">
-                      🔗 DOI
-                    </a>
-                  </template>
-                  <template v-else-if="it.url">
-                    <a :href="safeUrl(it.url)" target="_blank" rel="noopener"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
-                      title="Buka URL">
-                      🔗 URL
-                    </a>
-                  </template>
-                  <span v-else class="text-ink-400 dark:text-anthracite-300 text-[10px]">–</span>
-                </td>
-                <td class="px-2 py-2 align-top text-ink-700 dark:text-anthracite-100">{{ it.citations ?? '–' }}</td>
-                <td class="px-2 py-2 align-top">
-                  <span
-                    v-if="it.score_total != null"
-                    class="text-ink-700 dark:text-anthracite-100"
-                    :title="it.score_breakdown ? JSON.stringify(it.score_breakdown, null, 2) : ''"
-                  >
-                    {{ (it.score_total).toFixed(2) }}
-                  </span>
-                  <span v-else class="text-ink-400 dark:text-anthracite-300">–</span>
-                </td>
-                <td class="px-2 py-2 align-top">
-                  <button @click="toggleMustRead(it)" :title="it.must_read ? 'Tandai biasa' : 'Tandai must-read'">
-                    {{ it.must_read ? '⭐' : '☆' }}
-                  </button>
-                </td>
-                <td class="px-2 py-2 align-top whitespace-nowrap">
-                  <template v-if="editingId === it.id">
-                    <button @click="saveEdit" class="btn-primary text-[10px] px-2 py-0.5">Save</button>
-                    <button @click="cancelEdit" class="btn-cancel text-[10px] px-2 py-0.5 ml-1">Cancel</button>
-                  </template>
-                  <template v-else>
-                    <button @click="startEdit(it)" title="Edit" class="text-ink-600 dark:text-anthracite-200 hover:text-ink-900 dark:hover:text-anthracite-50 px-1">✎</button>
-                    <button @click="deleteItem(it)" title="Hapus" class="text-red-500 hover:text-red-700 px-1">✕</button>
-                  </template>
+                  <div class="flex flex-col gap-1">
+                    <button
+                      @click="reviewSingle(it)"
+                      :disabled="reviewingId === it.id || !it.abstract"
+                      class="px-2 py-1 rounded text-[10px] font-medium bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 active:scale-95 transition-transform"
+                      title="Review dengan AI"
+                    >🤖 Review</button>
+                    <button
+                      @click="deleteItem(it)"
+                      class="px-2 py-1 rounded text-[10px] font-medium bg-red-600 hover:bg-red-700 text-white active:scale-95 transition-transform"
+                      title="Hapus literatur"
+                    >🗑 Hapus</button>
+                  </div>
                 </td>
               </tr>
             </template>
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div v-if="totalPages > 1" class="flex items-center justify-between gap-2 flex-wrap">
+        <div class="text-[11px] text-ink-500 dark:text-anthracite-200">
+          Baris {{ pageOffset + 1 }}–{{ Math.min(pageOffset + pageSize, filteredItems.length) }} dari {{ filteredItems.length }}
+        </div>
+        <div class="flex items-center gap-1">
+          <button
+            @click="currentPage = 1"
+            :disabled="currentPage <= 1"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >««</button>
+          <button
+            @click="currentPage--"
+            :disabled="currentPage <= 1"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >« Prev</button>
+          <template v-for="p in visiblePageNumbers" :key="p">
+            <button
+              v-if="p !== '...'"
+              @click="currentPage = p as number"
+              :class="['px-2 py-1 rounded text-[10px] font-medium border transition-colors', currentPage === p ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']"
+            >{{ p }}</button>
+            <span v-else class="px-1 text-[10px] text-ink-400 dark:text-anthracite-300">…</span>
+          </template>
+          <button
+            @click="currentPage++"
+            :disabled="currentPage >= totalPages"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >Next »</button>
+          <button
+            @click="currentPage = totalPages"
+            :disabled="currentPage >= totalPages"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+          >»»</button>
+        </div>
       </div>
 
       <p class="text-[11px] text-ink-500 dark:text-anthracite-200">
@@ -403,12 +433,14 @@ interface LiteratureItem {
   doi?: string | null
   url?: string
   pdf_url?: string | null
+  abstract?: string
   summary?: string
   source?: string
   source_kind?: string
   score_total?: number
   score_breakdown?: any
   citations?: number
+  review?: string
   pinned?: boolean
   must_read?: boolean
 }
@@ -438,20 +470,9 @@ interface ManualForm {
   summary: string
 }
 
-interface EditDraft {
-  title: string
-  authors_str: string
-  year: number | null
-  venue: string
-  doi: string
-  url: string
-  summary: string
-}
-
 interface FilterState {
   filter: string
   filterSource: string
-  onlyMustRead: boolean
   onlyPinned: boolean
   minYear: number | null
 }
@@ -466,7 +487,6 @@ const loadError = ref('')
 
 const filter = ref('')
 const filterSource = ref('')
-const onlyMustRead = ref(false)
 const onlyPinned = ref(false)
 const minYear = ref<number | null>(null)
 
@@ -481,8 +501,20 @@ const slrCardRef = ref<HTMLElement | null>(null)
 let _pollTimer: ReturnType<typeof setTimeout> | null = null
 let _extraFastPolls = 0
 
-const editingId = ref<number | null>(null)
-const editDraft = ref<EditDraft | null>(null)
+// SLR live stream: items that arrived during active SLR
+const slrStreamItems = ref<LiteratureItem[]>([])
+let _knownIdsBeforeSlr = new Set<number>()
+
+// SLR Settings
+const showSlrSettings = ref(false)
+const availableSources = ref([
+  'openalex', 'crossref', 'arxiv', 'ieee', 'semantic_scholar',
+  'pubmed', 'sinta', 'scopus', 'dblp', 'europepmc',
+  'doaj', 'core', 'lens', 'zenodo', 'hal', 'cambridge',
+  'plos', 'sciencedirect', 'openaire', 'datacite',
+])
+const slrSources = ref<string[]>([...availableSources.value])
+const slrYearFrom = ref<number | null>(null)
 
 const manualForm = ref<ManualForm>({
   title: '', authors_str: '', year: null,
@@ -494,14 +526,35 @@ const bulkBusy = ref(false)
 const bulkMsg = ref('')
 const selectionCount = computed(() => selectedIds.value.size)
 
-const sortKey = ref<'default' | 'title' | 'year' | 'score' | 'citations'>('default')
+const sortKey = ref<'default' | 'title' | 'year' | 'score' | 'citations' | 'authors'>('default')
 const sortDir = ref<'asc' | 'desc'>('desc')
+
+const reviewingId = ref<number | null>(null)
+const reviewBusy = ref(false)
 
 const paperTitle = computed<string>(() => store.paper?.title || '')
 
-const aiSummaryUsed = computed<boolean>(() => {
-  return !!(lastSlrJob.value && lastSlrJob.value.stats && lastSlrJob.value.stats.ai_summary_used)
-})
+// Pagination
+const pageSize = ref(100)
+const currentPage = ref(1)
+
+// Expandable abstract/review — Set of item IDs that are expanded (default = collapsed via line-clamp-3)
+const expandedAbstract = ref<Set<number>>(new Set())
+const expandedReview = ref<Set<number>>(new Set())
+
+function isLongText(text: string | undefined): boolean {
+  if (!text) return false
+  // Rough: > 3 lines ≈ > 200 chars or has 3+ newlines
+  return text.length > 200 || (text.split('\n').length > 3)
+}
+
+function toggleExpand(field: 'abstract' | 'review', id: number): void {
+  const set = field === 'abstract' ? expandedAbstract : expandedReview
+  const next = new Set(set.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  set.value = next
+}
 
 const filteredItems = computed<LiteratureItem[]>(() => {
   const q = filter.value.trim().toLowerCase()
@@ -510,7 +563,6 @@ const filteredItems = computed<LiteratureItem[]>(() => {
     : null
   return items.value.filter(it => {
     if (filterSource.value && (it.source || it.source_kind) !== filterSource.value) return false
-    if (onlyMustRead.value && !it.must_read) return false
     if (onlyPinned.value && !it.pinned) return false
     if (minY != null && (it.year == null || Number(it.year) < minY)) return false
     if (!q) return true
@@ -554,6 +606,10 @@ const displayedItems = computed<LiteratureItem[]>(() => {
         va = a.citations ?? -Infinity
         vb = b.citations ?? -Infinity
         break
+      case 'authors':
+        va = ((a.authors || [])[0] || (a.authors || []).join(',')).toLowerCase()
+        vb = ((b.authors || [])[0] || (b.authors || []).join(',')).toLowerCase()
+        break
       default:
         return 0
     }
@@ -564,18 +620,36 @@ const displayedItems = computed<LiteratureItem[]>(() => {
   return arr
 })
 
-const pinnedCount = computed<number>(() => items.value.filter(i => i.pinned).length)
-const availableSources = computed<string[]>(() => {
-  const set = new Set<string>()
-  for (const it of items.value) {
-    if (it.source) set.add(it.source)
-    else if (it.source_kind) set.add(it.source_kind)
-  }
-  return Array.from(set).sort()
+const totalPages = computed(() => Math.max(1, Math.ceil(displayedItems.value.length / pageSize.value)))
+const pageOffset = computed(() => (currentPage.value - 1) * pageSize.value)
+const paginatedItems = computed(() => {
+  const start = pageOffset.value
+  return displayedItems.value.slice(start, start + pageSize.value)
 })
 
+const visiblePageNumbers = computed(() => {
+  const total = totalPages.value
+  const cur = currentPage.value
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages: (number | string)[] = [1]
+  if (cur > 3) pages.push('...')
+  const rangeStart = Math.max(2, cur - 1)
+  const rangeEnd = Math.min(total - 1, cur + 1)
+  for (let i = rangeStart; i <= rangeEnd; i++) pages.push(i)
+  if (cur < total - 2) pages.push('...')
+  pages.push(total)
+  return pages
+})
+
+function setPageSize(size: number): void {
+  pageSize.value = size
+  currentPage.value = 1
+}
+
+const pinnedCount = computed<number>(() => items.value.filter(i => i.pinned).length)
+
 const allVisibleSelected = computed<boolean>(() => {
-  const arr = displayedItems.value
+  const arr = paginatedItems.value
   if (arr.length === 0) return false
   for (const it of arr) {
     if (!selectedIds.value.has(it.id)) return false
@@ -584,19 +658,24 @@ const allVisibleSelected = computed<boolean>(() => {
 })
 
 const someVisibleSelected = computed<boolean>(() => {
-  for (const it of displayedItems.value) {
+  for (const it of paginatedItems.value) {
     if (selectedIds.value.has(it.id)) return true
   }
   return false
 })
 
-function sourceBadgeClass(kind: string): string {
-  switch (kind) {
-    case 'slr':     return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'
-    case 'file':    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
-    case 'manual':  return 'bg-cream-100 text-ink-700 dark:bg-anthracite-600 dark:text-anthracite-100'
-    default:        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200'
+function toast(msg: string, type: 'info' | 'success' | 'error' = 'info'): void {
+  if (typeof store.showToast === 'function') store.showToast(msg, type)
+  else {
+    if (type === 'error') console.error(msg)
+    else console.info(msg)
+    alert(msg)
   }
+}
+
+function safeUrl(u: string | undefined): string {
+  if (typeof u !== 'string') return '#'
+  return /^(https?:\/\/|\/)/.test(u) ? u : '#'
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -606,8 +685,8 @@ const STAGE_LABELS: Record<string, string> = {
   dedup_done: 'Dedup selesai',
   scoring: 'Ranking',
   scored: 'Ranking selesai',
-  summarizing: 'AI ringkas',
-  summarized: 'AI ringkas (progress)',
+  summarizing: 'Scoring programmatik',
+  summarized: 'Scoring selesai',
   complete: 'Selesai',
   running: 'Berjalan',
   done: 'Selesai',
@@ -632,20 +711,6 @@ function stageBadgeClass(job: SLRJob | null): string {
   return 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
 }
 
-function toast(msg: string, type: 'info' | 'success' | 'error' = 'info'): void {
-  if (typeof store.showToast === 'function') store.showToast(msg, type)
-  else {
-    if (type === 'error') console.error(msg)
-    else console.info(msg)
-    alert(msg)
-  }
-}
-
-function safeUrl(u: string | undefined): string {
-  if (typeof u !== 'string') return '#'
-  return /^(https?:\/\/|\/)/.test(u) ? u : '#'
-}
-
 function filterStorageKey(paperId: string): string {
   return `lit.filter.${paperId}`
 }
@@ -653,7 +718,6 @@ function filterStorageKey(paperId: string): string {
 function isAllFiltersDefault(): boolean {
   return !filter.value
     && !filterSource.value
-    && !onlyMustRead.value
     && !onlyPinned.value
     && (minYear.value == null || minYear.value === '')
 }
@@ -668,7 +732,6 @@ function saveFilterState(): void {
     const payload: FilterState = {
       filter: filter.value,
       filterSource: filterSource.value,
-      onlyMustRead: onlyMustRead.value,
       onlyPinned: onlyPinned.value,
       minYear: minYear.value,
     }
@@ -689,35 +752,53 @@ function applySavedFilter(saved: FilterState | null): void {
   if (!saved) {
     filter.value = ''
     filterSource.value = ''
-    onlyMustRead.value = false
     onlyPinned.value = false
     minYear.value = null
     return
   }
   filter.value = saved.filter || ''
   filterSource.value = saved.filterSource || ''
-  onlyMustRead.value = !!saved.onlyMustRead
   onlyPinned.value = !!saved.onlyPinned
   minYear.value = (saved.minYear === '' || saved.minYear == null) ? null : Number(saved.minYear)
 }
 
 watch(
-  [filter, filterSource, onlyMustRead, onlyPinned, minYear],
+  [filter, filterSource, onlyPinned, minYear],
   () => { saveFilterState() }
 )
 
 async function loadItems(): Promise<void> {
   if (!currentPaperId.value) return
-  loading.value = true
+  // Don't show full loading spinner during SLR streaming
+  if (!slrRunning.value) loading.value = true
   try {
     const res = await api.get(`/api/papers/${currentPaperId.value}/literature`)
     const data = res.data
+    let fetched: LiteratureItem[] = []
     if (Array.isArray(data)) {
-      items.value = data
+      fetched = data
     } else if (data && Array.isArray(data.items)) {
-      items.value = data.items
+      fetched = data.items
+    }
+
+    if (slrRunning.value) {
+      // Merge mode: update existing in place, append new at bottom
+      const existingMap = new Map(items.value.map(i => [i.id, i]))
+      const newItems: LiteratureItem[] = []
+      for (const item of fetched) {
+        if (existingMap.has(item.id)) {
+          Object.assign(existingMap.get(item.id)!, item)
+        } else {
+          newItems.push(item)
+        }
+      }
+      if (newItems.length > 0) {
+        items.value = [...items.value, ...newItems]
+        // Track stream items for the live indicator
+        slrStreamItems.value = [...slrStreamItems.value, ...newItems].slice(-50)
+      }
     } else {
-      items.value = []
+      items.value = fetched
     }
     loadError.value = ''
   } catch (e: any) {
@@ -805,9 +886,15 @@ async function loadJobs(): Promise<void> {
         }
       }
     }
+    // Update slrRunning
+    const wasRunning = slrRunning.value
+    slrRunning.value = active.length > 0
+    // If SLR just started, snapshot known IDs for stream tracking
+    if (!wasRunning && slrRunning.value) {
+      _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
+    }
     _lastJobIds = new Set(jobs.map(j => j.id))
     _lastJobStatus = Object.fromEntries(jobs.map(j => [j.id, j.status]))
-    slrRunning.value = active.length > 0
     _consecutiveFailures = 0
     if (loadError.value) loadError.value = ''
   } catch (e: any) {
@@ -822,11 +909,7 @@ async function loadJobs(): Promise<void> {
     if (_consecutiveFailures < 3) {
       return
     }
-    if (transient) {
-      loadError.value = 'Sambungan ke server lambat. Coba lagi?'
-    } else {
-      loadError.value = 'Sambungan ke server lambat. Coba lagi?'
-    }
+    loadError.value = 'Sambungan ke server lambat. Coba lagi?'
   }
 }
 
@@ -850,7 +933,13 @@ function schedulePoll(): void {
     delay = 30000
   }
   _pollTimer = setTimeout(async () => {
+    const hasActive = activeJobs.value.some(
+      j => j.status === 'running' || j.status === 'pending' || j.status === 'queued'
+    )
     await loadJobs()
+    if (hasActive) {
+      await loadItems()
+    }
     schedulePoll()
   }, delay + Math.floor(Math.random() * 500))
 }
@@ -863,12 +952,15 @@ async function runSLR(): Promise<void> {
   const q = slrQuery.value.trim()
   if (!q || !currentPaperId.value) return
   slrRunning.value = true
+  _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
+  slrStreamItems.value = []
   try {
     await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
       query: q,
       top_k: slrTopK.value,
-      ai_summarize: true,
-      ai_model: 'V-OPUS',
+      ai_summarize: false,
+      sources: slrSources.value.length > 0 && slrSources.value.length < availableSources.value.length ? slrSources.value : null,
+      year_from: slrYearFrom.value || null,
     })
     await loadJobs()
     schedulePoll()
@@ -970,71 +1062,6 @@ async function addManual(): Promise<void> {
   }
 }
 
-function startEdit(it: LiteratureItem): void {
-  editingId.value = it.id
-  editDraft.value = {
-    title: it.title || '',
-    authors_str: (it.authors || []).join(', '),
-    year: it.year || null,
-    venue: it.venue || '',
-    doi: it.doi || '',
-    url: it.url || '',
-    summary: it.summary || '',
-  }
-}
-
-function cancelEdit(): void {
-  editingId.value = null
-  editDraft.value = null
-}
-
-async function saveEdit(): Promise<void> {
-  if (!editingId.value || !currentPaperId.value) return
-  const d = editDraft.value
-  if (!d) return
-  const authors = d.authors_str.split(',').map(a => a.trim()).filter(Boolean)
-  try {
-    await api.patch(`/api/papers/${currentPaperId.value}/literature/${editingId.value}`, {
-      title: d.title,
-      authors,
-      year: d.year || null,
-      venue: d.venue,
-      doi: d.doi || null,
-      url: d.url,
-      summary: d.summary,
-    })
-    cancelEdit()
-    await loadItems()
-    toast('Tersimpan', 'success')
-  } catch (e: any) {
-    toast('Save gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  }
-}
-
-async function togglePin(it: LiteratureItem): Promise<void> {
-  if (!currentPaperId.value) return
-  const prev = it.pinned
-  it.pinned = !prev
-  try {
-    await api.patch(`/api/papers/${currentPaperId.value}/literature/${it.id}`, { pinned: it.pinned })
-  } catch (e) {
-    it.pinned = prev
-    toast('Pin gagal', 'error')
-  }
-}
-
-async function toggleMustRead(it: LiteratureItem): Promise<void> {
-  if (!currentPaperId.value) return
-  const prev = it.must_read
-  it.must_read = !prev
-  try {
-    await api.patch(`/api/papers/${currentPaperId.value}/literature/${it.id}`, { must_read: it.must_read })
-  } catch (e) {
-    it.must_read = prev
-    toast('Toggle gagal', 'error')
-  }
-}
-
 async function deleteItem(it: LiteratureItem): Promise<void> {
   if (!currentPaperId.value) return
   if (!confirm(`Hapus "${it.title?.slice(0, 80) || 'literatur ini'}"?`)) return
@@ -1055,7 +1082,7 @@ function toggleSelect(id: number): void {
 }
 
 function toggleSelectAllVisible(): void {
-  const ids = displayedItems.value.map(i => i.id)
+  const ids = paginatedItems.value.map(i => i.id)
   if (allVisibleSelected.value) {
     const next = new Set(selectedIds.value)
     for (const id of ids) next.delete(id)
@@ -1110,36 +1137,11 @@ async function bulkDelete(): Promise<void> {
   else toast(`Dihapus ${ok}/${total} (sisanya gagal)`, ok > 0 ? 'info' : 'error')
 }
 
-async function bulkSetPinned(pinned: boolean): Promise<void> {
-  if (!currentPaperId.value) return
-  const total = selectedIds.value.size
-  if (total === 0) return
-  const ok = await runBulk(pinned ? 'Pin' : 'Unpin', (id) =>
-    api.patch(`/api/papers/${currentPaperId.value}/literature/${id}`, { pinned })
-  )
-  await loadItems()
-  pruneSelection()
-  toast(`${pinned ? 'Pinned' : 'Unpinned'} ${ok}/${total}`, ok > 0 ? 'success' : 'error')
-}
-
-async function bulkToggleMustRead(): Promise<void> {
-  if (!currentPaperId.value) return
-  const total = selectedIds.value.size
-  if (total === 0) return
-  const anyNotMustRead = items.value.some(it => selectedIds.value.has(it.id) && !it.must_read)
-  const newValue = anyNotMustRead
-  const ok = await runBulk('Memperbarui', (id) =>
-    api.patch(`/api/papers/${currentPaperId.value}/literature/${id}`, { must_read: newValue })
-  )
-  await loadItems()
-  pruneSelection()
-  toast(`${newValue ? 'Must-read' : 'Biasa'}: ${ok}/${total}`, ok > 0 ? 'success' : 'error')
-}
-
-function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations'): void {
+function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations' | 'authors'): void {
   if (sortKey.value !== key) {
     sortKey.value = key
-    sortDir.value = key === 'title' ? 'asc' : 'desc'
+    sortDir.value = (key === 'title' || key === 'authors') ? 'asc' : 'desc'
+    currentPage.value = 1
     return
   }
   if (sortDir.value === 'desc') {
@@ -1148,11 +1150,89 @@ function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations'): voi
     sortKey.value = 'default'
     sortDir.value = 'desc'
   }
+  currentPage.value = 1
 }
 
 function sortIndicator(key: string): string {
   if (sortKey.value !== key) return ''
   return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+function formatAuthors(authors: string[] | undefined): string {
+  if (!authors || authors.length === 0) return '–'
+  if (authors.length <= 3) return authors.join(', ')
+  return `${authors.slice(0, 3).join(', ')}, et al.`
+}
+
+async function togglePin(it: LiteratureItem): Promise<void> {
+  if (!currentPaperId.value) return
+  const newVal = !it.pinned
+  try {
+    await api.patch(`/api/papers/${currentPaperId.value}/literature/${it.id}`, {
+      pinned: newVal,
+    })
+    it.pinned = newVal
+  } catch (e: any) {
+    toast('Gagal mengubah pin: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+  }
+}
+
+async function togglePinAllVisible(): Promise<void> {
+  if (!currentPaperId.value) return
+  const items_visible = paginatedItems.value
+  if (items_visible.length === 0) return
+  // If all visible are pinned → unpin all, else → pin all
+  const allPinned = items_visible.every(it => it.pinned)
+  const newVal = !allPinned
+  const ids = items_visible.map(it => it.id)
+  try {
+    await api.post(`/api/papers/${currentPaperId.value}/literature/bulk-patch`, {
+      ids,
+      patch: { pinned: newVal },
+    })
+    for (const it of items_visible) {
+      it.pinned = newVal
+    }
+  } catch (e: any) {
+    toast('Gagal mengubah pin: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+  }
+}
+
+async function reviewSingle(it: LiteratureItem): Promise<void> {
+  if (!currentPaperId.value || !it.abstract) return
+  reviewingId.value = it.id
+  try {
+    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/${it.id}/review`)
+    if (res.data && res.data.review) {
+      it.review = res.data.review
+    }
+    toast('Review selesai', 'success')
+  } catch (e: any) {
+    toast('Review gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+  } finally {
+    reviewingId.value = null
+  }
+}
+
+async function reviewAllPinned(): Promise<void> {
+  if (!currentPaperId.value) return
+  reviewBusy.value = true
+  try {
+    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/review-pinned`)
+    const results = res.data?.results || []
+    const successCount = results.filter((r: any) => r.status === 'success').length
+    for (const r of results) {
+      if (r.status === 'success' && r.review) {
+        const item = items.value.find(i => i.id === r.id)
+        if (item) item.review = r.review
+      }
+    }
+    toast(`Review selesai: ${successCount}/${results.length} literatur`, 'success')
+  } catch (e: any) {
+    toast('Review gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+  } finally {
+    reviewBusy.value = false
+  }
 }
 
 function applyIntent(intent: any): void {
@@ -1180,7 +1260,11 @@ watch(currentPaperId, async (id) => {
   activeJobs.value = []
   lastSlrJob.value = null
   selectedIds.value = new Set()
+  slrStreamItems.value = []
+  expandedAbstract.value = new Set()
+  expandedReview.value = new Set()
   loadError.value = ''
+  currentPage.value = 1
   applySavedFilter(id ? loadFilterStateFor(id) : null)
   if (id) {
     await Promise.all([loadItems(), loadJobs()])
@@ -1216,6 +1300,7 @@ onUnmounted(() => {
 .input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
 .btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform; }
 .btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700; }
-.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sort-btn { @apply px-2 py-1 rounded-lg text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 active:scale-95 transition-transform; }
+.sort-btn.active { @apply bg-navy-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900 border-navy-700 dark:border-cream-200; }
 .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

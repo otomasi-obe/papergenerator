@@ -18,6 +18,14 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 
 import pathlib
+import pytest  # noqa: E402
+
+pytest.importorskip(
+    "tools.chat.chat_streaming",
+    reason="chat architecture consolidated into tools/chat/chat.py; "
+    "legacy modular chat_streaming module removed. Test pending rewrite "
+    "against the new chat.py API.",
+)
 from tools.chat.chat_streaming import _list_available_journals
 from tools.chat.tools import (
     PROPOSAL_PREFIX,

@@ -729,19 +729,6 @@ def _add_subsubsection_heading(doc: Document, text: str) -> None:
 
 def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) -> None:
 
-    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
-    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
-    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
-    if _ai_title:
-        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
-        from docx.shared import RGBColor as _RGB
-
-        _ai_para = doc.add_paragraph()
-        _ai_para.alignment = _WAP.CENTER
-        _ai_run = _ai_para.add_run(_ai_full)
-        _ai_run.italic = True
-        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     path_text = str(item.get("Path", "")).strip()
     title = str(item.get("Title", "")).strip()
     number = _figure_number_text(item, state)
@@ -966,7 +953,7 @@ def _add_references(doc: Document, config: dict) -> None:
     _add_section_heading(doc, title)
 
     for index, value in enumerate(items, start=1):
-        ref_text = str(value).strip()
+        ref_text = (str(value.get("text") or value.get("Text") or "").strip() if isinstance(value, dict) else str(value)).strip()
         if not ref_text:
             continue
         paragraph = doc.add_paragraph()

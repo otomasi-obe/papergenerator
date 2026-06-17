@@ -389,7 +389,6 @@ _INDONESIAN_MISSPELLINGS = {
     "kmren": "kemarin",
     "bsk": "besok",
     "besok": "besok",
-    "jg": "juga",
     "jga": "juga",
     "tp": "tapi",
     "tapi": "tapi",
@@ -410,7 +409,6 @@ _INDONESIAN_MISSPELLINGS = {
     "sm": "sama",
     "sma": "sama",
     "utk": "untuk",
-    "bgt": "banget",
     "bngt": "banget",
     "bgd": "banget",
     "trs": "terus",
@@ -471,7 +469,6 @@ _INDONESIAN_MISSPELLINGS = {
     "gmana": "bagaimana",
     "brp": "berapa",
     "brpa": "berapa",
-    "kpn": "kapan",
     "bln": "bulan",
     "thn": "tahun",
     "th": "tahun",
@@ -486,7 +483,6 @@ _INDONESIAN_MISSPELLINGS = {
     "skripsi": "skripsi",
     "skrip": "skripsi",
     "bgt": "sangat",
-    "skali": "sekali",
 }
 
 # Indonesian grammar / usage patterns.
@@ -1146,29 +1142,22 @@ class GrammarChecker:
 
     def ai_enhance(self, text: str, instruction: str = "improve clarity") -> str:
         try:
-            api_url = self._build_api_url()
-            api_key = os.getenv("AIOTOMASI_APIKEY", "")
-            model = get_primary_chat_model()
-            if not api_url or not api_key:
+            from utils.ai_tools.ai_client import chat as _chain_chat
+            from utils.ai_tools.model_config import get_endpoint_chain as _gec
+            if not _gec(heavy=False):
                 return text
             system = f"You are an expert academic editor. {instruction}. Fix all grammar and spelling errors while preserving meaning and academic tone. Output ONLY the corrected text."
-            payload = {
-                "model": model,
-                "messages": [
+            content, _used = _chain_chat(
+                [
                     {"role": "system", "content": system},
                     {"role": "user", "content": text},
                 ],
-                "temperature": 0.3,
-                "max_tokens": 4096,
-            }
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            }
-            resp = requests.post(api_url, json=payload, headers=headers, timeout=120)
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
+                heavy=False,
+                max_tokens=4096,
+                temperature=0.3,
+                timeout=120,
+            )
+            return content
         except Exception as e:
             log.error("AI enhancement failed: %s", e)
             return text

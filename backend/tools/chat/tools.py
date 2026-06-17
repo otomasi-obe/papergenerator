@@ -7,28 +7,31 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
-from database.models import Paper, db
+from database.models import Paper, db, safe_commit
 
 log = logging.getLogger(__name__)
 
 
 def parse_completion(text: str) -> dict:
-    """Parse AI completion text and extract [APPLY_PAPER] operations.
+    """Parse AI completion text and extract [APPLY_PAPER] and [ASK_USER] tags.
 
     Returns:
         {
-            "operations": [...],  # list of parsed JSON operations
-            "cleaned_text": "...",  # text with [APPLY_PAPER] tags removed
-            "has_operations": bool
+            "operations": [...],  # list of parsed APPLY_PAPER operations
+            "ask_user": {...} | None,  # parsed ASK_USER data if present
+            "cleaned_text": "...",  # text with tags removed
+            "has_operations": bool,
+            "has_ask_user": bool,
         }
     """
-    pattern = r"\[APPLY_PAPER\]\s*(\{.*?\})\s*\[/APPLY_PAPER\]"
-    matches = re.findall(pattern, text, re.DOTALL)
+    # Parse [APPLY_PAPER]
+    apply_pattern = r"\[APPLY_PAPER\]\s*(\{.*?\})\s*\[/APPLY_PAPER\]"
+    apply_matches = re.findall(apply_pattern, text, re.DOTALL)
     operations = []
 
-    for match in matches:
+    for match in apply_matches:
         try:
             op = json.loads(match)
             if isinstance(op, dict) and op.get("action"):
@@ -36,14 +39,95 @@ def parse_completion(text: str) -> dict:
         except json.JSONDecodeError as e:
             log.warning("Failed to parse APPLY_PAPER JSON: %s | Error: %s", match[:200], e)
 
-    # Clean text: remove all [APPLY_PAPER]...[/APPLY_PAPER] blocks
-    cleaned = re.sub(pattern, "", text, flags=re.DOTALL).strip()
+    # Parse [ASK_USER]
+    ask_pattern = r"\[ASK_USER\]\s*(\{.*?\})\s*\[/ASK_USER\]"
+    ask_matches = re.findall(ask_pattern, text, re.DOTALL)
+    ask_user = None
+
+    for match in ask_matches:
+        try:
+            data = json.loads(match)
+            if isinstance(data, dict) and data.get("question"):
+                ask_user = data
+                break  # Only first one
+        except json.JSONDecodeError as e:
+            log.warning("Failed to parse ASK_USER JSON: %s | Error: %s", match[:200], e)
+
+    # Clean text: remove all [APPLY_PAPER]...[/APPLY_PAPER] and [ASK_USER]...[/ASK_USER] blocks
+    cleaned = re.sub(apply_pattern, "", text, flags=re.DOTALL)
+    cleaned = re.sub(ask_pattern, "", cleaned, flags=re.DOTALL).strip()
 
     return {
         "operations": operations,
+        "ask_user": ask_user,
         "cleaned_text": cleaned,
         "has_operations": len(operations) > 0,
+        "has_ask_user": ask_user is not None,
     }
+
+
+def _norm_title(s) -> str:
+    """Normalize a section title for tolerant matching: lowercase, collapse
+    whitespace, strip leading roman/numeric prefixes ("I. ", "1.", "BAB II ")."""
+    if not isinstance(s, str):
+        return ""
+    t = s.strip().lower()
+    # strip common heading prefixes the AI or template may add
+    t = re.sub(r"^(bab|section|bagian)\s+", "", t)
+    t = re.sub(r"^[ivxlcdm]+[\.\)]\s*", "", t)   # roman numerals: "ii. "
+    t = re.sub(r"^\d+[\.\)]\s*", "", t)          # arabic: "2. "
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+def _section_titles(sec: dict) -> list[str]:
+    """All title-ish fields a section may carry."""
+    return [v for v in (sec.get("title"), sec.get("heading")) if isinstance(v, str)]
+
+
+def _find_section(sections: list, target: str):
+    """Locate a section by title with tolerant matching. Searches top-level
+    sections then their subsections. Returns the matching dict or None.
+
+    Matching tiers: exact → case-insensitive → normalized (prefix-stripped) →
+    substring. This is what makes chat 'apply to section X' actually land
+    instead of failing with 'section not found' on a casing/prefix mismatch.
+    """
+    if not isinstance(sections, list) or not target:
+        return None
+    tnorm = _norm_title(target)
+    tlow = target.strip().lower()
+
+    def _scan(level):
+        # exact
+        for s in level:
+            if isinstance(s, dict) and target in _section_titles(s):
+                return s
+        # case-insensitive
+        for s in level:
+            if isinstance(s, dict) and any(t.strip().lower() == tlow for t in _section_titles(s)):
+                return s
+        # normalized (strip numbering/prefix)
+        for s in level:
+            if isinstance(s, dict) and any(_norm_title(t) == tnorm for t in _section_titles(s)):
+                return s
+        # substring (last resort, only if target is non-trivial)
+        if len(tnorm) >= 4:
+            for s in level:
+                if isinstance(s, dict) and any(tnorm in _norm_title(t) for t in _section_titles(s)):
+                    return s
+        return None
+
+    hit = _scan([s for s in sections if isinstance(s, dict)])
+    if hit:
+        return hit
+    # search subsections
+    for s in sections:
+        if isinstance(s, dict) and isinstance(s.get("subsections"), list):
+            sub = _scan([ss for ss in s["subsections"] if isinstance(ss, dict)])
+            if sub:
+                return sub
+    return None
 
 
 def apply_operations(paper_id: str, operations: list[dict]) -> dict:
@@ -83,20 +167,14 @@ def apply_operations(paper_id: str, operations: list[dict]) -> dict:
                 results.append("✓ Abstract updated")
 
             elif action == "update_section":
-                sections = data.get("sections", [])
-                found = False
-                for sec in sections:
-                    if isinstance(sec, dict) and (
-                        sec.get("title") == target or sec.get("heading") == target
-                    ):
-                        if isinstance(content, str):
-                            sec["content"] = [{"id": "text", "text": content}]
-                        elif isinstance(content, list):
-                            sec["content"] = content
-                        found = True
-                        results.append(f"✓ Section '{target}' updated")
-                        break
-                if not found:
+                sec = _find_section(data.get("sections", []), target)
+                if sec is not None:
+                    if isinstance(content, str):
+                        sec["content"] = [{"id": "text", "text": content}]
+                    elif isinstance(content, list):
+                        sec["content"] = content
+                    results.append(f"✓ Section '{target}' updated")
+                else:
                     errors.append(f"✗ Section '{target}' not found")
 
             elif action == "add_section":
@@ -116,18 +194,32 @@ def apply_operations(paper_id: str, operations: list[dict]) -> dict:
             elif action == "delete_section":
                 sections = data.get("sections", [])
                 before = len(sections)
-                data["sections"] = [
-                    s
-                    for s in sections
-                    if not (
-                        isinstance(s, dict)
-                        and (s.get("title") == target or s.get("heading") == target)
-                    )
-                ]
+                tnorm = _norm_title(target)
+                tlow = target.strip().lower()
+
+                def _keep(s):
+                    if not isinstance(s, dict):
+                        return True
+                    for t in _section_titles(s):
+                        if t == target or t.strip().lower() == tlow or _norm_title(t) == tnorm:
+                            return False
+                    return True
+
+                data["sections"] = [s for s in sections if _keep(s)]
                 if len(data["sections"]) < before:
                     results.append(f"✓ Section '{target}' deleted")
                 else:
                     errors.append(f"✗ Section '{target}' not found")
+
+            elif action == "update_keywords":
+                if isinstance(content, list):
+                    data["keywords"] = [str(k).strip() for k in content if str(k).strip()]
+                    results.append(f"✓ Keywords updated ({len(data['keywords'])} items)")
+                elif isinstance(content, str):
+                    data["keywords"] = [k.strip() for k in content.split(",") if k.strip()]
+                    results.append(f"✓ Keywords updated ({len(data['keywords'])} items)")
+                else:
+                    errors.append("✗ Invalid keywords format (array or comma string)")
 
             elif action == "update_references":
                 if isinstance(content, list):
@@ -150,7 +242,7 @@ def apply_operations(paper_id: str, operations: list[dict]) -> dict:
         paper.data = dict(data)
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(paper, "data")
-        db.session.commit()
+        safe_commit()
     except Exception as e:
         log.exception("Failed to commit paper changes: %s", e)
         db.session.rollback()
@@ -178,7 +270,7 @@ def save_thinking_to_fs(
         base_dir = f"/home/sirobo/papergenerator/backend/user/{username}/{paper_id}/chat/{conv_id}"
         os.makedirs(base_dir, exist_ok=True)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         recv_file = os.path.join(base_dir, f"{timestamp}-recv.json")
 
         # Check if file already exists (from same timestamp)
@@ -188,7 +280,7 @@ def save_thinking_to_fs(
         else:
             existing = {
                 "message_id": message_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         # Add thinking field
@@ -220,7 +312,7 @@ def append_completion_to_recv(
         base_dir = f"/home/sirobo/papergenerator/backend/user/{username}/{paper_id}/chat/{conv_id}"
         os.makedirs(base_dir, exist_ok=True)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         recv_file = os.path.join(base_dir, f"{timestamp}-recv.json")
 
         # Check if file exists (thinking might have been saved already)
@@ -230,7 +322,7 @@ def append_completion_to_recv(
         else:
             existing = {
                 "message_id": message_id,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
         # Add completion and operations

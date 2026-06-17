@@ -19,6 +19,9 @@ import { useLiteratureStore } from './literature.js'
 
 const PROPOSAL_PREFIX = '<<PROPOSAL>>'
 
+let _msgIdCounter = 0
+function _nextMsgId() { return Date.now() * 1000 + (++_msgIdCounter) }
+
 /**
  * Sanitize raw backend / network error messages before showing them to the
  * end user. Stack traces, SQL fragments, file paths, and DB internals are
@@ -144,6 +147,9 @@ function _getFriendlyProposalMessage(proposal) {
       const qCount = Array.isArray(proposal.questions) ? proposal.questions.length : 0
       return `✓ ${qCount} question${qCount !== 1 ? 's' : ''} ready`
     
+    case 'ask_user':
+      return `❓ ${proposal.question || 'Pertanyaan untuk Anda'}`
+    
     case 'review_plan':
       return `✓ Review plan: ${proposal.directive || 'starting review'}`
     
@@ -261,6 +267,7 @@ export const useChatStore = defineStore('chat', () => {
   const isStreaming = ref(false)
   const streamingMessage = ref(null)
   const connectionState = ref('idle') // 'idle' | 'connecting' | 'connected' | 'disconnected' | 'retrying'
+  const streamPhase = ref('idle') // 'idle' | 'sending' | 'thinking' | 'composing' | 'streaming' | 'done'
   const error = ref(null)
 
   // Active background job (full-paper generation) belonging to the current
@@ -292,6 +299,7 @@ export const useChatStore = defineStore('chat', () => {
         streamingMessage: null,
         abortCtrl: null,
         connectionState: 'idle',
+        streamPhase: 'idle',
       }
     }
     return streams.value[convId]
@@ -303,9 +311,10 @@ export const useChatStore = defineStore('chat', () => {
     isStreaming.value = s.isStreaming
     streamingMessage.value = s.streamingMessage
     connectionState.value = s.connectionState
+    streamPhase.value = s.streamPhase || 'idle'
   }
 
-  function _syncFromStream(convId) {
+  async function _syncFromStream(convId) {
     const s = streams.value[convId]
     if (!s) return
     if (currentConversationId.value === convId) {
@@ -313,11 +322,23 @@ export const useChatStore = defineStore('chat', () => {
       isStreaming.value = s.isStreaming
       streamingMessage.value = s.streamingMessage
       connectionState.value = s.connectionState
+      streamPhase.value = s.streamPhase || 'idle'
     }
-    // Persist streaming state to sessionStorage
-    if (s.isStreaming) {
-      _saveStreamsToSession()
+    // Persist streaming state to userState (DB) for cross-device/refresh survival
+    if (s.isStreaming && s.streamingMessage) {
+      try {
+        const { useUserStateStore } = await import('./userState')
+        const userState = useUserStateStore()
+        userState.set('chat.streaming', null, {
+          conv_id: convId,
+          content: s.streamingMessage.content || '',
+          thinking: s.streamingMessage.thinking || '',
+          started_at: s.streamingMessage.created_at || new Date().toISOString(),
+          saved_at: Date.now(),
+        })
+      } catch { /* ignore if userState not ready */ }
     }
+    _saveStreamsToSession()
   }
 
   function _hydrateMessageMetadata(message) {
@@ -376,12 +397,16 @@ export const useChatStore = defineStore('chat', () => {
 
   async function checkActiveJob() {
     if (!currentPaperId.value) { activeJob.value = null; return null }
+    if (_checkingJob) return null  // Re-entrancy guard
+    _checkingJob = true
     try {
-      const res = await api.get(`/api/papers/${currentPaperId.value}/active-job`)
+      const res = await api.get(`/api/papers/${currentPaperId.value}/active-jobs`)
       activeJob.value = res.data?.active ? res.data : null
       return activeJob.value
     } catch { activeJob.value = null; return null }
+    finally { _checkingJob = false }
   }
+  let _checkingJob = false
 
   function startActiveJobPolling(paperId) {
     stopActiveJobPolling()
@@ -398,8 +423,20 @@ export const useChatStore = defineStore('chat', () => {
    * Open a paper: load its chats, then open the latest chat
    * (or auto-create one if none exist).
    */
+  let _openPaperGen = 0
   async function openPaper(paperId) {
     if (!paperId) return null
+    const gen = ++_openPaperGen
+    // Abort any in-flight streaming fetch from the previous paper.
+    // Without this, the old fetch keeps running in background and mutates
+    // an orphaned stream object that is no longer in `streams.value`.
+    for (const convId in streams.value) {
+      const s = streams.value[convId]
+      if (s?.abortCtrl && !s.abortCtrl.signal.aborted) {
+        try { s.abortCtrl.abort() } catch { /* ignore */ }
+      }
+      _stopResumePoll(convId)
+    }
     // Immediately wipe all paper-scoped state BEFORE any async work so the
     // UI never shows conversations/messages from the previous paper.
     currentPaperId.value = paperId
@@ -409,6 +446,7 @@ export const useChatStore = defineStore('chat', () => {
     streams.value = {}
 
     await loadConversations(paperId)
+    if (gen !== _openPaperGen) return null
 
     startActiveJobPolling(paperId)
 
@@ -420,6 +458,84 @@ export const useChatStore = defineStore('chat', () => {
       await openConversation(target.id)
     }
     return target
+  }
+
+  // ── Resume poller for streams reconnected after a page refresh ────────────
+  // When the user refreshes mid-stream, openConversation() restores the Redis
+  // snapshot and sets isStreaming=true, but there is no live SSE socket anymore.
+  // Without a poller the spinner stays stuck and the content is frozen at the
+  // moment of refresh. These helpers poll /stream-status to pull the latest
+  // snapshot and finalize the message when the backend marks it done/error.
+  const _resumePollers = {}  // convId -> interval id
+
+  function _stopResumePoll(convId) {
+    if (_resumePollers[convId]) {
+      clearInterval(_resumePollers[convId])
+      delete _resumePollers[convId]
+    }
+  }
+
+  async function _finalizeResumedStream(convId, reloadMessages = true) {
+    _stopResumePoll(convId)
+    const s = streams.value[convId]
+    if (!s) return
+    s.isStreaming = false
+    s.streamingMessage = null
+    s.connectionState = 'idle'
+    s.streamPhase = 'idle'
+    _clearSessionStream(convId)
+    // Reload the authoritative transcript so the completed assistant message
+    // (persisted by the backend) replaces the partial reconnected bubble.
+    if (reloadMessages) {
+      try {
+        const res = await api.get(`/api/chat/conversations/${convId}`)
+        s.messages = (res.data.messages || []).map(_hydrateMessageMetadata)
+      } catch { /* keep partial content if the reload fails */ }
+    }
+    _syncFromStream(convId)
+  }
+
+  function _startResumePoll(convId) {
+    _stopResumePoll(convId)
+    const startedAt = Date.now()
+    const MAX_RESUME_MS = 15 * 60 * 1000  // stop trying after 15 min
+    _resumePollers[convId] = setInterval(async () => {
+      const s = streams.value[convId]
+      if (!s || !s.isStreaming) { _stopResumePoll(convId); return }
+      if (Date.now() - startedAt > MAX_RESUME_MS) {
+        await _finalizeResumedStream(convId)
+        return
+      }
+      try {
+        const res = await api.get(`/api/chat/conversations/${convId}/stream-status`)
+        const status = res.data || {}
+        if (status.status === 'streaming') {
+          if (s.streamingMessage) {
+            if (typeof status.content === 'string') s.streamingMessage.content = status.content
+            if (typeof status.thinking === 'string') s.streamingMessage.thinking = status.thinking
+          }
+          // Advance the visual phase as fresh snapshots arrive: once content
+          // appears we're composing/streaming; until then keep showing thinking.
+          if (status.content) s.streamPhase = 'streaming'
+          else if (status.thinking) s.streamPhase = 'thinking'
+          s.connectionState = 'connected'
+          _syncFromStream(convId)
+        } else if (status.status === 'done') {
+          await _finalizeResumedStream(convId)
+        } else if (status.status === 'error') {
+          if (s.streamingMessage && status.error) {
+            s.streamingMessage.content += `\n\n_${_safeErrorMessage(status.error)}_`
+          }
+          await _finalizeResumedStream(convId)
+        } else if (status.status === 'not_found') {
+          // Redis key expired (stream finished + TTL elapsed) or was cancelled.
+          // The final message lives in the DB, so reload the transcript.
+          await _finalizeResumedStream(convId)
+        }
+      } catch {
+        // Transient network error — keep polling, don't kill the stream.
+      }
+    }, 2000)
   }
 
   async function openConversation(convId) {
@@ -443,44 +559,57 @@ export const useChatStore = defineStore('chat', () => {
             const savedStream = saved[convId]
             const cutoff = Date.now() - 15 * 60 * 1000
             if (savedStream && savedStream.savedAt > cutoff && savedStream.isStreaming) {
-              // Restore streaming state
-              s.isStreaming = true
-              s.connectionState = 'reconnecting'
-              s.streamingMessage = {
-                id: null,
-                role: 'assistant',
-                content: savedStream.streamingMessage?.content || '',
-                thinking: savedStream.streamingMessage?.thinking || '',
-                tool_calls: savedStream.streamingMessage?.tool_calls || [],
-                created_at: savedStream.streamingMessage?.created_at || new Date().toISOString(),
-              }
-              s.messages = [...s.messages, s.streamingMessage]
-              
-              // Check backend stream status to see if still active
+              // Check backend stream status FIRST before restoring
+              let serverDone = false
               try {
                 const statusRes = await api.get(`/api/chat/conversations/${convId}/stream-status`)
                 const status = statusRes.data
-                if (status.status === 'streaming') {
-                  // Backend still has active stream - update with latest content
-                  s.streamingMessage.content = status.content || savedStream.streamingMessage?.content || ''
-                  s.streamingMessage.thinking = status.thinking || savedStream.streamingMessage?.thinking || ''
+                if (status.status === 'done') {
+                  // Stream already finished — server messages already have the completed one
+                  // Don't restore streaming state, just clean up this conv's sessionStorage entry
+                  serverDone = true
+                  _clearSessionStream(convId)
+                } else if (status.status === 'streaming') {
+                  // Backend still active — restore and reconnect
+                  s.isStreaming = true
                   s.connectionState = 'connected'
-                } else if (status.status === 'done') {
-                  // Stream finished - mark as done
-                  s.isStreaming = false
-                  s.connectionState = 'idle'
-                  s.streamingMessage = null
-                  // Remove the partial message we added
-                  s.messages = s.messages.filter(m => m.role !== 'assistant' || m.id !== null)
+                  const _restoredContent = status.content || savedStream.streamingMessage?.content || ''
+                  const _restoredThinking = status.thinking || savedStream.streamingMessage?.thinking || ''
+                  s.streamingMessage = {
+                    id: `streaming-${Date.now()}`,
+                    role: 'assistant',
+                    content: _restoredContent,
+                    thinking: _restoredThinking,
+                    tool_calls: savedStream.streamingMessage?.tool_calls || [],
+                    created_at: savedStream.streamingMessage?.created_at || new Date().toISOString(),
+                  }
+                  // Restore the visual phase so the thinking/composing indicator
+                  // shows immediately instead of defaulting to 'idle' (which would
+                  // leave the bubble blank until the poller finalizes).
+                  s.streamPhase = _restoredContent ? 'streaming' : (_restoredThinking ? 'thinking' : 'composing')
+                  // Replace the LAST assistant message from server (if any) instead of appending
+                  // This prevents duplicate reasoning blocks
+                  const lastAssistantIdx = s.messages.findLastIndex(m => m.role === 'assistant')
+                  if (lastAssistantIdx >= 0) {
+                    s.messages[lastAssistantIdx] = s.streamingMessage
+                  } else {
+                    s.messages = [...s.messages, s.streamingMessage]
+                  }
+                  // The live SSE socket died with the old page. Start a poller
+                  // that pulls fresh snapshots from Redis and finalizes the
+                  // message when the backend completes — otherwise the spinner
+                  // stays stuck and content is frozen at the refresh point.
+                  _startResumePoll(convId)
                 } else if (status.status === 'error') {
-                  // Stream had error
                   s.isStreaming = false
                   s.connectionState = 'disconnected'
-                  s.streamingMessage.content += `\n\n_${status.error || 'Error'}_`
+                  serverDone = true
+                  _clearSessionStream(convId)
                 }
               } catch {
-                // Backend check failed - keep the restored state but mark as idle
+                // Backend check failed — don't restore, mark idle
                 s.connectionState = 'idle'
+                serverDone = true
               }
             }
           }
@@ -555,6 +684,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       await api.delete(`/api/chat/conversations/${convId}`)
       conversations.value = conversations.value.filter(c => c.id !== convId)
+      _stopResumePoll(convId)
       delete streams.value[convId]
       if (currentConversationId.value === convId) {
         currentConversationId.value = null
@@ -582,6 +712,7 @@ export const useChatStore = defineStore('chat', () => {
     try {
       await api.delete(`/api/chat/conversations/${convId}`)
       conversations.value = conversations.value.filter(c => c.id !== convId)
+      _stopResumePoll(convId)
       delete streams.value[convId]
       currentConversationId.value = null
       messages.value = []
@@ -602,23 +733,23 @@ export const useChatStore = defineStore('chat', () => {
     if (!convId) return
     const stream = _ensureStream(convId)
     if (stream.isStreaming) return
-    _sendingLock = true
     error.value = null
 
     try {
+      _sendingLock = true
 
       // Block sending while another chat in this paper is generating a paper.
       // Show an inline assistant warning instead of a silent no-op so the user
       // understands why their message did not go through.
       if (activeJob.value && activeJob.value.active) {
         stream.messages.push({
-          id: Date.now(),
+          id: _nextMsgId(),
           role: 'user',
           content,
           created_at: new Date().toISOString(),
         })
         stream.messages.push({
-          id: Date.now() + 1,
+          id: _nextMsgId(),
           role: 'assistant',
           content: '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.',
           created_at: new Date().toISOString(),
@@ -639,7 +770,7 @@ export const useChatStore = defineStore('chat', () => {
       }
 
       stream.messages.push({
-        id: Date.now(),
+        id: _nextMsgId(),
         role: 'user',
         content,
         created_at: new Date().toISOString(),
@@ -647,6 +778,7 @@ export const useChatStore = defineStore('chat', () => {
 
       stream.isStreaming = true
       stream.connectionState = 'connecting'
+      stream.streamPhase = 'sending'
       stream.streamingMessage = {
         id: null,
         role: 'assistant',
@@ -657,7 +789,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       stream.messages.push(stream.streamingMessage)
 
-      let memoryTouched = false  // kept for compat but unused
+      // memoryTouched removed — unused
       stream.abortCtrl = new AbortController()
       _syncFromStream(convId)
 
@@ -718,6 +850,9 @@ export const useChatStore = defineStore('chat', () => {
               throw new Error(`HTTP ${response.status}`)
             }
 
+            if (!response.body) {
+              throw new Error('Response body is null')
+            }
             const reader = response.body.getReader()
             const decoder = new TextDecoder()
             let buffer = ''
@@ -786,7 +921,16 @@ export const useChatStore = defineStore('chat', () => {
             const friendly = _safeErrorMessage(e && e.message)
             error.value = friendly
             if (stream.streamingMessage) {
-              stream.streamingMessage.content += `\n\n_${friendly}_`
+              // If assistant message is still empty (no content received), remove it from array
+              // Otherwise append error message
+              if (!stream.streamingMessage.content && !stream.streamingMessage.thinking) {
+                const idx = stream.messages.findIndex(m => m === stream.streamingMessage)
+                if (idx >= 0) {
+                  stream.messages.splice(idx, 1)
+                }
+              } else {
+                stream.streamingMessage.content += `\n\n_${friendly}_`
+              }
             }
             stream.connectionState = 'disconnected'
             break
@@ -809,6 +953,7 @@ export const useChatStore = defineStore('chat', () => {
       stream.isStreaming = false
       stream.streamingMessage = null
       stream.abortCtrl = null
+      stream.streamPhase = 'idle'
       if (stream.connectionState !== 'disconnected') {
         stream.connectionState = 'idle'
       }
@@ -827,10 +972,14 @@ export const useChatStore = defineStore('chat', () => {
     const convId = currentConversationId.value
     const s = convId && streams.value[convId]
     if (!s) return
-    
+
+    // Stop any resume poller first so it can't revive state after cancel.
+    if (convId) _stopResumePoll(convId)
+
     // If we have an active abort controller, use it (local abort)
     if (s.abortCtrl) {
       try { s.abortCtrl.abort() } catch { /* ignore */ }
+      _syncFromStream(convId)
       return
     }
     
@@ -939,7 +1088,7 @@ export const useChatStore = defineStore('chat', () => {
         const pid = paperStore.currentPaperId
         const tab = data && data.tab
         if (pid && tab) {
-          ui.requestTab(pid, tab)
+          ui.switchToTab(pid, tab)
           if (data.reason === 'slr_started' && data.job_id) {
             lit.attachJob({
               job_id:   data.job_id,
@@ -985,13 +1134,36 @@ export const useChatStore = defineStore('chat', () => {
     }
     switch (event) {
       case 'text':
+        if (stream.streamPhase === 'composing' || stream.streamPhase === 'sending') {
+          stream.streamPhase = 'streaming'
+        }
         msg.content += data.content
         break
       case 'thinking':
+        if (stream.streamPhase === 'sending' || stream.streamPhase === 'idle') {
+          stream.streamPhase = 'thinking'
+        }
         msg.thinking += data.content
+        break
+      case 'thinking_done':
+        // Thinking phase ended, waiting for content
+        if (stream.streamPhase === 'thinking') {
+          stream.streamPhase = 'composing'
+        }
+        break
+      case 'composing_start':
+        stream.streamPhase = 'composing'
         break
       case 'replace_text':
         msg.content = data.content || ''
+        break
+      case 'ask_user':
+        msg.metadata = {
+          ...(msg.metadata || {}),
+          kind: 'ask_user',
+          question: data.question || '',
+          options: Array.isArray(data.options) ? data.options : [],
+        }
         break
       case 'tool_call':
         msg.tool_calls.push({
@@ -1038,7 +1210,7 @@ export const useChatStore = defineStore('chat', () => {
               const lit = useLiteratureStore()
               const pid = paperStore.currentPaperId
               if (pid) {
-                ui.requestTab(pid, 'literature')
+                ui.switchToTab(pid, 'literature')
                 lit.attachJob({
                   job_id:   proposal.job_id,
                   query:    proposal.query,
@@ -1153,6 +1325,7 @@ export const useChatStore = defineStore('chat', () => {
       }
       case 'done':
         if (data.message_id) msg.id = data.message_id
+        stream.streamPhase = 'done'
         break
       case 'error':
         msg.content += `\n\n_${_safeErrorMessage(data && data.message)}_`
@@ -1163,6 +1336,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function reset() {
     stopActiveJobPolling()
+    for (const convId in _resumePollers) _stopResumePoll(convId)
     activeJob.value = null
     currentPaperId.value = null
     currentConversationId.value = null
@@ -1172,6 +1346,9 @@ export const useChatStore = defineStore('chat', () => {
     streams.value = {}
     error.value = null
   }
+
+  // Restore any in-flight streams from sessionStorage on store init
+  _restoreStreamsFromSession()
 
   return {
     paperChats,
@@ -1184,6 +1361,7 @@ export const useChatStore = defineStore('chat', () => {
     isStreaming,
     streamingMessage,
     connectionState,
+    streamPhase,
     error,
     activeJob,
     selectedModel,
@@ -1203,6 +1381,9 @@ export const useChatStore = defineStore('chat', () => {
     injectAssistantMessage,
     injectMultiQuestion,
     checkActiveJob,
+    // Internal functions for streaming restore
+    _ensureStream,
+    _syncFromStream,
     startActiveJobPolling,
     stopActiveJobPolling,
     reset,

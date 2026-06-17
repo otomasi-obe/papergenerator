@@ -14,7 +14,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
@@ -22,9 +22,11 @@ from lxml import etree
 
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 
+_BASE_DIR = Path(__file__).resolve().parent
 XSL_CANDIDATES = [
-    Path("/usr/share/docbook-xsl/docbook-xsl-1.79.2/fo/docbook.xsl"),
-    Path("/usr/share/xml/docbook/stylesheet/docbook-xsl/fo/docbook.xsl"),
+    _BASE_DIR / "MML2OMML.XSL",
+    _BASE_DIR.parent / "MML2OMML.XSL",
+    Path(r"C:\Program Files\Microsoft Office\root\Office16\MML2OMML.XSL"),
 ]
 
 NS_MAP = {
@@ -217,6 +219,43 @@ def _get_xslt():
     return _XSLT
 
 
+def _sanitize_latex(latex: str) -> str:
+    """Clean LaTeX strings known to break latex2mathml.
+
+    Replaces forbidden text/font commands with MathML-friendly equivalents
+    and normalizes manual sizing/delimiter commands.
+    """
+    if not latex:
+        return latex
+    s = latex
+    # Strip display-math delimiters if present (renderer handles layout)
+    s = s.strip()
+    if s.startswith("$$") and s.endswith("$$"):
+        s = s[2:-2].strip()
+    elif s.startswith("\\[") and s.endswith("\\]"):
+        s = s[2:-2].strip()
+    elif s.startswith("\\(") and s.endswith("\\)"):
+        s = s[2:-2].strip()
+    s = s.replace("\\text{", "\\mathrm{")
+    s = s.replace("\\textbf{", "\\mathbf{")
+    s = s.replace("\\textit{", "\\mathit{")
+    # \\mathbb, \\mathcal, \\mathscr, \\mathfrak are supported by latex2mathml - keep them
+    s = re.sub(r"\\displaystyle\s*", "", s)
+    s = s.replace("\\Big(", "\\left(").replace("\\Big)", "\\right)")
+    s = s.replace("\\big(", "\\left(").replace("\\big)", "\\right)")
+    s = s.replace("\\Bigl(", "\\left(").replace("\\Biggr)", "\\right)")
+    # Remove \\label, \\ref, \\eqref, \\tag (not needed, numbering is automatic)
+    s = re.sub(r"\\label\{[^}]*\}", "", s)
+    s = re.sub(r"\\eqref\{[^}]*\}", "", s)
+    s = re.sub(r"\\ref\{[^}]*\}", "", s)
+    s = re.sub(r"\\tag\{[^}]*\}", "", s)
+    # Replace \\boxed with plain content
+    s = re.sub(r"\\boxed\{([^}]*)\}", r"\1", s)
+    # Replace \\color{...}{content} with content
+    s = re.sub(r"\\color\{[^}]*\}\{([^}]*)\}", r"\1", s)
+    return s
+
+
 def _latex_to_omml(latex: str):
     try:
         import latex2mathml.converter
@@ -225,8 +264,9 @@ def _latex_to_omml(latex: str):
     xslt = _get_xslt()
     if not xslt:
         return None
+    cleaned = _sanitize_latex(latex)
     try:
-        mathml = latex2mathml.converter.convert(latex)
+        mathml = latex2mathml.converter.convert(cleaned)
         root = etree.fromstring(mathml.encode("utf-8"))
         return xslt(root).getroot()
     except Exception:
@@ -320,6 +360,17 @@ def _iter_rich_tokens(text: str):
                 underline = not underline
                 index += 2
                 continue
+        # $$...$$ display math (check before $...$)
+        if char == "$" and index + 1 < len(normalized) and normalized[index + 1] == "$":
+            closing = normalized.find("$$", index + 2)
+            if closing != -1:
+                yield from flush_buffer()
+                formula = normalized[index + 2 : closing]
+                if formula:
+                    yield {"kind": "math", "value": formula}
+                index = closing + 2
+                continue
+        # $...$ inline math
         if char == "$":
             closing = normalized.find("$", index + 1)
             if closing != -1:
@@ -328,6 +379,26 @@ def _iter_rich_tokens(text: str):
                 if formula:
                     yield {"kind": "math", "value": formula}
                 index = closing + 1
+                continue
+        # \\(...\\) inline math
+        if char == "\\" and index + 1 < len(normalized) and normalized[index + 1] == "(":
+            closing = normalized.find("\\)", index + 2)
+            if closing != -1:
+                yield from flush_buffer()
+                formula = normalized[index + 2 : closing]
+                if formula:
+                    yield {"kind": "math", "value": formula}
+                index = closing + 2
+                continue
+        # \\[...\\] display math
+        if char == "\\" and index + 1 < len(normalized) and normalized[index + 1] == "[":
+            closing = normalized.find("\\]", index + 2)
+            if closing != -1:
+                yield from flush_buffer()
+                formula = normalized[index + 2 : closing]
+                if formula:
+                    yield {"kind": "math", "value": formula}
+                index = closing + 2
                 continue
         buffer.append(char)
         index += 1
@@ -366,6 +437,41 @@ def body_paragraphs(doc: Document, text: str, style_id: str = "BodyText"):
         append_rich_text(paragraph, block)
         paragraphs.append(paragraph)
     return paragraphs
+
+
+def normalize_references(config: dict) -> list:
+    """Normalize references from any supported format to a flat list.
+
+    Supports:
+      - references: [{"id": "1", "text": "..."}, ...]  (list of dicts)
+      - references: ["...", "..."]                       (list of strings)
+      - references: {"content": [...]}                   (dict wrapper)
+      - section_references: {"content": [...]}
+      - References: [...]
+    """
+    refs = config.get("references")
+    if refs is None:
+        refs = config.get("section_references")
+    if refs is None:
+        refs = config.get("References", [])
+
+    # Unwrap dict wrapper
+    if isinstance(refs, dict):
+        refs = refs.get("content", [])
+
+    if not isinstance(refs, list):
+        return []
+
+    # Normalize each entry
+    result = []
+    for i, ref in enumerate(refs, start=1):
+        if isinstance(ref, dict):
+            ref_id = ref.get("id", str(i))
+            ref_text = ref.get("text", "")
+            result.append({"id": str(ref_id), "text": ref_text})
+        elif isinstance(ref, str):
+            result.append({"id": str(i), "text": ref})
+    return result
 
 
 def roman(number) -> str:
@@ -455,8 +561,39 @@ def _style_cell_paragraph(paragraph, style_id: str, align=WD_ALIGN_PARAGRAPH.CEN
     paragraph.alignment = align
 
 
-def _add_equation_line(doc: Document, formula: str, number: str | None = None, style_id: str = "Equation0"):
+def _strip_math_delimiters(formula: str) -> str:
+    """Remove $ / $$ / \\[ / \\( delimiters from a formula string."""
+    if not formula:
+        return formula
+    s = formula.strip()
+    if s.startswith("$$") and s.endswith("$$"):
+        s = s[2:-2].strip()
+    elif s.startswith("$") and s.endswith("$") and len(s) > 2:
+        s = s[1:-1].strip()
+    elif s.startswith("\\[") and s.endswith("\\]"):
+        s = s[2:-2].strip()
+    elif s.startswith("\\(") and s.endswith("\\)"):
+        s = s[2:-2].strip()
+    return s
+
+
+def _add_equation_line(doc: Document, formula: str, number: str | None = None, style_id: str = "Equation0", column_width_pt: float | None = None):
+    """Render a display equation with optional right-aligned number.
+
+    Uses tab-stops for proper center + right alignment (like IEEEgen).
+    Strips math delimiters ($$/$) before rendering.
+    """
+    formula = _strip_math_delimiters(formula)
+    if not formula:
+        return
     p = para(doc, style_id=style_id)
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    # Use column width for tab-stops; default ~468pt (~16.5cm) for single-column
+    cw = column_width_pt or 468.0
+    tab_stops = p.paragraph_format.tab_stops
+    tab_stops.add_tab_stop(Pt(cw / 2), WD_TAB_ALIGNMENT.CENTER)
+    tab_stops.add_tab_stop(Pt(cw), WD_TAB_ALIGNMENT.RIGHT)
+    p.add_run("\t")
     omml = _latex_to_omml(formula)
     if omml is not None:
         tag = omml.tag.split("}")[-1] if "}" in omml.tag else omml.tag
@@ -471,7 +608,7 @@ def _add_equation_line(doc: Document, formula: str, number: str | None = None, s
     else:
         p.add_run(formula).italic = True
     if number:
-        p.add_run(f"   ({number})")
+        p.add_run(f"\t({number})")
 
 
 def _add_prompt_box_with_text(doc: Document, text: str, full_borders: bool = True):
@@ -543,8 +680,9 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
 
     elif item_id in ("rumus", "formula"):
         formula_number = str(item.get("FormulaNumber", "")).strip()
-        formula_text = str(item.get("text", "") or item.get("latex", "")).strip()
+        formula_text = str(item.get("latex", "") or item.get("text", "") or item.get("formula", "")).strip()
         if formula_text:
+            formula_text = _strip_math_delimiters(formula_text)
             _add_equation_line(doc, formula_text, formula_number if formula_number else None, style_id=eq_style)
 
     elif item_id in ("tabel", "table"):

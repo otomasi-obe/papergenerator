@@ -1,7 +1,13 @@
 """Fetcher untuk ScienceDirect (Elsevier) - https://dev.elsevier.com
 
 Requires ELSEVIER_API_KEY from https://dev.elsevier.com
-Free tier: 5000 requests/week per API key
+
+NOTE: ScienceDirect Search API requires special entitlement (access-controlled).
+If your key doesn't have SD Search access, use Scopus search instead which has
+broader coverage. For Elsevier articles, you can still retrieve full metadata
+via Article Retrieval API (by DOI/PII).
+
+Quota: 20,000 requests/week (search), 50,000 (article retrieval)
 """
 
 import logging
@@ -88,6 +94,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "query": query,
             "count": min(per_page, limit - fetched),
             "start": start,
+            "sort": "-relevance",
         }
 
         if filters:
@@ -100,6 +107,14 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
 
         data = fetch_json(client, BASE, params=params, headers=headers)
         if not data:
+            # SD Search returns 401 AUTHORIZATION_ERROR if key lacks entitlement
+            # This is expected for most institutional keys - use Scopus instead
+            if not _warned:
+                logging.getLogger(__name__).info(
+                    "sciencedirect search skipped: API key lacks SD Search entitlement "
+                    "(use Scopus search instead for broader coverage)"
+                )
+                _warned = True
             return
 
         results = data.get("search-results", {})

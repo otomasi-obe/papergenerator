@@ -147,46 +147,78 @@ def _click_via_js(page, aria_labels: list[str]) -> bool:
 
 
 def _open_image_tool(page, *, timeout_s: int = 30) -> None:
-    """Buka menu 'Upload & alat' lalu pilih item 'Gambar'."""
+    """Aktifkan mode "Buat gambar" via menu 'Upload & alat'.
+
+    UI Gemini (per Jun 2026): tombol composer 'Upload & alat' membuka menu
+    berisi item menuitemcheckbox: 'Buat gambar', 'Buat video', 'Buat musik',
+    'Canvas', plus 'Upload file' / 'Tambahkan dari Drive'. Kita HARUS lewat
+    menu ini — JANGAN klik tombol aria-label*="Create image"/"Buat Gambar"
+    langsung karena itu false-match ke item RIWAYAT percakapan di sidebar
+    (judul chat lama yang kebetulan memuat teks 'create image ...').
+    """
     deadline = time.monotonic() + timeout_s
 
-    # cek apakah mode image sudah aktif
-    try:
-        if (
-            page.locator(
-                'button[aria-label*="Buat Gambar"], button[aria-label*="Create image"]'
-            ).count()
-            > 0
-        ):
-            return
-    except Exception:
-        pass
+    # Dismiss any blocking overlay first (e.g. "Memulai" dialog).
+    _dismiss_gemini_overlays(page)
 
-    if not _click_via_js(page, ["Upload & alat", "Upload & tools"]):
+    # Step 1: open the EXACT visible "Upload & alat" composer button.
+    opened = False
+    while time.monotonic() < deadline and not opened:
+        opened = bool(
+            page.evaluate(
+                """() => {
+                    const btns = [...document.querySelectorAll('button[aria-label]')];
+                    const b = btns.find(x => {
+                        const a = (x.getAttribute('aria-label') || '').trim();
+                        const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
+                        return vis && (
+                            a === 'Upload & alat' || a === 'Upload & tools' ||
+                            /^Upload\\s*&\\s*(alat|tools)$/i.test(a)
+                        );
+                    });
+                    if (b) { b.click(); return true; }
+                    return false;
+                }"""
+            )
+        )
+        if not opened:
+            page.wait_for_timeout(700)
+    if not opened:
         raise RuntimeError(
             f"Tidak bisa membuka menu 'Upload & alat' dalam {timeout_s}s. "
             "Kemungkinan: UI Gemini berubah, network lambat, atau page belum load."
         )
-    page.wait_for_timeout(800)
+    page.wait_for_timeout(1000)
 
-    if time.monotonic() > deadline:
-        raise RuntimeError(f"Timeout {timeout_s}s saat membuka image tool")
-
+    # Step 2: click the "Buat gambar" / "Create image" menu item. The item is a
+    # role=menuitemcheckbox whose text is "Buat gambar" (aria-label kosong).
+    # Guard hard against the sibling actions (video / musik / canvas / upload /
+    # drive) which also live in this menu.
     selected = page.evaluate(
         """() => {
-            for (const el of document.querySelectorAll('[role="menuitemcheckbox"]')) {
-                const t = (el.getAttribute('aria-label') || el.textContent || '').toLowerCase();
-                if (t.includes('gambar') || t.includes('image')) {
+            const items = [...document.querySelectorAll(
+                '[role="menuitemcheckbox"],[role="menuitemradio"],[role="menuitem"],button.mat-mdc-menu-item,.mat-mdc-menu-item'
+            )];
+            for (const el of items) {
+                const vis = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+                if (!vis) continue;
+                const t = ((el.getAttribute('aria-label') || '') + ' ' + (el.textContent || ''))
+                    .toLowerCase().trim();
+                const wantsImage = t.includes('buat gambar') || t.includes('create image')
+                    || (t.includes('gambar') && !t.includes('video'));
+                const isOther = t.includes('video') || t.includes('musik') || t.includes('music')
+                    || t.includes('canvas') || t.includes('upload') || t.includes('drive');
+                if (wantsImage && !isOther) {
                     el.click();
-                    return true;
+                    return (el.textContent || '').trim().slice(0, 40) || 'ok';
                 }
             }
-            return false;
+            return null;
         }"""
     )
     if not selected:
         raise RuntimeError(
-            "Tidak menemukan menu item 'Gambar' di Upload & alat. "
+            "Tidak menemukan menu item 'Buat gambar' di Upload & alat. "
             "Kemungkinan: UI Gemini berubah atau menu tidak muncul."
         )
     page.wait_for_timeout(1500)
@@ -225,10 +257,29 @@ def _send_prompt(page, prompt: str, *, timeout_s: int = 30) -> None:
             # Retry after another overlay dismiss + force click via JS
             _dismiss_gemini_overlays(page)
             page.evaluate('(el) => el.click()', box.element_handle())
-        box.fill(prompt)
-        page.wait_for_timeout(500)
-        if not _click_via_js(page, ["Kirim pesan", "Send message"]):
-            # fallback: keyboard Enter
+        # Clear any residual text in the composer.
+        with suppress(Exception):
+            page.keyboard.press("Control+A")
+            page.keyboard.press("Delete")
+        # CRITICAL: type via REAL keystrokes, not box.fill(). fill() sets the
+        # contenteditable text but does NOT fire the input/beforeinput events
+        # Gemini's Angular composer needs to enable the "Kirim pesan" (Send)
+        # button — leaving Send disabled so the prompt is never submitted.
+        page.keyboard.type(prompt, delay=2)
+        page.wait_for_timeout(600)
+        # Wait until the EXACT "Kirim pesan"/"Send message" button is present
+        # and enabled, then click it. _click_via_js matches aria-label exactly
+        # (button[aria-label="Kirim pesan"]), so it won't false-match sidebar
+        # history items whose titles merely contain the word "kirim"/"send".
+        deadline = time.monotonic() + 15
+        sent = False
+        while time.monotonic() < deadline:
+            if _click_via_js(page, ["Kirim pesan", "Send message"]):
+                sent = True
+                break
+            page.wait_for_timeout(500)
+        if not sent:
+            # Fallback: Enter key submits in most composer states.
             box.press("Enter")
     except PlaywrightTimeoutError:
         raise RuntimeError(
@@ -273,6 +324,11 @@ class GeminiAccount:
     img_q: queue.Queue = field(default_factory=queue.Queue, repr=False)
     redirect_q: queue.Queue = field(default_factory=queue.Queue, repr=False)
     requests_made: int = 0
+    # Health tracking
+    success_count: int = 0
+    fail_count: int = 0
+    last_request_time: float = 0.0
+    cooldown_until: float = 0.0  # timestamp when account can be used again
 
     @classmethod
     def from_env(cls, slot_name: str) -> "GeminiAccount":
@@ -366,12 +422,42 @@ class GeminiAccount:
                     q.get_nowait()
 
     def _reset_chat(self) -> None:
-        """Buka chat baru supaya tombol download lama tidak ikut ter-pick."""
+        """Mulai percakapan BARU yang benar-benar kosong.
+
+        Penting: menu 'Buat gambar' HANYA muncul di chat kosong. Begitu chat
+        punya pesan (atau profile persistent membuka chat lama saat launch),
+        menu menyusut jadi Upload/Drive/Canvas dan image-mode tak bisa diaktifkan.
+        page.goto('/app') sering me-restore chat terakhir, jadi kita klik tombol
+        'Percakapan baru' secara eksplisit; goto dipakai sebagai fallback.
+        """
         if self.page is None:
             return
+        page = self.page
+        clicked = False
         with suppress(Exception):
-            self.page.goto(GEMINI_URL, wait_until="domcontentloaded")
-            self.page.wait_for_timeout(2000)
+            clicked = bool(
+                page.evaluate(
+                    """() => {
+                        const cands = [...document.querySelectorAll('a[aria-label], button[aria-label]')];
+                        const b = cands.find(x => {
+                            const a = (x.getAttribute('aria-label') || '').toLowerCase().trim();
+                            const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
+                            return vis && (
+                                a === 'percakapan baru' || a === 'obrolan baru' ||
+                                a === 'new chat' || a === 'chat baru'
+                            );
+                        });
+                        if (b) { b.click(); return true; }
+                        return false;
+                    }"""
+                )
+            )
+        if clicked:
+            page.wait_for_timeout(2000)
+        else:
+            with suppress(Exception):
+                page.goto(GEMINI_URL, wait_until="domcontentloaded")
+                page.wait_for_timeout(2000)
 
     def generate_image(self, prompt: str, out_path: Path, *, generate_timeout_s: int = 240) -> dict:
         """Generate satu gambar lalu simpan ke out_path. Tidak return sampai file ada di disk."""
@@ -382,9 +468,9 @@ class GeminiAccount:
         t0 = time.time()
         log.info("job start: out=%s prompt_len=%d", out_path, len(prompt or ""))
 
-        # Reset ke chat baru supaya hanya ada 1 image yang baru di-generate.
-        if self.requests_made > 0:
-            self._reset_chat()
+        # Selalu mulai chat baru: menu 'Buat gambar' hanya ada di chat kosong,
+        # dan profile persistent sering me-restore chat lama saat launch.
+        self._reset_chat()
 
         self._drain_queues()
         _open_image_tool(page)
@@ -481,7 +567,9 @@ class GeminiAccount:
 class GeminiPool:
     accounts: list[GeminiAccount]
     state_path: Path = RR_STATE_PATH
-    cooldown_s: float = 4.0  # delay setelah generate per akun
+    cooldown_s: float = 8.0  # minimum delay between requests per account (increased from 4.0)
+    max_consecutive_fails: int = 3  # after N fails, put account in extended cooldown
+    extended_cooldown_s: float = 60.0  # extended cooldown after too many fails
 
     _pw_cm: object | None = field(default=None, repr=False)
     _pw: object | None = field(default=None, repr=False)
@@ -553,25 +641,71 @@ class GeminiPool:
         n = len(self.accounts)
         start = self._next_index()
         last_err: Exception | None = None
+        now = time.time()
+        
+        # Build ordered list of accounts, skipping those in extended cooldown
+        ordered = []
         for offset in range(n):
             acc = self.accounts[(start + offset) % n]
+            if acc.cooldown_until > now:
+                remaining = int(acc.cooldown_until - now)
+                _get_account_logger(acc.name).info(
+                    "skip: extended cooldown (%ds remaining, %d consecutive fails)",
+                    remaining, acc.fail_count
+                )
+                continue
+            ordered.append(acc)
+        
+        if not ordered:
+            # All accounts in cooldown — wait for the one with shortest cooldown
+            shortest = min(self.accounts, key=lambda a: a.cooldown_until)
+            wait_s = min(shortest.cooldown_until - now + 1, 30)
+            _get_account_logger("pool").warning(
+                "all accounts in cooldown, waiting %ds for %s", int(wait_s), shortest.name
+            )
+            time.sleep(wait_s)
+            ordered = [shortest]
+        
+        for acc in ordered:
             try:
+                # Per-account rate limit: minimum cooldown_s between requests
+                elapsed_since_last = now - acc.last_request_time
+                if elapsed_since_last < self.cooldown_s:
+                    wait = self.cooldown_s - elapsed_since_last
+                    _get_account_logger(acc.name).info("rate limit: wait %.1fs", wait)
+                    time.sleep(wait)
+                
                 acc.launch(self._pw)
                 res = acc.generate_image(prompt, out_path, generate_timeout_s=generate_timeout_s)
+                
+                # Success: reset fail counter, update health
+                acc.fail_count = 0
+                acc.success_count += 1
+                acc.last_request_time = time.time()
+                
                 if compress and compress_image is not None:
                     try:
                         compress_image(out_path, max_size_mb=max_size_mb)
                         res["size_after_compress"] = out_path.stat().st_size
                     except Exception as e:
                         _get_account_logger(acc.name).warning("compress error (kept raw): %s", e)
-                if self.cooldown_s > 0:
-                    time.sleep(self.cooldown_s)
                 return res
             except Exception as e:
                 last_err = e
+                acc.fail_count += 1
+                acc.last_request_time = time.time()
                 _get_account_logger(acc.name).exception("job failed: %s", e)
+                
+                # Extended cooldown after too many consecutive fails
+                if acc.fail_count >= self.max_consecutive_fails:
+                    acc.cooldown_until = time.time() + self.extended_cooldown_s
+                    _get_account_logger(acc.name).warning(
+                        "%d consecutive fails → extended cooldown %ds",
+                        acc.fail_count, int(self.extended_cooldown_s)
+                    )
+                
                 _get_account_logger(acc.name).warning(
-                    "%s failed: %s → trying next account", acc.name, e
+                    "%s failed (attempt %d): %s → trying next account", acc.name, acc.fail_count, e
                 )
                 # close akun ini supaya browser baru kalau retry
                 acc.close()

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify
 
-from database.models import db
+from database.models import db, safe_commit
 
 health = Blueprint('health', __name__, url_prefix='/api/health')
 
@@ -62,7 +62,7 @@ def health_detailed():
 def check_database():
     try:
         db.session.execute(db.text('SELECT 1'))
-        db.session.commit()
+        safe_commit()
         return {
             'status': 'healthy',
             'message': 'Database connection OK'

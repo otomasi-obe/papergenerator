@@ -498,12 +498,16 @@ def _article_history_lines(config: dict) -> tuple[str, str, str]:
 
 
 def _reference_texts(config: dict) -> list[str]:
+    def _rt(item):
+        if isinstance(item, dict):
+            return (item.get("text") or item.get("Text") or "").strip()
+        return str(item).strip()
     if "references" in config and isinstance(config["references"], dict):
         content = config["references"].get("content", [])
         if isinstance(content, list):
-            return [str(item) for item in content if str(item).strip()]
+            return [_rt(item) for item in content if _rt(item)]
     if "References" in config and isinstance(config["References"], list):
-        return [str(item) for item in config["References"] if str(item).strip()]
+        return [_rt(item) for item in config["References"] if _rt(item)]
     return []
 
 
@@ -514,7 +518,8 @@ def _strip_reference_label(text: str) -> str:
 def _footer_short_text(config: dict) -> str:
     authors = _author_entries(config)
     title = _title_text(config)
-    surname = authors[0]["name"].split()[-1] if authors and authors[0].get("name") else "Author"
+    _name_parts = authors[0]["name"].split() if (authors and authors[0].get("name")) else []
+    surname = _name_parts[-1] if _name_parts else "Author"
     author_text = f"{surname} et al." if len(authors) > 1 else surname
     words = re.findall(r"\S+", title)
     short_title = " ".join(words[:4]) if words else "Untitled"
@@ -854,19 +859,6 @@ def _add_prompt_box(doc: Document, text: str, samples: dict) -> None:
 
 def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> None:
 
-    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
-    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
-    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
-    if _ai_title:
-        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
-        from docx.shared import RGBColor as _RGB
-
-        _ai_para = doc.add_paragraph()
-        _ai_para.alignment = _WAP.CENTER
-        _ai_run = _ai_para.add_run(_ai_full)
-        _ai_run.italic = True
-        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     path_text = str(item.get("Path") or item.get("path") or "").strip()
     title = str(item.get("Title") or item.get("title") or "").strip()
     number = str(item.get("ImageNumber") or item.get("number") or "").strip()
@@ -1108,7 +1100,16 @@ def build_document(
     _initialize_drawing_ids(doc)
 
     paragraph_samples = _capture_paragraph_samples(doc)
-    front_table_samples = _capture_front_table_samples(doc.tables[0])
+    front_table_samples = (
+        _capture_front_table_samples(doc.tables[0]) if doc.tables else {}
+    )
+
+    if len(doc.paragraphs) < 6:
+        raise RuntimeError(
+            f"ELKOLIND template body has only {len(doc.paragraphs)} paragraphs "
+            f"(expected >=6 for title/author/email/affiliation/blank). "
+            f"Template may be corrupted: {template_path}"
+        )
 
     blank_pre_table = doc.paragraphs[5]
     _update_title_paragraph(doc.paragraphs[0], config, paragraph_samples)
@@ -1116,9 +1117,11 @@ def build_document(
     _update_email_paragraph(doc.paragraphs[2], config, paragraph_samples)
     _update_affiliation_paragraphs(doc, blank_pre_table, config, paragraph_samples)
     _clear_paragraph(blank_pre_table)
-    _update_front_table(doc.tables[0], config, front_table_samples)
-
-    first_table = doc.tables[0]
+    if doc.tables:
+        _update_front_table(doc.tables[0], config, front_table_samples)
+        first_table = doc.tables[0]
+    else:
+        first_table = None
     _trim_template_body(doc, first_table)
 
     _new_paragraph(doc, paragraph_samples["blank_after_table_ppr"])

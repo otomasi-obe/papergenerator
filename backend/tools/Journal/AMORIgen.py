@@ -622,8 +622,12 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
         width_cm = MAX_FIGURE_WIDTH_CM
     width_cm = min(max(width_cm, 1.0), MAX_FIGURE_WIDTH_CM)
 
-    # Emit AI prompt (warna merah, di atas image / sebelum caption)
-    if title:
+    # Resolve the real image first; only emit the AI prompt placeholder when
+    # no embeddable image exists (mirror IEEE: never show prompt + image both).
+    image_path = _resolve_path(path_text, json_path) if path_text else None
+    has_image = image_path is not None and image_path.is_file()
+
+    if title and not has_image:
         prompt_desc = str(item.get("Description", "") or item.get("Prompt", "") or title).strip()
         prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_desc}]"
         prompt_para = doc.add_paragraph()
@@ -635,13 +639,11 @@ def _add_figure(doc: Document, item: dict, json_path: Path, state: RenderState) 
         pr.italic = True
         pr.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
 
-    if path_text:
-        image_path = _resolve_path(path_text, json_path)
-        if image_path.is_file():
-            paragraph = doc.add_paragraph()
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            _set_paragraph_spacing(paragraph, before=3.0, after=1.5)
-            paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
+    if has_image:
+        paragraph = doc.add_paragraph()
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _set_paragraph_spacing(paragraph, before=3.0, after=1.5)
+        paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
 
     if title:
         state.figure_number += 1
@@ -720,7 +722,11 @@ def _clean_reference_text(text: str) -> str:
 
 
 def _add_references(doc: Document, config: dict) -> None:
-    references = list((config.get("references") or {}).get("content", []))
+    _refs_raw = config.get("references") or {}
+    if isinstance(_refs_raw, list):
+        references = _refs_raw
+    else:
+        references = list(_refs_raw.get("content", []))
     if not references:
         return
 

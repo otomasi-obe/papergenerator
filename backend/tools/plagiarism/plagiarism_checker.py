@@ -671,13 +671,7 @@ def _ai_fallback(msg="AI service not configured"):
 
 
 def run_ai_check(text, prompt_dict, mode="Standard"):
-    import requests as _requests
-    api_base = os.getenv("AIOTOMASI_API", "").rstrip("/")
-    api_key = os.getenv("AIOTOMASI_APIKEY", "")
-    model = get_primary_chat_model()
-
-    if not api_base or not api_key:
-        return _ai_fallback()
+    from utils.ai_tools.ai_client import chat as _chain_chat
 
     system_prompt = prompt_dict.get("system", "")
     user_template = prompt_dict.get("user_template", "")
@@ -688,28 +682,15 @@ def run_ai_check(text, prompt_dict, mode="Standard"):
         user_prompt = user_template.format(option=mode, text=text[:8000])
 
     try:
-        resp = _requests.post(
-            f"{api_base}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "stream": False,
-                "max_tokens": 2048,
-            },
+        raw, _used = _chain_chat(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            heavy=False,
+            max_tokens=2048,
             timeout=60,
         )
-        if resp.status_code != 200:
-            fb = _ai_fallback(f"AI error {resp.status_code}")
-            return fb
-
-        raw = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
         json_start = raw.find("{")
         json_end = raw.rfind("}") + 1
         if json_start >= 0 and json_end > json_start:

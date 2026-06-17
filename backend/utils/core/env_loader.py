@@ -54,7 +54,31 @@ def safe_load_dotenv(*paths: Path | str, force_override: bool | None = None) -> 
         _load_dotenv(p, override=override)
 
 
+def normalize_aiotomasi_aliases() -> None:
+    """Bridge numbered provider slots → base names.
+
+    The canonical ``.env`` declares provider slots
+    (``AIOTOMASI_API1/2/3``, ``AIOTOMASI_APIKEY1/2/3``) but every call site
+    reads the BASE names (``AIOTOMASI_API`` / ``AIOTOMASI_APIKEY``). When the
+    base name is unset, fall back to slot 1 so the upstream gateway URL/key
+    resolve. Idempotent; never clobbers an explicitly-set base value.
+    """
+    for base, slot in (
+        ("AIOTOMASI_API", "AIOTOMASI_API1"),
+        ("AIOTOMASI_APIKEY", "AIOTOMASI_APIKEY1"),
+    ):
+        if not os.getenv(base) and os.getenv(slot):
+            os.environ[base] = os.environ[slot]
+
+
 def load_app_env() -> None:
-    """The two-file convention used by every generator module."""
-    here = Path(__file__).resolve().parent
-    safe_load_dotenv(here.parent / ".env", here / ".env")
+    """The two-file convention used by every generator module.
+
+    Loads project-root ``.env`` then ``backend/.env`` (override), then bridges
+    the numbered AIOTOMASI provider slots onto the base names the code reads.
+    """
+    here = Path(__file__).resolve().parent          # backend/utils/core
+    backend_dir = here.parent.parent                # backend
+    project_root = backend_dir.parent               # repo root
+    safe_load_dotenv(project_root / ".env", backend_dir / ".env")
+    normalize_aiotomasi_aliases()

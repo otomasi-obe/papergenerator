@@ -63,7 +63,7 @@ class TestImageInterceptTimeout:
 
 
         # Verify the logic exists in the code
-        code_path = Path(__file__).parent.parent / "imageGenerator" / "CreateImageGemini.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "CreateImageGemini.py"
         code = code_path.read_text()
 
         assert (
@@ -77,8 +77,7 @@ class TestImageInterceptTimeout:
 class TestBrowserLaunchRetry:
     """Test Fix #3: Browser launch retry logic"""
 
-    @patch("tools.image_generation.worker._get_pool")
-    def test_browser_launch_retries_on_failure(self, mock_get_pool):
+    def test_browser_launch_retries_on_failure(self):
         """Should retry browser launch up to 3 times"""
         from tools.image_generation.worker import _Worker
 
@@ -89,7 +88,7 @@ class TestBrowserLaunchRetry:
         _Worker(mock_app, "account1")
 
         # Verify retry logic exists in code
-        code_path = Path(__file__).parent.parent / "image_worker.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "worker.py"
         code = code_path.read_text()
 
         assert "launch_attempts = 3" in code, "Should have 3 launch attempts"
@@ -97,7 +96,7 @@ class TestBrowserLaunchRetry:
             "for attempt in range(1, launch_attempts + 1):" in code
         ), "Should loop through attempts"
         assert "acc.close()" in code, "Should close account before retry"
-        assert "time_module.sleep(2 ** attempt)" in code, "Should have exponential backoff"
+        assert "time.sleep(2**attempt)" in code, "Should have exponential backoff"
 
     def test_retry_backoff_timing(self):
         """Verify exponential backoff: 2s, 4s"""
@@ -110,7 +109,7 @@ class TestCompressionFailureHandling:
 
     def test_compression_failure_deletes_file(self):
         """Should delete uncompressed file if compression fails"""
-        code_path = Path(__file__).parent.parent / "image_worker.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "worker.py"
         code = code_path.read_text()
 
         # Verify compression failure handling
@@ -122,12 +121,12 @@ class TestCompressionFailureHandling:
         ), "Should raise error on compression failure"
         assert "out_path.unlink()" in code, "Should delete file on compression failure"
 
-    @patch("imageGenerator.compress.compress_image")
+    @patch("tools.image_generation.compress.compress_image")
     def test_compression_success_logs_size(self, mock_compress):
         """Should log compressed size on success"""
         mock_compress.return_value = True
 
-        code_path = Path(__file__).parent.parent / "image_worker.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "worker.py"
         code = code_path.read_text()
 
         assert "Image compressed successfully" in code, "Should log success message"
@@ -139,7 +138,7 @@ class TestUIOperationTimeouts:
 
     def test_open_image_tool_has_timeout(self):
         """_open_image_tool should have timeout parameter"""
-        code_path = Path(__file__).parent.parent / "imageGenerator" / "CreateImageGemini.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "CreateImageGemini.py"
         code = code_path.read_text()
 
         assert (
@@ -148,11 +147,11 @@ class TestUIOperationTimeouts:
         assert (
             "deadline = time.monotonic() + timeout_s" in code
         ), "Should set deadline based on timeout"
-        assert "if time.monotonic() > deadline:" in code, "Should check deadline"
+        assert "while time.monotonic() < deadline" in code, "Should check deadline"
 
     def test_send_prompt_has_timeout(self):
         """_send_prompt should have timeout parameter"""
-        code_path = Path(__file__).parent.parent / "imageGenerator" / "CreateImageGemini.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "CreateImageGemini.py"
         code = code_path.read_text()
 
         assert (
@@ -164,11 +163,11 @@ class TestUIOperationTimeouts:
 
     def test_timeout_error_messages_are_clear(self):
         """Timeout errors should have clear messages"""
-        code_path = Path(__file__).parent.parent / "imageGenerator" / "CreateImageGemini.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "CreateImageGemini.py"
         code = code_path.read_text()
 
         assert (
-            "Timeout" in code and "saat membuka image tool" in code
+            "Timeout" in code and "membuka menu 'Upload & alat'" in code
         ), "Should have clear timeout error for image tool"
         assert (
             "Timeout" in code and "saat mengirim prompt" in code
@@ -180,7 +179,7 @@ class TestModelDocumentation:
 
     def test_status_field_documents_cancelled(self):
         """Status field should document 'cancelled' state"""
-        code_path = Path(__file__).parent.parent / "models.py"
+        code_path = Path(__file__).parent.parent / "database" / "models.py"
         code = code_path.read_text()
 
         # Find the ImageGenJob status field
@@ -190,7 +189,7 @@ class TestModelDocumentation:
 
     def test_worker_field_has_description(self):
         """Worker field should have clear description"""
-        code_path = Path(__file__).parent.parent / "models.py"
+        code_path = Path(__file__).parent.parent / "database" / "models.py"
         code = code_path.read_text()
 
         assert (
@@ -199,7 +198,7 @@ class TestModelDocumentation:
 
     def test_error_field_has_description(self):
         """Error field should have clear description"""
-        code_path = Path(__file__).parent.parent / "models.py"
+        code_path = Path(__file__).parent.parent / "database" / "models.py"
         code = code_path.read_text()
 
         assert "error message if status=error" in code, "Error field should document its purpose"
@@ -218,18 +217,18 @@ class TestIntegration:
 
         # Check Fix #1: Cookie validation
         cookies_code = (
-            Path(__file__).parent.parent / "imageGenerator" / "GeminiCookies.py"
+            Path(__file__).parent.parent / "tools" / "image_generation" / "GeminiCookies.py"
         ).read_text()
         fixes_present.append("raise RuntimeError" in cookies_code and "PSIDTS" in cookies_code)
 
         # Check Fix #2: Intercept timeout
         gemini_code = (
-            Path(__file__).parent.parent / "imageGenerator" / "CreateImageGemini.py"
+            Path(__file__).parent.parent / "tools" / "image_generation" / "CreateImageGemini.py"
         ).read_text()
         fixes_present.append("intercept_timeout = generate_timeout_s + 30" in gemini_code)
 
         # Check Fix #3: Browser retry
-        worker_code = (Path(__file__).parent.parent / "image_worker.py").read_text()
+        worker_code = (Path(__file__).parent.parent / "tools" / "image_generation" / "worker.py").read_text()
         fixes_present.append("launch_attempts = 3" in worker_code)
 
         # Check Fix #4: Compression handling
@@ -239,7 +238,7 @@ class TestIntegration:
         fixes_present.append("timeout_s: int = 30" in gemini_code)
 
         # Check Fix #6: Model docs
-        models_code = (Path(__file__).parent.parent / "models.py").read_text()
+        models_code = (Path(__file__).parent.parent / "database" / "models.py").read_text()
         fixes_present.append("cancelled" in models_code)
 
         assert all(fixes_present), f"Not all fixes present: {fixes_present}"
@@ -251,7 +250,7 @@ class TestErrorMessages:
 
     def test_cookie_error_message_is_clear(self):
         """Cookie error should explain what's wrong and how to fix"""
-        code_path = Path(__file__).parent.parent / "imageGenerator" / "GeminiCookies.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "GeminiCookies.py"
         code = code_path.read_text()
 
         assert (
@@ -261,7 +260,7 @@ class TestErrorMessages:
 
     def test_intercept_error_message_is_clear(self):
         """Intercept timeout error should explain possible causes"""
-        code_path = Path(__file__).parent.parent / "imageGenerator" / "CreateImageGemini.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "CreateImageGemini.py"
         code = code_path.read_text()
 
         assert "Gagal capture image bytes" in code, "Should explain what failed"
@@ -271,7 +270,7 @@ class TestErrorMessages:
 
     def test_compression_error_message_is_clear(self):
         """Compression error should show file size"""
-        code_path = Path(__file__).parent.parent / "image_worker.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "worker.py"
         code = code_path.read_text()
 
         assert "could not reduce" in code and "<1MB" in code, "Should explain compression target"
@@ -292,14 +291,14 @@ class TestBackwardCompatibility:
     def test_worker_names_unchanged(self):
         """Worker names should remain account1..account4"""
 
-        code_path = Path(__file__).parent.parent / "image_worker.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "worker.py"
         code = code_path.read_text()
 
         assert "account1,account2,account3,account4" in code, "Worker names should remain unchanged"
 
     def test_api_endpoints_unchanged(self):
         """API endpoints should remain the same"""
-        code_path = Path(__file__).parent.parent / "image_jobs_bp.py"
+        code_path = Path(__file__).parent.parent / "tools" / "image_generation" / "image_jobs.py"
         code = code_path.read_text()
 
         # Verify endpoints still exist

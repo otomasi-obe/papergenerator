@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PaperFull Word — Panduan Instalasi Add-in</title>
+<style>
+  :root { --bg:#0f1116; --card:#1a1d27; --accent:#7c5cff; --accent2:#9d7bff; --text:#e8e9ed; --muted:#9aa0ad; --border:#2a2e3a; --code:#11131a; --ok:#34d399; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.65; padding:0 16px 80px; }
+  .wrap { max-width:820px; margin:0 auto; }
+  header { text-align:center; padding:48px 0 32px; }
+  .logo { width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:16px; }
+  h1 { font-size:28px; font-weight:700; letter-spacing:-0.5px; }
+  .sub { color:var(--muted); margin-top:8px; font-size:15px; }
+  .dl { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:28px 0 8px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:13px 22px; border-radius:10px; font-weight:600; font-size:15px; text-decoration:none; border:1px solid transparent; cursor:pointer; }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+  .btn-ghost { background:var(--card); color:var(--text); border-color:var(--border); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px; margin:20px 0; }
+  h2 { font-size:20px; margin-bottom:4px; display:flex; align-items:center; gap:10px; }
+  .badge { font-size:12px; font-weight:600; padding:3px 10px; border-radius:20px; background:rgba(124,92,255,.15); color:var(--accent2); }
+  .badge-ok { background:rgba(52,211,153,.15); color:var(--ok); }
+  ol { margin:14px 0 4px 20px; } ol li { margin:9px 0; }
+  ul { margin:8px 0 4px 20px; } ul li { margin:6px 0; color:var(--muted); }
+  code { background:var(--code); padding:2px 7px; border-radius:5px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px; color:#c8b6ff; word-break:break-all; }
+  .codeblock { background:var(--code); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin:10px 0; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px; color:#c8b6ff; overflow-x:auto; }
+  .note { border-left:3px solid var(--accent); padding:10px 14px; background:rgba(124,92,255,.06); border-radius:0 8px 8px 0; margin:12px 0; font-size:14px; }
+  .warn { border-left:3px solid #f59e0b; background:rgba(245,158,11,.06); }
+  .muted { color:var(--muted); font-size:14px; }
+  .step-label { font-weight:600; color:var(--accent2); }
+  footer { text-align:center; color:var(--muted); font-size:13px; margin-top:40px; }
+  a { color:var(--accent2); }
+  .copy { font-size:12px; padding:4px 10px; margin-left:8px; border:1px solid var(--border); background:var(--code); color:var(--muted); border-radius:6px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">📝</div>
+  <h1>PaperFull Word</h1>
+  <div class="sub">Asisten AI canggih di dalam Microsoft Word — tulis dokumen, edit otomatis, rumus, tabel, dan 35+ alat editing.</div>
+  <div class="dl">
+    <a class="btn btn-primary" href="/word-addin/manifest.xml" download="manifest.xml">⬇ Download manifest.xml</a>
+    <a class="btn btn-ghost" href="#install">📖 Cara Instalasi</a>
+  </div>
+  <div class="muted">URL manifest: <code id="manifestUrl">https://paperfull.app/word-addin/manifest.xml</code><button class="copy" onclick="navigator.clipboard.writeText(document.getElementById('manifestUrl').textContent);this.textContent='✓ tersalin'">salin</button></div>
+</header>
+
+<a name="install"></a>
+<div class="card">
+  <h2>🖥️ Word Desktop (Windows) <span class="badge">Paling umum</span></h2>
+  <p class="muted">Untuk Word terinstall di PC Windows. Add-in dimuat dari folder bersama (shared folder).</p>
+  <ol>
+    <li><span class="step-label">Download</span> file <code>manifest.xml</code> (tombol di atas), simpan di sebuah folder, misal <code>C:\WordAddIn</code>.</li>
+    <li><span class="step-label">Bagikan folder itu:</span> klik kanan folder → <b>Properties</b> → tab <b>Sharing</b> → <b>Share…</b> → pilih akun Anda → <b>Share</b>. Catat path UNC yang muncul, contoh: <code>\\NAMA-PC\WordAddIn</code></li>
+    <li><span class="step-label">Daftarkan katalog di Word:</span> buka Word → <b>File → Options → Trust Center → Trust Center Settings → Trusted Add-in Catalogs</b></li>
+    <li>Pada kolom <b>Catalog Url</b>, masukkan path UNC folder (BUKAN nama file): <code>\\NAMA-PC\WordAddIn</code> → klik <b>Add catalog</b> → centang <b>Show in Menu</b> → <b>OK</b></li>
+    <li><span class="step-label">Restart Word</b></span> sepenuhnya.</li>
+    <li>Buat/buka dokumen → tab <b>Insert</b> → <b>My Add-ins</b> (panah bawah) → tab <b>SHARED FOLDER</b> → pilih <b>PaperFull Word</b> → <b>Add</b>.</li>
+    <li>Add-in muncul. Klik tombol <b>PaperFull Word</b> di tab Home untuk buka panelnya.</li>
+  </ol>
+  <div class="note warn">⚠ Catalog Url harus <b>folder UNC</b> (<code>\\PC\Folder</code>), bukan <code>D:\...</code> dan bukan path lengkap ke file <code>.xml</code>. Jika dialog menolak dan minta "https://", versi Word Anda mengunci ke SharePoint — pakai jalur Word di browser di bawah.</div>
+</div>
+
+<div class="card">
+  <h2>🌐 Word di Browser <span class="badge badge-ok">Paling pasti</span></h2>
+  <p class="muted">Berlaku untuk akun Microsoft 365 <b>kantor/sekolah</b> (work/school). Akun personal (gmail/outlook biasa) belum mendukung upload add-in custom.</p>
+  <ol>
+    <li>Buka <a href="https://office.com" target="_blank">office.com</a> → login akun Microsoft 365 kantor/sekolah → buka <b>Word</b>.</li>
+    <li>Buat dokumen baru atau buka yang ada.</li>
+    <li>Menu <b>Insert (Sisipkan)</b> → <b>Add-ins</b> → <b>Upload My Add-in (Unggah Add-in Saya)</b>.</li>
+    <li>Pilih file <code>manifest.xml</code> yang sudah di-download → <b>Upload</b>.</li>
+    <li>Panel <b>PaperFull Word</b> muncul di kanan. Selesai.</li>
+  </ol>
+  <div class="note">💡 Tidak ada opsi "Upload My Add-in"? Berarti akun Anda personal. Gunakan akun kantor/sekolah, atau pakai jalur Word Desktop di atas.</div>
+</div>
+
+<div class="card">
+  <h2>🍎 Word untuk Mac</h2>
+  <ol>
+    <li>Download <code>manifest.xml</code>.</li>
+    <li>Salin ke folder: <code>~/Library/Containers/com.microsoft.Word/Data/Documents/wef</code><br><span class="muted">(buat folder <code>wef</code> bila belum ada)</span></li>
+    <li>Restart Word → tab <b>Insert</b> → <b>Add-ins</b> → <b>My Add-ins</b> → <b>Developer Add-ins</b> → pilih <b>PaperFull Word</b>.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>✨ Fitur PaperFull Word</h2>
+  <ul>
+    <li><b>📄 Buat Dokumen</b> — ketik topik, AI tulis dokumen lengkap terformat (heading, tabel, list, rumus).</li>
+    <li><b>🤖 Agen Edit</b> — AI mengedit dokumen sendiri lewat 35+ alat: cari-ganti, format, style, tabel, gambar, daftar isi, header/footer, catatan kaki, bookmark, komentar, track changes, margin, dan rumus equation asli (LaTeX→OMML).</li>
+    <li><b>Rumus matematika</b> — tulis <code>$$...$$</code>, jadi equation Word asli yang bisa diedit.</li>
+    <li><b>Tanya saat ragu</b> — agen berhenti & bertanya bila instruksi ambigu, selalu disertai rekomendasi.</li>
+    <li><b>Terjemah, ringkas, poles, perbaiki tata bahasa</b> — preset 1-klik pada teks terpilih.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>🔧 Troubleshooting</h2>
+  <ul>
+    <li><b>Panel kosong / "add-in error"</b> — pastikan ada koneksi internet. Add-in dimuat dari <code>https://wordai.otomasi.app</code>.</li>
+    <li><b>Add-in tidak muncul setelah Add catalog</b> — tutup Word sepenuhnya (cek Task Manager, pastikan tidak ada proses WINWORD), buka lagi.</li>
+    <li><b>Dialog Trust Center minta "https://"</b> — versi Word Anda mengunci katalog ke SharePoint. Pakai Word di browser (akun kantor/sekolah).</li>
+    <li><b>"Upload My Add-in" tidak ada di Word web</b> — akun Microsoft personal tidak didukung; gunakan akun kantor/sekolah atau jalur Desktop.</li>
+    <li><b>Versi lama tersimpan</b> — tutup-buka panel add-in, atau hapus dari My Add-ins lalu pasang ulang.</li>
+  </ul>
+  <p class="muted" style="margin-top:12px">Butuh bantuan? Hubungi tim Otomasi App.</p>
+</div>
+
+<footer>
+  PaperFull Word · Add-in by Otomasi App · <a href="/">← Kembali ke PaperFull</a>
+</footer>
+</div>
+</body>
+</html>

@@ -48,26 +48,34 @@
 }
 
 html.dark {
-  --bg-app: #0b1f3e;
-  --bg-surface: #102c55;
-  --bg-card: #102c55;
-  --bg-elev: #163d71;
-  --bg-panel: #102c55;
-  --surface-user: #1e518e;
-  --surface-user-text: #f0f5fb;
-  --surface-ai: #0b1f3e;
+  /* ── Proper hierarchy: app < surface < card < elev ── */
+  --bg-app: #07122a;
+  --bg-surface: #0d1f3c;
+  --bg-card: #142a4a;
+  --bg-elev: #1b3558;
+  --bg-panel: #10254a;
+  --surface-user: #1e4070;
+  --surface-user-text: #eef3fb;
+  --surface-ai: #0d1f3c;
+
+  /* ── Text: brighter base, softer muted ── */
   --text-strong: #f0f5fb;
-  --text-base: #dce8f5;
-  --text-muted: #8eb3d8;
-  --border-soft: #2a4a6e;
-  --border-strong: #3a5a7e;
-  --accent: #4eb2a3;
-  --accent-primary: #64a6ed;
-  --accent-secondary: #ecc440;
-  --accent-success: #2f9d6e;
-  --accent-warning: #d9a718;
-  --accent-danger: #c43655;
-  --focus-ring: 0 0 0 3px rgba(78, 178, 163, 0.26);
+  --text-base: #d4e2f4;
+  --text-muted: #7da4c8;
+
+  /* ── Borders: visible but subtle ── */
+  --border-soft: #2a4a72;
+  --border-strong: #3d6090;
+
+  /* ── Accents: slightly brighter for dark bg ── */
+  --accent: #5cc4b4;
+  --accent-primary: #6db4f0;
+  --accent-secondary: #f0cc4a;
+  --accent-success: #3db87e;
+  --accent-warning: #e0b020;
+  --accent-danger: #e04a65;
+  --ash-900: #07122a;
+  --focus-ring: 0 0 0 3px rgba(92, 196, 180, 0.28);
 }
 
 body {
@@ -101,6 +109,15 @@ h1, h2, h3, .display-serif {
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+.dark ::-webkit-scrollbar-track {
+  background: #0d1f3c;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #2a4a72;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
 
@@ -160,9 +177,9 @@ h1, h2, h3, .display-serif {
 }
 
 .dark .paper-preview {
-  background: #0b1f3e;
-  color: #f0f5fb;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+  background: #142a4a;
+  color: #e8f0fa;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.25);
 }
 
 :focus-visible {
@@ -181,12 +198,6 @@ textarea:focus-visible {
 
 html {
   scroll-behavior: smooth;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -222,6 +233,16 @@ html {
 .btn-primary:active { transform: scale(0.96); }
 html.dark .btn-primary { background: var(--cream-200); color: var(--ash-900); }
 html.dark .btn-primary:hover { background: var(--cream-100); }
+
+/* ── Dark mode card/input shadow adjustments ── */
+.dark .card {
+  background: var(--bg-card);
+  border-color: var(--border-soft);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.dark .card:hover {
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
 
 .card {
   background: var(--bg-surface);
@@ -324,6 +345,10 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
   color: var(--text-base);
 }
 .dark .text-cream-50 { color: var(--text-strong); }
+.dark .text-ink-600 { color: var(--text-muted); }
+.dark .text-ink-500 { color: #6d94b8; }
+.dark .text-ink-400 { color: #5d84a8; }
+.dark .text-ink-300 { color: #5a82a8; }
 
 /* ─── Smooth tab transitions ─── */
 .tab-panel-enter-active,

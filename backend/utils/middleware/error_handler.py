@@ -2,6 +2,8 @@
 Error Handler for Validation Middleware
 =====================================
 Formats validation errors into consistent API responses.
+All error responses follow the format:
+    {"error": "message", "code": "ERROR_CODE", "category": "category"}
 """
 
 from typing import Any, Dict, List
@@ -17,6 +19,18 @@ class ValidationError(Exception):
         self.message = message
         self.details = details or []
         super().__init__(self.message)
+
+
+def error_response(message: str, code: str, category: str = "CLIENT", status_code: int = 400, extra: dict | None = None):
+    """Standardized error response builder.
+
+    All API errors should use this function to ensure consistent format:
+        {"error": "message", "code": "ERROR_CODE", "category": "category"}
+    """
+    body = {"error": message, "code": code, "category": category}
+    if extra:
+        body.update(extra)
+    return jsonify(body), status_code
 
 
 def format_validation_error(errors: List[JSONSchemaValidationError]) -> tuple:
@@ -76,6 +90,8 @@ def format_validation_error(errors: List[JSONSchemaValidationError]) -> tuple:
 
     response = {
         'error': 'Validation failed',
+        'code': 'VALIDATION_ERROR',
+        'category': 'CLIENT',
         'message': f"Request validation failed with {len(error_details)} error(s)",
         'details': error_details
     }

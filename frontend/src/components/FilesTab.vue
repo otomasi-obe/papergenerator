@@ -120,7 +120,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import api from '../api/index'
 import AppDialog from './AppDialog.vue'
@@ -180,6 +180,16 @@ watch(() => store.currentPaperId, () => {
 })
 
 onMounted(load)
+
+// Refresh file list when a chat draft is exported (cross-component signal)
+function _onChatDraftSaved(e: Event): void {
+  const detail = (e as CustomEvent)?.detail
+  if (detail?.paperId && detail.paperId === store.currentPaperId) {
+    load()
+  }
+}
+onMounted(() => window.addEventListener('chat-draft-saved', _onChatDraftSaved as EventListener))
+onUnmounted(() => window.removeEventListener('chat-draft-saved', _onChatDraftSaved as EventListener))
 
 async function selectFile(f: FileItem): Promise<void> {
   activeFileId.value = f.id

@@ -21,7 +21,7 @@ from flask_jwt_extended import (
 )
 
 from utils.core import s3_storage
-from database.models import Paper, PaperFile, db
+from database.models import Paper, PaperFile, db, safe_commit
 from tools.editor.utils import (
     PAPER_ID_RE,
     safe_paper_dir,
@@ -259,8 +259,8 @@ def upload_paper_files(paper_id: str):
             try:
                 if temp_file.exists():
                     temp_file.unlink()
-            except Exception:
-                pass
+            except Exception as _e:
+                log.warning("upload_paper_files: could not clean temp %s: %s", temp_file, _e)
         return jsonify({"success": True, "files": [], "warnings": warnings})
 
     # Phase 2: extract text in parallel via the shared 20-worker pool. Each call
@@ -284,8 +284,8 @@ def upload_paper_files(paper_id: str):
                 try:
                     from utils.core.user_storage import save_file_as_txt
                     save_file_as_txt(_ustor_username, _ustor_judul, extracted, item["original_name"])
-                except Exception:
-                    pass
+                except Exception as _e:
+                    log.warning("upload_paper_files: save_file_as_txt failed for %s: %s", item["original_name"], _e)
 
             # Store S3 key or local path depending on storage mode
             # file_path is empty because raw binary is deleted after extraction.
@@ -324,7 +324,7 @@ def upload_paper_files(paper_id: str):
             # ignores this field — it calls /preview on demand.
             saved.append(entry.to_dict(include_text=True))
 
-        db.session.commit()
+        safe_commit()
 
         # Delete raw binary files — only extracted text is persisted.
         # S3 uploads and local files are removed after successful extraction.
@@ -364,8 +364,8 @@ def upload_paper_files(paper_id: str):
             try:
                 if temp_file.exists():
                     temp_file.unlink()
-            except Exception:
-                pass
+            except Exception as _e:
+                log.warning("upload_paper_files: could not clean up temp %s: %s", temp_file, _e)
 
         log.exception("upload_paper_files failed (rolled back)", extra={"paper_id": paper_id})
         return jsonify({"error": "Upload failed"}), 500
@@ -389,12 +389,16 @@ def delete_paper_file(paper_id: str, file_id: int):
 
     filepath = upload_folder() / entry.file_path
     try:
+        resolved = filepath.resolve()
+        uploads = upload_folder().resolve()
+        if not str(resolved).startswith(str(uploads)):
+            return jsonify({'error': 'invalid path'}), 400
         if filepath.exists() and filepath.is_file():
             filepath.unlink()
     except Exception:
         log.warning("delete_paper_file: could not unlink %s", filepath)
     db.session.delete(entry)
-    db.session.commit()
+    safe_commit()
     return jsonify({"success": True})
 
 
@@ -433,9 +437,8 @@ def serve_paper_file(paper_id: str, file_id: int):
     response = make_response(entry.extracted_text)
     response.headers["Content-Type"] = "text/plain; charset=utf-8"
     # Use inline disposition so browser can display it; frontend adds download attr where needed
-    response.headers["Content-Disposition"] = (
-        f'inline; filename="{Path(entry.original_name).stem}.txt"'
-    )
+    safe_name = Path(entry.original_name).stem.replace('"', '').replace('\r', '').replace('\n', '')
+    response.headers["Content-Disposition"] = f'inline; filename="{safe_name}.txt"'
     return response
 
 

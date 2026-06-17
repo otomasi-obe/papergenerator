@@ -101,10 +101,18 @@ _XSLT = None
 
 
 def _append_inline_math(paragraph, latex):
-    """Sanitize LaTeX commands jadi text plain dan emit ke paragraph.
-    Return True supaya caller tidak fallback ke render mentah (yang bocor)."""
+    """Render LaTeX into the paragraph. Prefer native Word OMML (real equation
+    objects); fall back to sanitized unicode text if conversion is unavailable.
+    Return True so the caller does not fall back to raw rendering (which leaks)."""
     if not latex:
         return False
+    # Native OMML path first (matches IEEEgen fidelity).
+    try:
+        from _math_omml import append_omml_math as _omml
+        if _omml(paragraph, latex):
+            return True
+    except Exception:
+        pass
     import re as _re
 
     s = str(latex).strip()

@@ -23,11 +23,11 @@
       </summary>
       <div class="px-2 pb-2 pt-1 space-y-2">
         <div v-if="head">
-          <div class="text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-400 mb-0.5">Awal</div>
+          <div class="text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-300 mb-0.5">Awal</div>
           <div class="text-ink-800 dark:text-ink-100 whitespace-pre-wrap break-words">{{ head }}</div>
         </div>
         <div v-if="tail">
-          <div class="text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-400 mb-0.5">Akhir</div>
+          <div class="text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-300 mb-0.5">Akhir</div>
           <div class="text-ink-800 dark:text-ink-100 whitespace-pre-wrap break-words">{{ tail }}</div>
         </div>
       </div>
@@ -53,7 +53,7 @@
     </div>
     <div
       v-else
-      class="text-[11px] text-ink-500 dark:text-ink-400 italic"
+      class="text-[11px] text-ink-500 dark:text-ink-300 italic"
     >
       Tidak ada saran ekstraksi. Tanya AI untuk bagian spesifik yang dibutuhkan.
     </div>

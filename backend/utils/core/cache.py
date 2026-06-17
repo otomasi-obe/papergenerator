@@ -9,10 +9,44 @@ from typing import Any, Callable, Optional
 
 _cache_lock = threading.Lock()
 _cache_store: dict[str, tuple[Any, datetime]] = {}
+# Per-key locks serialize concurrent cold-cache calls so the wrapped function
+# runs once per key (single-flight), preventing a cache stampede under load.
+_keyed_locks: dict[str, threading.Lock] = {}
+_keyed_locks_guard = threading.Lock()
+
+# Max entries to prevent memory leak from unbounded growth
+_MAX_CACHE_ENTRIES = 500
+_cleanup_interval = 100  # Cleanup every N accesses
+_access_count = 0
+
+
+def _evict_expired():
+    """Remove all expired entries from cache. Must be called with _cache_lock held."""
+    now = datetime.now()
+    expired = [k for k, (_, exp) in _cache_store.items() if now >= exp]
+    for k in expired:
+        del _cache_store[k]
+    # If still over limit, evict oldest entries
+    if len(_cache_store) > _MAX_CACHE_ENTRIES:
+        sorted_keys = sorted(_cache_store.keys(), key=lambda k: _cache_store[k][1])
+        for k in sorted_keys[:len(_cache_store) - _MAX_CACHE_ENTRIES]:
+            del _cache_store[k]
+
+
+def _get_key_lock(cache_key: str) -> threading.Lock:
+    with _keyed_locks_guard:
+        lock = _keyed_locks.get(cache_key)
+        if lock is None:
+            lock = threading.Lock()
+            _keyed_locks[cache_key] = lock
+        return lock
 
 
 def cached(ttl_seconds: int = 300):
     """Decorator to cache function results for ttl_seconds.
+
+    Concurrent calls for the same key are single-flighted: the wrapped function
+    executes once and the other callers wait for and reuse that result.
 
     Args:
         ttl_seconds: Time to live in seconds (default 5 minutes)
@@ -22,6 +56,7 @@ def cached(ttl_seconds: int = 300):
         def wrapper(*args, **kwargs):
             cache_key = f"{func.__module__}.{func.__name__}:{args}:{sorted(kwargs.items())}"
 
+            # Fast path: serve a fresh cached value without taking the key lock.
             with _cache_lock:
                 if cache_key in _cache_store:
                     value, expires_at = _cache_store[cache_key]
@@ -30,10 +65,30 @@ def cached(ttl_seconds: int = 300):
                     else:
                         del _cache_store[cache_key]
 
-            result = func(*args, **kwargs)
+            # Slow path: single-flight on a per-key lock so only one caller runs
+            # the function while the others wait and reuse the result.
+            key_lock = _get_key_lock(cache_key)
+            with key_lock:
+                # Re-check: another thread may have populated the cache while we
+                # were waiting for the key lock.
+                with _cache_lock:
+                    if cache_key in _cache_store:
+                        value, expires_at = _cache_store[cache_key]
+                        if datetime.now() < expires_at:
+                            return value
+                        else:
+                            del _cache_store[cache_key]
 
-            with _cache_lock:
-                _cache_store[cache_key] = (result, datetime.now() + timedelta(seconds=ttl_seconds))
+                result = func(*args, **kwargs)
+
+                with _cache_lock:
+                    _cache_store[cache_key] = (result, datetime.now() + timedelta(seconds=ttl_seconds))
+                    # Periodic cleanup to prevent memory leak
+                    global _access_count
+                    _access_count += 1
+                    if _access_count >= _cleanup_interval:
+                        _access_count = 0
+                        _evict_expired()
 
             return result
         return wrapper

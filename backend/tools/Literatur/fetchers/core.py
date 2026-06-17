@@ -1,5 +1,6 @@
 """Fetcher untuk CORE API - https://api.core.ac.uk/v3"""
 
+import logging
 import os
 from typing import Iterable
 
@@ -7,6 +8,8 @@ from ..http_client import RateLimiter, fetch_post_json
 from ..paper import Paper
 
 BASE = "https://api.core.ac.uk/v3/search/works"
+
+_warned = False
 
 
 def _parse(item: dict) -> Paper | None:
@@ -29,10 +32,15 @@ def _parse(item: dict) -> Paper | None:
         except (ValueError, TypeError):
             pass
     
-    # Extract DOI from identifiers
-    doi = None
-    identifiers = item.get("identifiers", {})
-    if isinstance(identifiers, dict):
+    # Extract DOI from identifiers (CORE returns a LIST of {type, identifier})
+    doi = item.get("doi")
+    identifiers = item.get("identifiers")
+    if not doi and isinstance(identifiers, list):
+        for ident in identifiers:
+            if isinstance(ident, dict) and ident.get("type") == "doi":
+                doi = ident.get("identifier")
+                break
+    elif not doi and isinstance(identifiers, dict):
         doi = identifiers.get("doi")
     
     # Get PDF URL - CORE specializes in open access
@@ -66,8 +74,12 @@ def _parse(item: dict) -> Paper | None:
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search CORE. Requires CORE_API_KEY environment variable."""
+    global _warned
     api_key = os.getenv("CORE_API_KEY")
     if not api_key:
+        if not _warned:
+            logging.getLogger(__name__).info("core fetcher skipped: CORE_API_KEY not set (free at core.ac.uk/services/api)")
+            _warned = True
         return
     
     rl = RateLimiter(1.0)  # Conservative rate limiting
@@ -82,6 +94,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "q": query,
             "limit": min(page_size, limit - fetched),
             "offset": fetched,
+            "sort": [],
         }
         
         # Add filters if provided

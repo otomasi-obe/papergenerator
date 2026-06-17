@@ -23,8 +23,10 @@ def test_rate_limit_metrics_exist():
     assert RATE_LIMIT_CURRENT_USAGE is not None
 
     metric_names = [m.name for m in REGISTRY.collect()]
-    assert 'rate_limit_requests_total' in metric_names
-    assert 'rate_limit_breaches_total' in metric_names
+    # REGISTRY.collect() yields metric *family* names, which drop the `_total`
+    # suffix that Counters expose in the Prometheus exposition format.
+    assert 'rate_limit_requests' in metric_names
+    assert 'rate_limit_breaches' in metric_names
     assert 'rate_limit_current_usage' in metric_names
 
 
@@ -32,12 +34,12 @@ def test_rate_limit_requests_metric_on_success(client):
     """Test that RATE_LIMIT_REQUESTS increments on successful requests."""
     from utils.monitoring.observability_v2 import RATE_LIMIT_REQUESTS
 
-    before = RATE_LIMIT_REQUESTS.labels(endpoint='health', status='allowed')._value.get()
+    before = RATE_LIMIT_REQUESTS.labels(endpoint='health.health_check', status='allowed')._value.get()
 
     response = client.get('/api/health')
     assert response.status_code == 200
 
-    after = RATE_LIMIT_REQUESTS.labels(endpoint='health', status='allowed')._value.get()
+    after = RATE_LIMIT_REQUESTS.labels(endpoint='health.health_check', status='allowed')._value.get()
     assert after > before, "Metric should increment on successful request"
 
 
@@ -56,7 +58,7 @@ def test_rate_limit_requests_metric_on_blocked(client, app):
         response = Response(status=429)
         response.status_code = 429
 
-        with patch('flask.request') as mock_request:
+        with patch('main.request') as mock_request:
             mock_request.endpoint = 'test_endpoint'
             mock_request.path = '/api/test'
 
@@ -77,18 +79,17 @@ def test_rate_limit_breaches_metric_on_breach(app):
     from utils.monitoring.observability_v2 import RATE_LIMIT_BREACHES
 
     with app.test_request_context('/api/test'):
-        from flask import request
-        request.endpoint = 'test_endpoint'
-
+        # request.endpoint is read-only and None for this unmatched path, so the
+        # handler labels the metric with "unknown".
         before = RATE_LIMIT_BREACHES.labels(
-            endpoint='test_endpoint',
+            endpoint='unknown',
             limit_type='ip'
         )._value.get()
 
         response = rate_limit_handler(None)
 
         after = RATE_LIMIT_BREACHES.labels(
-            endpoint='test_endpoint',
+            endpoint='unknown',
             limit_type='ip'
         )._value.get()
 
@@ -126,7 +127,7 @@ def test_rate_limit_metrics_types():
 
 def test_grafana_dashboard_json_valid():
     """Test that Grafana dashboard JSON is valid and well-formed."""
-    dashboard_path = Path(__file__).parent.parent.parent / 'infra' / 'grafana' / 'dashboards' / 'rate-limits.json'
+    dashboard_path = Path(__file__).parent.parent.parent / 'PaperRiset' / 'eks' / 'infra' / 'grafana' / 'dashboards' / 'rate-limits.json'
 
     assert dashboard_path.exists(), f"Dashboard not found at {dashboard_path}"
 
@@ -148,7 +149,7 @@ def test_grafana_dashboard_json_valid():
 
 def test_grafana_dashboard_queries():
     """Test that Grafana dashboard queries reference correct metrics."""
-    dashboard_path = Path(__file__).parent.parent.parent / 'infra' / 'grafana' / 'dashboards' / 'rate-limits.json'
+    dashboard_path = Path(__file__).parent.parent.parent / 'PaperRiset' / 'eks' / 'infra' / 'grafana' / 'dashboards' / 'rate-limits.json'
 
     with open(dashboard_path, 'r') as f:
         dashboard = json.load(f)
@@ -182,9 +183,8 @@ def test_rate_limit_handler_returns_correct_response(app):
     from main import rate_limit_handler
 
     with app.test_request_context('/api/test'):
-        from flask import request
-        request.endpoint = 'test_endpoint'
-
+        # request.endpoint is read-only in Werkzeug; the handler falls back to
+        # "unknown" when it's None, so we don't need to set it.
         response = rate_limit_handler(None)
 
         assert response.status_code == 429
@@ -198,7 +198,7 @@ def test_rate_limit_handler_returns_correct_response(app):
 def test_security_headers_tracks_metrics_safely(client, app):
     """Test that _security_headers tracks metrics without breaking on errors."""
 
-    with patch('monitoring.observability_v2.RATE_LIMIT_REQUESTS') as mock_metric:
+    with patch('utils.monitoring.observability_v2.RATE_LIMIT_REQUESTS') as mock_metric:
         mock_metric.labels.side_effect = Exception("Metric error")
 
         response = client.get('/api/health')

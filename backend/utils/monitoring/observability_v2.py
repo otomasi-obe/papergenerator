@@ -31,6 +31,8 @@ import uuid
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 
+import re
+
 from flask import Flask, Response, g, jsonify, request
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -278,7 +280,7 @@ def init_observability(app: Flask, db, *, log_file: Path) -> None:
     @app.before_request
     def _start_timer():
         g._req_started_at = time.perf_counter()
-        g._req_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+        g._req_id = re.sub(r'[^\w\-]', '', request.headers.get("X-Request-ID", ""))[:64] or uuid.uuid4().hex[:16]
         REQ_IN_FLIGHT.inc()
 
     @app.after_request
@@ -335,9 +337,29 @@ def init_observability(app: Flask, db, *, log_file: Path) -> None:
         log.exception("unhandled_error", extra={"req_id": rid, "path": request.path})
         raise e  # Re-raise non-HTTP exceptions
 
+    register_observability_routes(app, db)
+
+
+def register_observability_routes(app: "Flask", db) -> None:
+    """Register the metrics + readiness routes on *app*.
+
+    Split out of :func:`init_observability` so callers that already own the
+    request/logging middleware (e.g. main.py) can expose ``/metrics``,
+    ``/api/metrics`` and ``/api/healthz`` without double-registering the
+    before/after_request hooks.
+
+    Idempotent: re-registration is skipped if the routes already exist.
+    """
+    if "metrics" in app.view_functions or "healthz" in app.view_functions:
+        return
+
     @app.route("/metrics", methods=["GET"])
     @app.route("/api/metrics", methods=["GET"])
     def metrics():
+        client_ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+        allowed = os.getenv("METRICS_ALLOWED_IPS", "127.0.0.1,::1").split(",")
+        if client_ip not in allowed:
+            return jsonify({"error": "forbidden"}), 403
         # Prometheus exposition format — keep open to localhost / scraper only via firewall/nginx.
         return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 

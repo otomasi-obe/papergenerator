@@ -11,13 +11,27 @@
     </div>
 
     <!-- Message Content -->
-    <div :class="['max-w-[80%] rounded-2xl px-4 py-3', messageClasses]">
+    <div :class="['max-w-[88%] rounded-2xl px-5 py-3.5', messageClasses]">
       <!-- Thinking Block -->
       <ThinkingBlock
         v-if="message.thinking"
         :content="message.thinking"
-        :is-streaming="isStreaming && !message.content"
+        :is-streaming="streamPhase === 'thinking' || streamPhase === 'composing'"
+        :stream-phase="streamPhase"
       />
+
+      <!-- Composing indicator: shown BELOW thinking when reasoning is done but content hasn't started -->
+      <div
+        v-if="streamPhase === 'composing'"
+        class="composing-indicator flex items-center gap-2 py-2 text-xs text-ink-500 dark:text-ink-300 mt-1"
+      >
+        <span class="inline-flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60 animate-bounce"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60 animate-bounce" style="animation-delay: 0.15s"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]/60 animate-bounce" style="animation-delay: 0.3s"></span>
+        </span>
+        <span class="font-medium animate-pulse">Menyusun jawaban...</span>
+      </div>
 
       <!-- Full-paper generation progress (in-chat). The AI's GenerateFullPaper
            tool call kicks off a long backend job; instead of an overlay, we
@@ -42,10 +56,14 @@
         </div>
       </div>
 
-      <!-- Text Content -->
+      <!-- Text Content: RAW during streaming, RENDERED when done -->
       <div
-        v-if="visibleContent"
-        class="prose prose-sm max-w-none break-words"
+        v-if="visibleContent && isActivelyStreaming"
+        class="prose prose-sm max-w-none break-words whitespace-pre-wrap text-ink-900 dark:text-ink-100"
+      >{{ visibleContent }}<span class="inline-block w-1.5 h-4 bg-[var(--accent)]/80 animate-pulse align-middle ml-0.5" /></div>
+      <div
+        v-else-if="visibleContent"
+        class="prose prose-sm max-w-none break-words dark:prose-invert dark:text-[color:var(--text-base)]"
         v-html="renderedContent"
       ></div>
 
@@ -113,6 +131,15 @@
         v-if="metaKind === 'multi_question' && message.role === 'assistant' && (message.metadata.questions || []).length"
         :questions="message.metadata.questions"
         @multi-question-submit="$emit('multi-question-submit', $event)"
+      />
+
+      <!-- Ask-user card (kind=ask_user). AI asks a question with 4 options
+           + free text. User picks or types answer, sends back as message. -->
+      <AskUserCard
+        v-if="metaKind === 'ask_user' && message.role === 'assistant' && message.metadata.question"
+        :question="message.metadata.question"
+        :options="message.metadata.options || []"
+        @answer="$emit('ask-user-answer', $event)"
       />
 
       <!-- Review plan notice (kind=review_plan). Visual-only banner that the
@@ -269,47 +296,83 @@
         </div>
       </div>
 
-      <!-- Tool call errors (only show errors, hidden by default) -->
+      <!-- Tool calls: show ALL tools (running + done), not just errors.
+           This gives the user real-time visibility into what the AI is doing —
+           web searches, reasoning steps, paper generation, etc. -->
       <div
-        v-if="errorToolCalls.length && message.role === 'assistant'"
-        class="mt-3 space-y-2"
+        v-if="allToolCalls.length && message.role === 'assistant'"
+        class="mt-2 space-y-1.5"
       >
         <div
-          v-for="(tc, idx) in errorToolCalls"
+          v-for="(tc, idx) in allToolCalls"
           :key="idx"
-          class="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 overflow-hidden"
+          :class="[
+            'rounded-lg border overflow-hidden text-xs transition-all',
+            tc.status === 'running'
+              ? 'border-navy-300 dark:border-navy-600 bg-navy-50/50 dark:bg-navy-900/20'
+              : tc.status === 'error'
+              ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
+              : 'border-cream-300 dark:border-ash-600 bg-cream-50/50 dark:bg-ash-800/50'
+          ]"
         >
-          <div class="px-3 py-2 flex items-center gap-2 bg-red-100 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800">
-            <span class="w-2 h-2 rounded-full bg-red-500"></span>
-            <span class="text-xs font-medium text-red-900 dark:text-red-200">Tool Error: {{ tc.name }}</span>
-          </div>
-          <div class="px-3 py-2">
-            <button
-              @click="toggleToolError(idx)"
-              class="flex items-center gap-1.5 text-xs text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 font-medium"
+          <!-- Tool header: icon + name + status -->
+          <button
+            @click="toggleToolDetail(idx)"
+            class="w-full px-3 py-2 flex items-center gap-2 text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+          >
+            <!-- Status icon -->
+            <span v-if="tc.status === 'running'" class="shrink-0 w-4 h-4 border-2 border-navy-400 border-t-navy-700 dark:border-t-cream-300 rounded-full animate-spin"></span>
+            <span v-else-if="tc.status === 'done'" class="shrink-0 text-emerald-600 dark:text-emerald-400">✓</span>
+            <span v-else-if="tc.status === 'error'" class="shrink-0 text-red-500 dark:text-red-400">✗</span>
+
+            <!-- Tool name + description -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span :class="[
+                  'font-medium truncate',
+                  tc.status === 'running' ? 'text-navy-800 dark:text-navy-200' :
+                  tc.status === 'error' ? 'text-red-800 dark:text-red-200' :
+                  'text-ink-700 dark:text-ink-200'
+                ]">{{ toolLabel(tc.name) }}</span>
+                <span v-if="tc.status === 'running'" class="shrink-0 text-[10px] text-navy-600 dark:text-navy-400 font-medium">
+                  {{ toolRunningText(tc.name) }}
+                </span>
+              </div>
+              <!-- Tool detail line: query for search, scope for edits, etc. -->
+              <div v-if="toolDetail(tc)" class="text-[10px] text-ink-500 dark:text-ink-300 truncate mt-0.5">
+                {{ toolDetail(tc) }}
+              </div>
+            </div>
+
+            <!-- Expand chevron -->
+            <svg
+              :class="['w-3 h-3 shrink-0 transition-transform text-ink-400', toolDetailsOpen[idx] ? 'rotate-90' : '']"
+              fill="currentColor"
+              viewBox="0 0 20 20"
             >
-              <svg
-                :class="['w-3 h-3 transition-transform', toolErrorsOpen[idx] ? 'rotate-90' : '']"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M6 4l8 6-8 6V4z"/>
-              </svg>
-              Show Details
-            </button>
-            <div v-show="toolErrorsOpen[idx]" class="mt-2 space-y-2">
-              <div v-if="tc.error" class="text-xs text-red-800 dark:text-red-200 bg-white dark:bg-red-950/30 rounded p-2 border border-red-200 dark:border-red-800">
-                <div class="font-medium mb-1">Error:</div>
-                <pre class="whitespace-pre-wrap break-words font-mono text-[11px]">{{ tc.error }}</pre>
-              </div>
-              <div v-if="tc.result" class="text-xs text-red-800 dark:text-red-200 bg-white dark:bg-red-950/30 rounded p-2 border border-red-200 dark:border-red-800">
-                <div class="font-medium mb-1">Result:</div>
-                <pre class="whitespace-pre-wrap break-words font-mono text-[11px]">{{ tc.result }}</pre>
-              </div>
+              <path d="M6 4l8 6-8 6V4z"/>
+            </svg>
+          </button>
+
+          <!-- Expandable detail: arguments + result -->
+          <div v-show="toolDetailsOpen[idx]" class="px-3 pb-2 space-y-1.5">
+            <div v-if="tc.arguments && Object.keys(tc.arguments).length" class="text-ink-600 dark:text-ink-300">
+              <div class="font-medium text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-300 mb-0.5">Arguments</div>
+              <pre class="whitespace-pre-wrap break-words font-mono text-[10px] bg-white/50 dark:bg-black/20 rounded p-1.5 max-h-32 overflow-y-auto">{{ formatToolArgs(tc.arguments) }}</pre>
+            </div>
+            <div v-if="tc.result" class="text-ink-600 dark:text-ink-300">
+              <div class="font-medium text-[10px] uppercase tracking-wide text-ink-500 dark:text-ink-300 mb-0.5">Result</div>
+              <pre class="whitespace-pre-wrap break-words font-mono text-[10px] bg-white/50 dark:bg-black/20 rounded p-1.5 max-h-48 overflow-y-auto">{{ formatToolResult(tc.result) }}</pre>
+            </div>
+            <div v-if="tc.error" class="text-red-700 dark:text-red-300">
+              <div class="font-medium text-[10px] uppercase tracking-wide text-red-500 dark:text-red-400 mb-0.5">Error</div>
+              <pre class="whitespace-pre-wrap break-words font-mono text-[10px] bg-red-100/50 dark:bg-red-900/20 rounded p-1.5">{{ tc.error }}</pre>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Old error-only block removed — replaced by the unified tool display above -->
 
 
     </div>
@@ -326,9 +389,11 @@
 <script setup lang="ts">
 // @ts-nocheck
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { marked } from 'marked'
+import MarkdownIt from 'markdown-it'
+import { katex } from '@mdit/plugin-katex'
 import hljs from 'highlight.js/lib/core'
 import { useSanitize } from '../composables/useSanitize'
+import 'katex/dist/katex.min.css'
 import javascript from 'highlight.js/lib/languages/javascript'
 import python from 'highlight.js/lib/languages/python'
 import bash from 'highlight.js/lib/languages/bash'
@@ -341,6 +406,7 @@ import RevisiProposalCard from './RevisiProposalCard.vue'
 import ChartPreviewCard from './ChartPreviewCard.vue'
 import FileReviewCard from './FileReviewCard.vue'
 import MultiQuestionCard from './MultiQuestionCard.vue'
+import AskUserCard from './AskUserCard.vue'
 import { usePaperStore } from '../stores/paper'
 
 interface ToolCall {
@@ -372,10 +438,12 @@ interface ChatMessage {
 interface Props {
   message: ChatMessage
   isStreaming?: boolean
+  streamPhase?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isStreaming: false
+  isStreaming: false,
+  streamPhase: 'idle'
 })
 
 interface Emits {
@@ -387,6 +455,7 @@ interface Emits {
   (e: 'chart-regenerate', data: any): void
   (e: 'file-review-pick', value: any): void
   (e: 'multi-question-submit', value: any): void
+  (e: 'ask-user-answer', value: string): void
   (e: 'review-cancel'): void
 }
 
@@ -429,15 +498,113 @@ hljs.registerLanguage('html', xml)
 hljs.registerLanguage('xml', xml)
 hljs.registerLanguage('css', css)
 
-const toolErrorsOpen = ref<Record<number, boolean>>({})
+const toolDetailsOpen = ref<Record<number, boolean>>({})
+
+const allToolCalls = computed(() => {
+  const calls = props.message.tool_calls || []
+  return calls.filter(tc => tc && tc.name)
+})
 
 const errorToolCalls = computed(() => {
   const calls = props.message.tool_calls || []
   return calls.filter(tc => tc.status === 'error' || tc.error)
 })
 
-function toggleToolError(idx: number): void {
-  toolErrorsOpen.value[idx] = !toolErrorsOpen.value[idx]
+function toggleToolDetail(idx: number): void {
+  toolDetailsOpen.value[idx] = !toolDetailsOpen.value[idx]
+}
+
+// Human-friendly tool labels
+const TOOL_LABELS: Record<string, string> = {
+  WebSearch: '🔍 Web Search',
+  SearchArxiv: '📚 Search arXiv',
+  SearchSemanticScholar: '🎓 Search Semantic Scholar',
+  GenerateFullPaper: '📝 Generate Full Paper',
+  ProposeChips: '💡 Propose Actions',
+  ProposeTitle: '📌 Propose Title',
+  ProposeAbstract: '📄 Propose Abstract',
+  ProposeKeywords: '🏷️ Propose Keywords',
+  ProposeSection: '📑 Propose Section',
+  ProposeReference: '📖 Propose Reference',
+  ProposeJournal: '📰 Propose Journal',
+  RequestExportDocx: '📥 Export DOCX',
+  Paraphrase: '✏️ Paraphrase',
+  FixGrammar: '🔧 Fix Grammar',
+  Translate: '🌐 Translate',
+  SetCitationStyle: '📋 Set Citation Style',
+  SetLanguage: '🌍 Set Language',
+  AskQuestions: '❓ Ask Questions',
+  RouteIntent: '🔀 Route Intent',
+  CreateChart: '📊 Create Chart',
+  SLR: '🔬 Systematic Literature Review',
+  ReviewPaper: '🔍 Review Paper',
+}
+
+const TOOL_RUNNING: Record<string, string> = {
+  WebSearch: 'mencari...',
+  SearchArxiv: 'mencari paper...',
+  SearchSemanticScholar: 'mencari paper...',
+  GenerateFullPaper: 'menulis paper...',
+  ProposeSection: 'menulis section...',
+  Paraphrase: 'memparafrase...',
+  FixGrammar: 'memperbaiki grammar...',
+  Translate: 'menerjemahkan...',
+  SLR: 'melakukan SLR...',
+  ReviewPaper: 'me-review paper...',
+  CreateChart: 'membuat chart...',
+}
+
+function toolLabel(name: string): string {
+  return TOOL_LABELS[name] || name
+}
+
+function toolRunningText(name: string): string {
+  return TOOL_RUNNING[name] || 'berjalan...'
+}
+
+function toolDetail(tc: any): string {
+  const args = tc.arguments || {}
+  const name = tc.name || ''
+  // WebSearch → show query
+  if (name === 'WebSearch' && args.query) return `Query: "${args.query}"`
+  if (name === 'SearchArxiv' && args.query) return `Query: "${args.query}"`
+  if (name === 'SearchSemanticScholar' && args.query) return `Query: "${args.query}"`
+  if (name === 'GenerateFullPaper' && args.prompt) return args.prompt.slice(0, 80)
+  if (name === 'ProposeSection' && args.title) return `Section: ${args.title}`
+  if (name === 'ProposeTitle' && args.title) return args.title
+  if (name === 'ProposeJournal' && args.journal) return args.journal
+  if (name === 'Translate' && args.target_language) return `→ ${args.target_language}`
+  if (name === 'SetCitationStyle' && args.style) return `Style: ${args.style}`
+  if (name === 'SetLanguage' && args.language) return `Language: ${args.language}`
+  if (name === 'CreateChart' && args.title) return args.title
+  if (name === 'SLR' && args.query) return `Query: "${args.query}"`
+  if (name === 'Paraphrase' && args.scope) return `Scope: ${args.scope}`
+  if (name === 'FixGrammar' && args.scope) return `Scope: ${args.scope}`
+  return ''
+}
+
+function formatToolArgs(args: any): string {
+  if (!args || typeof args !== 'object') return String(args || '')
+  try {
+    return JSON.stringify(args, null, 2)
+  } catch {
+    return String(args)
+  }
+}
+
+function formatToolResult(result: any): string {
+  if (typeof result === 'string') {
+    // Truncate very long results for the collapsed view
+    if (result.length > 2000) return result.slice(0, 2000) + '...(truncated)'
+    return result
+  }
+  try {
+    const s = JSON.stringify(result, null, 2)
+    if (s.length > 2000) return s.slice(0, 2000) + '...(truncated)'
+    return s
+  } catch {
+    return String(result)
+  }
 }
 
 const metaKind = computed(() => props.message?.metadata?.kind || null)
@@ -504,11 +671,52 @@ function scrubControlTokens(text: string): string {
   if (out.includes('<｜') || out.includes('<|')) {
     out = out.replace(CTRL_CLOSED_RE, '')
   }
+  // Strip leaked MATH_N placeholder tokens (model sometimes outputs these
+  // instead of actual LaTeX $...$). They look broken to the user.
+  out = out.replace(/\bMATH_\d+\b/g, '')
   return out
 }
 
 const visibleContent = computed(() => {
-  return scrubControlTokens(props.message.content || '').trim()
+  let raw = scrubControlTokens(props.message.content || '').trim()
+  // Strip leading whitespace from every line so markdown-it doesn't
+  // interpret 4+ spaces as a <pre> code block (indentation bug).
+  // Keep intentional indents inside fenced code blocks intact.
+  if (!raw) return ''
+
+  // For user messages: collapse file blocks to just the filename
+  if (props.message.role === 'user') {
+    // Replace full file blocks with just "📎 filename"
+    raw = raw.replace(
+      /--- File terlampir: (.+?)(?: \[file_id=\d+\])? ---\n[\s\S]*?--- akhir file ---/g,
+      (_, name) => `📎 ${name.trim()}`
+    )
+    // Clean up: remove "Saya melampirkan N file." if file names follow
+    raw = raw.replace(/^Saya melampirkan \d+ file\.\s*/m, '')
+    raw = raw.trim()
+  }
+
+  // Normalize LaTeX delimiters: convert \[...\] to $$...$$ and \(...\) to $...$
+  // This ensures @mdit/plugin-katex can render all LaTeX formats.
+  // Must be done BEFORE markdown-it processing.
+  // Note: In JS regex replacement, $$ is special (escapes $), so use $$$$ for literal $$
+  raw = raw.replace(/\\\[/g, '$$$$')  // \[ → $$
+  raw = raw.replace(/\\\]/g, '$$$$')  // \] → $$
+  raw = raw.replace(/\\\(/g, '$')     // \( → $
+  raw = raw.replace(/\\\)/g, '$')     // \) → $
+
+  const lines = raw.split('\n')
+  let inFence = false
+  const cleaned = lines.map(line => {
+    if (line.trimStart().startsWith('```')) {
+      inFence = !inFence
+      return line.trimStart()
+    }
+    if (inFence) return line
+    // Remove leading whitespace from non-code lines
+    return line.replace(/^\s+/, '')
+  }).join('\n')
+  return cleaned
 })
 
 const messageClasses = computed(() => {
@@ -518,22 +726,39 @@ const messageClasses = computed(() => {
   return 'chat-bubble-ai'
 })
 
-marked.setOptions({
+// ── markdown-it with KaTeX plugin ──────────────────────────────────────────
+// KaTeX plugin handles $...$ inline and $$...$$ display math at parser level,
+// so no manual regex extraction is needed.
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: false,
+  breaks: false,
   highlight(code: string, lang: string) {
     if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value
+      try { return hljs.highlight(code, { language: lang }).value } catch {}
     }
-    return hljs.highlightAuto(code).value
+    try { return hljs.highlightAuto(code).value } catch {}
+    return ''
   },
-  breaks: true,
-  gfm: true,
+})
+
+md.use(katex, {
+  throwOnError: false,
+  errorColor: '#cc0000',
 })
 
 const renderedContent = computed(() => {
   if (!visibleContent.value) return ''
   try {
-    const raw = marked.parse(visibleContent.value) as string
-    return sanitizeHtml(raw, { USE_PROFILES: { html: true } })
+    const html = md.render(visibleContent.value)
+    // Use permissive sanitize config that preserves KaTeX HTML
+    // (spans with classes, inline styles, aria attributes)
+    return sanitizeHtml(html, {
+      USE_PROFILES: { html: true },
+      ADD_ATTR: ['class', 'style', 'aria-hidden', 'data-katex', 'data-katex-display'],
+      ADD_TAGS: ['annotation', 'semantics', 'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'msqrt', 'mroot'],
+    })
   } catch {
     return sanitizeHtml(visibleContent.value, { USE_PROFILES: { html: true } })
   }
@@ -545,8 +770,17 @@ const shouldRenderMessage = computed(() => {
   if ((props.message.thinking || '').trim()) return true
   if (generatingPaper.value) return true
   if (metaKind.value) return true
-  if (errorToolCalls.value.length > 0) return true
+  if (allToolCalls.value.length > 0) return true
   return false
+})
+
+// True when this message is the one currently being streamed from the backend.
+// Used to show raw text during streaming and only render markdown+LaTeX when done.
+const isActivelyStreaming = computed(() => {
+  if (!props.isStreaming) return false
+  if (props.message.role !== 'assistant') return false
+  const phase = props.streamPhase
+  return phase === 'sending' || phase === 'thinking' || phase === 'composing' || phase === 'streaming'
 })
 </script>
 
@@ -583,6 +817,7 @@ const shouldRenderMessage = computed(() => {
   overflow-x: auto;
   margin: 0.75rem 0;
 }
+html.dark .prose :deep(pre) { background: #0a1628; border: 1px solid var(--border-soft); }
 
 .prose :deep(pre code) {
   color: #cdd6f4;
@@ -607,22 +842,50 @@ const shouldRenderMessage = computed(() => {
   color: #f5ead0;
 }
 
-.prose :deep(p) { margin: 0.5rem 0; }
+/* ── Typography: clean, ChatGPT-style ── */
+.prose :deep(p) {
+  margin: 0.45rem 0;
+  line-height: 1.7;
+}
 .prose :deep(p:first-child) { margin-top: 0; }
 .prose :deep(p:last-child) { margin-bottom: 0; }
 
-.prose :deep(ul), .prose :deep(ol) {
+/* Lists — minimal indent, clean bullets */
+.prose :deep(ul) {
   margin: 0.5rem 0;
-  padding-left: 1.5rem;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.prose :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+.prose :deep(ul ul), .prose :deep(ol ol),
+.prose :deep(ul ol), .prose :deep(ol ul) {
+  margin: 0.15rem 0;
+}
+.prose :deep(li) {
+  margin: 0.3rem 0;
+  line-height: 1.7;
+  padding-left: 0.15rem;
+}
+.prose :deep(li > p) {
+  margin: 0.15rem 0;
 }
 
-.prose :deep(li) { margin: 0.25rem 0; }
-
-.prose :deep(h1), .prose :deep(h2), .prose :deep(h3) {
-  margin: 0.75rem 0 0.5rem;
+/* Headings */
+.prose :deep(h1), .prose :deep(h2), .prose :deep(h3), .prose :deep(h4) {
+  margin: 1rem 0 0.4rem;
   font-weight: 600;
+  line-height: 1.35;
 }
+.prose :deep(h1) { font-size: 1.2rem; }
+.prose :deep(h2) { font-size: 1.1rem; }
+.prose :deep(h3) { font-size: 1rem; }
+.prose :deep(h4) { font-size: 0.95rem; }
 
+/* Blockquote */
 .prose :deep(blockquote) {
   border-left: 3px solid #79522a;
   padding-left: 0.75rem;
@@ -634,13 +897,13 @@ const shouldRenderMessage = computed(() => {
   color: #cbc7ba;
 }
 
+/* Tables */
 .prose :deep(table) {
   width: 100%;
   border-collapse: collapse;
   margin: 0.75rem 0;
   font-size: 0.8rem;
 }
-
 .prose :deep(th), .prose :deep(td) {
   border: 1px solid #cca97f;
   padding: 0.4rem 0.6rem;
@@ -649,20 +912,19 @@ const shouldRenderMessage = computed(() => {
 .dark .prose :deep(td) {
   border-color: #3f3c35;
 }
-
 .prose :deep(th) {
   background: #fbf5e9;
   font-weight: 600;
 }
 .dark .prose :deep(th) {
-  background: #2a2825;
+  background: #1b3558;
   color: #f5f3ee;
 }
-
 .dark .prose :deep(td) {
   color: #f5f3ee;
 }
 
+/* Links */
 .prose :deep(a) {
   color: #79522a;
   text-decoration: underline;
@@ -670,8 +932,24 @@ const shouldRenderMessage = computed(() => {
 .dark .prose :deep(a) {
   color: #eddbac;
 }
-
 .prose-invert :deep(a) {
   color: #fbf5e9;
 }
+
+/* Horizontal rule */
+.prose :deep(hr) {
+  border: none;
+  border-top: 1px solid #cca97f;
+  margin: 1rem 0;
+}
+.dark .prose :deep(hr) {
+  border-top-color: #3f3c35;
+}
+
+/* Strong / emphasis */
+.prose :deep(strong) { font-weight: 600; }
+.prose :deep(em) { font-style: italic; }
+
+/* Prevent leading whitespace from creating <pre> blocks */
+.prose :deep(> *:first-child) { margin-top: 0; }
 </style>

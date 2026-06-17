@@ -383,8 +383,16 @@ def add_formula(doc, formula_data: dict):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _set_para_spacing(p, before_pt=3, after_pt=3)
-    r = p.add_run(_strip_latex(text))
-    _set_run_font(r, size_pt=SIZE_BODY, italic=True)
+    _omml_done = False
+    try:
+        from _math_omml import append_omml_math as _omml_fn
+        _lx = (formula_data.get("latex") or "")
+        _omml_done = bool(str(_lx or "").strip()) and _omml_fn(p, _lx)
+    except Exception:
+        _omml_done = False
+    if not _omml_done:
+        r = p.add_run(_strip_latex(text))
+        _set_run_font(r, size_pt=SIZE_BODY, italic=True)
     if num:
         r = p.add_run(f"\t({num})")
         _set_run_font(r, size_pt=SIZE_BODY)
@@ -430,8 +438,11 @@ def process_section(doc, section_data: dict, top_level: bool = True):
 
 def add_references(doc, data):
     refs = data.get("references") or {}
+    if isinstance(refs, list):
+        refs = {"title": "REFERENCES", "content": refs}
     title = (refs.get("title") or "REFERENCES").strip()
-    items = refs.get("content") or ["[1] Author, Title, Journal, Year."]
+    items = [((r.get("text") or r.get("Text") or "").strip() if isinstance(r, dict) else str(r)) for r in (refs.get("content") or [])]
+    items = [t for t in items if t] or ["[1] Author, Title, Journal, Year."]
 
     p_title = doc.add_paragraph()
     _set_para_spacing(p_title, before_pt=12, after_pt=6, line_tw=360)

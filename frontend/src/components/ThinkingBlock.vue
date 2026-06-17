@@ -3,7 +3,7 @@
     <button
       @click="isOpen = !isOpen"
       class="flex items-center gap-2 text-xs transition-colors thinking-toggle"
-      :class="isStreaming ? 'thinking-active' : 'thinking-idle'"
+      :class="thinkingActive ? 'thinking-active' : 'thinking-idle'"
     >
       <svg
         :class="['w-3 h-3 transition-transform', isOpen ? 'rotate-90' : '']"
@@ -13,22 +13,22 @@
         <path d="M6 4l8 6-8 6V4z"/>
       </svg>
       <span class="font-medium">
-        <span v-if="isStreaming && !content" class="inline-flex items-center gap-1.5 thinking-label">
+        <!-- Phase: actively thinking -->
+        <span v-if="isThinking" class="inline-flex items-center gap-1.5 thinking-label">
           <span class="thinking-flash-text">Masih berpikir</span>
           <span class="thinking-dots">
             <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
           </span>
-          <span class="thinking-shimmer-bar">
-            <span class="shimmer-glow" />
-          </span>
         </span>
-        <span v-else-if="isStreaming && content">
+        <!-- Phase: thinking has content and still streaming -->
+        <span v-else-if="isStreaming && content && !isThinkingDone">
           Masih berpikir... <span class="inline-flex items-center gap-1 ml-1">
             <span class="inline-block w-1 h-1 bg-[var(--accent)]/70 rounded-full animate-bounce"></span>
             <span class="inline-block w-1 h-1 bg-[var(--accent)]/70 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
             <span class="inline-block w-1 h-1 bg-[var(--accent)]/70 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
           </span>
         </span>
+        <!-- Phase: thinking done — show completed state -->
         <span v-else>💭 Reasoning</span>
       </span>
     </button>
@@ -36,12 +36,12 @@
       v-show="isOpen"
       class="mt-1.5 pl-5 border-l-2 border-[var(--accent)]/25 thinking-content"
     >
-      <p class="text-xs text-ink-500 dark:text-ink-400 whitespace-pre-wrap leading-relaxed">
+      <p class="text-xs text-ink-500 dark:text-cream-200 whitespace-pre-wrap leading-relaxed">
         {{ content || '...' }}
       </p>
       <!-- Streaming cursor when content is being received -->
       <span
-        v-if="isStreaming"
+        v-if="isThinking"
         class="inline-block w-1.5 h-3.5 bg-[var(--accent)]/80 animate-pulse align-middle ml-0.5"
       />
     </div>
@@ -49,33 +49,82 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type { ThinkingBlockProps } from '../types/components'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 
-const props = defineProps<ThinkingBlockProps>()
+const props = defineProps<{
+  content: string
+  isStreaming: boolean
+  streamPhase?: string
+}>()
 
 const isOpen = ref<boolean>(false)
+
+let _openTimer: ReturnType<typeof setTimeout> | null = null
+let _closeTimer: ReturnType<typeof setTimeout> | null = null
+
+// Derived: actively thinking (phase === 'thinking' or streaming with no content yet)
+const isThinking = computed(() => {
+  if (props.streamPhase === 'thinking') return true
+  if (props.isStreaming && !props.content) return true
+  return false
+})
+
+// Derived: thinking phase is done
+const isThinkingDone = computed(() => {
+  return props.streamPhase === 'composing' || props.streamPhase === 'streaming' || props.streamPhase === 'done'
+})
+
+// Whether the thinking block header should show active styling
+const thinkingActive = computed(() => {
+  return isThinking.value || (props.isStreaming && !isThinkingDone.value)
+})
 
 // Auto-open when content starts flowing during streaming
 watch(
   () => props.content,
   (newVal) => {
-    if (props.isStreaming && newVal) {
+    if (props.isStreaming && newVal && isThinking.value) {
       isOpen.value = true
     }
   }
 )
 
-// Also auto-open when streaming starts
+// Also auto-open when streaming starts in thinking phase
 watch(
   () => props.isStreaming,
   (streaming) => {
-    if (streaming) {
+    if (streaming && isThinking.value) {
       // Slight delay to let the label animate first, then auto-expand
-      setTimeout(() => { isOpen.value = true }, 800)
+      clearTimeout(_openTimer)
+      _openTimer = setTimeout(() => { isOpen.value = true }, 800)
     }
   }
 )
+
+// Auto-close thinking block when phase moves past thinking (composing/streaming)
+// but only if it was auto-opened (not manually toggled by user)
+watch(
+  () => props.streamPhase,
+  (newPhase) => {
+    if ((newPhase === 'composing' || newPhase === 'streaming') && isOpen.value) {
+      // Collapse thinking block when content starts flowing
+      // User can still re-open it manually
+      clearTimeout(_closeTimer)
+      _closeTimer = setTimeout(() => { isOpen.value = false }, 500)
+    }
+  }
+)
+
+onBeforeUnmount(() => {
+  if (_openTimer !== null) {
+    clearTimeout(_openTimer)
+    _openTimer = null
+  }
+  if (_closeTimer !== null) {
+    clearTimeout(_closeTimer)
+    _closeTimer = null
+  }
+})
 </script>
 
 <style scoped>

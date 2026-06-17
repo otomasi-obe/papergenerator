@@ -14,29 +14,50 @@ interface User {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(JSON.parse(localStorage.getItem('user') || 'null'))
+  let _user: User | null = null
+  try {
+    _user = JSON.parse(localStorage.getItem('user') || 'null')
+  } catch { _user = null }
+  const user = ref<User | null>(_user)
+  const _loaded = ref(false)
+  let _inflight: Promise<User | null> | null = null
 
   const isLoggedIn = computed(() => !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
 
   function setUser(userData: User | null): void {
     user.value = userData
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData))
-    } else {
-      localStorage.removeItem('user')
+    try {
+      if (userData) {
+        localStorage.setItem('user', JSON.stringify(userData))
+      } else {
+        localStorage.removeItem('user')
+      }
+    } catch {
+      // localStorage can throw (quota, private browsing, security restrictions)
+      // State is still updated in memory, so app works fine
     }
   }
 
   async function fetchMe(): Promise<User | null> {
-    try {
-      const res = await api.get<User>('/api/auth/me')
-      setUser(res.data)
-      return res.data
-    } catch {
-      setUser(null)
-      return null
-    }
+    // Dedupe concurrent calls: the store fires fetchMe() on init AND the router
+    // guard calls it on first navigation. Without this, two /api/auth/me race
+    // on every cold load. Share the in-flight promise instead.
+    if (_inflight) return _inflight
+    _inflight = (async () => {
+      try {
+        const res = await api.get<User>('/api/auth/me')
+        setUser(res.data)
+        return res.data
+      } catch {
+        setUser(null)
+        return null
+      } finally {
+        _loaded.value = true
+        _inflight = null
+      }
+    })()
+    return _inflight
   }
 
   function loginWithGoogle(): void {
@@ -57,5 +78,5 @@ export const useAuthStore = defineStore('auth', () => {
 
   fetchMe()
 
-  return { user, isLoggedIn, isAdmin, setUser, fetchMe, loginWithGoogle, logout }
+  return { user, isLoggedIn, isAdmin, setUser, fetchMe, loginWithGoogle, logout, _loaded }
 })

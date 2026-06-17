@@ -18,15 +18,10 @@ import requests
 from flask import Blueprint, Response, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from .model_config import get_primary_chat_model
+from .ai_client import chat as _ai_chat, stream_chat as _ai_stream
 
 tools_api = Blueprint("tools_api", __name__)
 log = logging.getLogger(__name__)
-
-_AIOTOMASI_API_BASE = os.getenv("AIOTOMASI_API") or ""
-API_URL = (_AIOTOMASI_API_BASE.rstrip("/") + "/chat/completions") if _AIOTOMASI_API_BASE else ""
-API_KEY = os.getenv("AIOTOMASI_APIKEY") or ""
-MODEL_CHAT = get_primary_chat_model()
 
 from tools.paraphrase import PROMPT as _paraphrase
 from tools.translator import PROMPT as _translator
@@ -37,7 +32,7 @@ from tools.grammar import PROMPT as _grammar
 from tools.summarize import PROMPT as _summarize
 
 try:
-    from tools.summarize.summarizer import run_summarize as _run_summarize
+    from tools.summarize.summarizer import run_summarizer as _run_summarize
 except ImportError:
     _run_summarize = None
 
@@ -118,55 +113,34 @@ if _run_summarize is not None:
     TOOL_RUNNERS["summarize"] = _run_summarize
 
 
+try:
+    from tools.ai_detectors.run_detector import run_detector as _run_detector
+
+    TOOL_RUNNERS["detector"] = _run_detector
+except ImportError:
+    _run_detector = None
+
+
 def _stream_ai(system_prompt, user_prompt):
-    """Stream AI response via SSE."""
-    if not API_URL or not API_KEY:
-        yield f"data: {json.dumps({'error': 'AI service not configured'})}\n\n"
-        return
-
+    """Stream AI response via SSE using the per-index endpoint chain."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
     try:
-        resp = requests.post(
-            API_URL,
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": MODEL_CHAT,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "stream": True,
-                "max_tokens": 4096,
-            },
-            stream=True,
-            timeout=120,
-        )
-
-        if resp.status_code != 200:
-            yield f"data: {json.dumps({'error': f'AI service error {resp.status_code}'})}\n\n"
-            return
-
-        for line in resp.iter_lines(decode_unicode=True):
-            if not line:
-                continue
-            if line.startswith("data: "):
-                payload = line[6:]
-                if payload.strip() == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(payload)
-                    delta = (
-                        chunk.get("choices", [{}])[0]
-                        .get("delta", {})
-                        .get("content", "")
-                    )
-                    if delta:
-                        yield f"data: {json.dumps({'text': delta})}\n\n"
-                except json.JSONDecodeError:
-                    continue
-
+        for delta in _ai_stream(messages, heavy=False, max_tokens=4096, timeout=120):
+            yield f"data: {json.dumps({'text': delta})}\n\n"
+    except GeneratorExit:
+        # Client disconnected mid-stream. Nothing to yield back — just let
+        # the underlying requests stream close on its own (the context manager
+        # in _ai_stream will handle it).
+        log.info("_stream_ai: client disconnected mid-stream")
+        return
+    except RuntimeError as e:
+        if "no endpoint configured" in str(e):
+            yield f"data: {json.dumps({'error': 'AI service not configured'})}\n\n"
+        else:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
     except requests.exceptions.Timeout:
         yield f"data: {json.dumps({'error': 'AI service timeout'})}\n\n"
     except Exception as e:
@@ -175,39 +149,19 @@ def _stream_ai(system_prompt, user_prompt):
 
 def _non_stream_ai(system_prompt, user_prompt):
     """Non-streaming AI call for detector/plagiarism that need JSON results."""
-    if not API_URL or not API_KEY:
-        return {"error": "AI service not configured"}
-
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
     try:
-        resp = requests.post(
-            API_URL,
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": MODEL_CHAT,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "stream": False,
-                "max_tokens": 2048,
-            },
-            timeout=60,
-        )
-
-        if resp.status_code != 200:
-            return {"error": f"AI service error {resp.status_code}"}
-
-        data = resp.json()
-        choices = data.get("choices") or []
-        if not choices:
+        content, _model = _ai_chat(messages, heavy=False, max_tokens=2048, timeout=60)
+        if not content:
             return {"error": "No response from AI"}
-
-        content = choices[0].get("message", {}).get("content") or ""
         return {"text": content}
-
+    except RuntimeError as e:
+        if "no endpoint configured" in str(e):
+            return {"error": "AI service not configured"}
+        return {"error": str(e)}
     except Exception as e:
         return {"error": str(e)}
 
@@ -339,8 +293,8 @@ def run_tool(tool_id):
 @tools_api.route("/api/tools/translate/config", methods=["GET"])
 @jwt_required()
 def get_translator_config():
-    return {
+    return jsonify({
         "engines": _TRANSLATOR_ENGINES,
         "languages": _TRANSLATOR_LANGUAGES,
         "domains": _TRANSLATOR_DOMAINS,
-    }
+    })

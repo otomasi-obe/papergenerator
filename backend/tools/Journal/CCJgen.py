@@ -1015,15 +1015,22 @@ def add_formula_block(doc, fm):
         left_tw=CFG["content_left_tw"],
         right_tw=CFG["content_right_tw"],
     )
-    formula_text = latex_to_unicode(latex)
-    add_run(
-        p,
-        formula_text,
-        name=CFG["font_math"],
-        size_pt=CFG["size_body"],
-        italic=True,
-        color=CFG["color_text"],
-    )
+    _omml_done = False
+    try:
+        from _math_omml import append_omml_math as _omml_fn
+        _omml_done = bool(str(latex or "").strip()) and _omml_fn(p, latex)
+    except Exception:
+        _omml_done = False
+    if not _omml_done:
+        formula_text = latex_to_unicode(latex)
+        add_run(
+            p,
+            formula_text,
+            name=CFG["font_math"],
+            size_pt=CFG["size_body"],
+            italic=True,
+            color=CFG["color_text"],
+        )
     add_run(
         p, f"    ({num})", name=CFG["font_body"], size_pt=CFG["size_body"], color=CFG["color_text"]
     )
@@ -1280,6 +1287,12 @@ def block_references(doc, data):
     def render(cell):
         items_local = items or ["[1] Author, Title, Journal, Year."]
         for i, ref in enumerate(items_local, 1):
+            if isinstance(ref, dict):
+                ref_text = str(ref.get("text") or ref.get("Text") or "").strip()
+            else:
+                ref_text = str(ref)
+            # Strip any leading "[n]" the formatter may have included.
+            ref_text = re.sub(r"^\s*\[\d+\]\s*", "", ref_text)
             p = cell_add_paragraph(cell, before_tw=40, after_tw=40, line_tw=260)
             pf = p.paragraph_format
             pf.left_indent = Twips(360)
@@ -1291,7 +1304,7 @@ def block_references(doc, data):
                 size_pt=CFG["size_ref"],
                 color=CFG["color_text"],
             )
-            add_runs_with_inline(p, str(ref), base_font=CFG["font_body"], base_size=CFG["size_ref"])
+            add_runs_with_inline(p, ref_text, base_font=CFG["font_body"], base_size=CFG["size_ref"])
 
     add_emerald_row_table(doc, "References", render)
 

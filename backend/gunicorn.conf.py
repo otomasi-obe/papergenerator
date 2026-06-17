@@ -7,15 +7,18 @@ import os
 
 # === Server Socket ===
 bind = "0.0.0.0:8001"
-backlog = 2048
+backlog = 4096  # Doubled for 1000+ concurrent users; nginx queues overflow
 
 # === Worker Processes ===
-# 16 workers × 4 threads = 64 concurrent request slots
-# Each worker ~150MB → ~2.4GB total (safe within 14GB available)
+# 16 workers × 8 threads = 128 concurrent request slots.
+# Most requests are I/O-bound (AI API calls, DB queries, image gen polling)
+# so threads are cheap. Each worker ~150MB → ~2.4GB total.
+# For 1000+ users, nginx handles static + connection queuing;
+# gunicorn handles application logic.
 workers = min(16, multiprocessing.cpu_count() * 2 + 1)
 worker_class = "gthread"
-threads = 4
-worker_connections = 1000
+threads = 8  # Doubled from 4 for higher I/O concurrency
+worker_connections = 1000  # Used by gevent/eventlet; no-op for gthread but harmless
 
 # === Timeouts ===
 timeout = 1800       # 30min for AI generation tasks
@@ -39,7 +42,10 @@ limit_request_fields = 100
 limit_request_field_size = 8190
 
 # === PID ===
-pidfile = "/home/sirobo/papergenerator/backend/gunicorn.pid"
+# pidfile = "/home/sirobo/papergenerator/backend/gunicorn.pid"
+# Disabled — PM2 manages the process lifecycle. The stale PID file caused
+# restart loops ("Already running on PID X") because PM2 sends SIGKILL and
+# gunicorn cannot clean up its own PID file.
 
 # === Working Directory ===
 chdir = "/home/sirobo/papergenerator/backend"
@@ -55,7 +61,40 @@ def on_starting(server):
 
 
 def post_fork(server, worker):
+    import random
+    random.seed(os.urandom(32))
     server.log.info("Worker spawned (pid: %s)", worker.pid)
+    # Start image generation worker pool on exactly ONE gunicorn worker.
+    # Uses a marker file so only the first worker to reach this point starts
+    # the pool. The pool uses persistent Chrome profiles that cannot be shared
+    # across processes. Jobs are DB-persisted so the dispatcher in one worker
+    # can serve requests received by any gunicorn worker.
+    _img_marker = "/tmp/papergenerator-img-workers.lock"
+    try:
+        import fcntl as _fcntl
+        _lock_fd = open(_img_marker, "w")
+        try:
+            _fcntl.flock(_lock_fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+            # We got the lock — this is the first worker. Hold the fd open
+            # in a module-level var so it's not GC'd (which would release lock).
+            import builtins
+            builtins._img_lock_fd = _lock_fd
+            _lock_fd.write(str(os.getpid()))
+            _lock_fd.flush()
+            server.log.info("Acquired image worker lock, calling start_image_workers...")
+            from main import app  # noqa: PLC0415
+            from tools.image_generation.worker import start_image_workers  # noqa: PLC0415
+            start_image_workers(app)
+            server.log.info("Image worker pool started in worker pid=%s", worker.pid)
+        except (IOError, OSError):
+            # Another worker already has the lock — skip
+            _lock_fd.close()
+            server.log.info("Image worker pool already started by another worker, skipping")
+        except Exception as e:
+            server.log.exception("Exception in start_image_workers: %s", e)
+            _lock_fd.close()
+    except Exception:
+        server.log.exception("Failed to start image worker pool in worker pid=%s", worker.pid)
 
 
 def pre_exec(server):

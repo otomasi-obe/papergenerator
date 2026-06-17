@@ -310,7 +310,6 @@ onMounted(() => {
     store.loadPaperCharts(store.currentPaperId)
   }
 })
-watch(() => props.items.length, () => resizeAllTextareas())
 watch(() => props.items, () => resizeAllTextareas(), { deep: true })
 
 const keyMap = new WeakMap<object, string>()
@@ -415,8 +414,10 @@ async function generateImage(item: ContentItem): Promise<void> {
       paperId: store.currentPaperId,
       prompt,
       onDone: (img: any) => {
-        if (img && img.filename) {
-          item.Path = img.filename
+        // _notify passes a string (image filename) or object
+        const filename = typeof img === 'string' ? img : (img?.filename || img?.image || '')
+        if (filename) {
+          item.Path = filename
           if (store.currentPaperId) store.loadPaperImages(store.currentPaperId)
         }
         item.JobId = ''
@@ -451,8 +452,10 @@ function reattachJobs(): void {
     generating[k] = true
     imageGenStore.subscribe(item.JobId, {
       onDone: (img: any) => {
-        if (img && img.filename) {
-          item.Path = img.filename
+        // _notify passes a string (image filename) or object
+        const filename = typeof img === 'string' ? img : (img?.filename || img?.image || '')
+        if (filename) {
+          item.Path = filename
           if (store.currentPaperId) store.loadPaperImages(store.currentPaperId)
         }
         item.JobId = ''

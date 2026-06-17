@@ -113,63 +113,27 @@ _DOMAIN_INSTRUCTIONS: dict[str, str] = {
     ),
 }
 
-_AIOTOMASI_API_BASE = os.getenv("AIOTOMASI_API", "").rstrip("/")
-_AIOTOMASI_API_URL = (_AIOTOMASI_API_BASE + "/chat/completions") if _AIOTOMASI_API_BASE else ""
-_AIOTOMASI_API_KEY = os.getenv("AIOTOMASI_APIKEY", "")
-_MODEL_CHAT = get_primary_chat_model()
-
-
 def _stream_ai(system_prompt: str, user_prompt: str) -> Generator[dict, None, None]:
-    """Stream AI response, yielding dicts with 'text' key."""
+    """Stream AI response via the per-index endpoint chain, yielding dicts
+    with a 'text' key."""
     import requests
+    from utils.ai_tools.ai_client import stream_chat as _chain_stream
 
-    if not _AIOTOMASI_API_URL or not _AIOTOMASI_API_KEY:
-        yield {"error": "AI service not configured"}
-        return
-
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
     try:
-        resp = requests.post(
-            _AIOTOMASI_API_URL,
-            headers={
-                "Authorization": f"Bearer {_AIOTOMASI_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": _MODEL_CHAT,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                "stream": True,
-                "max_tokens": 4096,
-            },
-            stream=True,
-            timeout=120,
-        )
-
-        if resp.status_code != 200:
-            yield {"error": f"AI service error {resp.status_code}"}
-            return
-
-        for line in resp.iter_lines(decode_unicode=True):
-            if not line:
-                continue
-            if line.startswith("data: "):
-                payload = line[6:]
-                if payload.strip() == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(payload)
-                    delta = (
-                        chunk.get("choices", [{}])[0]
-                        .get("delta", {})
-                        .get("content", "")
-                    )
-                    if delta:
-                        yield {"text": delta}
-                except json.JSONDecodeError:
-                    continue
-
+        for delta in _chain_stream(messages, heavy=False, max_tokens=4096, timeout=120):
+            if delta:
+                yield {"text": delta}
+        return
+    except RuntimeError as e:
+        if "no endpoint configured" in str(e):
+            yield {"error": "AI service not configured"}
+        else:
+            yield {"error": str(e)}
+        return
     except requests.exceptions.Timeout:
         yield {"error": "AI service timeout"}
     except Exception as e:

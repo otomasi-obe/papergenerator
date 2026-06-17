@@ -1033,15 +1033,23 @@ def add_formula(doc, fm):
     pf.tab_stops.add_tab_stop(Twips(2200), WD_TAB_ALIGNMENT.CENTER)
     pf.tab_stops.add_tab_stop(Twips(4400), WD_TAB_ALIGNMENT.RIGHT)
     add_run(p, "\t", name=CFG["font_serif"], size_pt=CFG["size_formula"])
-    formula_text = latex_to_unicode(latex)
-    add_run(
-        p,
-        formula_text,
-        name=CFG["font_math"],
-        size_pt=CFG["size_formula"],
-        italic=True,
-        color=(0, 0, 0),
-    )
+    _omml_done = False
+    try:
+        from _math_omml import append_omml_math as _omml_fn
+        _lx = (latex)
+        _omml_done = bool(str(_lx or "").strip()) and _omml_fn(p, _lx)
+    except Exception:
+        _omml_done = False
+    if not _omml_done:
+        formula_text = latex_to_unicode(latex)
+        add_run(
+            p,
+            formula_text,
+            name=CFG["font_math"],
+            size_pt=CFG["size_formula"],
+            italic=True,
+            color=(0, 0, 0),
+        )
     add_run(
         p, "\t(" + num + ")", name=CFG["font_serif"], size_pt=CFG["size_formula"], color=(0, 0, 0)
     )
@@ -1218,7 +1226,7 @@ def add_references(doc, data):
             hanging_tw=288,
         )
         add_run(p, f"[{i}] ", name=CFG["font_serif"], size_pt=CFG["size_ref"], color=(0, 0, 0))
-        add_runs_with_inline(p, str(ref), base_font=CFG["font_serif"], base_size=CFG["size_ref"])
+        add_runs_with_inline(p, (str(ref.get("text") or ref.get("Text") or "").strip() if isinstance(ref, dict) else str(ref)), base_font=CFG["font_serif"], base_size=CFG["size_ref"])
 
 
 # ======================================================================

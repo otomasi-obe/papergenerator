@@ -56,8 +56,10 @@ class HourlyFileHandler(logging.FileHandler):
                 self.baseFilename = self._get_current_path()
                 self.stream = self._open()
                 self._current_hour = now_hour
-            except Exception:
-                pass
+            except Exception as _e:
+                # Rotation failed; continue writing to current file
+                import sys
+                print(f"[HourlyFileHandler] rotation failed: {_e}", file=sys.stderr)
         super().emit(record)
 
 

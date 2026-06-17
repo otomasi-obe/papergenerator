@@ -969,14 +969,22 @@ def add_formula(doc, formula: dict):
     tab.set(qn("w:pos"), str(CFG["col_width_tw"]))
     tabs.append(tab)
 
-    run = p.add_run(rendered)
-    set_run_font(
-        run,
-        name=CFG["font_formula"],
-        size_pt=CFG["size_formula"],
-        italic=True,
-        color=CFG["color_body"],
-    )
+    _omml_done = False
+    try:
+        from _math_omml import append_omml_math as _omml_fn
+        _lx = (latex)
+        _omml_done = bool(str(_lx or "").strip()) and _omml_fn(p, _lx)
+    except Exception:
+        _omml_done = False
+    if not _omml_done:
+        run = p.add_run(rendered)
+        set_run_font(
+            run,
+            name=CFG["font_formula"],
+            size_pt=CFG["size_formula"],
+            italic=True,
+            color=CFG["color_body"],
+        )
 
     tab_run = p.add_run()
     tab_xml = OxmlElement("w:tab")
@@ -1093,6 +1101,8 @@ def add_table(doc, tbl: dict):
 
 def add_references(doc, data):
     refs = data.get("references") or {}
+    if isinstance(refs, list):
+        refs = {"title": "REFERENCES", "content": refs}
     title = refs.get("title", "References")
     items = refs.get("content") or ["Author, Title, Journal, Year."]
 
@@ -1118,7 +1128,8 @@ def add_references(doc, data):
             rp, left=CFG["ref_left_indent_tw"], right=0, hanging=CFG["ref_hanging_indent_tw"]
         )
         prefix = f"[{i}] " if CFG["ref_numbering"] == "bracket" else f"{i}. "
-        text = re.sub(r"^\[\d+\]\s*", "", item.lstrip())
+        item_str = item.get("text", "") if isinstance(item, dict) else str(item)
+        text = re.sub(r"^\[\d+\]\s*", "", item_str.lstrip())
         text = re.sub(r"^\d+\.\s*", "", text)
         prun = rp.add_run(prefix)
         set_run_font(

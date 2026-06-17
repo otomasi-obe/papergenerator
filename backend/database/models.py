@@ -8,10 +8,34 @@ from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import JSON
+from sqlalchemy.orm import validates
 from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
+
+
+def safe_commit(*, reraise: bool = True) -> bool:
+    """Commit the current session; on failure roll back so the session is not
+    left in a broken state (critical in long-lived RQ workers where the same
+    scoped session is reused across jobs — an uncommitted failure otherwise
+    poisons every subsequent query with PendingRollbackError).
+
+    Returns True on success. Re-raises by default; pass reraise=False to
+    swallow the error after rollback (best-effort writes).
+    """
+    try:
+        db.session.commit()
+        return True
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        if reraise:
+            raise
+        return False
+
 
 
 def _utcnow():
@@ -39,6 +63,21 @@ class User(db.Model):
     institution = db.Column(db.String(255), nullable=True, default="")
     preferred_language = db.Column(db.String(10), nullable=True, default="id")  # 'id' or 'en'
 
+    # BUG-11: Validate enum-like fields at the ORM level
+    @validates("role")
+    def _validate_role(self, key, value):
+        allowed = ("user", "admin")
+        if value is not None and value not in allowed:
+            raise ValueError(f"User.role must be one of {allowed}, got {value!r}")
+        return value
+
+    @validates("preferred_language")
+    def _validate_preferred_language(self, key, value):
+        allowed = ("id", "en")
+        if value is not None and value not in allowed:
+            raise ValueError(f"User.preferred_language must be one of {allowed}, got {value!r}")
+        return value
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -48,7 +87,7 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
     papers = db.relationship("Paper", backref="user", lazy=True, cascade="all, delete-orphan")
-    usage_logs = db.relationship("ApiUsageLog", backref="user", lazy=True)
+    usage_logs = db.relationship("ApiUsageLog", backref="user", lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -72,7 +111,7 @@ class Paper(db.Model):
     __tablename__ = "papers"
 
     id = db.Column(db.String(20), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     title = db.Column(db.Text, default="Untitled")
     data = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=False, default=dict)
     created_at = db.Column(db.DateTime, default=_utcnow)
@@ -80,6 +119,12 @@ class Paper(db.Model):
     active_operation = db.Column(db.String(50), nullable=True)
     active_operation_job_id = db.Column(db.String(50), nullable=True)
     active_operation_started_at = db.Column(db.DateTime, nullable=True)
+    # Optimistic-locking column. Present for explicit concurrency checks in
+    # write paths that opt in (compare-and-set). NOT wired to SQLAlchemy's
+    # automatic version_id_col on purpose: the autosave + AI-generation write
+    # paths run concurrently and only catch OperationalError/DBAPIError, so an
+    # automatic StaleDataError would surface as uncaught 500s / worker crashes.
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     images = db.relationship("PaperImage", backref="paper", lazy=True, cascade="all, delete-orphan")
     files = db.relationship("PaperFile", backref="paper", lazy=True, cascade="all, delete-orphan")
@@ -90,12 +135,16 @@ class Paper(db.Model):
         "ProjectMemory", backref="paper", lazy=True, cascade="all, delete-orphan"
     )
 
-    def to_dict(self, include_data=False):
+    def to_dict(self, include_data=False, image_count=None):
+        # BUG-22: image_count query causes N+1 when listing many papers.
+        # Pass pre-loaded image_count to skip the per-row query.
+        if image_count is None:
+            image_count = db.session.query(db.func.count(PaperImage.id)).filter_by(paper_id=self.id).scalar() or 0
         result = {
             "id": self.id,
             "title": self.title,
             "user_id": self.user_id,
-            "image_count": len(self.images),
+            "image_count": image_count,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -133,7 +182,7 @@ class PaperFile(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     filename = db.Column(db.String(255), nullable=False)  # stored filename (uuid-based)
     original_name = db.Column(db.String(255), nullable=False)  # original upload name
     ext = db.Column(db.String(10), nullable=False)  # .pdf .docx etc
@@ -178,7 +227,7 @@ class Conversation(db.Model):
     __tablename__ = "conversations"
 
     id = db.Column(db.String(20), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=True)
     title = db.Column(db.Text, default="New Chat")
     mode = db.Column(db.String(30), nullable=True, default=None)
@@ -200,7 +249,7 @@ class Conversation(db.Model):
             "paper_id": self.paper_id,
             "title": self.title,
             "mode": self.mode,
-            "message_count": len(self.messages),
+            "message_count": db.session.query(db.func.count(ChatMessage.id)).filter_by(conversation_id=self.id).scalar() or 0,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -213,7 +262,7 @@ class ChatMessage(db.Model):
     __tablename__ = "chat_messages"
 
     id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.String(20), db.ForeignKey("conversations.id"), nullable=False)
+    conversation_id = db.Column(db.String(20), db.ForeignKey("conversations.id"), nullable=False, index=True)
     role = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, default="")
     thinking = db.Column(db.Text, nullable=True)
@@ -302,13 +351,22 @@ class ProjectMemory(db.Model):
 class AiJob(db.Model):
     __tablename__ = "ai_jobs"
 
-    id = db.Column(db.String(20), primary_key=True)
+    id = db.Column(db.String(36), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=True, index=True)
     kind = db.Column(db.String(30), nullable=False, default="generate_paper")
     status = db.Column(
         db.String(20), nullable=False, default="queued"
     )  # queued|running|paused|done|error|cancelled
+
+    # BUG-11: Validate status at the ORM level
+    @validates("status")
+    def _validate_status(self, key, value):
+        allowed = ("queued", "running", "paused", "done", "error", "cancelled")
+        if value is not None and value not in allowed:
+            raise ValueError(f"AiJob.status must be one of {allowed}, got {value!r}")
+        return value
+
     progress = db.Column(db.Integer, default=0)  # 0..100
     stage = db.Column(db.String(60), default="")  # 'outline' | 'sections' | 'references' | ...
     prompt = db.Column(db.Text)
@@ -364,6 +422,8 @@ class LiteratureItem(db.Model):
     must_read = db.Column(db.Boolean, default=False)
     is_relevant = db.Column(db.Boolean, default=True)
     notes = db.Column(db.Text, default="")  # user-editable notes
+    gap_riset = db.Column(db.Text, default="")  # AI-generated research gap suggestion
+    review = db.Column(db.Text, default="")  # AI-generated review (viola-chat)
     pinned = db.Column(db.Boolean, default=False)  # user-pinned to top
     file_id = db.Column(db.Integer, db.ForeignKey("paper_files.id"), nullable=True)
     slr_job_id = db.Column(
@@ -405,12 +465,55 @@ class LiteratureItem(db.Model):
             "must_read": bool(self.must_read),
             "is_relevant": bool(self.is_relevant),
             "notes": self.notes or "",
+            "gap_riset": self.gap_riset or "",
+            "review": self.review or "",
             "pinned": bool(self.pinned),
             "file_id": self.file_id,
             "slr_job_id": self.slr_job_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class ChatDraft(db.Model):
+    """Named draft exported from a chat conversation.
+
+    Drafts are snippets of discussion (or curated content) that the user
+    wants to re-use as context when generating a full paper or when
+    continuing a chat. They appear in:
+      - Paperfull tab: as selectable items (selected_drafts)
+      - Chat: via `@draft <name>` tag injection.
+    """
+
+    __tablename__ = "chat_drafts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    conversation_id = db.Column(
+        db.String(20), db.ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    name = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, default="")
+    tags = db.Column(db.JSON, nullable=True, default=list)  # optional tags for search
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    def to_dict(self, include_content: bool = False):
+        d = {
+            "id": self.id,
+            "paper_id": self.paper_id,
+            "user_id": self.user_id,
+            "conversation_id": self.conversation_id,
+            "name": self.name,
+            "tags": self.tags or [],
+            "content_length": len(self.content or ""),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_content:
+            d["content"] = self.content or ""
+        return d
 
 
 class SlrJob(db.Model):
@@ -500,6 +603,8 @@ class ImageGenJob(db.Model):
     )  # which account picked it up (account1..account4)
     image_id = db.Column(db.Integer, db.ForeignKey("paper_images.id"), nullable=True)
     error = db.Column(db.Text, nullable=True)  # error message if status=error
+    retry_count = db.Column(db.Integer, default=0, nullable=False)  # job-level retry attempts
+    target_path = db.Column(db.String(500), nullable=True)  # intended filename from paper JSON (e.g., "fig1_architecture.jpg")
     created_at = db.Column(db.DateTime, default=_utcnow, index=True)
     started_at = db.Column(db.DateTime, nullable=True)  # when worker claimed the job
     finished_at = db.Column(db.DateTime, nullable=True)  # when job reached terminal state
@@ -514,10 +619,43 @@ class ImageGenJob(db.Model):
             "status": self.status,
             "worker": self.worker,
             "error": self.error,
+            "retry_count": self.retry_count or 0,
+            "target_path": self.target_path,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "image": self.image.to_dict() if self.image else None,
+        }
+
+
+# ─── User State (key-value persistence) ──────────────────────────────────────
+# Generic key-value store for per-user, per-paper tool/UI state.
+# Replaces scattered localStorage usage with server-side persistence
+# so state survives refresh, device switch, and is isolated per-user.
+class UserState(db.Model):
+    __tablename__ = "user_states"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    paper_id = db.Column(db.String(20), db.ForeignKey("papers.id", ondelete="CASCADE"), nullable=True)
+    state_key = db.Column(db.String(100), nullable=False)
+    state_value = db.Column(
+        JSON().with_variant(JSONB, "postgresql"),
+        nullable=False,
+        default=dict,
+    )
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "paper_id", "state_key", name="uq_user_state"),
+    )
+
+    def to_dict(self):
+        return {
+            "key": self.state_key,
+            "paper_id": self.paper_id,
+            "value": self.state_value,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 

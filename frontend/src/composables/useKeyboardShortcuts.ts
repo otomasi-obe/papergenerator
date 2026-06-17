@@ -12,6 +12,8 @@ export interface KeyboardShortcut {
 
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
   const handleKeydown = (e: KeyboardEvent) => {
+    const el = e.target as HTMLElement
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
     for (const shortcut of shortcuts) {
       const ctrlMatch = shortcut.ctrl ? (e.ctrlKey || e.metaKey) : !e.ctrlKey && !e.metaKey
       const shiftMatch = shortcut.shift ? e.shiftKey : !e.shiftKey

@@ -65,7 +65,8 @@ with app.app_context():
                 if existing.get('paper_data') or existing.get('judul'):
                     skipped += 1
                     continue
-            except Exception:
+            except Exception as _e:
+                print(f"[sync_papers_to_fs] Re-writing corrupt JSON for {paper_id}: {_e}")
                 pass  # Re-write if corrupt
 
         # Ensure directory exists

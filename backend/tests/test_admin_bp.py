@@ -365,11 +365,11 @@ def test_get_summary_stats(app, client):
         _make_paper(user, "paper2")
 
         img = PaperImage(
-            id="img1",
             paper_id="paper1",
             user_id=user.id,
-            prompt="test",
-            status="done"
+            filename="img1.png",
+            original_name="diagram.png",
+            file_path="data/uploads/img1.png",
         )
         db.session.add(img)
 

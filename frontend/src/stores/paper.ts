@@ -1,11 +1,9 @@
 // @ts-nocheck
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import axios from 'axios'
 import api from '../api/index.js'
 
 const API_BASE = '/api'
-axios.defaults.timeout = 0
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────
 const LS_PAPER = 'pg_paper'
@@ -79,7 +77,89 @@ function normContent(content) {
   })
 }
 
+// Format a structured reference object (from AI output) into a display string.
+// Handles journal, conference, book, book_chapter, thesis, website types.
+// Uses a generic format that works across citation styles (author, year, title, venue).
+function _formatStructuredRef(ref: any): string {
+  if (!ref || typeof ref !== 'object') return ''
+  const authors = Array.isArray(ref.authors) ? ref.authors.join(', ') : (ref.authors || '')
+  const year = ref.year || ''
+  const title = ref.title || ''
+  const type = ref.type || ''
+  const journal = ref.journal || ''
+  const conference = ref.conference || ''
+  const volume = ref.volume || ''
+  const issue = ref.issue || ''
+  const pages = ref.pages || ''
+  const doi = ref.doi || ''
+  const publisher = ref.publisher || ''
+  const location = ref.location || ''
+  const url = ref.url || ''
+  const accessed = ref.accessed || ''
+  const institution = ref.institution || ''
+  const bookTitle = ref.book_title || ''
+  const editors = Array.isArray(ref.editors) ? ref.editors.join(', ') : (ref.editors || '')
+
+  if (!title && !authors) return ''
+
+  let parts: string[] = []
+
+  // Authors
+  if (authors) parts.push(authors)
+
+  // Year in parentheses
+  if (year) parts.push(`(${year})`)
+
+  // Title
+  if (title) {
+    if (type === 'journal' || type === 'conference') {
+      parts.push(`"${title}"`)
+    } else {
+      parts.push(title)
+    }
+  }
+
+  // Venue/journal
+  if (type === 'journal' && journal) {
+    let venue = journal
+    if (volume) venue += `, vol. ${volume}`
+    if (issue) venue += `, no. ${issue}`
+    if (pages) venue += `, pp. ${pages}`
+    parts.push(venue)
+  } else if (type === 'conference' && conference) {
+    let venue = `in ${conference}`
+    if (pages) venue += `, pp. ${pages}`
+    parts.push(venue)
+  } else if (type === 'book') {
+    if (location && publisher) parts.push(`${location}: ${publisher}`)
+    else if (publisher) parts.push(publisher)
+    if (pages) parts.push(`pp. ${pages}`)
+  } else if (type === 'book_chapter') {
+    if (bookTitle) {
+      let ch = `in ${bookTitle}`
+      if (editors) ch += `, ${editors}, Eds.`
+      parts.push(ch)
+    }
+    if (publisher) parts.push(publisher)
+    if (pages) parts.push(`pp. ${pages}`)
+  } else if (type === 'thesis') {
+    if (institution) parts.push(institution)
+    parts.push('Thesis')
+  } else if (type === 'website' && url) {
+    parts.push(`[Online]. Available: ${url}`)
+    if (accessed) parts.push(`(Accessed: ${accessed})`)
+  }
+
+  // DOI
+  if (doi) parts.push(`doi: ${doi}`)
+
+  return parts.join('. ').replace(/\.\./g, '.') + '.'
+}
+
 function fromPaperJsonRaw(json) {
+  if (!json || typeof json !== 'object') {
+    return createEmptyPaper()
+  }
   const p = createEmptyPaper()
   p.journal = json.journal || json.template || 'IEEE'
   p.citation_style = json.citation_style || 'ieee'
@@ -123,11 +203,19 @@ function fromPaperJsonRaw(json) {
     if (
       typeof json.references === 'object' &&
       !Array.isArray(json.references) &&
-      json.references.content
+      (json.references.content || json.references.items)
     ) {
-      p.references = json.references.content || []
+      // Dict-wrapped: { title, content: [...] } or { title, items: [...] }
+      p.references = json.references.content || json.references.items || []
     } else if (Array.isArray(json.references)) {
-      p.references = json.references.map((r) => (typeof r === 'string' ? r : r.text || ''))
+      // Keep structured objects as-is for downstream style formatting.
+      // Display components (ReferencesTab, PreviewTab) format them via _formatStructuredRef.
+      p.references = json.references.map((r) => {
+        if (typeof r === 'string') return r
+        if (r.text) return r.text
+        // Structured reference object — keep the full object for style reformatting
+        return r
+      })
     }
   }
   // Restore figure metadata if persisted
@@ -641,10 +729,13 @@ export const usePaperStore = defineStore('paper', () => {
     { deep: true }
   )
 
+  let _toastTimer: ReturnType<typeof setTimeout> | null = null
   function showToast(message, type = 'info') {
+    if (_toastTimer) clearTimeout(_toastTimer)
     toast.value = { show: true, message, type }
-    setTimeout(() => {
+    _toastTimer = setTimeout(() => {
       toast.value.show = false
+      _toastTimer = null
     }, 3500)
   }
 
@@ -849,7 +940,11 @@ export const usePaperStore = defineStore('paper', () => {
   }
   function removeSubsection(sIdx, subIdx) {
     recordChange('remove subsection')
-    paper.value.sections[sIdx].subsections.splice(subIdx, 1)
+    const sec = paper.value.sections?.[sIdx]
+    if (!sec || !Array.isArray(sec.subsections)) return
+    if (subIdx >= 0 && subIdx < sec.subsections.length) {
+      sec.subsections.splice(subIdx, 1)
+    }
   }
 
   function addContent(container, type) {
@@ -898,11 +993,12 @@ export const usePaperStore = defineStore('paper', () => {
   // ─── CRUD: Authors ────────────────────────────────────────────────────
   function addAuthor() {
     recordChange('add author')
+    if (!Array.isArray(paper.value.authors)) paper.value.authors = []
     paper.value.authors.push({ name: '', affiliation: '', location: '', email: '' })
   }
   function removeAuthor(idx) {
     recordChange('remove author')
-    if (paper.value.authors.length > 1) paper.value.authors.splice(idx, 1)
+    if (Array.isArray(paper.value.authors) && paper.value.authors.length > 1) paper.value.authors.splice(idx, 1)
   }
 
   // ─── CRUD: Keywords ───────────────────────────────────────────────────
@@ -999,6 +1095,10 @@ export const usePaperStore = defineStore('paper', () => {
           reject(err)
         }
       }
+      reader.onerror = () => {
+        showToast('Failed to read file: ' + (reader.error?.message || 'unknown error'), 'error')
+        reject(reader.error || new Error('FileReader error'))
+      }
       reader.readAsText(file)
     })
   }
@@ -1023,7 +1123,7 @@ export const usePaperStore = defineStore('paper', () => {
       const journal = (paper.value.journal || 'IEEE').trim() || 'IEEE'
       const res = await api.post(
         `${API_BASE}/export`,
-        { journal, paper: toPaperJson() },
+        { journal, paper_id: currentPaperId.value, paper: toPaperJson() },
         { responseType: 'blob' }
       )
       const url = window.URL.createObjectURL(new Blob([res.data]))
@@ -1161,6 +1261,16 @@ export const usePaperStore = defineStore('paper', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  // Apply paper data directly (e.g., from SSE done event) without fetching from DB
+  function applyPaperData(data) {
+    if (!data) return
+    paper.value = fromPaperJsonRaw(data)
+    // Reset undo/redo history since we have new content
+    undoStack.value = []
+    redoStack.value = []
+    recordChange('generate paper')
   }
 
   async function loadPaperImages(paperId) {
@@ -1315,6 +1425,7 @@ export const usePaperStore = defineStore('paper', () => {
     resumePendingJob,
     savePaperToDb,
     loadPaperFromDb,
+    applyPaperData,
     loadPaperImages,
     loadPaperCharts,
     uploadImage,
@@ -1326,6 +1437,7 @@ export const usePaperStore = defineStore('paper', () => {
     redo,
     canUndo,
     canRedo,
+    formatRef: _formatStructuredRef,
     apiGet: (url) => api.get(url),
     apiUploadPdfs: (formData) =>
       api.post(`${API_BASE}/upload-pdfs`, formData, {

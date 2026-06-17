@@ -31,20 +31,20 @@ def upgrade():
     op.create_index('ix_ai_jobs_started_at', 'ai_jobs', ['started_at'], unique=False)
     
     # Conversations table - improve lookups
-    op.create_index('ix_conversations_user_id', 'conversations', ['user_id'], unique=False)
+    # NOTE: ix_conversations_user_id already created by f0121a767d17 (merge branch)
     op.create_index('ix_conversations_paper_id', 'conversations', ['paper_id'], unique=False)
     op.create_index('ix_conversations_updated_at', 'conversations', ['updated_at'], unique=False)
     
     # ChatMessage table - improve conversation queries
-    op.create_index('ix_chat_messages_conversation_id', 'chat_messages', ['conversation_id'], unique=False)
+    # NOTE: ix_chat_messages_conversation_id already created by f0121a767d17 (merge branch)
     op.create_index('ix_chat_messages_created_at', 'chat_messages', ['created_at'], unique=False)
     
     # PaperImage table - improve paper lookups
     op.create_index('ix_paper_images_paper_id', 'paper_images', ['paper_id'], unique=False)
-    op.create_index('ix_paper_images_user_id', 'paper_images', ['user_id'], unique=False)
+    # NOTE: ix_paper_images_user_id already created by f0121a767d17 (merge branch)
     
     # ApiUsageLog table - improve analytics queries
-    op.create_index('ix_api_usage_logs_user_id', 'api_usage_logs', ['user_id'], unique=False)
+    # NOTE: ix_api_usage_logs_user_id already created by f0121a767d17 (merge branch)
     op.create_index('ix_api_usage_logs_created_at', 'api_usage_logs', ['created_at'], unique=False)
     op.create_index('ix_api_usage_logs_endpoint', 'api_usage_logs', ['endpoint'], unique=False)
     

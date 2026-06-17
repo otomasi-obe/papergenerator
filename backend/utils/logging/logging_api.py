@@ -125,7 +125,7 @@ def receive_frontend_logs():
     """
     try:
         user_id = get_jwt_identity() if get_jwt_identity() else "anonymous"
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data or "logs" not in data:
             return jsonify({"error": "Invalid payload"}), 400

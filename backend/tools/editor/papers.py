@@ -16,9 +16,11 @@ from datetime import datetime, timezone
 import jsonpatch
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from sqlalchemy.exc import IntegrityError
 
 from database.models import (
     AiJob,
+    ChatDraft,
     ChatMessage,
     Conversation,
     ImageGenJob,
@@ -28,8 +30,9 @@ from database.models import (
     PaperImage,
     ProjectMemory,
     SlrJob,
+    UserState,
     db,
-)
+safe_commit,)
 from utils.middleware import validate_query, validate_request
 from tools.editor.utils import PAPER_ID_RE, safe_paper_dir
 from utils.schemas import PAPER_CREATE_SCHEMA, PAPER_LIST_QUERY_SCHEMA, PAPER_UPDATE_SCHEMA
@@ -68,7 +71,7 @@ def list_papers():
     papers = q.limit(limit).offset(offset).all()
 
     # Get total count efficiently - only if we need it for pagination
-    total = q.count() if papers else 0
+    total = q.count()
 
     return jsonify(
         {
@@ -112,7 +115,14 @@ def save_paper():
         paper = Paper(id=paper_id, user_id=user_id, title=title, data=data)
         db.session.add(paper)
 
-    db.session.commit()
+    try:
+        safe_commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Paper with this ID already exists"}), 409
+    except Exception:
+        db.session.rollback()
+        raise
     # Save paper.json to user storage
     try:
         from utils.core.user_storage import get_username, save_paper_json_by_id
@@ -169,7 +179,11 @@ def update_paper(paper_id: str):
         save_paper_json_by_id(_username, paper_id, data)
     except Exception:
         pass
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
     return jsonify({"success": True, "paper": paper.to_dict()})
 
 
@@ -208,13 +222,18 @@ def delete_paper(paper_id: str):
         # the session-level API here.
         db.session.query(SlrJob).filter_by(paper_id=paper_id).delete(synchronize_session=False)
         LiteratureItem.query.filter_by(paper_id=paper_id).delete(synchronize_session=False)
+        # Use raw SQL for chat_drafts/user_states to avoid any ORM
+        # column-shadowing issues (e.g. ChatDraft.name, etc.)
+        from sqlalchemy import text as _sa_text
+        db.session.execute(_sa_text("DELETE FROM chat_drafts WHERE paper_id = :pid"), {"pid": paper_id})
+        db.session.execute(_sa_text("DELETE FROM user_states WHERE paper_id = :pid"), {"pid": paper_id})
 
         paper_img_dir = safe_paper_dir(paper_id)
         if paper_img_dir and paper_img_dir.exists():
             shutil.rmtree(str(paper_img_dir))
 
         db.session.delete(paper)
-        db.session.commit()
+        safe_commit()
 
         # Mark user storage JSON as deleted instead of removing it
         try:
@@ -325,7 +344,7 @@ def patch_paper(paper_id: str):
         save_paper_json_by_id(_username, paper_id, patched)
     except Exception:
         pass
-    db.session.commit()
+    safe_commit()
 
     return jsonify(
         {

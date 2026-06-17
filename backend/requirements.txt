@@ -36,3 +36,4 @@ simhash>=2.1
 rapidfuzz>=3.9
 duckduckgo-search>=6.1
 langdetect>=1.0.9
+mathml2omml==0.0.2

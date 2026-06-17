@@ -11,6 +11,8 @@ interface QuotaData {
   month_key: string
   breakdown_by_model: any[]
   is_unlimited: boolean
+  input_tokens?: number
+  output_tokens?: number
 }
 
 const INITIAL_QUOTA: QuotaData = {
@@ -22,6 +24,8 @@ const INITIAL_QUOTA: QuotaData = {
   month_key: '',
   breakdown_by_model: [],
   is_unlimited: false,
+  input_tokens: 0,
+  output_tokens: 0,
 }
 
 export const useQuotaStore = defineStore('quota', () => {

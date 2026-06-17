@@ -94,7 +94,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         if filters.get("year_from") or filters.get("year_to"):
             year_from = filters.get("year_from", "1900")
             year_to = filters.get("year_to", "2100")
-            query_parts.append(f"PUBYEAR > {year_from} AND PUBYEAR < {year_to}")
+            query_parts.append(f"PUBYEAR >= {year_from} AND PUBYEAR <= {year_to}")
         if filters.get("subject"):
             query_parts.append(f"SUBJAREA({filters['subject']})")
 
@@ -106,7 +106,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "query": full_query,
             "count": min(per_page, limit - fetched),
             "start": start,
-            "sort": "-citedby-count",  # Sort by citations
+            "sort": "-relevancy",
         }
 
         data = fetch_json(client, BASE, params=params, headers=headers)

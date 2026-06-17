@@ -8,7 +8,7 @@
           <h1 class="text-2xl font-bold text-ink-900 dark:text-ink-50">File Manager</h1>
           <p class="text-ink-600 dark:text-ink-300 text-sm mt-1">Manage images for each paper</p>
         </div>
-        <router-link to="/dashboard" class="text-sm text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:text-ink-50 flex items-center gap-1">
+        <router-link to="/dashboard" class="text-sm text-ink-600 dark:text-ink-50 hover:text-ink-900 flex items-center gap-1">
           ← Back to Papers
         </router-link>
       </div>
@@ -26,14 +26,14 @@
       <!-- Breadcrumb for specific paper -->
       <div v-if="currentPaperId && paperTitle" class="mb-6 flex items-center gap-2">
         <router-link to="/files" class="text-sm text-[var(--accent)] hover:underline">All Papers</router-link>
-        <span class="text-ink-500 dark:text-ink-400">/</span>
+        <span class="text-ink-500 dark:text-ink-300">/</span>
         <span class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ paperTitle }}</span>
         <router-link :to="`/editor/${currentPaperId}`" class="ml-2 text-xs text-[var(--accent)] hover:underline">
           Edit Paper →
         </router-link>
       </div>
 
-      <div v-if="!effectivePaperId" class="text-center py-20 text-ink-500 dark:text-ink-400">
+      <div v-if="!effectivePaperId" class="text-center py-20 text-ink-500 dark:text-ink-300">
         <div class="text-4xl mb-3">🗂️</div>
         <p>Select a paper to manage its images</p>
       </div>
@@ -55,7 +55,7 @@
             <div v-else>
               <div class="text-4xl mb-2">📁</div>
               <p class="text-ink-600 dark:text-ink-300 text-sm">Click or drag images here to upload</p>
-              <p class="text-ink-500 dark:text-ink-400 text-xs mt-1">PNG, JPG, SVG, WebP supported</p>
+              <p class="text-ink-500 dark:text-ink-300 text-xs mt-1">PNG, JPG, SVG, WebP supported</p>
             </div>
           </div>
         </div>
@@ -66,7 +66,7 @@
             <h2 class="font-semibold text-ink-700 dark:text-ink-200">Images ({{ images.length }})</h2>
           </div>
 
-          <div v-if="images.length === 0" class="text-center py-12 text-ink-500 dark:text-ink-400">
+          <div v-if="images.length === 0" class="text-center py-12 text-ink-500 dark:text-ink-300">
             <div class="text-4xl mb-3">🖼️</div>
             <p>No images uploaded for this paper yet</p>
           </div>

@@ -223,13 +223,13 @@ COMMON_MISSPELLINGS: Dict[str, str] = {
     "neccesary": "necessary", "nieghbor": "neighbor", "occasionaly": "occasionally",
     "publically": "publicly", "realy": "really", "reccomend": "recommend",
     "refrence": "reference", "religous": "religious", "rember": "remember",
-    "resistence": "resistance", "sargent": "sergeant", "seige": "siege",
+    "resistence": "resistance", "sargent": "sergeant",
     "sentance": "sentence", "speach": "speech", "strenght": "strength",
     "succede": "succeed", "supress": "suppress", "temperture": "temperature",
     "tendancy": "tendency", "therefor": "therefore", "threshhold": "threshold",
     "tounge": "tongue", "truely": "truly", "unfortunatly": "unfortunately",
     "vaccum": "vacuum", "vegatable": "vegetable", "wether": "whether",
-    "wich": "which", "writting": "writing",
+    "wich": "which",
 }
 
 # Language codes supported by pyspellchecker

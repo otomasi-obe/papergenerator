@@ -118,11 +118,13 @@ import OnboardingWizard from '../components/OnboardingWizard.vue'
 import TourGuide from '../components/TourGuide.vue'
 import { usePaperStore } from '../stores/paper.js'
 import { useAuthStore } from '../stores/auth.js'
+import { usePaperJobsStore } from '../stores/paperJobs.js'
 
 const router = useRouter()
 const route = useRoute()
 const store = usePaperStore()
 const auth = useAuthStore()
+const jobsStore = usePaperJobsStore()
 
 // Onboarding wizard state
 const showOnboarding = ref(false)
@@ -226,8 +228,13 @@ function confirmDelete(paper) {
 async function doDelete() {
   if (!deleteTarget.value) return
   try {
-    await api.delete(`/api/papers/${deleteTarget.value.id}`)
-    papers.value = papers.value.filter(p => p.id !== deleteTarget.value.id)
+    const deletedId = deleteTarget.value.id
+    await api.delete(`/api/papers/${deletedId}`)
+    papers.value = papers.value.filter(p => p.id !== deletedId)
+    // Clean stale jobs from bell dropdown immediately
+    jobsStore.recentDone = jobsStore.recentDone.filter(j => j.paper_id !== deletedId)
+    jobsStore.globalActiveJobs = jobsStore.globalActiveJobs.filter(j => j.paper_id !== deletedId)
+    jobsStore.failedJobs = jobsStore.failedJobs.filter(j => j.paper_id !== deletedId)
     showToast('Paper deleted')
   } catch (e) {
     showToast('Delete failed — try again')
@@ -258,7 +265,10 @@ onMounted(async () => {
 })
 
 // Reload papers whenever the route changes (e.g. navigating back from editor)
+// Use a flag to avoid double-fetch on initial mount (watch fires immediately too)
+let _dashMounted = false
 watch(() => route.path, (newPath) => {
+  if (!_dashMounted) { _dashMounted = true; return }
   if (newPath === '/dashboard') {
     loadPapers()
   }

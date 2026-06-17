@@ -60,10 +60,17 @@ def init_rate_limiter(app, in_tests=False):
     
     ratelimit_storage = os.getenv("RATELIMIT_STORAGE_URI")
     if not ratelimit_storage:
-        if app.config.get("ENV") == "production" or app.config.get("PRODUCTION"):
+        # Fall back to REDIS_URL so the limiter is SHARED across gunicorn workers.
+        # memory:// is per-process — with N workers the effective limit is N× too
+        # loose. Deriving from REDIS_URL keeps rate limiting correct in prod.
+        _redis_url = os.getenv("REDIS_URL")
+        if _redis_url:
+            ratelimit_storage = _redis_url
+            log.info("Rate limiting using REDIS_URL (shared across workers).")
+        elif app.config.get("ENV") == "production" or app.config.get("PRODUCTION") or os.getenv("FLASK_ENV") == "production":
             raise RuntimeError(
                 "RATELIMIT_STORAGE_URI must be set in production. "
-                "Use Redis: redis://localhost:6379 or redis://user:pass@host:port/db"
+                "Use Redis: redis://localhost:***@host:port/db"
             )
         else:
             # Development/testing: allow memory storage

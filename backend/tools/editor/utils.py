@@ -22,8 +22,33 @@ def upload_folder() -> Path:
 
 
 def safe_paper_dir(paper_id: str) -> Path | None:
+    """Return paper directory under user storage: user/<username>/<paper_id>/.
+
+    Falls back to legacy data/uploads/<paper_id>/ if paper/user not found.
+    """
     if not paper_id or not PAPER_ID_RE.match(paper_id):
         return None
+
+    # Primary: user/<username>/<paper_id>/
+    try:
+        from database.models import Paper, User
+        paper = Paper.query.filter_by(id=paper_id).first()
+        if paper:
+            user = User.query.get(paper.user_id)
+            if user and user.email:
+                import re as _re
+                username = _re.sub(r'[^A-Za-z0-9._-]+', '_', user.email.split("@")[0]).strip("._-") or "unknown"
+                user_dir = (Path(current_app.root_path) / "user" / username / paper_id).resolve()
+                base = (Path(current_app.root_path) / "user").resolve()
+                try:
+                    user_dir.relative_to(base)
+                except ValueError:
+                    return None
+                return user_dir
+    except Exception:
+        pass
+
+    # Fallback: legacy data/uploads/<paper_id>/
     base = upload_folder().resolve()
     target = (upload_folder() / paper_id).resolve()
     try:

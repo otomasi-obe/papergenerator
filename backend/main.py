@@ -10,11 +10,17 @@ import json
 import logging
 import os
 import re
+import sys
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Add project root to sys.path so PaperRiset.eks.editor.* is importable
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 from dotenv import load_dotenv
 from flask import Flask, Response, g, jsonify, request, send_file
@@ -33,7 +39,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from tools.admin import admin
 from utils.auth_bp import auth, init_oauth
 from tools.data.chart_api import chart_api
-from tools.chat.chat import simple_chat
+from tools.data.data_jobs import data_jobs
+from tools.chat import simple_chat
+from tools.chat.drafts import drafts_bp
 from tools.File import files, _EXTRACT_POOL
 from utils.health import health
 from tools.image_generation.image_jobs import image_jobs
@@ -45,7 +53,8 @@ from tools.Literatur.slr_api import slr_api
 # from tools.chat.workflow_api import workflow_api
 from utils.ai_tools.tools_api import tools_api
 from utils.logging import logging_api
-from database.models import AiJob, ApiUsageLog, Paper, SlrJob, ImageGenJob, db
+from utils.state_bp.state import state_bp
+from database.models import AiJob, ApiUsageLog, Paper, SlrJob, ImageGenJob, db, safe_commit
 from utils.job_core import (
     init_job_core as _init_job_core,
     _job_create,
@@ -74,8 +83,8 @@ try:
         )
 except (ImportError, ValueError, Exception) as e:
     logging.getLogger(__name__).warning(f"Failed to initialize Sentry: {e}")
-from tools.editor.chunked import GenerationCancelled
-from tools.editor.single import generate_paper_json_single
+from PaperRiset.eks.editor.chunked import GenerationCancelled
+from PaperRiset.eks.editor.single import generate_paper_json_single
 from utils.ai_tools.model_config import get_primary_generate_model
 
 # Load environment variables.
@@ -94,6 +103,16 @@ _in_tests = (
 load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=not _in_tests)
 load_dotenv(Path(__file__).resolve().parent / ".env", override=not _in_tests)
 
+# Bridge numbered AIOTOMASI provider slots (AIOTOMASI_API1/APIKEY1) onto the
+# base names (AIOTOMASI_API/AIOTOMASI_APIKEY) that every route reads. The
+# canonical .env only declares numbered slots, so without this the base
+# lookups return empty and generation fails with "not configured".
+try:
+    from utils.core.env_loader import normalize_aiotomasi_aliases
+    normalize_aiotomasi_aliases()
+except Exception as _e:
+    logging.getLogger(__name__).warning("Failed to normalize AIOTOMASI aliases: %s", _e)
+
 app = Flask(__name__)
 
 # Trust nginx reverse proxy headers (X-Forwarded-For, X-Forwarded-Proto, etc.)
@@ -111,11 +130,15 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # pool_size/max_overflow/pool_timeout. Skip those keys when on sqlite.
 if not _db_url.startswith("sqlite:"):
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "pool_size": 12,
-        "max_overflow": 28,
-        "pool_timeout": 30,
-        "pool_recycle": 1800,
-        "pool_pre_ping": True,
+        # PostgreSQL max_connections=100. With 16 gunicorn workers, each worker
+        # gets a small pool. Total = 16×3 base + 16×4 overflow = 112 worst case.
+        # Overflow rarely hits simultaneously. pgbouncer recommended for
+        # production at scale (transaction-level pooling).
+        "pool_size": 3,
+        "max_overflow": 4,
+        "pool_timeout": 10,       # Fail fast if pool exhausted (don't block 30s)
+        "pool_recycle": 1800,     # Recycle connections every 30 min
+        "pool_pre_ping": True,    # Detect stale connections before use
     }
 else:
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -202,18 +225,49 @@ def _on_413(_e):
                     "Coba upload file lebih sedikit atau pisah jadi beberapa kali upload."
                 ),
                 "code": "PAYLOAD_TOO_LARGE",
+                "category": "CLIENT",
             }
         ),
         413,
     )
 
 
+# BUG-25: Catch-all 500 handler for consistent error format
+@app.errorhandler(500)
+def _on_500(_e):
+    return (
+        jsonify(
+            {
+                "error": "Internal server error",
+                "code": "INTERNAL_ERROR",
+                "category": "SERVER",
+            }
+        ),
+        500,
+    )
+
+
+@app.errorhandler(400)
+def _on_400(_e):
+    return (
+        jsonify(
+            {
+                "error": "Bad request",
+                "code": "BAD_REQUEST",
+                "category": "CLIENT",
+            }
+        ),
+        400,
+    )
+
+
 # ─── Extensions ───────────────────────────────────────────────────────────────
-# CORS: Only allow localhost in development
-cors_origins = []
+# CORS: Allow origins from env var; add dev localhost origins when not production
+cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:8000,http://localhost:1000").split(",") if o.strip()]
 if app.config.get("ENV") != "production" and not app.config.get("PRODUCTION"):
-    cors_origins.extend(["http://localhost:8000"])
-CORS(app, supports_credentials=True, origins=cors_origins)
+    cors_origins.extend(["http://localhost:8000", "http://localhost:1000", "http://localhost:5173"])
+    cors_origins = list(set(cors_origins))
+CORS(app, supports_credentials=True, origins=cors_origins if cors_origins else "*")
 db.init_app(app)
 jwt = JWTManager(app)
 
@@ -221,27 +275,27 @@ jwt = JWTManager(app)
 # ─── JWT Error Handlers ───────────────────────────────────────────────────────
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
-    return jsonify({"error": "Token expired", "code": "TOKEN_EXPIRED"}), 401
+    return jsonify({"error": "Token expired", "code": "TOKEN_EXPIRED", "category": "AUTH"}), 401
 
 
 @jwt.invalid_token_loader
 def invalid_token_callback(error):
-    return jsonify({"error": "Invalid token", "code": "INVALID_TOKEN"}), 401
+    return jsonify({"error": "Invalid token", "code": "INVALID_TOKEN", "category": "AUTH"}), 401
 
 
 @jwt.unauthorized_loader
 def unauthorized_callback(error):
-    return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED"}), 401
+    return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED", "category": "AUTH"}), 401
 
 
 @jwt.needs_fresh_token_loader
 def needs_fresh_token_callback(jwt_header, jwt_payload):
-    return jsonify({"error": "Fresh token required", "code": "FRESH_TOKEN_REQUIRED"}), 401
+    return jsonify({"error": "Fresh token required", "code": "FRESH_TOKEN_REQUIRED", "category": "AUTH"}), 401
 
 
 @jwt.revoked_token_loader
 def revoked_token_callback(jwt_header, jwt_payload):
-    return jsonify({"error": "Token has been revoked", "code": "TOKEN_REVOKED"}), 401
+    return jsonify({"error": "Token has been revoked", "code": "TOKEN_REVOKED", "category": "AUTH"}), 401
 
 
 init_oauth(app)
@@ -270,7 +324,7 @@ if _QUERY_LOGGING_ENABLED:
         elif elapsed > 0.05:
             query_log.info("SQL (%.3fs): %s", elapsed, statement)
 
-    log.info("database query logging enabled (QUERY_LOGGING_ENABLED=1)")
+    logging.getLogger(__name__).info("database query logging enabled (QUERY_LOGGING_ENABLED=1)")
 
 
 # PostgreSQL session safeguards
@@ -296,10 +350,21 @@ def _set_pg_session_defaults(dbapi_connection, _):
 # Rate limiting: require Redis in production for distributed rate limiting
 ratelimit_storage = os.getenv("RATELIMIT_STORAGE_URI")
 if not ratelimit_storage:
-    if app.config.get("ENV") == "production" or app.config.get("PRODUCTION"):
+    # Fall back to REDIS_URL so the limiter is SHARED across gunicorn workers.
+    # memory:// is per-process — with N workers the effective limit is N× too
+    # loose (16 workers here = 16× the intended cap). Flask 3.x removed the
+    # "ENV" config key, so the old production guard below never fires; deriving
+    # from REDIS_URL is what actually makes rate limiting correct in prod.
+    _redis_url = os.getenv("REDIS_URL")
+    if _redis_url:
+        ratelimit_storage = _redis_url
+        logging.getLogger(__name__).info(
+            "Rate limiting using REDIS_URL (shared across workers)."
+        )
+    elif os.getenv("PRODUCTION") or os.getenv("FLASK_ENV") == "production":
         raise RuntimeError(
             "RATELIMIT_STORAGE_URI must be set in production. "
-            "Use Redis: redis://localhost:6379 or redis://user:pass@host:port/db"
+            "Use Redis: redis://localhost:***@host:port/db"
         )
     else:
         # Development/testing: allow memory storage
@@ -334,27 +399,38 @@ limiter = Limiter(
     key_func=get_remote_address,
     app=app,
     enabled=not _in_tests,
-    default_limits=["1000 per minute"],
+    default_limits=["200 per minute"],  # Lowered from 1000 for 1000+ concurrent users
     storage_uri=ratelimit_storage,
     strategy="fixed-window",
     on_breach=rate_limit_handler,
 )
 
 
-# ─── Correlation ID middleware (per-request UUID for log tracing) ───────────
+# ─── Correlation ID + JWT cache middleware ────────────────────────────────
 @app.before_request
 def add_correlation_id():
     g.correlation_id = str(uuid.uuid4())
+    # BUG-21: Cache user_id here so after_request doesn't re-verify JWT
+    g.user_id = None
+    try:
+        verify_jwt_in_request(optional=True)
+        identity = get_jwt_identity()
+        if identity:
+            g.user_id = int(identity)
+    except Exception:
+        pass
 
 
 app.register_blueprint(auth)
 app.register_blueprint(admin)
 app.register_blueprint(simple_chat)
+app.register_blueprint(drafts_bp)
 app.register_blueprint(papers)
 app.register_blueprint(files)
 app.register_blueprint(paper_images)
 app.register_blueprint(image_serve)
 app.register_blueprint(chart_api)
+app.register_blueprint(data_jobs)
 app.register_blueprint(jobs)
 app.register_blueprint(image_jobs)
 app.register_blueprint(slr_api)
@@ -362,6 +438,20 @@ app.register_blueprint(quota)
 app.register_blueprint(health)
 app.register_blueprint(tools_api)
 app.register_blueprint(logging_api)
+app.register_blueprint(state_bp)
+
+
+# ─── Observability routes: /metrics, /api/metrics, /api/healthz ───────────────
+# main.py owns its own request/logging middleware, so we register only the
+# observability ROUTES here (not the before/after_request hooks).
+try:
+    from utils.monitoring.observability_v2 import register_observability_routes
+
+    register_observability_routes(app, db)
+except Exception as _obs_err:  # pragma: no cover - defensive
+    logging.getLogger(__name__).warning(
+        "Failed to register observability routes: %s", _obs_err
+    )
 
 
 # ─── OpenAPI / Swagger UI ─────────────────────────────────────────────────
@@ -460,14 +550,8 @@ def _log_request(response):
         duration_ms = 0
         if hasattr(g, '_req_started_at'):
             duration_ms = (time.perf_counter() - g._req_started_at) * 1000
-        user_id = None
-        try:
-            verify_jwt_in_request(optional=True)
-            identity = get_jwt_identity()
-            if identity:
-                user_id = int(identity)
-        except Exception:
-            pass
+        # BUG-21: Read cached user_id from g instead of re-verifying JWT
+        user_id = getattr(g, 'user_id', None)
         log_access(
             method=request.method,
             path=request.path,
@@ -484,6 +568,16 @@ def _log_request(response):
 # Stricter rate limit on auth endpoints to defend against credential stuffing.
 limiter.limit("10 per minute")(auth)
 
+# Rate limit expensive generation endpoints to prevent API exhaustion under load.
+# Paper generation triggers AI API calls — limit to prevent overwhelming upstream.
+limiter.limit("15 per minute")(jobs)
+
+# Rate limit image generation — Playwright workers are very resource-intensive.
+limiter.limit("10 per minute")(image_jobs)
+
+# Rate limit AI tools endpoint — prevent abuse of expensive AI calls.
+limiter.limit("30 per minute")(tools_api)
+
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 from utils.core.global_logger import init_global_logging, log_access, log_activity
 _global_log = init_global_logging()
@@ -497,6 +591,10 @@ USER_BASE = Path(__file__).parent / "user"
 USER_BASE.mkdir(exist_ok=True)
 
 TEMPLATE_FOLDER = Path(__file__).parent / "tools" / "Journal"
+
+# Shared lock for all journal export adapters — prevents concurrent
+# setattr→call→restore from clobbering module globals across different papers.
+_ADAPTER_LOCK = threading.Lock()
 
 
 def _available_journals():
@@ -527,8 +625,54 @@ def _resolve_journal_code(raw: str | None) -> str:
     return m.get(raw_norm.lower(), raw_norm)
 
 
+def _make_generate_adapter(mod, gen_fn):
+    """Adapt a legacy ``generate()`` (no-arg, reads module-level globals) module
+    into the ``build_document(json_path, output_path)`` interface used by the
+    export route.
+
+    These generators read their input/output paths from module globals
+    (``TEMPLATE_JSON``/``JSON_PATH`` and ``OUTPUT_DOCX``/``OUTPUT_PATH``) and a
+    ``load_json()`` helper that reads the global at call time. We temporarily
+    rebind those globals so the export pipeline can drive arbitrary paths, then
+    restore them so concurrent exports of different papers don't clobber each
+    other.
+    """
+    INPUT_NAMES = ("TEMPLATE_JSON", "JSON_PATH", "INPUT_JSON", "DATA_JSON")
+    OUTPUT_NAMES = ("OUTPUT_DOCX", "OUTPUT_PATH", "OUT_DOCX", "OUTPUT")
+
+    def adapter(json_path, output_path=None):
+        from pathlib import Path as _P
+        with _ADAPTER_LOCK:
+            in_name = next((n for n in INPUT_NAMES if hasattr(mod, n)), None)
+            out_name = next((n for n in OUTPUT_NAMES if hasattr(mod, n)), None)
+            saved = {}
+            if in_name:
+                saved[in_name] = getattr(mod, in_name)
+                setattr(mod, in_name, _P(json_path))
+            if out_name:
+                saved[out_name] = getattr(mod, out_name)
+                if output_path is not None:
+                    setattr(mod, out_name, _P(output_path))
+            try:
+                result = gen_fn()
+            finally:
+                for k, v in saved.items():
+                    setattr(mod, k, v)
+        if output_path is not None:
+            return _P(output_path)
+        if result is not None:
+            return result
+        return _P(getattr(mod, out_name)) if out_name else None
+
+    return adapter
+
+
 def _get_builder_for_journal(journal_code: str):
-    """Return the build_document callable for a known template code."""
+    """Return the build_document callable for a known template code.
+
+    Falls back to a ``generate()``-adapter for legacy single-entry generators
+    that don't expose a ``build_document(json_path, output_path)`` signature.
+    """
     available = _available_journals()
     m = {c.lower(): c for c in available}
     canonical = m.get(journal_code.lower())
@@ -536,9 +680,12 @@ def _get_builder_for_journal(journal_code: str):
         raise ValueError(f"Unknown journal template: {journal_code}")
     mod = importlib.import_module(f"tools.Journal.{canonical}gen")
     builder = getattr(mod, "build_document", None)
-    if not callable(builder):
-        raise ValueError(f"Template generator missing build_document: {canonical}gen")
-    return canonical, builder
+    if callable(builder):
+        return canonical, builder
+    gen_fn = getattr(mod, "generate", None)
+    if callable(gen_fn):
+        return canonical, _make_generate_adapter(mod, gen_fn)
+    raise ValueError(f"Template generator missing build_document/generate: {canonical}gen")
 
 
 AIOTOMASI_MODEL = get_primary_generate_model()
@@ -557,32 +704,65 @@ AIJOB_PENDING_TIMEOUT_SECONDS = 15 * 60  # 15 minutes
 
 
 def _sweep_stuck_jobs():
-    """Best-effort: mark AiJob rows stuck in 'pending' beyond the timeout
-    as errored so the frontend stops polling forever after a worker crash.
-    Runs in-process from a daemon thread; safe under multi-worker because the
-    UPDATE is conditional on status='pending'.
+    """Best-effort: mark AiJob rows stuck in 'pending' or 'running' beyond the
+    timeout as errored so the frontend stops polling forever after a worker crash.
+    Also recovers jobs left in 'running' after a server restart (daemon threads
+    killed by SIGTERM). Safe under multi-worker because UPDATEs are conditional.
+    Only one worker runs the sweeper via Redis distributed lock (BUG-15).
     """
+    _SWEEP_LOCK_KEY = "papergenerator:sweeper_lock"
+    _SWEEP_LOCK_TTL = 120  # seconds
+
     while True:
         try:
             time.sleep(60)
+
+            # Distributed lock: only one worker runs each sweep iteration
+            from utils.core.redis_client import get_redis
+            rc = get_redis()
+            if rc is not None:
+                import uuid as _uuid
+                lock_token = str(_uuid.uuid4())
+                acquired = rc.set(_SWEEP_LOCK_KEY, lock_token, nx=True, ex=_SWEEP_LOCK_TTL)
+                if not acquired:
+                    continue  # another worker holds the lock, skip this iteration
+            # If Redis unavailable (fallback), fall through — original behavior
+
             with app.app_context():
-                cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(
+                # Pending jobs stuck > 15 min
+                cutoff = datetime.now(timezone.utc) - _td(
                     seconds=AIJOB_PENDING_TIMEOUT_SECONDS
                 )
                 stuck = AiJob.query.filter(
                     AiJob.status == "pending",
                     AiJob.started_at < cutoff,
                 ).all()
-                if not stuck:
+                # Running jobs stuck > 30 min (covers post-restart recovery)
+                running_cutoff = datetime.now(timezone.utc) - _td(seconds=30 * 60)
+                stuck_running = AiJob.query.filter(
+                    AiJob.status == "running",
+                    AiJob.started_at < running_cutoff,
+                ).all()
+                all_stuck = stuck + stuck_running
+                if not all_stuck:
                     continue
-                for j in stuck:
-                    j.status = "error"
-                    j.error = (
-                        f"Job stuck >{AIJOB_PENDING_TIMEOUT_SECONDS//60}min — worker likely crashed"
-                    )
-                    j.timeout = True
-                db.session.commit()
-                log.warning("Swept %d stuck AI jobs", len(stuck))
+                stuck_ids = [j.id for j in all_stuck]
+                AiJob.query.filter(
+                    AiJob.id.in_(stuck_ids),
+                    AiJob.status.in_(["pending", "running"]),
+                ).update(
+                    {
+                        "status": "error",
+                        "error": "Job stuck — worker likely crashed or server restarted",
+                        "timeout": True,
+                    },
+                    synchronize_session=False,
+                )
+                safe_commit()
+                log.warning(
+                    "Swept %d stuck AI jobs (%d pending, %d running)",
+                    len(all_stuck), len(stuck), len(stuck_running),
+                )
         except Exception:
             log.exception("AiJob sweeper iteration failed")
 
@@ -590,14 +770,9 @@ def _sweep_stuck_jobs():
 threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").start()
 
 # ─── Image generation worker pool (4 workers, 1 per Gemini account) ──────
-# Lazy-started so the import-only path (CLI / tests / migrations) doesn't try
-# to spin up Playwright. Started here on app boot.
-try:
-    from tools.image_generation.worker import start_image_workers as _start_image_workers  # noqa: PLC0415
-
-    _start_image_workers(app)
-except Exception:
-    log.exception("Failed to start image worker pool — generate-image will not work")
+# MOVED to gunicorn.conf.py post_fork hook. Starting threads at module level
+# with preload_app=True causes 'Event' object is not callable errors after
+# gunicorn forks workers. The post_fork hook starts workers cleanly.
 
 # ─── SLR worker pool (max 10 workers, FIFO DB-backed queue) ─────────────
 # Pulls SlrJob rows and runs the multi-source academic search + AI
@@ -632,7 +807,7 @@ def health():
 @jwt_required()
 def generate():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
@@ -651,12 +826,13 @@ def generate():
             mock_response = get_mock_generate_response(prompt=prompt, section=section)
             return jsonify(mock_response)
 
-        api_key = os.getenv("AIOTOMASI_APIKEY")
-        base_url = os.getenv("AIOTOMASI_API")
-        if not api_key:
-            return jsonify({"error": "AIOTOMASI_APIKEY not configured"}), 500
-        if not base_url:
-            return jsonify({"error": "AIOTOMASI_API not configured"}), 500
+        from utils.ai_tools.model_config import get_endpoint_chain
+        _chain = get_endpoint_chain(heavy=True)
+        if not _chain:
+            return jsonify({"error": "AIOTOMASI endpoint not configured (set AIOTOMASI_API{1,2,3} + AIOTOMASI_APIKEY{1,2,3})"}), 500
+        # Per-index chain resolves the endpoint+key internally; pass slot-1 as
+        # legacy fallback args.
+        primary_model, base_url, api_key = _chain[0]
 
         prompts_by_section = {
             "title": "You are an IEEE conference paper title writer. Generate a concise, specific paper title (max 15 words). Return ONLY the title.",
@@ -691,7 +867,7 @@ def generate():
             )
         messages.append({"role": "user", "content": prompt})
 
-        from tools.editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
+        from PaperRiset.eks.editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
 
         result, model_used = _call_aiotomasi_with_fallback(
             messages,
@@ -735,6 +911,7 @@ def _extract_texts_from_files(files):
         if not f.filename:
             continue
         ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+        tmp_path = None
         try:
             suffix = '.' + ext
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -744,9 +921,8 @@ def _extract_texts_from_files(files):
             if ext == 'pdf':
                 try:
                     import pymupdf
-                    doc = pymupdf.open(tmp_path)
-                    text = '\n'.join(page.get_text() for page in doc)
-                    doc.close()
+                    with pymupdf.open(tmp_path) as doc:
+                        text = '\n'.join(page.get_text() for page in doc)
                 except ImportError:
                     try:
                         from pdfminer.high_level import extract_text
@@ -764,14 +940,28 @@ def _extract_texts_from_files(files):
                 try:
                     import openpyxl
                     wb = openpyxl.load_workbook(tmp_path, read_only=True, data_only=True)
-                    lines = []
-                    for sheet_name in wb.sheetnames:
-                        ws = wb[sheet_name]
-                        lines.append(f'--- Sheet: {sheet_name} ---')
-                        for row in ws.iter_rows(values_only=True):
-                            lines.append('\t'.join(str(c) if c is not None else '' for c in row))
-                    text = '\n'.join(lines)
-                    wb.close()
+                    try:
+                        md_lines = []
+                        for sheet_name in wb.sheetnames:
+                            ws = wb[sheet_name]
+                            md_lines.append(f'### Sheet: {sheet_name}\n')
+                            rows = []
+                            for row in ws.iter_rows(values_only=True):
+                                rows.append([str(c) if c is not None else '' for c in row])
+                            if rows:
+                                # Build markdown table
+                                header = rows[0]
+                                md_lines.append('| ' + ' | '.join(header) + ' |')
+                                md_lines.append('| ' + ' | '.join(['---'] * len(header)) + ' |')
+                                for row in rows[1:]:
+                                    # Pad row to match header columns
+                                    while len(row) < len(header):
+                                        row.append('')
+                                    md_lines.append('| ' + ' | '.join(row[:len(header)]) + ' |')
+                            md_lines.append('')
+                        text = '\n'.join(md_lines)
+                    finally:
+                        wb.close()
                 except ImportError:
                     text = f'[Excel extraction unavailable for {f.filename}]'
             elif ext == 'csv':
@@ -783,14 +973,17 @@ def _extract_texts_from_files(files):
             if text.strip():
                 header = f'\n\n=== Extracted from: {f.filename} ===\n'
                 texts.append(header + text[:20000])  # cap per file at 20k chars
-            try:
-                import os as _os
-                _os.unlink(tmp_path)
-            except Exception:
-                pass
         except Exception as e:
             log.warning("Failed to extract text from %s: %s", f.filename, e)
-            texts.append(f'\n\n=== {f.filename} ===\n[Extraction failed: {e}]')
+            texts.append(f'\n\n=== Extracted from: {f.filename} ===\n[Extraction failed: {e}]')
+        finally:
+            # BUG-16: Always clean up temp file, even if extraction raised
+            if tmp_path:
+                try:
+                    import os as _os
+                    _os.unlink(tmp_path)
+                except Exception:
+                    pass
     return texts
 
 
@@ -829,7 +1022,7 @@ def _run_generate_full_job(
                     j = AiJob.query.filter_by(id=job_id).first()
                     if j and j.status == "running":
                         j.progress = pct
-                        db.session.commit()
+                        safe_commit()
                 _publish("generating", pct, "running")
             except Exception:
                 try:
@@ -883,7 +1076,7 @@ def _run_generate_full_job(
                     return
                 j.stage = stage
                 j.progress = max(0, min(100, int(progress)))
-                db.session.commit()
+                safe_commit()
         except Exception:
             try:
                 db.session.rollback()
@@ -893,9 +1086,9 @@ def _run_generate_full_job(
         _publish(stage, progress, "running" if int(progress) < 100 else "complete")
 
     try:
-        api_key = os.getenv("AIOTOMASI_APIKEY")
-        if not api_key:
-            raise Exception("AIOTOMASI_APIKEY not configured")
+        from utils.ai_tools.model_config import get_endpoint_chain
+        if not get_endpoint_chain(heavy=True):
+            raise Exception("AIOTOMASI endpoint not configured (set AIOTOMASI_API{1,2,3} + AIOTOMASI_APIKEY{1,2,3})")
 
         extra_parts = []
         if custom_prompt:
@@ -945,7 +1138,7 @@ def _run_generate_full_job(
         # Without this, an upstream truncation (e.g. the model stopped at
         # section1 because of `max_tokens`) silently produces a stub paper that
         # only the user discovers after waiting 5–10 minutes.
-        from tools.editor.single import _validate_paper_shape as _vps
+        from PaperRiset.eks.editor.single import _validate_paper_shape as _vps
 
         validation = _vps(paper_data)
         if not validation["ok"]:
@@ -964,7 +1157,7 @@ def _run_generate_full_job(
                         existing = (j.error or "").strip()
                         warn = "Generated paper incomplete: " + ", ".join(validation["issues"])
                         j.error = (existing + "\n" if existing else "") + warn
-                        db.session.commit()
+                        safe_commit()
             except Exception:
                 pass
 
@@ -1091,7 +1284,7 @@ def _run_generate_full_job(
                             or "Untitled"
                         )
                         paper.updated_at = datetime.now(timezone.utc)
-                        db.session.commit()
+                        safe_commit()
                         log.info("[job:%s] persisted into paper %s", job_id, paper_id)
                 except Exception:
                     db.session.rollback()
@@ -1120,7 +1313,7 @@ def _run_generate_full_job(
                         "cancelled_at_stage": gc.stage,
                         "elapsed_seconds": int(elapsed),
                     }
-                    db.session.commit()
+                    safe_commit()
             except Exception:
                 db.session.rollback()
                 log.exception("[job:%s] failed to persist cancellation", job_id)
@@ -1155,7 +1348,7 @@ def _run_generate_full_job(
                     timeout_flag=timeout_flag,
                 )
     finally:
-        pass
+        _ticker_thread.join(timeout=2)
 
 
 @app.route("/api/generate-full", methods=["POST"])
@@ -1178,7 +1371,7 @@ def generate_full():
             if uploaded_files:
                 pdf_texts = _extract_texts_from_files(uploaded_files)
         else:
-            data = request.get_json()
+            data = request.get_json(silent=True)
             if not data:
                 return jsonify({"error": "No JSON data provided"}), 400
             prompt = data.get("prompt", "").strip()
@@ -1205,9 +1398,9 @@ def generate_full():
             if model not in allowed_models:
                 return jsonify({"error": f"Invalid model. Allowed: {sorted(allowed_models)}"}), 400
 
-        api_key = os.getenv("AIOTOMASI_APIKEY")
-        if not api_key:
-            raise Exception("AIOTOMASI_APIKEY not configured")
+        from utils.ai_tools.model_config import get_endpoint_chain
+        if not get_endpoint_chain(heavy=True):
+            raise Exception("AIOTOMASI endpoint not configured (set AIOTOMASI_API{1,2,3} + AIOTOMASI_APIKEY{1,2,3})")
 
         user_id = _get_current_user_id()
         if not user_id:
@@ -1409,6 +1602,23 @@ def list_journals():
 # ─── Legacy Image Upload ──────────────────────────────────────────────────────
 
 
+def _is_image_bytes(head: bytes, ext: str) -> bool:
+    """Validate image file by magic bytes."""
+    if not head:
+        return False
+    if ext in ('.png',) and head[:8] == b'\x89PNG\r\n\x1a\n':
+        return True
+    if ext in ('.jpg', '.jpeg') and head[:2] == b'\xff\xd8':
+        return True
+    if ext in ('.gif',) and head[:6] in (b'GIF87a', b'GIF89a'):
+        return True
+    if ext in ('.bmp',) and head[:2] == b'BM':
+        return True
+    if ext in ('.webp',) and head[:4] == b'RIFF' and head[8:12] == b'WEBP':
+        return True
+    return False
+
+
 @app.route("/api/upload-image", methods=["POST"])
 @limiter.limit("30 per minute")
 @jwt_required()
@@ -1459,10 +1669,21 @@ def upload_image_legacy():
 @jwt_required()
 def export_docx():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "No paper data provided"}), 400
         paper = data.get("paper", data)
+
+        # If paper_id provided but no paper data, fetch from DB
+        paper_id = data.get("paper_id") or (paper.get("id") if isinstance(paper, dict) else None)
+        if paper_id and (not isinstance(paper, dict) or "figures" not in paper):
+            from flask_jwt_extended import get_jwt_identity
+            from database.models import Paper
+            user_id = int(get_jwt_identity())
+            db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+            if db_paper and db_paper.data:
+                paper = db_paper.data
+                log.info("[export] Loaded paper %s from DB, %d figures", paper_id, len(paper.get("figures", [])))
 
         journal_raw = data.get("journal")
         if isinstance(paper, dict) and not journal_raw:
@@ -1473,9 +1694,33 @@ def export_docx():
         except Exception as e:
             return jsonify({"error": str(e), "available": _available_journals()}), 400
 
+        # Wire any completed image-generation jobs into the paper's figure
+        # Path fields so the exporter embeds real images instead of falling
+        # back to the raw prompt text. Best-effort: never block export.
+        try:
+            if isinstance(paper, dict):
+                _pid = str(paper.get("id") or data.get("paper_id") or "").strip()
+                if _pid:
+                    from tools.image_generation.reconcile import reconcile_figure_images
+                    reconcile_figure_images(_pid, paper, UPLOAD_FOLDER)
+        except Exception:
+            log.warning("figure image reconciliation failed", exc_info=True)
+
+        # Inject a formatted ``text`` into structured reference dicts so every
+        # journal generator (most read ref["text"]) renders citations instead
+        # of skipping structured-only references. Style matches the journal.
+        try:
+            if isinstance(paper, dict):
+                from tools.preview.ref_normalize import normalize_references, style_for_journal
+                normalize_references(paper, style=style_for_journal(canonical_journal))
+        except Exception:
+            log.warning("reference normalization failed", exc_info=True)
+
         json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
         json_filepath = EXPORT_FOLDER / json_filename
         json_filepath.write_text(json.dumps(paper, ensure_ascii=False, indent=2), encoding="utf-8")
+        output_path = None
+        _export_ok = False
         try:
             output_path = EXPORT_FOLDER / f"{canonical_journal}_{uuid.uuid4().hex[:8]}.docx"
             builder(json_filepath, output_path)
@@ -1507,11 +1752,20 @@ def export_docx():
             def _cleanup():
                 try:
                     output_path.unlink(missing_ok=True)
-                except Exception:
-                    pass
+                except Exception as _e:
+                    log.warning("Cleanup unlink failed for %s: %s", output_path, _e)
 
+            _export_ok = True
             return response
         finally:
+            # Clean up partial output file only if the response was not returned
+            # (on success, call_on_close handles cleanup after Flask serves the file)
+            if not _export_ok:
+                try:
+                    if output_path is not None:
+                        output_path.unlink(missing_ok=True)
+                except Exception as _e:
+                    log.warning("Partial cleanup unlink failed for %s: %s", output_path, _e)
             json_filepath.unlink(missing_ok=True)
     except Exception as e:
         log.exception("unhandled error")
@@ -1526,9 +1780,17 @@ def export_docx():
 WORD_ADDON_DIR = Path(__file__).parent / "word_addon"
 
 
+_WORD_ADDON_ORIGINS = {
+    "http://localhost:1000", "http://localhost:5173",
+    "http://localhost:3001", "http://localhost:8000",
+}
+
+
 def _office_cors(resp):
     """Add CORS headers required by Office.js add-in runtime."""
-    resp.headers["Access-Control-Allow-Origin"] = "http://localhost:1000,http://localhost:5173,http://localhost:3001,http://localhost:8000"
+    origin = request.headers.get("Origin", "")
+    if origin in _WORD_ADDON_ORIGINS:
+        resp.headers["Access-Control-Allow-Origin"] = origin
     resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-CSRF-TOKEN"
     resp.headers["Access-Control-Allow-Credentials"] = "true"
@@ -1616,6 +1878,12 @@ def word_addon_extract():
         return _office_cors(jsonify({"error": "No file selected"})), 400
     filename = file.filename.lower()
     try:
+        # Check file size BEFORE reading to prevent OOM on huge uploads
+        file.stream.seek(0, 2)  # Seek to end
+        file_size = file.stream.tell()
+        file.stream.seek(0)  # Reset to beginning
+        if file_size > 30 * 1024 * 1024:
+            return _office_cors(jsonify({"error": "File too large (max 30MB)"})), 413
         data = file.read()
         if len(data) > 30 * 1024 * 1024:
             return _office_cors(jsonify({"error": "File too large (max 30MB)"})), 413

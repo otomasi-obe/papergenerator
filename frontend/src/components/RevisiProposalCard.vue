@@ -21,7 +21,7 @@
         </div>
         <div
           v-if="subtitle"
-          class="text-[11px] mt-0.5 text-ink-500 dark:text-ink-400"
+          class="text-[11px] mt-0.5 text-ink-500 dark:text-ink-300"
         >
           {{ subtitle }}
         </div>

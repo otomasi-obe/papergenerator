@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).parent
 PROMPT_DIR = BASE_DIR / "prompt"
 BACKEND_DIR = BASE_DIR.parent
-JOURNAL_DIR = BACKEND_DIR / "tools" / "Journal"
+JOURNAL_DIR = BASE_DIR.parent.parent / "tools" / "Journal"
 
 # Prompt file paths
 PROMPT_FILE = PROMPT_DIR / "prompt.txt"
@@ -124,8 +124,8 @@ def generate_paper(
     Returns:
         dict: Paper data dalam format JSON standar
     """
-    from tools.editor.single import generate_paper_json_single
-    from tools.editor.chunked import generate_paper_json_chunked, GenerationCancelled
+    from PaperRiset.eks.editor.single import generate_paper_json_single
+    from PaperRiset.eks.editor.chunked import generate_paper_json_chunked, GenerationCancelled
 
     log.info("generate_full: mode=%s, judul=%r, topic=%s, style=%s", mode, judul[:60], topic, style)
 

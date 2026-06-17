@@ -439,6 +439,8 @@ def add_table(doc, table_data):
 
 def add_references(doc, data):
     refs_data = data.get("references", {})
+    if isinstance(refs_data, list):
+        refs_data = {"title": "REFERENCES", "content": refs_data}
     refs_title = refs_data.get("title", "REFERENCES")
     refs_content = refs_data.get("content", [])
 
@@ -454,6 +456,11 @@ def add_references(doc, data):
         refs_content = ['[1] Author, "Title," Journal, vol. X, no. Y, pp. Z, Year.']
 
     for i, ref in enumerate(refs_content):
+        if isinstance(ref, dict):
+            ref_str = str(ref.get("text") or ref.get("Text") or "").strip()
+        else:
+            ref_str = str(ref)
+        ref_str = re.sub(r"^\s*\[\d+\]\s*", "", ref_str)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_paragraph_spacing(p, before=0, after=50, line=180, line_rule="exact")
@@ -461,7 +468,7 @@ def add_references(doc, data):
 
         run_num = p.add_run(f"[{i+1}] ")
         set_run_font(run_num, "Times New Roman", 8)
-        run_text = p.add_run(ref)
+        run_text = p.add_run(ref_str)
         set_run_font(run_text, "Times New Roman", 8)
 
 

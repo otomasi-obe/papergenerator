@@ -18,7 +18,7 @@ IMPORTANT: Does NOT modify SQL database schema - only changes file storage paths
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -30,10 +30,21 @@ DATA_ROOT = Path(__file__).parent.parent.parent / "user"
 # Safe filename regex
 _SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
+# Max bytes for a single path segment. Most filesystems (ext4, APFS, NTFS) cap
+# a path component at 255 bytes. We cap well below that so suffixes like
+# "-SLR.json" or "-{journal}.docx" appended by callers still fit.
+_MAX_SEG_LEN = 200
 
-def _safe_path_seg(value: object, fallback: str = "unknown") -> str:
-    """Convert any value to a safe filesystem path segment."""
+
+def _safe_path_seg(value: object, fallback: str = "unknown", max_len: int = _MAX_SEG_LEN) -> str:
+    """Convert any value to a safe filesystem path segment.
+
+    The result is length-capped so the segment (plus any caller-appended
+    suffix/extension) stays under the filesystem's 255-byte component limit.
+    """
     s = _SAFE_NAME_RE.sub("_", str(value or "")).strip("._-")
+    if len(s) > max_len:
+        s = s[:max_len].strip("._-")
     return s or fallback
 
 
@@ -89,13 +100,13 @@ def save_chat_log(username: str, paper_id: str, direction: str, data: dict) -> O
         chat_dir.mkdir(exist_ok=True)
 
         # Format: DDMMYY-HHMMSS (e.g., 250523-124830)
-        timestamp = datetime.now().strftime("%d%m%y-%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%d%m%y-%H%M%S")
         filename = f"{timestamp}-{direction}.json"
         filepath = chat_dir / filename
 
         # Add metadata
         payload = {
-            "ts": datetime.utcnow().isoformat() + "Z",
+            "ts": datetime.now(timezone.utc).isoformat() + "Z",
             "direction": direction,
             **data,
         }

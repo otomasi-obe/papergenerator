@@ -1,23 +1,48 @@
 // @ts-nocheck
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import api from '../api/index.js'
 
 const API_BASE = '/api'
+const LS_KEY = 'pf_tool_state'
+
+// ── localStorage helpers ────────────────────────────────────────────────────
+
+function loadPersistedState(): Record<string, any> {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+
+function savePersistedState(state: Record<string, any>) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state))
+  } catch { /* quota exceeded — silently ignore */ }
+}
 
 export const useToolsStore = defineStore('tools', () => {
+  // ── Restore persisted state ───────────────────────────────────────────────
+  const _persisted = loadPersistedState()
+
   const activeTool = ref(null)
-  const toolInputs = ref({}) as import('vue').Ref<Record<string, string>>
-  const outputText = ref('')
+  const toolInputs = ref(_persisted._inputs || {}) as import('vue').Ref<Record<string, string>>
+  const toolOutputs = ref(_persisted._outputs || {}) as import('vue').Ref<Record<string, string>>
+  const toolResults = ref(_persisted._results || {}) as import('vue').Ref<Record<string, any>>
+  const toolOptions = ref(_persisted._options || {}) as import('vue').Ref<Record<string, string>>
+  const toolSources = ref(_persisted._sources || {}) as import('vue').Ref<Record<string, string>>
+
   const isProcessing = ref(false)
   const selectedOption = ref('')
-  const selectedSource = ref('Auto (Detect)')
+  const selectedSource = ref('Indonesian')
   const selectedEngine = ref('ai')
-  const selectedDomain = ref('general')
+  const selectedDomain = ref('academic')
   const translatorConfig = ref({ engines: [] as string[], languages: [] as string[], domains: [] as string[] })
-  const toolResult = ref(null)
   const error = ref(null)
+  let _activeAbortCtrl: AbortController | null = null
   const mode = ref('program')
+
+  // ── Computed: input/output/result bound to active tool ────────────────────
 
   const inputText = computed({
     get: () => {
@@ -27,31 +52,84 @@ export const useToolsStore = defineStore('tools', () => {
     set: (val: string) => {
       if (activeTool.value) {
         toolInputs.value = { ...toolInputs.value, [activeTool.value.id]: val }
+        _schedulePersist()
       }
     },
   })
 
+  const outputText = computed({
+    get: () => {
+      if (!activeTool.value) return ''
+      return toolOutputs.value[activeTool.value.id] || ''
+    },
+    set: (val: string) => {
+      if (activeTool.value) {
+        toolOutputs.value = { ...toolOutputs.value, [activeTool.value.id]: val }
+        _schedulePersist()
+      }
+    },
+  })
+
+  const toolResult = computed({
+    get: () => {
+      if (!activeTool.value) return null
+      return toolResults.value[activeTool.value.id] || null
+    },
+    set: (val: any) => {
+      if (activeTool.value) {
+        toolResults.value = { ...toolResults.value, [activeTool.value.id]: val }
+        _schedulePersist()
+      }
+    },
+  })
+
+  // ── Debounced persist ─────────────────────────────────────────────────────
+  let _persistTimer: any = null
+  function _schedulePersist() {
+    if (_persistTimer) clearTimeout(_persistTimer)
+    _persistTimer = setTimeout(() => {
+      // Cap each tool's input/output to 50KB to avoid bloating localStorage
+      const cappedInputs: Record<string, string> = {}
+      const cappedOutputs: Record<string, string> = {}
+      for (const [k, v] of Object.entries(toolInputs.value)) cappedInputs[k] = (v || '').slice(0, 50000)
+      for (const [k, v] of Object.entries(toolOutputs.value)) cappedOutputs[k] = (v || '').slice(0, 50000)
+      savePersistedState({
+        _inputs: cappedInputs,
+        _outputs: cappedOutputs,
+        _results: toolResults.value,
+        _options: toolOptions.value,
+        _sources: toolSources.value,
+      })
+    }, 500)
+  }
+
   const TOOLS = [
     { id: 'detector', icon: '🔍', tint: '#d9a718', title: 'AI Detector', desc: 'Estimate how likely a passage reads as AI-generated.' },
     { id: 'paraphrase', icon: '✍️', tint: '#1265c8', title: 'Paraphrase', desc: 'Rewrite passages in a different tone or strength while keeping the meaning.' },
-    { id: 'translate', icon: '🌐', tint: '#1265c8', title: 'Translator', desc: 'Translate between Indonesian, English and 20+ languages — academic register.' },
+    { id: 'translate', icon: '🌐', tint: '#1265c8', title: 'Translator', desc: 'Translate between Indonesian and English — academic register.' },
     { id: 'humanizer', icon: '🧬', tint: '#2f9d6e', title: 'Humanizer', desc: 'Rework AI-sounding prose to read naturally and pass AI detectors.', modes: ['program', 'ai'] },
     { id: 'plagiarism', icon: '📋', tint: '#c43655', title: 'Plagiarism Check', desc: 'Multi-mode plagiarism scanner: AI Check, Web Search, Offline analysis, or Full Scan.' },
-    { id: 'grammar', icon: '✨', tint: '#1e6e8f', title: 'Grammar', desc: 'LLM-powered academic grammar correction with inline diff. Slower but context-aware.' },
+    { id: 'grammar', icon: '✨', tint: '#1e6e8f', title: 'Grammar', desc: 'AI-powered grammar correction with inline diff.' },
     { id: 'summarize', icon: '📝', tint: '#0b4088', title: 'Summarize', desc: 'Condense a section or reference into a TL;DR or abstract.' },
     { id: 'word-addon', icon: '📄', tint: '#2b579a', title: 'Word Addon', desc: 'Install VIOLA AI assistant untuk Microsoft Word. Chat dengan AI langsung di dokumen Anda.', external: true },
   ]
 
   function getDefaultOption(toolId) {
     switch (toolId) {
-      case 'translate': return 'Indonesian'
+      case 'translate': return 'English'
       case 'paraphrase': return 'Standard'
       case 'humanizer': return 'Standard'
       case 'grammar': return 'Standard'
       case 'plagiarism': return 'AI Check'
       case 'summarize': return 'TL;DR'
+      case 'detector': return 'Fast'
       default: return 'Standard'
     }
+  }
+
+  function getDefaultSource(toolId) {
+    if (toolId === 'translate') return 'Indonesian'
+    return ''
   }
 
   async function loadTranslatorConfig() {
@@ -66,31 +144,54 @@ export const useToolsStore = defineStore('tools', () => {
   }
 
   function setActiveTool(tool) {
+    // Save current tool's option & source before switching
+    if (activeTool.value) {
+      toolOptions.value = { ...toolOptions.value, [activeTool.value.id]: selectedOption.value }
+      if (activeTool.value.id === 'translate') {
+        toolSources.value = { ...toolSources.value, [activeTool.value.id]: selectedSource.value }
+      }
+    }
+
     activeTool.value = tool
-    selectedOption.value = getDefaultOption(tool.id)
-    selectedSource.value = 'Auto (Detect)'
-    selectedEngine.value = 'ai'
-    selectedDomain.value = 'general'
-    if (tool.id === 'translate') loadTranslatorConfig()
+
+    // Restore saved option/source for this tool, or use defaults
+    const savedOption = toolOptions.value[tool.id]
+    selectedOption.value = savedOption || getDefaultOption(tool.id)
+
+    if (tool.id === 'translate') {
+      const savedSource = toolSources.value[tool.id]
+      selectedSource.value = savedSource || getDefaultSource(tool.id)
+      loadTranslatorConfig()
+    }
+
     mode.value = 'program'
-    outputText.value = ''
-    toolResult.value = null
     error.value = null
+    // output/result are already computed from per-tool maps — no reset needed
   }
 
   function setMode(m) {
     mode.value = m
   }
 
+  /** Clear input + output + result for the active tool only */
+  function clearToolData() {
+    if (!activeTool.value) return
+    const id = activeTool.value.id
+    const newInputs = { ...toolInputs.value }
+    const newOutputs = { ...toolOutputs.value }
+    const newResults = { ...toolResults.value }
+    delete newInputs[id]
+    delete newOutputs[id]
+    delete newResults[id]
+    toolInputs.value = newInputs
+    toolOutputs.value = newOutputs
+    toolResults.value = newResults
+    error.value = null
+    _schedulePersist()
+  }
+
   function clearActiveTool() {
-    if (activeTool.value) {
-      const next = { ...toolInputs.value }
-      delete next[activeTool.value.id]
-      toolInputs.value = next
-    }
     activeTool.value = null
-    outputText.value = ''
-    toolResult.value = null
     error.value = null
   }
 
@@ -98,15 +199,19 @@ export const useToolsStore = defineStore('tools', () => {
     if (!activeTool.value || !inputText.value.trim()) return
 
     isProcessing.value = true
-    outputText.value = ''
-    toolResult.value = null
+    // Don't clear output/result immediately — keep previous until new arrives
     error.value = null
+
+    const prevOutput = outputText.value
+    const prevResult = toolResult.value
+    let newOutput = ''
+    let newResult = null
 
     try {
       const csrf = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
       const payload: Record<string, any> = { text: inputText.value, option: selectedOption.value }
       if (activeTool.value.id === 'translate') {
-        payload.source_language = selectedSource.value === 'Auto (Detect)' ? 'auto' : selectedSource.value
+        payload.source_language = selectedSource.value
         payload.engine = selectedEngine.value
         payload.domain = selectedDomain.value
       }
@@ -119,9 +224,13 @@ export const useToolsStore = defineStore('tools', () => {
         payload.mode = mode.value
       }
 
+      _activeAbortCtrl?.abort()
+      _activeAbortCtrl = new AbortController()
+      const abortCtrl = _activeAbortCtrl
       const response = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
+        signal: abortCtrl.signal,
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-TOKEN': decodeURIComponent(csrf),
@@ -133,9 +242,16 @@ export const useToolsStore = defineStore('tools', () => {
         throw new Error(`HTTP ${response.status}`)
       }
 
+      if (!response.body) {
+        throw new Error('Response body is null')
+      }
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+
+      // Clear previous output when we start receiving
+      outputText.value = ''
+      toolResult.value = null
 
       while (true) {
         const { done, value } = await reader.read()
@@ -148,9 +264,11 @@ export const useToolsStore = defineStore('tools', () => {
             try {
               const data = JSON.parse(line.slice(6))
               if (data.text) {
-                outputText.value += data.text
+                newOutput += data.text
+                outputText.value = newOutput
               }
               if (data.result) {
+                newResult = data.result
                 toolResult.value = data.result
               }
               if (data.error) {
@@ -163,30 +281,41 @@ export const useToolsStore = defineStore('tools', () => {
     } catch (e) {
       error.value = e.message || 'Terjadi kesalahan saat memproses'
     } finally {
+      _activeAbortCtrl = null
       isProcessing.value = false
+      _schedulePersist()
     }
   }
 
   return {
     activeTool,
     inputText,
-    toolInputs,
     outputText,
+    toolResult,
+    toolInputs,
+    toolOutputs,
+    toolResults,
+    toolOptions,
+    toolSources,
     isProcessing,
     selectedOption,
-    toolResult,
-    error,
-    mode,
-    TOOLS,
     selectedSource,
     selectedEngine,
     selectedDomain,
     translatorConfig,
+    error,
+    mode,
+    TOOLS,
     setActiveTool,
     setMode,
     clearActiveTool,
+    clearToolData,
     processTool,
     getDefaultOption,
     loadTranslatorConfig,
+    cancelTool: () => { _activeAbortCtrl?.abort(); _activeAbortCtrl = null },
+    dispose() {
+      if (_persistTimer) { clearTimeout(_persistTimer); _persistTimer = null }
+    },
   }
 })

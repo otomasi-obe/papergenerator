@@ -10,7 +10,7 @@ import time
 from typing import Iterable
 from xml.etree import ElementTree as ET
 
-from ..http_client import RateLimiter
+from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
 ESEARCH_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
@@ -137,9 +137,10 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         search_params["api_key"] = api_key
 
     try:
-        resp = client.get(ESEARCH_BASE, params=search_params)
-        resp.raise_for_status()
-        search_data = resp.json()
+        search_data = fetch_json(client, ESEARCH_BASE, params=search_params)
+        if not search_data:
+            logging.getLogger(__name__).warning("PubMed search failed: no response")
+            return
     except Exception as e:
         logging.getLogger(__name__).warning(f"PubMed search failed: {e}")
         return

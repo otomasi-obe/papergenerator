@@ -159,7 +159,6 @@ _SLOP_REPLACEMENTS = {
 
     # Tier 2: Corporate/Formal Buzzwords
     r'\balign with\b': ['match', 'fit', 'agree with'],
-    r'\bcrucial\b': ['important', 'key', 'vital'],
     r'\bemphasizing\b': ['stressing', 'highlighting', 'focusing on'],
     r'\bvaluable\b': ['useful', 'helpful', 'worthwhile'],
     r'\bnuanced\b': ['subtle', 'detailed', 'sophisticated'],
@@ -230,7 +229,7 @@ _SLOP_REPLACEMENTS = {
 # ── Intensity level configurations ─────────────────────────────────────────
 _INTENSITY_CONFIGS = {
     "light": {
-        "slop_replacement_index": 0,  # Use first replacement option
+        "slop_replacement_index": 2,  # Use mildest replacement option
         "vary_sentences": False,
         "merge_threshold": 6,
         "llm_passes": 1,
@@ -238,7 +237,7 @@ _INTENSITY_CONFIGS = {
         "temperature": 0.7,
     },
     "medium": {
-        "slop_replacement_index": 0,
+        "slop_replacement_index": 1,
         "vary_sentences": True,
         "merge_threshold": 8,
         "llm_passes": 2,
@@ -294,26 +293,20 @@ class TextHumanizer:
         return f"{base}/chat/completions" if base else ""
 
     def _call_llm(self, system: str, user: str, temperature: float = 0.8) -> str:
-        """Call the AIOTOMASI LLM API."""
-        if not self.api_url or not self.api_key:
-            raise RuntimeError("AIOTOMASI_API and AIOTOMASI_APIKEY must be set in .env")
-        payload = {
-            "model": self.model,
-            "messages": [
+        """Call the LLM via the per-index endpoint chain (MODELGENERATE1..3,
+        each with its own endpoint+key)."""
+        from utils.ai_tools.ai_client import chat as _chain_chat
+        content, _used = _chain_chat(
+            [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "temperature": temperature,
-            "max_tokens": 4096,
-        }
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        resp = requests.post(self.api_url, json=payload, headers=headers, timeout=120)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+            heavy=True,
+            max_tokens=4096,
+            temperature=temperature,
+            timeout=120,
+        )
+        return content
 
     def remove_slop(self, text: str, intensity: str = "medium") -> str:
         """Remove/replace AI slop words and phrases.
@@ -368,7 +361,12 @@ class TextHumanizer:
                 else:  # light
                     connectors = [', and ', ' and ']
                 connector = connectors[i % len(connectors)]
-                combined = sent.rstrip('.!?') + connector + sentences[i + 1][0].lower() + sentences[i + 1][1:]
+                next_sent = sentences[i + 1]
+                if connector.rstrip().endswith(','):
+                    first_char = next_sent[0].lower()
+                else:
+                    first_char = next_sent[0]
+                combined = sent.rstrip('.!?') + connector + first_char + next_sent[1:]
                 result.append(combined)
                 i += 2
                 continue
@@ -822,7 +820,8 @@ def run_humanizer(data: dict) -> dict:
         }
     elif mode == "back_translate":
         # Check if API is available
-        if not (os.getenv("AIOTOMASI_API") and os.getenv("AIOTOMASI_APIKEY")):
+        from utils.ai_tools.model_config import get_endpoint_chain as _gec
+        if not _gec(heavy=True):
             log.warning("AIOTOMASI env empty; falling back to program mode")
             out = humanizer.humanize_program(text, option=option, intensity=intensity)
             result = {
@@ -860,7 +859,8 @@ def run_humanizer(data: dict) -> dict:
                 }
     else:
         # mode == "ai" (default, backward compatible)
-        if not (os.getenv("AIOTOMASI_API") and os.getenv("AIOTOMASI_APIKEY")):
+        from utils.ai_tools.model_config import get_endpoint_chain as _gec
+        if not _gec(heavy=True):
             log.warning("AIOTOMASI env empty; falling back to program mode")
             out = humanizer.humanize_program(text, option=option, intensity=intensity)
             result = {

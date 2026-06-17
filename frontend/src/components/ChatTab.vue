@@ -70,7 +70,7 @@
              <button
                v-if="renamingId !== conv.id"
                @click.stop="confirmDeleteChat(conv)"
-               class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 text-xs min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform"
+               class="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-500 dark:text-red-400 text-xs min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-95 transition-transform"
               title="Delete"
               aria-label="Delete conversation"
             ><span aria-hidden="true">🗑</span></button>
@@ -89,11 +89,20 @@
         <button
           @click="chatStore.clearCurrentChat()"
           :disabled="isStreaming"
-          class="flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] text-[11px] font-medium text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors active:scale-95"
+          class="flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] text-[11px] font-medium text-[var(--text-muted)] hover:text-red-500 dark:text-red-400 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition-colors active:scale-95"
           title="Clear chat — hapus semua pesan"
         >
           <span aria-hidden="true">🧹</span>
           <span>Clear</span>
+        </button>
+        <button
+          @click="openExportDraftModal"
+          :disabled="isStreaming || !messages.length"
+          class="flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] text-[11px] font-medium text-[var(--text-muted)] hover:text-[#238f7f] dark:hover:text-[#4eb2a3] rounded-md hover:bg-green-50 dark:hover:bg-green-900/20 disabled:opacity-40 transition-colors active:scale-95"
+          title="Export Draft — simpan diskusi ini sebagai draft untuk dipakai di paperfull atau chat lain"
+        >
+          <span aria-hidden="true">📤</span>
+          <span>Export Draft</span>
         </button>
       </header>
 
@@ -110,11 +119,7 @@
           <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">
             {{ greeting }}
           </h2>
-          <ActionChips
-            :chips="entryChips"
-            @select="onEntryPick"
-            class="justify-center"
-          />
+          <SuggestedPrompts @select="onSuggestedPrompt" />
         </div>
 
         <ChatMessage
@@ -122,12 +127,14 @@
           :key="msg.id"
           :message="msg"
           :is-streaming="isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant'"
+          :stream-phase="(isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant') ? streamPhase : 'idle'"
           @pick-option="pickOption"
           @chip-select="onChipSelect"
           @chart-accept="onChartAccept"
           @chart-regenerate="onChartRegenerate"
           @file-review-pick="onFileReviewPick"
           @multi-question-submit="onMultiQuestionSubmit"
+          @ask-user-answer="onAskUserAnswer"
           @revisi-accepted="onRevisiAccept"
           @revisi-rejected="onRevisiReject"
           @review-cancel="onReviewCancel"
@@ -234,8 +241,25 @@
         >✕</button>
       </div>
 
-      <!-- Input -->
-      <div class="px-4 pb-3 bg-cream-50 dark:bg-ash-800">
+      <!-- Input with drag-and-drop zone -->
+      <div
+        class="px-4 pb-3 bg-cream-50 dark:bg-ash-800 relative"
+        @dragenter="onDragEnter"
+        @dragleave="onDragLeave"
+        @dragover="onDragOver"
+        @drop="onDrop"
+      >
+        <!-- Drag overlay -->
+        <div
+          v-if="isDragOver"
+          class="absolute inset-0 z-20 flex items-center justify-center rounded-lg border-2 border-dashed border-navy-500 dark:border-navy-400 bg-navy-50/90 dark:bg-ash-800/90 pointer-events-none"
+        >
+          <div class="text-center">
+            <div class="text-2xl mb-1">📂</div>
+            <p class="text-xs font-medium text-navy-700 dark:text-navy-300">Drop file di sini</p>
+            <p class="text-[10px] text-navy-500 dark:text-navy-400">PDF, DOCX, atau DOC</p>
+          </div>
+        </div>
         <!-- Upload progress bar (prominent) -->
         <div v-if="uploadingFiles" class="mb-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
           <div class="flex items-center justify-between mb-2">
@@ -295,12 +319,32 @@
 
         <div class="rounded-xl border-2 border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-sm focus-within:border-navy-500 dark:focus-within:border-navy-400 focus-within:ring-4 focus-within:ring-[#238f7f]/30 dark:focus-within:ring-[#4eb2a3]/30 transition-all">
           <div class="flex items-center gap-2 p-2">
-            <button
-              @click="showSuggestions = !showSuggestions"
-              :aria-expanded="showSuggestions && !inputText"
-              class="shrink-0 min-h-[44px] min-w-[44px] px-2 text-[11px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 rounded-lg transition-colors active:scale-95 transition-transform"
-              title="Saran"
-            >💡 Saran</button>
+            <div class="relative">
+              <button
+                @click.stop="attachMenuOpen = !attachMenuOpen"
+                v-click-outside="() => { attachMenuOpen = false }"
+                :disabled="isStreaming || uploadingFiles"
+                class="shrink-0 min-h-[44px] min-w-[44px] px-2 text-base text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 rounded-lg transition-colors active:scale-95 transition-transform disabled:opacity-40"
+                title="Lampirkan file"
+                aria-label="Attach file"
+              >＋</button>
+              <div
+                v-if="attachMenuOpen"
+                class="absolute bottom-full left-0 mb-1 w-48 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-lg overflow-hidden z-30"
+              >
+                <button
+                  type="button"
+                  @click="pickUpload()"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2"
+                ><span>📤</span><span>Upload file</span></button>
+                <button
+                  type="button"
+                  @click="openExistingFiles()"
+                  :disabled="!currentPaperId"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 disabled:opacity-40 border-t border-cream-300 dark:border-ash-600"
+                ><span>📁</span><span>Dari file paper ini</span></button>
+              </div>
+            </div>
             <input
               type="file"
               ref="fileInput"
@@ -309,57 +353,21 @@
               class="hidden"
               @change="onFileChange"
             />
-            <div class="relative shrink-0" v-click-outside="closeAttachMenu">
-              <button
-                @click="toggleAttachMenu"
-                :disabled="isStreaming || uploadingFiles"
-                 class="min-h-[44px] min-w-[44px] text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 hover:text-ink-900 dark:hover:text-ink-50 rounded-lg transition-colors active:scale-95 transition-transform flex items-center justify-center disabled:opacity-40"
-                :title="uploadingFiles ? `Uploading ${uploadFileCount.current}/${uploadFileCount.total}…` : 'Lampirkan'"
-                :aria-label="uploadingFiles ? `Uploading ${uploadFileCount.current} of ${uploadFileCount.total} files` : 'Attach files'"
-              >
-                <span v-if="uploadingFiles" class="w-4 h-4 border-2 border-ink-500 dark:border-ink-300 border-t-transparent rounded-full animate-spin"></span>
-                <span v-else class="text-base leading-none">＋</span>
-              </button>
-              <div v-if="attachMenuOpen"
-                class="absolute bottom-full left-0 mb-2 z-30 w-48 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 shadow-lg overflow-hidden">
-                <button
-                  type="button"
-                  @click="pickUpload"
-                   class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 rounded-lg active:scale-95 transition-transform"
-                >
-                  <span>📤</span><span>Upload file (PDF/DOCX)</span>
-                </button>
-                <button
-                  type="button"
-                  @click="openPasteText"
-                   class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600 rounded-lg active:scale-95 transition-transform"
-                 >
-                   <span>📋</span><span>Paste teks</span>
-                 </button>
-                 <button
-                   type="button"
-                   @click="openExistingFiles"
-                   class="w-full text-left px-3 py-2 min-h-[44px] text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 border-t border-cream-300 dark:border-ash-600 rounded-lg active:scale-95 transition-transform"
-                >
-                  <span>📁</span><span>Dari file paper ini</span>
-                </button>
-              </div>
-            </div>
             <textarea
               ref="inputRef"
               v-model="inputText"
               @keydown="handleKeydown"
-              :disabled="activeJob && activeJob.active"
-              :placeholder="(activeJob && activeJob.active) ? 'Terkunci saat generate…' : (isStreaming ? 'AI mengetik…' : 'Ketik pesan…')"
+              :disabled="(activeJob && activeJob.active) || uploadingFiles"
+              :placeholder="(activeJob && activeJob.active) ? 'Terkunci saat generate…' : uploadingFiles ? 'Mengupload file…' : (isStreaming ? 'AI mengetik…' : 'Ketik pesan…')"
               rows="1"
-              class="chat-input-textarea flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-ink-900 dark:text-ink-50 focus:outline-none disabled:opacity-50 max-h-32 overflow-y-auto placeholder-ink-500 dark:placeholder-ink-300"
+              class="chat-input-textarea flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-ink-900 dark:text-ink-50 focus:outline-none disabled:opacity-50 max-h-24 overflow-y-auto placeholder-ink-500 dark:placeholder-ink-300"
             ></textarea>
             <button
-              v-if="isStreaming"
+              v-if="isStreaming || uploadingFiles"
               @click="handleStop"
                class="shrink-0 min-h-[44px] min-w-[44px] bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors active:scale-95 transition-transform flex items-center justify-center"
-              title="Stop"
-              aria-label="Stop generating"
+              :title="uploadingFiles ? 'Stop upload' : 'Stop generating'"
+              :aria-label="uploadingFiles ? 'Stop file upload' : 'Stop generating'"
             >
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                 <rect x="6" y="6" width="12" height="12" rx="1.5"/>
@@ -368,7 +376,7 @@
             <button
               v-else
               @click="handleSend"
-              :disabled="(!inputText.trim() && !attachedFiles.length) || (activeJob && activeJob.active)"
+              :disabled="(!inputText.trim() && !attachedFiles.length) || (activeJob && activeJob.active) || (uploadingFiles && !isStreaming)"
                class="shrink-0 min-h-[44px] min-w-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 transition-transform flex items-center justify-center"
               title="Send"
               aria-label="Send message"
@@ -393,68 +401,70 @@
       </template>
     </AppDialog>
 
-    <!-- File picker (existing paper files) -->
-    <AppDialog v-if="filePickerOpen" :open="filePickerOpen" title="Pilih file dari paper ini" @close="filePickerOpen = false">
-      <div class="max-h-[50vh] overflow-y-auto -mx-4 px-4">
-        <div v-if="paperFilesLoading" class="text-center py-6 text-xs text-ink-500 dark:text-ink-300">Loading…</div>
-        <div v-else-if="!paperFiles.length" class="text-center py-6 text-xs text-ink-500 dark:text-ink-300">
-          Belum ada file. Upload dulu di tab Files.
-        </div>
-        <ul v-else class="divide-y divide-cream-200 dark:divide-ash-700">
-          <li v-for="f in paperFiles" :key="f.id"
-              class="flex items-center gap-2 px-2 py-2 cursor-pointer hover:bg-cream-100 dark:hover:bg-ash-700 rounded"
-              @click="togglePickFile(f)">
-            <input type="checkbox" :checked="pickedFileIds.has(f.id)" class="pointer-events-none" />
-            <span>{{ extIcon(f.ext) }}</span>
-            <div class="min-w-0 flex-1">
-              <div class="text-xs text-ink-900 dark:text-ink-50 truncate" :title="f.original_name">{{ f.original_name }}</div>
-              <div class="text-[10px] text-ink-500 dark:text-ink-300">{{ humanSize(f.size_bytes || f.size || 0) }}</div>
-            </div>
-          </li>
-        </ul>
-      </div>
-      <template #actions>
-         <button @click="filePickerOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700 active:scale-95 transition-transform">Cancel</button>
-         <button @click="confirmPickFiles" :disabled="!pickedFileIds.size"
-                 class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40 active:scale-95 transition-transform">
-          Lampirkan ({{ pickedFileIds.size }})
-        </button>
-      </template>
-    </AppDialog>
-    <!-- Paste-text dialog: lampirkan blok teks bebas (mis. salinan abstract / catatan
-         dari Word) tanpa harus upload file. Diserahkan ke chat sebagai "file" semu
-         dengan nama yang user beri. -->
-    <AppDialog v-if="pasteTextOpen" :open="pasteTextOpen" title="Paste teks" @close="pasteTextOpen = false">
-      <div class="space-y-2">
-        <label class="block text-xs text-ink-700 dark:text-ink-200">
-          Nama (opsional)
+    <!-- Export Draft modal -->
+    <AppDialog v-if="exportDraftOpen" :open="exportDraftOpen" title="Export Draft" @close="exportDraftOpen = false">
+      <div class="space-y-3">
+        <p class="text-xs text-ink-600 dark:text-ink-300">
+          Simpan diskusi chat ini sebagai <strong>draft bernama</strong>. Nanti bisa di-select di tab Paperfull atau di-inject ke chat lain pakai <code class="px-1 py-0.5 bg-cream-100 dark:bg-ash-700 rounded text-[10px]">@draft &lt;nama&gt;</code>.
+        </p>
+        <div>
+          <label class="block text-xs text-ink-700 dark:text-ink-200 mb-1">Nama Draft <span class="text-red-500 dark:text-red-400">*</span></label>
           <input
-            v-model="pasteTextName"
+            ref="exportDraftInput"
+            v-model="exportDraftName"
             type="text"
-            placeholder="e.g. Catatan metode, Outline bab 2"
-             class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30"
+            placeholder="mis. Diskusi Metodologi, Review Literatur X, dll"
+            class="w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30"
+            @keyup.enter="doExportDraft"
           />
-        </label>
-        <label class="block text-xs text-ink-700 dark:text-ink-200">
-          Isi teks
-          <textarea
-            v-model="pasteTextContent"
-            rows="10"
-            placeholder="Tempel teks di sini… (max ~50.000 karakter)"
-             class="mt-1 w-full px-2.5 py-1.5 rounded-md border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs focus:outline-none focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 font-mono"
-          ></textarea>
-        </label>
-        <p class="text-[10px] text-ink-500 dark:text-ink-300">
-          Teks akan ikut dikirim ke AI sebagai "lampiran" pada pesan berikutnya.
+          <p v-if="exportDraftError" class="mt-1 text-[11px] text-red-600 dark:text-red-400">{{ exportDraftError }}</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-ink-500 dark:text-ink-300">
+          <input type="checkbox" v-model="exportDraftWholeConv" id="wholeConv" class="rounded" />
+          <label for="wholeConv">Export seluruh conversation (bukan hanya pesan yang sedang dibaca)</label>
+        </div>
+        <p class="text-[11px] text-ink-500 dark:text-ink-300">
+          Ukuran estimasi: {{ exportDraftEstChars }} karakter.
         </p>
       </div>
       <template #actions>
-         <button @click="pasteTextOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700 active:scale-95 transition-transform">Cancel</button>
-         <button
-           @click="confirmPasteText"
-           :disabled="!pasteTextContent.trim()"
-           class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40 active:scale-95 transition-transform"
-        >Lampirkan</button>
+        <button @click="exportDraftOpen = false" class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700 active:scale-95 transition-transform">Cancel</button>
+        <button
+          @click="doExportDraft"
+          :disabled="exportDraftSaving || !exportDraftName.trim()"
+          class="px-3 py-1.5 min-h-[44px] text-sm rounded-lg bg-[#238f7f] hover:bg-[#1d7a6d] text-white disabled:opacity-50 active:scale-95 transition-transform"
+        >
+          {{ exportDraftSaving ? 'Saving…' : 'Save Draft' }}
+        </button>
+      </template>
+    </AppDialog>
+
+    <!-- File picker (existing paper files) -->
+    <AppDialog v-if="filePickerOpen" :open="filePickerOpen" title="Pilih file dari paper ini" @close="filePickerOpen = false">
+      <div class="space-y-2 max-h-60 overflow-y-auto">
+        <div v-if="paperFilesLoading" class="text-xs text-ink-500 dark:text-ink-300 italic p-2">
+          Loading files…
+        </div>
+        <div v-else-if="!paperFiles.length" class="text-xs text-ink-500 dark:text-ink-300 italic p-2">
+          Belum ada file yang diupload ke paper ini.
+        </div>
+        <label
+          v-for="f in paperFiles"
+          :key="f.id"
+          class="flex items-center gap-2 text-xs cursor-pointer hover:bg-cream-100 dark:hover:bg-ash-700 p-2 rounded"
+        >
+          <input type="checkbox" :checked="pickedFileIds.has(f.id)" @change="togglePickFile(f)" class="rounded" />
+          <span class="flex-1 truncate">{{ f.original_name || f.filename }}</span>
+          <span class="text-ink-500 dark:text-ink-300 text-[10px] shrink-0">{{ f.size ? humanSize(f.size) : '' }}</span>
+        </label>
+      </div>
+      <template #actions>
+        <button @click="filePickerOpen = false" class="px-3 py-1.5 text-sm rounded-lg border border-cream-300 dark:border-ash-700 hover:bg-cream-100 dark:hover:bg-ash-700">Cancel</button>
+        <button
+          @click="confirmPickFiles"
+          :disabled="!pickedFileIds.size"
+          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40"
+        >Tambah ({{ pickedFileIds.size }})</button>
       </template>
     </AppDialog>
 
@@ -482,10 +492,11 @@ import { storeToRefs } from 'pinia'
 import { useChatStore } from '../stores/chat'
 import { usePaperStore } from '../stores/paper'
 import { useAuthStore } from '../stores/auth'
+import { useUserStateStore } from '../stores/userState'
 import api from '../api/index'
 import ChatMessage from './ChatMessage.vue'
 import AppDialog from './AppDialog.vue'
-import ActionChips from './ActionChips.vue'
+import SuggestedPrompts from './SuggestedPrompts.vue'
 
 interface AttachedFile extends File {
   __preExtracted?: boolean
@@ -527,31 +538,6 @@ interface Suggestion {
   text: string
 }
 
-interface Chip {
-  label: string
-  value: string
-}
-
-interface ClickOutsideElement extends HTMLElement {
-  __clickOutsideHandler__?: (event: MouseEvent) => void
-}
-
-const vClickOutside = {
-  mounted(el: ClickOutsideElement, binding: any): void {
-    el.__clickOutsideHandler__ = (event: MouseEvent) => {
-      if (!(el === event.target || el.contains(event.target as Node))) {
-        binding.value(event)
-      }
-    }
-    document.addEventListener('mousedown', el.__clickOutsideHandler__)
-  },
-  unmounted(el: ClickOutsideElement): void {
-    if (el.__clickOutsideHandler__) {
-      document.removeEventListener('mousedown', el.__clickOutsideHandler__)
-    }
-  },
-}
-
 interface Props {
   paperId?: string | null
 }
@@ -567,6 +553,7 @@ const emit = defineEmits<{
 const chatStore = useChatStore()
 const paperStore = usePaperStore()
 const auth = useAuthStore()
+const userState = useUserStateStore()
 const {
   currentPaperId,
   conversations,
@@ -575,25 +562,34 @@ const {
   isStreaming,
   currentChat,
   activeJob,
+  streamPhase,
 } = storeToRefs(chatStore)
 
+// Greeting with nickname
 // Greeting with nickname
 const greeting = computed(() => {
   const nickname = auth.user?.nickname || auth.user?.name?.split(' ')[0] || auth.user?.email?.split('@')[0] || 'Anda'
   return `Halo ${nickname}! Saya PaperFull, siap menjadi asisten Anda. Sudah sampai mana progres Anda?`
 })
 
-const inputText = ref('')
+// Persisted state via userState store (per-paper)
+const inputText = computed({
+  get: () => userState.get('chat.input_text', currentPaperId.value, ''),
+  set: (val) => userState.set('chat.input_text', currentPaperId.value, val),
+})
 const inputRef = ref<HTMLTextAreaElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const attachedFiles = ref<AttachedFile[]>([])
 const attachWarning = ref('')
+let _attachWarningTimer: number | null = null
 const uploadingFiles = ref(false)
 const uploadFileCount = ref({ current: 0, total: 0 })
 const uploadProgress = computed(() => {
   if (!uploadFileCount.value.total) return 0
   return Math.round((uploadFileCount.value.current / uploadFileCount.value.total) * 100)
 })
+// AbortController for upload+extract phase — lets stop button cancel file extraction
+let _uploadAbortController: AbortController | null = null
 const messagesContainer = ref<HTMLElement | null>(null)
 const deleteTarget = ref<Conversation | null>(null)
 const creatingChat = ref(false)
@@ -603,9 +599,60 @@ const renamingId = ref<number | null>(null)
 const renameDraft = ref('')
 const renameInput = ref<HTMLInputElement | null>(null)
 
+// ─── Drag & Drop ───
+const isDragOver = ref(false)
+let _dragCounter = 0
+
+function onDragEnter(e: DragEvent): void {
+  e.preventDefault()
+  _dragCounter++
+  if (e.dataTransfer?.types?.includes('Files')) {
+    isDragOver.value = true
+  }
+}
+
+function onDragLeave(_e: DragEvent): void {
+  _dragCounter--
+  if (_dragCounter <= 0) {
+    _dragCounter = 0
+    isDragOver.value = false
+  }
+}
+
+function onDragOver(e: DragEvent): void {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+}
+
+function onDrop(e: DragEvent): void {
+  e.preventDefault()
+  _dragCounter = 0
+  isDragOver.value = false
+  const files = Array.from(e.dataTransfer?.files || [])
+  if (files.length) addAttachedFiles(files)
+}
+
+// ─── Click Outside directive ───
+interface ClickOutsideElement extends HTMLElement {
+  __clickOutsideHandler__?: (event: MouseEvent) => void
+}
+const vClickOutside = {
+  mounted(el: ClickOutsideElement, binding: any): void {
+    el.__clickOutsideHandler__ = (event: MouseEvent) => {
+      if (!(el === event.target || el.contains(event.target as Node))) {
+        binding.value(event)
+      }
+    }
+    document.addEventListener('click', el.__clickOutsideHandler__)
+  },
+  unmounted(el: ClickOutsideElement): void {
+    if (el.__clickOutsideHandler__) {
+      document.removeEventListener('click', el.__clickOutsideHandler__)
+    }
+  },
+}
+
 const attachMenuOpen = ref(false)
-function toggleAttachMenu(): void { attachMenuOpen.value = !attachMenuOpen.value }
-function closeAttachMenu(): void { attachMenuOpen.value = false }
 function pickUpload(): void {
   attachMenuOpen.value = false
   fileInput.value?.click()
@@ -616,9 +663,77 @@ const paperFiles = ref<PaperFile[]>([])
 const paperFilesLoading = ref(false)
 const pickedFileIds = ref<Set<number>>(new Set())
 
-const pasteTextOpen = ref(false)
-const pasteTextName = ref('')
-const pasteTextContent = ref('')
+async function openExistingFiles(): Promise<void> {
+  attachMenuOpen.value = false
+  if (!currentPaperId.value) return
+  filePickerOpen.value = true
+  pickedFileIds.value = new Set()
+  paperFilesLoading.value = true
+  try {
+    const res = await api.get(`/api/papers/${currentPaperId.value}/files`)
+    paperFiles.value = (res.data?.files || []).map((f: any) => ({
+      ...f,
+      original_name: f.original_name || f.filename || f.name || 'Untitled',
+    }))
+  } catch {
+    paperFiles.value = []
+  } finally {
+    paperFilesLoading.value = false
+  }
+}
+
+function togglePickFile(f: PaperFile): void {
+  const next = new Set(pickedFileIds.value)
+  if (next.has(f.id)) next.delete(f.id)
+  else next.add(f.id)
+  pickedFileIds.value = next
+}
+
+async function confirmPickFiles(): Promise<void> {
+  filePickerOpen.value = false
+  const picked = paperFiles.value.filter(f => pickedFileIds.value.has(f.id))
+  for (const f of picked) {
+    try {
+      const res = await api.get(`/api/papers/${currentPaperId.value}/files/${f.id}/preview`)
+      attachedFiles.value.push({
+        name: f.original_name || f.filename || 'Unknown file',
+        __preExtracted: true,
+        __text: res.data?.text || '',
+        __fileId: f.id,
+        uploading: false,
+      } as AttachedFile)
+    } catch {
+      attachedFiles.value.push({
+        name: f.original_name || f.filename || 'Unknown file',
+        __preExtracted: true,
+        __text: '',
+        __fileId: f.id,
+        uploading: false,
+      } as AttachedFile)
+    }
+  }
+  attachWarning.value = ''
+  pickedFileIds.value = new Set()
+  paperFiles.value = []
+  if (picked.length > 0) {
+    scrollToBottom()
+  }
+}
+
+function humanSize(b: number): string {
+  if (!b) return '0 B'
+  if (b < 1024) return b + ' B'
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB'
+  return (b / 1024 / 1024).toFixed(1) + ' MB'
+}
+
+// ─── Export Draft state ───
+const exportDraftOpen = ref(false)
+const exportDraftName = ref('')
+const exportDraftWholeConv = ref(true)
+const exportDraftSaving = ref(false)
+const exportDraftError = ref('')
+const exportDraftInput = ref<HTMLInputElement | null>(null)
 
 // ─── Timeout & Error Handling ───
 const streamingElapsed = ref(0)
@@ -676,12 +791,10 @@ function startStreamingTimer(): void {
       }
     }
 
-    // Hard timeout is still handled by the chat store; surface a real error
-    // only if we somehow reach it here.
-    if (streamingElapsed.value === 90) {
-      showTimeoutWarning.value = false
-      showToast('Sepertinya ada gangguan koneksi. Silakan coba lagi.', 'error', 5000)
-    }
+    // The store owns the real connection timeout (9 min) and surfaces genuine
+    // disconnect/timeout errors via lastError. Don't raise a misleading
+    // "connection problem" toast at 90s — reasoning-heavy models legitimately
+    // run that long, and a false alarm makes users abandon a healthy stream.
   }, 1000)
 }
 
@@ -711,93 +824,6 @@ async function retryLastMessage(): Promise<void> {
   }
 }
 
-function openPasteText(): void {
-  attachMenuOpen.value = false
-  pasteTextName.value = ''
-  pasteTextContent.value = ''
-  pasteTextOpen.value = true
-}
-
-function confirmPasteText(): void {
-  const text = pasteTextContent.value.trim()
-  if (!text) return
-  const trimmed = text.slice(0, 50_000)
-  const name = (pasteTextName.value.trim() || 'pasted-text.txt').slice(0, 120)
-  attachedFiles.value = [...attachedFiles.value, {
-    name,
-    __preExtracted: true,
-    __text: trimmed,
-    __fileId: null,
-    __isPaste: true,
-  } as AttachedFile].slice(0, 10)
-  pasteTextOpen.value = false
-}
-
-async function openExistingFiles(): Promise<void> {
-  attachMenuOpen.value = false
-  if (!currentPaperId.value) return
-  filePickerOpen.value = true
-  pickedFileIds.value = new Set()
-  paperFilesLoading.value = true
-  try {
-    const res = await api.get(`/api/papers/${currentPaperId.value}/files`)
-    paperFiles.value = res.data?.files || []
-  } catch (e: any) {
-    paperFiles.value = []
-    attachWarning.value = 'Gagal memuat daftar file: ' + (e.message || e)
-  } finally {
-    paperFilesLoading.value = false
-  }
-}
-
-function togglePickFile(f: PaperFile): void {
-  const next = new Set(pickedFileIds.value)
-  if (next.has(f.id)) next.delete(f.id)
-  else next.add(f.id)
-  pickedFileIds.value = next
-}
-
-async function confirmPickFiles(): Promise<void> {
-  if (!pickedFileIds.value.size) return
-  if (!currentPaperId.value) return
-  const ids = [...pickedFileIds.value]
-  filePickerOpen.value = false
-  for (const id of ids) {
-    const f = paperFiles.value.find(x => x.id === id)
-    if (!f) continue
-    try {
-      const res = await api.get(`/api/papers/${currentPaperId.value}/files/${id}/preview`)
-      const text = res.data?.text || ''
-      attachedFiles.value = [...attachedFiles.value, {
-        name: f.original_name,
-        __preExtracted: true,
-        __text: text,
-        __fileId: id,
-      } as AttachedFile].slice(0, 10)
-    } catch (e: any) {
-      attachWarning.value = 'Gagal baca file: ' + (e.message || e)
-    }
-  }
-}
-
-function extIcon(ext: string): string {
-  switch ((ext || '').toLowerCase()) {
-    case '.pdf': return '📕'
-    case '.docx':
-    case '.doc': return '📘'
-    case '.txt': return '📄'
-    case '.md': return '📝'
-    default: return '📁'
-  }
-}
-
-function humanSize(b: number): string {
-  if (!b) return '0 B'
-  if (b < 1024) return b + ' B'
-  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB'
-  return (b / 1024 / 1024).toFixed(1) + ' MB'
-}
-
 const quickSuggestions: Suggestion[] = [
   { key: 'paperfull', label: 'paperfull', text: 'Generate paper lengkap (auto full paper).' },
   { key: 'abstract',  label: 'abstract',  text: 'Revisi abstract paper saya.' },
@@ -810,65 +836,17 @@ const quickSuggestions: Suggestion[] = [
   { key: 'translate', label: 'Translate', text: 'Translate. Tanyakan dulu scope-nya (paragraf/section/seluruh) dan target_language (id/en).' },
 ]
 
-const entryChips: Chip[] = [
-  { label: '🆕 Buat baru',           value: 'buat_baru' },
-  { label: '📄 Saya sudah punya draft', value: 'punya_draft' },
-]
-
-function onEntryPick(value: string): void {
-  if (!value || isStreaming.value || !currentConversationId.value) return
+/** Handle suggested prompt click from empty-state */
+function onSuggestedPrompt(text: string): void {
+  if (!text || isStreaming.value || !currentConversationId.value) return
   if (activeJob.value && activeJob.value.active) return
-
-  // "Buat baru" → fetch the offline onboarding questions (static template with
-  // recommended answers) and render them DIRECTLY as a card. No AI round-trip:
-  // the user fills the template, then submitting flows into the dynamic phases.
-  if (value === 'buat_baru') {
-    void startOfflineOnboarding()
-    return
-  }
-
-  // Jangan tembak AI langsung — arahkan ke flow input data dulu
-  if (value === 'punya_draft') {
-    inputText.value = 'Saya sudah punya draft paper. Tolong tanyakan dulu detail paper saya yang sudah ada.'
-  } else {
-    inputText.value = value
-  }
+  inputText.value = text
   showSuggestions.value = false
   nextTick(() => {
     const input = document.querySelector('.chat-input-textarea') as HTMLTextAreaElement | null
     if (input) {
       input.focus()
-      input.setSelectionRange(inputText.value.length, inputText.value.length)
-    }
-  })
-}
-
-/**
- * Start the "Buat baru" flow offline: ask the backend for the static onboarding
- * questions (no AI), then render them as a multi_question card. Falls back to a
- * plain seeded prompt if the endpoint is unavailable.
- */
-async function startOfflineOnboarding(): Promise<void> {
-  const paperId = currentPaperId.value
-  if (!paperId) return
-  showSuggestions.value = false
-  try {
-    const res = await api.post(`/api/papers/${paperId}/workflow/onboarding`)
-    const proposal = res?.data
-    if (proposal && Array.isArray(proposal.questions) && proposal.questions.length) {
-      chatStore.injectMultiQuestion(proposal)
-      return
-    }
-  } catch (e) {
-    console.warn('Offline onboarding failed, falling back to seeded prompt:', e)
-  }
-  // Fallback: seed the input so the user can still kick off via the AI.
-  inputText.value = 'Saya mau membuat paper baru dari awal. Tolong tanyakan data-data yang diperlukan dulu.'
-  nextTick(() => {
-    const input = document.querySelector('.chat-input-textarea') as HTMLTextAreaElement | null
-    if (input) {
-      input.focus()
-      input.setSelectionRange(inputText.value.length, inputText.value.length)
+      input.setSelectionRange(text.length, text.length)
     }
   })
 }
@@ -917,6 +895,11 @@ async function onMultiQuestionSubmit(answers: any): Promise<void> {
   await chatStore.sendMessage(`Jawaban saya:\n${lines}`)
 }
 
+async function onAskUserAnswer(answer: string): Promise<void> {
+  if (!currentConversationId.value || !answer.trim()) return
+  await chatStore.sendMessage(answer)
+}
+
 async function onRevisiAccept(): Promise<void> {
   if (!currentConversationId.value) return
   await chatStore.sendMessage(`Terima rewrite ini.`)
@@ -935,6 +918,49 @@ async function onReviewCancel(): Promise<void> {
 onMounted(async () => {
   if (props.paperId) {
     await chatStore.openPaper(props.paperId)
+    
+    // Check for interrupted streaming sessions and restore them
+    try {
+      const { useUserStateStore } = await import('../stores/userState')
+      const userState = useUserStateStore()
+      const savedStream = userState.get('chat.streaming', null, null)
+      
+      if (savedStream && savedStream.conv_id) {
+        const { data } = await api.get(`/api/chat/conversations/${savedStream.conv_id}/stream-status`)
+        
+        if (data.status === 'streaming') {
+          // Backend still streaming - reconnect
+          const stream = chatStore._ensureStream(savedStream.conv_id)
+          stream.isStreaming = true
+          stream.connectionState = 'reconnecting'
+          stream.streamingMessage = {
+            id: null,
+            role: 'assistant',
+            content: data.content || savedStream.content || '',
+            thinking: data.thinking || savedStream.thinking || '',
+            tool_calls: [],
+            created_at: data.started_at || savedStream.started_at,
+          }
+          stream.messages.push(stream.streamingMessage)
+          chatStore._syncFromStream(savedStream.conv_id)
+          
+          // Set current conversation to the streaming one
+          if (currentConversationId.value !== savedStream.conv_id) {
+            await chatStore.openConversation(savedStream.conv_id)
+          }
+          
+          showToast('Melanjutkan streaming yang terputus...', 'info')
+        } else if (data.status === 'done' && data.message_id) {
+          // Backend finished - fetch the complete message
+          await chatStore.openConversation(savedStream.conv_id)
+          userState.deleteKey('chat.streaming', null)
+          showToast('Streaming selesai saat Anda refresh', 'success')
+        } else {
+          // Clear stale streaming state
+          userState.deleteKey('chat.streaming', null)
+        }
+      }
+    } catch { /* ignore restore errors */ }
   }
 })
 
@@ -945,6 +971,7 @@ onUnmounted(() => {
 onBeforeUnmount(() => {
   stopStreamingTimer()
   if (toastTimer) clearTimeout(toastTimer)
+  if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
 })
 
 watch(
@@ -969,6 +996,14 @@ const lastScrollTop = ref(0)
 const statusMessage = computed(() => {
   if (!isStreaming.value) return 'Online'
 
+  // Phase-based status (most accurate during streaming)
+  const phase = streamPhase.value
+  if (phase === 'sending') return 'Mengirimkan pesan...'
+  if (phase === 'thinking') return 'Masih berpikir...'
+  if (phase === 'composing') return 'Menyusun jawaban...'
+  if (phase === 'streaming') return 'Mengetik...'
+
+  // Fallback: legacy detection via message content
   const msg = messages.value[messages.value.length - 1]
   if (msg?.role !== 'assistant') return 'Menghubungkan...'
 
@@ -979,19 +1014,32 @@ const statusMessage = computed(() => {
       // Friendly, user-facing labels. Never surface raw tool names like
       // "SaveWorkflowAnswers" — they look like internal errors to users.
       const toolNames: Record<string, string> = {
-        'SearchLiterature': 'Mencari literatur',
-        'RunSLR': 'Mengumpulkan referensi',
-        'SearchPapers': 'Mencari paper',
-        'GenerateFullPaper': 'Menyusun paper',
-        'SaveMemory': 'Menyimpan catatan',
-        'AskQuestions': 'Menyiapkan pertanyaan',
-        'StartWorkflow': 'Menyiapkan data awal',
-        'SaveWorkflowAnswers': 'Menyimpan jawaban',
-        'ProposeSection': 'Menulis bagian',
-        'GenerateImage': 'Membuat gambar',
-        'GenerateChart': 'Membuat grafik',
-        'ReviewLargeFile': 'Meninjau berkas',
-        'ClassifyFile': 'Memproses berkas',
+        'WebSearch': '🔍 Mencari di web',
+        'SearchLiterature': '📚 Mencari literatur',
+        'SearchArxiv': '📚 Mencari di arXiv',
+        'SearchSemanticScholar': '🎓 Mencari di Semantic Scholar',
+        'RunSLR': '🔬 Systematic Literature Review',
+        'SearchPapers': '📄 Mencari paper',
+        'GenerateFullPaper': '📝 Menyusun paper lengkap',
+        'SaveMemory': '💾 Menyimpan catatan',
+        'AskQuestions': '❓ Menyiapkan pertanyaan',
+        'StartWorkflow': '⚙️ Menyiapkan data awal',
+        'SaveWorkflowAnswers': '💾 Menyimpan jawaban',
+        'ProposeSection': '✍️ Menulis bagian',
+        'ProposeTitle': '📌 Menulis judul',
+        'ProposeAbstract': '📄 Menulis abstrak',
+        'ProposeKeywords': '🏷️ Menulis keywords',
+        'ProposeReference': '📖 Menambah referensi',
+        'GenerateImage': '🖼️ Membuat gambar',
+        'GenerateChart': '📊 Membuat grafik',
+        'CreateChart': '📊 Membuat grafik',
+        'ReviewLargeFile': '📋 Meninjau berkas',
+        'ClassifyFile': '📂 Memproses berkas',
+        'Paraphrase': '✏️ Memparafrase teks',
+        'FixGrammar': '🔧 Memperbaiki grammar',
+        'Translate': '🌐 Menerjemahkan',
+        'RequestExportDocx': '📥 Export DOCX',
+        'ReviewPaper': '🔍 Me-review paper',
       }
       return toolNames[lastTool.name] || 'Memproses...'
     }
@@ -1001,7 +1049,7 @@ const statusMessage = computed(() => {
   if (msg.thinking && !msg.content) return 'Masih berpikir...'
   if (msg.content) return 'Mengetik...'
 
-  return 'Masih berpikir...'
+  return 'Mengirimkan pesan...'
 })
 
 const lastAssistantMessage = computed(() => {
@@ -1046,13 +1094,13 @@ function checkScrollPosition(): void {
   lastScrollTop.value = scrollTop
 }
 
-watch(messages, () => {
+watch(() => messages.value.length, () => {
   nextTick(() => {
     if (userIsNearBottom.value) {
       scrollToBottom()
     }
   })
-}, { deep: true })
+})
 
 watch(inputText, () => {
   if (inputText.value.length > 0) showSuggestions.value = false
@@ -1191,6 +1239,91 @@ async function doDeleteChat(): Promise<void> {
   }
 }
 
+// ─── Export Draft ───
+const exportDraftEstChars = computed(() => {
+  const msgs = messages.value || []
+  if (!msgs.length) return 0
+  // Estimate: sum of message content lengths
+  return msgs.reduce((acc, m) => acc + (m.content?.length || 0), 0)
+})
+
+function openExportDraftModal(): void {
+  if (!messages.value.length) return
+  exportDraftName.value = ''
+  exportDraftWholeConv.value = true
+  exportDraftError.value = ''
+  exportDraftSaving.value = false
+  exportDraftOpen.value = true
+  // Focus input after dialog is rendered
+  nextTick(() => {
+    exportDraftInput.value?.focus()
+  })
+}
+
+async function doExportDraft(): Promise<void> {
+  const name = exportDraftName.value.trim()
+  if (!name) {
+    exportDraftError.value = 'Nama draft wajib diisi'
+    return
+  }
+  if (name.length < 2) {
+    exportDraftError.value = 'Nama terlalu pendek (min 2 karakter)'
+    return
+  }
+  if (name.length > 200) {
+    exportDraftError.value = 'Nama terlalu panjang (max 200 karakter)'
+    return
+  }
+
+  const convId = currentConversationId.value
+  const paperId = currentPaperId.value
+  if (!convId || !paperId) {
+    exportDraftError.value = 'Tidak ada conversation aktif untuk diekspor'
+    return
+  }
+
+  exportDraftError.value = ''
+  exportDraftSaving.value = true
+
+  try {
+  const payload: any = {
+    name,
+    conversation_id: convId,
+    tags: [],
+  }
+  if (!exportDraftWholeConv.value) {
+    payload.selected_message_ids = null
+  }
+
+  // Save as draft — backend also creates a PaperFile so it appears in Files tab
+  const res = await api.post(`/api/papers/${paperId}/drafts`, payload)
+  const draftData = res.data?.draft
+  const paperFile = res.data?.paper_file
+
+  if (paperFile) {
+    showToast(`Draft "${name}" tersimpan & muncul di tab Files (${(draftData?.content_length || 0).toLocaleString()} karakter)`, 'success')
+  } else {
+    showToast(`Draft "${name}" tersimpan (${(draftData?.content_length || 0).toLocaleString()} karakter)`, 'success')
+  }
+  exportDraftOpen.value = false
+  try {
+    window.dispatchEvent(new CustomEvent('chat-draft-saved', { detail: { paperId, paperFile } }))
+  } catch {
+    /* ignore */
+  }
+  } catch (e: any) {
+  const errCode = e?.response?.data?.code || ''
+  const errMsg = e?.response?.data?.error || e?.message || ''
+  if (errCode === 'CONTENT_EMPTY') {
+    exportDraftError.value = 'Conversation kosong. Kirim minimal 1 pesan dulu sebelum export draft.'
+  } else {
+    exportDraftError.value = errMsg || 'Gagal menyimpan draft'
+  }
+  } finally {
+  exportDraftSaving.value = false
+  }
+}
+
 async function handleSend(): Promise<void> {
   const text = inputText.value.trim()
   if ((!text && !attachedFiles.value.length) || isStreaming.value || !currentConversationId.value) return
@@ -1203,11 +1336,14 @@ async function handleSend(): Promise<void> {
   if (realFiles.length || preExtracted.length) {
     uploadingFiles.value = true
     uploadFileCount.value = { current: 0, total: realFiles.length }
+    _uploadAbortController = new AbortController()
 
-    // Mark all real files as uploading
-    attachedFiles.value = attachedFiles.value.map(f =>
-      realFiles.includes(f as File) ? { ...f, uploading: true } as AttachedFile : f
-    )
+    // Mark all real files as uploading (mutate in-place to preserve File prototype)
+    attachedFiles.value.forEach(f => {
+      if (realFiles.includes(f as File)) {
+        (f as any).uploading = true
+      }
+    })
 
     try {
       const fileEntries: FileEntry[] = []
@@ -1222,6 +1358,7 @@ async function handleSend(): Promise<void> {
             fd,
             {
               headers: { 'Content-Type': 'multipart/form-data' },
+              signal: _uploadAbortController?.signal,
               onUploadProgress: (evt: any) => {
                 if (evt.total) {
                   const pct = Math.round((evt.loaded / evt.total) * 100)
@@ -1250,6 +1387,7 @@ async function handleSend(): Promise<void> {
           })
         }
       }
+
       for (const f of preExtracted) {
         fileEntries.push({
           id: f.__fileId ?? null,
@@ -1268,7 +1406,8 @@ async function handleSend(): Promise<void> {
 
       attachWarning.value = warnings.join('; ')
       if (attachWarning.value) {
-        setTimeout(() => { attachWarning.value = '' }, 5000)
+        if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
+        _attachWarningTimer = setTimeout(() => { attachWarning.value = ''; _attachWarningTimer = null }, 5000) as unknown as number
       }
       
       // Show success toast for file upload
@@ -1276,28 +1415,41 @@ async function handleSend(): Promise<void> {
         showToast(`${fileEntries.length} file berhasil dilampirkan`, 'success')
       }
       
+      const idsLine = ''
+      const defaultText = fileEntries.length
+        ? `Saya melampirkan ${fileEntries.length} file.`
+        : ''
+      // Send full text to AI — no truncation
       const names = attachedFiles.value.map(f => f.name).join(', ')
       const blocks = fileEntries.map(e => {
+        const content = e.text || '(ekstrak teks gagal / kosong)'
         const header = e.id != null
           ? `--- File terlampir: ${e.name} [file_id=${e.id}] ---`
           : `--- File terlampir: ${e.name} ---`
-        return `${header}\n${e.text || '(ekstrak teks gagal / kosong)'}\n--- akhir file ---`
+        return `${header}\n${content}\n--- akhir file ---`
       })
       const fileBlock = blocks.length
         ? '\n\n' + blocks.join('\n\n')
         : `\n\n[File ${names} dilampirkan tetapi gagal diekstrak]`
-      const idsHint = fileEntries.filter(e => e.id != null).map(e => e.id).join(',')
-      const idsLine = idsHint
-        ? `\n[FILE_IDS=${idsHint}] (use AskQuestions with key=file_kind:<id> per file, then ClassifyFile per answer; options must include paper_slr/paper_read/data/image/template)`
-        : ''
-      const defaultText = fileEntries.length
-        ? `Saya melampirkan ${fileEntries.length} file. Tanya dulu "ini file apa?" untuk masing-masing file via AskQuestions (satu pertanyaan per file_id, key=file_kind:<id>) dengan pilihan: paper_slr, paper_read, data, image, template. Lalu panggil ClassifyFile sesuai jawaban. Untuk file paper_slr >3000 kata, pakai ReviewLargeFile.`
-        : ''
       composed = (text || defaultText)
         + idsLine
         + fileBlock
       attachedFiles.value = []
     } catch (e: any) {
+      // Handle user-initiated abort (stop button during upload)
+      if (e?.name === 'AbortError' || e?.name === 'CanceledError' || _uploadAbortController?.signal.aborted) {
+        showToast('Upload file dibatalkan', 'warning')
+        uploadingFiles.value = false
+        _uploadAbortController = null
+        // Restore files with their original state (not failed)
+        attachedFiles.value = attachedFiles.value.map(f => ({
+          ...f,
+          uploading: false,
+          uploadError: '',
+          canRetry: false,
+        } as AttachedFile))
+        return
+      }
       const status = e?.response?.status
       const data = e?.response?.data || {}
       let msg: string
@@ -1322,9 +1474,11 @@ async function handleSend(): Promise<void> {
       attachWarning.value = 'Upload gagal: ' + msg + (status !== 401 ? ' — Klik ↻ untuk retry.' : ' — Silakan login ulang.')
       showToast('Upload file gagal: ' + msg, 'error')
       uploadingFiles.value = false
+      _uploadAbortController = null
       return
     }
     uploadingFiles.value = false
+    _uploadAbortController = null
   }
 
   // Store last message for retry
@@ -1437,6 +1591,11 @@ async function retryUpload(i: number): Promise<void> {
 
 function handleStop(): void {
   chatStore.stopStreaming()
+  // Also abort file upload/extraction if in progress
+  if (_uploadAbortController) {
+    _uploadAbortController.abort()
+    _uploadAbortController = null
+  }
 }
 
 function handleKeydown(e: KeyboardEvent): void {

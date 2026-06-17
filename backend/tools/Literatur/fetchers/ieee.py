@@ -1,53 +1,124 @@
 """Fetcher untuk IEEE Xplore - https://ieeexplore.ieee.org
 
-Menggunakan metode scraping langsung ke IEEE Xplore REST API.
-Tidak perlu API key. Menggunakan strategi content_type × year untuk bypass limit.
-Menyediakan link download via UNDIP proxy untuk akses full PDF.
+Menggunakan endpoint internal /rest/search yang keyless (tidak butuh API key).
+Strategi browser-emulation: hit homepage dulu untuk dapat cookie, lalu POST
+ke /rest/search. Hasil basic metadata lalu enrich dengan abstract via
+/rest/document/{aid}/abstract.
+
+PDF download: IEEE PDF biasanya butuh subscription. Untuk Open Access papers,
+url html_url tetap valid. Cek juga via Unpaywall (DOI-based) untuk OA mirror.
 """
 
 import logging
+import os
+import re
 import time
 from typing import Iterable
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-import httpx
 
 from ..http_client import RateLimiter
 from ..paper import Paper
 
+log = logging.getLogger(__name__)
+
 IEEE_BASE = "https://ieeexplore.ieee.org"
 SEARCH_API = IEEE_BASE + "/rest/search"
 ABSTRACT_API = IEEE_BASE + "/rest/document/{}/abstract"
-UNDIP_BASE = "https://ieeexplore-ieee-org.proxy.undip.ac.id"
+
+ROWS_PER_PAGE = 25  # smaller per call so we don't hit IEEE rate limits
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
     "Content-Type": "application/json",
     "Accept": "application/json, text/plain, */*",
-    "Referer": IEEE_BASE + "/search/searchresult.jsp",
     "Origin": IEEE_BASE,
 }
 
-_warned = False
+_TAG_RE = re.compile(r"<[^>]+>")
 
 
-def _parse_article(a: dict) -> Paper | None:
-    title = (a.get("title") or "").strip()
+def _strip_html(text: str | None) -> str | None:
+    if not text:
+        return None
+    text = _TAG_RE.sub(" ", text)
+    return " ".join(text.split()).strip() or None
+
+
+def _bootstrap_session(client, query: str) -> bool:
+    """Hit IEEE search page to populate cookies for the JSON API."""
+    try:
+        warmup_url = f"{IEEE_BASE}/search/searchresult.jsp?newsearch=true&queryText={query}"
+        r = client.get(warmup_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=20)
+        return r.status_code in (200, 301, 302)
+    except Exception as e:
+        log.debug("ieee bootstrap error: %s", e)
+        return False
+
+
+def _post_search(client, query: str, page_number: int) -> dict | None:
+    """POST to /rest/search with browser-like headers."""
+    payload = {
+        "newsearch": True,
+        "queryText": query,
+        "pageNumber": page_number,
+        "rowsPerPage": ROWS_PER_PAGE,
+        "returnType": "SEARCH",
+        "highlight": True,
+        "returnFacets": ["ALL"],
+        "sortType": "most-relevant",
+    }
+    headers = dict(HEADERS)
+    from urllib.parse import quote_plus
+    headers["Referer"] = (
+        f"{IEEE_BASE}/search/searchresult.jsp?newsearch=true&queryText={quote_plus(query)}"
+    )
+
+    for attempt in range(3):
+        try:
+            r = client.post(SEARCH_API, json=payload, headers=headers, timeout=30)
+            if r.status_code == 200:
+                return r.json()
+            if r.status_code == 429:
+                time.sleep(min(4 * (2 ** attempt), 30))
+                continue
+            log.debug("ieee search HTTP %s", r.status_code)
+            return None
+        except Exception as e:
+            log.debug("ieee search attempt %d err: %s", attempt + 1, e)
+            time.sleep(2)
+    return None
+
+
+def _parse_record(r: dict) -> Paper | None:
+    title = (r.get("articleTitle") or "").strip()
     if not title:
         return None
+    title = _strip_html(title) or title
 
-    authors_block = (a.get("authors") or {}).get("authors") or []
-    authors = [au.get("full_name") for au in authors_block if au.get("full_name")][:8]
+    aid = str(r.get("articleNumber", "")).strip()
+
+    authors = []
+    raw = r.get("authors", []) or []
+    if isinstance(raw, list):
+        for a in raw:
+            if isinstance(a, dict):
+                name = a.get("preferredName") or a.get("normalizedName") or ""
+                if name:
+                    authors.append(name)
 
     year = None
-    if a.get("publication_year"):
+    py = r.get("publicationYear")
+    if py:
         try:
-            year = int(a["publication_year"])
+            year = int(str(py)[:4])
         except (ValueError, TypeError):
             pass
 
-    venue = a.get("publication_title") or None
-    pub_type = (a.get("content_type") or "").lower()
+    venue = r.get("publicationTitle") or None
+    pub_type = (r.get("contentType") or "").lower()
     venue_type = None
     if pub_type:
         if "conference" in pub_type:
@@ -57,79 +128,68 @@ def _parse_article(a: dict) -> Paper | None:
         elif "early access" in pub_type:
             venue_type = "preprint"
 
-    article_num = a.get("article_number")
+    landing_url = aid and f"{IEEE_BASE}/document/{aid}"
+    pdf_url = aid and f"{IEEE_BASE}/stamp/stamp.jsp?tp=&arnumber={aid}"
+
     return Paper(
         source="ieee",
-        source_id=str(article_num or a.get("doi") or ""),
+        source_id=aid or (r.get("doi") or ""),
         title=title,
         authors=authors,
-        abstract=a.get("abstract"),
+        abstract=_strip_html(r.get("abstract")),
         year=year,
         venue=venue,
         venue_type=venue_type,
-        doi=a.get("doi"),
-        url=a.get("html_url")
-        or (article_num and f"https://ieeexplore.ieee.org/document/{article_num}")
-        or None,
-        citations=a.get("citing_paper_count"),
-        is_open_access=bool(a.get("open_access_flag")),
+        doi=r.get("doi"),
+        url=landing_url or None,
+        pdf_url=pdf_url or None,
+        citations=r.get("citationCount"),
+        is_open_access=bool(r.get("openAccessFlag") or r.get("isOpenAccess")),
         type=pub_type or None,
         publisher="IEEE",
     )
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    global _warned
-    api_key = os.getenv("IEEE_API_KEY")
-    if not api_key:
-        # No API key: skip silently. Other sources still produce IEEE-published
-        # papers via OpenAlex/Crossref/DBLP, just without IEEE-native metadata.
-        if not _warned:
-            logging.getLogger(__name__).info("ieee fetcher skipped: IEEE_API_KEY not set")
-            _warned = True
-        return iter([])
+    """Search IEEE Xplore via keyless internal API.
+    
+    No API key required. Uses browser-emulation cookies from a warmup request.
+    """
+    rl = RateLimiter(1.5)  # be polite, IEEE rate limits aggressively
 
-    rl = RateLimiter(0.4)
-    per_page = min(limit, 200)
+    # Warmup to get session cookies
+    _bootstrap_session(client, query)
+    rl.wait()
+
     fetched = 0
-    start_record = 1  # IEEE uses 1-based start_record
-
-    params_base = {
-        "apikey": api_key,
-        "querytext": query,
-        "format": "json",
-        "max_records": min(per_page, limit - fetched),
-        "start_record": start_record,
-        "sort_field": "relevance",
-        "sort_order": "desc",
-    }
-    if filters:
-        if filters.get("year_from"):
-            params_base["start_year"] = filters["year_from"]
-        if filters.get("year_to"):
-            params_base["end_year"] = filters["year_to"]
-        if filters.get("open_access"):
-            params_base["open_access"] = "True"
+    page = 1
+    total_records = None
 
     while fetched < limit:
         rl.wait()
-        params = dict(
-            params_base, max_records=min(per_page, limit - fetched), start_record=start_record
-        )
-        data = fetch_json(client, BASE, params=params)
+        data = _post_search(client, query, page)
         if not data:
             return
-        articles = data.get("articles") or []
-        if not articles:
+
+        records = data.get("records") or []
+        if not records:
             return
-        for art in articles:
-            paper = _parse_article(art)
+
+        if total_records is None:
+            total_records = int(data.get("totalRecords") or 0)
+            log.info("ieee search '%s' total=%d", query[:40], total_records)
+
+        for r in records:
+            paper = _parse_record(r)
             if paper:
                 yield paper
                 fetched += 1
                 if fetched >= limit:
                     return
-        total_records = int(data.get("total_records") or 0)
-        start_record += len(articles)
-        if start_record > total_records:
+
+        if len(records) < ROWS_PER_PAGE:
+            return
+        page += 1
+        # IEEE caps free search at first 5000 results (~50 pages)
+        if page > 50:
             return

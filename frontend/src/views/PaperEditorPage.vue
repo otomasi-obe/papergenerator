@@ -190,7 +190,7 @@
                     placeholder="Section Title (e.g. INTRODUCTION)" />
                 </div>
                 <button @click="confirmDeleteSection(sIdx)"
-                  class="text-xs text-red-400 hover:text-red-600 px-2 py-1 ml-2 shrink-0">✕</button>
+                  class="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 dark:text-red-400 px-2 py-1 ml-2 shrink-0">✕</button>
               </div>
 
               <ContentList :items="section.content" :store="store" />
@@ -219,7 +219,7 @@
                           placeholder="Subsection Title" />
                       </div>
                       <button @click="confirmDeleteSubsection(sIdx, subIdx)"
-                        class="text-xs text-red-400 hover:text-red-600 px-2 py-1 ml-2 shrink-0">✕</button>
+                        class="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 dark:text-red-400 px-2 py-1 ml-2 shrink-0">✕</button>
                     </div>
                     <ContentList :items="sub.content" :store="store" />
                     <div class="flex gap-2 mt-2 flex-wrap">
@@ -261,7 +261,7 @@
                   <button @click="moveItem(store.paper.references, i, i + 1)" :disabled="i === store.paper.references.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
                 </div>
                 <span class="text-[11px] text-ink-400 dark:text-anthracite-300 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
-                <input :value="ref" @input="store.paper.references[i] = $event.target.value"
+                <input :value="displayRef(ref)" @input="store.paper.references[i] = $event.target.value"
                   class="input-sm flex-1 text-xs" placeholder="Reference text..." />
                 <button @click="store.removeReference(i)" class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-xs shrink-0">✕</button>
               </div>
@@ -285,7 +285,7 @@
           <!-- Paperfull -->
           <button @click="openRightPanel('paperfull')"
             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <img src="/assets/logo.png" alt="" class="h-5 w-5 rounded object-contain" />
+            <span class="text-base">📝</span>
             <span class="text-xs font-medium">Paperfull</span>
           </button>
           <!-- Chat -->
@@ -334,6 +334,10 @@
         </div>
       </div>
 
+      <div v-else-if="rightPanel === 'paperfull'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
+        <div class="px-4 lg:px-8 py-6"><PaperfullTab /></div>
+      </div>
+
       <div v-else-if="rightPanel === 'chat'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col border-l border-cream-300 dark:border-ash-700">
         <ChatTab :paper-id="store.currentPaperId" @open-preview="activeTab = 'preview'; editorVisible = true" />
       </div>
@@ -343,7 +347,7 @@
       </div>
 
       <div v-else-if="rightPanel === 'literature'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
-        <div class="px-4 lg:px-8 py-6"><LiteratureTab /></div>
+        <LiteratureTab />
       </div>
 
       <div v-else-if="rightPanel === 'files'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
@@ -352,10 +356,6 @@
 
       <div v-else-if="rightPanel === 'data'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-6"><DataTab /></div>
-      </div>
-
-      <div v-else-if="rightPanel === 'paperfull'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
-        <div class="px-4 lg:px-8 py-6"><PaperfullTab /></div>
       </div>
 
       <div v-else-if="rightPanel === 'image'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
@@ -443,6 +443,7 @@ import WordAddonInstallModal from '@/components/WordAddonInstallModal.vue'
 import { useToolsStore } from '../stores/tools.ts'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
+import { useUserStateStore } from '../stores/userState'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useKeyboardShortcuts'
 
 const store = usePaperStore()
@@ -452,8 +453,16 @@ const authStore = useAuthStore()
 const toolsStore = useToolsStore()
 const imageGenStore = useImageGenStore()
 const paperJobsStore = usePaperJobsStore()
+const userState = useUserStateStore()
 const route = useRoute()
 const router = useRouter()
+
+// Display helper for references — handles strings and structured objects
+function displayRef(ref: any): string {
+  if (typeof ref === 'string') return ref
+  if (ref && ref.text) return ref.text
+  return store.formatRef(ref) || ''
+}
 
 // rofiq.txt #2 + #3: tab & chat panel state per-paper, restore saat reload.
 // Default paper baru = no tab + chat full (lihat ui.js).
@@ -484,18 +493,32 @@ const lastSavedAt = ref<number | null>(null)
 const nowTick = ref(Date.now())
 
 // ─── Split layout state ───────────────────────────────────────────────────
-// rightPanel: '' = closed | 'chat' | 'journal' | 'literature' | 'files' | 'data' | 'paperfull' | 'image' | 'tool-workspace'
-const rightPanel = ref('chat')
-const toolsOpen = ref(false) // shows the tools menu list
-const editorVisible = ref(true) // left pane (editor/preview) visibility
+// rightPanel: '' = closed | 'chat' | 'journal' | 'literature' | 'files' | 'data' | 'image' | 'tool-workspace'
+// Persisted state via userState store (per-paper)
+// All four layout fields route through the `ui` store (single source of truth =
+// perPaper) so the deep-watcher in ui.ts never clobbers userState with a stale
+// perPaper value. (Bug: writing toolsOpen directly to userState left perPaper.toolsOpen
+// stale → switching tabs re-synced the stale `false`, closing the tools panel.)
+const rightPanel = computed({
+  get: () => ui.getRightPanel(store.currentPaperId || ''),
+  set: (val) => ui.setRightPanel(store.currentPaperId || '', val),
+})
+const toolsOpen = computed({
+  get: () => ui.getToolsOpen(store.currentPaperId || ''),
+  set: (val) => ui.setToolsOpen(store.currentPaperId || '', val),
+})
+const editorVisible = computed({
+  get: () => ui.getEditorVisible(store.currentPaperId || ''),
+  set: (val) => ui.setEditorVisible(store.currentPaperId || '', val),
+})
+
 const showWordAddonModal = ref(false)
 
 function openRightPanel(panel) {
   toolsOpen.value = false
   rightPanel.value = panel
-  // Ensure left pane shows something (default to editor if nothing selected)
   if (!activeTab.value) activeTab.value = 'editor'
-  if (!editorVisible.value) editorVisible.value = true
+  // Don't force editor open — respect user's last close state
 }
 
 function openToolWorkspace(tool) {
@@ -509,7 +532,7 @@ function openToolWorkspace(tool) {
   toolsOpen.value = false
   toolsStore.setActiveTool(tool)
   rightPanel.value = 'tool-workspace'
-  if (!activeTab.value) activeTab.value = 'editor'
+  // Don't force editor/preview open — respect user's last close state
 }
 
 function toggleTools() {
@@ -694,8 +717,16 @@ function stableKey(obj: any) {
 }
 
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+let _justLoaded = false
 let tickTimer: ReturnType<typeof setInterval> | null = null
-const savedRelative = computed(() => lastSavedAt.value ? 'just now' : 'just now')
+const savedRelative = computed(() => {
+  if (!lastSavedAt.value) return ''
+  const diff = Math.floor((nowTick.value - lastSavedAt.value) / 1000)
+  if (diff < 5) return 'just now'
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  return `${Math.floor(diff / 3600)}h ago`
+})
 
 const currentActiveJob = computed(() => {
   if (!store.currentPaperId) return null
@@ -717,6 +748,7 @@ function cancelCurrentJob() {
 }
 
 watch(() => store.paper, () => {
+  if (_justLoaded) { _justLoaded = false; return }
   if (!store.paper.title?.trim() && !store.currentPaperId) return
   clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(async () => {
@@ -753,6 +785,7 @@ onMounted(async () => {
   if (paperId && paperId !== 'null' && paperId !== 'undefined') {
     const paperIdStr = Array.isArray(paperId) ? paperId[0] : paperId
     const loaded = await store.loadPaperFromDb(paperIdStr)
+    if (loaded) _justLoaded = true
     if (!loaded && !store.currentPaperId) {
       // Paper no longer exists — start a fresh paper instead of leaving the
       // user on a broken editor with cascading 404s.
@@ -775,6 +808,7 @@ onMounted(async () => {
   // Start active-job poller for whichever paper we ended up on.
   if (store.currentPaperId) {
     paperJobsStore.startPolling(store.currentPaperId)
+    await userState.loadForPaper(store.currentPaperId)
   }
   try {
     const [tRes, sRes] = await Promise.all([
@@ -787,6 +821,14 @@ onMounted(async () => {
 
   if (route.query.tab) {
     activeTab.value = String(route.query.tab)
+  }
+
+  if (route.query.panel) {
+    const p = String(route.query.panel)
+    if (p === 'paperfull' || p === 'chat' || p === 'journal' || p === 'literature' || p === 'files' || p === 'data' || p === 'image') {
+      toolsOpen.value = false
+      rightPanel.value = p
+    }
   }
 
   nextTick(() => {
@@ -902,12 +944,12 @@ function cancelDelete() {
 </script>
 
 <style scoped>
-.card { @apply bg-white dark:bg-anthracite-700 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_2px_8px_rgba(0,0,0,0.3)] border border-ivory-300 dark:border-anthracite-500 p-5 transition-shadow duration-200; }
+.card { @apply bg-white dark:bg-ash-800 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_2px_8px_rgba(0,0,0,0.3)] border border-ivory-300 dark:border-anthracite-500 p-5 transition-shadow duration-200; }
 .card:hover { box-shadow: 0 1px 0 rgba(15,14,11,0.04), 0 4px 12px rgba(15,14,11,0.1); }
 .dark .card:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.4); }
 .label { @apply block text-sm font-medium font-serif text-ink-900 dark:text-ink-50 mb-1.5; }
-.input { @apply w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition-colors duration-150; }
-.input-sm { @apply px-2.5 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition-colors duration-150; }
+.input { @apply w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition-colors duration-150; }
+.input-sm { @apply px-2.5 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition-colors duration-150; }
 .btn-add { @apply px-3 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded-lg text-xs font-medium transition-colors active:scale-95 transition-transform; }
 .btn-content { @apply px-2.5 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded text-xs transition-colors active:scale-95 transition-transform; }
 </style>

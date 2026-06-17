@@ -41,7 +41,7 @@
                 'min-h-[44px] px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2',
                 activeTab === tab.key
                   ? 'text-navy-700 dark:text-cream-200 border-b-2 border-navy-600 dark:border-cream-400'
-                  : 'text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-ink-200 border-b-2 border-transparent'
+                  : 'text-ink-500 dark:text-ink-300 hover:text-ink-700 dark:hover:text-ink-200 border-b-2 border-transparent'
               ]"
               @click="activeTab = tab.key"
             >
@@ -85,7 +85,7 @@
                 <li>Klik <strong class="text-ink-900 dark:text-ink-50">OK</strong> untuk memasang</li>
               </ol>
 
-              <div class="text-xs text-ink-500 dark:text-ink-400 bg-cream-100 dark:bg-ash-800 rounded-xl px-4 py-3">
+              <div class="text-xs text-ink-500 dark:text-ink-300 bg-cream-100 dark:bg-ash-800 rounded-xl px-4 py-3">
                 Add-in akan muncul di ribbon tab
                 <strong class="text-ink-700 dark:text-ink-200">Home</strong>.
               </div>
@@ -106,7 +106,7 @@
                 Open in Word Online
               </button>
 
-              <div class="text-xs text-ink-500 dark:text-ink-400 bg-cream-100 dark:bg-ash-800 rounded-xl px-4 py-3">
+              <div class="text-xs text-ink-500 dark:text-ink-300 bg-cream-100 dark:bg-ash-800 rounded-xl px-4 py-3">
                 Anda akan diminta masuk dengan akun Microsoft Anda.
               </div>
             </template>

@@ -41,10 +41,18 @@ _XSLT = None
 
 
 def _append_inline_math(paragraph, latex):
-    """Sanitize LaTeX commands jadi text plain dan emit ke paragraph.
-    Return True supaya caller tidak fallback ke render mentah (yang bocor)."""
+    """Render LaTeX into the paragraph. Prefer native Word OMML (real equation
+    objects); fall back to sanitized unicode text if conversion is unavailable.
+    Return True so the caller does not fall back to raw rendering (which leaks)."""
     if not latex:
         return False
+    # Native OMML path first (matches IEEEgen fidelity).
+    try:
+        from _math_omml import append_omml_math as _omml
+        if _omml(paragraph, latex):
+            return True
+    except Exception:
+        pass
     import re as _re
 
     s = str(latex).strip()
@@ -448,7 +456,7 @@ def add_figure(doc, fig_data, space_before=3, space_after=3):
         line_spacing=1.0,
     )
 
-    if img_path.exists():
+    if img_path.exists() and img_path.is_file():
         run = p_img.add_run()
         set_run_font(run)
         run.add_picture(str(img_path), width=Cm(8))
@@ -568,6 +576,8 @@ def add_table(doc, table_data, space_before=6, space_after=3):
 
 def add_references(doc, data):
     refs_data = data.get("references", {})
+    if isinstance(refs_data, list):
+        refs_data = {"title": "REFERENCES", "content": refs_data}
     refs_title = refs_data.get("title", "REFERENCES")
     refs_content = refs_data.get("content", [])
 
@@ -580,6 +590,14 @@ def add_references(doc, data):
     set_run_font(run, bold=True)
 
     for ref in refs_content:
+        # Normalize ref to string
+        if isinstance(ref, dict):
+            ref_id = ref.get("id", "")
+            ref_text = ref.get("text", "")
+            ref_str = f"[{ref_id}] {ref_text}" if ref_id else ref_text
+        else:
+            ref_str = str(ref)
+        
         p = doc.add_paragraph()
         set_paragraph_format(
             p,
@@ -590,7 +608,7 @@ def add_references(doc, data):
             left_indent=567,
             hanging_indent=567,
         )
-        parts = re.split(r"(\"[^\"]+\")", ref)
+        parts = re.split(r"(\"[^\"]+\")", ref_str)
         for part in parts:
             if part.startswith('"') and part.endswith('"'):
                 run = p.add_run(part)

@@ -40,7 +40,6 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from utils.ai_tools.model_config import get_primary_chat_model, get_primary_generate_model
 
 _ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
 if _ENV_PATH.exists():
@@ -171,40 +170,23 @@ class PowerfulAIDetector:
         return round(score, 2), details
 
     def _llm_detect(self, text: str) -> Dict:
-        """Call LLM for AI detection. Returns dict with pct, reasons, suggestions."""
+        """Call LLM for AI detection via the per-index endpoint chain. Returns
+        dict with pct, reasons, suggestions."""
         from . import PROMPT as _PROMPT
-        api_base = os.getenv("AIOTOMASI_API", "").rstrip("/")
-        api_key = os.getenv("AIOTOMASI_APIKEY", "")
-        model = get_primary_chat_model()
+        from utils.ai_tools.ai_client import chat as _chain_chat
 
-        if not api_base or not api_key:
-            return {"pct": 50, "reasons": ["LLM not configured"], "suggestions": []}
-
-        api_url = f"{api_base}/chat/completions"
         user_prompt = _PROMPT["user_template"].format(option="Standard", text=text[:3000])
 
         try:
-            resp = requests.post(
-                api_url,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": _PROMPT["system"]},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    "stream": False,
-                    "max_tokens": 1024,
-                },
+            content, _used = _chain_chat(
+                [
+                    {"role": "system", "content": _PROMPT["system"]},
+                    {"role": "user", "content": user_prompt},
+                ],
+                heavy=False,
+                max_tokens=1024,
                 timeout=60,
             )
-            resp.raise_for_status()
-            data = resp.json()
-            content = data["choices"][0]["message"]["content"]
-
             json_start = content.find("{")
             json_end = content.rfind("}") + 1
             if json_start >= 0 and json_end > json_start:
@@ -213,6 +195,11 @@ class PowerfulAIDetector:
                     parsed["pct"] = 50
                 return parsed
             return {"pct": 50, "reasons": ["Could not parse LLM response"], "suggestions": []}
+        except RuntimeError as e:
+            if "no endpoint configured" in str(e):
+                return {"pct": 50, "reasons": ["LLM not configured"], "suggestions": []}
+            log.error(f"LLM detection call failed: {e}")
+            return {"pct": 50, "reasons": [f"LLM error: {type(e).__name__}"], "suggestions": []}
         except Exception as e:
             log.error(f"LLM detection call failed: {e}")
             return {"pct": 50, "reasons": [f"LLM error: {type(e).__name__}"], "suggestions": []}
@@ -410,6 +397,7 @@ class AIHumanizer:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
     ):
+        from utils.ai_tools.model_config import get_primary_generate_model
         self.api_url = api_url or self._build_api_url()
         self.api_key = api_key or os.getenv("AIOTOMASI_APIKEY", "")
         self.model = model or get_primary_generate_model()
@@ -420,33 +408,21 @@ class AIHumanizer:
         return f"{base}/chat/completions" if base else ""
 
     def _call_llm(self, system: str, user: str, temperature: float = 0.8) -> str:
-        if not self.api_url or not self.api_key:
-            raise RuntimeError(
-                "AIOTOMASI_API and AIOTOMASI_APIKEY must be set in .env"
-            )
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "temperature": temperature,
-            "max_tokens": 4096,
-        }
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+        """Call the LLM via the per-index endpoint chain (MODELGENERATE1..3,
+        each with its own endpoint+key)."""
+        from utils.ai_tools.ai_client import chat as _chain_chat
         try:
-            resp = requests.post(
-                self.api_url,
-                json=payload,
-                headers=headers,
+            content, _used = _chain_chat(
+                [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                heavy=True,
+                max_tokens=4096,
+                temperature=temperature,
                 timeout=120,
             )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
+            return content
         except Exception as e:
             log.error(f"LLM call failed: {e}")
             raise

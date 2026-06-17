@@ -481,7 +481,8 @@ def _corresponding_line(config: dict) -> str:
 def _footer_short_text(config: dict) -> str:
     authors = _author_entries(config)
     title = _title_text(config)
-    surname = authors[0]["name"].split()[-1] if authors and authors[0].get("name") else "Author"
+    _name_parts = authors[0]["name"].split() if (authors and authors[0].get("name")) else []
+    surname = _name_parts[-1] if _name_parts else "Author"
     author_text = f"{surname} et al." if len(authors) > 1 else surname
     words = re.findall(r"\S+", title)
     short_title = " ".join(words[:4]) if words else "Untitled"
@@ -817,9 +818,12 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> No
         width_cm = MAX_FIGURE_WIDTH_CM
     width_cm = max(1.0, min(width_cm, MAX_FIGURE_WIDTH_CM))
 
-    # Emit AI prompt sesuai judul gambar (warna merah, di paragraph normal
-    # supaya audit dapat menemukannya di iterasi paragraphs).
-    if title:
+    # Resolve the real image first; only emit the AI prompt placeholder when
+    # no embeddable image exists (mirror IEEE: never show prompt + image both).
+    image_path = _resolve_path(path_text, json_path) if path_text else None
+    has_image = image_path is not None and image_path.is_file()
+
+    if title and not has_image:
         prompt_desc = prompt or title
         prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_desc}]"
         prompt_para = doc.add_paragraph()
@@ -830,8 +834,7 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict) -> No
         pr.italic = True
         pr.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
 
-    image_path = _resolve_path(path_text, json_path) if path_text else None
-    if image_path is not None and image_path.is_file():
+    if has_image:
         paragraph = doc.add_paragraph()
         _set_para_style(paragraph, "IEEEFigure")
         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -915,12 +918,16 @@ def _add_equation_group(doc: Document, item: dict, samples: dict) -> None:
 
 
 def _reference_texts(config: dict) -> list[str]:
+    def _rt(item):
+        if isinstance(item, dict):
+            return (item.get("text") or item.get("Text") or "").strip()
+        return str(item).strip()
     if "references" in config and isinstance(config["references"], dict):
         content = config["references"].get("content", [])
         if isinstance(content, list):
-            return [str(item) for item in content if str(item).strip()]
+            return [_rt(item) for item in content if _rt(item)]
     if "References" in config and isinstance(config["References"], list):
-        return [str(item) for item in config["References"] if str(item).strip()]
+        return [_rt(item) for item in config["References"] if _rt(item)]
     return []
 
 

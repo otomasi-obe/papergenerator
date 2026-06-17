@@ -371,7 +371,15 @@ def add_formula(doc, formula_data: dict):
     p = doc.add_paragraph()
     _set_para_style(p, STYLE_BODY)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _add_run(p, _strip_latex(text), italic=True)
+    _omml_done = False
+    try:
+        from _math_omml import append_omml_math as _omml_fn
+        _lx = (formula_data.get("latex") or "")
+        _omml_done = bool(str(_lx or "").strip()) and _omml_fn(p, _lx)
+    except Exception:
+        _omml_done = False
+    if not _omml_done:
+        _add_run(p, _strip_latex(text), italic=True)
     if num:
         _add_run(p, f"\t({num})")
 
@@ -416,8 +424,11 @@ def process_section(doc, section_data: dict, top_level: bool = True):
 
 def add_references(doc, data):
     refs = data.get("references") or {}
+    if isinstance(refs, list):
+        refs = {"title": "REFERENCES", "content": refs}
     title = (refs.get("title") or "REFERENCES").strip()
-    items = refs.get("content") or ["[1] Author, Title, Journal, Year."]
+    items = [((r.get("text") or r.get("Text") or "").strip() if isinstance(r, dict) else str(r)) for r in (refs.get("content") or [])]
+    items = [t for t in items if t] or ["[1] Author, Title, Journal, Year."]
 
     p_title = doc.add_paragraph()
     _set_para_style(p_title, STYLE_HEAD1)

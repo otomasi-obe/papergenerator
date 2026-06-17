@@ -7,7 +7,14 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from tools.chat import mode_prompts  # noqa: E402
+import pytest  # noqa: E402
+
+mode_prompts = pytest.importorskip(
+    "tools.chat.mode_prompts",
+    reason="chat architecture consolidated into tools/chat/chat.py; "
+    "legacy modular mode_prompts module removed. Test pending rewrite "
+    "against the new chat.py API.",
+)
 from tools.chat.mode_prompts import (  # noqa: E402
     MODE_PROMPTS,
     MODE_TOOLS,

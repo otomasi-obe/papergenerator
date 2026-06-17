@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 
 from flask import Flask
@@ -56,17 +57,18 @@ def _job_create(job_id: str, user_id: int, prompt: str, paper_id: str | None = N
     Older callers that pass only 3 positional args still work because paper_id
     has a default of None.
     """
-    from database.models import AiJob, db
+    from database.models import AiJob, db, safe_commit
 
     job = AiJob(
         id=job_id,
         user_id=user_id,
         paper_id=paper_id,
-        status="pending",
+        status="queued",
         prompt=prompt,
     )
     db.session.add(job)
-    db.session.commit()
+    # BUG-_DOUBLE_ROLLBACK: safe_commit() already does rollback internally on failure
+    safe_commit()
     return job
 
 
@@ -77,7 +79,7 @@ def _job_get(job_id: str, user_id: int):
 
 
 def _job_set_done(job_id: str, user_id: int, paper_data: dict, elapsed_s: int):
-    from database.models import db
+    from database.models import db, safe_commit
 
     job = _job_get(job_id, user_id)
     if not job:
@@ -97,11 +99,15 @@ def _job_set_done(job_id: str, user_id: int, paper_data: dict, elapsed_s: int):
     }
     job.error = None
     job.timeout = False
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool = False):
-    from database.models import db
+    from database.models import db, safe_commit
 
     job = _job_get(job_id, user_id)
     if not job:
@@ -109,7 +115,11 @@ def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool
     job.status = "error"
     job.error = error_msg
     job.timeout = bool(timeout_flag)
-    db.session.commit()
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 # ── Auth helper ─────────────────────────────────────────────────────────────
@@ -135,7 +145,7 @@ def _log_api_usage(endpoint: str, usage: dict, user_id=None):
     Called from a daemon thread, so it owns its own app context via
     ``get_core_app()``.
     """
-    from database.models import ApiUsageLog, db
+    from database.models import ApiUsageLog, db, safe_commit
 
     app = get_core_app()
     try:
@@ -153,17 +163,36 @@ def _log_api_usage(endpoint: str, usage: dict, user_id=None):
             if user_id is not None:
                 from database.models import User
 
+                now = datetime.now(timezone.utc)
+                month_key = now.strftime("%Y-%m")
+                tokens = int(usage.get("total_tokens", 0))
                 u = User.query.get(int(user_id))
                 if u:
-                    now = datetime.now(timezone.utc)
-                    month_key = now.strftime("%Y-%m")
                     if (u.usage_month_key or "") != month_key:
                         u.usage_month_key = month_key
                         u.token_used_month = 0
-                    u.token_used_month = (u.token_used_month or 0) + int(
-                        usage.get("total_tokens", 0)
+                        for _attempt in range(3):
+                            try:
+                                safe_commit()
+                                break
+                            except Exception:
+                                db.session.rollback()
+                                if _attempt == 2:
+                                    raise
+                                time.sleep(1)
+                    # Atomic increment to prevent race condition across workers
+                    db.session.query(User).filter(User.id == int(user_id)).update(
+                        {User.token_used_month: User.token_used_month + tokens},
+                        synchronize_session=False,
                     )
-
-            db.session.commit()
+                    for _attempt in range(3):
+                        try:
+                            safe_commit()
+                            break
+                        except Exception:
+                            db.session.rollback()
+                            if _attempt == 2:
+                                raise
+                            time.sleep(1)
     except Exception as e:
         log.warning("Failed to log API usage: %s", e)

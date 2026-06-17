@@ -139,7 +139,6 @@ def test_only_one_worker_claims_a_queued_job(app_ctx):
     w2 = runner("account2")
 
     with (
-        patch.object(iw, "_get_pool"),
         patch("tools.editor.utils.safe_paper_dir", side_effect=fake_safe_paper_dir),
     ):
         t1 = threading.Thread(target=w1._process, args=(job_id,))

@@ -248,8 +248,9 @@ def _add_references(doc: Document, config: dict) -> None:
 
 
 def build_document(json_path: Path, output_path: Path | None = None) -> Path:
+    json_path = Path(json_path)
     config = json.loads(json_path.read_text(encoding="utf-8"))
-    out = output_path or json_path.with_suffix(".docx")
+    out = Path(output_path) if output_path else json_path.with_suffix(".docx")
     if out == TEMPLATE_PATH:
         out = json_path.parent / f"{json_path.stem}_ULTIMACOMP.docx"
 

@@ -6,25 +6,36 @@ Each module exposes `search(client, query, limit, filters) -> Iterable[Paper]`.
 orchestrator can pick a relevant set per query (e.g. medical query → europepmc,
 CS query → arxiv/dblp/ieee). When a query topic is unknown we fall back to the
 broad sources (openalex/crossref/semantic_scholar).
+
+Consolidated 2026-06: 9 publisher wrappers (springer, wiley, spie, ssrn,
+emerald, oxford, asce, igi_global, jstor) merged into crossref_publishers
+(2 HTTP calls instead of 9). 7 dead stubs removed (taylor_francis, proquest,
+ebscohost, mcgrawhill, embase, clinicalkey, westlaw).
 """
 
 from . import (
     arxiv,
+    cambridge,
     core,
     crossref,
+    crossref_publishers,
+    datacite,
     dblp,
     dimensions,
+    doaj,
     europepmc,
+    hal,
     ieee,
     lens,
+    openaire,
     openalex,
+    plos,
     pubmed,
     sciencedirect,
     scopus,
     semantic_scholar,
     sinta,
-    springer,
-    taylor_francis,
+    zenodo,
 )
 
 ALL = {
@@ -36,58 +47,62 @@ ALL = {
     "dblp": dblp,
     "europepmc": europepmc,
     "sinta": sinta,
+    "doaj": doaj,
+    "plos": plos,
+    "openaire": openaire,
+    "hal": hal,
+    "zenodo": zenodo,
+    "datacite": datacite,
     # Free with optional API key (higher rate limits)
     "pubmed": pubmed,
-    # Requires API key (free tier available)
+    # Requires API key (active when key present)
     "core": core,
     "dimensions": dimensions,
-    "ieee": ieee,
     "lens": lens,
     "scopus": scopus,
     "sciencedirect": sciencedirect,
-    "springer": springer,
-    # No public API (content available via crossref/openalex)
-    "taylor_francis": taylor_francis,
+    # IEEE — keyless internal API
+    "ieee": ieee,
+    # Crossref publisher batch (8 publishers + SSRN in 2 calls)
+    "crossref_publishers": crossref_publishers,
+    # Cambridge — HTML scrape
+    "cambridge": cambridge,
 }
 
 # Each source's strength. Used by orchestrator.pick_sources_for_topic.
-# NOTE: orchestrator._detect_topics currently emits:
-#   ai, cs, engineering, medical, indonesia, biology, physics, economics,
-#   social, education, law, agriculture, general
-# Other keys below (math, stats, electrical, robotics, health, business)
-# are matched via the expanded keyword groups in orchestrator._TOPIC_KEYWORDS.
+# crossref_publishers covers ALL topics since it aggregates 9 publishers.
 SOURCE_TOPICS: dict[str, set[str]] = {
     # Broad coverage
     "openalex": {"general", "any"},
     "crossref": {"general", "any"},
     "semantic_scholar": {"general", "cs", "ai", "any"},
-    "core": {"general", "any", "social", "education", "law"},
     "dimensions": {"general", "any", "economics", "social", "medical"},
     "lens": {"general", "any", "engineering", "agriculture", "economics"},
     # Computer Science & AI
     "arxiv": {"cs", "ai", "physics", "math", "stats"},
     "dblp": {"cs", "ai"},
     "ieee": {"cs", "ai", "engineering", "electrical", "robotics"},
-    "springer": {"cs", "ai", "engineering", "general"},
     # Medical & Life Sciences
     "europepmc": {"medical", "biology", "health"},
     "pubmed": {"medical", "biology", "health"},
-    "embase": {"medical", "biology", "health"},
-    "clinicalkey": {"medical", "health"},
     # Publisher-specific
+    "core": {"general", "any"},
     "scopus": {"general", "any"},
     "sciencedirect": {"general", "engineering", "medical"},
     # Regional
     "sinta": {"indonesia"},
-    # Stubs (content available via other sources)
-    "jstor": {"general"},
-    "wiley": {"general"},
-    "emerald": {"business", "management"},
-    "taylor_francis": {"general"},
+    # Open access aggregators (keyless)
+    "doaj": {"general", "any"},
+    "plos": {"medical", "biology", "general"},
+    "openaire": {"general", "any", "economics", "social"},
+    "hal": {"general", "any", "physics", "cs"},
+    "zenodo": {"general", "any"},
+    "datacite": {"general", "any"},
+    # Crossref publisher batch — covers all topics (springer+wiley+spie+
+    # emerald+oxford+asce+igi+jstor+ssrn)
+    "crossref_publishers": {"general", "any", "cs", "ai", "engineering", "medical",
+                            "economics", "law", "business", "social", "physics",
+                            "education", "biology"},
+    # Scrape
     "cambridge": {"general"},
-    "oxford": {"general"},
-    "asce": {"engineering", "civil"},
-    "igi_global": {"cs", "information_science"},
-    "proquest": {"general"},
-    "ebscohost": {"general"},
 }

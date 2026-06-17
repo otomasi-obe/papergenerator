@@ -522,6 +522,8 @@ def process_section(doc, section_key, section_data, level=1, parent_num=None):
 
 def add_references(doc, data):
     refs_data = data.get("references", {})
+    if isinstance(refs_data, list):
+        refs_data = {"title": "REFERENCES", "content": refs_data}
     refs_title = refs_data.get("title", "References")
     refs_content = refs_data.get("content", [])
 
@@ -549,7 +551,11 @@ def add_references(doc, data):
         set_paragraph_indent(
             p, left=CFG["ref_hanging_indent_tw"], hanging=CFG["ref_hanging_indent_tw"]
         )
-        run = p.add_run(ref)
+        if isinstance(ref, dict):
+            ref_str = str(ref.get("text") or ref.get("Text") or "").strip()
+        else:
+            ref_str = str(ref)
+        run = p.add_run(ref_str)
         set_run_font(run, CFG["font_body"], CFG["size_reference"])
 
 

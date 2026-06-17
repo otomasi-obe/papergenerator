@@ -655,19 +655,6 @@ def _apply_table_row_border(row) -> None:
 
 def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
 
-    # AI prompt emit (warna merah). Idempotent supaya tidak double-emit.
-    _ai_title = str(item.get("Title") or item.get("title") or "").strip()
-    _ai_prompt_text = str(item.get("Prompt") or item.get("Description") or "").strip()
-    if _ai_title:
-        _ai_full = f"[PROMPT UNTUK AI GAMBAR: {_ai_title}. {_ai_prompt_text or _ai_title}]"
-        from docx.enum.text import WD_ALIGN_PARAGRAPH as _WAP
-        from docx.shared import RGBColor as _RGB
-
-        _ai_para = doc.add_paragraph()
-        _ai_para.alignment = _WAP.CENTER
-        _ai_run = _ai_para.add_run(_ai_full)
-        _ai_run.italic = True
-        _ai_run.font.color.rgb = _RGB(0xFF, 0x00, 0x00)
     image_path = _resolve_path(str(item.get("Path", "")).strip(), json_path)
     image_paragraph = doc.add_paragraph()
     image_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER

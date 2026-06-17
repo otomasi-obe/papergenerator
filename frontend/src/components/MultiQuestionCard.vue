@@ -31,7 +31,7 @@
       <div v-if="currentQuestion" class="question-row">
         <div class="question-label">
           {{ currentIndex + 1 }}. {{ currentQuestion.label }}
-          <span v-if="currentQuestion.required" class="text-red-500 ml-1" title="Required">*</span>
+          <span v-if="currentQuestion.required" class="text-red-500 dark:text-red-400 ml-1" title="Required">*</span>
         </div>
         <div class="chips">
           <button

@@ -5,13 +5,13 @@ API endpoints for admin dashboard: usage stats, all users, all papers.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required
 from sqlalchemy import desc, func
 
-from database.models import ApiUsageLog, Paper, PaperImage, User, db
+from database.models import ApiUsageLog, Paper, PaperImage, User, db, safe_commit
 
 log = logging.getLogger(__name__)
 
@@ -29,8 +29,11 @@ def list_users():
     if not _require_admin():
         return jsonify({"error": "Admin access required"}), 403
 
-    limit = int(request.args.get("limit", 50))
-    offset = int(request.args.get("offset", 0))
+    try:
+        limit = min(int(request.args.get("limit", 50)), 200)
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid limit/offset parameter"}), 400
 
     q = User.query.order_by(desc(User.created_at))
     total = q.count()
@@ -57,13 +60,13 @@ def promote_user(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     role = data.get("role", "admin")
     if role not in ("user", "admin"):
         return jsonify({"error": "Invalid role"}), 400
 
     user.role = role
-    db.session.commit()
+    safe_commit()
     return jsonify({"success": True, "message": f"{user.email} role set to {role}"})
 
 
@@ -77,7 +80,7 @@ def set_user_quota(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     try:
         quota = int(data.get("token_quota_monthly", 1000000))
     except (TypeError, ValueError):
@@ -86,7 +89,7 @@ def set_user_quota(user_id):
         return jsonify({"error": "quota out of range (0..10M)"}), 400
 
     user.token_quota_monthly = quota
-    db.session.commit()
+    safe_commit()
     return jsonify({"success": True, "user": user.to_dict()})
 
 
@@ -99,8 +102,8 @@ def reset_user_quota(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
     user.token_used_month = 0
-    user.usage_month_key = datetime.utcnow().strftime("%Y-%m")
-    db.session.commit()
+    user.usage_month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+    safe_commit()
     return jsonify({"success": True, "user": user.to_dict()})
 
 
@@ -110,8 +113,11 @@ def list_all_papers():
     if not _require_admin():
         return jsonify({"error": "Admin access required"}), 403
 
-    limit = int(request.args.get("limit", 50))
-    offset = int(request.args.get("offset", 0))
+    try:
+        limit = int(request.args.get("limit", 50))
+        offset = int(request.args.get("offset", 0))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid limit/offset parameter"}), 400
 
     q = Paper.query.join(User).order_by(desc(Paper.updated_at))
     total = q.count()
@@ -159,7 +165,7 @@ def get_usage_stats():
         .all()
     )
 
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     daily = (
         db.session.query(
             func.date(ApiUsageLog.created_at).label("date"),

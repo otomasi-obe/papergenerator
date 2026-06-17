@@ -1,12 +1,5 @@
 import type { App, ComponentPublicInstance } from 'vue'
-
-interface UiStore {
-  showToast?: (options: { type: string; message: string; duration: number }) => void
-}
-
-declare global {
-  function useUiStore(): UiStore | undefined
-}
+import { useUiStore } from '../stores/ui'
 
 export function setupErrorHandler(app: App): void {
   app.config.errorHandler = (err: unknown, instance: ComponentPublicInstance | null, info: string) => {
@@ -21,14 +14,16 @@ export function setupErrorHandler(app: App): void {
       // TODO: Integrate with Sentry or logging service
     }
 
-    const uiStore = typeof useUiStore !== 'undefined' ? useUiStore() : undefined
-    if (uiStore?.showToast) {
-      uiStore.showToast({
-        type: 'error',
-        message: 'Terjadi kesalahan. Silakan refresh halaman.',
-        duration: 5000
-      })
-    }
+    try {
+      const uiStore = useUiStore() as any
+      if (uiStore?.showToast) {
+        uiStore.showToast({
+          type: 'error',
+          message: 'Terjadi kesalahan. Silakan refresh halaman.',
+          duration: 5000
+        })
+      }
+    } catch { /* ui store not available */ }
   }
 
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {

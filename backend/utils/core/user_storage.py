@@ -11,8 +11,10 @@ Penyimpanan data per user sesuai aturan:
     file/       - uploaded files + extracted text (.txt)
 """
 
+import hashlib
 import json
 import logging
+import os
 import re
 import shutil
 from datetime import datetime, timezone
@@ -29,6 +31,25 @@ _SAFE_RE = re.compile(r'[^A-Za-z0-9._-]+')
 def _safe(name, fallback="unknown"):
     s = _SAFE_RE.sub("_", str(name or "")).strip("._-")
     return s or fallback
+
+
+def get_safe_dir(user_id, email=None):
+    """Return a collision-resistant directory name for a user.
+
+    Combines the sanitized email local-part with a short hash derived from
+    user_id so that two users whose emails sanitize to the same string
+    (e.g. ``john.doe@…`` vs ``john+doe@…``) get distinct directories (BUG-24).
+
+    Format: ``<sanitized_name>_<8-hex-chars>``
+    """
+    if email:
+        base_name = _safe(email.split("@")[0], "user")
+    else:
+        base_name = f"user_{user_id}"
+    # 8-char hex from SHA-256 of user_id — short enough to be readable,
+    # long enough that collisions are astronomically unlikely.
+    hash_suffix = hashlib.sha256(str(user_id).encode()).hexdigest()[:8]
+    return f"{base_name}_{hash_suffix}"
 
 
 def get_username(user_id=None, email=None):
@@ -352,11 +373,20 @@ def get_status_json(username, paper_id):
 
 
 def save_status_json(username, paper_id, status_data):
-    """Save complete status.json for a paper."""
+    """Save complete status.json for a paper (atomic write + file lock)."""
+    import fcntl  # noqa: PLC0415
     filepath = get_status_json_path(username, paper_id)
     status_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    with open(filepath, "w", encoding="utf-8") as f:
+    
+    # Atomic write: write to .tmp then rename
+    tmp_path = str(filepath) + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
         json.dump(status_data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+        fcntl.flock(f, fcntl.LOCK_UN)
+    os.replace(tmp_path, str(filepath))
     return filepath
 
 

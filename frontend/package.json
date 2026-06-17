@@ -26,11 +26,14 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@mdit/plugin-katex": "^0.25.2",
+    "@types/markdown-it": "^14.1.2",
     "axios": "^1.7.9",
     "chart.js": "^4.5.1",
     "dompurify": "^3.4.6",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.20",
+    "markdown-it": "^14.2.0",
     "marked": "^18.0.3",
     "pinia": "^2.3.1",
     "serve": "^14.2.6",

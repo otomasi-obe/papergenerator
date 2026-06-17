@@ -320,7 +320,60 @@ def _append_line_break(paragraph):
     paragraph.add_run().add_break()
 
 
+def _decode_stray_escapes(text: str) -> str:
+    """Decode literal escape sequences the AI sometimes emits as raw text.
+
+    The model is asked to use bullets, and in some outputs it writes the six
+    literal characters ``\\u2022`` instead of the real bullet ``•``. Left as-is
+    these never render: in Word the ``\\u`` is even consumed as the underline
+    toggle, mangling the following text. We decode any ``\\uXXXX`` (4 hex) into
+    the real character BEFORE the toggle/markup parser runs, plus a couple of
+    common whitespace escapes. Tabs and other control chars below U+0020 are
+    converted to a space so they can't poison the document.
+    """
+    if not text:
+        return text
+    if "\\u" in text:
+        def _u(m):
+            try:
+                ch = chr(int(m.group(1), 16))
+                return " " if ord(ch) < 0x20 else ch
+            except Exception:
+                return m.group(0)
+        text = re.sub(r"\\u([0-9a-fA-F]{4})", _u, text)
+    if "\\t" in text:
+        # Replace literal tab escape \t with space, but NOT when it's part of
+        # a LaTeX command like \theta, \times, \text, \tan, etc.
+        # Negative lookahead: only replace \t NOT followed by a letter.
+        text = re.sub(r"\\t(?![a-zA-Z])", " ", text)
+    return text
+
+
+def _clean_image_prompt(prompt: str) -> str:
+    """Return the bare image prompt for the Word placeholder box.
+
+    The schema stores prompts as ``(create an image "<desc>")``. In Word we
+    want exactly ``create an image "<desc>"`` — no wrapping parentheses and no
+    ``[PROMPT UNTUK AI GAMBAR: ...]`` envelope — so the user can copy it
+    straight into an image generator.
+    """
+    s = _decode_stray_escapes(str(prompt or "")).strip()
+    # Strip the internal envelope if it somehow reached here.
+    m = re.match(r"^\[PROMPT UNTUK AI GAMBAR:\s*(.*)\]$", s, flags=re.DOTALL)
+    if m:
+        s = m.group(1).strip()
+    # Strip one layer of surrounding parentheses: (create an image "...")
+    if s.startswith("(") and s.endswith(")") and len(s) >= 2:
+        s = s[1:-1].strip()
+    # If a leading "Title. " precedes the create-an-image clause, keep only the clause.
+    idx = s.lower().find("create an image")
+    if idx > 0:
+        s = s[idx:].strip()
+    return s
+
+
 def _normalize_text_commands(text: str) -> str:
+    text = _decode_stray_escapes(text)
     text = text.replace("\\n", "\n")
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
@@ -794,6 +847,15 @@ def _set_horizontal_cell_borders(cell, top=False, bottom=False):
             el.set(qn(f"w:{key}"), value)
 
 
+def _add_figure(doc: Document, item: dict, json_path: Path):
+    """Render figure from legacy JTM format (ID='Gambar').
+
+    Legacy items use the same field names as content format
+    (ImageNumber, Title, Prompt, Path) so delegate directly.
+    """
+    _add_figure_from_content(doc, item, json_path)
+
+
 def _add_prompt_box(doc: Document, item: dict):
     prompt_text = str(item.get("Prompt") or "").strip()
     if not prompt_text:
@@ -887,6 +949,9 @@ def _add_table(doc: Document, item: dict):
 
 
 def _add_equation_line(doc: Document, formula: str, number: str | None = None):
+    formula = _strip_math_delimiters(formula)
+    if not formula:
+        return
     paragraph = _para(doc, style_id="equation")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
     tab_stops = paragraph.paragraph_format.tab_stops
@@ -915,6 +980,133 @@ def _reference_parts(reference_text: str, fallback_number: int):
     if match:
         return match.group(1).strip(), match.group(2).strip()
     return str(fallback_number), reference_text.strip()
+
+
+def _ieee_author_name(name: str) -> str:
+    """Convert "Surname, F. M." → "F. M. Surname" (IEEE style: initials first).
+
+    Leaves names that don't match the "Surname, Initials" pattern untouched.
+    """
+    s = str(name).strip()
+    if not s:
+        return s
+    if "," in s:
+        surname, rest = s.split(",", 1)
+        surname = surname.strip()
+        rest = rest.strip()
+        if surname and rest:
+            return f"{rest} {surname}".strip()
+    return s
+
+
+def _format_ieee_authors(authors) -> str:
+    """Join an author list into IEEE form: 'A. B' , 'A. B and C. D',
+    'A. B, C. D, and E. F'. Accepts list[str] or list[dict{name}]."""
+    names = []
+    if isinstance(authors, list):
+        for a in authors:
+            if isinstance(a, dict):
+                nm = a.get("name") or a.get("author") or ""
+            else:
+                nm = str(a)
+            nm = _ieee_author_name(nm)
+            if nm:
+                names.append(nm)
+    elif isinstance(authors, str):
+        names = [_ieee_author_name(authors)]
+    if not names:
+        return ""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]} and {names[1]}"
+    return ", ".join(names[:-1]) + ", and " + names[-1]
+
+
+def _format_ieee_citation(ref: dict) -> str:
+    """Render a structured citation dict into an IEEE reference string.
+
+    Supports type: journal, conference, book, and a generic fallback.
+    Recognised keys: authors, title, journal, conference, booktitle, volume,
+    issue/number, pages, year, publisher, location, doi, url.
+    """
+    authors = _format_ieee_authors(ref.get("authors"))
+    title = str(ref.get("title") or "").strip()
+    year = str(ref.get("year") or "").strip()
+    pages = str(ref.get("pages") or "").strip()
+    volume = str(ref.get("volume") or "").strip()
+    issue = str(ref.get("issue") or ref.get("number") or "").strip()
+    doi = str(ref.get("doi") or "").strip()
+    url = str(ref.get("url") or "").strip()
+    rtype = str(ref.get("type") or "").strip().lower()
+
+    parts = []
+    if authors:
+        parts.append(f"{authors},")
+
+    if rtype == "book":
+        # A. Author, Title. Location: Publisher, Year, pp. X.
+        if title:
+            parts.append(f"{title}.")
+        loc = str(ref.get("location") or "").strip()
+        pub = str(ref.get("publisher") or "").strip()
+        imprint = ""
+        if loc and pub:
+            imprint = f"{loc}: {pub}"
+        elif pub:
+            imprint = pub
+        elif loc:
+            imprint = loc
+        tail = []
+        if imprint and year:
+            tail.append(f"{imprint}, {year}")
+        elif imprint:
+            tail.append(imprint)
+        elif year:
+            tail.append(year)
+        if pages:
+            tail.append(f"pp. {pages}")
+        if tail:
+            parts.append(", ".join(tail) + ".")
+    elif rtype == "conference":
+        # A. Author, "Title," in Conf Name, Year, pp. X.
+        if title:
+            parts.append(f'"{title},"')
+        conf = str(ref.get("conference") or ref.get("booktitle") or "").strip()
+        seg = []
+        if conf:
+            seg.append(f"in {conf}")
+        if year:
+            seg.append(year)
+        if pages:
+            seg.append(f"pp. {pages}")
+        if seg:
+            parts.append(", ".join(seg) + ".")
+    else:
+        # journal / generic: A. Author, "Title," Journal, vol. X, no. Y, pp. Z, Year.
+        if title:
+            parts.append(f'"{title},"')
+        journal = str(ref.get("journal") or ref.get("venue") or "").strip()
+        seg = []
+        if journal:
+            seg.append(journal)
+        if volume:
+            seg.append(f"vol. {volume}")
+        if issue:
+            seg.append(f"no. {issue}")
+        if pages:
+            seg.append(f"pp. {pages}")
+        if year:
+            seg.append(year)
+        if seg:
+            parts.append(", ".join(seg) + ".")
+
+    text = " ".join(p for p in parts if p).strip()
+    if doi:
+        text = f"{text} doi: {doi}.".strip()
+    elif url:
+        text = f"{text} [Online]. Available: {url}".strip()
+    return text
 
 
 def _add_references(doc: Document, config: dict):
@@ -955,21 +1147,27 @@ def _add_references(doc: Document, config: dict):
 
     # Handle different reference formats
     if isinstance(references, list) and references and isinstance(references[0], dict):
-        # New format: list of reference objects with id and text
-        for reference in references:
+        # New format: list of reference objects. Two shapes supported:
+        #   (a) {id, text}            → pre-formatted reference string
+        #   (b) structured citation   → {authors, title, journal/conference,
+        #                                volume, issue, pages, year, doi, type}
+        # Structured dicts get rendered into IEEE style here.
+        for index, reference in enumerate(references, start=1):
             ref_id = reference.get("id", "")
             ref_text = reference.get("text", "")
-            if ref_text:
-                paragraph = _para(doc, style_id="references")
-                ppr = paragraph._p.get_or_add_pPr()
-                ind = OxmlElement("w:ind")
-                ind.set(qn("w:start"), str(int(round(17.7 * 20))))
-                ind.set(qn("w:hanging"), str(int(round(17.7 * 20))))
-                ppr.append(ind)
-                if ref_id:
-                    _append_rich_text(paragraph, f"[{ref_id}] {ref_text}".strip())
-                else:
-                    _append_rich_text(paragraph, ref_text.strip())
+            if not ref_text:
+                # No pre-formatted text → build IEEE citation from structured fields
+                ref_text = _format_ieee_citation(reference)
+            if not ref_text:
+                continue
+            paragraph = _para(doc, style_id="references")
+            ppr = paragraph._p.get_or_add_pPr()
+            ind = OxmlElement("w:ind")
+            ind.set(qn("w:start"), str(int(round(17.7 * 20))))
+            ind.set(qn("w:hanging"), str(int(round(17.7 * 20))))
+            ppr.append(ind)
+            label = ref_id if ref_id else index
+            _append_rich_text(paragraph, f"[{label}] {ref_text}".strip())
     else:
         # Legacy format: list of reference strings
         for index, reference in enumerate(references, start=1):
@@ -1024,14 +1222,12 @@ def _add_figure_from_content(doc: Document, item: dict, json_path: Path):
         paragraph = _para(doc, align=WD_ALIGN_PARAGRAPH.CENTER, sb=6, sa=2)
         paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
     else:
-        # Use prompt in the placeholder box if image not found
-        # Wrap dengan format [PROMPT UNTUK AI GAMBAR: ...] supaya audit lulus
-        prompt_body = prompt if prompt else f"Figure {image_number} not found"
-        if title:
-            fallback_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_body}]"
-        else:
-            fallback_text = f"[PROMPT UNTUK AI GAMBAR: {prompt_body}]"
-        _add_prompt_box_with_text(doc, fallback_text)
+        # Image not generated yet → show ONLY the clean prompt text, e.g.
+        #   create an image "A CAD model of ..."
+        # NOT the internal wrapper [PROMPT UNTUK AI GAMBAR: ...]. The user
+        # copies this prompt straight into an image generator.
+        prompt_body = _clean_image_prompt(prompt) if prompt else f"Figure {image_number} not found"
+        _add_prompt_box_with_text(doc, prompt_body)
 
     # Add caption using title or prompt
     if image_number and caption_text:

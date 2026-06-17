@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import secrets
+import time
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
@@ -29,7 +30,7 @@ from flask_jwt_extended import (
     unset_jwt_cookies,
 )
 
-from database.models import User, db
+from database.models import User, db, safe_commit
 
 log = logging.getLogger(__name__)
 
@@ -94,12 +95,53 @@ def _google_email_allowed(email: str) -> bool:
     return not allowed or email.strip().lower() in allowed
 
 
+# Thread-level fallback lock for admin claim when Redis unavailable
+_admin_claim_lock = __import__("threading").Lock()
+
+
 def _claim_admin_atomically(user: "User") -> None:
-    locked = User.query.filter_by(role="admin").with_for_update().first()
-    if locked is None:
-        user.role = "admin"
+    """First user becomes admin; rest are regular users.
+
+    Uses Redis SET NX distributed lock to prevent two concurrent registrations
+    from both claiming admin (BUG-07).  Falls back to a threading lock when
+    Redis is unavailable, which still prevents races within a single process.
+    """
+    from utils.core.redis_client import get_redis
+
+    rc = get_redis()
+    _lock_key = "papergenerator:admin_claim_lock"
+    _lock_ttl = 10  # seconds
+    released = False
+
+    if rc is not None:
+        # Spin-acquire with short timeout
+        import time as _time
+        deadline = _time.monotonic() + _lock_ttl
+        while _time.monotonic() < deadline:
+            if rc.set(_lock_key, "1", nx=True, ex=_lock_ttl):
+                break
+            _time.sleep(0.05)
+        else:
+            # Could not acquire in time — assume another worker is claiming; safe default
+            user.role = "user"
+            return
     else:
-        user.role = "user"
+        _admin_claim_lock.acquire()
+
+    try:
+        locked = User.query.filter_by(role="admin").with_for_update().first()
+        if locked is None:
+            user.role = "admin"
+        else:
+            user.role = "user"
+    finally:
+        if rc is not None and not released:
+            try:
+                rc.delete(_lock_key)
+            except Exception:
+                pass
+        else:
+            _admin_claim_lock.release()
 
 
 def _strong_password(password: str) -> str | None:
@@ -121,13 +163,18 @@ def _strong_password(password: str) -> str | None:
 
 
 def _make_signed_state(redirect_to: str | None = None) -> str:
+    # BUG-08: Add exp timestamp to prevent replay attacks (10 minute expiry)
+    exp = int(time.time()) + 600
     if redirect_to:
-        state_payload = {"nonce": secrets.token_urlsafe(32), "redirect_to": redirect_to}
+        state_payload = {"nonce": secrets.token_urlsafe(32), "redirect_to": redirect_to, "exp": exp}
         state = base64.urlsafe_b64encode(
             json.dumps(state_payload, separators=(",", ":")).encode()
         ).decode().rstrip("=")
     else:
-        state = secrets.token_urlsafe(32)
+        state_payload = {"nonce": secrets.token_urlsafe(32), "exp": exp}
+        state = base64.urlsafe_b64encode(
+            json.dumps(state_payload, separators=(",", ":")).encode()
+        ).decode().rstrip("=")
     sig = hmac.new(
         current_app.config["SECRET_KEY"].encode(), state.encode(), hashlib.sha256
     ).hexdigest()
@@ -143,8 +190,21 @@ def _verify_signed_state(signed_state: str) -> str | None:
         expected = hmac.new(
             current_app.config["SECRET_KEY"].encode(), state_bytes, hashlib.sha256
         ).hexdigest()
-        if secrets.compare_digest(signature_hex.decode(), expected):
-            return state_bytes.decode()
+        if not secrets.compare_digest(signature_hex.decode(), expected):
+            return None
+        # BUG-08: Validate exp timestamp — reject expired states (10 min window)
+        try:
+            state_json = json.loads(base64.urlsafe_b64decode(
+                state_bytes.decode() + "=" * (-len(state_bytes.decode()) % 4)
+            ))
+            exp = state_json.get("exp")
+            if exp is not None and int(exp) < int(time.time()):
+                log.warning("OAuth state expired (exp=%s, now=%s)", exp, int(time.time()))
+                return None
+        except (json.JSONDecodeError, KeyError, ValueError):
+            # Legacy state format without exp — allow for backwards compatibility
+            pass
+        return state_bytes.decode()
     except Exception:
         pass
     return None
@@ -296,7 +356,7 @@ def register():
     user.set_password(password)
     _claim_admin_atomically(user)
     db.session.add(user)
-    db.session.commit()
+    safe_commit()
 
     log.info("New user registered via email: %s", email)
     return _login_response(user, status=201)
@@ -330,7 +390,7 @@ def login_email():
         return jsonify({"error": "Invalid email or password"}), 401
 
     user.last_login = datetime.now(timezone.utc)
-    db.session.commit()
+    safe_commit()
 
     log.info("User logged in via email: %s", email)
     return _login_response(user)
@@ -439,7 +499,7 @@ def google_callback():
             user.last_login = datetime.now(timezone.utc)
             log.info("User logged in: %s", email)
 
-        db.session.commit()
+        safe_commit()
 
         access, refresh = _issue_tokens_for(user)
         resp = redirect(redirect_to or f"{frontend_url}/auth/callback")
@@ -525,16 +585,22 @@ def update_settings():
     # Change password
     if "new_password" in body:
         new_pw = body["new_password"] or ""
-        if len(new_pw) < 6:
-            return jsonify({"error": "Password minimal 6 karakter"}), 400
+        pw_error = _strong_password(new_pw)
+        if pw_error:
+            return jsonify({"error": pw_error}), 400
         # If user has existing password, require current password
         if user.password_hash:
             current_pw = body.get("current_password") or ""
             if not user.check_password(current_pw):
                 return jsonify({"error": "Password saat ini salah"}), 400
+        else:
+            # OAuth user setting password for first time — require email verification
+            # or a fresh Google token to prevent account takeover
+            if not body.get("google_token") and not body.get("email_verified"):
+                return jsonify({"error": "Akun OAuth harus verifikasi email dulu sebelum set password"}), 400
         user.set_password(new_pw)
 
-    db.session.commit()
+    safe_commit()
     return jsonify(user.to_dict())
 
 

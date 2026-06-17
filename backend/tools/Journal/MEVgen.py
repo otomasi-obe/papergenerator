@@ -16,7 +16,7 @@ from lxml import etree
 
 BASE_DIR = Path(__file__).resolve().parent
 JSON_PATH = BASE_DIR / "_PLC-MediapipeID.json"
-TEMPLATE_PATH = BASE_DIR / "JMEV.docx"
+TEMPLATE_PATH = BASE_DIR / "MEV.docx"
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 BODY_WIDTH_PT = 595.35 - 70.90 - 56.70
 MAX_FIGURE_WIDTH_CM = 15.5

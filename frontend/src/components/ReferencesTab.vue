@@ -23,13 +23,13 @@
       <p>No references yet.</p>
     </div>
 
-    <div v-for="(ref, index) in store.paper.references" :key="ref.id"
+    <div v-for="(ref, index) in store.paper.references" :key="index"
       class="flex items-start gap-3 mb-3 group">
         <span class="text-sm font-mono bg-cream-100 dark:bg-ash-700 px-2 py-1.5 rounded text-ink-600 dark:text-ink-200 min-w-[40px] text-center">
         [{{ Number(index) + 1 }}]
       </span>
       <div class="flex-1">
-        <textarea v-model="ref.text" rows="2" v-autosize
+        <textarea :value="getRefText(ref)" @input="setRefText(index, ($event.target as HTMLTextAreaElement).value)" rows="2" v-autosize
           :placeholder="`A. Author, B. Author, &quot;Title of paper,&quot; Journal Name, vol. X, no. Y, pp. 1-10, 2024.`"
           class="w-full px-3 py-1.5 border rounded text-sm focus-visible:ring-2 focus-visible:ring-[#238f7f]/30 outline-none resize-y"></textarea>
       </div>
@@ -73,6 +73,19 @@ const { usePaperStore } = await import('../stores/paper.js')
 const store = usePaperStore()
 const refPrompt = ref<string>('')
 
+// Display text for a reference — handles strings, {text:...}, and structured objects
+function getRefText(ref: any): string {
+  if (typeof ref === 'string') return ref
+  if (ref && ref.text) return ref.text
+  if (ref && typeof ref === 'object') return store.formatRef(ref)
+  return ''
+}
+
+// Update reference text — converts structured object to plain string on edit
+function setRefText(index: number, text: string): void {
+  store.paper.references[index] = text
+}
+
 async function aiGenerateRefs(): Promise<void> {
   const allText = [
     store.paper.abstract || '',
@@ -91,7 +104,7 @@ async function aiGenerateRefs(): Promise<void> {
   const result = await store.aiGenerate(
     `Based on the following paper content, generate IEEE format references that match the citations [1], [2], etc. mentioned in the text. Return each reference on a new line in format: [N] Author, "Title," Journal, vol. X, pp. X-Y, Year.\n\nPaper content:\n${allText.substring(0, 3000)}`,
     'references',
-    store.paper.references.map((r: any, i: number) => `[${i + 1}] ${r.text}`).join('\n')
+    store.paper.references.map((r: any, i: number) => `[${i + 1}] ${getRefText(r)}`).join('\n')
   )
   if (result) {
     parseAndSetReferences(result)
@@ -100,13 +113,14 @@ async function aiGenerateRefs(): Promise<void> {
 
 async function aiEditRef(index: number): Promise<void> {
   const ref = store.paper.references[index]
+  const refText = getRefText(ref)
   const result = await store.aiGenerate(
-    `Fix this IEEE reference to proper format: ${ref.text}. Return only the corrected reference text without the [N] number.`,
+    `Fix this IEEE reference to proper format: ${refText}. Return only the corrected reference text without the [N] number.`,
     'reference',
-    ref.text
+    refText
   )
   if (result) {
-    store.paper.references[index].text = result.trim().replace(/^\[\d+\]\s*/, '')
+    store.paper.references[index] = result.trim().replace(/^\[\d+\]\s*/, '')
   }
 }
 

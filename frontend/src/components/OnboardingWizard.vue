@@ -13,10 +13,10 @@
             <!-- Step Indicator -->
             <div class="px-6 pt-5 pb-2">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs text-ink-500 dark:text-ink-400">Langkah {{ step }}/4</span>
+                <span class="text-xs text-ink-500 dark:text-ink-300">Langkah {{ step }}/4</span>
                 <button
                   @click="skip"
-                  class="text-xs text-ink-500 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50 transition-colors"
+                  class="text-xs text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50 transition-colors"
                 >
                   Lewati →
                 </button>
@@ -36,7 +36,7 @@
                 <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-1">
                   Selamat datang! 👋
                 </h2>
-                <p class="text-sm text-ink-500 dark:text-ink-400 mb-5">
+                <p class="text-sm text-ink-500 dark:text-ink-300 mb-5">
                   PaperFull membantu Anda menulis paper akademik dengan bantuan AI — dari riset literatur, drafting, hingga formatting. Mari mulai dengan mengenal Anda lebih dekat.
                 </p>
                 <div>
@@ -55,7 +55,7 @@
                 <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-1">
                   Nama Lengkap
                 </h2>
-                <p class="text-sm text-ink-500 dark:text-ink-400 mb-5">
+                <p class="text-sm text-ink-500 dark:text-ink-300 mb-5">
                   Nama lengkap Anda akan digunakan pada halaman judul paper.
                 </p>
                 <div>
@@ -74,7 +74,7 @@
                 <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-1">
                   Institusi
                 </h2>
-                <p class="text-sm text-ink-500 dark:text-ink-400 mb-5">
+                <p class="text-sm text-ink-500 dark:text-ink-300 mb-5">
                   Institusi atau kampus Anda akan ditampilkan pada paper yang dihasilkan.
                 </p>
                 <div>
@@ -93,7 +93,7 @@
                 <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-1">
                   Bahasa & Gaya Penulisan
                 </h2>
-                <p class="text-sm text-ink-500 dark:text-ink-400 mb-5">
+                <p class="text-sm text-ink-500 dark:text-ink-300 mb-5">
                   AI akan menggunakan bahasa ini saat menulis paper dan merespons chat.
                 </p>
                 <div class="grid grid-cols-2 gap-3">
@@ -111,7 +111,7 @@
                     <span class="text-2xl">{{ lang.icon }}</span>
                     <div class="text-left">
                       <div class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ lang.label }}</div>
-                      <div class="text-[11px] text-ink-500 dark:text-ink-400">{{ lang.desc }}</div>
+                      <div class="text-[11px] text-ink-500 dark:text-ink-300">{{ lang.desc }}</div>
                     </div>
                   </button>
                 </div>

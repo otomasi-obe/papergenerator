@@ -1,6 +1,9 @@
 #!/bin/bash
 # Production startup: Gunicorn gthread workers (sync + threads)
-# 5 workers × 4 threads = 20 concurrent requests, nginx queues the rest
+# 16 workers × 8 threads = 128 concurrent request slots.
+# For 1000+ users: nginx handles static assets + connection queuing.
+# PostgreSQL pool: 3 base + 4 overflow per worker = ~112 max (fits in max_connections=100).
+# For higher scale: deploy pgbouncer in transaction mode (see deploy/pgbouncer.ini).
 
 # Check for environment files
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

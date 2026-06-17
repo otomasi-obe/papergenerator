@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <p v-if="item.abstract || item.summary" class="text-sm text-ink-600 dark:text-ink-400 line-clamp-3 mb-3">
+    <p v-if="item.abstract || item.summary" class="text-sm text-ink-600 dark:text-ink-300 line-clamp-3 mb-3">
       {{ item.summary || item.abstract }}
     </p>
 
@@ -79,15 +79,15 @@
     <div v-if="expanded" class="mt-3 pt-3 border-t border-cream-300 dark:border-ash-700">
       <div v-if="item.abstract" class="mb-3">
         <h4 class="font-semibold text-sm text-ink-900 dark:text-ink-50 mb-1">Abstract</h4>
-        <p class="text-sm text-ink-600 dark:text-ink-400">{{ item.abstract }}</p>
+        <p class="text-sm text-ink-600 dark:text-ink-300">{{ item.abstract }}</p>
       </div>
       <div v-if="item.publisher" class="mb-2">
         <span class="font-semibold text-sm text-ink-900 dark:text-ink-50">Publisher:</span>
-        <span class="text-sm text-ink-600 dark:text-ink-400 ml-2">{{ item.publisher }}</span>
+        <span class="text-sm text-ink-600 dark:text-ink-300 ml-2">{{ item.publisher }}</span>
       </div>
       <div v-if="item.doi" class="mb-2">
         <span class="font-semibold text-sm text-ink-900 dark:text-ink-50">DOI:</span>
-        <span class="text-sm text-ink-600 dark:text-ink-400 ml-2">{{ item.doi }}</span>
+        <span class="text-sm text-ink-600 dark:text-ink-300 ml-2">{{ item.doi }}</span>
       </div>
       <div v-if="item.score_breakdown && Object.keys(item.score_breakdown).length > 0" class="mb-2">
         <h4 class="font-semibold text-sm text-ink-900 dark:text-ink-50 mb-1">Score Breakdown</h4>

@@ -51,6 +51,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/files',
+    name: 'files',
+    component: () => import('../views/FilesPage.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/files/:paperId',
+    name: 'files-paper',
+    component: () => import('../views/FilesPage.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
@@ -61,8 +73,13 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
+
+  // Ensure user state is loaded before checking auth
+  if (!auth.user && !auth._loaded) {
+    try { await auth.fetchMe() } catch {}
+  }
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return next('/login')

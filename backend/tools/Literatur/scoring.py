@@ -144,7 +144,7 @@ def _keyword_density_score(query: str, p: Paper) -> float:
     ]
     if not terms:
         return 0.0
-    matched = sum(1 for t in terms if t in title)
+    matched = sum(1 for t in terms if re.search(rf'\b{re.escape(t)}\b', title))
     return min(1.0, matched / len(terms))
 
 
@@ -175,12 +175,16 @@ def _has_signal(p: Paper) -> bool:
     return bool(p.title and p.title.strip())
 
 
-def _embed(texts: Sequence[str]) -> np.ndarray:
+def _embed(texts: Sequence[str], batch_size: int = 200) -> np.ndarray:
     """Encode `texts` to L2-normalized dense vectors.
 
     Prefers SBERT (`all-MiniLM-L6-v2`, 384-dim). When `sentence_transformers`
     is not available, falls back to a TF-IDF vectorizer with `max_features=384`
     and L2 normalization, which keeps cosine math downstream unchanged.
+
+    BUG-EMBED_BATCH_MEMORY: SBERT path processes in chunks of `batch_size` to
+    prevent memory spikes with 1000+ papers. TF-IDF fallback always processes
+    all texts together (shared vocabulary required).
     """
     sbert = _get_sbert()
     if sbert == _TFIDF_FALLBACK:
@@ -200,13 +204,30 @@ def _embed(texts: Sequence[str]) -> np.ndarray:
         norms = np.linalg.norm(mat, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         return mat / norms
-    return sbert.encode(
-        list(texts),
-        batch_size=32,
-        show_progress_bar=False,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-    )
+
+    texts_list = list(texts)
+    if len(texts_list) <= batch_size:
+        return sbert.encode(
+            texts_list,
+            batch_size=32,
+            show_progress_bar=False,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+
+    # BUG-EMBED_BATCH_MEMORY: chunked processing to prevent memory spikes
+    chunks = []
+    for i in range(0, len(texts_list), batch_size):
+        chunk = texts_list[i:i + batch_size]
+        emb = sbert.encode(
+            chunk,
+            batch_size=32,
+            show_progress_bar=False,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
+        chunks.append(emb)
+    return np.concatenate(chunks, axis=0)
 
 
 def score_papers(
@@ -250,7 +271,7 @@ def score_papers(
         signal_penalty = 0.0 if has_signal[i] else 0.15
 
         # Weights: SBERT is the most important signal (0.50)
-        total = (
+        base_score = (
             0.50 * sbert_s
             + 0.10 * tfidf_s
             + 0.10 * cite_s
@@ -258,7 +279,11 @@ def score_papers(
             + 0.10 * venue_s
             + 0.07 * keyword_s
             + 0.05 * author_s
-        ) - signal_penalty
+        )
+        # Multiplicative penalty: a paper with high SBERT but signal issues
+        # still gets a meaningful score (0.85 of base) rather than being
+        # crushed by an additive -0.15 that can zero out strong matches.
+        total = base_score * (1.0 - signal_penalty)
         total = max(0.0, min(1.0, total))
 
         breakdown = {

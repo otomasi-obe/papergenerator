@@ -10,11 +10,12 @@
  *     header bell badge + dropdown, plus fires browser notifications for
  *     newly-finished jobs the user hasn't seen yet.
  *
- * State is intentionally NOT persisted to localStorage; the source of truth
- * lives on the backend, and a refresh re-fetches everything.
+ * Stream state (reasoning/content text, progress) IS persisted to localStorage
+ * so users can see their in-progress generation after page refresh.
+ * The source of truth for job status lives on the backend.
  */
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '../api/index.js'
 import { usePaperStore } from './paper.js'
 
@@ -30,7 +31,25 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
   // Job ids the user has already been notified about (or pre-seeded on first load)
   const seenDoneIds = ref(new Set())
   // Job ids that have been clicked/viewed by the user (to hide from bell dropdown)
-  const clickedJobIds = ref(new Set())
+  // Array + reactive counter — Vue doesn't track Set.add() in computed deps,
+  // so we bump _clickedTick on every add to force re-evaluation.
+  // Persisted to localStorage so clicked jobs stay hidden across page refresh.
+  const LS_CLICKED = 'pg_bell_clicked_ids'
+  let _savedClicked: string[] = []
+  try {
+    const raw = localStorage.getItem(LS_CLICKED)
+    if (raw) _savedClicked = JSON.parse(raw)
+  } catch { /* ignore */ }
+  const _clickedIds = new Set(_savedClicked)
+  const _clickedTick = ref(0)
+
+  function _persistClicked() {
+    try {
+      // Only keep the last 100 ids to avoid unbounded growth
+      const arr = [..._clickedIds].slice(-100)
+      localStorage.setItem(LS_CLICKED, JSON.stringify(arr))
+    } catch { /* quota exceeded or private mode */ }
+  }
   // Job ids that have already triggered the post-done chat injection. We
   // track this separately from seenDoneIds because notifications and the
   // chat hook have different lifecycles (e.g. seenDoneIds is seeded on the
@@ -51,7 +70,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     if (!paperId) return
     try {
       const r = await api.get(`/api/papers/${paperId}/ai-jobs/active`)
-      const job = r?.data
+      const job = r.data?.job  // nested under 'job' key
       if (job && job.id) {
         activeByPaper.value = { ...activeByPaper.value, [paperId]: job }
       } else {
@@ -134,6 +153,16 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     } catch { /* some browsers throw if called too early */ }
   }
 
+  // Dismiss a failed job from the bell notification (client-side only)
+  function dismissFailedJob(jobId) {
+    failedJobs.value = failedJobs.value.filter(j => j.id !== jobId)
+  }
+
+  // Clear all failed jobs from the bell notification (client-side only)
+  function clearAllFailedJobs() {
+    failedJobs.value = []
+  }
+
   // Walk the paper JSON for figure-blocks (`id === 'gambar'`) and collect
   // their {title, prompt, section, content_index}. Used by the post-done
   // hook to surface a one-shot image-prompt review chat bubble.
@@ -208,7 +237,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       const failed = list.filter(j => j.status === 'error' || j.status === 'cancelled')
       globalActiveJobs.value = active
       // Only add new failures that aren't already clicked/dismissed
-      failedJobs.value = failed.filter(j => !clickedJobIds.value.has(j.id))
+      failedJobs.value = failed.filter(j => !_clickedIds.has(j.id))
 
       // Check for stuck jobs (0% progress for too long)
       _checkStuckJobs()
@@ -226,7 +255,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
           _onJobDone(j)
         })
       }
-      recentDone.value = done
+      recentDone.value = done.filter(j => j.paper_id)
     } catch (e) {
       console.warn('paperJobs.fetchRecentDone failed', e)
     }
@@ -256,8 +285,10 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
   }
 
   function markJobAsClicked(jobId) {
-    if (jobId) {
-      clickedJobIds.value.add(jobId)
+    if (jobId && !_clickedIds.has(jobId)) {
+      _clickedIds.add(jobId)
+      _clickedTick.value++ // force reactive re-evaluation
+      _persistClicked()
     }
   }
 
@@ -290,8 +321,8 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       }
     }
 
-    // Mark stuck jobs as failed
-    for (const jobId of stuckJobIds) {
+    // Mark stuck jobs as failed (parallel cancel to avoid sequential stalls)
+    const cancelPromises = stuckJobIds.map(async (jobId) => {
       try {
         await api.post(`/api/ai-jobs/${jobId}/cancel`)
         // Add to failed jobs list (will be shown in bell)
@@ -302,15 +333,82 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
             status: 'error',
             error: 'Job stuck at 0% — auto-cancelled after 5 minutes',
           }
-          if (!clickedJobIds.value.has(jobId)) {
+          if (!_clickedIds.has(jobId)) {
             failedJobs.value = [failedJob, ...failedJobs.value]
           }
+          globalActiveJobs.value = globalActiveJobs.value.filter(j => j.id !== jobId)
         }
         _stuckTracker.delete(jobId)
       } catch (e) {
         console.warn('Failed to cancel stuck job', jobId, e)
       }
+    })
+    await Promise.allSettled(cancelPromises)
+  }
+
+  // ── Paperfull SSE streaming state ──────────────────────────────────────
+  // Lives in store so it survives component unmount (user navigates away).
+  // Persisted to localStorage so it also survives page refresh.
+  const LS_STREAM = 'pg_stream_state'
+
+  let _savedStream = null
+  try {
+    const raw = localStorage.getItem(LS_STREAM)
+    if (raw) _savedStream = JSON.parse(raw)
+  } catch { /* ignore */ }
+
+  const streamState = ref(_savedStream)
+
+  function _persistStream() {
+    try {
+      if (streamState.value) {
+        localStorage.setItem(LS_STREAM, JSON.stringify(streamState.value))
+      } else {
+        localStorage.removeItem(LS_STREAM)
+      }
+    } catch { /* quota exceeded or private mode */ }
+  }
+
+  function setStreamState(data) {
+    streamState.value = data ? { ...data, _updatedAt: Date.now() } : null
+    _persistStream()
+  }
+
+  function updateStreamProgress(pct) {
+    if (streamState.value) {
+      streamState.value = { ...streamState.value, displayProgress: pct, _updatedAt: Date.now() }
+      _persistStream()
     }
+  }
+
+  // Mark stream as connection-lost (SSE dropped, backend may still be running)
+  function setConnectionLost(lost) {
+    if (streamState.value) {
+      streamState.value = { ...streamState.value, connectionLost: !!lost, _updatedAt: Date.now() }
+      _persistStream()
+    }
+  }
+
+  function clearStreamState() {
+    streamState.value = null
+    _persistStream()
+  }
+
+  // Check if the persisted stream state is stale (>5 min without update).
+  // Call this on app mount to clear zombie streams from a previous session.
+  function clearStaleStreamState() {
+    if (streamState.value?._updatedAt) {
+      const age = Date.now() - streamState.value._updatedAt
+      if (age > 5 * 60 * 1000) {
+        clearStreamState()
+        return true
+      }
+    } else if (streamState.value) {
+      // No timestamp — assume stale
+      clearStreamState()
+      return true
+    }
+    return false
   }
 
   return {
@@ -318,13 +416,21 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     globalActiveJobs,
     failedJobs,
     recentDone,
-    clickedJobIds,
+    clickedJobIds: computed(() => { void _clickedTick.value; return _clickedIds }),
+    _clickedTick,
+    streamState,
+    setStreamState,
+    updateStreamProgress,
+    clearStreamState,
+    clearStaleStreamState,
     fetchActive,
     startPolling,
     stopPolling,
     cancel,
     resume,
     retrySection,
+    dismissFailedJob,
+    clearAllFailedJobs,
     fetchRecentDone,
     startGlobalPolling,
     stopGlobalPolling,

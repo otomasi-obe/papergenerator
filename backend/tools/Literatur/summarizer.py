@@ -111,10 +111,6 @@ def batch_summarize(
 
 # ─── AI summarizer (upstream LLM) ───────────────────────────────────────────
 
-_AI_BASE = (os.getenv("AIOTOMASI_API") or "").rstrip("/")
-_AI_KEY = os.getenv("AIOTOMASI_APIKEY") or ""
-_DEFAULT_MODEL = get_primary_generate_model()
-
 _AI_MISSING_WARNED = False
 
 
@@ -132,48 +128,37 @@ def _warn_ai_missing_once():
 def _ai_chat(
     messages, model: str | None = None, max_tokens: int = 32000, timeout: int = 90
 ) -> str | None:
-    """Synchronous, non-streaming chat completion. Returns content or None."""
-    if not (_AI_BASE and _AI_KEY):
-        _warn_ai_missing_once()
-        return None
-    chosen = model or _DEFAULT_MODEL
+    """Synchronous, non-streaming chat completion via the per-index endpoint
+    chain (MODELGENERATE1..3, each with its own endpoint+key). Returns content
+    or None."""
+    from utils.ai_tools.ai_client import chat as _chain_chat
     try:
-        resp = requests.post(
-            _AI_BASE + "/chat/completions",
-            headers={
-                "Authorization": f"Bearer {_AI_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": chosen,
-                "messages": messages,
-                "stream": False,
-                "max_tokens": max_tokens,
-            },
-            timeout=timeout,
+        content, _used = _chain_chat(
+            messages, heavy=True, max_tokens=max_tokens, timeout=timeout
         )
-        if resp.status_code != 200:
-            log.warning("summarizer.ai_chat status=%s body=%s", resp.status_code, resp.text[:200])
+        return (content or "").strip() or None
+    except RuntimeError as e:
+        if "no endpoint configured" in str(e):
+            _warn_ai_missing_once()
             return None
-        data = resp.json()
-        choices = data.get("choices") or []
-        if not choices:
-            return None
-        msg = choices[0].get("message") or {}
-        return (msg.get("content") or "").strip()
+        log.warning("summarizer.ai_chat error: %s", e)
+        return None
     except Exception as e:
         log.warning("summarizer.ai_chat error: %s", e)
         return None
 
 
 _AI_SYS_PROMPT = (
-    "You are an academic literature reviewer. For each paper, write a "
-    "FAITHFUL 2-3 sentence summary in English that captures: (1) the problem "
-    "or contribution, (2) the method/approach, (3) headline result if "
-    "stated. NEVER invent numbers, datasets, or claims not present in the "
-    "input. If the abstract is empty or too short, summarize from the title "
-    "only and prefix the sentence with '[based on title]'. Respond with "
-    'VALID JSON ONLY: an array of {"id": <int>, "summary": "<sentences>"} '
+    "You are an academic literature reviewer. For each paper, output TWO fields:\n"
+    "1. \"summary\": a FAITHFUL 2-3 sentence summary capturing (a) the problem or\n"
+    "   contribution, (b) the method/approach, (c) headline result if stated.\n"
+    "2. \"gap_riset\": a 1-2 sentence suggestion for a research gap based on what\n"
+    "   the paper does NOT cover — limitations, unexplored directions, or open\n"
+    "   questions. Base this ONLY on the abstract; do not invent content.\n"
+    "NEVER invent numbers, datasets, or claims not present in the input. If the\n"
+    "abstract is empty or too short, summarize from the title only and prefix\n"
+    "the summary with '[based on title]'. Respond with VALID JSON ONLY: an\n"
+    'array of {"id": <int>, "summary": "<sentences>", "gap_riset": "<sentences>"} '
     "objects in the same order as the input. No prose, no markdown."
 )
 
@@ -224,22 +209,21 @@ def _parse_json_array(text: str):
 
 def summarize_with_ai(
     papers: list[dict], query: str, model: str | None = None, batch_size: int = 10, progress_cb=None
-) -> tuple[dict[int, str], bool]:
+) -> tuple[dict[int, dict], bool]:
     """Batch-summarize a list of paper dicts via the upstream LLM.
 
     Each item must carry at least `id` and `title`; `abstract`, `year`
-    optional. Returns ``({id -> summary}, ai_used)`` where ``ai_used`` is
-    ``True`` if at least one paper got a real AI-generated summary, and
-    ``False`` if every batch fell through to the extractive fallback (e.g.
-    upstream env vars missing or all calls failed). Items missing from the
-    response fall back to the extractive ``summarize``.
+    optional. Returns ``({id -> {"summary": str, "gap_riset": str}}, ai_used)``
+    where ``ai_used`` is ``True`` if at least one paper got a real AI-generated
+    summary, and ``False`` if every batch fell through to the extractive fallback.
+    Items missing from the response fall back to the extractive ``summarize``.
     """
-    out: dict[int, str] = {}
+    out: dict[int, dict] = {}
     ai_used = False
     if not papers:
         return out, ai_used
 
-    chosen_model = model or _DEFAULT_MODEL
+    chosen_model = model or get_primary_generate_model()
     total = len(papers)
     batches = [papers[i : i + batch_size] for i in range(0, total, batch_size)]
     consecutive_failures = 0
@@ -267,7 +251,7 @@ def summarize_with_ai(
             {"role": "system", "content": _AI_SYS_PROMPT},
             {"role": "user", "content": user},
         ]
-        content = _ai_chat(msgs, model=chosen_model, max_tokens=900)
+        content = _ai_chat(msgs, model=chosen_model, max_tokens=1200)
         parsed = _parse_json_array(content) if content else None
         if not parsed:
             log.warning(
@@ -278,10 +262,13 @@ def summarize_with_ai(
             for p in batch:
                 if "id" not in p:
                     continue
-                out[p["id"]] = (
-                    summarize(p.get("abstract"), query=query, n_sentences=3)
-                    or (p.get("title") or "")[:280]
-                )
+                out[p["id"]] = {
+                    "summary": (
+                        summarize(p.get("abstract"), query=query, n_sentences=3)
+                        or (p.get("title") or "")[:280]
+                    ),
+                    "gap_riset": "",
+                }
             consecutive_failures += 1
         else:
             for item in parsed:
@@ -292,17 +279,24 @@ def summarize_with_ai(
                 except (TypeError, ValueError):
                     continue
                 summary = (item.get("summary") or "").strip()
+                gap_riset = (item.get("gap_riset") or "").strip()
                 if summary:
-                    out[pid] = summary[:1200]
+                    out[pid] = {
+                        "summary": summary[:1200],
+                        "gap_riset": gap_riset[:800],
+                    }
                     ai_used = True
             for p in batch:
                 if "id" not in p:
                     continue
                 if p["id"] not in out:
-                    out[p["id"]] = (
-                        summarize(p.get("abstract"), query=query, n_sentences=3)
-                        or (p.get("title") or "")[:280]
-                    )
+                    out[p["id"]] = {
+                        "summary": (
+                            summarize(p.get("abstract"), query=query, n_sentences=3)
+                            or (p.get("title") or "")[:280]
+                        ),
+                        "gap_riset": "",
+                    }
             consecutive_failures = 0
 
         if progress_cb:

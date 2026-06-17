@@ -22,6 +22,12 @@ class TestMockServer:
             response = requests.get(f"{self.BASE_URL}/api/health", timeout=5)
             assert response.status_code == 200
             data = response.json()
+            # Port 5000 may be occupied by an unrelated service. Only assert the
+            # mock-server contract when we're actually talking to the mock server.
+            if "status" not in data:
+                pytest.skip(
+                    f"Port 5000 is serving a different app (not the perf mock server): {data}"
+                )
             assert data['status'] == 'ok'
             assert 'timestamp' in data
         except requests.exceptions.RequestException as e:
@@ -35,6 +41,8 @@ class TestMockServer:
                 json={"username": "testuser", "password": "testpass123"},
                 timeout=5
             )
+            if response.status_code == 404:
+                pytest.skip("Port 5000 is not serving the perf mock server")
             assert response.status_code == 200
             data = response.json()
             assert 'token' in data
@@ -50,6 +58,8 @@ class TestMockServer:
                 json={"username": "wrong", "password": "wrong"},
                 timeout=5
             )
+            if response.status_code == 404:
+                pytest.skip("Port 5000 is not serving the perf mock server")
             assert response.status_code == 401
         except requests.exceptions.RequestException:
             pytest.skip("Mock server not running")
@@ -62,6 +72,8 @@ class TestMockServer:
                 json={"prompt": "test", "section": "abstract"},
                 timeout=5
             )
+            if response.status_code == 404:
+                pytest.skip("Port 5000 is not serving the perf mock server")
             assert response.status_code == 401
         except requests.exceptions.RequestException:
             pytest.skip("Mock server not running")
@@ -129,33 +141,35 @@ class TestPerformanceAnalyzer:
 class TestInfrastructure:
     """Test infrastructure files and directories"""
 
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+
     def test_reports_directory_exists(self):
         """Test reports directory exists"""
-        assert os.path.exists("backend/tests/performance/reports")
+        assert os.path.exists(os.path.join(self._HERE, "reports"))
 
     def test_locustfile_exists(self):
         """Test locustfile exists"""
-        assert os.path.exists("backend/tests/performance/locustfile.py")
+        assert os.path.exists(os.path.join(self._HERE, "locustfile.py"))
 
     def test_run_script_exists(self):
         """Test run script exists"""
-        assert os.path.exists("backend/tests/performance/run_performance_tests.py")
+        assert os.path.exists(os.path.join(self._HERE, "run_performance_tests.py"))
 
     def test_mock_server_exists(self):
         """Test mock server exists"""
-        assert os.path.exists("backend/tests/performance/simple_mock_server.py")
+        assert os.path.exists(os.path.join(self._HERE, "simple_mock_server.py"))
 
     def test_analyzer_exists(self):
         """Test analyzer module exists"""
-        assert os.path.exists("backend/tests/performance/performance_analyzer.py")
+        assert os.path.exists(os.path.join(self._HERE, "performance_analyzer.py"))
 
     def test_readme_exists(self):
         """Test README exists"""
-        assert os.path.exists("backend/tests/performance/README.md")
+        assert os.path.exists(os.path.join(self._HERE, "README.md"))
 
     def test_troubleshooting_guide_exists(self):
         """Test troubleshooting guide exists"""
-        assert os.path.exists("backend/tests/performance/TROUBLESHOOTING.md")
+        assert os.path.exists(os.path.join(self._HERE, "TROUBLESHOOTING.md"))
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

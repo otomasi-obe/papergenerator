@@ -9,7 +9,7 @@
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="text-center py-20 text-ink-500 dark:text-ink-400">
+      <div v-if="loading" class="text-center py-20 text-ink-500 dark:text-ink-300">
         <div class="w-8 h-8 border-4 border-[var(--accent)]/20 border-t-[var(--accent)] rounded-full animate-spin mx-auto mb-3"></div>
         Loading...
       </div>
@@ -43,7 +43,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead>
-                  <tr class="text-left text-ink-500 dark:text-ink-400 border-b border-cream-300 dark:border-ash-700 text-xs uppercase">
+                  <tr class="text-left text-ink-500 dark:text-ink-300 border-b border-cream-300 dark:border-ash-700 text-xs uppercase">
                     <th class="pb-2 pr-4">Endpoint</th>
                     <th class="pb-2 pr-4 text-right">Calls</th>
                     <th class="pb-2 text-right">Tokens</th>
@@ -56,7 +56,7 @@
                     <td class="py-2 text-right text-ink-700 dark:text-ink-200">{{ formatNum(row.tokens) }}</td>
                   </tr>
                   <tr v-if="!usage.by_endpoint?.length">
-                    <td colspan="3" class="text-center py-6 text-ink-500 dark:text-ink-400">No API calls recorded yet</td>
+                    <td colspan="3" class="text-center py-6 text-ink-500 dark:text-ink-300">No API calls recorded yet</td>
                   </tr>
                 </tbody>
               </table>
@@ -69,7 +69,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead>
-                  <tr class="text-left text-ink-500 dark:text-ink-400 border-b border-cream-300 dark:border-ash-700 text-xs uppercase">
+                  <tr class="text-left text-ink-500 dark:text-ink-300 border-b border-cream-300 dark:border-ash-700 text-xs uppercase">
                     <th class="pb-2 pr-4">User</th>
                     <th class="pb-2 pr-4 text-right">Calls</th>
                     <th class="pb-2 text-right">Tokens</th>
@@ -79,13 +79,13 @@
                   <tr v-for="row in usage.per_user" :key="row.email" class="border-b border-cream-300 dark:border-ash-700 last:border-0 hover:bg-cream-50 dark:bg-ash-850">
                     <td class="py-2 pr-4">
                       <div class="font-medium text-ink-900 dark:text-ink-50">{{ row.name }}</div>
-                      <div class="text-xs text-ink-500 dark:text-ink-400">{{ row.email }}</div>
+                      <div class="text-xs text-ink-500 dark:text-ink-300">{{ row.email }}</div>
                     </td>
                     <td class="py-2 pr-4 text-right">{{ formatNum(row.calls) }}</td>
                     <td class="py-2 text-right">{{ formatNum(row.tokens) }}</td>
                   </tr>
                   <tr v-if="!usage.per_user?.length">
-                    <td colspan="3" class="text-center py-6 text-ink-500 dark:text-ink-400">No usage records yet</td>
+                    <td colspan="3" class="text-center py-6 text-ink-500 dark:text-ink-300">No usage records yet</td>
                   </tr>
                 </tbody>
               </table>
@@ -104,7 +104,7 @@
                 </div>
               </div>
             </div>
-            <p v-else class="text-center text-ink-500 dark:text-ink-400 text-sm py-8">No daily data yet</p>
+            <p v-else class="text-center text-ink-500 dark:text-ink-300 text-sm py-8">No daily data yet</p>
           </div>
         </div>
 
@@ -114,7 +114,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead class="bg-cream-50 dark:bg-ash-850 border-b border-cream-300 dark:border-ash-700">
-                  <tr class="text-left text-ink-500 dark:text-ink-400 text-xs uppercase">
+                  <tr class="text-left text-ink-500 dark:text-ink-300 text-xs uppercase">
                     <th class="px-4 py-3">Title</th>
                     <th class="px-4 py-3">User</th>
                     <th class="px-4 py-3 text-right">Images</th>
@@ -125,17 +125,17 @@
                   <tr v-for="p in allPapers" :key="p.id" class="border-b border-cream-300 dark:border-ash-700 last:border-0 hover:bg-cream-50 dark:bg-ash-850">
                     <td class="px-4 py-3">
                       <div class="font-medium text-ink-900 dark:text-ink-50 max-w-xs truncate">{{ p.title || 'Untitled' }}</div>
-                      <div class="text-xs text-ink-500 dark:text-ink-400 font-mono">{{ p.id }}</div>
+                      <div class="text-xs text-ink-500 dark:text-ink-300 font-mono">{{ p.id }}</div>
                     </td>
                     <td class="px-4 py-3">
                       <div class="text-ink-700 dark:text-ink-200">{{ p.user_name }}</div>
-                      <div class="text-xs text-ink-500 dark:text-ink-400">{{ p.user_email }}</div>
+                      <div class="text-xs text-ink-500 dark:text-ink-300">{{ p.user_email }}</div>
                     </td>
                     <td class="px-4 py-3 text-right text-ink-600 dark:text-ink-300">{{ p.image_count }}</td>
-                    <td class="px-4 py-3 text-right text-ink-500 dark:text-ink-400 text-xs whitespace-nowrap">{{ formatDate(p.updated_at) }}</td>
+                    <td class="px-4 py-3 text-right text-ink-500 dark:text-ink-300 text-xs whitespace-nowrap">{{ formatDate(p.updated_at) }}</td>
                   </tr>
                   <tr v-if="!allPapers.length">
-                    <td colspan="4" class="px-4 py-8 text-center text-ink-500 dark:text-ink-400">No papers yet</td>
+                    <td colspan="4" class="px-4 py-8 text-center text-ink-500 dark:text-ink-300">No papers yet</td>
                   </tr>
                 </tbody>
               </table>
@@ -149,7 +149,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead class="bg-cream-50 dark:bg-ash-850 border-b border-cream-300 dark:border-ash-700">
-                  <tr class="text-left text-ink-500 dark:text-ink-400 text-xs uppercase">
+                  <tr class="text-left text-ink-500 dark:text-ink-300 text-xs uppercase">
                     <th class="px-4 py-3">User</th>
                     <th class="px-4 py-3">Role</th>
                     <th class="px-4 py-3 text-right">Quota</th>
@@ -163,11 +163,11 @@
                   <tr v-for="u in allUsers" :key="u.id" class="border-b border-cream-300 dark:border-ash-700 last:border-0 hover:bg-cream-50 dark:bg-ash-850">
                     <td class="px-4 py-3">
                       <div class="font-medium text-ink-900 dark:text-ink-50">{{ u.name }}</div>
-                      <div class="text-xs text-ink-500 dark:text-ink-400">{{ u.email }}</div>
+                      <div class="text-xs text-ink-500 dark:text-ink-300">{{ u.email }}</div>
                     </td>
                     <td class="px-4 py-3">
                       <span :class="['text-xs px-2 py-0.5 rounded-full font-medium',
-                        u.role === 'admin' ? 'bg-cream-100 dark:bg-ash-700 text-ink-900 dark:text-ink-50' : 'bg-cream-100 text-ink-600 dark:text-ink-300 dark:text-ink-300']">
+                        u.role === 'admin' ? 'bg-cream-100 dark:bg-ash-700 text-ink-900 dark:text-ink-50' : 'bg-cream-100 text-ink-600 dark:text-ink-300']">
                         {{ u.role }}
                       </span>
                     </td>
@@ -183,26 +183,26 @@
                         :class="['w-24 text-right tabular-nums px-2 py-1 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]/30 focus:border-[var(--accent)]', quotaStatus[u.id] === 'ok' ? 'border-green-500' : quotaStatus[u.id] === 'err' ? 'border-red-500' : 'border-cream-300 dark:border-ash-700']"
                         title="Klik untuk edit kuota bulanan"
                       />
-                      <span v-else class="text-xs text-ink-500 dark:text-ink-400">∞</span>
+                      <span v-else class="text-xs text-ink-500 dark:text-ink-300">∞</span>
                     </td>
                     <td class="px-4 py-3 text-right">
                       <span class="tabular-nums text-xs"
-                        :class="quotaPercent(u) >= 90 ? 'text-red-600 font-semibold' : quotaPercent(u) >= 70 ? 'text-amber-600' : 'text-ink-600 dark:text-ink-300'">
+                        :class="quotaPercent(u) >= 90 ? 'text-red-600 dark:text-red-400 font-semibold' : quotaPercent(u) >= 70 ? 'text-amber-600' : 'text-ink-600 dark:text-ink-300'">
                         {{ formatNum(u.token_used_month || 0) }}
                       </span>
                     </td>
                     <td class="px-4 py-3 text-right">{{ u.paper_count }}</td>
-                    <td class="px-4 py-3 text-right text-xs text-ink-500 dark:text-ink-400">{{ formatDate(u.created_at) }}</td>
+                    <td class="px-4 py-3 text-right text-xs text-ink-500 dark:text-ink-300">{{ formatDate(u.created_at) }}</td>
                     <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                       <button v-if="u.role !== 'admin'" @click="confirmResetQuota(u)" class="text-xs text-[var(--accent)] hover:underline">Reset</button>
                       <button v-if="u.role !== 'admin'" @click="confirmPromote(u, 'admin')"
                         class="text-xs text-ink-900 dark:text-ink-50 underline hover:underline">Make Admin</button>
                       <button v-else @click="confirmPromote(u, 'user')"
-                        class="text-xs text-ink-500 dark:text-ink-400 hover:underline">Demote</button>
+                        class="text-xs text-ink-500 dark:text-ink-300 hover:underline">Demote</button>
                     </td>
                   </tr>
                   <tr v-if="!allUsers.length">
-                    <td colspan="7" class="px-4 py-8 text-center text-ink-500 dark:text-ink-400">No users yet</td>
+                    <td colspan="7" class="px-4 py-8 text-center text-ink-500 dark:text-ink-300">No users yet</td>
                   </tr>
                 </tbody>
               </table>
@@ -233,7 +233,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import api from '../api/index.js'
 import AppHeader from '../components/AppHeader.vue'
 import AppDialog from '../components/AppDialog.vue'
@@ -247,6 +247,7 @@ const stats = ref({})
 const promoteTarget = ref(null)
 const resetTarget = ref(null)
 const toastMsg = ref('')
+const _quotaTimers = []
 const quotaStatus = ref({})
 let toastTimer = null
 
@@ -326,7 +327,7 @@ async function saveQuota(user, value) {
     quotaStatus.value[user.id] = 'err'
     console.error('saveQuota failed', e)
   } finally {
-    setTimeout(() => { delete quotaStatus.value[user.id] }, 1000)
+    _quotaTimers.push(setTimeout(() => { delete quotaStatus.value[user.id] }, 1000))
   }
 }
 
@@ -384,6 +385,5 @@ onMounted(() => {
   _refreshTimer = setInterval(loadAll, 30_000)
 })
 
-import { onBeforeUnmount } from 'vue'
-onBeforeUnmount(() => { if (_refreshTimer) clearInterval(_refreshTimer) })
+onBeforeUnmount(() => { if (_refreshTimer) clearInterval(_refreshTimer); _quotaTimers.forEach(clearTimeout) })
 </script>

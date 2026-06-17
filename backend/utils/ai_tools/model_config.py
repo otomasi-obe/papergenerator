@@ -208,6 +208,72 @@ def call_generate_with_fallback(
     )
 
 
+# ── Per-index endpoint resolution (model + base_url + key per slot) ──────────
+#
+# Mirrors the MonitoringVokasi pattern: each model index has its OWN endpoint
+# and API key, so failover 1→2→3 switches provider as well as model name.
+#
+#   index i → (MODEL{prefix}{i}, AIOTOMASI_API{i}, AIOTOMASI_APIKEY{i})
+#
+# Resolution falls back to the bare AIOTOMASI_API / AIOTOMASI_APIKEY (and the
+# legacy ROUTER_API / ROUTER_API_KEY) when a slot-specific value is absent, so
+# a partially-configured .env still works.
+
+def _endpoint_for_index(i: int) -> tuple[str, str]:
+    """Return ``(base_url, api_key)`` for slot *i* with graceful fallbacks.
+
+    base_url: AIOTOMASI_API{i} → AIOTOMASI_API → ROUTER_API → ""
+    api_key : AIOTOMASI_APIKEY{i} → AIOTOMASI_APIKEY → ROUTER_API_KEY → ""
+    """
+    base = (
+        os.getenv(f"AIOTOMASI_API{i}")
+        or os.getenv("AIOTOMASI_API")
+        or os.getenv("ROUTER_API")
+        or ""
+    ).rstrip("/")
+    key = (
+        os.getenv(f"AIOTOMASI_APIKEY{i}")
+        or os.getenv("AIOTOMASI_APIKEY")
+        or os.getenv("ROUTER_API_KEY")
+        or ""
+    )
+    return base, key
+
+
+def get_endpoint_chain(heavy: bool = False) -> list[tuple[str, str, str]]:
+    """Ordered ``[(model, base_url, api_key)]`` triples, priority 1→2→3.
+
+    ``heavy=False`` → MODELCHAT{i};  ``heavy=True`` → MODELGENERATE{i}.
+
+    Each configured index pairs its model with its OWN endpoint+key. Indices
+    missing a model, base_url, or key are skipped. If nothing resolves (only
+    bare vars set) a single default entry is synthesised so callers still work.
+    """
+    prefix = "MODELGENERATE" if heavy else "MODELCHAT"
+    chain: list[tuple[str, str, str]] = []
+    for i in range(1, 4):
+        model = os.getenv(f"{prefix}{i}")
+        if not model:
+            continue
+        base, key = _endpoint_for_index(i)
+        if not base or not key:
+            log.warning(
+                "endpoint_chain skip index=%d model=%s (missing %s)",
+                i, model.strip(), "base_url" if not base else "api_key",
+            )
+            continue
+        chain.append((model.strip(), base, key))
+
+    if not chain:
+        base, key = _endpoint_for_index(1)
+        default_model = (
+            _DEFAULT_GENERATE_MODELS if heavy else _DEFAULT_CHAT_MODELS
+        )[0]
+        if base and key:
+            chain.append((default_model, base, key))
+    return chain
+
+
 # ── Direct model lookups (for logging / display purposes) ────────────────────
 
 def get_primary_chat_model() -> str:

@@ -175,7 +175,7 @@
                   class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none overflow-hidden dark:text-ash-100"
                   style="font-family: 'Times New Roman', serif;" rows="2"
                   placeholder="Tulis konten..."></textarea>
-                <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
+                <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug" v-html="renderInlineText(item.text)"></p>
               </div>
               <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                 <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
@@ -231,7 +231,7 @@
                     class="w-full text-justify whitespace-pre-wrap text-sm leading-snug bg-transparent border border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 rounded outline-none px-2 py-1 resize-none overflow-hidden dark:text-ash-100"
                     style="font-family: 'Times New Roman', serif;" rows="2"
                     placeholder="Tulis konten..."></textarea>
-                  <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug">{{ item.text }}</p>
+                  <p v-else class="text-justify indent-6 whitespace-pre-wrap text-sm leading-snug" v-html="renderInlineText(item.text)"></p>
                 </div>
                 <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                   <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
@@ -267,14 +267,14 @@
           <div v-for="(ref, i) in store.paper.references" :key="i">
             <DiffBlock v-if="pendingRefByIdx[i]" :change="pendingRefByIdx[i]" :store="store">
               <template #before>
-                <div class="text-xs leading-snug pl-6 -indent-6">[{{ i + 1 }}] {{ ref || '(kosong)' }}</div>
+                <div class="text-xs leading-snug pl-6 -indent-6">[{{ i + 1 }}] {{ displayRef(ref) || '(kosong)' }}</div>
               </template>
               <template #after>
                 <div class="text-xs leading-snug pl-6 -indent-6">[{{ i + 1 }}] {{ pendingRefByIdx[i].payload.value || '' }}</div>
               </template>
             </DiffBlock>
             <div v-else class="text-xs leading-snug mb-1 pl-6 -indent-6">
-              [{{ i + 1 }}] {{ ref }}
+              [{{ i + 1 }}] {{ displayRef(ref) }}
             </div>
           </div>
 
@@ -307,6 +307,13 @@ function renderFormula(latex: string): string {
 
 function renderInlineText(text: string): string {
   return renderRichText(text)
+}
+
+// Display helper for references — handles strings and structured objects
+function displayRef(ref: any): string {
+  if (typeof ref === 'string') return ref
+  if (ref && ref.text) return ref.text
+  return store.formatRef(ref) || JSON.stringify(ref)
 }
 
 interface Props {

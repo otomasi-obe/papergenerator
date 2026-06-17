@@ -104,6 +104,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "search": query,
             "per_page": min(per_page, limit - fetched),
             "cursor": cursor,
+            "sort": "relevance_score:desc",
             "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
         }
         if filter_str:

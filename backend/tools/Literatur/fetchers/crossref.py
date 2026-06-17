@@ -93,6 +93,8 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "query": query,
             "rows": min(per_page, limit - fetched),
             "offset": offset,
+            "sort": "relevance",
+            "order": "desc",
             "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
             "select": "DOI,title,author,issued,container-title,abstract,type,publisher,URL,is-referenced-by-count",
         }

@@ -28,8 +28,8 @@ if str(HERE) not in sys.path:
 os.environ.setdefault("AIOTOMASI_API", "https://example.invalid/api")
 os.environ.setdefault("AIOTOMASI_APIKEY", "test-key-not-real")
 
-import tools.editor.chunked as gpc  # noqa: E402
-from tools.editor.chunked import (  # noqa: E402
+import PaperRiset.eks.editor.chunked as gpc  # noqa: E402
+from PaperRiset.eks.editor.chunked import (  # noqa: E402
     GenerationCancelled,
     generate_paper_json_chunked,
 )
@@ -291,6 +291,10 @@ def test_references_prompt_contains_literature_catalog():
     assert "Sleep/Wake MAC for IoT" in sys_prompt or "Smith" in sys_prompt
     assert "Chen" in sys_prompt
     # AI should not be told to invent references when catalog is provided.
-    assert "Do NOT" in sys_prompt or "DO NOT" in sys_prompt
+    assert (
+        "JANGAN mengarang" in sys_prompt
+        or "Do NOT" in sys_prompt
+        or "DO NOT" in sys_prompt
+    )
     # Returned refs come from the fake call.
     assert refs == ["[1] Smith et al. 2023.", "[2] Chen 2022."]

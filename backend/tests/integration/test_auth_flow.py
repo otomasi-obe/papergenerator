@@ -210,4 +210,4 @@ class TestAuthenticationFlow:
         )
 
         assert response.status_code == 302
-        assert response.location == 'https://paperfull.app/login?error=google_denied'
+        assert response.location == 'https://paperfull.app/login?error=email_not_allowed'

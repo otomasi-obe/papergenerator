@@ -2,6 +2,11 @@
 Application Configuration
 =========================
 Centralized configuration for Flask app, database, JWT, and other settings.
+
+⚠️  DEPRECATED — This module is NOT imported anywhere in the codebase.
+    main.py is the authoritative source for app configuration (DB, JWT,
+    rate limiting, etc.). Any changes here have no effect.
+    TODO: Remove this file once confirmed no external tooling depends on it.
 """
 
 import os
@@ -49,11 +54,15 @@ def configure_app(app):
     # pool_size/max_overflow/pool_timeout. Skip those keys when on sqlite.
     if not _db_url.startswith("sqlite:"):
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-            "pool_size": 12,
-            "max_overflow": 28,
-            "pool_timeout": 30,
-            "pool_recycle": 1800,
-            "pool_pre_ping": True,
+            # PostgreSQL max_connections=100. With 16 gunicorn workers, each worker
+            # gets a small pool. Total = 16×3 base + 16×4 overflow = 112 worst case.
+            # Overflow rarely hits simultaneously. pgbouncer recommended for
+            # production at scale (transaction-level pooling).
+            "pool_size": 3,
+            "max_overflow": 4,
+            "pool_timeout": 10,       # Fail fast if pool exhausted
+            "pool_recycle": 1800,     # Recycle connections every 30 min
+            "pool_pre_ping": True,    # Detect stale connections before use
         }
     else:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -123,8 +132,10 @@ LOG_FILE = BACKEND_DIR / "log" / "app.log"
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 EXPORT_FOLDER.mkdir(parents=True, exist_ok=True)
 
-# AI Model configuration
-AIOTOMASI_MODEL = get_primary_generate_model()
+# AI Model configuration — lazy to avoid import-time env reads
+def get_aiotomasi_model():
+    """Get the primary AI model. Call this instead of reading a module-level constant."""
+    return get_primary_generate_model()
 
 # Upload limits
 MAX_PDF_FILES = 10

@@ -25,8 +25,10 @@ from sqlalchemy import or_
 from sqlalchemy import update as sa_update
 from sqlalchemy.exc import DBAPIError, OperationalError
 
-from database.models import LiteratureItem, SlrJob, db
+from database.models import LiteratureItem, SlrJob, db, safe_commit
+from tools.Literatur.paper import Paper
 from tools.Literatur.pipeline import run as run_slr_pipeline
+from utils.ai_tools.model_config import get_primary_generate_model
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +57,7 @@ def _gen_id():
 
 def _safe_commit(job_id: str | None = None, where: str = "") -> bool:
     try:
-        db.session.commit()
+        safe_commit()
         return True
     except Exception:
         db.session.rollback()
@@ -95,7 +97,7 @@ def enqueue_slr_job(
         progress_message="Job queued",
     )
     db.session.add(job)
-    db.session.commit()
+    safe_commit()
     return job
 
 
@@ -120,7 +122,7 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
         else:
             # keep the txn clean even if no rows touched
             try:
-                db.session.commit()
+                safe_commit()
             except Exception:
                 db.session.rollback()
         return n
@@ -133,8 +135,8 @@ def _sweep_dead_running_jobs(app, *, reason: str = "Worker restart") -> int:
         )
         try:
             db.session.rollback()
-        except Exception:
-            pass
+        except Exception as _e:
+            log.warning("slr rollback during DB busy failed: %s", _e)
         return 0
 
 
@@ -235,7 +237,7 @@ def _dispatch_pending(app):
         )
         try:
             result = db.session.execute(stmt)
-            db.session.commit()
+            safe_commit()
         except Exception:
             db.session.rollback()
             log.exception("slr.claim commit failed job=%s", job.id)
@@ -315,6 +317,145 @@ def _run_job(app, job_id: str):
             except Exception:
                 log.exception("slr.progress callback failed job=%s", job_id)
 
+        def save_cb(records: list[dict]):
+            """Final save: update scores/summaries for existing rows, insert new ones."""
+            try:
+                with app.app_context():
+                    # Re-fetch job to get fresh state
+                    j = db.session.query(SlrJob).filter_by(id=job_id).first()
+                    if not j or j.status != "running":
+                        return
+
+                    # Load existing DOIs for this job
+                    existing = db.session.query(LiteratureItem.id, LiteratureItem.doi).filter_by(
+                        slr_job_id=job_id
+                    ).all()
+                    existing_by_doi = {d.lower(): id for id, d in existing if d}
+
+                    seen_dois: set[str] = set()
+                    for rec in records:
+                        title = (rec.get("title") or "").strip()
+                        if not title:
+                            continue
+                        doi_raw = rec.get("doi") or None
+                        doi_key = (doi_raw or "").strip().lower()
+                        if doi_key and doi_key in seen_dois:
+                            continue
+
+                        pi = rec.get("publisher_info") or {}
+                        
+                        # Update existing or insert new
+                        if doi_key and doi_key in existing_by_doi:
+                            item = db.session.get(LiteratureItem, existing_by_doi[doi_key])
+                            if item:
+                                item.score_total = rec.get("score_total")
+                                item.score_breakdown = rec.get("score_breakdown") or {}
+                                item.summary = rec.get("summary") or ""
+                                item.gap_riset = rec.get("gap_riset") or ""
+                                item.citations = rec.get("citations")
+                                item.is_relevant = bool(rec.get("is_relevant", True))
+                        else:
+                            item = LiteratureItem(
+                                paper_id=job.paper_id,
+                                user_id=job.user_id,
+                                source_kind="slr",
+                                source=rec.get("venue") or rec.get("publisher") or rec.get("source") or "",
+                                title=title,
+                                authors=rec.get("authors") or [],
+                                year=rec.get("year") or pi.get("year"),
+                                venue=rec.get("venue") or pi.get("venue") or "",
+                                publisher=rec.get("publisher") or pi.get("publisher") or "",
+                                doi=doi_raw,
+                                url=rec.get("url") or "",
+                                pdf_url=rec.get("pdf_url") or None,
+                                abstract=rec.get("abstract") or "",
+                                summary=rec.get("summary") or "",
+                                gap_riset=rec.get("gap_riset") or "",
+                                citations=rec.get("citations"),
+                                score_total=rec.get("score_total"),
+                                score_breakdown=rec.get("score_breakdown") or {},
+                                must_read=False,
+                                is_relevant=bool(rec.get("is_relevant", True)),
+                                slr_job_id=job_id,
+                            )
+                            db.session.add(item)
+                            if doi_key:
+                                seen_dois.add(doi_key)
+                    _safe_commit(job_id, where="save_cb.final")
+                    log.info("slr.save_cb: updated %d papers for job=%s", len(records), job_id)
+            except Exception as e:
+                log.exception("slr.save_cb failed job=%s: %s", job_id, e)
+
+        # Track streaming state for this job (mutable container to avoid function attribute LSP warning)
+        streaming_state = {'cleared': False}
+
+        def source_save_cb(papers: list):
+            """Streaming save per-source: insert papers immediately after fetch."""
+            try:
+                with app.app_context():
+                    j = db.session.query(SlrJob).filter_by(id=job_id).first()
+                    if not j or j.status != "running":
+                        return
+
+                    # Clear on first source (re-run scenario)
+                    if not streaming_state['cleared']:
+                        db.session.query(LiteratureItem).filter_by(slr_job_id=job_id).delete(
+                            synchronize_session=False
+                        )
+                        streaming_state['cleared'] = True
+
+                    # Load existing DOIs
+                    existing_dois = set(
+                        d for (d,) in db.session.query(LiteratureItem.doi).filter_by(
+                            slr_job_id=job_id
+                        ).all() if d
+                    )
+                    existing_dois = {d.lower() for d in existing_dois}
+
+                    count = 0
+                    for p in papers:
+                        title = (p.title or "").strip()
+                        if not title:
+                            continue
+                        doi_raw = p.doi or None
+                        doi_key = (doi_raw or "").strip().lower()
+                        if doi_key and doi_key in existing_dois:
+                            continue
+
+                        item = LiteratureItem(
+                            paper_id=job.paper_id,
+                            user_id=job.user_id,
+                            source_kind="slr",
+                            source=p.venue or p.publisher or p.source or "",
+                            title=title,
+                            authors=p.authors or [],
+                            year=p.year,
+                            venue=p.venue or "",
+                            publisher=p.publisher or "",
+                            doi=doi_raw,
+                            url=p.url or "",
+                            pdf_url=p.pdf_url or None,
+                            abstract=p.abstract or "",
+                            summary="",
+                            gap_riset="",
+                            citations=p.citations,
+                            score_total=None,  # Will be updated in final save_cb
+                            score_breakdown={},
+                            must_read=False,
+                            is_relevant=True,
+                            slr_job_id=job_id,
+                        )
+                        db.session.add(item)
+                        if doi_key:
+                            existing_dois.add(doi_key)
+                        count += 1
+
+                    if count > 0:
+                        _safe_commit(job_id, where="source_save_cb.streaming")
+                        log.info("slr.source_save_cb: saved %d papers for job=%s", count, job_id)
+            except Exception as e:
+                log.exception("slr.source_save_cb failed job=%s: %s", job_id, e)
+
         try:
             payload = run_slr_pipeline(
                 query=job.query,
@@ -325,6 +466,8 @@ def _run_job(app, job_id: str):
                 ai_summarize=bool(job.ai_summarize),
                 ai_model=job.ai_model or None,
                 progress_cb=progress,
+                save_cb=save_cb,
+                source_save_cb=source_save_cb,
             )
         except WorkerCancelled:
             log.info("slr.job cancelled by user job=%s", job_id)
@@ -365,20 +508,12 @@ def _run_job(app, job_id: str):
                 _safe_commit(job_id, where="error")
             return
 
-        # Persist top_k records as LiteratureItem rows (pinned=False, source_kind='slr').
-        # Replaces any prior literature rows for THIS job. Other SLR jobs on the
-        # same paper keep their rows so the user's pins/edits survive.
-        #
-        # DELETE+INSERT is wrapped in a SAVEPOINT so a mid-flight failure
-        # rolls back to the pre-delete state instead of leaving the row set
-        # empty. The outer commit only happens once everything succeeded.
-        top = payload.get("top_k") or []
-
         # Detect a totally empty pipeline run — every source failed (e.g.
         # transient network) — and surface as an error instead of a silent
         # 'done with 0 results'.
         stats = payload.get("stats") or {}
         total_unique = int(stats.get("total_unique_papers") or 0)
+        top = payload.get("top_k") or []
         if not top and total_unique == 0:
             j = db.session.query(SlrJob).filter_by(id=job_id).first()
             if j and j.status == "running":
@@ -393,76 +528,22 @@ def _run_job(app, job_id: str):
                 _safe_commit(job_id, where="error.empty")
             return
 
-        # Pre-load existing DOIs for this paper so a re-run doesn't shadow rows
-        # the user may have pinned/edited from a previous SLR run.
-        existing_dois: set[str] = set()
+        # Recycle session after long pipeline run
         try:
-            rows = (
-                db.session.query(LiteratureItem.doi)
-                .filter(LiteratureItem.paper_id == job.paper_id, LiteratureItem.doi.isnot(None))
-                .all()
-            )
-            for (d,) in rows:
-                if d:
-                    existing_dois.add(d.strip().lower())
-        except Exception:
-            log.exception("slr.literature doi preload failed job=%s", job_id)
-
-        try:
-            with db.session.begin_nested():
-                db.session.query(LiteratureItem).filter_by(slr_job_id=job_id).delete(
-                    synchronize_session=False
-                )
-
-                for rec in top:
-                    title = (rec.get("title") or "").strip()
-                    if not title:
-                        # Predatory / malformed records sometimes slip through
-                        # with empty titles. Skip them.
-                        continue
-                    doi_raw = rec.get("doi") or None
-                    doi_key = (doi_raw or "").strip().lower()
-                    if doi_key and doi_key in existing_dois:
-                        # Don't shadow a row the user may have already pinned/edited.
-                        continue
-                    pi = rec.get("publisher_info") or {}
-                    item = LiteratureItem(
-                        paper_id=job.paper_id,
-                        user_id=job.user_id,
-                        source_kind="slr",
-                        source=rec.get("source") or "",
-                        title=title,
-                        authors=rec.get("authors") or [],
-                        year=rec.get("year") or pi.get("year"),
-                        venue=rec.get("venue") or pi.get("venue") or "",
-                        publisher=rec.get("publisher") or pi.get("publisher") or "",
-                        doi=doi_raw,
-                        url=rec.get("url") or "",
-                        pdf_url=rec.get("pdf_url") or None,
-                        abstract=rec.get("abstract") or "",
-                        summary=rec.get("summary") or "",
-                        citations=rec.get("citations"),
-                        score_total=rec.get("score_total"),
-                        score_breakdown=rec.get("score_breakdown") or {},
-                        must_read=bool(rec.get("must_read")),
-                        is_relevant=bool(rec.get("is_relevant", True)),
-                        slr_job_id=job_id,
-                    )
-                    db.session.add(item)
-                    if doi_key:
-                        existing_dois.add(doi_key)
-            _safe_commit(job_id, where="literature.persist")
-        except Exception:
             db.session.rollback()
-            log.exception("slr.literature persist failed job=%s", job_id)
-            j = db.session.query(SlrJob).filter_by(id=job_id).first()
-            if j and j.status == "running":
-                j.status = "error"
-                j.stage = "error"
-                j.error = "Failed to persist literature rows"
-                j.finished_at = datetime.now(timezone.utc)
-                _safe_commit(job_id, where="error.persist")
+        except Exception as _e:
+            log.warning("slr session recycle rollback failed: %s", _e)
+        try:
+            db.session.remove()
+        except Exception:
+            log.warning("slr.literature session.remove() failed job=%s", job_id, exc_info=True)
+
+        # Re-fetch the job row through the new session
+        job = db.session.query(SlrJob).filter_by(id=job_id).first()
+        if not job:
             return
+
+        # Save cb already persisted rows during pipeline. Just mark done.
 
         j = db.session.query(SlrJob).filter_by(id=job_id).first()
         if not j:
@@ -519,9 +600,9 @@ def _stage_message(stage: str, info: dict) -> str:
     if stage == "scored":
         return f"{info.get('count', 0)} paper terskor"
     if stage == "summarizing":
-        return f"AI ringkas top-{info.get('count', 0)} paper…"
+        return f"Scoring programmatik {info.get('count', 0)} paper…"
     if stage == "summarized":
-        return f"AI ringkas {info.get('done', 0)}/{info.get('total', 0)}"
+        return f"Scoring selesai ({info.get('done', 0)}/{info.get('total', 0)})"
     if stage == "complete":
         return f"Selesai: top-{info.get('top_k', 0)} dari {info.get('total', 0)} paper"
     return stage

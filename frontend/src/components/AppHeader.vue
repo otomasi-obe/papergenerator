@@ -8,6 +8,15 @@
           <span class="font-semibold font-serif">PaperFull</span>
         </router-link>
 
+        <nav class="hidden md:flex items-center gap-2 text-sm">
+          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
+            Admin
+          </router-link>
+        </nav>
+      </div>
+
+      <!-- User Menu -->
+      <div class="flex items-center gap-2">
         <!-- Token quota bar -->
         <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
           <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
@@ -23,12 +32,19 @@
             </span>
           </button>
           <!-- Tooltip: detail breakdown -->
-          <div v-if="quotaOpen" role="dialog" class="absolute left-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @keydown.escape.stop="quotaOpen = false">
+          <div v-if="quotaOpen" role="dialog" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @keydown.escape.stop="quotaOpen = false">
             <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Pemakaian token bulan {{ quota.month_key }}</div>
             <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
               <span>Hari ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
               <span>Bulan ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_month) }}</span>
               <span>Sisa</span><span class="text-right tabular-nums">{{ formatNum(quota.remaining) }}</span>
+            </div>
+            <div v-if="quota.input_tokens || quota.output_tokens" class="mt-2 pt-2 border-t border-cream-300 dark:border-ash-600">
+              <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Breakdown input/output</div>
+              <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
+                <span>Input</span><span class="text-right tabular-nums">{{ formatNum(quota.input_tokens || 0) }}</span>
+                <span>Output</span><span class="text-right tabular-nums">{{ formatNum(quota.output_tokens || 0) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -36,18 +52,6 @@
           ∞ admin
         </div>
 
-        <nav class="hidden md:flex items-center gap-2 text-sm">
-          <router-link to="/dashboard" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
-            Papers
-          </router-link>
-          <router-link v-if="auth.isAdmin" to="/admin" class="px-3 py-1.5 min-h-[44px] min-w-[44px] flex items-center rounded-lg text-ink-700 dark:text-ink-100 hover:bg-cream-200 dark:hover:bg-ash-700 hover:text-ink-900 dark:hover:text-ink-50 transition-colors active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" active-class="bg-cream-300 dark:bg-ash-600 text-ink-900 dark:text-ink-50 font-semibold">
-            Admin
-          </router-link>
-        </nav>
-      </div>
-
-      <!-- User Menu -->
-      <div class="flex items-center gap-2">
         <!-- Job inbox bell -->
         <div class="bell-wrap relative" ref="bellRef">
           <button @click="onBellClick"
@@ -71,9 +75,28 @@
               Paper Jobs
             </div>
             <div class="max-h-80 overflow-y-auto p-2">
+              <!-- Active SSE streaming (Paperfull) -->
+              <div v-if="streamState && streamState.generating" class="mb-2">
+                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-300 font-semibold">Streaming</div>
+                <div class="block p-2 rounded-lg text-sm bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 mb-1 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-800/30"
+                     @click="navigateToStreamPaper">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block w-3 h-3 border-2 border-emerald-300 border-t-emerald-600 dark:border-t-emerald-300 rounded-full animate-spin shrink-0"></span>
+                    <div class="font-medium truncate text-emerald-800 dark:text-emerald-200 flex-1">{{ streamState.generatingTopic || 'Generating...' }}</div>
+                  </div>
+                  <div class="mt-1 flex items-center gap-2">
+                    <div class="flex-1 h-1.5 rounded-full bg-emerald-200 dark:bg-emerald-800 overflow-hidden">
+                      <div class="h-full bg-emerald-500 dark:bg-emerald-400 transition-all" :style="{ width: (streamState.displayProgress || 0) + '%' }"></div>
+                    </div>
+                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400 tabular-nums shrink-0">{{ streamState.displayProgress || 0 }}%</span>
+                  </div>
+                  <div class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 truncate">{{ streamState.prompt || '' }}</div>
+                </div>
+              </div>
+
               <!-- Active (in-progress) jobs -->
               <div v-if="activeJobs.length" class="mb-2">
-                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold">Sedang diproses</div>
+                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-300 font-semibold">Sedang diproses</div>
                 <div v-for="j in activeJobs" :key="'active-' + j.id"
                    class="block p-2 rounded-lg text-sm bg-navy-50 dark:bg-navy-900/30 border border-navy-200 dark:border-navy-700 mb-1"
                    :class="j.paper_id ? 'cursor-pointer hover:bg-navy-100 dark:hover:bg-navy-800/40' : ''"
@@ -94,32 +117,55 @@
 
               <!-- Failed/error jobs -->
               <div v-if="failedJobs.length" class="mb-2">
-                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-red-500 dark:text-red-400 font-semibold">Gagal</div>
+                <div class="px-2 py-1 flex items-center justify-between">
+                  <span class="text-[10px] uppercase tracking-wider text-red-500 dark:text-red-400 font-semibold">Gagal</span>
+                  <button v-if="failedJobs.length > 1"
+                          @click.stop="jobsStore.clearAllFailedJobs()"
+                          class="text-[10px] text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                          title="Hapus semua notifikasi gagal">
+                    Hapus semua
+                  </button>
+                </div>
                 <div v-for="j in failedJobs" :key="'failed-' + j.id"
-                   class="block p-2 rounded-lg text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 mb-1 cursor-pointer hover:bg-red-100 dark:hover:bg-red-800/30"
+                   class="group flex items-center gap-1 p-2 rounded-lg text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 mb-1 cursor-pointer hover:bg-red-100 dark:hover:bg-red-800/30"
                    @click="onFailedJobClick(j)">
-                  <div class="flex items-center gap-2">
-                    <span class="text-red-600 dark:text-red-400 shrink-0">✗</span>
-                    <div class="font-medium truncate text-red-800 dark:text-red-200 flex-1">{{ j.result?.partial_paper?.title || j.paper_title || 'Generating...' }}</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-red-600 dark:text-red-400 shrink-0">✗</span>
+                      <div class="font-medium truncate text-red-800 dark:text-red-200 flex-1">{{ j.result?.partial_paper?.title || j.paper_title || 'Generating...' }}</div>
+                    </div>
+                    <div class="text-[10px] text-red-600 dark:text-red-400 mt-1 truncate">{{ j.error || j.prompt || 'Error' }}</div>
+                    <div class="text-[10px] text-red-500 dark:text-red-500 mt-0.5">{{ formatTime(j.updated_at) }}</div>
                   </div>
-                  <div class="text-[10px] text-red-600 dark:text-red-400 mt-1 truncate">{{ j.error || j.prompt || 'Error' }}</div>
-                  <div class="text-[10px] text-red-500 dark:text-red-500 mt-0.5">{{ formatTime(j.updated_at) }}</div>
+                  <button @click.stop="jobsStore.dismissFailedJob(j.id)"
+                          class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-200 dark:hover:bg-red-800 rounded shrink-0"
+                          title="Hapus notifikasi">
+                    <svg class="w-3.5 h-3.5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
 
-              <!-- Completed jobs -->
+              <!-- Completed jobs. recentDone is already filtered to entries
+                   WITH a paper_id (paperJobs.fetchRecentDone), so we must NOT
+                   put v-if on the same element as v-for: in Vue 3 v-if has
+                   higher precedence and would evaluate `j.paper_id` before `j`
+                   is bound, throwing "Cannot read properties of undefined". -->
               <div v-if="recentDone.length">
-                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold">Selesai</div>
-                <router-link v-for="j in recentDone" :key="j.id"
-                   :to="{ name: 'editor', params: { paperId: j.paper_id } }"
-                   @click="onJobClick(j.id)"
-                   class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg text-sm text-ink-800 dark:text-ink-100 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
-                  <div class="flex items-center gap-2">
-                    <span class="text-emerald-600 dark:text-emerald-400 shrink-0">✓</span>
-                    <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
-                  </div>
-                  <div class="text-[10px] text-ink-500 dark:text-ink-300 ml-5">{{ formatTime(j.updated_at) }}</div>
-                </router-link>
+                <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-ink-300 font-semibold">Selesai</div>
+                <template v-for="j in recentDone" :key="j.id">
+                  <router-link v-if="j && j.paper_id"
+                     :to="{ name: 'editor', params: { paperId: j.paper_id } }"
+                     @click="onJobClick(j.id)"
+                     class="block p-2 hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg text-sm text-ink-800 dark:text-ink-100 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-emerald-600 dark:text-emerald-400 shrink-0">✓</span>
+                      <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
+                    </div>
+                    <div class="text-[10px] text-ink-500 dark:text-ink-300 ml-5">{{ formatTime(j.updated_at) }}</div>
+                  </router-link>
+                </template>
               </div>
 
               <!-- Empty state -->
@@ -153,7 +199,7 @@
 
             <!-- Theme switcher -->
             <div class="px-3 py-2.5 border-b border-cream-200 dark:border-ash-700">
-              <div class="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-400 font-semibold mb-1.5 px-1">Theme</div>
+              <div class="text-[11px] uppercase tracking-wider text-ink-500 dark:text-ink-300 font-semibold mb-1.5 px-1">Theme</div>
               <div class="grid grid-cols-3 gap-1 bg-cream-100 dark:bg-ash-700 p-1 rounded-lg">
                 <button
                   v-for="opt in themeOptions"
@@ -218,12 +264,16 @@ const { mode, setMode } = useTheme()
 
 const jobsStore = usePaperJobsStore()
 const recentDone = computed(() => {
+  // Access the tick to register a reactive dependency, so this re-runs
+  // whenever markJobAsClicked() bumps the counter.
+  void jobsStore._clickedTick
   const clicked = jobsStore.clickedJobIds
   return jobsStore.recentDone.filter(j => !clicked.has(j.id))
 })
 const activeJobs = computed(() => jobsStore.globalActiveJobs || [])
 const failedJobs = computed(() => jobsStore.failedJobs || [])
-const recentCount = computed(() => recentDone.value.length + activeJobs.value.length + failedJobs.value.length)
+const streamState = computed(() => jobsStore.streamState)
+const recentCount = computed(() => recentDone.value.length + activeJobs.value.length + failedJobs.value.length + (streamState.value?.generating ? 1 : 0))
 
 const quotaStore = useQuotaStore()
 const quota = computed(() => quotaStore.quota)
@@ -247,6 +297,14 @@ function onFailedJobClick(job: any): void {
   bellOpen.value = false
   if (job.paper_id) {
     router.push({ name: 'editor', params: { paperId: job.paper_id } })
+  }
+}
+
+function navigateToStreamPaper(): void {
+  bellOpen.value = false
+  const ss = jobsStore.streamState
+  if (ss?.paperId) {
+    router.push({ name: 'editor', params: { paperId: ss.paperId }, query: { panel: 'paperfull' } })
   }
 }
 

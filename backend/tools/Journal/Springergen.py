@@ -93,6 +93,8 @@ def _add_keywords(doc: Document, config: dict):
 
 def _add_references(doc: Document, config: dict):
     references = config.get("references", [])
+    if isinstance(references, dict):
+        references = references.get("content", [])
     if not references:
         return
     

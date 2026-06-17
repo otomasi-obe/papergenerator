@@ -15,6 +15,7 @@ Configuration via environment variables:
 
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -32,14 +33,20 @@ S3_SECRET_ACCESS_KEY = os.getenv("S3_SECRET_ACCESS_KEY")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "papergenerator-files")
 S3_REGION = os.getenv("S3_REGION", "us-east-1")
 
-# Lazy-initialized S3 client
+# Lazy-initialized S3 client with thread-safe init (BUG-19)
 _s3_client = None
+_s3_init_lock = threading.Lock()
 
 
 def _get_s3_client():
-    """Get or create S3 client singleton."""
+    """Get or create S3 client singleton (thread-safe via double-checked locking)."""
     global _s3_client
-    if _s3_client is None:
+    if _s3_client is not None:
+        return _s3_client
+
+    with _s3_init_lock:
+        if _s3_client is not None:
+            return _s3_client
         try:
             # Configure boto3 client
             config = Config(

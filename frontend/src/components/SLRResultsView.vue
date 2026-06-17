@@ -9,7 +9,7 @@
               'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
               activeTab === 'top'
                 ? 'border-navy-700 dark:border-cream-200 text-navy-700 dark:text-cream-200'
-                : 'border-transparent text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50'
+                : 'border-transparent text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
             ]"
           >
             Top {{ result.top_k }} Results
@@ -25,7 +25,7 @@
               'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
               activeTab === sourceName
                 ? 'border-navy-700 dark:border-cream-200 text-navy-700 dark:text-cream-200'
-                : 'border-transparent text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50'
+                : 'border-transparent text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
             ]"
           >
             {{ formatSourceName(sourceName) }}
@@ -44,7 +44,7 @@
             <h2 class="text-xl font-bold text-ink-900 dark:text-ink-50">
               Top {{ result.top_k }} Recommendations
             </h2>
-            <p class="text-sm text-ink-600 dark:text-ink-400 mt-1">
+            <p class="text-sm text-ink-600 dark:text-ink-300 mt-1">
               {{ result.total_found }} papers found across all sources
             </p>
           </div>
@@ -63,7 +63,7 @@
 
         <div v-if="!result.top_papers || result.top_papers.length === 0" class="text-center py-12">
           <div class="text-4xl mb-3">📚</div>
-          <p class="text-ink-600 dark:text-ink-400">No results found</p>
+          <p class="text-ink-600 dark:text-ink-300">No results found</p>
         </div>
 
         <LiteratureCard
@@ -80,7 +80,7 @@
             <h2 class="text-xl font-bold text-ink-900 dark:text-ink-50">
               {{ formatSourceName(activeTab) }} Results
             </h2>
-            <p class="text-sm text-ink-600 dark:text-ink-400 mt-1">
+            <p class="text-sm text-ink-600 dark:text-ink-300 mt-1">
               {{ currentSourceData?.count || currentSourceData?.papers?.length || 0 }} papers
             </p>
           </div>
@@ -100,7 +100,7 @@
 
         <div v-if="!currentSourceData?.papers || currentSourceData.papers.length === 0" class="text-center py-12">
           <div class="text-4xl mb-3">📚</div>
-          <p class="text-ink-600 dark:text-ink-400">No results from this source</p>
+          <p class="text-ink-600 dark:text-ink-300">No results from this source</p>
         </div>
 
         <LiteratureCard

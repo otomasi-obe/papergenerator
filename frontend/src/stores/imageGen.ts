@@ -62,7 +62,7 @@ export const useImageGenStore = defineStore('imageGen', () => {
 
   function _ensurePoller(): void {
     if (pollTimer) return
-    pollTimer = window.setInterval(_poll, 3000)
+    pollTimer = window.setInterval(_poll, 5000)
   }
 
   function _stopPollerIfIdle(): void {
@@ -81,7 +81,10 @@ export const useImageGenStore = defineStore('imageGen', () => {
       _stopPollerIfIdle()
       return
     }
-    for (const id of inflightIds) {
+    // Throttle: only poll 3 jobs per cycle to avoid rate limits
+    const batchSize = 3
+    const batch = inflightIds.slice(0, batchSize)
+    for (const id of batch) {
       try {
         const res = await api.get<{ status: string; image?: string; error?: string }>(`/api/image-jobs/${id}`)
         const data = res.data || {}
@@ -98,9 +101,15 @@ export const useImageGenStore = defineStore('imageGen', () => {
       } catch (e: unknown) {
         const error = e as { response?: { status?: number } }
         if (error?.response?.status === 404) {
-          jobs[id].status = 'error'
-          jobs[id].error = 'Job tidak ditemukan'
-          _notify(id, 'error', jobs[id].error || 'unknown')
+          const cur404 = jobs[id]
+          if (cur404) {
+            cur404.status = 'error'
+            cur404.error = 'Job tidak ditemukan'
+            _notify(id, 'error', cur404.error || 'unknown')
+          }
+        } else if (error?.response?.status === 429) {
+          // Rate limited — back off by skipping this cycle
+          break
         }
       }
     }
@@ -164,7 +173,32 @@ export const useImageGenStore = defineStore('imageGen', () => {
   function subscribe(jobId: string, { onDone, onError }: JobSubscriber): void {
     if (!jobId) return
     if (!subscribers[jobId]) subscribers[jobId] = []
-    subscribers[jobId].push({ onDone, onError })
+    const existing = subscribers[jobId]
+    if (!existing.some(s => s.onDone === onDone && s.onError === onError)) {
+      existing.push({ onDone, onError })
+    }
+    _ensurePoller()
+  }
+
+  function pollJob(jobId: string, { onDone, onError }: JobSubscriber): void {
+    if (!jobId) return
+    // Add job to reactive store if not already present
+    if (!jobs[jobId]) {
+      jobs[jobId] = {
+        paperId: '',
+        prompt: '',
+        status: 'queued',
+        image: null,
+        error: null,
+        itemKey: null,
+      }
+    }
+    // Subscribe callbacks (with dedup to prevent duplicate callbacks on remount)
+    if (!subscribers[jobId]) subscribers[jobId] = []
+    const existing = subscribers[jobId]
+    if (!existing.some(s => s.onDone === onDone && s.onError === onError)) {
+      existing.push({ onDone, onError })
+    }
     _ensurePoller()
   }
 
@@ -201,12 +235,24 @@ export const useImageGenStore = defineStore('imageGen', () => {
     } catch { /* non-critical */ }
   }
 
+  function clearFinished(): void {
+    for (const [id, j] of Object.entries(jobs)) {
+      if (j.status === 'done' || j.status === 'error') {
+        delete jobs[id]
+        delete subscribers[id]
+      }
+    }
+    _persist()
+  }
+
   return {
     jobs,
     enqueue,
     subscribe,
+    pollJob,
     getJob,
     findActive,
     resume,
+    clearFinished,
   }
 })

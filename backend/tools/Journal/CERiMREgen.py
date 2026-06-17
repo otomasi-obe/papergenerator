@@ -782,7 +782,8 @@ def _safe_ack_text(config: dict) -> str:
 def _safe_references(config: dict) -> list[str]:
     refs = config.get("references")
     if isinstance(refs, dict) and isinstance(refs.get("content"), list):
-        items = [str(x).strip() for x in refs.get("content") if str(x).strip()]
+        items = [((x.get("text") or x.get("Text") or "").strip() if isinstance(x, dict) else str(x)).strip() for x in refs.get("content")]
+        items = [t for t in items if t]
         return items
     if isinstance(refs, list):
         items: list[str] = []

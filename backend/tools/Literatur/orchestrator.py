@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .fetchers import ALL, SOURCE_TOPICS
@@ -493,9 +494,10 @@ _PUNCT_RE = re.compile(r"[^\w\s]")
 
 
 def _norm_title(t: str | None) -> str:
+    """Normalize title for dedup — same algorithm as db_cache.normalize_title."""
     s = (t or "").lower().strip()
-    s = _PUNCT_RE.sub(" ", s)
-    return " ".join(s.split())
+    # Match db_cache.normalize_title: strip all non-alphanumeric
+    return re.sub(r'[^a-z0-9]+', '', s)
 
 
 def fetch_from_source(name: str, query: str, limit: int, filters: dict | None) -> list[Paper]:
@@ -516,13 +518,26 @@ def fetch_titles(
     max_total: int | None = None,
     skip_predatory: bool = True,
     progress_cb=None,
+    source_save_cb=None,
+    use_cache: bool = True,
 ) -> list[Paper]:
-    """Tahap 1 — panggil semua source paralel, dedup, return list[Paper].
+    """Tahap 1 — DB FIRST, lalu API kalau kurang.
 
-    Sesuai algoritma user: SEARCH semua API (judul saja). Walaupun fetcher
-    biasanya kembalikan abstract juga (gratis), kita simpan apa adanya — tahap
-    ranking di pipeline.py akan memanfaatkannya kalau ada.
+    Redesign (2026-06-17):
+    1. Check DB cache for target papers. If enough → skip API entirely (<1s).
+    2. If DB insufficient → fetch APIs in parallel with:
+       - Global timeout: 15 min hard stop
+       - Per-fetcher timeout: 30 s without results = skip
+       - Early stop: target reached → stop fetching
+    3. Dedup (round-robin across sources).
+
+    source_save_cb: Callable[[list[Paper]], None] — called per-source after
+    fetch for streaming save to DB (API path only).
+
+    use_cache: If True, check DB first before fetching from API.
     """
+    from . import db_cache
+
     sources = sources or pick_sources_for_topic(query)
     sources = [s for s in sources if s in ALL]
     if not sources:
@@ -533,49 +548,165 @@ def fetch_titles(
     if expanded != query:
         log.debug("Query expanded: %r → %r", query, expanded)
 
-    workers = min(MAX_WORKERS, max(1, len(sources)))
-    all_papers: list[Paper] = []
+    # Target: how many papers we want for scoring (passed as max_total)
+    target = max_total or limit_per_source * len(sources)
+    new_papers_count = 0  # tracks API-fetched papers (0 in DB-only path)
 
-    if progress_cb:
-        progress_cb("fetching", {"sources": sources, "started": 0, "total": len(sources)})
-
-    completed = 0
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        futures = {
-            ex.submit(fetch_from_source, name, expanded, limit_per_source, filters): name
-            for name in sources
-        }
+    # ── Step 1: DB FIRST ─────────────────────────────────────────────────
+    cached_papers: list[Paper] = []
+    if use_cache:
         try:
-            for fut in as_completed(futures):
-                name = futures[fut]
-                try:
-                    papers = fut.result() or []
-                except Exception as e:
-                    log.warning("SLR future [%s] error: %s", name, e)
-                    papers = []
-                completed += 1
-                # progress_cb may raise to signal cancellation (e.g. slr_worker's
-                # WorkerCancelled). We let it propagate so pending fetches can
-                # be cancelled in the except branch below.
-                if progress_cb:
-                    progress_cb(
-                        "source_done",
-                        {
-                            "source": name,
-                            "count": len(papers),
-                            "completed": completed,
-                            "total": len(sources),
-                        },
-                    )
-                all_papers.extend(papers)
-        except BaseException:
-            # Cancel any still-pending fetches before re-raising so we don't
-            # leak threads stuck on slow upstream HTTP calls.
-            for f in futures:
-                f.cancel()
-            raise
+            cached_papers = db_cache.search_papers(
+                query=expanded,
+                limit=target * 2,  # fetch extra for dedup headroom
+                sources=sources,
+            )
+            log.info("Cache hit: %d papers from DB (target=%d)", len(cached_papers), target)
+        except Exception as e:
+            log.warning("DB cache lookup failed: %s", e)
+            cached_papers = []
 
-    # Round-robin per source so output isn't dominated by one fast index.
+    # Enough from DB → SKIP API entirely
+    if len(cached_papers) >= target:
+        log.info(
+            "DB has enough papers (%d >= %d), skipping API fetch",
+            len(cached_papers), target,
+        )
+        if progress_cb:
+            progress_cb("fetching", {
+                "sources": sources, "started": 0, "total": len(sources),
+                "from_cache": True,
+            })
+
+        all_papers = list(cached_papers)
+        # DB path: no source_save_cb needed (papers already in DB cache)
+        # Dedup + save_cb in pipeline still run normally
+    else:
+        # ── Step 2: API FETCH (DB insufficient) ──────────────────────────
+        GLOBAL_TIMEOUT = 180  # 3 min hard stop
+        PER_FETCHER_TIMEOUT = 30  # 30 s per source
+
+        api_start = time.time()
+        deadline = api_start + GLOBAL_TIMEOUT
+
+        workers = min(MAX_WORKERS, max(1, len(sources)))
+        all_papers = list(cached_papers)  # start with cached
+        completed = 0
+        new_papers_count = 0
+        timed_out_sources: list[str] = []
+        error_sources: list[str] = []
+
+        if progress_cb:
+            progress_cb("fetching", {
+                "sources": sources, "started": 0, "total": len(sources),
+            })
+
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {
+                ex.submit(
+                    fetch_from_source, name, expanded, limit_per_source, filters
+                ): name
+                for name in sources
+            }
+
+            try:
+                while True:
+                    remaining = deadline - time.time()
+                    if remaining <= 0:
+                        log.warning("SLR global timeout reached, stopping fetch")
+                        break
+
+                    pending = [f for f in futures if not f.done()]
+                    if not pending:
+                        break  # all done
+
+                    try:
+                        batch = list(as_completed(
+                            pending,
+                            timeout=min(remaining, PER_FETCHER_TIMEOUT),
+                        ))
+                    except (TimeoutError, Exception) as e:
+                        # Python 3.10: concurrent.futures.TimeoutError ≠ TimeoutError
+                        # Catch both to handle per-fetcher timeout
+                        if "TimeoutError" not in type(e).__name__ and not isinstance(e, TimeoutError):
+                            raise
+                        # Per-fetcher timeout: cancel slow sources
+                        still_pending = [f for f in futures if not f.done()]
+                        for f in still_pending:
+                            src = futures[f]
+                            f.cancel()
+                            timed_out_sources.append(src)
+                            log.warning(
+                                "SLR fetch [%s] timed out after %ds, skipping",
+                                src, PER_FETCHER_TIMEOUT,
+                            )
+                        # BUG-6.1: continue collecting from completed futures
+                        # instead of breaking out of the entire loop
+                        continue
+
+                    for fut in batch:
+                        name = futures[fut]
+                        try:
+                            papers = fut.result(timeout=0) or []
+                        except TimeoutError:
+                            timed_out_sources.append(name)
+                            log.warning("SLR fetch [%s] timed out, skipping", name)
+                            continue
+                        except Exception as e:
+                            error_sources.append(name)
+                            log.warning("SLR future [%s] error: %s", name, e)
+                            papers = []
+
+                        completed += 1
+                        new_papers_count += len(papers)
+
+                        if progress_cb:
+                            progress_cb("source_done", {
+                                "source": name,
+                                "count": len(papers),
+                                "completed": completed,
+                                "total": len(sources),
+                            })
+
+                        if source_save_cb and papers:
+                            try:
+                                source_save_cb(papers)
+                            except Exception as e:
+                                log.warning(
+                                    "slr.source_save_cb failed for %s: %s",
+                                    name, e,
+                                )
+
+                        all_papers.extend(papers)
+
+                        # Early stop: enough papers collected
+                        if target and len(all_papers) >= target:
+                            log.info(
+                                "Early stop: %d papers >= target %d",
+                                len(all_papers), target,
+                            )
+                            for f in futures:
+                                if not f.done():
+                                    f.cancel()
+                            break
+                    else:
+                        continue  # inner for completed normally → next while iter
+                    break  # inner for broke (early stop) → exit while
+
+            except BaseException:
+                for f in futures:
+                    f.cancel()
+                raise
+
+        elapsed = time.time() - api_start
+        log.info(
+            "SLR API fetch done: %d new papers, %d completed, "
+            "%d timed out, %d errors in %.1fs",
+            new_papers_count, completed,
+            len(timed_out_sources), len(error_sources), elapsed,
+        )
+
+    # ── Step 3: Dedup + round-robin ──────────────────────────────────────
     by_source: dict[str, list[Paper]] = {}
     for p in all_papers:
         by_source.setdefault(p.source, []).append(p)
@@ -583,8 +714,6 @@ def fetch_titles(
     seen_keys: set[str] = set()
     seen_titles: set[str] = set()
     results: list[Paper] = []
-    # Sort sources alphabetically so round-robin merge order is deterministic
-    # across runs regardless of which fetcher finished first.
     queues = [list(reversed(by_source[name])) for name in sorted(by_source.keys())]
 
     while queues:
@@ -612,14 +741,30 @@ def fetch_titles(
                 seen_titles.add(title_key)
             results.append(p)
             if max_total and len(results) >= max_total:
-                return results
+                break
             if q:
                 next_queues.append(q)
         queues = next_queues
 
     if progress_cb:
         progress_cb("dedup_done", {"count": len(results)})
+
+    # ── Step 4: Save new papers to DB cache (API path only) ──────────────
+    if use_cache and new_papers_count > 0:
+        try:
+            saved = db_cache.save_papers(results, source=None)
+            log.info("Saved %d papers to DB cache", saved)
+        except Exception as e:
+            log.warning("Failed to save papers to DB: %s", e)
+
+    # ── Step 5: Complete SLR job ─────────────────────────────────────────
+    # job tracking removed from fetch_titles — handled by pipeline/worker
+
+    # Post-sort by year desc (newest first) after relevance fetch
+    results.sort(key=lambda p: p.year or 0, reverse=True)
+
     return results
+
 
 
 # Backward-compat alias used by old call sites.

@@ -74,8 +74,8 @@ def _parse(p: dict) -> Paper | None:
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Free tier rate limit ketat (~1 req/sec). Set S2_API_KEY untuk lebih tinggi."""
     api_key = os.getenv("S2_API_KEY")
-    # Semantic Scholar strict rate limiting: use 5 seconds without API key to avoid 429
-    rl = RateLimiter(0.1 if api_key else 5.0)
+    # Semantic Scholar free tier: 1 req/sec without API key
+    rl = RateLimiter(0.1 if api_key else 1.0)
     headers = {"x-api-key": api_key} if api_key else None
     per_page = min(limit, 100)
     fetched = 0
@@ -88,6 +88,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "limit": min(per_page, limit - fetched),
             "offset": offset,
             "fields": FIELDS,
+            "sort": "relevance",
         }
         if filters:
             if "year" in filters:

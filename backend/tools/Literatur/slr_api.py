@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -43,6 +44,35 @@ log = logging.getLogger(__name__)
 slr_api = Blueprint("slr_api", __name__)
 
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9]{6,32}$")
+
+
+# ─── Prompt-injection sanitizer ──────────────────────────────────────────
+
+_INJECTION_RE = re.compile(
+    r"^(ignore|disregard|forget|override|system|instruction|prompt|"
+    r"new instructions|you are now|act as|pretend)\b.*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+_MAX_TITLE_LEN = 300
+_MAX_ABSTRACT_LEN = 500
+
+
+def _sanitize_lit_text(text: str | None, max_len: int) -> str:
+    """Strip prompt-injection patterns and truncate literature text fields.
+
+    Prevents adversarial titles/abstracts from hijacking LLM prompts via
+    instruction-injection when literature items are injected into system
+    prompts (BUG-9.1).
+    """
+    if not text:
+        return ""
+    # Remove lines that look like instruction injection
+    cleaned = _INJECTION_RE.sub("", text)
+    # Collapse any resulting blank lines
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    # Truncate to safe length
+    return cleaned.strip()[:max_len]
 
 
 # ─── Pinned literature helper ────────────────────────────────────────────
@@ -74,7 +104,7 @@ def get_pinned_literature(paper_id: str, user_id: int, max_items: int = 10) -> s
             if len(authors_list) > 3:
                 authors += " et al."
 
-            header_parts = [f"[{i}] {it.title or 'Untitled'}"]
+            header_parts = [f"[{i}] {_sanitize_lit_text(it.title, _MAX_TITLE_LEN) or 'Untitled'}"]
             if authors:
                 header_parts.append(f"— {authors}")
             if it.year:
@@ -87,10 +117,9 @@ def get_pinned_literature(paper_id: str, user_id: int, max_items: int = 10) -> s
                 lines.append(f"    URL: {it.url}")
 
             # Prefer summary (AI-generated) over raw abstract
-            description = (it.summary or it.abstract or "").strip()
+            description = _sanitize_lit_text(it.summary or it.abstract, _MAX_ABSTRACT_LEN)
             if description:
-                # Cap at 300 chars per item to keep prompt budget sane
-                lines.append(f"    {description[:300]}")
+                lines.append(f"    {description}")
             lines.append("")  # blank separator
 
         return "\n".join(lines).strip()
@@ -110,6 +139,7 @@ _VALID_JOB_STATUSES = {"queued", "running", "done", "error", "cancelled"}
 # replaced by a real limiter (F-28) when sharing across workers becomes
 # necessary.
 _RATE_BUCKETS: "defaultdict[tuple[int, str], list[float]]" = defaultdict(list)
+_RATE_LOCK = threading.Lock()
 _RATE_WINDOW_SEC = 60.0
 _RATE_MAX_REQUESTS = 10
 
@@ -128,22 +158,23 @@ def _check_rate_limit(
     """Simple per-user token bucket. Returns (ok, retry_after_seconds)."""
     now = time.monotonic()
     key = (user_id, endpoint)
-    bucket = _RATE_BUCKETS[key]
-    cutoff = now - window_sec
-    # drop expired timestamps
-    while bucket and bucket[0] < cutoff:
-        bucket.pop(0)
+    with _RATE_LOCK:
+        bucket = _RATE_BUCKETS[key]
+        cutoff = now - window_sec
+        # drop expired timestamps
+        while bucket and bucket[0] < cutoff:
+            bucket.pop(0)
 
-    # Cleanup: remove empty buckets to prevent memory leak
-    if not bucket and key in _RATE_BUCKETS:
-        del _RATE_BUCKETS[key]
+        # Cleanup: remove empty buckets to prevent memory leak
+        if not bucket and key in _RATE_BUCKETS:
+            del _RATE_BUCKETS[key]
+            return True, 0
+
+        if len(bucket) >= max_requests:
+            retry_after = max(1, int(window_sec - (now - bucket[0])) + 1)
+            return False, retry_after
+        bucket.append(now)
         return True, 0
-
-    if len(bucket) >= max_requests:
-        retry_after = max(1, int(window_sec - (now - bucket[0])) + 1)
-        return False, retry_after
-    bucket.append(now)
-    return True, 0
 
 
 def _validate_year(value):
@@ -334,6 +365,9 @@ def wait_slr_jobs(paper_id: str):
     moves past the caller's `?after=<unix_ts>` cursor. Frontend uses this to
     avoid hammering the DB with 2-3 s polls — and to dodge the proxy 524 the
     cheap polls were causing under load.
+
+    NOTE (BUG-6.2): Long-poll currently blocks a Flask worker thread per client.
+    Capped at 10 s (was 30 s). Should be replaced with async/SSE in future.
     """
     user_id = _current_user_id()
     if user_id is None:
@@ -347,7 +381,7 @@ def wait_slr_jobs(paper_id: str):
     except (TypeError, ValueError):
         after = 0.0
 
-    deadline = time.monotonic() + 30.0
+    deadline = time.monotonic() + 10.0  # BUG-6.2: was 30s, reduced to 10s
     poll_step = 2.0
     try:
         while time.monotonic() < deadline:
@@ -476,7 +510,8 @@ def list_literature(paper_id: str):
         page_arg = request.args.get("page")
         size_arg = request.args.get("page_size")
         if page_arg is None and size_arg is None:
-            return jsonify([i.to_dict() for i in base_q.all()])
+            # BUG-7.1: default limit 100 instead of loading ALL items
+            return jsonify([i.to_dict() for i in base_q.limit(100).all()])
 
         try:
             page = int(page_arg) if page_arg is not None else 1
@@ -487,7 +522,7 @@ def list_literature(paper_id: str):
         except (TypeError, ValueError):
             page_size = 50
         page = max(1, page)
-        page_size = max(1, min(page_size, 200))
+        page_size = max(1, min(page_size, 500))  # BUG-SEMAPHORE_RATE_LIMIT_SLR: hard cap 500 items/page
 
         total = base_q.count()
         items = base_q.offset((page - 1) * page_size).limit(page_size).all()
@@ -919,7 +954,7 @@ def run_slr_legacy(paper_id: str):
         return _err("query required", "QUERY_REQUIRED", 400)
 
     try:
-        top_k = max(10, min(int(body.get("top_k", body.get("limit", 50))), 100))
+        top_k = max(5, min(int(body.get("top_k", body.get("limit", 50))), 500))
     except (TypeError, ValueError):
         top_k = 50
     per_source = _safe_per_source(body.get("per_source"))
@@ -1023,8 +1058,8 @@ def _safe_top_k(value, default=50):
     try:
         k = int(value)
     except (TypeError, ValueError):
-        return default
-    return max(10, min(k, 100))
+        k = default
+    return max(5, min(k, 500))
 
 
 def _safe_per_source(value, default=60):
@@ -1033,3 +1068,371 @@ def _safe_per_source(value, default=60):
     except (TypeError, ValueError):
         return default
     return max(10, min(n, 100))
+
+
+@slr_api.route("/api/slr/cache/stats", methods=["GET"])
+def cache_stats():
+    """Return DB cache statistics.
+    
+    Response:
+    {
+        "total_papers": int,
+        "total_sources": int,
+        "sources": {"openalex": 100, "arxiv": 50, ...},
+        "total_jobs": int,
+        "year_distribution": {2024: 100, 2023: 80, ...}
+    }
+    """
+    from . import db_cache
+    
+    try:
+        stats = db_cache.get_db_stats()
+        return jsonify(stats)
+    except Exception as e:
+        log.warning(f"Failed to get cache stats: {e}")
+        return _err("Failed to get cache stats", "CACHE_ERROR", 500)
+
+
+@slr_api.route("/api/slr/cache/search", methods=["GET"])
+def cache_search():
+    """Search papers in DB cache.
+    
+    Query params:
+    - q: search query (required)
+    - limit: max results (default 50)
+    - year_from: filter by year
+    - year_to: filter by year
+    - sources: filter by sources (comma-separated)
+    
+    Response:
+    {
+        "papers": [
+            {
+                "doi": "...",
+                "title": "...",
+                "authors": [...],
+                "year": 2024,
+                "venue": "...",
+                "abstract": "...",
+                "citations": 10,
+                "is_open_access": true,
+                "url": "...",
+                "source": "openalex"
+            }
+        ],
+        "count": int
+    }
+    """
+    from . import db_cache
+    
+    query = request.args.get("q", "").strip()
+    if not query:
+        return _err("Query parameter 'q' is required", "MISSING_QUERY", 400)
+    
+    try:
+        limit = int(request.args.get("limit", 50))
+    except (TypeError, ValueError):
+        limit = 50
+    
+    try:
+        year_from = int(request.args.get("year_from")) if request.args.get("year_from") else None
+    except (TypeError, ValueError):
+        year_from = None
+    
+    try:
+        year_to = int(request.args.get("year_to")) if request.args.get("year_to") else None
+    except (TypeError, ValueError):
+        year_to = None
+    
+    sources_str = request.args.get("sources", "").strip()
+    sources = [s.strip() for s in sources_str.split(",") if s.strip()] if sources_str else None
+    
+    try:
+        papers = db_cache.search_papers(
+            query=query,
+            limit=limit,
+            year_from=year_from,
+            year_to=year_to,
+            sources=sources,
+        )
+        
+        return jsonify({
+            "papers": [
+                {
+                    "doi": p.doi,
+                    "title": p.title,
+                    "authors": p.authors,
+                    "year": p.year,
+                    "venue": p.venue,
+                    "venue_type": p.venue_type,
+                    "abstract": p.abstract,
+                    "citations": p.citations,
+                    "is_open_access": p.is_open_access,
+                    "url": p.url,
+                    "pdf_url": p.pdf_url,
+                    "source": p.source,
+                    "source_id": p.source_id,
+                    "type": p.type,
+                    "publisher": p.publisher,
+                }
+                for p in papers
+            ],
+            "count": len(papers),
+        })
+    except Exception as e:
+        log.warning(f"Failed to search cache: {e}")
+        return _err("Failed to search cache", "CACHE_ERROR", 500)
+
+
+@slr_api.route("/api/slr/mega-fetch/status", methods=["GET"])
+def mega_fetch_status():
+    """Get mega fetch daemon progress and stats.
+
+    Response:
+    {
+        "overall": {
+            "total_topics": 2000,
+            "done_topics": 150,
+            "running_topics": 3,
+            "pending_topics": 1847,
+            "error_topics": 0,
+            "total_fetched": 15000000,
+            "total_target": 200000000,
+            "pct": 7.5
+        },
+        "per_field": [
+            {
+                "field": "Computer Science",
+                "topics": 100,
+                "done": 10,
+                "fetched": 1000000,
+                "target": 10000000,
+                "pct": 10.0
+            }
+        ],
+        "recent": [...]
+    }
+    """
+    try:
+        import psycopg2
+        import psycopg2.extras
+        conn = psycopg2.connect(
+            host="localhost",
+            dbname="paper_database",
+            user="sirobo",
+            password="paper2026",
+        )
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Overall stats
+        cur.execute("""
+            SELECT
+                COUNT(*) as total_topics,
+                COUNT(*) FILTER (WHERE status = 'done') as done_topics,
+                COUNT(*) FILTER (WHERE status = 'running') as running_topics,
+                COUNT(*) FILTER (WHERE status = 'pending') as pending_topics,
+                COUNT(*) FILTER (WHERE status = 'error') as error_topics,
+                COALESCE(SUM(fetched_count), 0) as total_fetched,
+                COALESCE(SUM(target_count), 0) as total_target,
+                ROUND(100.0 * COALESCE(SUM(fetched_count), 0) / NULLIF(SUM(target_count), 0), 2) as pct
+            FROM mega_fetch_progress
+        """)
+        overall = dict(cur.fetchone())
+
+        # Per field
+        cur.execute("""
+            SELECT
+                field_name as field,
+                COUNT(*) as topics,
+                COUNT(*) FILTER (WHERE status = 'done') as done,
+                COALESCE(SUM(fetched_count), 0) as fetched,
+                COALESCE(SUM(target_count), 0) as target,
+                ROUND(100.0 * COALESCE(SUM(fetched_count), 0) / NULLIF(SUM(target_count), 0), 2) as pct
+            FROM mega_fetch_progress
+            GROUP BY field_name
+            ORDER BY field_name
+        """)
+        per_field = [dict(r) for r in cur.fetchall()]
+
+        # Recent activity (last 10 completed/running)
+        cur.execute("""
+            SELECT field_name, topic, fetched_count, target_count, status,
+                   started_at, finished_at, updated_at
+            FROM mega_fetch_progress
+            WHERE status IN ('done', 'running')
+            ORDER BY updated_at DESC
+            LIMIT 10
+        """)
+        recent = [dict(r) for r in cur.fetchall()]
+
+        # Papers in DB
+        cur.execute("SELECT COUNT(*) as total FROM papers")
+        papers_total = dict(cur.fetchone())["total"]
+
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "overall": overall,
+            "per_field": per_field,
+            "recent": recent,
+            "papers_in_db": papers_total,
+        })
+    except Exception as e:
+        log.warning(f"Failed to get mega fetch status: {e}")
+        return _err("Failed to get status", "STATUS_ERROR", 500)
+
+
+# ─── LITERATURE REVIEW (per-item AI review) ───────────────────────────────
+
+
+@slr_api.route("/api/papers/<paper_id>/literature/<int:item_id>/review", methods=["POST"])
+@jwt_required()
+def review_literature_item(paper_id: str, item_id: int):
+    """Generate AI review for a single literature item.
+
+    Uses the summarizer's AI chat to produce a concise academic review
+    based on the item's title + abstract. Stores the result in
+    LiteratureItem.review and returns it.
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    item = (
+        db.session.query(LiteratureItem)
+        .filter_by(id=item_id, paper_id=paper_id, user_id=user_id)
+        .first()
+    )
+    if not item:
+        return _err("Literature item not found", "LITERATURE_NOT_FOUND", 404)
+
+    abstract = (item.abstract or "").strip()
+    if not abstract:
+        return _err("Abstract kosong, tidak bisa di-review", "NO_ABSTRACT", 400)
+
+    try:
+        from tools.Literatur.summarizer import _ai_chat
+
+        prompt = (
+            "You are an academic literature reviewer. Given the following paper, "
+            "write a concise 2-3 sentence review covering: (1) the main contribution, "
+            "(2) the method/approach, (3) strengths or limitations. "
+            "Be faithful — do NOT invent data.\n\n"
+            f"Title: {item.title or 'Untitled'}\n"
+            f"Year: {item.year or 'Unknown'}\n"
+            f"Abstract: {abstract}\n\n"
+            "Respond with plain text only (no JSON, no markdown)."
+        )
+
+        content = _ai_chat(
+            [{"role": "user", "content": prompt}],
+            max_tokens=1024,
+            timeout=60,
+        )
+
+        if not content:
+            # Fallback: extractive summary from abstract
+            from tools.Literatur.summarizer import summarize
+            content = summarize(abstract, query=item.title, n_sentences=3)
+
+        if content:
+            item.review = content
+            db.session.commit()
+
+        return jsonify({"review": content or "", "id": item_id})
+
+    except Exception as e:
+        log.exception("review_literature_item failed item=%d: %s", item_id, e)
+        return _err(f"Review gagal: {e}", "REVIEW_ERROR", 500)
+
+
+@slr_api.route("/api/papers/<paper_id>/literature/review-pinned", methods=["POST"])
+@jwt_required()
+def review_pinned_literature(paper_id: str):
+    """Generate AI review for all pinned literature items.
+
+    Reviews each pinned item sequentially. Returns array of results.
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    items = (
+        db.session.query(LiteratureItem)
+        .filter_by(paper_id=paper_id, user_id=user_id, pinned=True)
+        .order_by(LiteratureItem.updated_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    if not items:
+        return jsonify({"results": []})
+
+    results = []
+    try:
+        from tools.Literatur.summarizer import _ai_chat, summarize
+
+        for item in items:
+            abstract = (item.abstract or "").strip()
+            if not abstract:
+                results.append({
+                    "id": item.id,
+                    "status": "skipped",
+                    "reason": "no abstract",
+                })
+                continue
+
+            prompt = (
+                "You are an academic literature reviewer. Given the following paper, "
+                "write a concise 2-3 sentence review covering: (1) the main contribution, "
+                "(2) the method/approach, (3) strengths or limitations. "
+                "Be faithful — do NOT invent data.\n\n"
+                f"Title: {item.title or 'Untitled'}\n"
+                f"Year: {item.year or 'Unknown'}\n"
+                f"Abstract: {abstract}\n\n"
+                "Respond with plain text only (no JSON, no markdown)."
+            )
+
+            try:
+                content = _ai_chat(
+                    [{"role": "user", "content": prompt}],
+                    max_tokens=1024,
+                    timeout=60,
+                )
+                if not content:
+                    content = summarize(abstract, query=item.title, n_sentences=3)
+
+                if content:
+                    item.review = content
+                    results.append({
+                        "id": item.id,
+                        "status": "success",
+                        "review": content,
+                    })
+                else:
+                    results.append({
+                        "id": item.id,
+                        "status": "error",
+                        "reason": "AI returned empty response",
+                    })
+            except Exception as e:
+                results.append({
+                    "id": item.id,
+                    "status": "error",
+                    "reason": str(e)[:200],
+                })
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        log.exception("review_pinned_literature failed paper=%s: %s", paper_id, e)
+        return _err(f"Review gagal: {e}", "REVIEW_ERROR", 500)
+
+    return jsonify({"results": results})
