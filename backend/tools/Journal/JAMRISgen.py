@@ -422,6 +422,7 @@ def _body_paragraph(doc: Document, text: str) -> None:
         paragraph = doc.add_paragraph()
         _set_para_style(paragraph, "body")
         paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        paragraph.paragraph_format.first_line_indent = Cm(0.5)
         paragraph.paragraph_format.space_after = Pt(0)
         _append_rich_text(paragraph, block, size_pt=10.0, font_name=FONT_CAMBRIA)
 
@@ -562,14 +563,44 @@ def _parse_author_entries(config: dict) -> list[dict]:
         name = str(author.get("name", "")).strip()
         if not name:
             continue
-        entries.append(
-            {
-                "name": name,
-                "affiliation": str(author.get("affiliation", "")).strip(),
-                "location": str(author.get("location", "")).strip(),
-                "email": str(author.get("email", "")).strip(),
-            }
-        )
+        # New explicit fields take priority; fall back to parsing old 'affiliation' / 'location'
+        department = str(author.get("department", "")).strip()
+        institution = str(author.get("institution", "")).strip()
+        city = str(author.get("city", "")).strip()
+        zip_code = str(author.get("zip", author.get("zip_code", ""))).strip()
+        country = str(author.get("country", "")).strip()
+        email = str(author.get("email", "")).strip()
+        is_corresponding = bool(author.get("corresponding", False))
+
+        # If old-style 'affiliation' contains comma-separated dept+inst, parse it
+        old_aff = str(author.get("affiliation", "")).strip()
+        if old_aff and not (department or institution):
+            parts = [p.strip() for p in old_aff.split(",", 1)]
+            if len(parts) == 2:
+                department, institution = parts[0], parts[1]
+            else:
+                department = parts[0]
+                institution = ""
+
+        # If old-style 'location' contains city and country, parse it
+        old_loc = str(author.get("location", "")).strip()
+        if old_loc and not (city or country):
+            loc_parts = [p.strip() for p in old_loc.split(",", 1)]
+            if len(loc_parts) == 2:
+                city, country = loc_parts[0], loc_parts[1]
+            else:
+                city = loc_parts[0]
+
+        entries.append({
+            "name": name,
+            "department": department,
+            "institution": institution,
+            "city": city,
+            "zip": zip_code,
+            "country": country,
+            "email": email,
+            "corresponding": is_corresponding,
+        })
     return entries
 
 
@@ -587,10 +618,44 @@ def _add_authors_line(doc: Document, config: dict) -> None:
     authors = _parse_author_entries(config)
     if not authors:
         return
-    paragraph = doc.add_paragraph()
-    _set_para_style(paragraph, "authors")
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _append_rich_text(paragraph, ", ".join(author["name"] for author in authors), base_italic=True)
+
+    any_corresponding = any(a["corresponding"] for a in authors) or len(authors) == 1
+
+    for author in authors:
+        paragraph = doc.add_paragraph()
+        _set_para_style(paragraph, "authors")
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Build: Name Surname – department, institution, city, zip, country, email[*]
+        parts = [f"{author['name']} –"]
+        loc_parts = []
+        if author["department"]:
+            loc_parts.append(author["department"])
+        if author["institution"]:
+            loc_parts.append(author["institution"])
+        if loc_parts:
+            parts.append(", ".join(loc_parts))
+        if author["city"]:
+            parts.append(author["city"])
+        if author["zip"]:
+            parts.append(author["zip"])
+        if author["country"]:
+            parts.append(author["country"])
+        email = author["email"]
+        star = "*" if (any_corresponding and author["corresponding"]) else ""
+        if email:
+            parts.append(f"{email}{star}")
+
+        _append_text_run(paragraph, " ".join(parts), italic=True,
+                         size_pt=10.0, font_name=FONT_CAMBRIA)
+
+    # *Corresponding author footnote
+    if any_corresponding:
+        footnote = doc.add_paragraph()
+        footnote.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        footnote.paragraph_format.space_after = Pt(6)
+        _append_text_run(footnote, "*Corresponding author", italic=True,
+                         size_pt=8.0, font_name=FONT_CAMBRIA)
 
 
 def _add_abstract(doc: Document, config: dict) -> None:
@@ -623,6 +688,38 @@ def _add_keywords(doc: Document, config: dict) -> None:
     _append_text_run(paragraph, "Keywords:", bold=True, size_pt=12.0, font_name=FONT_CALIBRI)
     _append_text_run(paragraph, " ", size_pt=10.0, font_name=FONT_CALIBRI)
     _append_rich_text(paragraph, ", ".join(keywords), size_pt=10.0, font_name=FONT_CALIBRI)
+
+
+def _add_submission_status(doc: Document, config: dict) -> None:
+    """Add 'Submitted: date; accepted: date' line before abstract."""
+    submitted = str(config.get("submitted", "")).strip()
+    accepted = str(config.get("accepted", "")).strip()
+    if not submitted:
+        submitted = "1 January XXXX"
+    if not accepted:
+        accepted = ""
+    paragraph = doc.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.space_after = Pt(6)
+    parts = [f"Submitted: {submitted}"]
+    if accepted:
+        parts.append(f"accepted: {accepted}")
+    _append_text_run(paragraph, "; ".join(parts), italic=True, size_pt=10.0, font_name=FONT_CAMBRIA)
+
+
+def _add_acknowledgements(doc: Document, config: dict) -> None:
+    """Add Acknowledgements section before References."""
+    ack_text = str(config.get("acknowledgements", "")).strip()
+    if not ack_text:
+        return
+    heading = doc.add_paragraph()
+    _set_para_style(heading, "section")
+    _append_text_run(heading, "Acknowledgements", bold=True, size_pt=10.0)
+    paragraph = doc.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    paragraph.paragraph_format.first_line_indent = Cm(0.5)
+    paragraph.paragraph_format.space_after = Pt(6)
+    _append_rich_text(paragraph, ack_text, size_pt=10.0, font_name=FONT_CAMBRIA)
 
 
 def _add_section_heading(doc: Document, title: str) -> None:
@@ -704,7 +801,7 @@ def _add_equation(doc: Document, item: dict) -> None:
     left_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     left_para.paragraph_format.space_after = Pt(0)
     if not _append_inline_math(left_para, latex):
-        _append_text_run(left_para, latex, italic=True)
+        _append_text_run(left_para, latex, italic=True, font_name=FONT_CAMBRIA)
 
     right_cell.text = ""
     right_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
@@ -793,9 +890,17 @@ def _add_author_about(doc: Document, config: dict) -> None:
         if name_run is None:
             continue
 
-        details = [
-            value for value in (author["affiliation"], author["location"], author["email"]) if value
-        ]
+        details = []
+        if author["department"]:
+            details.append(author["department"])
+        if author["institution"]:
+            details.append(author["institution"])
+        if author["city"]:
+            details.append(author["city"])
+        if author["country"]:
+            details.append(author["country"])
+        if author["email"]:
+            details.append(author["email"])
         if details:
             _append_text_run(paragraph, " - ")
             _append_rich_text(paragraph, ", ".join(details), size_pt=10.0, font_name=FONT_CENTURY)
@@ -919,11 +1024,13 @@ def build_document(
     doc.add_paragraph()
     _embed_sectpr(doc, _build_title_sectpr(), align=WD_ALIGN_PARAGRAPH.CENTER)
 
+    _add_submission_status(doc, config)
     _add_abstract(doc, config)
     _add_keywords(doc, config)
 
     state = RenderState()
     _render_sections(doc, config, Path(json_path), state)
+    _add_acknowledgements(doc, config)
     _add_author_about(doc, config)
     _add_references(doc, config)
     _embed_sectpr(doc, _build_body_sectpr())
