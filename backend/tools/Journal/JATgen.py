@@ -2,6 +2,10 @@
 JATgen.py — Generator DOCX untuk Journal of Al-Tamaddun (JAT)
 Menggunakan dokumen asli JAT.docx sebagai base template (paste keep formatting).
 Data diambil dari _template.json.
+
+Chicago 18th Edition Notes-Bibliography style:
+- In-text citations as Word footnotes (superscript numbers)
+- Bibliography alphabetical, unnumbered, hanging indent
 """
 
 import json
@@ -15,6 +19,167 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
+from lxml import etree
+
+# ─── Chicago 18th helpers ────────────────────────────────────────────
+_FOOTNOTE_COUNTER = 0  # global footnote counter
+_FOOTNOTES_INITIALIZED = False  # only clear template footnotes once
+
+
+def _init_footnotes(doc: Document):
+    """Clear template footnotes and ensure fresh footnotes part."""
+    global _FOOTNOTE_COUNTER, _FOOTNOTES_INITIALIZED
+    if _FOOTNOTES_INITIALIZED:
+        return True
+    _FOOTNOTE_COUNTER = 0
+    _FOOTNOTES_INITIALIZED = True
+
+    FOOTNOTES_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+    footnotes_part = None
+    for rel in doc.part.rels.values():
+        if rel.reltype.endswith("/footnotes"):
+            footnotes_part = rel.target_part
+            break
+
+    if footnotes_part is not None:
+        # Clear existing user footnotes (keep separator/continuationSeparator)
+        xml_bytes = footnotes_part.blob
+        root = etree.fromstring(xml_bytes)
+        to_remove = []
+        for fn in root.findall(f"{{{FOOTNOTES_NS}}}footnote"):
+            fn_id_str = fn.get(f"{{{FOOTNOTES_NS}}}id", "")
+            try:
+                fn_id = int(fn_id_str)
+            except (ValueError, TypeError):
+                fn_id = -999
+            if fn_id > 0:
+                to_remove.append(fn)
+        for fn in to_remove:
+            root.remove(fn)
+        footnotes_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+        return True
+
+    # No footnotes part — create fresh one
+    package = doc.part.package
+    from docx.opc.part import Part
+    from docx.opc.packuri import PackURI
+
+    footnotes_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+        ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<w:footnote w:type="separator" w:id="-1">'
+        '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
+        '<w:r><w:separator/></w:r></w:p></w:footnote>'
+        '<w:footnote w:type="continuationSeparator" w:id="0">'
+        '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
+        '<w:r><w:continuationSeparator/></w:r></w:p></w:footnote>'
+        '</w:footnotes>'
+    )
+
+    part_name = PackURI("/word/footnotes.xml")
+    content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"
+    part = Part(part_name, content_type, footnotes_xml.encode("utf-8"), package)
+
+    rel_type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes"
+    doc.part.relate_to(part, rel_type)
+    return True
+
+
+def _add_footnote(doc: Document, paragraph, footnote_text: str) -> int:
+    """Add a real Word footnote at the paragraph, return the footnote ID."""
+    global _FOOTNOTE_COUNTER
+    _FOOTNOTE_COUNTER += 1
+    fn_id = _FOOTNOTE_COUNTER
+
+    FOOTNOTES_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+    # Add footnoteref mark in body paragraph
+    run_elem = OxmlElement("w:r")
+    rpr = OxmlElement("w:rPr")
+    rstyle = OxmlElement("w:rStyle")
+    rstyle.set(qn("w:val"), "FootnoteReference")
+    rpr.append(rstyle)
+    run_elem.append(rpr)
+
+    fn_ref = OxmlElement("w:footnoteReference")
+    fn_ref.set(qn("w:id"), str(fn_id))
+    run_elem.append(fn_ref)
+    paragraph._p.append(run_elem)
+
+    # Get or create footnotes part XML
+    footnotes_part = None
+    for rel in doc.part.rels.values():
+        if rel.reltype.endswith("/footnotes"):
+            footnotes_part = rel.target_part
+            break
+
+    if footnotes_part is None:
+        _init_footnotes(doc)
+        for rel in doc.part.rels.values():
+            if rel.reltype.endswith("/footnotes"):
+                footnotes_part = rel.target_part
+                break
+
+    if footnotes_part is None:
+        return fn_id
+
+    # Append footnote content to footnotes.xml
+    xml_bytes = footnotes_part.blob
+    root = etree.fromstring(xml_bytes)
+
+    nsmap = {"w": FOOTNOTES_NS}
+
+    fn_elem = etree.SubElement(root, f"{{{FOOTNOTES_NS}}}footnote")
+    fn_elem.set(f"{{{FOOTNOTES_NS}}}id", str(fn_id))
+
+    p_elem = etree.SubElement(fn_elem, f"{{{FOOTNOTES_NS}}}p")
+    pPr = etree.SubElement(p_elem, f"{{{FOOTNOTES_NS}}}pPr")
+    pStyle = etree.SubElement(pPr, f"{{{FOOTNOTES_NS}}}pStyle")
+    pStyle.set(f"{{{FOOTNOTES_NS}}}val", "FootnoteText")
+    spacing = etree.SubElement(pPr, f"{{{FOOTNOTES_NS}}}spacing")
+    spacing.set(f"{{{FOOTNOTES_NS}}}after", "0")
+    spacing.set(f"{{{FOOTNOTES_NS}}}line", "240")
+    spacing.set(f"{{{FOOTNOTES_NS}}}lineRule", "auto")
+
+    run_elem = etree.SubElement(p_elem, f"{{{FOOTNOTES_NS}}}r")
+    rPr = etree.SubElement(run_elem, f"{{{FOOTNOTES_NS}}}rPr")
+    rFont = etree.SubElement(rPr, f"{{{FOOTNOTES_NS}}}rFonts")
+    rFont.set(f"{{{FOOTNOTES_NS}}}ascii", CFG["font_body"])
+    rFont.set(f"{{{FOOTNOTES_NS}}}hAnsi", CFG["font_body"])
+    sz = etree.SubElement(rPr, f"{{{FOOTNOTES_NS}}}sz")
+    sz.set(f"{{{FOOTNOTES_NS}}}val", str(CFG["size_reference"] * 2))
+
+    t_elem = etree.SubElement(run_elem, f"{{{FOOTNOTES_NS}}}t")
+    t_elem.text = footnote_text
+
+    footnotes_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return fn_id
+
+
+# Roman → Arabic table reference conversion (same pattern as JAMRISgen)
+ROMAN_TABLE_REFS = [
+    (r'\b[Tt]able\s+IV\b', 'Table 4'),
+    (r'\b[Tt]able\s+V\b', 'Table 5'),
+    (r'\b[Tt]able\s+VI\b', 'Table 6'),
+    (r'\b[Tt]able\s+VII\b', 'Table 7'),
+    (r'\b[Tt]able\s+VIII\b', 'Table 8'),
+    (r'\b[Tt]able\s+IX\b', 'Table 9'),
+    (r'\b[Tt]able\s+X\b', 'Table 10'),
+    (r'\b[Tt]able\s+III\b', 'Table 3'),
+    (r'\b[Tt]able\s+II\b', 'Table 2'),
+    (r'\b[Tt]able\s+I\b', 'Table 1'),
+]
+
+
+def _replace_roman_table_refs(text: str) -> str:
+    for pattern, replacement in ROMAN_TABLE_REFS:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    return text
+
+
+# ─── End Chicago helpers ─────────────────────────────────────────────
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_DOCX = BASE / "JAT.docx"
@@ -449,6 +614,8 @@ def add_keywords(doc, data):
 
     keywords = data.get("keywords", ["keyword1", "keyword2", "keyword3"])
     if isinstance(keywords, list):
+        # Limit to 5 keywords max (JAT template rule)
+        keywords = keywords[:5]
         keywords_text = ", ".join(keywords)
     else:
         keywords_text = str(keywords)
@@ -495,10 +662,28 @@ def add_subsection_heading(doc, title, level=1):
 
 
 def add_body_text(doc, text, first_paragraph=False):
+    text = _replace_roman_table_refs(str(text))
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
-    _append_rich_text(p, text)
+
+    # Parse IEEE [N] citations → Word footnotes
+    # Split on [N] patterns, creating text runs + footnote refs
+    parts = re.split(r'\[(\d+)\]', text)
+    if len(parts) > 1:
+        # Has citations — split into text segments + footnote markers
+        _init_footnotes(doc)
+        for i, segment in enumerate(parts):
+            if i % 2 == 0:
+                # Text segment
+                if segment:
+                    _append_rich_text(p, segment)
+            else:
+                # Citation number — add footnote reference
+                ref_idx = int(segment)
+                _add_footnote(doc, p, f"See reference [{ref_idx}] in bibliography.")
+    else:
+        _append_rich_text(p, text)
 
 
 def add_block_quote(doc, text):
@@ -650,37 +835,51 @@ def _set_table_borders_full(table):
 
 def add_references(doc, data):
     ref_data = data.get("references", {})
-    ref_title = ref_data.get("title", "References") if isinstance(ref_data, dict) else "References"
-    ref_content = ref_data.get("content", []) if isinstance(ref_data, dict) else []
+    if isinstance(ref_data, dict):
+        ref_title = ref_data.get("title", "References")
+        ref_content = ref_data.get("content", [])
+    else:
+        ref_title = "References"
+        ref_content = ref_data if isinstance(ref_data, list) else []
 
     add_section_heading(doc, ref_title)
     add_empty_para(doc)
 
-    if not ref_content:
-        ref_content = ["[1] Author, Title, Journal, Year."]
-
-    p_info = doc.add_paragraph()
-    p_info.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    set_paragraph_spacing(p_info, before=0, after=0, line=240, line_rule="auto")
-    run = p_info.add_run("Starting from Volume 20, Issue 1, Journal of Al-Tamaddun fully uses the ")
-    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
-    run = p_info.add_run("18th Edition of the Chicago Style")
-    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True)
-    run = p_info.add_run(" for both footnotes and references.")
-    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
-
-    add_empty_para(doc)
-
+    # Chicago 18th Edition notes-bibliography style
+    # Extract reference text from entries
+    refs = []
     for ref in ref_content:
         if isinstance(ref, dict):
-            ref_text = ref.get("text", "")
+            t = ref.get("text", "").strip()
+        elif isinstance(ref, str):
+            t = ref.strip()
         else:
-            ref_text = str(ref)
-        if ref_text:
-            p = doc.add_paragraph()
-            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
-            _append_rich_text(p, ref_text)
+            t = ""
+        # Strip leading [N] numbering if present
+        t = re.sub(r'^\[\d+\]\s*', '', t).strip()
+        if t:
+            refs.append(t)
+
+    # Remove duplicates and sort alphabetically (Chicago style)
+    seen = set()
+    unique_refs = []
+    for r in refs:
+        if r not in seen:
+            seen.add(r)
+            unique_refs.append(r)
+    unique_refs.sort(key=lambda s: s.lower())
+
+    if not unique_refs:
+        unique_refs = ["Author Last, First. \"Title.\" Journal Name Volume, no. Issue (Year): Pages. https://doi.org/xxx."]
+
+    for ref_text in unique_refs:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
+        # Hanging indent per Chicago style
+        p.paragraph_format.first_line_indent = Cm(-1.27)
+        p.paragraph_format.left_indent = Cm(1.27)
+        _append_rich_text(p, ref_text)
 
 
 def process_content_item(doc, item):
@@ -745,7 +944,25 @@ def process_section(doc, section_data, section_key):
                 add_body_text(doc, sub_content)
 
 
+def add_acknowledgements(doc, data):
+    ack_text = data.get("acknowledgements", "").strip()
+    if not ack_text:
+        return
+
+    add_section_heading(doc, "Acknowledgement")
+    add_empty_para(doc)
+
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
+    _append_rich_text(p, ack_text)
+
+
 def generate():
+    global _FOOTNOTE_COUNTER, _FOOTNOTES_INITIALIZED
+    _FOOTNOTE_COUNTER = 0
+    _FOOTNOTES_INITIALIZED = False
+
     data = load_json()
 
     shutil.copy2(TEMPLATE_DOCX, OUTPUT_DOCX)
@@ -764,6 +981,7 @@ def generate():
         if key in data:
             process_section(doc, data[key], key)
 
+    add_acknowledgements(doc, data)
     add_references(doc, data)
 
     _set_ai_prompt_color_red(doc)
