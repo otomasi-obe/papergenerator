@@ -776,18 +776,25 @@ def add_subsection_heading(doc, title, level=1):
 
 def add_body_text(doc, text, first_paragraph=False):
     text = _replace_roman_table_refs(str(text))
+
+    # Step 1: Expand multi-citation brackets like [1, 2] → [1][2], [3,4,5] → [3][4][5]
+    text = re.sub(
+        r'\[\s*(\d+(?:\s*[,&-]\s*\d+)+)\s*\]',
+        lambda m: ''.join(f'[{d.strip()}]' for d in re.sub(r'\s*[,&-]\s*', ',', m.group(1)).split(',') if d.strip()),
+        text,
+    )
+
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
 
-    # Parse IEEE [N] citations → Word footnotes
-    # Handle [1], [ 1 ], [1 ], [ 1] — spaces inside brackets are common in NN output
-    parts = re.split(r'\[\s*(\d+)\s*\]', text)
+    # Step 2: Parse single-citation brackets → Word footnotes
+    # Consume leading space before [N] to prevent orphan spaces before punctuation
+    parts = re.split(r'\s*\[\s*(\d+)\s*\]', text)
     if len(parts) > 1:
         _init_footnotes(doc)
         for i, segment in enumerate(parts):
             if i % 2 == 0:
-                # Text segment — trim trailing space if followed by punctuation
                 if segment:
                     _append_rich_text(p, segment)
             else:
@@ -841,19 +848,20 @@ def add_figure(doc, fig_data):
         set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], italic=True)
         run.font.color.rgb = RGBColor(0xFF, 0x00, 0x00)
 
-    p_cap = doc.add_paragraph()
-    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p_cap, before=3, after=6, line=240, line_rule="auto")
-    run = p_cap.add_run(f"{CFG['fig_prefix']} {image_number}: ")
-    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
-    run = p_cap.add_run(title)
-    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
-
+    # JAT template order: Source: The Authors first, then Figure caption
     p_src = doc.add_paragraph()
     p_src.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_paragraph_spacing(p_src, before=0, after=0, line=240, line_rule="auto")
     run = p_src.add_run("Source: The Authors")
     set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
+
+    p_cap = doc.add_paragraph()
+    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_paragraph_spacing(p_cap, before=0, after=6, line=240, line_rule="auto")
+    run = p_cap.add_run(f"{CFG['fig_prefix']} {image_number}: ")
+    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
+    run = p_cap.add_run(title)
+    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
 
 
 def add_formula(doc, formula_data):
@@ -955,6 +963,108 @@ def _set_table_borders_full(table):
     tbl_pr.append(borders)
 
 
+# ─── IEEE → Chicago 18th converter ─────────────────────────────────
+__IEEE_REF_RE = re.compile(
+    r'^(?P<authors>[^"]+?),?\s*"(?P<title>[^"]+?)",\s+(?P<journal>[^,]+?),?\s*'
+    r'(?:vol\.\s*(?P<vol>\d+),?\s*(?:no\.\s*(?P<no>[^,]+?),?)?\s*)?'
+    r'(?:pp\.\s*(?P<pp>[^,]+?),?\s*)?'
+    r'(?:(?P<year>\d{4})[,\.]?\s*)?'
+    r',?\s*(?:doi\s*[:\s]+\s*(?P<doi>[^\s,;]+))?'
+    r'[\.]?\s*$', re.IGNORECASE
+)
+
+
+def _parse_authors(authors: str) -> list:
+    """Parse author string into list of 'Last, Initials.' entries."""
+    a = authors.strip()
+    has_chicago = re.match(r'^[A-Za-z][A-Za-z\'\-\s]+,\s+[A-Z]\.', a)
+
+    if has_chicago:
+        # Chicago format: "Last, I."
+        parts = re.split(r',?\s+and\s+', a)
+        result = []
+        for p in parts:
+            p = p.strip()
+            # Check for multiple ", I." patterns: "Smith, J., Jones, T."
+            sub_parts = []
+            while p:
+                m = re.match(r'^([A-Za-z][A-Za-z\'\-\s]+,\s+(?:[A-Z]\.\s*)+)', p)
+                if m:
+                    sub_parts.append(m.group(1).strip())
+                    p = p[m.end():].strip().lstrip(',').strip()
+                else:
+                    break
+            if sub_parts:
+                result.extend(sub_parts)
+            elif p:
+                result.append(p)
+        return result
+
+    # IEEE format: "Initial. Last"
+    raw = []
+    for seg in re.split(r'\s+and\s+', a):
+        for p in re.split(r',\s*', seg.strip()):
+            p = p.strip()
+            if p:
+                raw.append(p)
+    result = []
+    for p in raw:
+        m = re.match(r'^((?:[A-Z]\.\s*){1,3})\s+(.+)$', p)
+        if m:
+            result.append(f"{m.group(2).strip()}, {m.group(1).strip()}")
+        else:
+            result.append(p)
+    return result
+
+
+def _ieee_to_chicago(ref: str) -> str:
+    """Convert IEEE-format reference to Chicago 18th notes-bibliography style."""
+    ref = ref.strip()
+    # Strip leading [N] if still present
+    ref = re.sub(r'^\[\s*\d+\s*\]\s*', '', ref).strip()
+
+    m = __IEEE_REF_RE.match(ref)
+    if not m:
+        return ref
+
+    title = m.group("title").strip()
+    journal = m.group("journal").strip()
+    vol = m.group("vol")
+    no = m.group("no")
+    pp = m.group("pp")
+    year = m.group("year")
+    doi = m.group("doi")
+
+    new_authors = _parse_authors(m.group("authors"))
+
+    if len(new_authors) == 1:
+        authors_str = new_authors[0]
+    elif len(new_authors) == 2:
+        authors_str = f"{new_authors[0]}, and {new_authors[1]}"
+    else:
+        authors_str = ", ".join(new_authors[:-1]) + f", and {new_authors[-1]}"
+
+    if not authors_str.endswith('.'):
+        authors_str += '.'
+
+    result = f'{authors_str} "{title}." *{journal}*'
+    vol_no = ""
+    if vol:
+        vol_no = vol
+    if no:
+        vol_no += f", no. {no}"
+    if vol_no:
+        result += f" {vol_no}"
+    if year:
+        result += f" ({year})"
+    if pp:
+        result += f": {pp}"
+    if doi:
+        result += f". https://doi.org/{doi}"
+    result += "."
+    return result
+
+
 def add_references(doc, data):
     ref_data = data.get("references", {})
     if isinstance(ref_data, dict):
@@ -967,8 +1077,7 @@ def add_references(doc, data):
     add_section_heading(doc, ref_title)
     add_empty_para(doc)
 
-    # Chicago 18th Edition notes-bibliography style
-    # Extract reference text from entries
+    # Extract reference text from entries, strip [N], convert IEEE → Chicago 18th
     refs = []
     for ref in ref_content:
         if isinstance(ref, dict):
@@ -977,12 +1086,14 @@ def add_references(doc, data):
             t = ref.strip()
         else:
             t = ""
-        # Strip leading [N] or [ N ] numbering if present
+        # Strip leading [N] numbering
         t = re.sub(r'^\[\s*\d+\s*\]\s*', '', t).strip()
         if t:
+            # Attempt IEEE → Chicago 18th conversion
+            t = _ieee_to_chicago(t)
             refs.append(t)
 
-    # Remove duplicates and sort alphabetically (Chicago style)
+    # Remove duplicates and sort alphabetically
     seen = set()
     unique_refs = []
     for r in refs:
@@ -992,13 +1103,12 @@ def add_references(doc, data):
     unique_refs.sort(key=lambda s: s.lower())
 
     if not unique_refs:
-        unique_refs = ["Author Last, First. \"Title.\" Journal Name Volume, no. Issue (Year): Pages. https://doi.org/xxx."]
+        unique_refs = ['Author, First. "Title." *Journal Name* Volume, no. Issue (Year): Pages. https://doi.org/xxx.']
 
     for ref_text in unique_refs:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
-        # Hanging indent per Chicago style
         p.paragraph_format.first_line_indent = Cm(-1.27)
         p.paragraph_format.left_indent = Cm(1.27)
         _append_rich_text(p, ref_text)
