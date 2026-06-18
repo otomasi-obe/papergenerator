@@ -23,42 +23,43 @@ from lxml import etree
 
 # ─── Chicago 18th helpers ────────────────────────────────────────────
 _FOOTNOTE_COUNTER = 0  # global footnote counter
-_FOOTNOTES_INITIALIZED = False  # only clear template footnotes once
+_FOOTNOTES_INITIALIZED = False  # only run init once
+
+
+def _max_footnote_id(doc: Document) -> int:
+    """Find the highest existing footnote ID in the footnotes part."""
+    for rel in doc.part.rels.values():
+        if rel.reltype.endswith("/footnotes"):
+            try:
+                root = etree.fromstring(rel.target_part.blob)
+            except Exception:
+                return 0
+            fn_ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            max_id = 0
+            for fn in root.findall(f"{{{fn_ns}}}footnote"):
+                fn_id_str = fn.get(f"{{{fn_ns}}}id", "")
+                try:
+                    fid = int(fn_id_str)
+                    if fid > max_id:
+                        max_id = fid
+                except (ValueError, TypeError):
+                    pass
+            return max_id
+    return 0
 
 
 def _init_footnotes(doc: Document):
-    """Clear template footnotes and ensure fresh footnotes part."""
+    """Ensure footnotes.xml exists and set counter after any template footnotes."""
     global _FOOTNOTE_COUNTER, _FOOTNOTES_INITIALIZED
     if _FOOTNOTES_INITIALIZED:
         return True
-    _FOOTNOTE_COUNTER = 0
     _FOOTNOTES_INITIALIZED = True
 
-    FOOTNOTES_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-
-    footnotes_part = None
+    # Check if footnotes part exists
     for rel in doc.part.rels.values():
         if rel.reltype.endswith("/footnotes"):
-            footnotes_part = rel.target_part
-            break
-
-    if footnotes_part is not None:
-        # Clear existing user footnotes (keep separator/continuationSeparator)
-        xml_bytes = footnotes_part.blob
-        root = etree.fromstring(xml_bytes)
-        to_remove = []
-        for fn in root.findall(f"{{{FOOTNOTES_NS}}}footnote"):
-            fn_id_str = fn.get(f"{{{FOOTNOTES_NS}}}id", "")
-            try:
-                fn_id = int(fn_id_str)
-            except (ValueError, TypeError):
-                fn_id = -999
-            if fn_id > 0:
-                to_remove.append(fn)
-        for fn in to_remove:
-            root.remove(fn)
-        footnotes_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
-        return True
+            _FOOTNOTE_COUNTER = _max_footnote_id(doc)
+            return True
 
     # No footnotes part — create fresh one
     package = doc.part.package
@@ -84,13 +85,72 @@ def _init_footnotes(doc: Document):
 
     rel_type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes"
     doc.part.relate_to(part, rel_type)
+    _FOOTNOTE_COUNTER = 0
     return True
+
+
+def _add_author_footnote(doc: Document, author: dict, fn_number: int, superscript: str) -> int:
+    """Add an author affiliation footnote (like the template's [1], [2])."""
+    global _FOOTNOTE_COUNTER
+    fn_id = max(_max_footnote_id(doc), _FOOTNOTE_COUNTER) + 1
+    _FOOTNOTE_COUNTER = fn_id
+
+    parts = []
+    if author.get("department"):
+        parts.append(author["department"])
+    if author.get("institution"):
+        parts.append(author["institution"])
+    if author.get("city"):
+        parts.append(author["city"])
+    if author.get("zip"):
+        parts.append(author["zip"])
+    if author.get("country"):
+        parts.append(author["country"])
+    if author.get("email"):
+        parts.append(author["email"])
+    fn_text = f"{superscript}  {', '.join(parts)}." if superscript else f"{', '.join(parts)}."
+
+    # Add footnote text to footnotes part
+    FOOTNOTES_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    for rel in doc.part.rels.values():
+        if rel.reltype.endswith("/footnotes"):
+            footnotes_part = rel.target_part
+            break
+    else:
+        return fn_id
+
+    xml_bytes = footnotes_part.blob
+    root = etree.fromstring(xml_bytes)
+
+    fn_elem = etree.SubElement(root, f"{{{FOOTNOTES_NS}}}footnote")
+    fn_elem.set(f"{{{FOOTNOTES_NS}}}id", str(fn_id))
+
+    p_elem = etree.SubElement(fn_elem, f"{{{FOOTNOTES_NS}}}p")
+    pPr = etree.SubElement(p_elem, f"{{{FOOTNOTES_NS}}}pPr")
+    pStyle = etree.SubElement(pPr, f"{{{FOOTNOTES_NS}}}pStyle")
+    pStyle.set(f"{{{FOOTNOTES_NS}}}val", "FootnoteText")
+    spacing = etree.SubElement(pPr, f"{{{FOOTNOTES_NS}}}spacing")
+    spacing.set(f"{{{FOOTNOTES_NS}}}after", "0")
+    spacing.set(f"{{{FOOTNOTES_NS}}}line", "240")
+    spacing.set(f"{{{FOOTNOTES_NS}}}lineRule", "auto")
+
+    run_elem = etree.SubElement(p_elem, f"{{{FOOTNOTES_NS}}}r")
+    rPr = etree.SubElement(run_elem, f"{{{FOOTNOTES_NS}}}rPr")
+    rFont = etree.SubElement(rPr, f"{{{FOOTNOTES_NS}}}rFonts")
+    rFont.set(f"{{{FOOTNOTES_NS}}}ascii", CFG.get("font_body", "Times New Roman"))
+    rFont.set(f"{{{FOOTNOTES_NS}}}hAnsi", CFG.get("font_body", "Times New Roman"))
+
+    t_elem = etree.SubElement(run_elem, f"{{{FOOTNOTES_NS}}}t")
+    t_elem.text = fn_text
+
+    footnotes_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return fn_id
 
 
 def _add_footnote(doc: Document, paragraph, footnote_text: str) -> int:
     """Add a real Word footnote at the paragraph, return the footnote ID."""
     global _FOOTNOTE_COUNTER
-    _FOOTNOTE_COUNTER += 1
+    _FOOTNOTE_COUNTER = max(_max_footnote_id(doc), _FOOTNOTE_COUNTER) + 1
     fn_id = _FOOTNOTE_COUNTER
 
     FOOTNOTES_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -543,7 +603,7 @@ def add_title_english(doc, data):
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     run = p.add_run(f"({title_en})")
     set_run_font(
-        run, font_name=CFG["font_title"], size_pt=CFG["size_title"], bold=True, italic=True
+        run, font_name=CFG["font_title"], size_pt=CFG["size_title"], bold=True
     )
 
 
@@ -554,14 +614,10 @@ def add_empty_para(doc):
 
 
 def add_authors(doc, data):
-    authors = data.get("authors", [])
+    authors = _parse_author_entries(data)
     if not authors:
         authors = [
-            {
-                "name": "Author Name",
-                "affiliation": "Department, University",
-                "email": "author@email.ac.id",
-            }
+            {"name": "Author Name", "affiliation": "Department, University", "email": "author@email.ac.id"}
         ]
 
     add_empty_para(doc)
@@ -570,22 +626,82 @@ def add_authors(doc, data):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
 
+    _init_footnotes(doc)
+
     for i, author in enumerate(authors):
         name = author.get("name", "Author Name")
         if i > 0:
-            if i == len(authors) - 1:
-                run = p.add_run(" & ")
-            else:
-                run = p.add_run(", ")
+            sep = " & " if i == len(authors) - 1 else ", "
+            run = p.add_run(sep)
             set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True)
 
         run = p.add_run(name)
         set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True)
 
+        # Add superscript marker
         marker = "*" * (i + 1)
         run_sup = p.add_run(marker)
         set_run_font(run_sup, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True)
         run_sup.font.superscript = True
+
+        # Add author affiliation as a Word footnote
+        fn_id = _add_author_footnote(doc, author, i + 1, marker)
+
+
+def _parse_author_entries(data: dict) -> list[dict]:
+    """Parse authors from JSON. Supports both old (affiliation, location) and new (department, institution, ...) field formats."""
+    raw = data.get("authors", [])
+    if not isinstance(raw, list):
+        return []
+    entries = []
+    for author in raw:
+        name = str(author.get("name", "")).strip()
+        if not name:
+            continue
+        # New explicit fields
+        department = str(author.get("department", "")).strip()
+        institution = str(author.get("institution", "")).strip()
+        city = str(author.get("city", "")).strip()
+        zip_code = str(author.get("zip", "")).strip()
+        country = str(author.get("country", "")).strip()
+        email = str(author.get("email", "")).strip()
+        is_corresponding = bool(author.get("corresponding", False))
+
+        # If old-style 'affiliation' contains comma-separated dept+inst, parse it
+        old_aff = str(author.get("affiliation", "")).strip()
+        if old_aff and not (department or institution):
+            parts = [p.strip() for p in old_aff.split(",", 1)]
+            if len(parts) == 2:
+                department, institution = parts[0], parts[1]
+            else:
+                institution = parts[0]
+
+        # Parse 'location' into city/country (e.g., "New York, USA")
+        old_loc = str(author.get("location", "")).strip()
+        if old_loc and not (city or country):
+            loc_parts = [p.strip() for p in old_loc.split(",", 1)]
+            city = loc_parts[0]
+            if len(loc_parts) > 1:
+                country = loc_parts[1]
+
+        # Auto-set corresponding for first author if none set
+        entries.append({
+            "name": name,
+            "department": department,
+            "institution": institution,
+            "city": city,
+            "zip": zip_code,
+            "country": country,
+            "email": email,
+            "corresponding": is_corresponding,
+        })
+
+    # Auto-set first author as corresponding if none are marked
+    any_corr = any(e["corresponding"] for e in entries)
+    if entries and not any_corr:
+        entries[0]["corresponding"] = True
+
+    return entries
 
 
 def add_abstract(doc, data):
@@ -595,7 +711,7 @@ def add_abstract(doc, data):
     p_label.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_paragraph_spacing(p_label, before=0, after=0, line=240, line_rule="auto")
     run = p_label.add_run("Abstract")
-    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True, italic=True)
+    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], bold=True)
 
     add_empty_para(doc)
 
@@ -649,14 +765,11 @@ def add_subsection_heading(doc, title, level=1):
     set_paragraph_spacing(p, before=3, after=3, line=240, line_rule="auto")
 
     if level == 1:
+        # Second Layer: Bold + Italic (per JAT template)
         run = p.add_run(title)
-        set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading2"], bold=True)
+        set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading2"], bold=True, italic=True)
     elif level == 2:
-        run = p.add_run(title)
-        set_run_font(
-            run, font_name=CFG["font_heading"], size_pt=CFG["size_heading2"], bold=True, italic=True
-        )
-    elif level == 3:
+        # Third Layer: Italic only
         run = p.add_run(title)
         set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading3"], italic=True)
 
