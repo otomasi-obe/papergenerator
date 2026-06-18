@@ -1179,7 +1179,7 @@ def process_section(doc, section_data, section_key):
 def add_acknowledgements(doc, data):
     ack_text = data.get("acknowledgements", "").strip()
     if not ack_text:
-        return
+        ack_text = "[Acknowledgement: please provide acknowledgements here.]"
 
     add_section_heading(doc, "Acknowledgement")
     add_empty_para(doc)
