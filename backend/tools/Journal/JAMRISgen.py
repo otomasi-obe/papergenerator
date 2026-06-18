@@ -417,7 +417,30 @@ def _split_body_blocks(text: str) -> list[str]:
     return blocks or [normalized.strip()]
 
 
+ROMAN_TABLE_REFS = [
+    (r'\bTabel\s+IV\b', 'Tabel 4'),
+    (r'\bTabel\s+V\b', 'Tabel 5'),
+    (r'\bTabel\s+VI\b', 'Tabel 6'),
+    (r'\bTabel\s+VII\b', 'Tabel 7'),
+    (r'\bTabel\s+VIII\b', 'Tabel 8'),
+    (r'\bTabel\s+IX\b', 'Tabel 9'),
+    (r'\bTabel\s+X\b', 'Tabel 10'),
+    (r'\bTabel\s+III\b', 'Tabel 3'),
+    (r'\bTabel\s+II\b', 'Tabel 2'),
+    (r'\bTabel\s+I\b', 'Tabel 1'),
+]
+
+
+def _replace_roman_table_refs(text: str) -> str:
+    """Replace Roman numeral table references (Tabel I→Tabel 1) with Arabic."""
+    # Match longer Roman numerals first to avoid partial matches
+    for pattern, replacement in ROMAN_TABLE_REFS:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    return text
+
+
 def _body_paragraph(doc: Document, text: str) -> None:
+    text = _replace_roman_table_refs(str(text))
     for block in _split_body_blocks(text):
         paragraph = doc.add_paragraph()
         _set_para_style(paragraph, "body")
@@ -579,8 +602,8 @@ def _parse_author_entries(config: dict) -> list[dict]:
             if len(parts) == 2:
                 department, institution = parts[0], parts[1]
             else:
-                department = parts[0]
-                institution = ""
+                institution = parts[0]
+                department = ""
 
         # If old-style 'location' contains city and country, parse it
         old_loc = str(author.get("location", "")).strip()
@@ -601,6 +624,11 @@ def _parse_author_entries(config: dict) -> list[dict]:
             "email": email,
             "corresponding": is_corresponding,
         })
+
+    # If no corresponding author explicitly set, default to the first author
+    if entries and not any(e["corresponding"] for e in entries):
+        entries[0]["corresponding"] = True
+
     return entries
 
 
@@ -615,47 +643,15 @@ def _add_title(doc: Document, config: dict) -> None:
 
 
 def _add_authors_line(doc: Document, config: dict) -> None:
+    """Add author names only (no affiliation/email) — detail goes in AUTHORS block."""
     authors = _parse_author_entries(config)
     if not authors:
         return
-
-    any_corresponding = any(a["corresponding"] for a in authors) or len(authors) == 1
-
-    for author in authors:
-        paragraph = doc.add_paragraph()
-        _set_para_style(paragraph, "authors")
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-        # Build: Name Surname – department, institution, city, zip, country, email[*]
-        parts = [f"{author['name']} –"]
-        loc_parts = []
-        if author["department"]:
-            loc_parts.append(author["department"])
-        if author["institution"]:
-            loc_parts.append(author["institution"])
-        if loc_parts:
-            parts.append(", ".join(loc_parts))
-        if author["city"]:
-            parts.append(author["city"])
-        if author["zip"]:
-            parts.append(author["zip"])
-        if author["country"]:
-            parts.append(author["country"])
-        email = author["email"]
-        star = "*" if (any_corresponding and author["corresponding"]) else ""
-        if email:
-            parts.append(f"{email}{star}")
-
-        _append_text_run(paragraph, " ".join(parts), italic=True,
-                         size_pt=10.0, font_name=FONT_CAMBRIA)
-
-    # *Corresponding author footnote
-    if any_corresponding:
-        footnote = doc.add_paragraph()
-        footnote.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        footnote.paragraph_format.space_after = Pt(6)
-        _append_text_run(footnote, "*Corresponding author", italic=True,
-                         size_pt=8.0, font_name=FONT_CAMBRIA)
+    paragraph = doc.add_paragraph()
+    _set_para_style(paragraph, "authors")
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _append_text_run(paragraph, ", ".join(a["name"] for a in authors),
+                     italic=True, size_pt=10.0, font_name=FONT_CAMBRIA)
 
 
 def _add_abstract(doc: Document, config: dict) -> None:
@@ -812,7 +808,9 @@ def _add_equation(doc: Document, item: dict) -> None:
     right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     right_para.paragraph_format.space_after = Pt(0)
     if number:
-        _append_text_run(right_para, f"({number})")
+        # Strip any pipe '|' characters that may be in the number value
+        clean_number = number.strip().lstrip("|").strip()
+        _append_text_run(right_para, f"({clean_number})")
 
     doc.add_paragraph()
 
@@ -882,9 +880,12 @@ def _add_author_about(doc: Document, config: dict) -> None:
         _set_para_style(paragraph, "author_about")
         paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
+        name_text = author["name"]
+        if author["corresponding"]:
+            name_text += "*"
         name_run = _append_text_run(
             paragraph,
-            author["name"],
+            name_text,
             bold=True,
             size_pt=10.0,
             font_name=FONT_TIMES,
@@ -904,8 +905,16 @@ def _add_author_about(doc: Document, config: dict) -> None:
         if author["email"]:
             details.append(author["email"])
         if details:
-            _append_text_run(paragraph, " - ")
+            _append_text_run(paragraph, " – ", size_pt=10.0, font_name=FONT_CENTURY)
             _append_rich_text(paragraph, ", ".join(details), size_pt=10.0, font_name=FONT_CENTURY)
+
+    # *Corresponding author footnote
+    if any(a["corresponding"] for a in authors):
+        footnote = doc.add_paragraph()
+        footnote.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        footnote.paragraph_format.space_after = Pt(6)
+        _append_text_run(footnote, "*Corresponding author", italic=True,
+                         size_pt=8.0, font_name=FONT_CAMBRIA)
 
 
 def _add_references(doc: Document, config: dict) -> None:
