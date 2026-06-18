@@ -682,6 +682,8 @@ def _add_keywords(doc: Document, config: dict) -> None:
     keywords = [str(item).strip() for item in config.get("keywords", []) if str(item).strip()]
     if not keywords:
         return
+    # Capitalize first letter of each keyword
+    keywords = [kw[0].upper() + kw[1:] if kw else kw for kw in keywords]
     paragraph = doc.add_paragraph()
     _set_para_style(paragraph, "keywords")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
