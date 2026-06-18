@@ -808,9 +808,10 @@ def _add_equation(doc: Document, item: dict) -> None:
     right_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     right_para.paragraph_format.space_after = Pt(0)
     if number:
-        # Strip any pipe '|' characters that may be in the number value
-        clean_number = number.strip().lstrip("|").strip()
-        _append_text_run(right_para, f"({clean_number})")
+        # Strip ALL pipe '|' characters and any existing parentheses
+        clean = number.replace("|", "").strip().strip("()").strip()
+        if clean:
+            _append_text_run(right_para, f"({clean})")
 
     doc.add_paragraph()
 
