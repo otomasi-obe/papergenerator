@@ -161,6 +161,10 @@ def _add_footnote(doc: Document, paragraph, footnote_text: str) -> int:
     rstyle = OxmlElement("w:rStyle")
     rstyle.set(qn("w:val"), "FootnoteReference")
     rpr.append(rstyle)
+    # Explicit superscript for compatibility with non-MS-Word viewers
+    vert = OxmlElement("w:vertAlign")
+    vert.set(qn("w:val"), "superscript")
+    rpr.append(vert)
     run_elem.append(rpr)
 
     fn_ref = OxmlElement("w:footnoteReference")
@@ -220,16 +224,27 @@ def _add_footnote(doc: Document, paragraph, footnote_text: str) -> int:
 
 # Roman → Arabic table reference conversion (same pattern as JAMRISgen)
 ROMAN_TABLE_REFS = [
-    (r'\b[Tt]able\s+IV\b', 'Table 4'),
-    (r'\b[Tt]able\s+V\b', 'Table 5'),
-    (r'\b[Tt]able\s+VI\b', 'Table 6'),
-    (r'\b[Tt]able\s+VII\b', 'Table 7'),
-    (r'\b[Tt]able\s+VIII\b', 'Table 8'),
-    (r'\b[Tt]able\s+IX\b', 'Table 9'),
-    (r'\b[Tt]able\s+X\b', 'Table 10'),
-    (r'\b[Tt]able\s+III\b', 'Table 3'),
-    (r'\b[Tt]able\s+II\b', 'Table 2'),
-    (r'\b[Tt]able\s+I\b', 'Table 1'),
+    # Indonesian "Tabel" + English "Table" — Roman I–XX to Arabic
+    (r'(?i)\b[Tt]abel\s+XX\b', 'Tabel 20'),
+    (r'(?i)\b[Tt]abel\s+XIX\b', 'Tabel 19'),
+    (r'(?i)\b[Tt]abel\s+XVIII\b', 'Tabel 18'),
+    (r'(?i)\b[Tt]abel\s+XVII\b', 'Tabel 17'),
+    (r'(?i)\b[Tt]abel\s+XVI\b', 'Tabel 16'),
+    (r'(?i)\b[Tt]abel\s+XV\b', 'Tabel 15'),
+    (r'(?i)\b[Tt]abel\s+XIV\b', 'Tabel 14'),
+    (r'(?i)\b[Tt]abel\s+XIII\b', 'Tabel 13'),
+    (r'(?i)\b[Tt]abel\s+XII\b', 'Tabel 12'),
+    (r'(?i)\b[Tt]abel\s+XI\b', 'Tabel 11'),
+    (r'(?i)\b[Tt]abel\s+X\b', 'Tabel 10'),
+    (r'(?i)\b[Tt]abel\s+IX\b', 'Tabel 9'),
+    (r'(?i)\b[Tt]abel\s+VIII\b', 'Tabel 8'),
+    (r'(?i)\b[Tt]abel\s+VII\b', 'Tabel 7'),
+    (r'(?i)\b[Tt]abel\s+VI\b', 'Tabel 6'),
+    (r'(?i)\b[Tt]abel\s+V\b', 'Tabel 5'),
+    (r'(?i)\b[Tt]abel\s+IV\b', 'Tabel 4'),
+    (r'(?i)\b[Tt]abel\s+III\b', 'Tabel 3'),
+    (r'(?i)\b[Tt]abel\s+II\b', 'Tabel 2'),
+    (r'(?i)\b[Tt]abel\s+I\b', 'Tabel 1'),
 ]
 
 
