@@ -840,6 +840,15 @@ def add_figure(doc, fig_data):
         if candidate.is_file():
             image_path = candidate
 
+    # Figure caption ABOVE the image/placeholder (JAT template rule)
+    p_cap = doc.add_paragraph()
+    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_paragraph_spacing(p_cap, before=3, after=3, line=240, line_rule="auto")
+    run = p_cap.add_run(f"{CFG['fig_prefix']} {image_number}: ")
+    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
+    run = p_cap.add_run(title)
+    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
+
     if image_path and image_path.is_file():
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -863,20 +872,12 @@ def add_figure(doc, fig_data):
         set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"], italic=True)
         run.font.color.rgb = RGBColor(0xFF, 0x00, 0x00)
 
-    # JAT template order: Source: The Authors first, then Figure caption
+    # Source BELOW the image (JAT template rule)
     p_src = doc.add_paragraph()
     p_src.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p_src, before=0, after=0, line=240, line_rule="auto")
+    set_paragraph_spacing(p_src, before=0, after=6, line=240, line_rule="auto")
     run = p_src.add_run("Source: The Authors")
     set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
-
-    p_cap = doc.add_paragraph()
-    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p_cap, before=0, after=6, line=240, line_rule="auto")
-    run = p_cap.add_run(f"{CFG['fig_prefix']} {image_number}: ")
-    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
-    run = p_cap.add_run(title)
-    set_run_font(run, font_name=CFG["font_caption"], size_pt=CFG["size_caption"], bold=True)
 
 
 def add_formula(doc, formula_data):
