@@ -668,18 +668,16 @@ def add_body_text(doc, text, first_paragraph=False):
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
 
     # Parse IEEE [N] citations → Word footnotes
-    # Split on [N] patterns, creating text runs + footnote refs
-    parts = re.split(r'\[(\d+)\]', text)
+    # Handle [1], [ 1 ], [1 ], [ 1] — spaces inside brackets are common in NN output
+    parts = re.split(r'\[\s*(\d+)\s*\]', text)
     if len(parts) > 1:
-        # Has citations — split into text segments + footnote markers
         _init_footnotes(doc)
         for i, segment in enumerate(parts):
             if i % 2 == 0:
-                # Text segment
+                # Text segment — trim trailing space if followed by punctuation
                 if segment:
                     _append_rich_text(p, segment)
             else:
-                # Citation number — add footnote reference
                 ref_idx = int(segment)
                 _add_footnote(doc, p, f"See reference [{ref_idx}] in bibliography.")
     else:
@@ -762,8 +760,19 @@ def add_formula(doc, formula_data):
         set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
 
 
+def _roman_to_arabic(s: str) -> str:
+    """Convert Roman numeral to Arabic. Returns original if not Roman."""
+    roman_map = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
+                 "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10,
+                 "XI": 11, "XII": 12, "XIII": 13, "XIV": 14, "XV": 15}
+    upper = s.strip().upper()
+    if upper in roman_map:
+        return str(roman_map[upper])
+    return s
+
+
 def add_table(doc, table_data):
-    table_number = str(table_data.get("TableNumber", "1")).strip()
+    table_number = _roman_to_arabic(str(table_data.get("TableNumber", "1")).strip())
     title = table_data.get("Title", "Description of the Table")
     headers = table_data.get("Headers", [])
     rows = table_data.get("Rows", [])
@@ -855,8 +864,8 @@ def add_references(doc, data):
             t = ref.strip()
         else:
             t = ""
-        # Strip leading [N] numbering if present
-        t = re.sub(r'^\[\d+\]\s*', '', t).strip()
+        # Strip leading [N] or [ N ] numbering if present
+        t = re.sub(r'^\[\s*\d+\s*\]\s*', '', t).strip()
         if t:
             refs.append(t)
 
