@@ -694,14 +694,14 @@ def _add_submission_status(doc: Document, config: dict) -> None:
     accepted = str(config.get("accepted", "")).strip()
     if not submitted:
         submitted = "1 January XXXX"
-    if not accepted:
-        accepted = ""
     paragraph = doc.add_paragraph()
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.space_after = Pt(6)
     parts = [f"Submitted: {submitted}"]
     if accepted:
         parts.append(f"accepted: {accepted}")
+    else:
+        parts.append("accepted")
     _append_text_run(paragraph, "; ".join(parts), italic=True, size_pt=10.0, font_name=FONT_CAMBRIA)
 
 
