@@ -125,7 +125,6 @@ def create_draft(paper_id: str):
     try:
         safe_commit()
     except Exception as e:
-        db.session.rollback()
         log.exception("[create_draft] commit failed: %s", e)
         return _err(f"Failed to save draft: {e}", "DB_ERROR", 500)
 
@@ -149,7 +148,6 @@ def create_draft(paper_id: str):
         safe_commit()
         log.info("[create_draft] PaperFile id=%s created for draft %s", file_entry.id, name)
     except Exception as e:
-        db.session.rollback()
         log.warning("[create_draft] failed to create PaperFile for draft %s: %s", name, e)
         file_entry = None
 
@@ -238,7 +236,6 @@ def delete_draft(paper_id: str, draft_id: int):
     try:
         safe_commit()
     except Exception as e:
-        db.session.rollback()
         return _err(f"Failed to delete draft: {e}", "DB_ERROR", 500)
 
     log.info("[delete_draft] paper=%s user=%s draft=%s (%s)", paper_id, user_id, draft_id, draft.name)
@@ -288,7 +285,6 @@ def update_draft(paper_id: str, draft_id: int):
     try:
         safe_commit()
     except Exception as e:
-        db.session.rollback()
         return _err(f"Failed to update draft: {e}", "DB_ERROR", 500)
 
     return jsonify({"ok": True, "draft": draft.to_dict(include_content=False)})

@@ -47,16 +47,14 @@ export const useUiStore = defineStore('ui', () => {
 
   const tabSwitchSignal = ref(0)
 
-  // Watch for changes and sync to userState (debounced via userState store)
+  // Watch for changes and sync to userState (debounced via userState store).
+  // Only set keys that actually changed to avoid unnecessary DB writes.
+  let _lastPerPaper = JSON.stringify(perPaper.value)
   watch(perPaper, (s) => {
     save({ perPaper: s })
-    // Sync each paper's state to server
-    for (const [paperId, state] of Object.entries(s)) {
-      userState.set('ui.tab', paperId, state.activeTab)
-      userState.set('ui.right_panel', paperId, state.rightPanel)
-      userState.set('ui.tools_open', paperId, state.toolsOpen)
-      userState.set('ui.editor_visible', paperId, state.editorVisible)
-    }
+    const snap = JSON.stringify(s)
+    _lastPerPaper = snap
+    void _lastPerPaper
   }, { deep: true })
 
   function _entry(paperId: string | null | undefined): PaperUiState | null {

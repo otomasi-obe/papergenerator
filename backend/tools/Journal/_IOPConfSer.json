@@ -1,0 +1,114 @@
+{
+  "title": "Smart Sustainability Monitoring System for Vocational Campus Using IoT and Edge Computing",
+  "authors": [
+    {
+      "name": "Rofiq Cahyo",
+      "affiliation": "Department of Electrical Engineering, Universitas Diponegoro",
+      "location": "Semarang, Indonesia",
+      "email": "rofiq.cahyo@undip.ac.id"
+    },
+    {
+      "name": "Budi Santoso",
+      "affiliation": "Vocational School, Universitas Diponegoro",
+      "location": "Semarang, Indonesia",
+      "email": "budi.santoso@undip.ac.id"
+    }
+  ],
+  "abstract": "This research develops a smart sustainability monitoring system integrating IoT sensors and edge computing for real-time environmental data collection at a vocational campus. The system employs ESP32 microcontrollers with DHT22, MQ-135, and BH1750 sensors for temperature, humidity, air quality, and light intensity measurement. Data is transmitted via MQTT protocol to an EMQX broker and processed using edge computing nodes before visualization on a React-based dashboard. Results demonstrate 95% data transmission reliability with average latency of 120ms, enabling proactive campus sustainability management.",
+  "keywords": [
+    "IoT",
+    "sustainability",
+    "edge computing",
+    "MQTT",
+    "vocational campus"
+  ],
+  "section1": {
+    "title": "Introduction",
+    "content": [
+      {
+        "id": "text",
+        "text": "The rapid advancement of Internet of Things (IoT) technology has enabled new approaches to environmental monitoring and sustainability management in educational institutions. Vocational campuses, with their emphasis on practical skills and industry-relevant training, present unique opportunities for implementing smart monitoring systems that serve both operational and pedagogical purposes."
+      },
+      {
+        "id": "text",
+        "text": "Sustainability monitoring in campus environments traditionally relies on manual data collection methods that are labor-intensive, error-prone, and incapable of providing real-time insights. The integration of IoT sensors, edge computing, and cloud-based dashboards represents a paradigm shift toward automated, continuous, and data-driven campus management."
+      }
+    ]
+  },
+  "section2": {
+    "title": "Methodology",
+    "content": [
+      {
+        "id": "text",
+        "text": "The system architecture comprises three layers: sensing, edge computing, and visualization. The sensing layer employs ESP32 microcontrollers equipped with DHT22 temperature-humidity sensors, MQ-135 air quality sensors, and BH1750 ambient light sensors deployed at strategic locations across the campus."
+      },
+      {
+        "id": "text",
+        "text": "Data transmission utilizes MQTT protocol via an EMQX broker deployed on a local server. The edge computing layer performs preliminary data processing including noise filtering, aggregation, and anomaly detection before forwarding processed data to the visualization layer."
+      },
+      {
+        "id": "rumus",
+        "latex": "R = \\frac{P_{success}}{P_{total}} \\times 100\\%",
+        "FormulaNumber": "1"
+      },
+      {
+        "id": "tabel",
+        "Title": "Sensor specifications and deployment locations",
+        "Headers": [
+          "Sensor",
+          "Parameter",
+          "Range",
+          "Location"
+        ],
+        "Rows": [
+          [
+            "DHT22",
+            "Temperature",
+            "-40~80°C",
+            "Building A"
+          ],
+          [
+            "DHT22",
+            "Humidity",
+            "0-100%",
+            "Building B"
+          ],
+          [
+            "MQ-135",
+            "Air Quality",
+            "10-1000ppm",
+            "Canteen"
+          ],
+          [
+            "BH1750",
+            "Light",
+            "1-65535 lux",
+            "Library"
+          ]
+        ]
+      }
+    ]
+  },
+  "section3": {
+    "title": "Results and Discussion",
+    "content": [
+      {
+        "id": "text",
+        "text": "The system was deployed for a 30-day trial period across four campus buildings. Data transmission reliability reached 95.2% with average end-to-end latency of 120ms. The edge computing layer successfully reduced raw data volume by 67% through aggregation and filtering before transmission to the cloud dashboard."
+      }
+    ]
+  },
+  "section4": {
+    "title": "Conclusion",
+    "content": [
+      {
+        "id": "text",
+        "text": "This study demonstrates the feasibility and effectiveness of IoT-based smart sustainability monitoring in vocational campus environments. The three-layer architecture provides reliable real-time environmental monitoring with minimal latency, enabling data-driven sustainability management decisions."
+      }
+    ]
+  },
+  "references": [
+    "[1] A. Zanella et al., \"Internet of Things for Smart Cities,\" IEEE Internet Things J., vol. 1, no. 1, pp. 22-32, 2014.",
+    "[2] S. Chen et al., \"A Vision of IoT: Applications, Challenges, and Opportunities,\" IEEE Access, vol. 7, pp. 121-136, 2019."
+  ]
+}

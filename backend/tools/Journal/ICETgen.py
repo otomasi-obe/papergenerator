@@ -380,6 +380,117 @@ def set_final_sectpr(doc):
     )
 
 
+def _fill_empty_sections(doc):
+    """Inject invisible paragraph ke setiap section yg kosong total.
+    Section = antara dua inline sectPr, atau antara last inline sectPr & final sectPr."""
+    body = doc.element.body
+    ZWS = "​"
+    
+    while True:
+        children = list(body)
+        
+        # Cari semua boundary: inline sectPr paras + final sectPr
+        boundaries = [-1]  # implicit start
+        for i, child in enumerate(children):
+            if child.tag == qn("w:sectPr"):
+                boundaries.append(i)  # final sectPr
+                break
+            if child.tag == qn("w:p"):
+                ppr = child.find(qn("w:pPr"))
+                if ppr is not None and ppr.find(qn("w:sectPr")) is not None:
+                    boundaries.append(i)
+        
+        # Cek tiap section, inject jika kosong
+        injected = False
+        for bi in range(len(boundaries) - 1):
+            start = boundaries[bi]
+            end = boundaries[bi + 1]
+            
+            has_content = False
+            for j in range(start + 1, end):
+                sib = children[j]
+                if sib.tag == qn("w:tbl"):
+                    has_content = True
+                    break
+                if sib.tag == qn("w:p"):
+                    txt = "".join(t.text or "" for t in sib.findall(".//" + qn("w:t"))).strip()
+                    if txt:  # termasuk ZWS — sudah ada konten
+                        has_content = True
+                        break
+            
+            if not has_content:
+                spacer = OxmlElement("w:p")
+                spacer_r = OxmlElement("w:r")
+                spacer_t = OxmlElement("w:t")
+                spacer_t.set(qn("xml:space"), "preserve")
+                spacer_t.text = ZWS
+                spacer_r.append(spacer_t)
+                spacer.append(spacer_r)
+                body.insert(end, spacer)
+                injected = True
+                break  # restart after injection (indices shift)
+        
+        if not injected:
+            break
+
+
+def _clean_latex(text):
+    """Strip inline LaTeX markers dari body text."""
+    import re as _re
+    text = _re.sub(r'\$([^$]+)\$', r'\1', text)
+    text = _re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\mathbf\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\text\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\hat\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\vec\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\overline\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\sqrt\{([^}]*)\}', r'sqrt(\1)', text)
+    text = _re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1/\2)', text)
+    text = _re.sub(r'\\left[(\[{]', '(', text)
+    text = _re.sub(r'\\right[)\]}]', ')', text)
+    text = _re.sub(r'\\begin\{cases\}', '', text)
+    text = _re.sub(r'\\end\{cases\}', '', text)
+    text = _re.sub(r'\\approx', chr(8776), text)
+    text = _re.sub(r'\\times', chr(215), text)
+    text = _re.sub(r'\\cdot', chr(183), text)
+    text = _re.sub(r'\\quad', ' ', text)
+    text = _re.sub(r'\\qquad', '  ', text)
+    text = _re.sub(r'\\infty', chr(8734), text)
+    text = _re.sub(r'\\circ', chr(176), text)
+    text = _re.sub(r'\\alpha', chr(945), text)
+    text = _re.sub(r'\\beta', chr(946), text)
+    text = _re.sub(r'\\gamma', chr(947), text)
+    text = _re.sub(r'\\theta', chr(952), text)
+    text = _re.sub(r'\\lambda', chr(955), text)
+    text = _re.sub(r'\\sigma', chr(963), text)
+    text = _re.sub(r'\\omega', chr(969), text)
+    text = _re.sub(r'\\pi', chr(960), text)
+    text = _re.sub(r'\\mu', chr(956), text)
+    text = _re.sub(r'\\Delta', chr(916), text)
+    text = _re.sub(r'\\partial', chr(8706), text)
+    text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    text = _re.sub(r'\\[a-zA-Z]+', '', text)
+    text = _re.sub(r'[{}]', '', text)
+    return text.strip()
+
+
+def _postprocess_clean_latex(doc):
+    """Walk all paragraphs and tables, clean LaTeX from run text in-place."""
+    import re as _re
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                run.text = _clean_latex(run.text)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                            run.text = _clean_latex(run.text)
+
+
 def clear_body(doc):
     body = doc.element.body
     for child in list(body):
@@ -1080,7 +1191,7 @@ def _set_cell_three_line(cell, top=None, bottom=None, header_bottom=None):
 
 def add_table(doc, tb):
     num = tb.get("TableNumber", "?")
-    title = tb.get("Title", "Table")
+    title = _clean_latex(_clean_latex(tb.get("Title", "Table")))
     headers = tb.get("Headers", [])
     rows = tb.get("Rows", [])
 
@@ -1256,7 +1367,9 @@ def generate():
     #   S7: final (1col, top=1080, l/r=893)
 
     # ── S1: title page (1 kolom)
-    add_title(doc, data)
+    # Masthead inject
+    _inject_masthead_content(doc, data)
+    # add_title(doc, data) — replaced by inject
     add_author_notes(doc, data)
     insert_section_break(
         doc,
@@ -1344,6 +1457,14 @@ def generate():
     # ── S7: final 1-kolom (margin title l/r=893)
     set_final_sectpr(doc)
     _set_ai_prompt_color_red(doc)
+    
+    # Fix blank page: inject invisible paragraph di section yg kosong
+    # (section yg isinya cuma author photos/logo → kosong setelah clear_body)
+    _fill_empty_sections(doc)
+    
+    # Clean LaTeX dari semua paragraph dan table cells
+    _postprocess_clean_latex(doc)
+    
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)

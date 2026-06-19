@@ -1,0 +1,7802 @@
+[
+  {
+    "field": "Computer Science",
+    "topic": "Residual",
+    "openalex_id": "https://openalex.org/C155512373",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Coco",
+    "openalex_id": "https://openalex.org/C21780288",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Object detection",
+    "openalex_id": "https://openalex.org/C2776151529",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Deep learning",
+    "openalex_id": "https://openalex.org/C108583219",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Segmentation",
+    "openalex_id": "https://openalex.org/C89600930",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Pattern recognition (psychology)",
+    "openalex_id": "https://openalex.org/C153180895",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Set (abstract data type)",
+    "openalex_id": "https://openalex.org/C177264268",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Layer (electronics)",
+    "openalex_id": "https://openalex.org/C2779227376",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Artificial neural network",
+    "openalex_id": "https://openalex.org/C50644808",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Task (project management)",
+    "openalex_id": "https://openalex.org/C2780451532",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Residual neural network",
+    "openalex_id": "https://openalex.org/C2944601119",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Deep neural networks",
+    "openalex_id": "https://openalex.org/C2984842247",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Thematic analysis",
+    "openalex_id": "https://openalex.org/C74196892",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Thematic map",
+    "openalex_id": "https://openalex.org/C93692415",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Qualitative analysis",
+    "openalex_id": "https://openalex.org/C3018587665",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Qualitative research",
+    "openalex_id": "https://openalex.org/C190248442",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Relation (database)",
+    "openalex_id": "https://openalex.org/C25343380",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Thematic structure",
+    "openalex_id": "https://openalex.org/C2778109090",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Real-time polymerase chain reaction",
+    "openalex_id": "https://openalex.org/C48023723",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Quantitative analysis (chemistry)",
+    "openalex_id": "https://openalex.org/C95986675",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Delta",
+    "openalex_id": "https://openalex.org/C5072461",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Sample (material)",
+    "openalex_id": "https://openalex.org/C198531522",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Cloning (programming)",
+    "openalex_id": "https://openalex.org/C121050878",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Chromatin",
+    "openalex_id": "https://openalex.org/C83640560",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "CLARITY",
+    "openalex_id": "https://openalex.org/C2777146004",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "DNA",
+    "openalex_id": "https://openalex.org/C552990157",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Random forest",
+    "openalex_id": "https://openalex.org/C169258074",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "AdaBoost",
+    "openalex_id": "https://openalex.org/C141404830",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Tree (set theory)",
+    "openalex_id": "https://openalex.org/C113174947",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Generalization",
+    "openalex_id": "https://openalex.org/C177148314",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Support vector machine",
+    "openalex_id": "https://openalex.org/C12267149",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Generalization error",
+    "openalex_id": "https://openalex.org/C117765406",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Measure (data warehouse)",
+    "openalex_id": "https://openalex.org/C2780009758",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "False discovery rate",
+    "openalex_id": "https://openalex.org/C193244246",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Multiple comparisons problem",
+    "openalex_id": "https://openalex.org/C183905921",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Word error rate",
+    "openalex_id": "https://openalex.org/C40969351",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Statistical hypothesis testing",
+    "openalex_id": "https://openalex.org/C87007009",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Control (management)",
+    "openalex_id": "https://openalex.org/C2775924081",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Cutoff",
+    "openalex_id": "https://openalex.org/C2778217198",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Index (typography)",
+    "openalex_id": "https://openalex.org/C2777382242",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Covariance",
+    "openalex_id": "https://openalex.org/C178650346",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Structural equation modeling",
+    "openalex_id": "https://openalex.org/C71104824",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Short-term memory",
+    "openalex_id": "https://openalex.org/C179226034",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Cognition",
+    "openalex_id": "https://openalex.org/C169900460",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Working memory",
+    "openalex_id": "https://openalex.org/C21963081",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Alignment-free sequence analysis",
+    "openalex_id": "https://openalex.org/C180384323",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Smith\u2013Waterman algorithm",
+    "openalex_id": "https://openalex.org/C72802188",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Sequence (biology)",
+    "openalex_id": "https://openalex.org/C2778112365",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Multiple sequence alignment",
+    "openalex_id": "https://openalex.org/C88031987",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Similarity (geometry)",
+    "openalex_id": "https://openalex.org/C103278499",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Flexibility (engineering)",
+    "openalex_id": "https://openalex.org/C2780598303",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Sequence alignment",
+    "openalex_id": "https://openalex.org/C45484198",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Similitude",
+    "openalex_id": "https://openalex.org/C143271835",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Peptide sequence",
+    "openalex_id": "https://openalex.org/C167625842",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Image (mathematics)",
+    "openalex_id": "https://openalex.org/C115961682",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Checklist",
+    "openalex_id": "https://openalex.org/C2779356329",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Systematic review",
+    "openalex_id": "https://openalex.org/C189708586",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Guideline",
+    "openalex_id": "https://openalex.org/C2780182762",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Statement (logic)",
+    "openalex_id": "https://openalex.org/C2777026412",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Terminology",
+    "openalex_id": "https://openalex.org/C547195049",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Presentation (obstetrics)",
+    "openalex_id": "https://openalex.org/C2777601897",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "MEDLINE",
+    "openalex_id": "https://openalex.org/C2779473830",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Pseudopotential",
+    "openalex_id": "https://openalex.org/C132378524",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Projector",
+    "openalex_id": "https://openalex.org/C2776865275",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Envelope (radar)",
+    "openalex_id": "https://openalex.org/C65155139",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Plane wave",
+    "openalex_id": "https://openalex.org/C40308292",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Separable space",
+    "openalex_id": "https://openalex.org/C70710897",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Wave function",
+    "openalex_id": "https://openalex.org/C113603373",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Radar",
+    "openalex_id": "https://openalex.org/C554190296",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Margin (machine learning)",
+    "openalex_id": "https://openalex.org/C774472",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Sliding window protocol",
+    "openalex_id": "https://openalex.org/C102392041",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Context (archaeology)",
+    "openalex_id": "https://openalex.org/C2779343474",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Path (computing)",
+    "openalex_id": "https://openalex.org/C2777735758",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Image segmentation",
+    "openalex_id": "https://openalex.org/C124504099",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Network architecture",
+    "openalex_id": "https://openalex.org/C193415008",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Window (computing)",
+    "openalex_id": "https://openalex.org/C2778751112",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Convolutional neural network",
+    "openalex_id": "https://openalex.org/C81363708",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Phaser",
+    "openalex_id": "https://openalex.org/C135393689",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Software",
+    "openalex_id": "https://openalex.org/C2777904410",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Interface (matter)",
+    "openalex_id": "https://openalex.org/C113843644",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Maximum bubble pressure method",
+    "openalex_id": "https://openalex.org/C129307140",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Bubble",
+    "openalex_id": "https://openalex.org/C157915830",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Molecular cloning",
+    "openalex_id": "https://openalex.org/C19924922",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Complementary DNA",
+    "openalex_id": "https://openalex.org/C187882448",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Restricted maximum likelihood",
+    "openalex_id": "https://openalex.org/C61420037",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Deviance (statistics)",
+    "openalex_id": "https://openalex.org/C177599991",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Mixed model",
+    "openalex_id": "https://openalex.org/C16012445",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Smoothing",
+    "openalex_id": "https://openalex.org/C3770464",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Likelihood function",
+    "openalex_id": "https://openalex.org/C89106044",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Generalized linear model",
+    "openalex_id": "https://openalex.org/C41587187",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Linear model",
+    "openalex_id": "https://openalex.org/C163175372",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Maximum likelihood",
+    "openalex_id": "https://openalex.org/C49781872",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Generalized linear mixed model",
+    "openalex_id": "https://openalex.org/C153720581",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Covariate",
+    "openalex_id": "https://openalex.org/C119043178",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Regret",
+    "openalex_id": "https://openalex.org/C50817715",
+    "works_count": 0
+  },
+  {
+    "field": "Computer Science",
+    "topic": "Diagonal",
+    "openalex_id": "https://openalex.org/C130367717",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Coomassie Brilliant Blue",
+    "openalex_id": "https://openalex.org/C2780761556",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Bradford protein assay",
+    "openalex_id": "https://openalex.org/C160845552",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sodium dodecyl sulfate",
+    "openalex_id": "https://openalex.org/C2778913249",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sodium",
+    "openalex_id": "https://openalex.org/C537181965",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Absorption (acoustics)",
+    "openalex_id": "https://openalex.org/C125287762",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Staining",
+    "openalex_id": "https://openalex.org/C74864618",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Colorimetry",
+    "openalex_id": "https://openalex.org/C64299311",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Microgram",
+    "openalex_id": "https://openalex.org/C51296783",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "In vitro",
+    "openalex_id": "https://openalex.org/C202751555",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Cancer",
+    "openalex_id": "https://openalex.org/C121608353",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Breast cancer",
+    "openalex_id": "https://openalex.org/C530470458",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Skin cancer",
+    "openalex_id": "https://openalex.org/C2777789703",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Lung cancer",
+    "openalex_id": "https://openalex.org/C2776256026",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Colorectal cancer",
+    "openalex_id": "https://openalex.org/C526805850",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Incidence (geometry)",
+    "openalex_id": "https://openalex.org/C61511704",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Prostate cancer",
+    "openalex_id": "https://openalex.org/C2780192828",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Mortality rate",
+    "openalex_id": "https://openalex.org/C179755657",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Stomach cancer",
+    "openalex_id": "https://openalex.org/C2779454504",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Checklist",
+    "openalex_id": "https://openalex.org/C2779356329",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Systematic review",
+    "openalex_id": "https://openalex.org/C189708586",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Guideline",
+    "openalex_id": "https://openalex.org/C2780182762",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Statement (logic)",
+    "openalex_id": "https://openalex.org/C2777026412",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Terminology",
+    "openalex_id": "https://openalex.org/C547195049",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Presentation (obstetrics)",
+    "openalex_id": "https://openalex.org/C2777601897",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "MEDLINE",
+    "openalex_id": "https://openalex.org/C2779473830",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Liver cancer",
+    "openalex_id": "https://openalex.org/C2776231280",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Causes of cancer",
+    "openalex_id": "https://openalex.org/C2777914349",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Cancer registry",
+    "openalex_id": "https://openalex.org/C2778527826",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Cause of death",
+    "openalex_id": "https://openalex.org/C29374701",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Epidemiology of cancer",
+    "openalex_id": "https://openalex.org/C63592243",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Disease",
+    "openalex_id": "https://openalex.org/C2779134260",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Pronoun",
+    "openalex_id": "https://openalex.org/C2778551981",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Personal pronoun",
+    "openalex_id": "https://openalex.org/C24184978",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Subject pronoun",
+    "openalex_id": "https://openalex.org/C2764733",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Dementia",
+    "openalex_id": "https://openalex.org/C2779483572",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Moderation",
+    "openalex_id": "https://openalex.org/C93225998",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Personality",
+    "openalex_id": "https://openalex.org/C187288502",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Conceptual framework",
+    "openalex_id": "https://openalex.org/C14224292",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Mediator",
+    "openalex_id": "https://openalex.org/C2107291",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Relation (database)",
+    "openalex_id": "https://openalex.org/C25343380",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sequence (biology)",
+    "openalex_id": "https://openalex.org/C2778112365",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Position (finance)",
+    "openalex_id": "https://openalex.org/C198082294",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Weighting",
+    "openalex_id": "https://openalex.org/C183115368",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Multiple sequence alignment",
+    "openalex_id": "https://openalex.org/C88031987",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sensitivity (control systems)",
+    "openalex_id": "https://openalex.org/C21200559",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sequence alignment",
+    "openalex_id": "https://openalex.org/C45484198",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Matrix (chemical analysis)",
+    "openalex_id": "https://openalex.org/C106487976",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Peptide sequence",
+    "openalex_id": "https://openalex.org/C167625842",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Meta-analysis",
+    "openalex_id": "https://openalex.org/C95190672",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Funnel plot",
+    "openalex_id": "https://openalex.org/C82605166",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Publication bias",
+    "openalex_id": "https://openalex.org/C2780439572",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Concordance",
+    "openalex_id": "https://openalex.org/C160798450",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Meta-regression",
+    "openalex_id": "https://openalex.org/C124936440",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Asymmetry",
+    "openalex_id": "https://openalex.org/C38976095",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Systematic error",
+    "openalex_id": "https://openalex.org/C100253034",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Forest plot",
+    "openalex_id": "https://openalex.org/C194661718",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sample size determination",
+    "openalex_id": "https://openalex.org/C129848803",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Cancer incidence",
+    "openalex_id": "https://openalex.org/C2992704333",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Scale (ratio)",
+    "openalex_id": "https://openalex.org/C2778755073",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Construct validity",
+    "openalex_id": "https://openalex.org/C49453240",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Reliability (semiconductor)",
+    "openalex_id": "https://openalex.org/C43214815",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Test validity",
+    "openalex_id": "https://openalex.org/C116211729",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Psychometrics",
+    "openalex_id": "https://openalex.org/C171606756",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Internal consistency",
+    "openalex_id": "https://openalex.org/C3018868096",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Power (physics)",
+    "openalex_id": "https://openalex.org/C163258240",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "myalgia",
+    "openalex_id": "https://openalex.org/C2778616394",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Epidemiology",
+    "openalex_id": "https://openalex.org/C107130276",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Pneumonia",
+    "openalex_id": "https://openalex.org/C2777914695",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Sputum",
+    "openalex_id": "https://openalex.org/C2776301714",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Intensive care unit",
+    "openalex_id": "https://openalex.org/C2776376669",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Medical record",
+    "openalex_id": "https://openalex.org/C195910791",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Diabetes mellitus",
+    "openalex_id": "https://openalex.org/C555293320",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Tuberculosis",
+    "openalex_id": "https://openalex.org/C2781069245",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Electronic data capture",
+    "openalex_id": "https://openalex.org/C91790935",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Workflow",
+    "openalex_id": "https://openalex.org/C177212765",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Metadata",
+    "openalex_id": "https://openalex.org/C93518851",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Translational research informatics",
+    "openalex_id": "https://openalex.org/C73851307",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Software deployment",
+    "openalex_id": "https://openalex.org/C105339364",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Software",
+    "openalex_id": "https://openalex.org/C2777904410",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Translational research",
+    "openalex_id": "https://openalex.org/C128544194",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Interoperability",
+    "openalex_id": "https://openalex.org/C20136886",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Process (computing)",
+    "openalex_id": "https://openalex.org/C98045186",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Health informatics",
+    "openalex_id": "https://openalex.org/C145642194",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Clinical trial",
+    "openalex_id": "https://openalex.org/C535046627",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Health Administration Informatics",
+    "openalex_id": "https://openalex.org/C141363852",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Public health",
+    "openalex_id": "https://openalex.org/C138816342",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Comorbidity",
+    "openalex_id": "https://openalex.org/C2779159551",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Longitudinal study",
+    "openalex_id": "https://openalex.org/C2777895361",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Seriousness",
+    "openalex_id": "https://openalex.org/C2776650110",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Cohort",
+    "openalex_id": "https://openalex.org/C72563966",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Cohort study",
+    "openalex_id": "https://openalex.org/C201903717",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Proportional hazards model",
+    "openalex_id": "https://openalex.org/C50382708",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Tumor necrosis factor alpha",
+    "openalex_id": "https://openalex.org/C17991360",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Reactive oxygen species",
+    "openalex_id": "https://openalex.org/C48349386",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "p38 mitogen-activated protein kinases",
+    "openalex_id": "https://openalex.org/C51551487",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "NADPH oxidase",
+    "openalex_id": "https://openalex.org/C2779719074",
+    "works_count": 0
+  },
+  {
+    "field": "Medicine",
+    "topic": "Protein kinase B",
+    "openalex_id": "https://openalex.org/C75217442",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Bacteriophage",
+    "openalex_id": "https://openalex.org/C2776441376",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Cleavage (geology)",
+    "openalex_id": "https://openalex.org/C175156509",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Gel electrophoresis",
+    "openalex_id": "https://openalex.org/C116084860",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Head (geology)",
+    "openalex_id": "https://openalex.org/C2780312720",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Escherichia coli",
+    "openalex_id": "https://openalex.org/C547475151",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Fracture (geology)",
+    "openalex_id": "https://openalex.org/C43369102",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Real-time polymerase chain reaction",
+    "openalex_id": "https://openalex.org/C48023723",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Quantitative analysis (chemistry)",
+    "openalex_id": "https://openalex.org/C95986675",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Delta",
+    "openalex_id": "https://openalex.org/C5072461",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sample (material)",
+    "openalex_id": "https://openalex.org/C198531522",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Cloning (programming)",
+    "openalex_id": "https://openalex.org/C121050878",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Chromatin",
+    "openalex_id": "https://openalex.org/C83640560",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "CLARITY",
+    "openalex_id": "https://openalex.org/C2777146004",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "DNA",
+    "openalex_id": "https://openalex.org/C552990157",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Genome Biology",
+    "openalex_id": "https://openalex.org/C64015301",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "RNA-Seq",
+    "openalex_id": "https://openalex.org/C107397762",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Genomics",
+    "openalex_id": "https://openalex.org/C189206191",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Transcriptome",
+    "openalex_id": "https://openalex.org/C162317418",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Genome",
+    "openalex_id": "https://openalex.org/C141231307",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Gene expression",
+    "openalex_id": "https://openalex.org/C150194340",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Alignment-free sequence analysis",
+    "openalex_id": "https://openalex.org/C180384323",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Smith\u2013Waterman algorithm",
+    "openalex_id": "https://openalex.org/C72802188",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sequence (biology)",
+    "openalex_id": "https://openalex.org/C2778112365",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Multiple sequence alignment",
+    "openalex_id": "https://openalex.org/C88031987",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Similarity (geometry)",
+    "openalex_id": "https://openalex.org/C103278499",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Measure (data warehouse)",
+    "openalex_id": "https://openalex.org/C2780009758",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Flexibility (engineering)",
+    "openalex_id": "https://openalex.org/C2780598303",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sequence alignment",
+    "openalex_id": "https://openalex.org/C45484198",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Similitude",
+    "openalex_id": "https://openalex.org/C143271835",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Peptide sequence",
+    "openalex_id": "https://openalex.org/C167625842",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Image (mathematics)",
+    "openalex_id": "https://openalex.org/C115961682",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Pseudopotential",
+    "openalex_id": "https://openalex.org/C132378524",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Projector",
+    "openalex_id": "https://openalex.org/C2776865275",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Envelope (radar)",
+    "openalex_id": "https://openalex.org/C65155139",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Plane wave",
+    "openalex_id": "https://openalex.org/C40308292",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Separable space",
+    "openalex_id": "https://openalex.org/C70710897",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Wave function",
+    "openalex_id": "https://openalex.org/C113603373",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Radar",
+    "openalex_id": "https://openalex.org/C554190296",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Segmentation",
+    "openalex_id": "https://openalex.org/C89600930",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Margin (machine learning)",
+    "openalex_id": "https://openalex.org/C774472",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sliding window protocol",
+    "openalex_id": "https://openalex.org/C102392041",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Context (archaeology)",
+    "openalex_id": "https://openalex.org/C2779343474",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Path (computing)",
+    "openalex_id": "https://openalex.org/C2777735758",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Image segmentation",
+    "openalex_id": "https://openalex.org/C124504099",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Pattern recognition (psychology)",
+    "openalex_id": "https://openalex.org/C153180895",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Network architecture",
+    "openalex_id": "https://openalex.org/C193415008",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Window (computing)",
+    "openalex_id": "https://openalex.org/C2778751112",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Convolutional neural network",
+    "openalex_id": "https://openalex.org/C81363708",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Molecular cloning",
+    "openalex_id": "https://openalex.org/C19924922",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Complementary DNA",
+    "openalex_id": "https://openalex.org/C187882448",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Systematic review",
+    "openalex_id": "https://openalex.org/C189708586",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Statement (logic)",
+    "openalex_id": "https://openalex.org/C2777026412",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "MEDLINE",
+    "openalex_id": "https://openalex.org/C2779473830",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Iterated function",
+    "openalex_id": "https://openalex.org/C140479938",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Heuristic",
+    "openalex_id": "https://openalex.org/C173801870",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Position (finance)",
+    "openalex_id": "https://openalex.org/C198082294",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sequence database",
+    "openalex_id": "https://openalex.org/C41584329",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Moderation",
+    "openalex_id": "https://openalex.org/C93225998",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Personality",
+    "openalex_id": "https://openalex.org/C187288502",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Conceptual framework",
+    "openalex_id": "https://openalex.org/C14224292",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Mediator",
+    "openalex_id": "https://openalex.org/C2107291",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Plug-in",
+    "openalex_id": "https://openalex.org/C4924752",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Scripting language",
+    "openalex_id": "https://openalex.org/C61423126",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Software",
+    "openalex_id": "https://openalex.org/C2777904410",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Transformation (genetics)",
+    "openalex_id": "https://openalex.org/C204241405",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Open source software",
+    "openalex_id": "https://openalex.org/C2988343187",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Open source",
+    "openalex_id": "https://openalex.org/C3018397939",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Image processing",
+    "openalex_id": "https://openalex.org/C9417928",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Software evolution",
+    "openalex_id": "https://openalex.org/C202105479",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Architecture",
+    "openalex_id": "https://openalex.org/C123657996",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Software system",
+    "openalex_id": "https://openalex.org/C149091818",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Software construction",
+    "openalex_id": "https://openalex.org/C186846655",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Preprocessor",
+    "openalex_id": "https://openalex.org/C34736171",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Java",
+    "openalex_id": "https://openalex.org/C548217200",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Data pre-processing",
+    "openalex_id": "https://openalex.org/C10551718",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sanger sequencing",
+    "openalex_id": "https://openalex.org/C76818968",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Nucleotide",
+    "openalex_id": "https://openalex.org/C512185932",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "DNA polymerase",
+    "openalex_id": "https://openalex.org/C2756471",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Polymerase chain reaction",
+    "openalex_id": "https://openalex.org/C49105822",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "DNA sequencing",
+    "openalex_id": "https://openalex.org/C51679486",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Polymerase",
+    "openalex_id": "https://openalex.org/C82381507",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Search engine indexing",
+    "openalex_id": "https://openalex.org/C75165309",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "k-mer",
+    "openalex_id": "https://openalex.org/C2279292",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "File format",
+    "openalex_id": "https://openalex.org/C97250363",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Endoplasmic reticulum",
+    "openalex_id": "https://openalex.org/C158617107",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Unfolded protein response",
+    "openalex_id": "https://openalex.org/C139447449",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Phosphorylation",
+    "openalex_id": "https://openalex.org/C11960822",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Cytoplasm",
+    "openalex_id": "https://openalex.org/C190062978",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Protein kinase A",
+    "openalex_id": "https://openalex.org/C97029542",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Transmembrane protein",
+    "openalex_id": "https://openalex.org/C24530287",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Transcription factor",
+    "openalex_id": "https://openalex.org/C86339819",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "ER retention",
+    "openalex_id": "https://openalex.org/C2778043179",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Signal transduction",
+    "openalex_id": "https://openalex.org/C62478195",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Receptor",
+    "openalex_id": "https://openalex.org/C170493617",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Mutant",
+    "openalex_id": "https://openalex.org/C143065580",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Cancer",
+    "openalex_id": "https://openalex.org/C121608353",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Contingency table",
+    "openalex_id": "https://openalex.org/C91998498",
+    "works_count": 0
+  },
+  {
+    "field": "Biology",
+    "topic": "Sign test",
+    "openalex_id": "https://openalex.org/C165793278",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Radiation",
+    "openalex_id": "https://openalex.org/C153385146",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Plasma",
+    "openalex_id": "https://openalex.org/C82706917",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Shield",
+    "openalex_id": "https://openalex.org/C138081364",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Neutron",
+    "openalex_id": "https://openalex.org/C152568617",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Coomassie Brilliant Blue",
+    "openalex_id": "https://openalex.org/C2780761556",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Bradford protein assay",
+    "openalex_id": "https://openalex.org/C160845552",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Sodium dodecyl sulfate",
+    "openalex_id": "https://openalex.org/C2778913249",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Sodium",
+    "openalex_id": "https://openalex.org/C537181965",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Absorption (acoustics)",
+    "openalex_id": "https://openalex.org/C125287762",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Staining",
+    "openalex_id": "https://openalex.org/C74864618",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Colorimetry",
+    "openalex_id": "https://openalex.org/C64299311",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Microgram",
+    "openalex_id": "https://openalex.org/C51296783",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "In vitro",
+    "openalex_id": "https://openalex.org/C202751555",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Simple (philosophy)",
+    "openalex_id": "https://openalex.org/C2780586882",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Scaling",
+    "openalex_id": "https://openalex.org/C99844830",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Linear scale",
+    "openalex_id": "https://openalex.org/C170122806",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Spin density",
+    "openalex_id": "https://openalex.org/C3018272316",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Spin (aerodynamics)",
+    "openalex_id": "https://openalex.org/C42704618",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Local-density approximation",
+    "openalex_id": "https://openalex.org/C9249130",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Kohn\u2013Sham equations",
+    "openalex_id": "https://openalex.org/C9059619",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Electronic structure",
+    "openalex_id": "https://openalex.org/C86025842",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Density functional theory",
+    "openalex_id": "https://openalex.org/C152365726",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Real-time polymerase chain reaction",
+    "openalex_id": "https://openalex.org/C48023723",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Quantitative analysis (chemistry)",
+    "openalex_id": "https://openalex.org/C95986675",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Delta",
+    "openalex_id": "https://openalex.org/C5072461",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Sample (material)",
+    "openalex_id": "https://openalex.org/C198531522",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Superconductivity",
+    "openalex_id": "https://openalex.org/C54101563",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Quantum",
+    "openalex_id": "https://openalex.org/C84114770",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Charge (physics)",
+    "openalex_id": "https://openalex.org/C188082385",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Charge density wave",
+    "openalex_id": "https://openalex.org/C2780525273",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Ab initio",
+    "openalex_id": "https://openalex.org/C2781442258",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Basis set",
+    "openalex_id": "https://openalex.org/C65956243",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Basis (linear algebra)",
+    "openalex_id": "https://openalex.org/C12426560",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Subspace topology",
+    "openalex_id": "https://openalex.org/C32834561",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Plane wave",
+    "openalex_id": "https://openalex.org/C40308292",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Molecule",
+    "openalex_id": "https://openalex.org/C32909587",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Cancer",
+    "openalex_id": "https://openalex.org/C121608353",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Breast cancer",
+    "openalex_id": "https://openalex.org/C530470458",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Skin cancer",
+    "openalex_id": "https://openalex.org/C2777789703",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Lung cancer",
+    "openalex_id": "https://openalex.org/C2776256026",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Colorectal cancer",
+    "openalex_id": "https://openalex.org/C526805850",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Incidence (geometry)",
+    "openalex_id": "https://openalex.org/C61511704",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Prostate cancer",
+    "openalex_id": "https://openalex.org/C2780192828",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Mortality rate",
+    "openalex_id": "https://openalex.org/C179755657",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Stomach cancer",
+    "openalex_id": "https://openalex.org/C2779454504",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Cutoff",
+    "openalex_id": "https://openalex.org/C2778217198",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Index (typography)",
+    "openalex_id": "https://openalex.org/C2777382242",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Covariance",
+    "openalex_id": "https://openalex.org/C178650346",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Structural equation modeling",
+    "openalex_id": "https://openalex.org/C71104824",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Thermochemistry",
+    "openalex_id": "https://openalex.org/C29563950",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Hybrid functional",
+    "openalex_id": "https://openalex.org/C22693506",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Ionization",
+    "openalex_id": "https://openalex.org/C198291218",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Orbital-free density functional theory",
+    "openalex_id": "https://openalex.org/C104970782",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Proton",
+    "openalex_id": "https://openalex.org/C54516573",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Ion",
+    "openalex_id": "https://openalex.org/C145148216",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Kinetic energy",
+    "openalex_id": "https://openalex.org/C135889238",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Density matrix",
+    "openalex_id": "https://openalex.org/C56911000",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Electronic correlation",
+    "openalex_id": "https://openalex.org/C35052450",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Energy (signal processing)",
+    "openalex_id": "https://openalex.org/C186370098",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Electron density",
+    "openalex_id": "https://openalex.org/C125485243",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Hartree\u2013Fock method",
+    "openalex_id": "https://openalex.org/C113630233",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Potential energy",
+    "openalex_id": "https://openalex.org/C84551667",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Electron",
+    "openalex_id": "https://openalex.org/C147120987",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Short-term memory",
+    "openalex_id": "https://openalex.org/C179226034",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Cognition",
+    "openalex_id": "https://openalex.org/C169900460",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Working memory",
+    "openalex_id": "https://openalex.org/C21963081",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Pseudopotential",
+    "openalex_id": "https://openalex.org/C132378524",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Projector",
+    "openalex_id": "https://openalex.org/C2776865275",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Envelope (radar)",
+    "openalex_id": "https://openalex.org/C65155139",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Separable space",
+    "openalex_id": "https://openalex.org/C70710897",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Wave function",
+    "openalex_id": "https://openalex.org/C113603373",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Radar",
+    "openalex_id": "https://openalex.org/C554190296",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Liver cancer",
+    "openalex_id": "https://openalex.org/C2776231280",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Causes of cancer",
+    "openalex_id": "https://openalex.org/C2777914349",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Cancer registry",
+    "openalex_id": "https://openalex.org/C2778527826",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Cause of death",
+    "openalex_id": "https://openalex.org/C29374701",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Epidemiology of cancer",
+    "openalex_id": "https://openalex.org/C63592243",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Disease",
+    "openalex_id": "https://openalex.org/C2779134260",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Statistical power",
+    "openalex_id": "https://openalex.org/C96608239",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Power analysis",
+    "openalex_id": "https://openalex.org/C71743495",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Statistical analysis",
+    "openalex_id": "https://openalex.org/C2986587452",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Behavioural sciences",
+    "openalex_id": "https://openalex.org/C5570062",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Power (physics)",
+    "openalex_id": "https://openalex.org/C163258240",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Tensor (intrinsic definition)",
+    "openalex_id": "https://openalex.org/C155281189",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Categorical variable",
+    "openalex_id": "https://openalex.org/C5274069",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Kappa",
+    "openalex_id": "https://openalex.org/C2778724333",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Homogeneity (statistics)",
+    "openalex_id": "https://openalex.org/C142259097",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Multivariate statistics",
+    "openalex_id": "https://openalex.org/C161584116",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Statistical hypothesis testing",
+    "openalex_id": "https://openalex.org/C87007009",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Cohen's kappa",
+    "openalex_id": "https://openalex.org/C163864269",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Observer (physics)",
+    "openalex_id": "https://openalex.org/C2780704645",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Poisson distribution",
+    "openalex_id": "https://openalex.org/C100906024",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Reliability (semiconductor)",
+    "openalex_id": "https://openalex.org/C43214815",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Type I and type II errors",
+    "openalex_id": "https://openalex.org/C40696583",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Multivariate analysis",
+    "openalex_id": "https://openalex.org/C38180746",
+    "works_count": 0
+  },
+  {
+    "field": "Physics",
+    "topic": "Machine translation",
+    "openalex_id": "https://openalex.org/C203005215",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Reagent",
+    "openalex_id": "https://openalex.org/C40875361",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Phenol",
+    "openalex_id": "https://openalex.org/C2777702071",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Bacteriophage",
+    "openalex_id": "https://openalex.org/C2776441376",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Cleavage (geology)",
+    "openalex_id": "https://openalex.org/C175156509",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Gel electrophoresis",
+    "openalex_id": "https://openalex.org/C116084860",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Head (geology)",
+    "openalex_id": "https://openalex.org/C2780312720",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Escherichia coli",
+    "openalex_id": "https://openalex.org/C547475151",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Fracture (geology)",
+    "openalex_id": "https://openalex.org/C43369102",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Coomassie Brilliant Blue",
+    "openalex_id": "https://openalex.org/C2780761556",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Bradford protein assay",
+    "openalex_id": "https://openalex.org/C160845552",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Sodium dodecyl sulfate",
+    "openalex_id": "https://openalex.org/C2778913249",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Sodium",
+    "openalex_id": "https://openalex.org/C537181965",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Absorption (acoustics)",
+    "openalex_id": "https://openalex.org/C125287762",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Staining",
+    "openalex_id": "https://openalex.org/C74864618",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Residual",
+    "openalex_id": "https://openalex.org/C155512373",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Coco",
+    "openalex_id": "https://openalex.org/C21780288",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Object detection",
+    "openalex_id": "https://openalex.org/C2776151529",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Deep learning",
+    "openalex_id": "https://openalex.org/C108583219",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Segmentation",
+    "openalex_id": "https://openalex.org/C89600930",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Pattern recognition (psychology)",
+    "openalex_id": "https://openalex.org/C153180895",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Set (abstract data type)",
+    "openalex_id": "https://openalex.org/C177264268",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Layer (electronics)",
+    "openalex_id": "https://openalex.org/C2779227376",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Artificial neural network",
+    "openalex_id": "https://openalex.org/C50644808",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Task (project management)",
+    "openalex_id": "https://openalex.org/C2780451532",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Residual neural network",
+    "openalex_id": "https://openalex.org/C2944601119",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Deep neural networks",
+    "openalex_id": "https://openalex.org/C2984842247",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Colorimetry",
+    "openalex_id": "https://openalex.org/C64299311",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Microgram",
+    "openalex_id": "https://openalex.org/C51296783",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "In vitro",
+    "openalex_id": "https://openalex.org/C202751555",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Real-time polymerase chain reaction",
+    "openalex_id": "https://openalex.org/C48023723",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Quantitative analysis (chemistry)",
+    "openalex_id": "https://openalex.org/C95986675",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Delta",
+    "openalex_id": "https://openalex.org/C5072461",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Sample (material)",
+    "openalex_id": "https://openalex.org/C198531522",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "False discovery rate",
+    "openalex_id": "https://openalex.org/C193244246",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Multiple comparisons problem",
+    "openalex_id": "https://openalex.org/C183905921",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Word error rate",
+    "openalex_id": "https://openalex.org/C40969351",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Statistical hypothesis testing",
+    "openalex_id": "https://openalex.org/C87007009",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Control (management)",
+    "openalex_id": "https://openalex.org/C2775924081",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Thermochemistry",
+    "openalex_id": "https://openalex.org/C29563950",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Density functional theory",
+    "openalex_id": "https://openalex.org/C152365726",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Hybrid functional",
+    "openalex_id": "https://openalex.org/C22693506",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Ionization",
+    "openalex_id": "https://openalex.org/C198291218",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Orbital-free density functional theory",
+    "openalex_id": "https://openalex.org/C104970782",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Spin density",
+    "openalex_id": "https://openalex.org/C3018272316",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Proton",
+    "openalex_id": "https://openalex.org/C54516573",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Local-density approximation",
+    "openalex_id": "https://openalex.org/C9249130",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Ion",
+    "openalex_id": "https://openalex.org/C145148216",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Pseudopotential",
+    "openalex_id": "https://openalex.org/C132378524",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Energy (signal processing)",
+    "openalex_id": "https://openalex.org/C186370098",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Tensor (intrinsic definition)",
+    "openalex_id": "https://openalex.org/C155281189",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Abstraction",
+    "openalex_id": "https://openalex.org/C124304363",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Representation (politics)",
+    "openalex_id": "https://openalex.org/C2776359362",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Object (grammar)",
+    "openalex_id": "https://openalex.org/C2781238097",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Backpropagation",
+    "openalex_id": "https://openalex.org/C155032097",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Convolutional neural network",
+    "openalex_id": "https://openalex.org/C81363708",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Feature learning",
+    "openalex_id": "https://openalex.org/C59404180",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Politics",
+    "openalex_id": "https://openalex.org/C94625758",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Ab initio",
+    "openalex_id": "https://openalex.org/C2781442258",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Hamiltonian (control theory)",
+    "openalex_id": "https://openalex.org/C130787639",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Basis set",
+    "openalex_id": "https://openalex.org/C65956243",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Plane wave",
+    "openalex_id": "https://openalex.org/C40308292",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Ab initio quantum chemistry methods",
+    "openalex_id": "https://openalex.org/C183971685",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Electronic structure",
+    "openalex_id": "https://openalex.org/C86025842",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Phonon",
+    "openalex_id": "https://openalex.org/C24169881",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Degrees of freedom (physics and chemistry)",
+    "openalex_id": "https://openalex.org/C208081375",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Tetrahedron",
+    "openalex_id": "https://openalex.org/C105239961",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Molecule",
+    "openalex_id": "https://openalex.org/C32909587",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Wastewater",
+    "openalex_id": "https://openalex.org/C94061648",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "DNA",
+    "openalex_id": "https://openalex.org/C552990157",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Sanger sequencing",
+    "openalex_id": "https://openalex.org/C76818968",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Nucleotide",
+    "openalex_id": "https://openalex.org/C512185932",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "DNA polymerase",
+    "openalex_id": "https://openalex.org/C2756471",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Polymerase chain reaction",
+    "openalex_id": "https://openalex.org/C49105822",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "DNA sequencing",
+    "openalex_id": "https://openalex.org/C51679486",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Polymerase",
+    "openalex_id": "https://openalex.org/C82381507",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Unobservable",
+    "openalex_id": "https://openalex.org/C2780695315",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Structural equation modeling",
+    "openalex_id": "https://openalex.org/C71104824",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Variance (accounting)",
+    "openalex_id": "https://openalex.org/C196083921",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Explanatory power",
+    "openalex_id": "https://openalex.org/C2777402642",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Observational error",
+    "openalex_id": "https://openalex.org/C19619285",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Type I and type II errors",
+    "openalex_id": "https://openalex.org/C40696583",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Sample size determination",
+    "openalex_id": "https://openalex.org/C129848803",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Errors-in-variables models",
+    "openalex_id": "https://openalex.org/C179024874",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "LISREL",
+    "openalex_id": "https://openalex.org/C119002697",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Assertion",
+    "openalex_id": "https://openalex.org/C40422974",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Bivariate analysis",
+    "openalex_id": "https://openalex.org/C64341305",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Goodness of fit",
+    "openalex_id": "https://openalex.org/C132480984",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Electric field",
+    "openalex_id": "https://openalex.org/C60799052",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Graphene",
+    "openalex_id": "https://openalex.org/C30080830",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Fullerene",
+    "openalex_id": "https://openalex.org/C162862793",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Field-effect transistor",
+    "openalex_id": "https://openalex.org/C145598152",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Carbon fibers",
+    "openalex_id": "https://openalex.org/C140205800",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Ballistic conduction",
+    "openalex_id": "https://openalex.org/C192683347",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Metal",
+    "openalex_id": "https://openalex.org/C544153396",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Field (mathematics)",
+    "openalex_id": "https://openalex.org/C9652623",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Thin film",
+    "openalex_id": "https://openalex.org/C19067145",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Transistor",
+    "openalex_id": "https://openalex.org/C172385210",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Electron",
+    "openalex_id": "https://openalex.org/C147120987",
+    "works_count": 0
+  },
+  {
+    "field": "Chemistry",
+    "topic": "Voltage",
+    "openalex_id": "https://openalex.org/C165801399",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Radiation",
+    "openalex_id": "https://openalex.org/C153385146",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Plasma",
+    "openalex_id": "https://openalex.org/C82706917",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Shield",
+    "openalex_id": "https://openalex.org/C138081364",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Neutron",
+    "openalex_id": "https://openalex.org/C152568617",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electric field",
+    "openalex_id": "https://openalex.org/C60799052",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Graphene",
+    "openalex_id": "https://openalex.org/C30080830",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Fullerene",
+    "openalex_id": "https://openalex.org/C162862793",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Field-effect transistor",
+    "openalex_id": "https://openalex.org/C145598152",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Carbon fibers",
+    "openalex_id": "https://openalex.org/C140205800",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Ballistic conduction",
+    "openalex_id": "https://openalex.org/C192683347",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Metal",
+    "openalex_id": "https://openalex.org/C544153396",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Field (mathematics)",
+    "openalex_id": "https://openalex.org/C9652623",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Thin film",
+    "openalex_id": "https://openalex.org/C19067145",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Transistor",
+    "openalex_id": "https://openalex.org/C172385210",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electron",
+    "openalex_id": "https://openalex.org/C147120987",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Voltage",
+    "openalex_id": "https://openalex.org/C165801399",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Composite number",
+    "openalex_id": "https://openalex.org/C104779481",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Sequence (biology)",
+    "openalex_id": "https://openalex.org/C2778112365",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Position (finance)",
+    "openalex_id": "https://openalex.org/C198082294",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Weighting",
+    "openalex_id": "https://openalex.org/C183115368",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Multiple sequence alignment",
+    "openalex_id": "https://openalex.org/C88031987",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Sensitivity (control systems)",
+    "openalex_id": "https://openalex.org/C21200559",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Sequence alignment",
+    "openalex_id": "https://openalex.org/C45484198",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Matrix (chemical analysis)",
+    "openalex_id": "https://openalex.org/C106487976",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Peptide sequence",
+    "openalex_id": "https://openalex.org/C167625842",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Ionic radius",
+    "openalex_id": "https://openalex.org/C54998646",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electronegativity",
+    "openalex_id": "https://openalex.org/C177293861",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Covalent bond",
+    "openalex_id": "https://openalex.org/C180577832",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Ionic bonding",
+    "openalex_id": "https://openalex.org/C2182769",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Bond length",
+    "openalex_id": "https://openalex.org/C155860418",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Delocalized electron",
+    "openalex_id": "https://openalex.org/C70050531",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Octahedron",
+    "openalex_id": "https://openalex.org/C198819137",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Coordination number",
+    "openalex_id": "https://openalex.org/C33559828",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Ion",
+    "openalex_id": "https://openalex.org/C145148216",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Crystal structure",
+    "openalex_id": "https://openalex.org/C115624301",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "RNA extraction",
+    "openalex_id": "https://openalex.org/C112190416",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Chloroform",
+    "openalex_id": "https://openalex.org/C2781144210",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Extraction (chemistry)",
+    "openalex_id": "https://openalex.org/C4725764",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Phenol",
+    "openalex_id": "https://openalex.org/C2777702071",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "RNA",
+    "openalex_id": "https://openalex.org/C67705224",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Thiocyanate",
+    "openalex_id": "https://openalex.org/C2776294642",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Isolation (microbiology)",
+    "openalex_id": "https://openalex.org/C2775941552",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Phenol extraction",
+    "openalex_id": "https://openalex.org/C135650642",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Yield (engineering)",
+    "openalex_id": "https://openalex.org/C134121241",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Density functional theory",
+    "openalex_id": "https://openalex.org/C152365726",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Dispersion (optics)",
+    "openalex_id": "https://openalex.org/C177562468",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Ab initio",
+    "openalex_id": "https://openalex.org/C2781442258",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Parametrization (atmospheric modeling)",
+    "openalex_id": "https://openalex.org/C202887219",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Intramolecular force",
+    "openalex_id": "https://openalex.org/C75079739",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Range (aeronautics)",
+    "openalex_id": "https://openalex.org/C204323151",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Cutoff",
+    "openalex_id": "https://openalex.org/C2778217198",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Basis set",
+    "openalex_id": "https://openalex.org/C65956243",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Standard deviation",
+    "openalex_id": "https://openalex.org/C22679943",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Radiative transfer",
+    "openalex_id": "https://openalex.org/C74902906",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Benchmark (surveying)",
+    "openalex_id": "https://openalex.org/C185798385",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Parallel algorithm",
+    "openalex_id": "https://openalex.org/C120373497",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Intel iPSC",
+    "openalex_id": "https://openalex.org/C199115840",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Molecular dynamics",
+    "openalex_id": "https://openalex.org/C59593255",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Supercomputer",
+    "openalex_id": "https://openalex.org/C83283714",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Node (physics)",
+    "openalex_id": "https://openalex.org/C62611344",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Carbon nanotube",
+    "openalex_id": "https://openalex.org/C513720949",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Carbon arc welding",
+    "openalex_id": "https://openalex.org/C38766315",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Microelectronics",
+    "openalex_id": "https://openalex.org/C187937830",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Tube (container)",
+    "openalex_id": "https://openalex.org/C2777551473",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Coaxial",
+    "openalex_id": "https://openalex.org/C51221625",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Evaporation",
+    "openalex_id": "https://openalex.org/C61441594",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electric arc",
+    "openalex_id": "https://openalex.org/C114375839",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electron microscope",
+    "openalex_id": "https://openalex.org/C93877712",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Nanometre",
+    "openalex_id": "https://openalex.org/C77066764",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Graphite",
+    "openalex_id": "https://openalex.org/C2779698641",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electrode",
+    "openalex_id": "https://openalex.org/C17525397",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Microstructure",
+    "openalex_id": "https://openalex.org/C87976508",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Shielding gas",
+    "openalex_id": "https://openalex.org/C177250429",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Heat-affected zone",
+    "openalex_id": "https://openalex.org/C146868986",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Photodissociation",
+    "openalex_id": "https://openalex.org/C54582936",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Semiconductor",
+    "openalex_id": "https://openalex.org/C108225325",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Electrochemistry",
+    "openalex_id": "https://openalex.org/C52859227",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Wavelength",
+    "openalex_id": "https://openalex.org/C6260449",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Visible spectrum",
+    "openalex_id": "https://openalex.org/C104663316",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Coupling (piping)",
+    "openalex_id": "https://openalex.org/C131584629",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Constant (computer programming)",
+    "openalex_id": "https://openalex.org/C2777027219",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Polyatomic ion",
+    "openalex_id": "https://openalex.org/C66594872",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Coupling constant",
+    "openalex_id": "https://openalex.org/C183276030",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Non-equilibrium thermodynamics",
+    "openalex_id": "https://openalex.org/C74859849",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Dynamics (music)",
+    "openalex_id": "https://openalex.org/C145912823",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Time constant",
+    "openalex_id": "https://openalex.org/C81370116",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Volume (thermodynamics)",
+    "openalex_id": "https://openalex.org/C20556612",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Molecule",
+    "openalex_id": "https://openalex.org/C32909587",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Parameterized complexity",
+    "openalex_id": "https://openalex.org/C165464430",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Ansatz",
+    "openalex_id": "https://openalex.org/C130979935",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "London dispersion force",
+    "openalex_id": "https://openalex.org/C185424724",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "van der Waals force",
+    "openalex_id": "https://openalex.org/C126061179",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Orbital-free density functional theory",
+    "openalex_id": "https://openalex.org/C104970782",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Thermochemistry",
+    "openalex_id": "https://openalex.org/C29563950",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Hybrid functional",
+    "openalex_id": "https://openalex.org/C22693506",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Scaling",
+    "openalex_id": "https://openalex.org/C99844830",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Type (biology)",
+    "openalex_id": "https://openalex.org/C2777299769",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Shot (pellet)",
+    "openalex_id": "https://openalex.org/C2778344882",
+    "works_count": 0
+  },
+  {
+    "field": "Engineering",
+    "topic": "Detector",
+    "openalex_id": "https://openalex.org/C94915269",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Simple (philosophy)",
+    "openalex_id": "https://openalex.org/C2780586882",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Scaling",
+    "openalex_id": "https://openalex.org/C99844830",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Linear scale",
+    "openalex_id": "https://openalex.org/C170122806",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Spin density",
+    "openalex_id": "https://openalex.org/C3018272316",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Spin (aerodynamics)",
+    "openalex_id": "https://openalex.org/C42704618",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Local-density approximation",
+    "openalex_id": "https://openalex.org/C9249130",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Kohn\u2013Sham equations",
+    "openalex_id": "https://openalex.org/C9059619",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Electronic structure",
+    "openalex_id": "https://openalex.org/C86025842",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Density functional theory",
+    "openalex_id": "https://openalex.org/C152365726",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Random forest",
+    "openalex_id": "https://openalex.org/C169258074",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "AdaBoost",
+    "openalex_id": "https://openalex.org/C141404830",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Tree (set theory)",
+    "openalex_id": "https://openalex.org/C113174947",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Generalization",
+    "openalex_id": "https://openalex.org/C177148314",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Support vector machine",
+    "openalex_id": "https://openalex.org/C12267149",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Generalization error",
+    "openalex_id": "https://openalex.org/C117765406",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Measure (data warehouse)",
+    "openalex_id": "https://openalex.org/C2780009758",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Pattern recognition (psychology)",
+    "openalex_id": "https://openalex.org/C153180895",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Artificial neural network",
+    "openalex_id": "https://openalex.org/C50644808",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Ab initio",
+    "openalex_id": "https://openalex.org/C2781442258",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Basis set",
+    "openalex_id": "https://openalex.org/C65956243",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Basis (linear algebra)",
+    "openalex_id": "https://openalex.org/C12426560",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Subspace topology",
+    "openalex_id": "https://openalex.org/C32834561",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Plane wave",
+    "openalex_id": "https://openalex.org/C40308292",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Molecule",
+    "openalex_id": "https://openalex.org/C32909587",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "False discovery rate",
+    "openalex_id": "https://openalex.org/C193244246",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Multiple comparisons problem",
+    "openalex_id": "https://openalex.org/C183905921",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Word error rate",
+    "openalex_id": "https://openalex.org/C40969351",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Statistical hypothesis testing",
+    "openalex_id": "https://openalex.org/C87007009",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Control (management)",
+    "openalex_id": "https://openalex.org/C2775924081",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Cutoff",
+    "openalex_id": "https://openalex.org/C2778217198",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Index (typography)",
+    "openalex_id": "https://openalex.org/C2777382242",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Covariance",
+    "openalex_id": "https://openalex.org/C178650346",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Structural equation modeling",
+    "openalex_id": "https://openalex.org/C71104824",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Short-term memory",
+    "openalex_id": "https://openalex.org/C179226034",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Cognition",
+    "openalex_id": "https://openalex.org/C169900460",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Working memory",
+    "openalex_id": "https://openalex.org/C21963081",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Alignment-free sequence analysis",
+    "openalex_id": "https://openalex.org/C180384323",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Smith\u2013Waterman algorithm",
+    "openalex_id": "https://openalex.org/C72802188",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Sequence (biology)",
+    "openalex_id": "https://openalex.org/C2778112365",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Multiple sequence alignment",
+    "openalex_id": "https://openalex.org/C88031987",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Similarity (geometry)",
+    "openalex_id": "https://openalex.org/C103278499",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Flexibility (engineering)",
+    "openalex_id": "https://openalex.org/C2780598303",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Sequence alignment",
+    "openalex_id": "https://openalex.org/C45484198",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Similitude",
+    "openalex_id": "https://openalex.org/C143271835",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Peptide sequence",
+    "openalex_id": "https://openalex.org/C167625842",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Image (mathematics)",
+    "openalex_id": "https://openalex.org/C115961682",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Pseudopotential",
+    "openalex_id": "https://openalex.org/C132378524",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Projector",
+    "openalex_id": "https://openalex.org/C2776865275",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Envelope (radar)",
+    "openalex_id": "https://openalex.org/C65155139",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Separable space",
+    "openalex_id": "https://openalex.org/C70710897",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Wave function",
+    "openalex_id": "https://openalex.org/C113603373",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Radar",
+    "openalex_id": "https://openalex.org/C554190296",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Restricted maximum likelihood",
+    "openalex_id": "https://openalex.org/C61420037",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Deviance (statistics)",
+    "openalex_id": "https://openalex.org/C177599991",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Mixed model",
+    "openalex_id": "https://openalex.org/C16012445",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Smoothing",
+    "openalex_id": "https://openalex.org/C3770464",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Likelihood function",
+    "openalex_id": "https://openalex.org/C89106044",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Generalized linear model",
+    "openalex_id": "https://openalex.org/C41587187",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Linear model",
+    "openalex_id": "https://openalex.org/C163175372",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Maximum likelihood",
+    "openalex_id": "https://openalex.org/C49781872",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Generalized linear mixed model",
+    "openalex_id": "https://openalex.org/C153720581",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Covariate",
+    "openalex_id": "https://openalex.org/C119043178",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Regret",
+    "openalex_id": "https://openalex.org/C50817715",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Diagonal",
+    "openalex_id": "https://openalex.org/C130367717",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Convergence (economics)",
+    "openalex_id": "https://openalex.org/C2777303404",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Stochastic optimization",
+    "openalex_id": "https://openalex.org/C194387892",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Rate of convergence",
+    "openalex_id": "https://openalex.org/C57869625",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Optimization problem",
+    "openalex_id": "https://openalex.org/C137836250",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Key (lock)",
+    "openalex_id": "https://openalex.org/C26517878",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Theory of planned behavior",
+    "openalex_id": "https://openalex.org/C89785696",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Expectancy theory",
+    "openalex_id": "https://openalex.org/C188353592",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Normative",
+    "openalex_id": "https://openalex.org/C44725695",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Variance (accounting)",
+    "openalex_id": "https://openalex.org/C196083921",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Perception",
+    "openalex_id": "https://openalex.org/C26760741",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Value (mathematics)",
+    "openalex_id": "https://openalex.org/C2776291640",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Statistical power",
+    "openalex_id": "https://openalex.org/C96608239",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Power analysis",
+    "openalex_id": "https://openalex.org/C71743495",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Statistical analysis",
+    "openalex_id": "https://openalex.org/C2986587452",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Behavioural sciences",
+    "openalex_id": "https://openalex.org/C5570062",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Power (physics)",
+    "openalex_id": "https://openalex.org/C163258240",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Energy (signal processing)",
+    "openalex_id": "https://openalex.org/C186370098",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Tensor (intrinsic definition)",
+    "openalex_id": "https://openalex.org/C155281189",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Bandwidth (computing)",
+    "openalex_id": "https://openalex.org/C2776257435",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Nyquist\u2013Shannon sampling theorem",
+    "openalex_id": "https://openalex.org/C288623",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Channel (broadcasting)",
+    "openalex_id": "https://openalex.org/C127162648",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Communication theory",
+    "openalex_id": "https://openalex.org/C3716254",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Categorical variable",
+    "openalex_id": "https://openalex.org/C5274069",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Kappa",
+    "openalex_id": "https://openalex.org/C2778724333",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Homogeneity (statistics)",
+    "openalex_id": "https://openalex.org/C142259097",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Multivariate statistics",
+    "openalex_id": "https://openalex.org/C161584116",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Cohen's kappa",
+    "openalex_id": "https://openalex.org/C163864269",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Observer (physics)",
+    "openalex_id": "https://openalex.org/C2780704645",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Poisson distribution",
+    "openalex_id": "https://openalex.org/C100906024",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Reliability (semiconductor)",
+    "openalex_id": "https://openalex.org/C43214815",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Type I and type II errors",
+    "openalex_id": "https://openalex.org/C40696583",
+    "works_count": 0
+  },
+  {
+    "field": "Mathematics",
+    "topic": "Multivariate analysis",
+    "openalex_id": "https://openalex.org/C38180746",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Wastewater",
+    "openalex_id": "https://openalex.org/C94061648",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Biodiversity",
+    "openalex_id": "https://openalex.org/C130217890",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Biodiversity hotspot",
+    "openalex_id": "https://openalex.org/C153427425",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Habitat",
+    "openalex_id": "https://openalex.org/C185933670",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Vertebrate",
+    "openalex_id": "https://openalex.org/C2778961482",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Global biodiversity",
+    "openalex_id": "https://openalex.org/C187604713",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Silver bullet",
+    "openalex_id": "https://openalex.org/C2776088982",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Flagship species",
+    "openalex_id": "https://openalex.org/C126914827",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Biodiversity conservation",
+    "openalex_id": "https://openalex.org/C2994246104",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Umbrella species",
+    "openalex_id": "https://openalex.org/C126589399",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Conservation biology",
+    "openalex_id": "https://openalex.org/C34208539",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Endangered species",
+    "openalex_id": "https://openalex.org/C179345059",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Data assimilation",
+    "openalex_id": "https://openalex.org/C24552861",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Buoy",
+    "openalex_id": "https://openalex.org/C2779847632",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Radiosonde",
+    "openalex_id": "https://openalex.org/C11999413",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Troposphere",
+    "openalex_id": "https://openalex.org/C9075549",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Horizontal resolution",
+    "openalex_id": "https://openalex.org/C2984089914",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Satellite",
+    "openalex_id": "https://openalex.org/C19269812",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Hydraulic conductivity",
+    "openalex_id": "https://openalex.org/C63184880",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Soil water",
+    "openalex_id": "https://openalex.org/C159750122",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Conductivity",
+    "openalex_id": "https://openalex.org/C131540310",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Pressure head",
+    "openalex_id": "https://openalex.org/C128871136",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Water retention",
+    "openalex_id": "https://openalex.org/C2776491529",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Range (aeronautics)",
+    "openalex_id": "https://openalex.org/C204323151",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Water content",
+    "openalex_id": "https://openalex.org/C24939127",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Interim",
+    "openalex_id": "https://openalex.org/C2776957806",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "General Circulation Model",
+    "openalex_id": "https://openalex.org/C141452985",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Atmospheric circulation",
+    "openalex_id": "https://openalex.org/C150284090",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Consistency (knowledge bases)",
+    "openalex_id": "https://openalex.org/C2776436953",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Climate change",
+    "openalex_id": "https://openalex.org/C132651083",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Adaptation (eye)",
+    "openalex_id": "https://openalex.org/C139807058",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Climate change adaptation",
+    "openalex_id": "https://openalex.org/C2778851808",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Conceptual model",
+    "openalex_id": "https://openalex.org/C13606891",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Flow (mathematics)",
+    "openalex_id": "https://openalex.org/C38349280",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Streamflow",
+    "openalex_id": "https://openalex.org/C53739315",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Development (topology)",
+    "openalex_id": "https://openalex.org/C2776542497",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Drainage basin",
+    "openalex_id": "https://openalex.org/C126645576",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Climate model",
+    "openalex_id": "https://openalex.org/C168754636",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Climate commitment",
+    "openalex_id": "https://openalex.org/C48999079",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Atmosphere (unit)",
+    "openalex_id": "https://openalex.org/C65440619",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Global warming",
+    "openalex_id": "https://openalex.org/C115343472",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Effects of global warming",
+    "openalex_id": "https://openalex.org/C114990195",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Perception",
+    "openalex_id": "https://openalex.org/C26760741",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Ecological psychology",
+    "openalex_id": "https://openalex.org/C63847988",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Claus process",
+    "openalex_id": "https://openalex.org/C194191183",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Syngas",
+    "openalex_id": "https://openalex.org/C194439259",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Acid gas",
+    "openalex_id": "https://openalex.org/C109209724",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Hydrogen sulfide",
+    "openalex_id": "https://openalex.org/C2780564542",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Process (computing)",
+    "openalex_id": "https://openalex.org/C98045186",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Work (physics)",
+    "openalex_id": "https://openalex.org/C18762648",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Sulfur dioxide",
+    "openalex_id": "https://openalex.org/C2780447027",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Natural gas",
+    "openalex_id": "https://openalex.org/C59427239",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Sulfur",
+    "openalex_id": "https://openalex.org/C518881349",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Hydrogen",
+    "openalex_id": "https://openalex.org/C512968161",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Natural capital",
+    "openalex_id": "https://openalex.org/C162012527",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Biosphere",
+    "openalex_id": "https://openalex.org/C107218244",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Ecosystem services",
+    "openalex_id": "https://openalex.org/C58941895",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Biome",
+    "openalex_id": "https://openalex.org/C89920630",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Value (mathematics)",
+    "openalex_id": "https://openalex.org/C2776291640",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Ecosystem",
+    "openalex_id": "https://openalex.org/C110872660",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Titration",
+    "openalex_id": "https://openalex.org/C184866935",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Chromic acid",
+    "openalex_id": "https://openalex.org/C2780340842",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Organic matter",
+    "openalex_id": "https://openalex.org/C48743137",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Evapotranspiration",
+    "openalex_id": "https://openalex.org/C176783924",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Crop coefficient",
+    "openalex_id": "https://openalex.org/C72551326",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Crop",
+    "openalex_id": "https://openalex.org/C137580998",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Irrigation",
+    "openalex_id": "https://openalex.org/C88862950",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Drainage",
+    "openalex_id": "https://openalex.org/C67592535",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Hydrology (agriculture)",
+    "openalex_id": "https://openalex.org/C76886044",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Elevation (ballistics)",
+    "openalex_id": "https://openalex.org/C37054046",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Latitude",
+    "openalex_id": "https://openalex.org/C122523270",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Longitude",
+    "openalex_id": "https://openalex.org/C2780554747",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Multivariate interpolation",
+    "openalex_id": "https://openalex.org/C203332170",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Precipitation",
+    "openalex_id": "https://openalex.org/C107054158",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Data set",
+    "openalex_id": "https://openalex.org/C58489278",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Smoothing",
+    "openalex_id": "https://openalex.org/C3770464",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Interpolation (computer graphics)",
+    "openalex_id": "https://openalex.org/C137800194",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Bilinear interpolation",
+    "openalex_id": "https://openalex.org/C205203396",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Animation",
+    "openalex_id": "https://openalex.org/C502989409",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Nutrient",
+    "openalex_id": "https://openalex.org/C142796444",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Rhizosphere",
+    "openalex_id": "https://openalex.org/C86626682",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Micronutrient",
+    "openalex_id": "https://openalex.org/C14522933",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Plant nutrition",
+    "openalex_id": "https://openalex.org/C2780528068",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Xylem",
+    "openalex_id": "https://openalex.org/C49799701",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Mineral",
+    "openalex_id": "https://openalex.org/C2776432453",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Essential nutrient",
+    "openalex_id": "https://openalex.org/C186940473",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Bacteria",
+    "openalex_id": "https://openalex.org/C523546767",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Thermal conduction",
+    "openalex_id": "https://openalex.org/C172100665",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Resilience (materials science)",
+    "openalex_id": "https://openalex.org/C2779585090",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Ecological systems theory",
+    "openalex_id": "https://openalex.org/C47318914",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Radiative forcing",
+    "openalex_id": "https://openalex.org/C99578197",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Paleoclimatology",
+    "openalex_id": "https://openalex.org/C33683781",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Snow",
+    "openalex_id": "https://openalex.org/C197046000",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Forcing (mathematics)",
+    "openalex_id": "https://openalex.org/C197115733",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Production (economics)",
+    "openalex_id": "https://openalex.org/C2778348673",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Latent variable",
+    "openalex_id": "https://openalex.org/C51167844",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Internal combustion engine",
+    "openalex_id": "https://openalex.org/C511840579",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Combustion",
+    "openalex_id": "https://openalex.org/C105923489",
+    "works_count": 0
+  },
+  {
+    "field": "Environmental Science",
+    "topic": "Cloud cover",
+    "openalex_id": "https://openalex.org/C206887242",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Residual",
+    "openalex_id": "https://openalex.org/C155512373",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Coco",
+    "openalex_id": "https://openalex.org/C21780288",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Object detection",
+    "openalex_id": "https://openalex.org/C2776151529",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Deep learning",
+    "openalex_id": "https://openalex.org/C108583219",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Segmentation",
+    "openalex_id": "https://openalex.org/C89600930",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Pattern recognition (psychology)",
+    "openalex_id": "https://openalex.org/C153180895",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Set (abstract data type)",
+    "openalex_id": "https://openalex.org/C177264268",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Layer (electronics)",
+    "openalex_id": "https://openalex.org/C2779227376",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Artificial neural network",
+    "openalex_id": "https://openalex.org/C50644808",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Task (project management)",
+    "openalex_id": "https://openalex.org/C2780451532",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Residual neural network",
+    "openalex_id": "https://openalex.org/C2944601119",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Deep neural networks",
+    "openalex_id": "https://openalex.org/C2984842247",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Random forest",
+    "openalex_id": "https://openalex.org/C169258074",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "AdaBoost",
+    "openalex_id": "https://openalex.org/C141404830",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Tree (set theory)",
+    "openalex_id": "https://openalex.org/C113174947",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Generalization",
+    "openalex_id": "https://openalex.org/C177148314",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Support vector machine",
+    "openalex_id": "https://openalex.org/C12267149",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Generalization error",
+    "openalex_id": "https://openalex.org/C117765406",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Measure (data warehouse)",
+    "openalex_id": "https://openalex.org/C2780009758",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "False discovery rate",
+    "openalex_id": "https://openalex.org/C193244246",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Multiple comparisons problem",
+    "openalex_id": "https://openalex.org/C183905921",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Word error rate",
+    "openalex_id": "https://openalex.org/C40969351",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Statistical hypothesis testing",
+    "openalex_id": "https://openalex.org/C87007009",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Control (management)",
+    "openalex_id": "https://openalex.org/C2775924081",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Alignment-free sequence analysis",
+    "openalex_id": "https://openalex.org/C180384323",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Smith\u2013Waterman algorithm",
+    "openalex_id": "https://openalex.org/C72802188",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Sequence (biology)",
+    "openalex_id": "https://openalex.org/C2778112365",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Multiple sequence alignment",
+    "openalex_id": "https://openalex.org/C88031987",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Similarity (geometry)",
+    "openalex_id": "https://openalex.org/C103278499",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Flexibility (engineering)",
+    "openalex_id": "https://openalex.org/C2780598303",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Sequence alignment",
+    "openalex_id": "https://openalex.org/C45484198",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Similitude",
+    "openalex_id": "https://openalex.org/C143271835",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Peptide sequence",
+    "openalex_id": "https://openalex.org/C167625842",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Image (mathematics)",
+    "openalex_id": "https://openalex.org/C115961682",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Margin (machine learning)",
+    "openalex_id": "https://openalex.org/C774472",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Sliding window protocol",
+    "openalex_id": "https://openalex.org/C102392041",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Context (archaeology)",
+    "openalex_id": "https://openalex.org/C2779343474",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Path (computing)",
+    "openalex_id": "https://openalex.org/C2777735758",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Image segmentation",
+    "openalex_id": "https://openalex.org/C124504099",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Network architecture",
+    "openalex_id": "https://openalex.org/C193415008",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Window (computing)",
+    "openalex_id": "https://openalex.org/C2778751112",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Convolutional neural network",
+    "openalex_id": "https://openalex.org/C81363708",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Theory of planned behavior",
+    "openalex_id": "https://openalex.org/C89785696",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Expectancy theory",
+    "openalex_id": "https://openalex.org/C188353592",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Normative",
+    "openalex_id": "https://openalex.org/C44725695",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Variance (accounting)",
+    "openalex_id": "https://openalex.org/C196083921",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Perception",
+    "openalex_id": "https://openalex.org/C26760741",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Value (mathematics)",
+    "openalex_id": "https://openalex.org/C2776291640",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Abstraction",
+    "openalex_id": "https://openalex.org/C124304363",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Representation (politics)",
+    "openalex_id": "https://openalex.org/C2776359362",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Object (grammar)",
+    "openalex_id": "https://openalex.org/C2781238097",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Backpropagation",
+    "openalex_id": "https://openalex.org/C155032097",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Feature learning",
+    "openalex_id": "https://openalex.org/C59404180",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Politics",
+    "openalex_id": "https://openalex.org/C94625758",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Machine translation",
+    "openalex_id": "https://openalex.org/C203005215",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Transformer",
+    "openalex_id": "https://openalex.org/C66322947",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "BLEU",
+    "openalex_id": "https://openalex.org/C622187",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Encoder",
+    "openalex_id": "https://openalex.org/C118505674",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Parallelizable manifold",
+    "openalex_id": "https://openalex.org/C148047603",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Parsing",
+    "openalex_id": "https://openalex.org/C186644900",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Decoding methods",
+    "openalex_id": "https://openalex.org/C57273362",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Language model",
+    "openalex_id": "https://openalex.org/C137293760",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Voltage",
+    "openalex_id": "https://openalex.org/C165801399",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Cognitive bias",
+    "openalex_id": "https://openalex.org/C189216375",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Cognition",
+    "openalex_id": "https://openalex.org/C169900460",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Behavioural sciences",
+    "openalex_id": "https://openalex.org/C5570062",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Softmax function",
+    "openalex_id": "https://openalex.org/C188441871",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Pooling",
+    "openalex_id": "https://openalex.org/C70437156",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Dropout (neural networks)",
+    "openalex_id": "https://openalex.org/C2776145597",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Convolution (computer science)",
+    "openalex_id": "https://openalex.org/C45347329",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Regularization (linguistics)",
+    "openalex_id": "https://openalex.org/C2776135515",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Normalization (sociology)",
+    "openalex_id": "https://openalex.org/C136886441",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Scale (ratio)",
+    "openalex_id": "https://openalex.org/C2778755073",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Architecture",
+    "openalex_id": "https://openalex.org/C123657996",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Contextual image classification",
+    "openalex_id": "https://openalex.org/C75294576",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Iterated function",
+    "openalex_id": "https://openalex.org/C140479938",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Heuristic",
+    "openalex_id": "https://openalex.org/C173801870",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Position (finance)",
+    "openalex_id": "https://openalex.org/C198082294",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Sequence database",
+    "openalex_id": "https://openalex.org/C41584329",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Plug-in",
+    "openalex_id": "https://openalex.org/C4924752",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Scripting language",
+    "openalex_id": "https://openalex.org/C61423126",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Software",
+    "openalex_id": "https://openalex.org/C2777904410",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Transformation (genetics)",
+    "openalex_id": "https://openalex.org/C204241405",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Open source software",
+    "openalex_id": "https://openalex.org/C2988343187",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Open source",
+    "openalex_id": "https://openalex.org/C3018397939",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Image processing",
+    "openalex_id": "https://openalex.org/C9417928",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Software evolution",
+    "openalex_id": "https://openalex.org/C202105479",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Software system",
+    "openalex_id": "https://openalex.org/C149091818",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Software construction",
+    "openalex_id": "https://openalex.org/C186846655",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Visualization",
+    "openalex_id": "https://openalex.org/C36464697",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Rendering (computer graphics)",
+    "openalex_id": "https://openalex.org/C205711294",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Molecular graphics",
+    "openalex_id": "https://openalex.org/C126766683",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Python (programming language)",
+    "openalex_id": "https://openalex.org/C519991488",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Graphics",
+    "openalex_id": "https://openalex.org/C21442007",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Computer graphics",
+    "openalex_id": "https://openalex.org/C77660652",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "Documentation",
+    "openalex_id": "https://openalex.org/C56666940",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "MIT License",
+    "openalex_id": "https://openalex.org/C174183944",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "License",
+    "openalex_id": "https://openalex.org/C2780560020",
+    "works_count": 0
+  },
+  {
+    "field": "Materials Science",
+    "topic": "WordNet",
+    "openalex_id": "https://openalex.org/C157659113",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Citation",
+    "openalex_id": "https://openalex.org/C2778805511",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Icon",
+    "openalex_id": "https://openalex.org/C2778447006",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Altmetrics",
+    "openalex_id": "https://openalex.org/C2778407487",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Social media",
+    "openalex_id": "https://openalex.org/C518677369",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Citation analysis",
+    "openalex_id": "https://openalex.org/C105345328",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Systematic review",
+    "openalex_id": "https://openalex.org/C189708586",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "MEDLINE",
+    "openalex_id": "https://openalex.org/C2779473830",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Glossary",
+    "openalex_id": "https://openalex.org/C2780031656",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Innovation diffusion",
+    "openalex_id": "https://openalex.org/C3017618536",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Diffusion",
+    "openalex_id": "https://openalex.org/C69357855",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Index (typography)",
+    "openalex_id": "https://openalex.org/C2777382242",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Diffusion of innovations",
+    "openalex_id": "https://openalex.org/C2780917687",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Subject (documents)",
+    "openalex_id": "https://openalex.org/C2777855551",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Early adopter",
+    "openalex_id": "https://openalex.org/C125502",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Computational linguistics",
+    "openalex_id": "https://openalex.org/C155092808",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "KEGG",
+    "openalex_id": "https://openalex.org/C152724338",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Genome",
+    "openalex_id": "https://openalex.org/C141231307",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Gene",
+    "openalex_id": "https://openalex.org/C104317684",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Encyclopedia",
+    "openalex_id": "https://openalex.org/C148863701",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Gene expression",
+    "openalex_id": "https://openalex.org/C150194340",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Transcriptome",
+    "openalex_id": "https://openalex.org/C162317418",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Appeal",
+    "openalex_id": "https://openalex.org/C2778449503",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Focus (optics)",
+    "openalex_id": "https://openalex.org/C192209626",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Regular polygon",
+    "openalex_id": "https://openalex.org/C112680207",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Convex optimization",
+    "openalex_id": "https://openalex.org/C157972887",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Convex analysis",
+    "openalex_id": "https://openalex.org/C12108790",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Proper convex function",
+    "openalex_id": "https://openalex.org/C50862404",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Optimization problem",
+    "openalex_id": "https://openalex.org/C137836250",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Grading (engineering)",
+    "openalex_id": "https://openalex.org/C2777286243",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Complication",
+    "openalex_id": "https://openalex.org/C81182388",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Cohort",
+    "openalex_id": "https://openalex.org/C72563966",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Academic institution",
+    "openalex_id": "https://openalex.org/C2992478610",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Ranking (information retrieval)",
+    "openalex_id": "https://openalex.org/C189430467",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Declaration of Helsinki",
+    "openalex_id": "https://openalex.org/C2775998707",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Declaration",
+    "openalex_id": "https://openalex.org/C138147947",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Association (psychology)",
+    "openalex_id": "https://openalex.org/C142853389",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Informed consent",
+    "openalex_id": "https://openalex.org/C68122502",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Alternative medicine",
+    "openalex_id": "https://openalex.org/C204787440",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Reuse",
+    "openalex_id": "https://openalex.org/C206588197",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Research design",
+    "openalex_id": "https://openalex.org/C2779318504",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Quantitative research",
+    "openalex_id": "https://openalex.org/C87858587",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Qualitative research",
+    "openalex_id": "https://openalex.org/C190248442",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Sample (material)",
+    "openalex_id": "https://openalex.org/C198531522",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Qualitative property",
+    "openalex_id": "https://openalex.org/C87156501",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Process (computing)",
+    "openalex_id": "https://openalex.org/C98045186",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Growth theory",
+    "openalex_id": "https://openalex.org/C2991968081",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Set (abstract data type)",
+    "openalex_id": "https://openalex.org/C177264268",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Theory of the firm",
+    "openalex_id": "https://openalex.org/C78173224",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Quality of evidence",
+    "openalex_id": "https://openalex.org/C3018989441",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Quality (philosophy)",
+    "openalex_id": "https://openalex.org/C2779530757",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Consensus conference",
+    "openalex_id": "https://openalex.org/C3017605391",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Evidence-based medicine",
+    "openalex_id": "https://openalex.org/C19648533",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Rating system",
+    "openalex_id": "https://openalex.org/C2988118254",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Meta-analysis",
+    "openalex_id": "https://openalex.org/C95190672",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Simple (philosophy)",
+    "openalex_id": "https://openalex.org/C2780586882",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Epidemiology",
+    "openalex_id": "https://openalex.org/C107130276",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Officer",
+    "openalex_id": "https://openalex.org/C2777189325",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "George (robot)",
+    "openalex_id": "https://openalex.org/C67101536",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Scatchard plot",
+    "openalex_id": "https://openalex.org/C19052677",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Annals",
+    "openalex_id": "https://openalex.org/C2780708616",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Binding site",
+    "openalex_id": "https://openalex.org/C107824862",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Volume (thermodynamics)",
+    "openalex_id": "https://openalex.org/C20556612",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "ENCODE",
+    "openalex_id": "https://openalex.org/C66746571",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Human genome",
+    "openalex_id": "https://openalex.org/C197077220",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Chromatin",
+    "openalex_id": "https://openalex.org/C83640560",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Genome project",
+    "openalex_id": "https://openalex.org/C89566754",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Expansive",
+    "openalex_id": "https://openalex.org/C2780502288",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Compressive strength",
+    "openalex_id": "https://openalex.org/C30407753",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "van der Waals force",
+    "openalex_id": "https://openalex.org/C126061179",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Molecule",
+    "openalex_id": "https://openalex.org/C32909587",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Suite",
+    "openalex_id": "https://openalex.org/C79581498",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Software",
+    "openalex_id": "https://openalex.org/C2777904410",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Clinical microbiology",
+    "openalex_id": "https://openalex.org/C2992965680",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "State (computer science)",
+    "openalex_id": "https://openalex.org/C48103436",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Bibliography",
+    "openalex_id": "https://openalex.org/C97002063",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Perturbation (astronomy)",
+    "openalex_id": "https://openalex.org/C177918212",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Linear operators",
+    "openalex_id": "https://openalex.org/C3019018024",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Perturbation theory (quantum mechanics)",
+    "openalex_id": "https://openalex.org/C174256460",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Calculus (dental)",
+    "openalex_id": "https://openalex.org/C2777686260",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Bounded function",
+    "openalex_id": "https://openalex.org/C34388435",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Metaphor",
+    "openalex_id": "https://openalex.org/C2778311575",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Perception",
+    "openalex_id": "https://openalex.org/C26760741",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Affect (linguistics)",
+    "openalex_id": "https://openalex.org/C2776035688",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Solvation",
+    "openalex_id": "https://openalex.org/C148093993",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Entomology",
+    "openalex_id": "https://openalex.org/C147135968",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Agriculture",
+    "openalex_id": "https://openalex.org/C118518473",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Session (web analytics)",
+    "openalex_id": "https://openalex.org/C2779182362",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Series (stratigraphy)",
+    "openalex_id": "https://openalex.org/C143724316",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Linear regression",
+    "openalex_id": "https://openalex.org/C48921125",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Linear model",
+    "openalex_id": "https://openalex.org/C163175372",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Data set",
+    "openalex_id": "https://openalex.org/C58489278",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Generalized linear model",
+    "openalex_id": "https://openalex.org/C41587187",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Reading (process)",
+    "openalex_id": "https://openalex.org/C554936623",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Framing (construction)",
+    "openalex_id": "https://openalex.org/C169087156",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Journalism",
+    "openalex_id": "https://openalex.org/C119513131",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Scholarly communication",
+    "openalex_id": "https://openalex.org/C2777462167",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Political communication",
+    "openalex_id": "https://openalex.org/C90508534",
+    "works_count": 0
+  },
+  {
+    "field": "Economics",
+    "topic": "Democracy",
+    "openalex_id": "https://openalex.org/C555826173",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Thematic analysis",
+    "openalex_id": "https://openalex.org/C74196892",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Thematic map",
+    "openalex_id": "https://openalex.org/C93692415",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Qualitative analysis",
+    "openalex_id": "https://openalex.org/C3018587665",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Qualitative research",
+    "openalex_id": "https://openalex.org/C190248442",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Relation (database)",
+    "openalex_id": "https://openalex.org/C25343380",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Thematic structure",
+    "openalex_id": "https://openalex.org/C2778109090",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Classification of mental disorders",
+    "openalex_id": "https://openalex.org/C38905598",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Diagnostic Classification of Mental Health and Developmental Disorders of Infancy and Early Childhood",
+    "openalex_id": "https://openalex.org/C190798599",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Mental health",
+    "openalex_id": "https://openalex.org/C134362201",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Prevalence of mental disorders",
+    "openalex_id": "https://openalex.org/C145734003",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Short-term memory",
+    "openalex_id": "https://openalex.org/C179226034",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Cognition",
+    "openalex_id": "https://openalex.org/C169900460",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Working memory",
+    "openalex_id": "https://openalex.org/C21963081",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Checklist",
+    "openalex_id": "https://openalex.org/C2779356329",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Systematic review",
+    "openalex_id": "https://openalex.org/C189708586",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Guideline",
+    "openalex_id": "https://openalex.org/C2780182762",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Statement (logic)",
+    "openalex_id": "https://openalex.org/C2777026412",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Terminology",
+    "openalex_id": "https://openalex.org/C547195049",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Presentation (obstetrics)",
+    "openalex_id": "https://openalex.org/C2777601897",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "MEDLINE",
+    "openalex_id": "https://openalex.org/C2779473830",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Pronoun",
+    "openalex_id": "https://openalex.org/C2778551981",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Personal pronoun",
+    "openalex_id": "https://openalex.org/C24184978",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Subject pronoun",
+    "openalex_id": "https://openalex.org/C2764733",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Dementia",
+    "openalex_id": "https://openalex.org/C2779483572",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Disease",
+    "openalex_id": "https://openalex.org/C2779134260",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Theory of planned behavior",
+    "openalex_id": "https://openalex.org/C89785696",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Expectancy theory",
+    "openalex_id": "https://openalex.org/C188353592",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Normative",
+    "openalex_id": "https://openalex.org/C44725695",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Variance (accounting)",
+    "openalex_id": "https://openalex.org/C196083921",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Perception",
+    "openalex_id": "https://openalex.org/C26760741",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Control (management)",
+    "openalex_id": "https://openalex.org/C2775924081",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Value (mathematics)",
+    "openalex_id": "https://openalex.org/C2776291640",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Statistical power",
+    "openalex_id": "https://openalex.org/C96608239",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Power analysis",
+    "openalex_id": "https://openalex.org/C71743495",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Statistical analysis",
+    "openalex_id": "https://openalex.org/C2986587452",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Behavioural sciences",
+    "openalex_id": "https://openalex.org/C5570062",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Power (physics)",
+    "openalex_id": "https://openalex.org/C163258240",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Cognitive bias",
+    "openalex_id": "https://openalex.org/C189216375",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Moderation",
+    "openalex_id": "https://openalex.org/C93225998",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Personality",
+    "openalex_id": "https://openalex.org/C187288502",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Conceptual framework",
+    "openalex_id": "https://openalex.org/C14224292",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Mediator",
+    "openalex_id": "https://openalex.org/C2107291",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Technology acceptance model",
+    "openalex_id": "https://openalex.org/C2776185967",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Usability",
+    "openalex_id": "https://openalex.org/C170130773",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Information technology",
+    "openalex_id": "https://openalex.org/C121017731",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Information system",
+    "openalex_id": "https://openalex.org/C180198813",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Meta-analysis",
+    "openalex_id": "https://openalex.org/C95190672",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Symbol (formal)",
+    "openalex_id": "https://openalex.org/C134400042",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Index (typography)",
+    "openalex_id": "https://openalex.org/C2777382242",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Scale (ratio)",
+    "openalex_id": "https://openalex.org/C2778755073",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Construct validity",
+    "openalex_id": "https://openalex.org/C49453240",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Reliability (semiconductor)",
+    "openalex_id": "https://openalex.org/C43214815",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Test validity",
+    "openalex_id": "https://openalex.org/C116211729",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Psychometrics",
+    "openalex_id": "https://openalex.org/C171606756",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Internal consistency",
+    "openalex_id": "https://openalex.org/C3018868096",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Grounded theory",
+    "openalex_id": "https://openalex.org/C156325361",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Anxiety",
+    "openalex_id": "https://openalex.org/C558461103",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Depression (economics)",
+    "openalex_id": "https://openalex.org/C2776867660",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Hospital Anxiety and Depression Scale",
+    "openalex_id": "https://openalex.org/C2778739829",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Outpatient clinic",
+    "openalex_id": "https://openalex.org/C3020110884",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Qualitative property",
+    "openalex_id": "https://openalex.org/C87156501",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "CLARITY",
+    "openalex_id": "https://openalex.org/C2777146004",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Strengths and weaknesses",
+    "openalex_id": "https://openalex.org/C63882131",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Health care",
+    "openalex_id": "https://openalex.org/C160735492",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Alternative medicine",
+    "openalex_id": "https://openalex.org/C204787440",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Consolidated Standards of Reporting Trials",
+    "openalex_id": "https://openalex.org/C49290038",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Content analysis",
+    "openalex_id": "https://openalex.org/C162446236",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Summative assessment",
+    "openalex_id": "https://openalex.org/C152747807",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Coding (social sciences)",
+    "openalex_id": "https://openalex.org/C179518139",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Content (measure theory)",
+    "openalex_id": "https://openalex.org/C2778152352",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Meaning (existential)",
+    "openalex_id": "https://openalex.org/C2780876879",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Trustworthiness",
+    "openalex_id": "https://openalex.org/C153701036",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Context (archaeology)",
+    "openalex_id": "https://openalex.org/C2779343474",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Interpretation (philosophy)",
+    "openalex_id": "https://openalex.org/C527412718",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Formative assessment",
+    "openalex_id": "https://openalex.org/C42525527",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Behavior change",
+    "openalex_id": "https://openalex.org/C14262774",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Primer (cosmetics)",
+    "openalex_id": "https://openalex.org/C2777563447",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "CINAHL",
+    "openalex_id": "https://openalex.org/C2781145037",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Respondent",
+    "openalex_id": "https://openalex.org/C2776640315",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Data collection",
+    "openalex_id": "https://openalex.org/C133462117",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Research design",
+    "openalex_id": "https://openalex.org/C2779318504",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Focus group",
+    "openalex_id": "https://openalex.org/C56995899",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Psychological intervention",
+    "openalex_id": "https://openalex.org/C27415008",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Support vector machine",
+    "openalex_id": "https://openalex.org/C12267149",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Popularity",
+    "openalex_id": "https://openalex.org/C2780586970",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Selection (genetic algorithm)",
+    "openalex_id": "https://openalex.org/C81917197",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Convergence (economics)",
+    "openalex_id": "https://openalex.org/C2777303404",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Multiclass classification",
+    "openalex_id": "https://openalex.org/C123860398",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Self-control",
+    "openalex_id": "https://openalex.org/C32362775",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Self-efficacy",
+    "openalex_id": "https://openalex.org/C110131835",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Quality (philosophy)",
+    "openalex_id": "https://openalex.org/C2779530757",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Situated",
+    "openalex_id": "https://openalex.org/C132829578",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Situated learning",
+    "openalex_id": "https://openalex.org/C200380349",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Peripheral",
+    "openalex_id": "https://openalex.org/C46762472",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Structural equation modeling",
+    "openalex_id": "https://openalex.org/C71104824",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Calculus (dental)",
+    "openalex_id": "https://openalex.org/C2777686260",
+    "works_count": 0
+  },
+  {
+    "field": "Psychology",
+    "topic": "Variety (cybernetics)",
+    "openalex_id": "https://openalex.org/C136197465",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Social media",
+    "openalex_id": "https://openalex.org/C518677369",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Social media optimization",
+    "openalex_id": "https://openalex.org/C60136833",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Web 2.0",
+    "openalex_id": "https://openalex.org/C136699151",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Metaverse",
+    "openalex_id": "https://openalex.org/C53332860",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "User-generated content",
+    "openalex_id": "https://openalex.org/C101293273",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "The Internet",
+    "openalex_id": "https://openalex.org/C110875604",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Virtual reality",
+    "openalex_id": "https://openalex.org/C194969405",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Quarantine",
+    "openalex_id": "https://openalex.org/C2781402358",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Anger",
+    "openalex_id": "https://openalex.org/C2779302386",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Pandemic",
+    "openalex_id": "https://openalex.org/C89623803",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Stressor",
+    "openalex_id": "https://openalex.org/C125370674",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Boredom",
+    "openalex_id": "https://openalex.org/C2777589236",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Coronavirus disease 2019 (COVID-19)",
+    "openalex_id": "https://openalex.org/C3008058167",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Disease",
+    "openalex_id": "https://openalex.org/C2779134260",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Infectious disease (medical specialty)",
+    "openalex_id": "https://openalex.org/C524204448",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Internet of Things",
+    "openalex_id": "https://openalex.org/C81860439",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Anonymity",
+    "openalex_id": "https://openalex.org/C178005623",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "k-anonymity",
+    "openalex_id": "https://openalex.org/C2777706471",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Identification (biology)",
+    "openalex_id": "https://openalex.org/C116834253",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Software deployment",
+    "openalex_id": "https://openalex.org/C105339364",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Data Protection Act 1998",
+    "openalex_id": "https://openalex.org/C69360830",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Set (abstract data type)",
+    "openalex_id": "https://openalex.org/C177264268",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Private information retrieval",
+    "openalex_id": "https://openalex.org/C99221444",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Information privacy",
+    "openalex_id": "https://openalex.org/C123201435",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Rumor",
+    "openalex_id": "https://openalex.org/C2780469804",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Fake news",
+    "openalex_id": "https://openalex.org/C2779756789",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Novelty",
+    "openalex_id": "https://openalex.org/C2778738651",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Deception",
+    "openalex_id": "https://openalex.org/C2779267917",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Politics",
+    "openalex_id": "https://openalex.org/C94625758",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Download",
+    "openalex_id": "https://openalex.org/C2780154274",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Burnout",
+    "openalex_id": "https://openalex.org/C143916079",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Microblogging",
+    "openalex_id": "https://openalex.org/C143275388",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Service (business)",
+    "openalex_id": "https://openalex.org/C2780378061",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Social network (sociolinguistics)",
+    "openalex_id": "https://openalex.org/C4727928",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Character (mathematics)",
+    "openalex_id": "https://openalex.org/C2780861071",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Limit (mathematics)",
+    "openalex_id": "https://openalex.org/C151201525",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Presidential election",
+    "openalex_id": "https://openalex.org/C2776129789",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Ideology",
+    "openalex_id": "https://openalex.org/C158071213",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Order (exchange)",
+    "openalex_id": "https://openalex.org/C182306322",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "News media",
+    "openalex_id": "https://openalex.org/C529147693",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Word of mouth",
+    "openalex_id": "https://openalex.org/C137913393",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Relevance (law)",
+    "openalex_id": "https://openalex.org/C158154518",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Typology",
+    "openalex_id": "https://openalex.org/C75795011",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Multitude",
+    "openalex_id": "https://openalex.org/C2780565519",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Incentive",
+    "openalex_id": "https://openalex.org/C29122968",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Opinion leadership",
+    "openalex_id": "https://openalex.org/C139268390",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Consumer behaviour",
+    "openalex_id": "https://openalex.org/C23213687",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Sample (material)",
+    "openalex_id": "https://openalex.org/C198531522",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Grossman",
+    "openalex_id": "https://openalex.org/C2780596892",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Control (management)",
+    "openalex_id": "https://openalex.org/C2775924081",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Property rights",
+    "openalex_id": "https://openalex.org/C86511162",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Third party",
+    "openalex_id": "https://openalex.org/C2983583741",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Theory of the firm",
+    "openalex_id": "https://openalex.org/C78173224",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Simple (philosophy)",
+    "openalex_id": "https://openalex.org/C2780586882",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Property (philosophy)",
+    "openalex_id": "https://openalex.org/C189950617",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Coin flipping",
+    "openalex_id": "https://openalex.org/C97399411",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Public-key cryptography",
+    "openalex_id": "https://openalex.org/C203062551",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Cryptography",
+    "openalex_id": "https://openalex.org/C178489894",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Key (lock)",
+    "openalex_id": "https://openalex.org/C26517878",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "ID-based cryptography",
+    "openalex_id": "https://openalex.org/C19150895",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Key distribution",
+    "openalex_id": "https://openalex.org/C160333310",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Encryption",
+    "openalex_id": "https://openalex.org/C148730421",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Stochastic gradient descent",
+    "openalex_id": "https://openalex.org/C206688291",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Constraint (computer-aided design)",
+    "openalex_id": "https://openalex.org/C2776036281",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Federated learning",
+    "openalex_id": "https://openalex.org/C2992525071",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Principal (computer security)",
+    "openalex_id": "https://openalex.org/C144559511",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Language model",
+    "openalex_id": "https://openalex.org/C137293760",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Deep learning",
+    "openalex_id": "https://openalex.org/C108583219",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Mobile device",
+    "openalex_id": "https://openalex.org/C186967261",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Data modeling",
+    "openalex_id": "https://openalex.org/C67186912",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Gradient descent",
+    "openalex_id": "https://openalex.org/C153258448",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Artificial neural network",
+    "openalex_id": "https://openalex.org/C50644808",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Collaborative filtering",
+    "openalex_id": "https://openalex.org/C21569690",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Interoperability",
+    "openalex_id": "https://openalex.org/C20136886",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Server",
+    "openalex_id": "https://openalex.org/C93996380",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Dissemination",
+    "openalex_id": "https://openalex.org/C101780184",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Recommender system",
+    "openalex_id": "https://openalex.org/C557471498",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Biometrics",
+    "openalex_id": "https://openalex.org/C184297639",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Password",
+    "openalex_id": "https://openalex.org/C109297577",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Variety (cybernetics)",
+    "openalex_id": "https://openalex.org/C136197465",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Identity (music)",
+    "openalex_id": "https://openalex.org/C2778355321",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Authentication (law)",
+    "openalex_id": "https://openalex.org/C148417208",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Field (mathematics)",
+    "openalex_id": "https://openalex.org/C9652623",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Identity theft",
+    "openalex_id": "https://openalex.org/C522325796",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Reputation",
+    "openalex_id": "https://openalex.org/C48798503",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Phenomenon",
+    "openalex_id": "https://openalex.org/C50335755",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Focus (optics)",
+    "openalex_id": "https://openalex.org/C192209626",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Need to know",
+    "openalex_id": "https://openalex.org/C2778519782",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Login",
+    "openalex_id": "https://openalex.org/C113324615",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Personally identifiable information",
+    "openalex_id": "https://openalex.org/C169093310",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Competence (human resources)",
+    "openalex_id": "https://openalex.org/C100521375",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Conversation",
+    "openalex_id": "https://openalex.org/C2777200299",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Commodification",
+    "openalex_id": "https://openalex.org/C57481673",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Face (sociological concept)",
+    "openalex_id": "https://openalex.org/C2779304628",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Emoji",
+    "openalex_id": "https://openalex.org/C2779247141",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Context (archaeology)",
+    "openalex_id": "https://openalex.org/C2779343474",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Volunteered geographic information",
+    "openalex_id": "https://openalex.org/C57380593",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Citizen science",
+    "openalex_id": "https://openalex.org/C197352329",
+    "works_count": 0
+  },
+  {
+    "field": "Business",
+    "topic": "Amateur",
+    "openalex_id": "https://openalex.org/C2778044066",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Simple (philosophy)",
+    "openalex_id": "https://openalex.org/C2780586882",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Scaling",
+    "openalex_id": "https://openalex.org/C99844830",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Linear scale",
+    "openalex_id": "https://openalex.org/C170122806",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Spin density",
+    "openalex_id": "https://openalex.org/C3018272316",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Spin (aerodynamics)",
+    "openalex_id": "https://openalex.org/C42704618",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Local-density approximation",
+    "openalex_id": "https://openalex.org/C9249130",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Kohn\u2013Sham equations",
+    "openalex_id": "https://openalex.org/C9059619",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Electronic structure",
+    "openalex_id": "https://openalex.org/C86025842",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Density functional theory",
+    "openalex_id": "https://openalex.org/C152365726",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Superconductivity",
+    "openalex_id": "https://openalex.org/C54101563",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Quantum",
+    "openalex_id": "https://openalex.org/C84114770",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Charge (physics)",
+    "openalex_id": "https://openalex.org/C188082385",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Charge density wave",
+    "openalex_id": "https://openalex.org/C2780525273",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ab initio",
+    "openalex_id": "https://openalex.org/C2781442258",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Basis set",
+    "openalex_id": "https://openalex.org/C65956243",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Basis (linear algebra)",
+    "openalex_id": "https://openalex.org/C12426560",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Subspace topology",
+    "openalex_id": "https://openalex.org/C32834561",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Plane wave",
+    "openalex_id": "https://openalex.org/C40308292",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Molecule",
+    "openalex_id": "https://openalex.org/C32909587",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Cutoff",
+    "openalex_id": "https://openalex.org/C2778217198",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Index (typography)",
+    "openalex_id": "https://openalex.org/C2777382242",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Population",
+    "openalex_id": "https://openalex.org/C2908647359",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Covariance",
+    "openalex_id": "https://openalex.org/C178650346",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Structural equation modeling",
+    "openalex_id": "https://openalex.org/C71104824",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Thermochemistry",
+    "openalex_id": "https://openalex.org/C29563950",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Hybrid functional",
+    "openalex_id": "https://openalex.org/C22693506",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ionization",
+    "openalex_id": "https://openalex.org/C198291218",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Orbital-free density functional theory",
+    "openalex_id": "https://openalex.org/C104970782",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Proton",
+    "openalex_id": "https://openalex.org/C54516573",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ion",
+    "openalex_id": "https://openalex.org/C145148216",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Kinetic energy",
+    "openalex_id": "https://openalex.org/C135889238",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Density matrix",
+    "openalex_id": "https://openalex.org/C56911000",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Electronic correlation",
+    "openalex_id": "https://openalex.org/C35052450",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Energy (signal processing)",
+    "openalex_id": "https://openalex.org/C186370098",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Electron density",
+    "openalex_id": "https://openalex.org/C125485243",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Hartree\u2013Fock method",
+    "openalex_id": "https://openalex.org/C113630233",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Potential energy",
+    "openalex_id": "https://openalex.org/C84551667",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Electron",
+    "openalex_id": "https://openalex.org/C147120987",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Term (time)",
+    "openalex_id": "https://openalex.org/C61797465",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Short-term memory",
+    "openalex_id": "https://openalex.org/C179226034",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Cognition",
+    "openalex_id": "https://openalex.org/C169900460",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Working memory",
+    "openalex_id": "https://openalex.org/C21963081",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Pseudopotential",
+    "openalex_id": "https://openalex.org/C132378524",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Projector",
+    "openalex_id": "https://openalex.org/C2776865275",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Envelope (radar)",
+    "openalex_id": "https://openalex.org/C65155139",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Separable space",
+    "openalex_id": "https://openalex.org/C70710897",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Wave function",
+    "openalex_id": "https://openalex.org/C113603373",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Function (biology)",
+    "openalex_id": "https://openalex.org/C14036430",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Radar",
+    "openalex_id": "https://openalex.org/C554190296",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Statistical power",
+    "openalex_id": "https://openalex.org/C96608239",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Power analysis",
+    "openalex_id": "https://openalex.org/C71743495",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Statistical analysis",
+    "openalex_id": "https://openalex.org/C2986587452",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Behavioural sciences",
+    "openalex_id": "https://openalex.org/C5570062",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Power (physics)",
+    "openalex_id": "https://openalex.org/C163258240",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Tensor (intrinsic definition)",
+    "openalex_id": "https://openalex.org/C155281189",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Categorical variable",
+    "openalex_id": "https://openalex.org/C5274069",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Kappa",
+    "openalex_id": "https://openalex.org/C2778724333",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Homogeneity (statistics)",
+    "openalex_id": "https://openalex.org/C142259097",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Multivariate statistics",
+    "openalex_id": "https://openalex.org/C161584116",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Statistical hypothesis testing",
+    "openalex_id": "https://openalex.org/C87007009",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Cohen's kappa",
+    "openalex_id": "https://openalex.org/C163864269",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Observer (physics)",
+    "openalex_id": "https://openalex.org/C2780704645",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Poisson distribution",
+    "openalex_id": "https://openalex.org/C100906024",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Reliability (semiconductor)",
+    "openalex_id": "https://openalex.org/C43214815",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Type I and type II errors",
+    "openalex_id": "https://openalex.org/C40696583",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Multivariate analysis",
+    "openalex_id": "https://openalex.org/C38180746",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Machine translation",
+    "openalex_id": "https://openalex.org/C203005215",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Transformer",
+    "openalex_id": "https://openalex.org/C66322947",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "BLEU",
+    "openalex_id": "https://openalex.org/C622187",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Encoder",
+    "openalex_id": "https://openalex.org/C118505674",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Parallelizable manifold",
+    "openalex_id": "https://openalex.org/C148047603",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Parsing",
+    "openalex_id": "https://openalex.org/C186644900",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Decoding methods",
+    "openalex_id": "https://openalex.org/C57273362",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Language model",
+    "openalex_id": "https://openalex.org/C137293760",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Task (project management)",
+    "openalex_id": "https://openalex.org/C2780451532",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Convolutional neural network",
+    "openalex_id": "https://openalex.org/C81363708",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Voltage",
+    "openalex_id": "https://openalex.org/C165801399",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Hamiltonian (control theory)",
+    "openalex_id": "https://openalex.org/C130787639",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ab initio quantum chemistry methods",
+    "openalex_id": "https://openalex.org/C183971685",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Phonon",
+    "openalex_id": "https://openalex.org/C24169881",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Degrees of freedom (physics and chemistry)",
+    "openalex_id": "https://openalex.org/C208081375",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Tetrahedron",
+    "openalex_id": "https://openalex.org/C105239961",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Electric field",
+    "openalex_id": "https://openalex.org/C60799052",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Graphene",
+    "openalex_id": "https://openalex.org/C30080830",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Fullerene",
+    "openalex_id": "https://openalex.org/C162862793",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Field-effect transistor",
+    "openalex_id": "https://openalex.org/C145598152",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Carbon fibers",
+    "openalex_id": "https://openalex.org/C140205800",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ballistic conduction",
+    "openalex_id": "https://openalex.org/C192683347",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Metal",
+    "openalex_id": "https://openalex.org/C544153396",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Field (mathematics)",
+    "openalex_id": "https://openalex.org/C9652623",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Thin film",
+    "openalex_id": "https://openalex.org/C19067145",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Transistor",
+    "openalex_id": "https://openalex.org/C172385210",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Composite number",
+    "openalex_id": "https://openalex.org/C104779481",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ionic radius",
+    "openalex_id": "https://openalex.org/C54998646",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Electronegativity",
+    "openalex_id": "https://openalex.org/C177293861",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Covalent bond",
+    "openalex_id": "https://openalex.org/C180577832",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Ionic bonding",
+    "openalex_id": "https://openalex.org/C2182769",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Bond length",
+    "openalex_id": "https://openalex.org/C155860418",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Delocalized electron",
+    "openalex_id": "https://openalex.org/C70050531",
+    "works_count": 0
+  },
+  {
+    "field": "History",
+    "topic": "Octahedron",
+    "openalex_id": "https://openalex.org/C198819137",
+    "works_count": 0
+  }
+]

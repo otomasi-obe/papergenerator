@@ -59,17 +59,87 @@ jobs = Blueprint("jobs", __name__)
 log = logging.getLogger(__name__)
 
 
-def _collect_gambar_prompts(paper_data: dict) -> list[dict]:
+def _detect_paper_kind(paper_data: dict) -> str:
+    """Detect paper type: 'regular' or 'review'.
+
+    REVIEW mode indicators (from prompt rules):
+      - section2 title contains 'review methodology' / 'metodologi review'
+      - section3+ are 'TOPIC DISCUSSION' (not 'METHODOLOGY'/'RESULTS')
+      - section3+ subsections lack typical metodologi/results structure
+
+    REGULAR mode indicators:
+      - section2 = LITERATURE REVIEW
+      - section3 = METHODOLOGY
+      - section4 = RESULTS AND DISCUSSION
+
+    Returns 'review' or 'regular' (default).
+    """
+    if not isinstance(paper_data, dict):
+        return "regular"
+
+    import re as _re
+
+    # Check section2 title for review signals
+    s2 = paper_data.get("section2", {})
+    s2_title = str(s2.get("title", "") if isinstance(s2, dict) else "").lower()
+    if any(kw in s2_title for kw in ("review methodology", "metodologi review", "systematic review")):
+        return "review"
+
+    # Check section3 structure: if it has subsections that look like TOPIC DISCUSSION
+    # rather than METHODOLOGY, it's a review
+    s3 = paper_data.get("section3", {})
+    if isinstance(s3, dict):
+        s3_title = str(s3.get("title", "")).lower()
+        s3_content = s3.get("content", {})
+        # Count subsections that are topic-like
+        if isinstance(s3_content, dict):
+            topic_count = 0
+            methodology_count = 0
+            for k in s3_content:
+                if _re.match(r'section3[a-z]$', k):
+                    sub = s3_content[k]
+                    if isinstance(sub, dict):
+                        sub_title = str(sub.get("title", "")).lower()
+                        if any(kw in sub_title for kw in ("method", "metode", "experiment")):
+                            methodology_count += 1
+                        else:
+                            topic_count += 1
+            # Only consider review if there are 3+ topic subsections and no methodology subsections
+            if topic_count >= 3 and methodology_count == 0:
+                return "review"
+
+    # Check section4: in review mode, sec4 is also a topic discussion
+    s4 = paper_data.get("section4", {})
+    if isinstance(s4, dict):
+        s4_title = str(s4.get("title", "")).lower()
+        if any(kw in s4_title for kw in ("results", "result", "hasil")):
+            return "regular"
+
+    # Default: regular
+    return "regular"
+
+
+def _collect_gambar_prompts(paper_data: dict, paper_kind: Optional[str] = None) -> list[dict]:
     """Walk the paper JSON and extract image generation prompts from gambar items.
 
-    Section 2/3 conceptual images → always returned for Gemini image gen.
-    Section 4 gambar:
-      - If Prompt contains chart data (markdown table, numeric data) → skip
-        (handled by _collect_section4_chart_specs for data tools pipeline)
-      - If Prompt is conceptual (no data) → include for Gemini (paper review mode)
+    Image scope rules:
+      - REGULAR paper (default): sections 2-3 ONLY (conceptual figures).
+        Section 4 MUST use data tools (charts), NOT Gemini image generation.
+      - REVIEW paper: ALL sections — section 4 images are conceptual (no chart data).
+
+    Section 4 gambar (REGULAR):
+      - Always SKIP — data tools pipeline handles section 4 charts.
+        Handled by _collect_section4_chart_specs for data tools pipeline.
+
+    Args:
+        paper_data: Full paper JSON.
+        paper_kind: 'regular' or 'review'. Auto-detected if None.
 
     Returns a list of dicts: {prompt, image_number, title, original_path}.
     """
+    if paper_kind is None:
+        paper_kind = _detect_paper_kind(paper_data)
+
     prompts = []
     if not isinstance(paper_data, dict):
         return prompts
@@ -92,35 +162,67 @@ def _collect_gambar_prompts(paper_data: dict) -> list[dict]:
             return True
         return False
 
-    def walk(obj, in_section4=False):
+    def _is_section_dict(obj) -> bool:
+        """Detect if a dict looks like a paper section (has title + content)."""
+        if not isinstance(obj, dict):
+            return False
+        return "title" in obj and "content" in obj
+
+    def walk(obj, current_section=None):
         if isinstance(obj, dict):
             if obj.get("id") == "gambar":
                 p = obj.get("Prompt") or obj.get("prompt") or ""
-                if in_section4:
-                    # Section 4: only include if it's conceptual (no chart data)
-                    # This handles paper review mode where section 4 has conceptual images
-                    if p.strip() and not _has_chart_data(p):
+                if not p.strip():
+                    pass  # skip empty prompts
+                elif current_section == "section4":
+                    # Section 4: REVIEW mode → include conceptual images (no chart data).
+                    # REGULAR mode → ALWAYS skip (data tools handles charts).
+                    if paper_kind == "review" and not _has_chart_data(p):
                         prompts.append({
                             "prompt": p.strip(),
                             "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
                             "title": obj.get("Title") or obj.get("title") or "",
                             "original_path": obj.get("Path") or obj.get("path") or "",
                         })
-                elif p.strip():
+                elif current_section in ("section2", "section3"):
+                    # Sections 2-3: include for both regular and review
                     prompts.append({
                         "prompt": p.strip(),
                         "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
                         "title": obj.get("Title") or obj.get("title") or "",
                         "original_path": obj.get("Path") or obj.get("path") or "",
+                        "_section": current_section,
                     })
+                elif current_section is None:
+                    # Top-level gambar (rare): include only for review mode
+                    if paper_kind == "review":
+                        prompts.append({
+                            "prompt": p.strip(),
+                            "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
+                            "title": obj.get("Title") or obj.get("title") or "",
+                            "original_path": obj.get("Path") or obj.get("path") or "",
+                        })
             for k, v in obj.items():
-                child_in_section4 = in_section4 or (isinstance(k, str) and bool(
-                    re.match(r'section4[a-z]?$', k)
-                ))
-                walk(v, in_section4=child_in_section4)
+                child_section = current_section
+                if isinstance(k, str):
+                    m = re.match(r'(section\d+)[a-z]?$', k)
+                    if m:
+                        child_section = m.group(1)
+                    # Detect list-based sections/subsection structures.
+                    # When key is "sections" or "subsections", the list items
+                    # are section-like dicts → track position as section number.
+                    if k in ("sections", "subsections") and isinstance(v, list) and current_section is None:
+                        # Determine base section number from position in sections[]
+                        # sections[0] = Pendahuluan (section1), sections[1] = Tinjauan Pustaka (section2), etc.
+                        if k == "sections":
+                            for i, item in enumerate(v):
+                                section_num = i + 1  # 1-based
+                                walk(item, current_section=f"section{section_num}")
+                            continue  # already walked with section context
+                walk(v, current_section=child_section)
         elif isinstance(obj, list):
             for item in obj:
-                walk(item, in_section4=in_section4)
+                walk(item, current_section=current_section)
 
     walk(paper_data)
     # Deduplicate by prompt text (keep first occurrence)
@@ -133,8 +235,16 @@ def _collect_gambar_prompts(paper_data: dict) -> list[dict]:
     return unique
 
 
-def _collect_section4_chart_specs(paper_data: dict) -> list[dict]:
+def _collect_section4_chart_specs(paper_data: dict, paper_kind: Optional[str] = None) -> list[dict]:
     """Collect section 4 gambar items with chart specifications.
+
+    Section 4 charts are only meaningful for REGULAR papers (data-driven).
+    For REVIEW papers, section 4 images are conceptual and handled by
+    _collect_gambar_prompts.
+
+    Args:
+        paper_data: Full paper JSON.
+        paper_kind: 'regular' or 'review'. Auto-detected if None.
 
     Returns list of dicts: {
         ImageNumber, Title, Path, Prompt (chart spec text),
@@ -143,13 +253,19 @@ def _collect_section4_chart_specs(paper_data: dict) -> list[dict]:
     }.
     These are fed into the data tools pipeline for matplotlib chart generation.
     """
+    if paper_kind is None:
+        paper_kind = _detect_paper_kind(paper_data)
+
+    # REVIEW mode: section 4 images are conceptual, not chart data
+    if paper_kind == "review":
+        return []
     specs = []
     _section4_tables: list[dict] = []
 
     if not isinstance(paper_data, dict):
         return specs
 
-    def walk(obj, in_section4=False):
+    def walk(obj, in_section4=False, _depth=0):
         if isinstance(obj, dict):
             if obj.get("id") == "gambar" and in_section4:
                 p = obj.get("Prompt") or obj.get("prompt") or ""
@@ -163,7 +279,7 @@ def _collect_section4_chart_specs(paper_data: dict) -> list[dict]:
                 # Attach structured data_tools_payload if present
                 if isinstance(payload, dict):
                     spec["data_tools_payload"] = payload
-                # Attach source tables from section 4 for data context
+                # Attach source tables from section 4 for chart context
                 if _section4_tables:
                     spec["source_tables"] = list(_section4_tables)
                 specs.append(spec)
@@ -171,13 +287,19 @@ def _collect_section4_chart_specs(paper_data: dict) -> list[dict]:
             if (obj.get("id") == "tabel" or obj.get("type") == "table") and in_section4:
                 _section4_tables.append(obj)
             for k, v in obj.items():
-                child_in_section4 = in_section4 or (isinstance(k, str) and bool(
-                    re.match(r'section4[a-z]?$', k)
-                ))
-                walk(v, in_section4=child_in_section4)
+                child_in_section4 = in_section4
+                if isinstance(k, str):
+                    if re.match(r'section4[a-z]?$', k):
+                        child_in_section4 = True
+                    # Detect list-based sections: sections[3] = section4 (0-based)
+                    if k == "sections" and isinstance(v, list):
+                        for i, item in enumerate(v):
+                            walk(item, in_section4=in_section4 or (i == 3), _depth=_depth+1)
+                        continue  # already walked with section context
+                walk(v, in_section4=child_in_section4, _depth=_depth+1)
         elif isinstance(obj, list):
             for item in obj:
-                walk(item, in_section4=in_section4)
+                walk(item, in_section4=in_section4, _depth=_depth+1)
 
     walk(paper_data)
     return specs
@@ -266,7 +388,7 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
         # Strategy 1: Match by ImageNumber in filename (e.g., "fig1_architecture.jpg" for ImageNumber=1)
         if img_num:
             for img_file in image_files:
-                if str(img_file.resolve()) in used_images:
+                if img_file.name in used_images:
                     continue
                 # Check if filename starts with "fig{num}_" or is exactly "fig{num}.jpg"
                 fname_lower = img_file.stem.lower()
@@ -281,23 +403,22 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
                 # Check exact stem match
                 if orig_base in stem_index:
                     candidate = stem_index[orig_base]
-                    if str(candidate.resolve()) not in used_images:
+                    if candidate.name not in used_images:
                         return candidate
                 # Check prefix match (e.g., "fig1" matches "fig1_architecture")
                 for stem, img_file in stem_index.items():
-                    if stem.startswith(orig_base) and str(img_file.resolve()) not in used_images:
+                    if stem.startswith(orig_base) and img_file.name not in used_images:
                         return img_file
 
         # Strategy 3: Match by ImageNumber position (legacy fallback)
         if img_num and img_num <= len(image_files):
             candidate = image_files[img_num - 1]
-            if str(candidate.resolve()) not in used_images:
+            if candidate.name not in used_images:
                 return candidate
 
         # Strategy 4: Use next available unused image (oldest first)
         for img in image_files:
-            abs_path = str(img.resolve())
-            if abs_path not in used_images:
+            if img.name not in used_images:
                 return img
 
         return None
@@ -312,8 +433,8 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
                 # Find matching image
                 matched = _find_matching_image(obj)
                 if matched:
-                    obj["Path"] = str(matched.resolve())
-                    used_images.add(str(matched.resolve()))
+                    obj["Path"] = matched.name
+                    used_images.add(matched.name)
                     log.debug("[reconcile_sections] Mapped gambar to %s", matched.name)
             # Recurse into all dict values
             for v in obj.values():
@@ -500,7 +621,7 @@ def _run_section4_chart_render(
                 logger.warning("[sec4_charts] Failed to save image record: %s", e_img)
                 db.session.rollback()
 
-        def _render_from_payload(payload: dict, idx: int, img_num: str) -> str | None:
+        def _render_from_payload(payload: dict, idx: int, img_num: str, target_path: str = None) -> str | None:
             """Render chart directly from data_tools_payload via chart_generator."""
             try:
                 from tools.data.auto_data_tools import _payload_to_chart_spec, _generate_chart_from_spec
@@ -510,7 +631,8 @@ def _run_section4_chart_render(
                     return None
                 chart_title = payload.get("title") or title or f"Chart {img_num}"
                 result = _generate_chart_from_spec(
-                    spec_dict, user_id, paper_id, chart_title
+                    spec_dict, user_id, paper_id, chart_title,
+                    target_path=target_path,
                 )
                 if result:
                     return result.get("path")
@@ -518,7 +640,7 @@ def _run_section4_chart_render(
                 logger.warning("[sec4_charts] _render_from_payload failed for spec %d: %s", idx, e)
             return None
 
-        def _render_from_tables(tables: list[dict], idx: int, img_num: str, chart_kind: str = "bar") -> str | None:
+        def _render_from_tables(tables: list[dict], idx: int, img_num: str, chart_kind: str = "bar", target_path: str = None) -> str | None:
             """Render chart from section 4 table data via chart_generator."""
             if not tables:
                 return None
@@ -564,7 +686,7 @@ def _run_section4_chart_render(
                 )
 
                 safe_num = re.sub(r'[^0-9]', '', str(img_num)) or str(idx + 1)
-                out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=title))
+                out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=title, target_path=target_path))
                 # Move to paper image directory
                 if paper_dir:
                     dest = paper_dir / out_path.name
@@ -593,13 +715,15 @@ def _run_section4_chart_render(
                     prompt = spec.get("Prompt", "")
                     title = spec.get("Title", "")
                     img_num = spec.get("ImageNumber", str(idx + 1))
+                    # Extract target_path from paper JSON Path (e.g., 'gambar/fig4_1_settling_time.png')
+                    target_path = spec.get("Path", "") or spec.get("path", "")
 
                     # ── PATH 1: data_tools_payload present → use chart_generator directly ──
                     payload = spec.get("data_tools_payload")
                     if payload and isinstance(payload, dict):
                         logger.info("[sec4_charts] Spec %d: using data_tools_payload (kind=%s)",
                                    idx, payload.get("kind", "?"))
-                        chart_path = _render_from_payload(payload, idx, img_num)
+                        chart_path = _render_from_payload(payload, idx, img_num, target_path=target_path)
 
                     # ── PATH 2: source_tables present → render from section 4 table data ──
                     if not chart_path:
@@ -615,7 +739,7 @@ def _run_section4_chart_render(
                                 chart_kind = type_match.group(1).lower()
                             logger.info("[sec4_charts] Spec %d: using source_tables (%d tables, kind=%s)",
                                        idx, len(source_tables), chart_kind)
-                            chart_path = _render_from_tables(source_tables, idx, img_num, chart_kind)
+                            chart_path = _render_from_tables(source_tables, idx, img_num, chart_kind, target_path=target_path)
 
                     # ── PATH 3: Parse markdown table from Prompt text ──
                     if not chart_path and prompt:
@@ -675,6 +799,17 @@ def _run_section4_chart_render(
                             "title": title or f"Chart {img_num}",
                         })
                         _save_paper_image_record(chart_path, title, idx, img_num)
+                        # Simpan ke user storage (user/<username>/<paper_id>/image/)
+                        try:
+                            from utils.core.user_storage import get_username, get_paper_base_by_id, _ensure_dir
+                            import shutil as _shutil
+                            username = get_username(user_id=user_id)
+                            base = get_paper_base_by_id(username, paper_id)
+                            img_dir = _ensure_dir(base / "image")
+                            dest = img_dir / chart_filename
+                            _shutil.copy2(str(chart_path), str(dest))
+                        except Exception:
+                            logger.warning("[sec4_charts] Gagal simpan chart ke user storage", exc_info=True)
                     else:
                         logger.warning("[sec4_charts] Spec %d: all render paths failed, skipping", idx)
 
@@ -690,6 +825,7 @@ def _run_section4_chart_render(
             job.status = "done"
             job.stage = "complete"
             job.progress = 100
+            job.finished_at = datetime.now(timezone.utc)
             job.result = {
                 "specs_count": len(chart_specs),
                 "charts_count": len(created_charts),
@@ -706,6 +842,20 @@ def _run_section4_chart_render(
                 job.status = "error"
                 job.error = str(e)[:2000]
                 safe_commit()
+            except Exception:
+                pass
+        finally:
+            # Worker-level guard: daemon thread can die silently on gunicorn restart.
+            # If job is still 'running' after all normal paths, mark as error.
+            # Re-fetch to avoid stale object issues.
+            try:
+                _final_job = AiJob.query.get(job_id)
+                if _final_job and _final_job.status == "running":
+                    _final_job.status = "error"
+                    _final_job.error = "Worker thread terminated unexpectedly (server restart or daemon death)"
+                    _final_job.finished_at = datetime.now(timezone.utc)
+                    safe_commit()
+                    logger.warning("[sec4_charts] Daemon guard: marked job %s as error (thread died)", job_id)
             except Exception:
                 pass
 
@@ -855,10 +1005,6 @@ def _render_matplotlib_chart(
                     num_cols.append((h, vals))
             except (ValueError, TypeError):
                 pass
-
-        if not num_cols:
-            logger.warning("[matplot] No numeric columns found")
-            return None
 
         if not num_cols:
             logger.warning("[matplot] No numeric columns found")
@@ -1062,6 +1208,7 @@ def _run_data_chart_render(app, job_id: str, paper_id: str, user_id: int, combin
                 job.status = "done"
                 job.stage = "complete"
                 job.progress = 100
+                job.finished_at = datetime.now(timezone.utc)
                 safe_commit()
                 return
 
@@ -1094,6 +1241,7 @@ def _run_data_chart_render(app, job_id: str, paper_id: str, user_id: int, combin
             job.status = "done"
             job.stage = "complete"
             job.progress = 100
+            job.finished_at = datetime.now(timezone.utc)
             job.result = {
                 "tables_count": len(all_tables),
                 "charts_count": len(created_charts),
@@ -1110,6 +1258,17 @@ def _run_data_chart_render(app, job_id: str, paper_id: str, user_id: int, combin
                 job.stage = "error"
                 job.progress = 0
                 safe_commit()
+            except Exception:
+                pass
+        finally:
+            # Worker-level guard: daemon thread can die silently on gunicorn restart.
+            try:
+                _final_job = AiJob.query.get(job_id)
+                if _final_job and _final_job.status == "running":
+                    _final_job.status = "error"
+                    _final_job.error = "Worker thread terminated unexpectedly (server restart or daemon death)"
+                    _final_job.finished_at = datetime.now(timezone.utc)
+                    safe_commit()
             except Exception:
                 pass
 
@@ -1921,8 +2080,9 @@ def _persist_paper_data(paper_id: str, user_id: int, paper_data: dict, max_retri
                 db.session.rollback()
             except Exception:
                 pass
-            return False, str(e)
-    return False, str(last_err) if last_err else "unknown DB error"
+            log.warning("Paper persist failed for %s: %s", paper_id, e)
+            return False, "database error"
+    return False, "database error"
 
 
 @jobs.route("/api/papers/<paper_id>/generate-status", methods=["GET"])
@@ -1979,6 +2139,8 @@ def generate_stream(paper_id: str):
         topic: str|null    — topic guide slug
         style: str|null    — citation style slug
         language: str|null — 'id' or 'en'
+        paper_kind: str|null — 'review' or 'regular' (auto-detect if omitted)
+        generate_images: bool — true (default) / false to skip image gen
 
     Returns SSE stream with events:
         event: thinking   data: {"token": "..."}         — reasoning tokens
@@ -1999,6 +2161,7 @@ def generate_stream(paper_id: str):
     data_texts: list[str] = []
     reference_texts: list[str] = []
     selected_drafts: list | None = None
+    revisi_semua = False
     
     # Force log this
     import logging as _log_module
@@ -2012,6 +2175,12 @@ def generate_stream(paper_id: str):
         topic = request.form.get("topic") or None
         style = request.form.get("style") or None
         language = request.form.get("language") or None
+        paper_kind_raw = request.form.get("paper_kind") or None
+        paper_kind = paper_kind_raw if paper_kind_raw in ("review", "regular") else None
+        generate_images_raw = request.form.get("generate_images", "true").lower()
+        generate_images = generate_images_raw != "false"
+        revisi_semua_raw = request.form.get("revisi_semua", "false").lower()
+        revisi_semua = revisi_semua_raw == "true"
         # Selected chat drafts (list of names) → injected as writing context.
         _sd_raw = request.form.get("selected_drafts")
         if _sd_raw:
@@ -2129,6 +2298,11 @@ def generate_stream(paper_id: str):
         topic = body.get("topic") or None
         style = body.get("style") or None
         language = body.get("language") or None
+        paper_kind_raw = body.get("paper_kind") or None
+        paper_kind = paper_kind_raw if paper_kind_raw in ("review", "regular") else None
+        generate_images_raw = str(body.get("generate_images", True)).lower()
+        generate_images = generate_images_raw != "false"
+        revisi_semua = bool(body.get("revisi_semua", False))
         # JSON path: allow pre-extracted texts to be passed directly.
         data_texts = body.get("data_texts") or []
         reference_texts = body.get("reference_texts") or []
@@ -2247,8 +2421,17 @@ def generate_stream(paper_id: str):
             # ── Load prompt files (language-aware) ─────────────────────
             prompt_dir = _Path(__file__).resolve().parent / "prompt"
 
-            # Determine language early: request param > user DB > default "id"
+            # Determine language: request param > paper data > user DB > default "id"
             _lang = language
+            if not _lang and paper_id:
+                try:
+                    _paper = Paper.query.get(paper_id)
+                    if _paper and isinstance(_paper.data, dict):
+                        pl = _paper.data.get("language")
+                        if pl in ("en", "id"):
+                            _lang = pl
+                except Exception:
+                    pass
             if not _lang:
                 try:
                     from database.models import User as _UserModel
@@ -2340,8 +2523,11 @@ def generate_stream(paper_id: str):
                     _file_markers = re.findall(r'=== Extracted from: .+? ===', _data_blob)
                     _n_files = len(_file_markers) if _file_markers else len([t for t in data_texts if t and t.strip()])
                     user_parts.append(
-                        "## DATA SUMBER (WAJIB DIPAKAI — ANGKA PERSIS)\n"
-                        f"User meng-upload {_n_files} file data. Berikut data mentah yang diunggah.\n"
+                        "## 📊 DATA SUMBER — INI DATA BENERAN (WAJIB DIPAKAI — ANGKA PERSIS)\n"
+                        f"User meng-upload {_n_files} file DATA BENERAN (Excel/CSV/data numerik). "
+                        "Berikut data mentah yang diunggah.\n"
+                        "⚠️ INI SATU-SATUNYA SUMBER DATA untuk section 4. "
+                        "Bukan referensi paper, bukan literatur.\n"
                         "WAJIB gunakan ANGKA/nilai PERSIS dari data ini untuk:\n"
                         "1. Isi tabel (Headers + Rows) — JANGAN pakai placeholder (X1, a1, dst)!\n"
                         "2. Narasi analisis — kutip angka spesifik dari data\n"
@@ -2359,7 +2545,8 @@ def generate_stream(paper_id: str):
                         "  4. TITLE: Judul grafik yang jelas\n"
                         "  5. LEGEND/CATEGORIES: Kategori atau series yang ditampilkan\n"
                         "  6. STYLE: Warna, orientasi, grid on/off\n"
-                        "JANGAN mengarang data lain. JANGAN gunakan variabel placeholder.\n\n"
+                        "JANGAN mengarang data lain. JANGAN gunakan variabel placeholder.\n"
+                        "⛔ INI BUKAN REFERENSI — ini DATA untuk tabel dan grafik section 4.\n\n"
                         "Data dalam format markdown tabel:\n\n" + _data_blob
                     )
 
@@ -2369,16 +2556,67 @@ def generate_stream(paper_id: str):
                 _ref_blob = "\n\n".join(t for t in reference_texts if t and t.strip())
                 if _ref_blob.strip():
                     user_parts.append(
-                        "## REFERENSI / DRAFT (WAJIB DIGUNAKAN)\n"
+                        "## REFERENSI / DRAFT (WAJIB DIGUNAKAN — BUKAN DATA)\n"
                         "Berikut paper referensi/sitasi atau draft milik user. WAJIB:\n"
                         "1. Pakai sebagai konteks penulisan dan arah pembahasan\n"
                         "2. Gunakan sebagai SUMBER SITASI di References section\n"
-                        "3. Jika referensi mengandung data numerik/metrik/hasil →\n"
-                        "   WAJIB kutip angka tersebut di narasi dan tabel perbandingan\n"
-                        "4. JANGAN abaikan isi referensi — sintesis kritis, bukan ringkasan\n"
-                        "5. Setiap paragraf sitasi minimal 1-3 paper dari referensi ini\n\n"
+                        "3. ⛔ INI BUKAN DATA untuk section 4 (Results)!\n"
+                        "   JANGAN gunakan angka/hasil dari referensi sebagai data tabel/grafik di section 4.\n"
+                        "   Section 4 HANYA boleh pakai data dari ## DATA SUMBER.\n"
+                        "   Jika ## DATA SUMBER TIDAK muncul → section 4 WAJIB pakai placeholder (X1, X2, a1).\n"
+                        "4. Kutipan data dari referensi TETAP BOLEH di narasi Literature Review (section 2)\n"
+                        "   sebagai perbandingan metode/state-of-the-art — TAPI JANGAN sebagai data eksperimen.\n"
+                        "5. JANGAN abaikan isi referensi — sintesis kritis, bukan ringkasan\n"
+                        "6. Setiap paragraf sitasi minimal 1-3 paper dari referensi ini\n"
+                        "7. WAJIB: Total references section minimal 36 paper (Regular Article)\n\n"
                         + _ref_blob
                     )
+
+            # Auto-inject CHECKED LITERATURE (dari tab Literatur).
+            # User hanya perlu check di tab Literatur — otomatis masuk prompt.
+            try:
+                from database.models import LiteratureItem as LitItem
+                _checked_lit = LitItem.query.filter_by(
+                    paper_id=paper_id,
+                    user_id=user_id,
+                    is_checked=True,
+                ).order_by(LitItem.score_total.desc().nullslast()).all()
+                if _checked_lit:
+                    _lit_parts = []
+                    for _lit in _checked_lit:
+                        _authors_str = ", ".join(_lit.authors) if _lit.authors else "—"
+                        _year_str = str(_lit.year) if _lit.year else "—"
+                        _pub_str = _lit.publisher or _lit.venue or "—"
+                        _doi_str = _lit.doi or "—"
+                        _abstract_str = _lit.abstract or "—"
+                        _lit_parts.append(
+                            f"--- Literatur: {_lit.title} ---\n"
+                            f"Judul: {_lit.title}\n"
+                            f"Penulis: {_authors_str}\n"
+                            f"Tahun: {_year_str}\n"
+                            f"Penerbit: {_pub_str}\n"
+                            f"DOI: {_doi_str}\n"
+                            f"Abstract: {_abstract_str}\n"
+                            f"——— akhir literatur ———"
+                        )
+                    _lit_blob = "\n\n".join(_lit_parts)
+                    user_parts.append(
+                        "## LITERATUR (CHECKED — WAJIB DIGUNAKAN SEBAGAI REFERENSI)\n"
+                        f"User telah men-checklist {len(_checked_lit)} paper dari tab Literatur. "
+                        "WAJIB:\n"
+                        "1. Gunakan SEMUA paper ini sebagai SUMBER SITASI di References section\n"
+                        "2. Sitasi paper ini di narasi sesuai konteks yang relevan\n"
+                        "3. JANGAN mengabaikan satupun — semua harus disitasi\n"
+                        "4. JANGAN memfabrikasi referensi lain jika paper ini sudah cukup\n"
+                        "5. Setiap paragraf sitasi minimal 1-3 paper dari daftar ini\n\n"
+                        + _lit_blob
+                    )
+                    log.info(
+                        "Auto-injected %d checked literature items into generate-stream for paper %s",
+                        len(_checked_lit), paper_id,
+                    )
+            except Exception as _lit_e:
+                log.warning("Failed to auto-inject checked literature: %s", _lit_e)
 
             # Inject selected CHAT DRAFTS (user-curated snippets exported from
             # chat, picked via the checkbox selector in PaperfullTab). Resolved
@@ -2411,6 +2649,31 @@ def generate_stream(paper_id: str):
                         "Injected draft(s) into generate-stream for paper %s",
                         paper_id,
                     )
+
+            # ── REVISI SEMUA: inject existing paper JSON ──────────────
+            if revisi_semua:
+                try:
+                    _existing = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+                    if _existing and _existing.data:
+                        _ed = _existing.data if isinstance(_existing.data, dict) else _json.loads(_existing.data)
+                        # Strip internal keys (_data_texts, _data_files_count, etc.)
+                        _ed_clean = {k: v for k, v in _ed.items() if not k.startswith("_")}
+                        _existing_json = _json.dumps(_ed_clean, ensure_ascii=False, indent=2)
+                        user_parts.append(
+                            "## EXISTING PAPER (REVISI SEMUA — PERBAIKI TOTAL)\n"
+                            "Berikut adalah paper JSON yang sudah ada. Kamu WAJIB merevisi TOTAL:\n"
+                            "1. Perbaiki SEMUA aspek yang kurang — struktur, argumen, data, narasi, gambar\n"
+                            "2. Jika ada data_teks yang diunggah, PASTIKAN semua angka/tabel dari data\n"
+                            "   tersebut masuk ke paper yang direvisi\n"
+                            "3. Jika ada literatur yang di-check, PASTIKAN semua disitasi\n"
+                            "4. JANGAN hanya copy-paste — revisi bermakna, perbaiki kualitas\n"
+                            "5. Output TETAP full paper JSON lengkap (bukan diff/patch)\n\n"
+                            + _existing_json
+                        )
+                        log.info("Injected existing paper JSON for revisi_semua (paper %s, %d chars)",
+                                 paper_id, len(_existing_json))
+                except Exception as _re:
+                    log.warning("Failed to inject existing paper JSON for revisi_semua: %s", _re)
 
             user_parts.append(
                 "Generate the complete paper following the system prompt schema. "
@@ -2445,9 +2708,10 @@ def generate_stream(paper_id: str):
                     "stream": True,
                     "max_tokens": 120000,
                     "temperature": 0.7,
+                    "reasoning": {"effort": "high"},
                 },
                 stream=True,
-                timeout=900,
+                timeout=1800,
             )
             resp.raise_for_status()
 
@@ -2604,8 +2868,8 @@ def generate_stream(paper_id: str):
                                 _pf_snapshot("done", reasoning_acc, full_content, force=True)
                                 log.info("Background save completed for paper %s after client disconnect", paper_id)
                             else:
-                                _update_bell_job("error", 100, error=f"Background save failed: {err_bg}")
-                                _pf_snapshot("error", reasoning_acc, full_content, error=str(err_bg), force=True)
+                                _update_bell_job("error", 100, error="Background save failed")
+                                _pf_snapshot("error", reasoning_acc, full_content, error="Background save failed", force=True)
                                 log.warning("Background save failed for paper %s: %s", paper_id, err_bg)
                         else:
                             _update_bell_job("error", 100, error="Background save: no parseable content")
@@ -2676,9 +2940,10 @@ def generate_stream(paper_id: str):
                         if not isinstance(raw_paper, dict):
                             raise ValueError(f"json_repair returned {type(raw_paper)}")
                     except Exception as e2:
-                        _update_bell_job("error", 100, error=f"JSON parse failed: {e2}")
-                        _pf_snapshot("error", reasoning_acc, full_content, error=f"JSON parse failed: {e2}", force=True)
-                        yield f"event: error\ndata: {_json.dumps({'error': f'JSON parse failed: {e2}'})}\n\n"
+                        log.warning("JSON parse failed for paper %s: %s", paper_id, e2)
+                        _update_bell_job("error", 100, error="JSON parse failed — paper content could not be parsed")
+                        _pf_snapshot("error", reasoning_acc, full_content, error="JSON parse failed", force=True)
+                        yield f"event: error\ndata: {_json.dumps({'error': 'JSON parse failed — paper content could not be parsed'})}\n\n"
                         return
                 else:
                     _update_bell_job("error", 100, error="JSON parse failed and json_repair not available")
@@ -2691,118 +2956,8 @@ def generate_stream(paper_id: str):
             paper_data = _normalize_paper_shape(raw_paper)
 
             # ── Post-process: fix mojibake + clean LaTeX artifacts ────
-            # AI output can contain:
-            #   1) Mojibake: UTF-8 multi-byte chars decoded as Latin-1
-            #      (e.g. "5â€"15°C" → should be "5–15°C")
-            #   2) Raw LaTeX notation that wasn't converted
-            #      (e.g. "^\circ" → "°", "^{\\circ}" → "°")
-            def _fix_mojibake(text):
-                """Attempt to recover UTF-8 mojibake (bytes decoded as Latin-1/CP1252)."""
-                if not isinstance(text, str):
-                    return text
-                try:
-                    return text.encode('latin-1').decode('utf-8')
-                except (UnicodeDecodeError, UnicodeEncodeError):
-                    return text
-
-            def _clean_latex_notation(text):
-                """Convert common LaTeX notation to Unicode equivalents."""
-                if not isinstance(text, str):
-                    return text
-                import re as _rl
-                # Degree symbol variants
-                _rl_patterns = [
-                    (r'\^\{\\circ\}', '°'),
-                    (r'\^\\circ', '°'),
-                    (r'\\degree\b', '°'),
-                    (r'\\circ\b', '°'),
-                    # Common math symbols
-                    (r'\\times\b', '×'),
-                    (r'\\div\b', '÷'),
-                    (r'\\pm\b', '±'),
-                    (r'\\leq\b', '≤'),
-                    (r'\\geq\b', '≥'),
-                    (r'\\neq\b', '≠'),
-                    (r'\\approx\b', '≈'),
-                    (r'\\infty\b', '∞'),
-                    (r'\\mu\b', 'μ'),
-                    (r'\\alpha\b', 'α'),
-                    (r'\\beta\b', 'β'),
-                    (r'\\gamma\b', 'γ'),
-                    (r'\\delta\b', 'δ'),
-                    (r'\\lambda\b', 'λ'),
-                    (r'\\sigma\b', 'σ'),
-                    (r'\\pi\b', 'π'),
-                    (r'\\omega\b', 'ω'),
-                    (r'\\Omega\b', 'Ω'),
-                    (r'\\Delta\b', 'Δ'),
-                    (r'\\Sigma\b', 'Σ'),
-                    (r'\\rightarrow\b', '→'),
-                    (r'\\leftarrow\b', '←'),
-                    (r'\\Rightarrow\b', '⇒'),
-                    (r'\\Leftarrow\b', '⇐'),
-                    # Em/en dashes (LaTeX style)
-                    (r'---', '—'),
-                    (r'--', '–'),
-                    # LaTeX spacing commands → remove
-                    (r'\\[,;:!]\s*', ''),
-                    (r'\\quad\b\s*', ' '),
-                    (r'\\qquad\b\s*', '  '),
-                    (r'\\hspace\{[^}]*\}\s*', ''),
-                    (r'\\vspace\{[^}]*\}\s*', ''),
-                    # LaTeX text formatting → extract content
-                    (r'\\textit\{([^}]*)\}', r'\1'),
-                    (r'\\textbf\{([^}]*)\}', r'\1'),
-                    (r'\\emph\{([^}]*)\}', r'\1'),
-                    (r'\\underline\{([^}]*)\}', r'\1'),
-                    (r'\\mathrm\{([^}]*)\}', r'\1'),
-                    (r'\\mathbf\{([^}]*)\}', r'\1'),
-                    (r'\\mathit\{([^}]*)\}', r'\1'),
-                    # Broken LaTeX commands (missing braces, e.g. "\textit text")
-                    (r'\\(?:textit|textbf|emph|underline|mathrm|mathbf|mathit)\s+', ''),
-                    # Inline math mode $...$ → extract and clean content
-                    # Process subscript/superscript inside $ first
-                    # $X_1$ → X₁, $X_2$ → X₂, $Z$% → Z%, etc.
-                    # Quotes
-                    (r'``', '"'),
-                    (r"''", '"'),
-                    # Superscript/subscript cleanup for simple cases
-                    (r'\^{(\d+)}', lambda m: ''.join('⁰¹²³⁴⁵⁶⁷⁸⁹'[int(c)] for c in m.group(1))),
-                    (r'_{(\d+)}', lambda m: ''.join('₀₁₂₃₄₅₆₇₈₉'[int(c)] for c in m.group(1))),
-                ]
-                for pattern, repl in _rl_patterns:
-                    text = _rl.sub(pattern, repl, text)
-                # Handle $...$ math delimiters (after subscript/superscript already converted)
-                # Strip remaining unconverted $...$ by extracting content
-                def _strip_math_dollar(m):
-                    inner = m.group(1).replace('\\', '')
-                    # Convert remaining subscript/superscript without braces inside $
-                    _sup = '⁰¹²³⁴⁵⁶⁷⁸⁹'
-                    _sub = '₀₁₂₃₄₅₆₇₈₉'
-                    # _N without braces (e.g. X_1 → X₁)
-                    inner = _rl.sub(r'_(\d)', lambda x: _sub[int(x.group(1))], inner)
-                    # ^N without braces (e.g. X^2 → X²)
-                    inner = _rl.sub(r'\^(\d)', lambda x: _sup[int(x.group(1))], inner)
-                    # Remove leftover _ or ^ without digits
-                    inner = _rl.sub(r'[_^]([a-zA-Z])', r'\1', inner)
-                    return inner
-                text = _rl.sub(r'\$([^$]*)\$', _strip_math_dollar, text)
-                return text
-
-            def _clean_paper_data(data):
-                """Recursively clean all string values in paper data dict."""
-                if isinstance(data, dict):
-                    return {k: _clean_paper_data(v) for k, v in data.items()}
-                elif isinstance(data, list):
-                    return [_clean_paper_data(item) for item in data]
-                elif isinstance(data, str):
-                    # Only clean content fields, not keys/IDs/paths
-                    return _clean_latex_notation(_fix_mojibake(data))
-                return data
-
-            # Apply cleanup to paper_data (all string values)
-            paper_data = _clean_paper_data(paper_data)
-            log.info("[paperfull] Applied mojibake fix + LaTeX cleanup to paper_data")
+            from tools.paperfull.text_cleaner import clean_paper_data
+            paper_data = clean_paper_data(paper_data)
 
             # ── Post-process: programmatic humanization (anti-Turnitin) ────
             try:
@@ -2878,91 +3033,98 @@ def generate_stream(paper_id: str):
 
             # ── Auto-enqueue image generation jobs (section 2/3 conceptual) ──
             image_job_ids = []
-            try:
-                image_prompts = _collect_gambar_prompts(paper_data)
-                if image_prompts:
-                    from tools.image_generation.worker import submit_now as _img_submit
-                    for item in image_prompts:
-                        prompt_text = item["prompt"] if isinstance(item, dict) else item
-                        # Derive target_path from gambar metadata for meaningful filename
-                        target_path = None
-                        if isinstance(item, dict):
-                            img_num = item.get("image_number", "")
-                            title = item.get("title", "")
-                            orig_path = item.get("original_path", "")
-                            # Try to extract filename from original path (e.g., "gambar/fig1.png" → "fig1")
-                            if orig_path:
-                                import os
-                                base = os.path.splitext(os.path.basename(orig_path))[0]
-                                if base and base != "image":
-                                    target_path = base + ".jpg"
-                            elif img_num:
-                                target_path = f"fig{img_num}.jpg"
-                            elif title:
-                                # Slugify title for filename
-                                import re as _re
-                                slug = _re.sub(r'[^a-z0-9]+', '_', title.lower().strip())[:50].strip('_')
-                                if slug:
-                                    target_path = f"fig{img_num}_{slug}.jpg" if img_num else f"{slug}.jpg"
+            if generate_images:
+                try:
+                    image_prompts = _collect_gambar_prompts(paper_data, paper_kind=paper_kind)
+                    if image_prompts:
+                        from tools.image_generation.worker import submit_now as _img_submit
+                        for idx, item in enumerate(image_prompts):
+                            prompt_text = item["prompt"] if isinstance(item, dict) else item
+                            # Derive target_path from gambar metadata for meaningful filename
+                            target_path = None
+                            if isinstance(item, dict):
+                                img_num = item.get("image_number", "")
+                                title = item.get("title", "")
+                                orig_path = item.get("original_path", "")
+                                section = item.get("_section", "")
+                                # Try to extract filename from original path (e.g., "gambar/fig1.png" → "fig1")
+                                if orig_path:
+                                    import os
+                                    base = os.path.splitext(os.path.basename(orig_path))[0]
+                                    if base and base != "image":
+                                        target_path = base + ".jpg"
+                                if not target_path and img_num:
+                                    target_path = f"fig{img_num}.jpg"
+                                if not target_path and title:
+                                    # Slugify title for filename
+                                    slug = _re.sub(r'[^a-z0-9]+', '_', title.lower().strip())[:50].strip('_')
+                                    if slug:
+                                        target_path = f"fig{img_num}_{slug}.jpg" if img_num else f"{slug}.jpg"
+                                # Fallback: use section + index
+                                if not target_path:
+                                    sec_num = section.replace("section", "") if section else ""
+                                    prefix = f"sec{sec_num}" if sec_num else "fig"
+                                    target_path = f"{prefix}_{idx+1}.jpg"
 
-                        img_job = ImageGenJob(
-                            id=uuid.uuid4().hex,
-                            user_id=user_id,
-                            paper_id=paper_id,
-                            prompt=prompt_text[:2000],
-                            status="queued",
-                            target_path=target_path[:500] if target_path else None,
-                        )
-                        db.session.add(img_job)
-                        image_job_ids.append(img_job.id)
-                    safe_commit()
-                    for jid in image_job_ids:
-                        try:
-                            _img_submit(jid)
-                        except Exception:
-                            pass  # dispatcher poll will pick it up
-                    log.info("Auto-enqueued %d image jobs (sec 2/3) for paper %s", len(image_job_ids), paper_id)
-            except Exception as e_img:
-                db.session.rollback()
-                log.warning("Auto-image-gen failed for paper %s: %s", paper_id, e_img)
+                            img_job = ImageGenJob(
+                                id=uuid.uuid4().hex,
+                                user_id=user_id,
+                                paper_id=paper_id,
+                                prompt=prompt_text[:2000],
+                                status="queued",
+                                target_path=target_path[:500] if target_path else None,
+                            )
+                            db.session.add(img_job)
+                            image_job_ids.append(img_job.id)
+                        safe_commit()
+                        for jid in image_job_ids:
+                            try:
+                                _img_submit(jid)
+                            except Exception:
+                                pass  # dispatcher poll will pick it up
+                        log.info("Auto-enqueued %d image jobs (sec 2/3) for paper %s", len(image_job_ids), paper_id)
+                except Exception as e_img:
+                    db.session.rollback()
+                    log.warning("Auto-image-gen failed for paper %s: %s", paper_id, e_img)
 
             # ── Auto-generate data charts for section 4 ───────────────
             # Two sources of chart data:
             # 1. Section 4 gambar items with chart specs in Prompt (from LLM)
             # 2. Uploaded data_files text (Excel raw data, fallback)
             chart_job_id = None
-            _section4_specs = _collect_section4_chart_specs(paper_data)
-            _effective_data_texts = data_texts or paper_data.get("_data_texts", []) or []
-            log.info(
-                "[paperfull] sec4 chart trigger: specs=%d items, data_texts=%d items for paper %s",
-                len(_section4_specs),
-                len(_effective_data_texts),
-                paper_id,
-            )
-            # Use section4 specs if available (new architecture: LLM wrote chart details)
-            # Fall back to data_texts pipeline if no specs but data was uploaded
-            if _section4_specs:
-                try:
-                    chart_job_id = _auto_generate_section4_charts(
-                        paper_id, user_id, _section4_specs, _effective_data_texts
-                    )
-                    if chart_job_id:
-                        log.info("Auto-enqueued section4 chart job %s for paper %s", chart_job_id, paper_id)
-                except Exception as e_chart:
-                    log.warning("Auto-section4-chart failed for paper %s: %s", paper_id, e_chart)
-            elif _effective_data_texts:
-                try:
-                    chart_job_id = _auto_generate_data_charts(paper_id, user_id, _effective_data_texts)
-                    if chart_job_id:
-                        log.info("Auto-enqueued data chart job %s (legacy) for paper %s", chart_job_id, paper_id)
-                except Exception as e_chart:
-                    log.warning("Auto-data-chart failed for paper %s: %s", paper_id, e_chart)
+            if generate_images:
+                _section4_specs = _collect_section4_chart_specs(paper_data, paper_kind=paper_kind)
+                _effective_data_texts = data_texts or paper_data.get("_data_texts", []) or []
+                log.info(
+                    "[paperfull] sec4 chart trigger: specs=%d items, data_texts=%d items for paper %s",
+                    len(_section4_specs),
+                    len(_effective_data_texts),
+                    paper_id,
+                )
+                # Use section4 specs if available (new architecture: LLM wrote chart details)
+                # Fall back to data_texts pipeline if no specs but data was uploaded
+                if _section4_specs:
+                    try:
+                        chart_job_id = _auto_generate_section4_charts(
+                            paper_id, user_id, _section4_specs, _effective_data_texts
+                        )
+                        if chart_job_id:
+                            log.info("Auto-enqueued section4 chart job %s for paper %s", chart_job_id, paper_id)
+                    except Exception as e_chart:
+                        log.warning("Auto-section4-chart failed for paper %s: %s", paper_id, e_chart)
+                elif _effective_data_texts:
+                    try:
+                        chart_job_id = _auto_generate_data_charts(paper_id, user_id, _effective_data_texts)
+                        if chart_job_id:
+                            log.info("Auto-enqueued data chart job %s (legacy) for paper %s", chart_job_id, paper_id)
+                    except Exception as e_chart:
+                        log.warning("Auto-data-chart failed for paper %s: %s", paper_id, e_chart)
 
             # ── Send done event FIRST (JSON parsed to editor) ───────────
             # User sees paper content immediately. Images generate in background.
             _update_bell_job("done", 100)
             _pf_snapshot("done", reasoning_acc, full_content, force=True)
-            yield f"event: done\ndata: {_json.dumps({'paper': paper_data, 'elapsed': elapsed, 'tokens': token_count, 'image_jobs': image_job_ids, 'images_pending': True})}\n\n"
+            yield f"event: done\ndata: {_json.dumps({'paper': paper_data, 'elapsed': elapsed, 'tokens': token_count, 'image_jobs': image_job_ids, 'chart_job': chart_job_id, 'total_jobs': len(image_job_ids) + (1 if chart_job_id else 0), 'images_pending': generate_images and (bool(image_job_ids) or bool(chart_job_id))})}\n\n"
 
             # ── Wait for ALL image jobs in background ─────────────────────
             # Continue SSE stream to send progress updates while images generate.
@@ -2978,7 +3140,7 @@ def generate_stream(paper_id: str):
 
                 _wait_start = _time.time()
                 _max_wait = 600  # 10 minutes max
-                _last_progress_emit = 0
+                _last_progress_emit = -10  # emit immediately on first check
 
                 while True:
                     _elapsed_wait = _time.time() - _wait_start
@@ -2990,10 +3152,15 @@ def generate_stream(paper_id: str):
                     try:
                         # Check ImageGenJob (Gemini) statuses
                         _img_done = 0
+                        _img_errors = 0
                         for _jid in image_job_ids:
                             _img = ImageGenJob.query.get(_jid)
-                            if _img and _img.status in ("done", "error", "failed"):
-                                _img_done += 1
+                            if _img:
+                                if _img.status == "done":
+                                    _img_done += 1
+                                elif _img.status in ("error", "failed"):
+                                    _img_done += 1
+                                    _img_errors += 1
 
                         # Check AiJob (chart) statuses
                         _chart_done = 0
@@ -3008,14 +3175,18 @@ def generate_stream(paper_id: str):
                         _all_done = _img_done + _chart_done
                         _pending = _total_jobs - _all_done
 
-                        # Emit progress every 5 seconds at most
-                        if _time.time() - _last_progress_emit > 5:
-                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': f'Generating images: {_all_done}/{_total_jobs} done', 'total': _total_jobs, 'done': _all_done})}\n\n"
+                        # Emit progress every 3 seconds at most
+                        if _time.time() - _last_progress_emit > 3:
+                            msg_parts = [f'Generating images: {_all_done}/{_total_jobs} done']
+                            if _img_errors > 0:
+                                msg_parts.append(f'({_img_errors} errors)')
+                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': ' '.join(msg_parts), 'total': _total_jobs, 'done': _all_done, 'errors': _img_errors})}\n\n"
                             _last_progress_emit = _time.time()
 
                         if _pending <= 0:
-                            log.info("[paperfull] All %d image/chart jobs completed in %.1fs for paper %s", _total_jobs, _elapsed_wait, paper_id)
-                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': f'All {_total_jobs} images generated!', 'total': _total_jobs, 'done': _total_jobs})}\n\n"
+                            final_msg = f'All {_total_jobs} images generated!' if _img_errors == 0 else f'{_total_jobs - _img_errors}/{_total_jobs} images generated ({_img_errors} errors)'
+                            log.info("[paperfull] All %d image/chart jobs completed in %.1fs for paper %s (%d errors)", _total_jobs, _elapsed_wait, paper_id, _img_errors)
+                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': final_msg, 'total': _total_jobs, 'done': _total_jobs, 'errors': _img_errors})}\n\n"
                             break
                     except Exception as _wait_e:
                         log.warning("[paperfull] Image wait poll error: %s", _wait_e)
@@ -3048,8 +3219,23 @@ def generate_stream(paper_id: str):
             except Exception as _rec_e:
                 log.warning("[paperfull] Image reconciliation failed for paper %s: %s", paper_id, _rec_e)
 
+            # ── Count errors for images_complete event ────────────────────────
+            error_count = 0
+            if generate_images:
+                try:
+                    for _jid in image_job_ids:
+                        _img = ImageGenJob.query.get(_jid)
+                        if _img and _img.status in ("error", "failed"):
+                            error_count += 1
+                    if chart_job_id:
+                        _cjob = AiJob.query.get(chart_job_id)
+                        if _cjob and _cjob.status in ("error", "failed"):
+                            error_count += 1
+                except Exception:
+                    pass
+
             # ── Send images_complete event ─────────────────────────────
-            yield f"event: images_complete\ndata: {_json.dumps({'image_jobs': image_job_ids, 'chart_job': chart_job_id})}\n\n"
+            yield f"event: images_complete\ndata: {_json.dumps({'image_jobs': image_job_ids, 'chart_job': chart_job_id, 'errors': error_count, 'total': len(image_job_ids) + (1 if chart_job_id else 0)})}\n\n"
 
         except GeneratorExit:
             # Client disconnected before SSE finished. Do NOT try to write to
@@ -3071,12 +3257,13 @@ def generate_stream(paper_id: str):
         except Exception as e:
             import traceback
             tb = traceback.format_exc(limit=2)
-            _update_bell_job("error", 100, error=str(e))
+            _update_bell_job("error", 100, error="Internal server error")
             try:
-                _pf_snapshot("error", reasoning_acc, full_content, error=str(e), force=True)
+                _pf_snapshot("error", reasoning_acc, full_content, error="Internal server error", force=True)
             except Exception:
                 pass
-            yield f"event: error\ndata: {_json.dumps({'error': str(e), 'traceback': tb[:500]})}\n\n"
+            log.exception("[paperfull] SSE stream error: %s", e)
+            yield f"event: error\ndata: {_json.dumps({'error': 'Internal server error'})}\n\n"
 
     headers = {
         "Content-Type": "text/event-stream",

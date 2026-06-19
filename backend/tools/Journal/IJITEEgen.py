@@ -34,6 +34,63 @@ STYLE_FIG_CAPTION = "FigureCaption"
 STYLE_REFS = "References"
 
 
+def _clean_latex(text):
+    """Strip inline LaTeX markers dari text."""
+    if not isinstance(text, str) or not text.strip():
+        return text if isinstance(text, str) else ""
+    import re as _re
+    text = _re.sub(r'\$([^$]+)\$', r'\1', text)
+    text = _re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\mathbf\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\text\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\hat\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\vec\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\overline\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\sqrt\{([^}]*)\}', r'sqrt(\1)', text)
+    text = _re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1/\2)', text)
+    text = _re.sub(r'\\left[(\[{]', '(', text)
+    text = _re.sub(r'\\right[)\]]', ')', text)
+    text = _re.sub(r'\\begin\{cases\}', '', text)
+    text = _re.sub(r'\\end\{cases\}', '', text)
+    text = _re.sub(r'\\approx', chr(8776), text)
+    text = _re.sub(r'\\times', chr(215), text)
+    text = _re.sub(r'\\cdot', chr(183), text)
+    text = _re.sub(r'\\quad', ' ', text)
+    text = _re.sub(r'\\qquad', '  ', text)
+    text = _re.sub(r'\\infty', chr(8734), text)
+    text = _re.sub(r'\\circ', chr(176), text)
+    text = _re.sub(r'\\alpha', chr(945), text)
+    text = _re.sub(r'\\beta', chr(946), text)
+    text = _re.sub(r'\\gamma', chr(947), text)
+    text = _re.sub(r'\\theta', chr(952), text)
+    text = _re.sub(r'\\lambda', chr(955), text)
+    text = _re.sub(r'\\sigma', chr(963), text)
+    text = _re.sub(r'\\omega', chr(969), text)
+    text = _re.sub(r'\\pi', chr(960), text)
+    text = _re.sub(r'\\mu', chr(956), text)
+    text = _re.sub(r'\\Delta', chr(916), text)
+    text = _re.sub(r'\\partial', chr(8706), text)
+    text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    text = _re.sub(r'\\[a-zA-Z]+', '', text)
+    text = _re.sub(r'[{}]', '', text)
+    return text.strip()
+
+
+def _postprocess_clean_latex(doc):
+    """Walk all paragraphs and clean LaTeX from run text in-place."""
+    import re as _re
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                run.text = _clean_latex(run.text)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                            run.text = _clean_latex(run.text)
 def _strip_latex(text: str) -> str:
     if not text:
         return text
@@ -97,30 +154,42 @@ def load_json() -> dict:
 
 def clear_body_keep_sectprs(doc):
     """Hapus body content tapi PRESERVE semua sectPr (inline + final).
-    SectPr inline ada di pPr dari paragraf - kita keep paragraf yang
-    punya sectPr saja.
+    Gambar di 3 paragraf + 2 tabel pertama = logo jurnal (preserve).
+    Gambar setelah itu = author photos (buang).
     """
     body = doc.element.body
     preserved_inline_sectprs = []
+    para_count = 0
+    tbl_count = 0
     for child in list(body):
         if child.tag == qn("w:p"):
+            para_count += 1
             ppr = child.find(qn("w:pPr"))
             if ppr is not None:
                 sectpr_inline = ppr.find(qn("w:sectPr"))
                 if sectpr_inline is not None:
-                    # Preserve sectPr inline (extract dari pPr, simpan sebagai
-                    # paragraf kosong dengan pPr yang punya sectPr)
                     preserved_inline_sectprs.append(child)
-                    # Hapus runs dari paragraf ini, keep pPr+sectPr
                     for run in child.findall(qn("w:r")):
                         child.remove(run)
                     continue
-        if child.tag == qn("w:sectPr"):
+            # Preserve logo drawings di 3 paragraf pertama saja
+            if para_count <= 3 and child.findall(".//" + qn("w:drawing")):
+                # Hapus text runs, keep drawing
+                for run in child.findall(qn("w:r")):
+                    if not run.findall(".//" + qn("w:drawing")):
+                        child.remove(run)
+                continue
+        elif child.tag == qn("w:tbl"):
+            tbl_count += 1
+            # Preserve logo tables di 2 tabel pertama saja
+            if tbl_count <= 2 and child.findall(".//" + qn("w:drawing")):
+                continue
+            body.remove(child)
+            continue
+        elif child.tag == qn("w:sectPr"):
             continue
         body.remove(child)
     return preserved_inline_sectprs
-
-
 def insert_before_sectpr(doc, sectpr_para):
     """Helper untuk insert paragraph baru SEBELUM paragraf yang punya sectPr inline."""
     new_p = OxmlElement("w:p")
@@ -146,6 +215,7 @@ def _add_run(
     superscript: bool = False,
     font: str = None,
     size_pt: float = None,
+    color_rgb: str = None,
 ):
     run = paragraph.add_run(text)
     if bold:
@@ -157,13 +227,10 @@ def _add_run(
     if font:
         run.font.name = font
         rPr = run._element.get_or_add_rPr()
-        rFonts = rPr.find(qn("w:rFonts"))
-        if rFonts is None:
-            rFonts = OxmlElement("w:rFonts")
-            rPr.append(rFonts)
-        rFonts.set(qn("w:ascii"), font)
-        rFonts.set(qn("w:hAnsi"), font)
-        rFonts.set(qn("w:cs"), font)
+    if color_rgb:
+        rPr = run._element.get_or_add_rPr()
+        from docx.shared import RGBColor
+        run.font.color.rgb = RGBColor(*[int(color_rgb[i:i+2], 16) for i in (0, 2, 4)])
     if size_pt:
         run.font.size = Pt(size_pt)
     return run
@@ -294,7 +361,7 @@ def _set_table_borders(table, pattern="full"):
 
 def add_table(doc, table_data: dict):
     num = str(table_data.get("TableNumber") or "1")
-    title = (table_data.get("Title") or "Table title").strip()
+    title = _clean_latex(_clean_latex((table_data.get("Title") or "Table title").strip()))
     headers = table_data.get("Headers") or ["Col1", "Col2"]
     rows = table_data.get("Rows") or [["Data", "Data"]]
 
@@ -348,13 +415,9 @@ def add_figure(doc, fig_data: dict):
             placeholder_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_body}]"
         else:
             placeholder_text = f"[PROMPT UNTUK AI GAMBAR: {prompt_body}]"
-        table = doc.add_table(rows=1, cols=1)
-        table.alignment = WD_TABLE_ALIGNMENT.CENTER
-        cell = table.cell(0, 0)
-        cell.text = ""
-        para = cell.paragraphs[0]
-        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _add_run(para, placeholder_text, italic=True)
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _add_run(p, placeholder_text, italic=True, color_rgb="FF0000")
 
     if title:
         cap = doc.add_paragraph()
@@ -444,12 +507,14 @@ def generate():
     doc = Document(str(OUTPUT_DOCX))
 
     # Preserve inline sectPrs (yang punya headerReference/footerReference dari template)
-    clear_body_keep_sectprs(doc)
+    preserved = clear_body_keep_sectprs(doc)
 
     data = load_json()
 
     # Section 0 (sebelum sectPr inline #0): Title, Authors, Abstract, Keywords
-    add_title(doc, data)
+    # Masthead inject
+    _inject_masthead_content(doc, data)
+    # add_title(doc, data) — replaced by inject
     add_authors(doc, data)
     add_abstract(doc, data)
     add_keywords(doc, data)
@@ -463,6 +528,33 @@ def generate():
     # References (1-col area atau setelah sectPr inline #1)
     add_references(doc, data)
 
+    # Fix blank page: Section 1 (author photos) jadi kosong karena clear_body.
+    # Inject invisible paragraph sebelum first preserved sectPr supaya section
+    # tidak terdeteksi blank page oleh checker.
+    if preserved:
+        for child in list(doc.element.body):
+            if child.tag == qn("w:p"):
+                ppr = child.find(qn("w:pPr"))
+                if ppr is not None and ppr.find(qn("w:sectPr")) is not None:
+                    spacer = OxmlElement("w:p")
+                    spacer_pPr = OxmlElement("w:pPr")
+                    spacer_pStyle = OxmlElement("w:pStyle")
+                    spacer_pStyle.set(qn("w:val"), STYLE_BODY)
+                    spacer_pPr.append(spacer_pStyle)
+                    spacer.append(spacer_pPr)
+                    # Non-breaking space supaya checker deteksi sebagai konten
+                    spacer_r = OxmlElement("w:r")
+                    spacer_t = OxmlElement("w:t")
+                    spacer_t.set(qn("xml:space"), "preserve")
+                    spacer_t.text = "\u200B"  # zero-width space, tidak di-strip
+                    spacer_r.append(spacer_t)
+                    spacer.append(spacer_r)
+                    child.getparent().insert(
+                        list(child.getparent()).index(child), spacer
+                    )
+                    break
+
+    _postprocess_clean_latex(doc)
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)

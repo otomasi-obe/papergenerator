@@ -1,22 +1,30 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-interface SLRJobIntent {
-  job_id: string
-  query: string
-  top_k: number
-  ai_model: string
+interface LitIntent {
+  action?: string
+  query?: string
+  top_k?: number
+  job_id?: string
+  ai_model?: string
+  message?: string
+  paperId?: string | number
+  itemCount?: number
   [key: string]: unknown
 }
 
 export const useLiteratureStore = defineStore('literature', () => {
-  const pendingIntent = ref<SLRJobIntent | null>(null)
+  const pendingIntent = ref<LitIntent | null>(null)
 
-  function attachJob(intent: SLRJobIntent): void {
+  function setIntent(intent: LitIntent): void {
     pendingIntent.value = intent
   }
 
-  function consumeIntent(): SLRJobIntent | null {
+  function attachJob(intent: LitIntent): void {
+    pendingIntent.value = intent
+  }
+
+  function consumeIntent(): LitIntent | null {
     const v = pendingIntent.value
     pendingIntent.value = null
     return v
@@ -26,5 +34,5 @@ export const useLiteratureStore = defineStore('literature', () => {
     pendingIntent.value = null
   }
 
-  return { pendingIntent, attachJob, consumeIntent, clearIntent }
+  return { pendingIntent, setIntent, attachJob, consumeIntent, clearIntent }
 })

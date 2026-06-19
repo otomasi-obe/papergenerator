@@ -96,7 +96,7 @@ def _payload_to_chart_spec(payload: dict, paper_id: str) -> Optional[dict]:
     }
 
 
-def _generate_chart_from_spec(spec_dict: dict, user_id: int, paper_id: str, judul: str) -> Optional[dict]:
+def _generate_chart_from_spec(spec_dict: dict, user_id: int, paper_id: str, judul: str, target_path: str = None) -> Optional[dict]:
     """Generate a chart PNG from a spec dict. Returns {path, filename, url} or None on error."""
     try:
         from tools.data.chart_generator import ChartSpec, generate_chart
@@ -116,7 +116,7 @@ def _generate_chart_from_spec(spec_dict: dict, user_id: int, paper_id: str, judu
             theme=spec_dict.get("theme", "clean"),
         )
 
-        out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=judul))
+        out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=judul, target_path=target_path))
         log.info("[auto_data_tools] Generated chart: %s", out_path)
 
         # Move to paper image directory: user/<username>/<paper_id>/image/

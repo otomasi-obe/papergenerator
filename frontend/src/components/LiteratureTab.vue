@@ -6,8 +6,7 @@
         <div class="min-w-0">
           <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif">📚 Literatur</h2>
           <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
-            Tabel referensi paper. Hasil SLR otomatis tersimpan di sini, dan bisa juga ditambah / diedit manual.
-            Data ini dipakai sebagai sumber utama saat generate paper lengkap.
+            Tabel referensi paper. Klik baris untuk check/uncheck. Hasil SLR otomatis tersimpan di sini.
           </p>
         </div>
         <div class="flex items-center gap-2">
@@ -68,7 +67,7 @@
             max="500"
             class="w-20 px-2 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
             :disabled="slrRunning"
-            title="Jumlah paper yang ditampilkan"
+            title="Jumlah paper yang ditampilkan (fetch N×10 dari database)"
           />
           <button
             @click="runSLR"
@@ -151,8 +150,6 @@
             </div>
           </div>
         </div>
-
-      <!-- SLR stream notification removed -->
       </div>
 
       <!-- Add manual form -->
@@ -173,16 +170,22 @@
         </div>
       </div>
 
-      <!-- Filters row -->
+      <!-- Review Pinned + Counts + Delete Checked -->
       <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="text-[11px] text-ink-500 dark:text-anthracite-200 flex items-center gap-2">
           <button
-            @click="reviewAllPinned"
-            :disabled="reviewBusy || pinnedCount === 0"
+            @click="reviewAllChecked"
+            :disabled="reviewBusy || checkedCount === 0"
             class="px-2 py-1 rounded-lg text-[10px] font-semibold bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 active:scale-95 transition-transform"
-            title="Review semua pinned literatur dengan AI"
+            title="Review semua literatur yang di-check dengan AI"
           >🤖 Review Pinned</button>
           <span>{{ filteredItems.length }} / {{ items.length }} literatur · {{ pinnedCount }} pinned</span>
+          <button
+            v-if="checkedCount > 0"
+            @click="deleteChecked"
+            class="px-2 py-1 rounded-lg text-[10px] font-medium bg-red-600 hover:bg-red-700 text-white active:scale-95 transition-transform"
+            title="Hapus semua literatur yang di-check"
+          >🗑 Hapus ({{ checkedCount }})</button>
         </div>
         <!-- Page size selector -->
         <div class="flex items-center gap-1 text-[11px]">
@@ -193,15 +196,32 @@
       </div>
 
       <!-- Quick sort buttons -->
-      <div class="flex items-center gap-1 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
         <span class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mr-1">Filter:</span>
-        <button @click="setSort('year')" class="sort-btn" :class="{ active: sortKey === 'year' }">Tahun {{ sortIndicator('year') }}</button>
-        <button @click="setSort('citations')" class="sort-btn" :class="{ active: sortKey === 'citations' }">Sitasi {{ sortIndicator('citations') }}</button>
-        <button @click="setSort('title')" class="sort-btn" :class="{ active: sortKey === 'title' }">Judul A-Z {{ sortIndicator('title') }}</button>
-        <button @click="setSort('authors')" class="sort-btn" :class="{ active: sortKey === 'authors' }">Penulis A-Z {{ sortIndicator('authors') }}</button>
+        <div class="flex items-center gap-1">
+          <button @click="setSort('year')" class="sort-btn" :class="{ active: sortKey === 'year' }">Tahun {{ sortIndicator('year') }}</button>
+          <button @click="setSort('citations')" class="sort-btn" :class="{ active: sortKey === 'citations' }">Sitasi {{ sortIndicator('citations') }}</button>
+          <button @click="setSort('title')" class="sort-btn" :class="{ active: sortKey === 'title' }">Judul A-Z {{ sortIndicator('title') }}</button>
+          <button @click="setSort('authors')" class="sort-btn" :class="{ active: sortKey === 'authors' }">Penulis A-Z {{ sortIndicator('authors') }}</button>
+        </div>
+        <span class="text-ink-300 dark:text-anthracite-400 select-none">|</span>
+        <div class="flex items-center gap-1">
+          <button
+            v-if="duplicateCount > 0"
+            @click="duplicateMode = duplicateMode === 'show_duplicates' ? 'off' : 'show_duplicates'"
+            class="sort-btn"
+            :class="{ active: duplicateMode === 'show_duplicates' }"
+            title="Tampilkan hanya paper yang duplikat (judul sama)"
+          >⚠️ Duplikat ({{ duplicateCount }})</button>
+          <button
+            v-if="duplicateCount > 0"
+            @click="duplicateMode = duplicateMode === 'hide_duplicates' ? 'off' : 'hide_duplicates'"
+            class="sort-btn"
+            :class="{ active: duplicateMode === 'hide_duplicates' }"
+            title="Sembunyikan paper duplikat, tampilkan yang unik saja"
+          >✓ Unik</button>
+        </div>
       </div>
-
-      <!-- Bulk action toolbar removed: checkbox now = pin -->
 
       <!-- Pagination bar (top) -->
       <div v-if="totalPages > 1" class="flex items-center justify-end gap-2 flex-wrap">
@@ -248,24 +268,24 @@
               <th class="px-2 py-2 text-left w-6">
                 <input
                   type="checkbox"
-                  @change="togglePinAllVisible"
-                  title="Pin/unpin semua di halaman ini"
+                  :checked="allVisibleChecked"
+                  :indeterminate="someVisibleChecked && !allVisibleChecked"
+                  @change="toggleCheckAllVisible"
+                  title="Check/uncheck semua di halaman ini"
                 />
               </th>
               <th class="px-2 py-2 text-left w-10">#</th>
               <th class="px-2 py-2 text-left min-w-[260px]">Judul</th>
               <th class="px-2 py-2 text-left min-w-[220px]">Info</th>
               <th class="px-2 py-2 text-left min-w-[280px]">Abstract</th>
-              <th class="px-2 py-2 text-left min-w-[280px]">Review</th>
-              <th class="px-2 py-2 text-left w-20">Aksi</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading && items.length === 0">
-              <td colspan="7" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
+              <td colspan="5" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat\u2026</td>
             </tr>
             <tr v-else-if="items.length === 0">
-              <td colspan="7" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
                 <div class="space-y-3">
                   <div>Belum ada literatur. Jalankan SLR atau tambah manual untuk mulai.</div>
                   <button
@@ -277,7 +297,7 @@
               </td>
             </tr>
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="7" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
                 Tidak ada literatur yang cocok dengan filter ini. Coba ubah / kosongkan filter.
               </td>
             </tr>
@@ -285,27 +305,30 @@
               <tr
                 v-for="(it, i) in paginatedItems"
                 :key="it.id"
-                :class="['border-t border-ivory-200 dark:border-anthracite-600',
-                         it.pinned ? 'bg-cream-100 dark:bg-anthracite-700/60' : 'hover:bg-cream-50 dark:hover:bg-anthracite-700/30']"
+                :class="[rowClass(it), { 'ring-2 ring-yellow-400 dark:ring-yellow-500 bg-yellow-50 dark:bg-yellow-900/10': duplicateIds.has(it.id) }]"
+                @click="toggleCheck(it)"
               >
-                <td class="px-2 py-2 align-top">
+                <td class="px-2 py-2 align-top" @click.stop>
                   <input
                     type="checkbox"
-                    :checked="it.pinned"
-                    @change="togglePin(it)"
-                    title="Centang = pin (prioritas tinggi)"
+                    :checked="checkedIds.has(it.id)"
+                    @change="toggleCheck(it)"
+                    title="Centang = pilih untuk review/delete"
                   />
                 </td>
                 <td class="px-2 py-2 align-top text-ink-500 dark:text-anthracite-200">{{ pageOffset + i + 1 }}</td>
                 <!-- Judul -->
                 <td class="px-2 py-2 align-top">
-                  <div class="font-medium text-ink-900 dark:text-anthracite-50 leading-snug break-words">{{ it.title }}</div>
+                  <div class="font-medium text-ink-900 dark:text-anthracite-50 leading-snug break-words">
+                    <span v-if="it.pinned" class="text-amber-500 mr-1" title="Pinned (prioritas tinggi)">📌</span>
+                    {{ it.title }}
+                  </div>
                 </td>
                 <!-- Info: Tahun, Sitasi, Penulis, Jurnal, DOI, PDF -->
                 <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed">
                   <div class="space-y-0.5">
                     <div v-if="it.year"><span class="text-ink-500 dark:text-anthracite-300">Tahun:</span> {{ it.year }}</div>
-                    <div><span class="text-ink-500 dark:text-anthracite-300">Sitasi:</span> {{ it.citations ?? '–' }}</div>
+                    <div><span class="text-ink-500 dark:text-anthracite-300">Sitasi:</span> {{ it.citations ?? '\u2013' }}</div>
                     <div v-if="it.authors && it.authors.length">
                       <span class="text-ink-500 dark:text-anthracite-300">Penulis:</span>
                       <span :title="(it.authors||[]).join(', ')">{{ formatAuthors(it.authors) }}</span>
@@ -314,17 +337,29 @@
                       {{ it.venue || it.publisher }}
                     </div>
                     <div v-if="it.doi">
-                      <a :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline break-all text-[10px]">https://doi.org/{{ it.doi }}</a>
+                      <a :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline break-all text-[10px]" @click.stop>https://doi.org/{{ it.doi }}</a>
                     </div>
                     <div v-if="it.pdf_url">
-                      <a :href="it.pdf_url" target="_blank" rel="noopener" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 text-[10px] font-medium transition-colors" title="Download PDF">
-                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6h-4V2H4v16zm8-14.5V6h2.5L12 3.5zM6 16V4h4v4h4v8H6z"/><path d="M8 12h1.5v-2h1v2H12v-3.5h-1v1h-1v-1H8.5v1H8V12z"/></svg>
+                      <a :href="it.pdf_url" target="_blank" rel="noopener" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 text-[10px] font-medium transition-colors" title="Download PDF" @click.stop>
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6h-4V2H4v16zm8-14.5V6h2.5L12 3.5zM6 16V4h4v4h4v8H6z"/><path d="M8 12h1.5v-2h1v2H12v-3.5h-1v1h-1v1H8.5v1H8V12z"/></svg>
                         PDF
                       </a>
                     </div>
                     <div v-if="!it.pdf_url && !it.doi && it.url">
-                      <a :href="safeUrl(it.url)" target="_blank" rel="noopener" class="text-blue-600 hover:underline break-all text-[10px]">🔗 URL</a>
+                      <a :href="safeUrl(it.url)" target="_blank" rel="noopener" class="text-blue-600 hover:underline break-all text-[10px]" @click.stop>🔗 URL</a>
                     </div>
+                    <!-- Pin toggle -->
+                    <button
+                      @click.stop="togglePin(it)"
+                      :class="['text-[10px] mt-1 px-1.5 py-0.5 rounded', it.pinned ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-ivory-100 text-ink-500 dark:bg-anthracite-700 dark:text-anthracite-300 hover:bg-ivory-200']"
+                      :title="it.pinned ? 'Unpin' : 'Pin (prioritas tinggi)'"
+                    >{{ it.pinned ? '📌 Unpin' : '📌 Pin' }}</button>
+                    <!-- Delete -->
+                    <button
+                      @click.stop="deleteItem(it)"
+                      class="text-[10px] mt-1 ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/40"
+                      title="Hapus literatur"
+                    >🗑 Hapus</button>
                   </div>
                 </td>
                 <!-- Abstract (expandable) -->
@@ -333,44 +368,11 @@
                     <div :class="expandedAbstract.has(it.id) ? '' : 'line-clamp-3'" class="whitespace-pre-wrap">{{ it.abstract }}</div>
                     <button
                       v-if="isLongText(it.abstract)"
-                      @click="toggleExpand('abstract', it.id)"
+                      @click.stop="toggleExpand('abstract', it.id)"
                       class="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
                     >{{ expandedAbstract.has(it.id) ? '▲ sembunyikan' : '▼ tampilkan semua' }}</button>
                   </template>
                   <span v-else class="text-ink-400 dark:text-anthracite-300 italic">—</span>
-                </td>
-                <!-- Review (expandable) -->
-                <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed break-words max-w-[360px]">
-                  <template v-if="reviewingId === it.id">
-                    <span class="text-amber-600 dark:text-amber-400 animate-pulse">⏳ Mereview…</span>
-                  </template>
-                  <template v-else-if="it.review">
-                    <div :class="expandedReview.has(it.id) ? '' : 'line-clamp-3'" class="whitespace-pre-wrap">{{ it.review }}</div>
-                    <button
-                      v-if="isLongText(it.review)"
-                      @click="toggleExpand('review', it.id)"
-                      class="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-                    >{{ expandedReview.has(it.id) ? '▲ sembunyikan' : '▼ tampilkan semua' }}</button>
-                  </template>
-                  <template v-else>
-                    <span class="text-ink-400 dark:text-anthracite-300 italic">Belum di-review</span>
-                  </template>
-                </td>
-                <!-- Actions -->
-                <td class="px-2 py-2 align-top">
-                  <div class="flex flex-col gap-1">
-                    <button
-                      @click="reviewSingle(it)"
-                      :disabled="reviewingId === it.id || !it.abstract"
-                      class="px-2 py-1 rounded text-[10px] font-medium bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-40 active:scale-95 transition-transform"
-                      title="Review dengan AI"
-                    >🤖 Review</button>
-                    <button
-                      @click="deleteItem(it)"
-                      class="px-2 py-1 rounded text-[10px] font-medium bg-red-600 hover:bg-red-700 text-white active:scale-95 transition-transform"
-                      title="Hapus literatur"
-                    >🗑 Hapus</button>
-                  </div>
                 </td>
               </tr>
             </template>
@@ -394,7 +396,7 @@
             :disabled="currentPage <= 1"
             class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
           >« Prev</button>
-          <template v-for="p in visiblePageNumbers" :key="p">
+          <template v-for="p in visiblePageNumbers" :key="'top-' + p">
             <button
               v-if="p !== '...'"
               @click="currentPage = p as number"
@@ -416,8 +418,8 @@
       </div>
 
       <p class="text-[11px] text-ink-500 dark:text-anthracite-200">
-        💡 <strong>Tip:</strong> hasil yang di-pin / must-read diprioritaskan oleh AI saat generate paper.
-        Klik pada chat dan ketik <em>"buatkan literatur review tentang ..."</em> untuk menjalankan SLR otomatis.
+        💡 <strong>Tip:</strong> Klik baris untuk check/uncheck paper. Paper yang di-check bisa direview atau dihapus massal.
+        Pin (📌) untuk menandai prioritas tinggi.
       </p>
     </div>
   </div>
@@ -429,6 +431,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePaperStore } from '../stores/paper'
 import { useLiteratureStore } from '../stores/literature'
+import { useUiStore } from '../stores/ui'
 import api from '../api/index'
 
 interface LiteratureItem {
@@ -451,6 +454,7 @@ interface LiteratureItem {
   review?: string
   pinned?: boolean
   must_read?: boolean
+  is_checked?: boolean
 }
 
 interface SLRJob {
@@ -487,6 +491,7 @@ interface FilterState {
 
 const store = usePaperStore()
 const litStore = useLiteratureStore()
+const uiStore = useUiStore()
 const { currentPaperId } = storeToRefs(store)
 
 const items = ref<LiteratureItem[]>([])
@@ -530,13 +535,41 @@ const manualForm = ref<ManualForm>({
   venue: '', doi: '', url: '', summary: '',
 })
 
-const selectedIds = ref<Set<number>>(new Set())
-const bulkBusy = ref(false)
-const bulkMsg = ref('')
-const selectionCount = computed(() => selectedIds.value.size)
+// CHECKED state — separate from pinned
+const checkedIds = ref<Set<number>>(new Set())
+const checkedCount = computed(() => {
+  let count = 0
+  for (const it of items.value) {
+    if (checkedIds.value.has(it.id)) count++
+  }
+  return count
+})
 
 const sortKey = ref<'default' | 'title' | 'year' | 'score' | 'citations' | 'authors'>('default')
 const sortDir = ref<'asc' | 'desc'>('desc')
+
+// ── Deteksi duplikat ───────────────────────────────────────────
+type DuplicateMode = 'off' | 'show_duplicates' | 'hide_duplicates'
+const duplicateMode = ref<DuplicateMode>('off')
+
+/** Set of IDs yang judulnya muncul lebih dari 1× (case-insensitive, trim). */
+const duplicateIds = computed<Set<number>>(() => {
+  const norm = new Map<string, number[]>()
+  for (const it of items.value) {
+    const key = (it.title || '').toLowerCase().trim().replace(/\s+/g, ' ')
+    if (!key) continue
+    const arr = norm.get(key) || []
+    arr.push(it.id)
+    norm.set(key, arr)
+  }
+  const ids = new Set<number>()
+  for (const arr of norm.values()) {
+    if (arr.length > 1) for (const id of arr) ids.add(id)
+  }
+  return ids
+})
+
+const duplicateCount = computed(() => duplicateIds.value.size)
 
 const reviewingId = ref<number | null>(null)
 const reviewBusy = ref(false)
@@ -547,18 +580,16 @@ const paperTitle = computed<string>(() => store.paper?.title || '')
 const pageSize = ref(100)
 const currentPage = ref(1)
 
-// Expandable abstract/review — Set of item IDs that are expanded (default = collapsed via line-clamp-3)
+// Expandable abstract — Set of item IDs that are expanded (default = collapsed via line-clamp-3)
 const expandedAbstract = ref<Set<number>>(new Set())
-const expandedReview = ref<Set<number>>(new Set())
 
 function isLongText(text: string | undefined): boolean {
   if (!text) return false
-  // Rough: > 3 lines ≈ > 200 chars or has 3+ newlines
   return text.length > 200 || (text.split('\n').length > 3)
 }
 
-function toggleExpand(field: 'abstract' | 'review', id: number): void {
-  const set = field === 'abstract' ? expandedAbstract : expandedReview
+function toggleExpand(field: 'abstract', id: number): void {
+  const set = expandedAbstract
   const next = new Set(set.value)
   if (next.has(id)) next.delete(id)
   else next.add(id)
@@ -570,10 +601,17 @@ const filteredItems = computed<LiteratureItem[]>(() => {
   const minY = (minYear.value != null && minYear.value !== '' && Number.isFinite(Number(minYear.value)))
     ? Number(minYear.value)
     : null
+  const dupFilters = duplicateMode.value !== 'off'
   return items.value.filter(it => {
     if (filterSource.value && (it.source || it.source_kind) !== filterSource.value) return false
     if (onlyPinned.value && !it.pinned) return false
     if (minY != null && (it.year == null || Number(it.year) < minY)) return false
+    // duplicate filter
+    if (dupFilters) {
+      const isDup = duplicateIds.value.has(it.id)
+      if (duplicateMode.value === 'hide_duplicates' && isDup) return false
+      if (duplicateMode.value === 'show_duplicates' && !isDup) return false
+    }
     if (!q) return true
     const hay = [
       it.title, it.venue, it.publisher, it.doi, it.url, it.pdf_url,
@@ -657,21 +695,27 @@ function setPageSize(size: number): void {
 
 const pinnedCount = computed<number>(() => items.value.filter(i => i.pinned).length)
 
-const allVisibleSelected = computed<boolean>(() => {
+const allVisibleChecked = computed<boolean>(() => {
   const arr = paginatedItems.value
   if (arr.length === 0) return false
-  for (const it of arr) {
-    if (!selectedIds.value.has(it.id)) return false
-  }
-  return true
+  return arr.every(it => checkedIds.value.has(it.id))
 })
 
-const someVisibleSelected = computed<boolean>(() => {
-  for (const it of paginatedItems.value) {
-    if (selectedIds.value.has(it.id)) return true
-  }
-  return false
+const someVisibleChecked = computed<boolean>(() => {
+  return paginatedItems.value.some(it => checkedIds.value.has(it.id))
 })
+
+function rowClass(it: LiteratureItem): string {
+  const classes = ['border-t', 'border-ivory-200', 'dark:border-anthracite-600', 'cursor-pointer']
+  if (checkedIds.value.has(it.id)) {
+    classes.push('bg-blue-50', 'dark:bg-blue-900/20', 'border-l-2', 'border-blue-500')
+  } else if (it.pinned) {
+    classes.push('bg-cream-100', 'dark:bg-anthracite-700/60')
+  } else {
+    classes.push('hover:bg-cream-50', 'dark:hover:bg-anthracite-700/30')
+  }
+  return classes.join(' ')
+}
 
 function toast(msg: string, type: 'info' | 'success' | 'error' = 'info'): void {
   if (typeof store.showToast === 'function') store.showToast(msg, type)
@@ -694,6 +738,8 @@ const STAGE_LABELS: Record<string, string> = {
   dedup_done: 'Dedup selesai',
   scoring: 'Ranking',
   scored: 'Ranking selesai',
+  reranking: 'AI Re-ranking',
+  reranked: 'AI Re-ranked',
   summarizing: 'Scoring programmatik',
   summarized: 'Scoring selesai',
   complete: 'Selesai',
@@ -771,17 +817,19 @@ function applySavedFilter(saved: FilterState | null): void {
   minYear.value = (saved.minYear === '' || saved.minYear == null) ? null : Number(saved.minYear)
 }
 
+let _filterSaveTimer: ReturnType<typeof setTimeout> | null = null
 watch(
   [filter, filterSource, onlyPinned, minYear],
-  () => { saveFilterState() }
+  () => {
+    if (_filterSaveTimer) clearTimeout(_filterSaveTimer)
+    _filterSaveTimer = setTimeout(() => { saveFilterState() }, 300)
+  }
 )
 
 async function loadItems(): Promise<void> {
   if (!currentPaperId.value) return
-  // Re-entrancy guard: skip if already fetching
   if (_loadItemsInFlight) return
   _loadItemsInFlight = true
-  // Don't show full loading spinner during SLR streaming
   if (!slrRunning.value) loading.value = true
   try {
     const res = await api.get(`/api/papers/${currentPaperId.value}/literature`)
@@ -793,8 +841,18 @@ async function loadItems(): Promise<void> {
       fetched = data.items
     }
 
+    // Sync checked state from server (add new, remove stale)
+    const fetchedIds = new Set(fetched.map((it: Record<string, any>) => it.id))
+    const nextChecked = new Set<number>()
+    for (const it of fetched) {
+      if (it.is_checked) nextChecked.add(it.id)
+    }
+    // Only update if different
+    const needsUpdate = nextChecked.size !== checkedIds.value.size ||
+      Array.from(checkedIds.value).some(id => !nextChecked.has(id))
+    if (needsUpdate) checkedIds.value = nextChecked
+
     if (slrRunning.value) {
-      // Merge mode: update existing in place, append new at bottom
       const existingMap = new Map(items.value.map(i => [i.id, i]))
       const newItems: LiteratureItem[] = []
       for (const item of fetched) {
@@ -806,7 +864,6 @@ async function loadItems(): Promise<void> {
       }
       if (newItems.length > 0) {
         items.value = [...items.value, ...newItems]
-        // Track stream items for the live indicator
         slrStreamItems.value = [...slrStreamItems.value, ...newItems].slice(-50)
       }
     } else {
@@ -821,7 +878,7 @@ async function loadItems(): Promise<void> {
   }
 }
 
-let _lastJobIds = new Set<number>()
+const _lastJobIds = ref<Set<number>>(new Set())
 let _lastJobStatus: Record<number, string> = {}
 let _consecutiveFailures = 0
 let _waitCursor = 0
@@ -864,17 +921,16 @@ async function loadJobs(): Promise<void> {
     lastSlrJob.value = finished[0] || null
     const newlyDone = jobs.filter(j =>
       j.status === 'done' &&
-      (!_lastJobIds.has(j.id) || _lastJobStatus[j.id] !== 'done')
+      (!_lastJobIds.value.has(j.id) || _lastJobStatus[j.id] !== 'done')
     )
     const justFinished = jobs.some(j =>
       (j.status === 'done' || j.status === 'error') &&
-      (!_lastJobIds.has(j.id) || _lastJobStatus[j.id] !== j.status)
+      (!_lastJobIds.value.has(j.id) || _lastJobStatus[j.id] !== j.status)
     )
     if (justFinished) {
       _extraFastPolls = 1
       await loadItems()
       if (newlyDone.length > 0) {
-        // Show how many items this SLR job added (not total)
         const newCount = _knownIdsBeforeSlr
           ? items.value.filter(i => !_knownIdsBeforeSlr.has(i.id)).length
           : items.value.length
@@ -885,8 +941,8 @@ async function loadJobs(): Promise<void> {
           const j = newlyDone[0]
           const q = j?.query || ''
           const body = [
-            `✅ **SLR selesai.** ${newCount} literatur berhasil dikumpulkan` +
-              (q ? ` untuk query *"${q}"*.` : '.'),
+            `✅ **SLR selesai.** ${newCount} literatur berhasil dikumpulkan`,
+            q ? ` untuk query *"${q}"*.` : '.',
             '',
             'Mau lanjut yang mana?',
             '[OPSI]',
@@ -902,14 +958,12 @@ async function loadJobs(): Promise<void> {
         }
       }
     }
-    // Update slrRunning
     const wasRunning = slrRunning.value
     slrRunning.value = active.length > 0
-    // If SLR just started, snapshot known IDs for stream tracking
     if (!wasRunning && slrRunning.value) {
       _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
     }
-    _lastJobIds = new Set(jobs.map(j => j.id))
+    _lastJobIds.value = new Set(jobs.map(j => j.id))
     _lastJobStatus = Object.fromEntries(jobs.map(j => [j.id, j.status]))
     _consecutiveFailures = 0
     if (loadError.value) loadError.value = ''
@@ -932,7 +986,8 @@ async function loadJobs(): Promise<void> {
 async function retryLoad(): Promise<void> {
   loadError.value = ''
   _consecutiveFailures = 0
-  await Promise.all([loadItems(), loadJobs()])
+  try { await loadItems() } catch { /* handled in loadItems */ }
+  try { await loadJobs() } catch { /* handled in loadJobs */ }
 }
 
 function schedulePoll(): void {
@@ -974,21 +1029,16 @@ async function runSLR(): Promise<void> {
     await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
       query: q,
       top_k: slrTopK.value,
-      ai_summarize: false,
+      ai_summarize: true,
       sources: slrSources.value.length > 0 && slrSources.value.length < availableSources.value.length ? slrSources.value : null,
       year_from: slrYearFrom.value || null,
     })
-    // loadJobs() updates slrRunning based on server state — don't override
     await loadJobs()
     schedulePoll()
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'SLR failed'
     toast('SLR error: ' + msg, 'error')
   }
-  // NOTE: removed `finally { slrRunning.value = false }` — loadJobs() above
-  // and schedulePoll() already set slrRunning from actual server state.
-  // The old finally caused a brief flicker where slrRunning was false between
-  // loadJobs() setting it true and finally resetting it.
 }
 
 async function cancelJob(jobId: number): Promise<void> {
@@ -1045,7 +1095,7 @@ async function handlePdfUpload(event: Event): Promise<void> {
       const parts: string[] = []
       if (createdCount > 0) parts.push(`${createdCount} literatur baru`)
       if (matchedCount > 0) parts.push(`${matchedCount} file cocok dengan SLR`)
-      toast(`✅ ${parts.join(', ')} ditambahkan`, 'success')
+      toast(`\u2705 ${parts.join(', ')} ditambahkan`, 'success')
     }
     
     await loadItems()
@@ -1053,38 +1103,9 @@ async function handlePdfUpload(event: Event): Promise<void> {
     toast('Upload gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   } finally {
     loading.value = false
-    // Reset file input so same file can be uploaded again
     if (pdfFileInput.value) {
       pdfFileInput.value.value = ''
     }
-  }
-}
-
-async function importFromFiles(): Promise<void> {
-  // Legacy: import from Tools File (uses stored metadata)
-  if (!currentPaperId.value) return
-  loading.value = true
-  try {
-    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/from-files`)
-    const data = res?.data || {}
-    const createdCount = (data.created || []).length
-    const matchedCount = (data.matched || []).length
-    const total = data.total || 0
-    
-    if (total === 0) {
-      toast('Tidak ada file baru untuk diimport', 'info')
-    } else {
-      const parts: string[] = []
-      if (createdCount > 0) parts.push(`${createdCount} literatur baru`)
-      if (matchedCount > 0) parts.push(`${matchedCount} file cocok dengan SLR`)
-      toast(`✅ ${parts.join(', ')} ditambahkan`, 'success')
-    }
-    
-    await loadItems()
-  } catch (e: any) {
-    toast('Import gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  } finally {
-    loading.value = false
   }
 }
 
@@ -1147,6 +1168,10 @@ async function deleteItem(it: LiteratureItem): Promise<void> {
   if (!confirm(`Hapus "${it.title?.slice(0, 80) || 'literatur ini'}"?`)) return
   try {
     await api.delete(`/api/papers/${currentPaperId.value}/literature/${it.id}`)
+    // Also remove from checked
+    const next = new Set(checkedIds.value)
+    next.delete(it.id)
+    checkedIds.value = next
     await loadItems()
     toast('Dihapus', 'success')
   } catch (e: any) {
@@ -1154,67 +1179,65 @@ async function deleteItem(it: LiteratureItem): Promise<void> {
   }
 }
 
-function toggleSelect(id: number): void {
-  const next = new Set(selectedIds.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  selectedIds.value = next
+// CHECKED functions
+function toggleCheck(it: LiteratureItem): void {
+  const next = new Set(checkedIds.value)
+  const newVal = !next.has(it.id)
+  if (newVal) next.add(it.id)
+  else next.delete(it.id)
+  checkedIds.value = next
+  // Sync ke backend
+  if (currentPaperId.value) {
+    api.patch(`/api/papers/${currentPaperId.value}/literature/${it.id}`, {
+      is_checked: newVal,
+    }).catch(() => { /* silent */ })
+  }
 }
 
-function toggleSelectAllVisible(): void {
-  const ids = paginatedItems.value.map(i => i.id)
-  if (allVisibleSelected.value) {
-    const next = new Set(selectedIds.value)
-    for (const id of ids) next.delete(id)
-    selectedIds.value = next
+function toggleCheckAllVisible(): void {
+  if (allVisibleChecked.value) {
+    // Uncheck all
+    const next = new Set(checkedIds.value)
+    for (const it of paginatedItems.value) next.delete(it.id)
+    checkedIds.value = next
+    // Bulk sync
+    if (currentPaperId.value) {
+      const ids = paginatedItems.value.map(it => it.id)
+      api.post(`/api/papers/${currentPaperId.value}/literature/bulk-patch`, {
+        ids,
+        patch: { is_checked: false },
+      }).catch(() => {})
+    }
   } else {
-    const next = new Set(selectedIds.value)
-    for (const id of ids) next.add(id)
-    selectedIds.value = next
+    // Check all
+    const next = new Set(checkedIds.value)
+    for (const it of paginatedItems.value) next.add(it.id)
+    checkedIds.value = next
+    if (currentPaperId.value) {
+      const ids = paginatedItems.value.map(it => it.id)
+      api.post(`/api/papers/${currentPaperId.value}/literature/bulk-patch`, {
+        ids,
+        patch: { is_checked: true },
+      }).catch(() => {})
+    }
   }
 }
 
-function clearSelection(): void {
-  selectedIds.value = new Set()
-}
-
-function pruneSelection(): void {
-  const known = new Set(items.value.map(i => i.id))
-  const next = new Set<number>()
-  for (const id of selectedIds.value) {
-    if (known.has(id)) next.add(id)
-  }
-  selectedIds.value = next
-}
-
-async function runBulk(label: string, fn: (id: number) => Promise<any>): Promise<number> {
-  const ids = Array.from(selectedIds.value)
-  if (ids.length === 0) return 0
-  bulkBusy.value = true
-  bulkMsg.value = `${label} ${ids.length}…`
-  let okCount = 0
+async function deleteChecked(): Promise<void> {
+  const ids = Array.from(checkedIds.value)
+  if (ids.length === 0 || !currentPaperId.value) return
+  if (!confirm(`Hapus ${ids.length} literatur yang di-check? Tindakan ini tidak bisa dibatalkan.`)) return
+  
   try {
-    const results = await Promise.all(ids.map(id => fn(id).then(() => true).catch(() => false)))
-    okCount = results.filter(Boolean).length
-  } finally {
-    bulkBusy.value = false
-    bulkMsg.value = ''
+    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/bulk-delete`, { ids })
+    const deleted = res.data?.deleted || 0
+    checkedIds.value = new Set()
+    await loadItems()
+    toast(`Dihapus ${deleted} literatur`, 'success')
+  } catch (e: any) {
+    toast('Hapus gagal: ' + (e?.response?.data?.error || e?.message || 'coba lagi'), 'error')
+    await loadItems()
   }
-  return okCount
-}
-
-async function bulkDelete(): Promise<void> {
-  if (!currentPaperId.value) return
-  const total = selectedIds.value.size
-  if (total === 0) return
-  if (!confirm(`Hapus ${total} literatur terpilih? Tindakan ini tidak bisa dibatalkan.`)) return
-  const ok = await runBulk('Menghapus', (id) =>
-    api.delete(`/api/papers/${currentPaperId.value}/literature/${id}`)
-  )
-  clearSelection()
-  await loadItems()
-  if (ok === total) toast(`Dihapus ${ok} literatur`, 'success')
-  else toast(`Dihapus ${ok}/${total} (sisanya gagal)`, ok > 0 ? 'info' : 'error')
 }
 
 function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations' | 'authors'): void {
@@ -1239,7 +1262,7 @@ function sortIndicator(key: string): string {
 }
 
 function formatAuthors(authors: string[] | undefined): string {
-  if (!authors || authors.length === 0) return '–'
+  if (!authors || authors.length === 0) return '\u2013'
   if (authors.length <= 3) return authors.join(', ')
   return `${authors.slice(0, 3).join(', ')}, et al.`
 }
@@ -1257,57 +1280,45 @@ async function togglePin(it: LiteratureItem): Promise<void> {
   }
 }
 
-async function togglePinAllVisible(): Promise<void> {
+async function reviewAllChecked(): Promise<void> {
   if (!currentPaperId.value) return
-  const items_visible = paginatedItems.value
-  if (items_visible.length === 0) return
-  // If all visible are pinned → unpin all, else → pin all
-  const allPinned = items_visible.every(it => it.pinned)
-  const newVal = !allPinned
-  const ids = items_visible.map(it => it.id)
-  try {
-    await api.post(`/api/papers/${currentPaperId.value}/literature/bulk-patch`, {
-      ids,
-      patch: { pinned: newVal },
-    })
-    for (const it of items_visible) {
-      it.pinned = newVal
-    }
-  } catch (e: any) {
-    toast('Gagal mengubah pin: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+  const checked = items.value.filter(it => checkedIds.value.has(it.id))
+  if (checked.length === 0) {
+    toast('Tidak ada literatur yang di-check', 'info')
+    return
   }
-}
-
-async function reviewSingle(it: LiteratureItem): Promise<void> {
-  if (!currentPaperId.value || !it.abstract) return
-  reviewingId.value = it.id
-  try {
-    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/${it.id}/review`)
-    if (res.data && res.data.review) {
-      it.review = res.data.review
-    }
-    toast('Review selesai', 'success')
-  } catch (e: any) {
-    toast('Review gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  } finally {
-    reviewingId.value = null
-  }
-}
-
-async function reviewAllPinned(): Promise<void> {
-  if (!currentPaperId.value) return
+  
   reviewBusy.value = true
   try {
-    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/review-pinned`)
-    const results = res.data?.results || []
-    const successCount = results.filter((r: any) => r.status === 'success').length
-    for (const r of results) {
-      if (r.status === 'success' && r.review) {
-        const item = items.value.find(i => i.id === r.id)
-        if (item) item.review = r.review
+    // Warning: cek duplikat di antara item yang di-check
+    const checkedDuplicates = checked.filter(it => duplicateIds.value.has(it.id))
+    if (checkedDuplicates.length > 0) {
+      if (!confirm(checkedDuplicates.length + ' paper duplikat terdeteksi!\nIni dapat mempengaruhi kualitas analisis.\n\nTetap lanjutkan review?')) {
+        reviewBusy.value = false
+        return
       }
     }
-    toast(`Review selesai: ${successCount}/${results.length} literatur`, 'success')
+
+    // Build review payload and redirect to chat
+    litStore.setIntent({
+      action: 'review_checked',
+      items: checked.map(it => ({
+        id: it.id,
+        title: it.title,
+        authors: it.authors || [],
+        year: it.year,
+        publisher: it.publisher || it.venue || '',
+        doi: it.doi,
+        abstract: it.abstract || '',
+        citations: it.citations || 0,
+      })),
+      query: slrQuery.value || paperTitle.value || '',
+    })
+    // Auto-switch ke Chat tab (right panel)
+    if (currentPaperId.value) {
+      uiStore.setRightPanel(currentPaperId.value, 'chat')
+    }
+    toast(`Mengirim ${checked.length} literatur ke Chat untuk review...`, 'success')
   } catch (e: any) {
     toast('Review gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
   } finally {
@@ -1325,7 +1336,7 @@ function applyIntent(intent: any): void {
       query: intent.query,
       status: 'queued',
       progress: 0,
-      progress_message: 'Starting…',
+      progress_message: 'Starting\u2026',
     }, ...activeJobs.value]
     slrRunning.value = true
   }
@@ -1333,33 +1344,37 @@ function applyIntent(intent: any): void {
 }
 
 watch(currentPaperId, async (id) => {
-  _lastJobIds = new Set()
+  _lastJobIds.value = new Set()
   _lastJobStatus = {}
   _consecutiveFailures = 0
   _waitCursor = 0
   activeJobs.value = []
   lastSlrJob.value = null
-  selectedIds.value = new Set()
+  checkedIds.value = new Set()
   slrStreamItems.value = []
   expandedAbstract.value = new Set()
-  expandedReview.value = new Set()
   loadError.value = ''
   currentPage.value = 1
   applySavedFilter(id ? loadFilterStateFor(id) : null)
   if (id) {
-    await Promise.all([loadItems(), loadJobs()])
+    try { await loadItems() } catch { /* handled in loadItems */ }
+    try { await loadJobs() } catch { /* handled in loadJobs */ }
     schedulePoll()
   }
 })
 
 watch(() => litStore.pendingIntent, (intent) => {
-  if (intent) applyIntent(litStore.consumeIntent())
+  if (!intent) return
+  // Jangan consume review_checked — ChatTab yang handle
+  if (intent.action === 'review_checked') return
+  applyIntent(litStore.consumeIntent())
 })
 
 onMounted(async () => {
   if (currentPaperId.value) {
     applySavedFilter(loadFilterStateFor(currentPaperId.value))
-    await Promise.all([loadItems(), loadJobs()])
+    try { await loadItems() } catch { /* handled in loadItems */ }
+    try { await loadJobs() } catch { /* handled in loadJobs */ }
   }
   applyIntent(litStore.consumeIntent())
   schedulePoll()

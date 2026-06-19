@@ -20,6 +20,7 @@ from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
+from ._abstract_enrich import enrich_abstract_via_doi
 
 log = logging.getLogger(__name__)
 
@@ -224,6 +225,9 @@ def _fetch_members(
                             paper.is_open_access = True
                     except Exception:
                         pass
+                # Enrich abstract via DOI → OpenAlex fallback
+                if not paper.abstract and paper.doi:
+                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:
@@ -283,6 +287,9 @@ def _fetch_ssrn(
                             paper.is_open_access = True
                     except Exception as _e:
                         print(f"[crossref_publishers] unpaywall resolve failed for DOI {paper.doi}: {_e}")
+                # Enrich abstract via DOI → OpenAlex fallback
+                if not paper.abstract and paper.doi:
+                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:

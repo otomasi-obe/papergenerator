@@ -35,10 +35,8 @@ files = Blueprint("files", __name__, url_prefix="/api/papers")
 
 ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"}
 # Per-file size cap. Reference papers (esp. scanned PDFs from journals) easily
-# breach 10 MB; cap raised to 30 MB so users don't get rejected for normal
-# academic PDFs. The whole multipart payload is still bounded by Flask's
-# MAX_CONTENT_LENGTH (60 MB by default).
-MAX_FILE_BYTES = 30 * 1024 * 1024
+# No upload size limit — users requested unrestricted file uploads.
+MAX_FILE_BYTES = 1024 * 1024 * 1024  # 1GB per file
 MAX_PREVIEW_CHARS = 20_000
 
 # Magic bytes for file type validation (first few bytes of file)
@@ -59,6 +57,7 @@ FILE_SIGNATURES = {
 # but release the GIL on heavy work, and we never want a single user to spawn
 # more than 20 simultaneous extractions across the whole process.
 _EXTRACT_POOL = ThreadPoolExecutor(max_workers=20, thread_name_prefix="pdf-extract")
+import atexit; atexit.register(lambda: _EXTRACT_POOL.shutdown(wait=True))
 
 
 def _validate_file_content(data: bytes, ext: str) -> bool:
@@ -287,7 +286,7 @@ def upload_paper_files(paper_id: str):
     try:
         for item, text_fut, meta_fut in futures:
             try:
-                extracted = text_fut.result(timeout=30)
+                extracted = text_fut.result(timeout=1800)
             except Exception as e:
                 log.info("extract_failed", extra={"file": item["name"], "err": str(e)})
                 extracted = ""
@@ -296,7 +295,7 @@ def upload_paper_files(paper_id: str):
             meta = {}
             if meta_fut is not None:
                 try:
-                    meta = meta_fut.result(timeout=15)
+                    meta = meta_fut.result(timeout=1800)
                 except Exception as e:
                     log.info("meta_extract_failed", extra={"file": item["name"], "err": str(e)})
 

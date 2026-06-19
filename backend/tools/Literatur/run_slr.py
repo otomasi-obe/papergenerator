@@ -1,17 +1,15 @@
-"""CLI pipeline SLR end-to-end (gratis, tanpa API berbayar).
+"""CLI Tool Literatur — PostgreSQL scoring → tampil → AI rank → tampil.
 
 Contoh:
-    python -m SLR.run_slr "deep learning autonomous driving" \
-        --total 200 --top 50 --out results/slr.json
+    python -m SLR.run_slr "deep learning autonomous driving" --top 50 --out results/slr.json
 
-    python -m SLR.run_slr "graph neural network" \
-        --sources openalex,crossref,arxiv --per-source 60 --total 300
+    python -m SLR.run_slr "graph neural network" --sources openalex,crossref,arxiv --top 30
 
 Output JSON:
     {
       query, generated_at, stats,
-      papers: [...],   # SEMUA hasil scrap (dedup-ed)
-      top50: [...],    # 50 paper rekomendasi terbaik
+      papers: [...],   # SEMUA hasil DB (PG-scored + AI-ranked)
+      top_k: [...],    # top-K paper dengan ranking AI
     }
 """
 
@@ -33,8 +31,7 @@ def _print_summary(payload: dict, top_k: int) -> None:
     print(f"TOTAL UNIQUE     : {s['total_unique_papers']}")
     print(f"WITH ABSTRACT    : {s['with_abstract']}")
     print(f"WITH DOI         : {s['with_doi']}")
-    print(f"MUST READ        : {s['must_read_count']}")
-    print(f"RELEVANT (sbert) : {s['is_relevant_count']}")
+    print(f"AI RERANKED      : {s.get('ai_reranked', False)}")
     print("=" * 70)
 
     print("\nPer source:")
@@ -47,51 +44,51 @@ def _print_summary(payload: dict, top_k: int) -> None:
             print(f"  {y}: {n}")
 
     print("\n" + "=" * 70)
-    print(f"TOP {min(top_k, len(payload['top50']))} REKOMENDASI:")
+    print(f"TOP {min(top_k, len(payload['top_k']))} REKOMENDASI:")
     print("=" * 70)
-    for i, rec in enumerate(payload["top50"][:10], 1):
+    for i, rec in enumerate(payload["top_k"][:10], 1):
         print(f"\n[{i}] {rec['title']}")
-        print(f"    score      : {rec['score_total']}  must_read={rec['must_read']}")
+        db_score = rec.get("db_score")
+        rank = rec.get("rank")
+        print(f"    db_score   : {db_score}  ai_rank={rank}")
         print(f"    source     : {rec['source']}  cit={rec['citations']}")
-        venue = rec["publisher_info"].get("venue") or ""
-        publisher = rec["publisher_info"].get("publisher") or ""
-        year = rec["publisher_info"].get("year") or ""
+        venue = rec.get("venue") or ""
+        publisher = rec.get("publisher") or ""
+        year = rec.get("year") or ""
         print(f"    venue/year : {venue} ({year})  -- {publisher}")
-        if rec.get("summary"):
-            print(f"    summary    : {rec['summary'][:200]}...")
+        abstract = rec.get("abstract") or ""
+        if abstract:
+            print(f"    abstract   : {abstract[:200]}...")
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Tool Literatur: PostgreSQL scoring → AI ranking")
     ap.add_argument("query")
     ap.add_argument(
         "--sources",
-        default=",".join(ALL.keys()),
-        help=f"Comma-separated dari: {','.join(ALL.keys())}",
+        default=None,
+        help=f"Comma-separated sumber (default: semua): {','.join(ALL.keys())}",
     )
-    ap.add_argument("--per-source", type=int, default=25)
-    ap.add_argument("--total", type=int, default=200, help="Maks total paper unik yang diproses")
-    ap.add_argument("--top", type=int, default=50, help="Jumlah paper teratas untuk rekomendasi")
-    ap.add_argument("--year-from", type=int, default=None)
-    ap.add_argument("--out", default="results/slr.json")
-    ap.add_argument("--allow-predatory", action="store_true")
+    ap.add_argument("--top", type=int, default=50, help="Jumlah paper teratas (default: 50)")
+    ap.add_argument("--year-from", type=int, default=None, help="Filter tahun minimum")
+    ap.add_argument("--out", default="results/slr.json", help="Output file path")
+    ap.add_argument("--ai-model", default=None, help="AI model untuk rerank (default: primary generate)")
     args = ap.parse_args()
 
-    sources = [s.strip() for s in args.sources.split(",") if s.strip()]
+    sources = [s.strip() for s in args.sources.split(",") if s.strip()] if args.sources else None
+
     print(f"Query    : {args.query}")
-    print(f"Sources  : {sources}")
-    print(f"Per-src  : {args.per_source} | total target unik: {args.total}")
+    print(f"Sources  : {sources or 'semua'}")
     print(f"Top-K    : {args.top}")
+    print(f"Year     : {args.year_from or 'semua'}")
     print(f"Output   : {args.out}\n")
 
     payload = run(
         query=args.query,
         sources=sources,
-        per_source=args.per_source,
-        max_total=args.total,
         top_k=args.top,
         year_from=args.year_from,
-        skip_predatory=not args.allow_predatory,
+        ai_model=args.ai_model,
     )
 
     out_path = Path(args.out)

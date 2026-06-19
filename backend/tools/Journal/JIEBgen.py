@@ -777,7 +777,9 @@ def generate():
 
     clear_body(doc)
 
-    add_title(doc, data)
+    # Masthead inject
+    _inject_masthead_content(doc, data)
+    # add_title(doc, data) — replaced by inject
     add_authors(doc, data)
     add_abstract(doc, data)
     add_keywords(doc, data)

@@ -24,7 +24,34 @@ print_header() {
 
 port_listening() { ss -tlnp 2>/dev/null | grep -q ":$1 "; }
 
-is_running() { port_listening $BACKEND_PORT; }
+# Cek backend port (8001) DAN frontend port (8000) via PM2 status.
+# PM2-managed nginx di port 8000 untuk frontend.
+is_running() {
+    port_listening $BACKEND_PORT && return 0
+    # Frontend cek: PM2 paper-frontend atau port 8000 listening
+    if command -v pm2 &>/dev/null; then
+        pm2 list 2>/dev/null | grep -q "paper-frontend.*online" && return 0
+    fi
+    return 1
+}
+
+# Pembersihan orphan gunicorn di port 8001 (targeted — tidak sentuh app lain)
+clean_orphan_port_8001() {
+    local pid
+    pid=$(ss -tlnp 2>/dev/null | grep ":8001 " | grep -oP 'pid=\K[0-9]+' | head -1)
+    if [ -n "$pid" ]; then
+        # Cek apakah pid ini PM2-managed (paper-backend-flask)
+        if command -v pm2 &>/dev/null && pm2 list 2>/dev/null | grep -q "paper-backend-flask.*online"; then
+            echo -e "   ${GREEN}○${NC} Port 8001 sudah dipegang PM2 paper-backend-flask — aman"
+            return 0
+        fi
+        echo -e "   ${YELLOW}⚠${NC} Orphan process PID=$pid di port 8001 — dibersihkan..."
+        kill -TERM "$pid" 2>/dev/null || true
+        sleep 2
+        kill -KILL "$pid" 2>/dev/null || true
+        echo -e "   ${GREEN}✓${NC} Orphan port 8001 dibersihkan"
+    fi
+}
 
 stop_all() {
     echo -e "${YELLOW}Menghentikan semua service...${NC}"; echo ""
@@ -83,9 +110,27 @@ do_start_services() {
 
     echo -e "${YELLOW}Starting Backend...${NC}"
     cd "$BACKEND_DIR"
-    killall -9 gunicorn 2>/dev/null || true
+    # Pembersihan orphan port 8001 (sebelum start, cegah restart loop)
+    clean_orphan_port_8001
+    # Targeted kill: hanya gunicorn papergenerator, TIDAK sentuh VIOLA/app lain
+    pkill -TERM -f "papergenerator/backend/.venv/bin/gunicorn" 2>/dev/null || true
+    sleep 3
+    pkill -KILL -f "papergenerator/backend/.venv/bin/gunicorn" 2>/dev/null || true
     pm2 start ../ecosystem.config.cjs --only paper-backend-flask 2>&1
-    echo -e "   ${GREEN}✓${NC} Backend started on port $BACKEND_PORT"
+    # Health check: retry curl sampai backend siap (maks 15x, sleep 2)
+    local health_ok=false
+    for i in $(seq 1 15); do
+        if curl -sf http://localhost:${BACKEND_PORT}/api/health >/dev/null 2>&1; then
+            health_ok=true
+            break
+        fi
+        sleep 2
+    done
+    if $health_ok; then
+        echo -e "   ${GREEN}✓${NC} Backend started on port $BACKEND_PORT (health OK)"
+    else
+        echo -e "   ${RED}✗${NC} Backend health check GAGAL — cek log $BACKEND_LOG_DIR/backend-error.log"
+    fi
     echo ""
 
     echo -e "${YELLOW}Starting RQ Worker...${NC}"

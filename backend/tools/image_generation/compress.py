@@ -36,23 +36,23 @@ def _to_rgb_with_white_bg(img: Image.Image) -> Image.Image:
 
 
 def _compress_jpeg_inplace(image_path: Path, max_size_bytes: int) -> bool:
-    img = Image.open(image_path)
-    img = _to_rgb_with_white_bg(img)
+    with Image.open(image_path) as img:
+        img = _to_rgb_with_white_bg(img)
 
-    quality = 85
-    while quality >= 20:
-        output = BytesIO()
-        img.save(output, format="JPEG", quality=quality, optimize=True)
-        data = output.getvalue()
-        if len(data) <= max_size_bytes:
-            image_path.write_bytes(data)
-            file_size = _get_size_bytes(image_path)
-            print(f"  ✓ Berhasil: {_bytes_to_kb(file_size):.1f} KB (JPEG quality: {quality})")
-            return True
-        quality -= 5
+        quality = 85
+        while quality >= 20:
+            output = BytesIO()
+            img.save(output, format="JPEG", quality=quality, optimize=True)
+            data = output.getvalue()
+            if len(data) <= max_size_bytes:
+                image_path.write_bytes(data)
+                file_size = _get_size_bytes(image_path)
+                print(f"  ✓ Berhasil: {_bytes_to_kb(file_size):.1f} KB (JPEG quality: {quality})")
+                return True
+            quality -= 5
 
-    print("  ✗ Gagal kompres JPEG ke < 1MB")
-    return False
+        print("  ✗ Gagal kompres JPEG ke < 1MB")
+        return False
 
 
 def _try_png_save(img: Image.Image, *, colors: int | None, compress_level: int) -> bytes:
@@ -70,45 +70,44 @@ def _try_png_save(img: Image.Image, *, colors: int | None, compress_level: int) 
 
 
 def _compress_png_inplace(image_path: Path, max_size_bytes: int) -> bool:
-    img = Image.open(image_path)
+    with Image.open(image_path) as img:
+        original_w, original_h = img.size
 
-    original_w, original_h = img.size
+        # Strategy:
+        # 1) optimize PNG with max compression
+        # 2) quantize (great for diagrams)
+        # 3) if needed, downscale gradually + quantize
+        candidates: list[tuple[float, int | None]] = []
+        candidates.append((1.0, None))
+        for c in (256, 128, 64):
+            candidates.append((1.0, c))
 
-    # Strategy:
-    # 1) optimize PNG with max compression
-    # 2) quantize (great for diagrams)
-    # 3) if needed, downscale gradually + quantize
-    candidates: list[tuple[float, int | None]] = []
-    candidates.append((1.0, None))
-    for c in (256, 128, 64):
-        candidates.append((1.0, c))
+        for scale in (0.9, 0.8, 0.7, 0.6):
+            for c in (256, 128):
+                candidates.append((scale, c))
 
-    for scale in (0.9, 0.8, 0.7, 0.6):
-        for c in (256, 128):
-            candidates.append((scale, c))
-
-    for scale, colors in candidates:
-        working = img
-        if scale != 1.0:
-            new_w = max(1, int(original_w * scale))
-            new_h = max(1, int(original_h * scale))
-            working = img.resize((new_w, new_h), resample=Image.Resampling.LANCZOS)
-
-        data = _try_png_save(working, colors=colors, compress_level=9)
-        if len(data) <= max_size_bytes:
-            image_path.write_bytes(data)
-            file_size = _get_size_bytes(image_path)
-            note = []
+        for scale, colors in candidates:
+            working = img
             if scale != 1.0:
-                note.append(f"scale: {scale:.1f}")
-            if colors is not None:
-                note.append(f"colors: {colors}")
-            note_str = f" ({', '.join(note)})" if note else ""
-            print(f"  ✓ Berhasil: {_bytes_to_kb(file_size):.1f} KB (PNG){note_str}")
-            return True
+                new_w = max(1, int(original_w * scale))
+                new_h = max(1, int(original_h * scale))
+                working = img.resize((new_w, new_h), resample=Image.Resampling.LANCZOS)
 
-    print("  ✗ Gagal kompres PNG ke < 1MB")
-    return False
+            data = _try_png_save(working, colors=colors, compress_level=9)
+            if len(data) <= max_size_bytes:
+                image_path.write_bytes(data)
+                file_size = _get_size_bytes(image_path)
+                note = []
+                if scale != 1.0:
+                    note.append(f"scale: {scale:.1f}")
+                if colors is not None:
+                    note.append(f"colors: {colors}")
+                note_str = f" ({', '.join(note)})" if note else ""
+                print(f"  ✓ Berhasil: {_bytes_to_kb(file_size):.1f} KB (PNG){note_str}")
+                return True
+
+        print("  ✗ Gagal kompres PNG ke < 1MB")
+        return False
 
 
 def compress_image(image_path: str | Path, max_size_mb: float = 1.0) -> bool:

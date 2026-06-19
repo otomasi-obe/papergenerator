@@ -85,6 +85,21 @@
             Gaya sitasi menentukan format referensi dalam teks dan daftar pustaka.
           </p>
         </div>
+
+        <!-- Language Selector -->
+        <div class="mt-6">
+          <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">🌐 Bahasa Paper</label>
+          <select
+            v-model="store.paper.language"
+            class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
+          >
+            <option value="id">🇮🇩 Bahasa Indonesia</option>
+            <option value="en">🔤 English</option>
+          </select>
+          <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-2">
+            Bahasa untuk penulisan paper dan respons chat. Diskusi tetap bisa dalam bahasa apapun — editor output akan mengikuti pilihan ini.
+          </p>
+        </div>
       </div>
     </div>
   </div>

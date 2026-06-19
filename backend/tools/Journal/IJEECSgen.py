@@ -468,17 +468,63 @@ def add_figure(doc, fig_data, fig_counter):
     title = _clean_latex(str(fig_data.get("Title", f"Figure {fig_no}")).strip())
     prompt_hint = _clean_latex(str(fig_data.get("Prompt", "")).strip())
 
-    # AI prompt (red italic)
+    image_path_str = str(fig_data.get("Path", "")).strip()
+    image_url = str(fig_data.get("url", "")).strip()
+    has_image = fig_data.get("hasImage", False)
+
+    # ── Resolve actual image file ────────────────────────────────────────
+    actual_image = None
+    if image_path_str or image_url:
+        candidates = []
+
+        # 1) Absolute path
+        if image_path_str and os.path.isabs(image_path_str):
+            candidates.append(Path(image_path_str))
+
+        # 2) Relative to TEMPLATE_JSON's image/ sibling folder
+        try:
+            json_dir = Path(str(TEMPLATE_JSON)).parent
+            paper_dir = json_dir.parent
+            image_dir = paper_dir / "image"
+            if image_dir.is_dir() and image_path_str:
+                candidates.append(image_dir / image_path_str)
+                stem = os.path.splitext(image_path_str)[0]
+                if stem:
+                    for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+                        candidates.append(image_dir / f"{stem}{ext}")
+        except Exception:
+            pass
+
+        # 3) Direct path from fig_data
+        if image_path_str:
+            candidates.append(Path(image_path_str))
+
+        for cand in candidates:
+            if cand.exists() and cand.is_file():
+                actual_image = cand
+                break
+
+    # ── Embed gambar atau fallback prompt ────────────────────────────────
     p_img = doc.add_paragraph()
     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_para_spacing(p_img, before_pt=3, after_pt=3)
-    dyn_prompt = prompt_hint or (
-        f"Buatkan gambar/diagram/ilustrasi teknis yang merepresentasikan "
-        f"'{title}'. Pastikan visualnya profesional dan cocok untuk jurnal akademik."
-    )
-    prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {dyn_prompt}]"
-    run = p_img.add_run(prompt_text)
-    set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
+
+    if actual_image:
+        try:
+            run_img = p_img.add_run()
+            run_img.add_picture(str(actual_image), width=Inches(5.5))
+        except Exception:
+            actual_image = None
+
+    if not actual_image:
+        # AI prompt fallback (red italic)
+        dyn_prompt = prompt_hint or (
+            f"Buatkan gambar/diagram/ilustrasi teknis yang merepresentasikan "
+            f"'{title}'. Pastikan visualnya profesional dan cocok untuk jurnal akademik."
+        )
+        prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {dyn_prompt}]"
+        run = p_img.add_run(prompt_text)
+        set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
 
     # Caption
     p_cap = doc.add_paragraph()

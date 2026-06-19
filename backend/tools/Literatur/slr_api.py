@@ -37,7 +37,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import defer
 
-from database.models import LiteratureItem, Paper, PaperFile, SlrJob, db
+from database.models import LiteratureItem, Paper, PaperFile, SlrJob, db, safe_commit
 from tools.editor.utils import PAPER_ID_RE
 from tools.Literatur.worker import enqueue_slr_job
 from utils.ai_tools.model_config import get_primary_generate_model
@@ -98,32 +98,24 @@ def _sanitize_lit_text(text: str | None, max_len: int) -> str:
 
 
 def get_pinned_literature(paper_id: str, user_id: int, max_items: int = 10) -> str:
-    """Ambil literature yang di-pin user, format sebagai blok teks utk
+    """Ambil literature yang di-check user, format sebagai blok teks utk
     injeksi ke system prompt (chat / paperfull).
 
-    Returns empty string kalau tidak ada pinned item atau query gagal.
+    HANYA return item dengan is_checked=True (user klik check).
+    Returns empty string kalau tidak ada checked item.
     """
     if not paper_id or not user_id:
         return ""
     try:
         items = (
             db.session.query(LiteratureItem)
-            .filter_by(paper_id=paper_id, user_id=user_id, pinned=True)
-            .order_by(LiteratureItem.updated_at.desc())
+            .filter_by(paper_id=paper_id, user_id=user_id, is_checked=True)
+            .order_by(LiteratureItem.pinned.desc(), LiteratureItem.score_total.desc())
             .limit(max_items)
             .all()
         )
         if not items:
-            # Fallback: use top-scored items when nothing is pinned
-            items = (
-                LiteratureItem.query
-                .filter_by(paper_id=paper_id, user_id=user_id)
-                .order_by(LiteratureItem.score_total.desc())
-                .limit(10)
-                .all()
-            )
-            if not items:
-                return ""
+            return ""
 
         lines: list[str] = []
         for i, it in enumerate(items, 1):
@@ -212,21 +204,8 @@ def _check_rate_limit(
             log.warning("Redis rate limiter failed, falling back to in-memory: %s", e)
             # Fall through to in-memory
 
-    # In-memory fallback (per-process only, weaker but functional)
-    with _RATE_LOCK:
-        mono_now = time.monotonic()
-        bucket = _RATE_BUCKETS[(user_id, endpoint)]
-        cutoff = mono_now - window_sec
-        while bucket and bucket[0] < cutoff:
-            bucket.pop(0)
-        if not bucket and (user_id, endpoint) in _RATE_BUCKETS:
-            del _RATE_BUCKETS[(user_id, endpoint)]
-            return True, 0
-        if len(bucket) >= max_requests:
-            retry_after = max(1, int(window_sec - (mono_now - bucket[0])) + 1)
-            return False, retry_after
-        bucket.append(mono_now)
-        return True, 0
+    # In-memory fallback REMOVED — multi-worker unsafe. Hard-reject when Redis down.
+    return False, -1
 
 
 def _err(message: str, code: str, status: int):
@@ -301,6 +280,8 @@ def create_slr_job(paper_id: str):
     # F-28: simple per-user in-memory rate limit (10 jobs/minute).
     ok, retry_after = _check_rate_limit(user_id, "create_slr_job")
     if not ok:
+        if retry_after == -1:
+            return _err("Rate limiting unavailable, try again later", "RATE_LIMIT_UNAVAILABLE", 503)
         return (
             jsonify(
                 {
@@ -327,6 +308,16 @@ def create_slr_job(paper_id: str):
 
     per_source = _safe_per_source(body.get("per_source"))
     top_k = _safe_top_k(body.get("top_k"))
+
+    # N×10 fetch strategy: ambil top_k × 10 paper untuk AI re-ranking
+    # Jika user tidak set per_source eksplisit, scale otomatis
+    if not body.get("per_source"):
+        default_source_count = 5  # OpenAlex, Crossref, arXiv, IEEE, SINTA
+        active_sources = sources if sources else None
+        source_count = max(len(active_sources) if active_sources else default_source_count, 1)
+        n_x10 = top_k * 10
+        per_source = max(per_source, (n_x10 // source_count) + 1)
+
     year_from, year_err = _validate_year(body.get("year_from"))
     if year_err:
         return year_err
@@ -529,7 +520,7 @@ def cancel_slr_job(job_id: str):
         job.stage = "cancelled"
         job.finished_at = datetime.now(timezone.utc)
         try:
-            db.session.commit()
+            safe_commit()
         except Exception:
             db.session.rollback()
             log.exception("slr.cancel commit failed job=%s", job.id)
@@ -543,7 +534,7 @@ def cancel_slr_job(job_id: str):
             )
         try:
             db.session.delete(job)
-            db.session.commit()
+            safe_commit()
         except Exception:
             db.session.rollback()
             return _err("delete failed", "JOB_DELETE_FAILED", 500)
@@ -565,23 +556,41 @@ def list_literature(paper_id: str):
         return err
 
     try:
+        from tools.Literatur.text_cleaner import detect_mojibake
         base_q = (
             db.session.query(LiteratureItem)
             .filter_by(paper_id=paper_id, user_id=user_id)
-            .order_by(
-                LiteratureItem.pinned.desc(),
-                LiteratureItem.score_total.desc(),
-                LiteratureItem.created_at.desc(),
-            )
         )
+
+        # Fetch ordered results
+        raw_items = base_q.order_by(
+            LiteratureItem.pinned.desc(),
+            LiteratureItem.score_total.desc(),
+            LiteratureItem.created_at.desc(),
+        ).all()
+
+        # ── Post-filter: demote mojibake items ──
+        # Items with garbled text get pushed to the bottom regardless
+        # of their stored score. Prevents old mojibake data from
+        # appearing at the top after scoring changes.
+        clean_items = []
+        mojibake_items = []
+        for item in raw_items:
+            t_mojo = detect_mojibake(item.title)
+            a_mojo = detect_mojibake(item.abstract)
+            if max(t_mojo, a_mojo) > 0.3:
+                mojibake_items.append(item)
+            else:
+                clean_items.append(item)
+        items_sorted = clean_items + mojibake_items
 
         # Backward-compat: only switch to paginated wrapper when caller actually
         # passes `page` or `page_size`. Otherwise return the original flat list.
         page_arg = request.args.get("page")
         size_arg = request.args.get("page_size")
         if page_arg is None and size_arg is None:
-            # BUG-7.1: default limit 100 instead of loading ALL items
-            return jsonify([i.to_dict() for i in base_q.limit(100).all()])
+            # Return all items — frontend handles client-side pagination (pageSize 100/200)
+            return jsonify([i.to_dict() for i in items_sorted])
 
         try:
             page = int(page_arg) if page_arg is not None else 1
@@ -592,13 +601,14 @@ def list_literature(paper_id: str):
         except (TypeError, ValueError):
             page_size = 50
         page = max(1, page)
-        page_size = max(1, min(page_size, 500))  # BUG-SEMAPHORE_RATE_LIMIT_SLR: hard cap 500 items/page
+        page_size = max(1, min(page_size, 500))
 
-        total = base_q.count()
-        items = base_q.offset((page - 1) * page_size).limit(page_size).all()
+        total = len(items_sorted)
+        start = (page - 1) * page_size
+        items_page = items_sorted[start:start + page_size]
         return jsonify(
             {
-                "items": [i.to_dict() for i in items],
+                "items": [i.to_dict() for i in items_page],
                 "total": total,
                 "page": page,
                 "page_size": page_size,
@@ -649,6 +659,31 @@ def create_literature(paper_id: str):
                 409,
             )
 
+    # Dedup by normalized title (catches papers without DOI)
+    if title:
+        title_norm = re.sub(r'[^a-z0-9]+', '', title.lower())[:500]
+        if title_norm:
+            existing_title = (
+                db.session.query(LiteratureItem)
+                .filter_by(paper_id=paper_id, title_norm=title_norm)
+                .first()
+            )
+            if existing_title is not None:
+                # Title match exists — if no DOI to distinguish, reject as duplicate
+                # If caller provided a DOI and the existing row has no DOI, still reject
+                return (
+                    jsonify(
+                        {
+                            "error": f"literature with same title already exists (id={existing_title.id})",
+                            "code": "TITLE_DUPLICATE",
+                            "existing_id": existing_title.id,
+                        }
+                    ),
+                    409,
+                )
+    else:
+        title_norm = ""
+
     raw_url = body.get("url")
     if raw_url:
         url_norm = _safe_url(raw_url)
@@ -683,6 +718,7 @@ def create_literature(paper_id: str):
         source_kind=source_kind,
         source=(body.get("source") or "")[:40],
         title=title[:1000],
+        title_norm=title_norm,
         authors=body.get("authors") or [],
         year=year_value,
         venue=(body.get("venue") or "")[:500],
@@ -701,7 +737,7 @@ def create_literature(paper_id: str):
         pinned=bool(body.get("pinned", False)),
     )
     db.session.add(item)
-    db.session.commit()
+    safe_commit()
     return jsonify(item.to_dict()), 201
 
 
@@ -739,6 +775,7 @@ def update_literature(paper_id: str, item_id: int):
         "is_relevant",
         "notes",
         "pinned",
+        "is_checked",
         "source",
         "source_kind",
     }
@@ -752,7 +789,7 @@ def update_literature(paper_id: str, item_id: int):
             v = year_value
         elif k == "citations":
             v = _safe_int(v)
-        elif k in ("must_read", "is_relevant", "pinned"):
+        elif k in ("must_read", "is_relevant", "pinned", "is_checked"):
             v = bool(v)
         elif k == "authors":
             if not isinstance(v, list):
@@ -797,7 +834,7 @@ def update_literature(paper_id: str, item_id: int):
                     )
                 v = safe
         setattr(item, k, v)
-    db.session.commit()
+    safe_commit()
     return jsonify(item.to_dict())
 
 
@@ -818,7 +855,7 @@ def delete_literature(paper_id: str, item_id: int):
     if not item:
         return _err("Literature item not found", "LITERATURE_NOT_FOUND", 404)
     db.session.delete(item)
-    db.session.commit()
+    safe_commit()
     return jsonify({"ok": True})
 
 
@@ -859,7 +896,7 @@ def bulk_delete_literature(paper_id: str):
         for r in rows:
             db.session.delete(r)
             deleted += 1
-        db.session.commit()
+        safe_commit()
     except Exception:
         db.session.rollback()
         log.exception("slr.literature.bulk_delete commit failed paper=%s", paper_id)
@@ -892,7 +929,7 @@ def bulk_patch_literature(paper_id: str):
         except (TypeError, ValueError):
             return _err(f"invalid id: {v!r}", "IDS_INVALID", 400)
 
-    allowed_fields = {"pinned", "must_read", "is_relevant"}
+    allowed_fields = {"pinned", "must_read", "is_relevant", "is_checked"}
     invalid_fields = set(patch.keys()) - allowed_fields
     if invalid_fields:
         return _err(
@@ -921,7 +958,7 @@ def bulk_patch_literature(paper_id: str):
             )
             .update(normalized_patch, synchronize_session=False)
         )
-        db.session.commit()
+        safe_commit()
     except Exception:
         db.session.rollback()
         log.exception("slr.literature.bulk_patch commit failed paper=%s", paper_id)
@@ -979,9 +1016,32 @@ def upload_pdf_literature(paper_id: str):
     from tools.Literatur.pdf_metadata_extractor import extract_metadata_from_pdf, _normalize_title as _norm_title
     
     # Save files temporarily and extract metadata
+    MAX_FILE_SIZE = 1024 * 1024 * 1024  # 1GB per file (unrestricted)
+    
     for f in files:
         if not f.filename:
             continue
+        
+        # Validate PDF extension only
+        if not f.filename.lower().endswith('.pdf'):
+            return _err(f"Only PDF files are accepted, got: {f.filename}", "INVALID_FILE_TYPE", 400)
+        
+        # Validate file size BEFORE saving to prevent memory exhaustion
+        try:
+            f.stream.seek(0, 2)  # Seek to end
+            file_size = f.stream.tell()
+            f.stream.seek(0)  # Reset to beginning
+            if file_size > MAX_FILE_SIZE:
+                return _err(
+                    f"File too large ({file_size / (1024*1024):.1f}MB). Maximum allowed is 30MB per file.",
+                    "FILE_TOO_LARGE",
+                    400
+                )
+            if file_size == 0:
+                return _err("Empty file uploaded", "EMPTY_FILE", 400)
+        except Exception as e:
+            log.error("Failed to check file size: %s", e)
+            return _err("Failed to read uploaded file", "READ_ERROR", 400)
         
         # Save to temp location
         temp_dir = Path('/tmp/papergenerator_uploads')
@@ -1063,6 +1123,9 @@ def upload_pdf_literature(paper_id: str):
                 matched_item.file_id = pf.id
                 matched_item.url = f"/api/papers/{paper_id}/files/{pf.id}/preview"
             # Enrich sparse SLR entries
+            title_n = re.sub(r'[^a-z0-9]+', '', (meta.get('title') or '').lower())[:500]
+            if not matched_item.title_norm and title_n:
+                matched_item.title_norm = title_n
             if not matched_item.authors and meta.get('authors'):
                 matched_item.authors = meta['authors']
             if not matched_item.year and meta.get('year'):
@@ -1106,6 +1169,7 @@ def upload_pdf_literature(paper_id: str):
                 source_kind='file',
                 source='pdf',
                 title=(meta.get('title') or f.filename or 'Untitled')[:300],
+                title_norm=re.sub(r'[^a-z0-9]+', '', (meta.get('title') or '').lower())[:500],
                 authors=meta.get('authors') or [],
                 year=meta.get('year'),
                 venue=(meta.get('venue') or '')[:200],
@@ -1120,7 +1184,7 @@ def upload_pdf_literature(paper_id: str):
             db.session.add(item)
             created.append(item)
     
-    db.session.commit()
+    safe_commit()
     
     return jsonify({
         "created": [i.to_dict() for i in created],
@@ -1188,12 +1252,17 @@ def import_from_files(paper_id: str):
         
         # Use stored metadata from PaperFile (extracted during upload)
         # No need for file on disk!
+        # After jsonb_migration_001 is applied, f.meta_authors will be a list
+        # directly. Handle both the old Text (JSON string) and new JSONB (list).
         meta_authors = []
         if f.meta_authors:
-            try:
-                meta_authors = _json.loads(f.meta_authors)
-            except (ValueError, TypeError):
-                pass
+            if isinstance(f.meta_authors, list):
+                meta_authors = f.meta_authors
+            else:
+                try:
+                    meta_authors = _json.loads(f.meta_authors)
+                except (ValueError, TypeError):
+                    pass
         
         meta = {
             'title': f.meta_title or f.original_name or f"File {f.id}",
@@ -1230,6 +1299,9 @@ def import_from_files(paper_id: str):
                 matched_item.file_id = f.id
                 matched_item.url = f"/api/papers/{paper_id}/files/{f.id}/preview"
             # Enrich sparse SLR entries
+            title_n = re.sub(r'[^a-z0-9]+', '', (meta.get('title') or '').lower())[:500]
+            if not matched_item.title_norm and title_n:
+                matched_item.title_norm = title_n
             if not matched_item.authors and meta.get('authors'):
                 matched_item.authors = meta['authors']
             if not matched_item.year and meta.get('year'):
@@ -1252,6 +1324,7 @@ def import_from_files(paper_id: str):
                 source_kind="file",
                 source=f.ext.lstrip(".") if f.ext else "pdf",
                 title=(meta.get('title') or f.original_name or f"File {f.id}")[:300],
+                title_norm=re.sub(r'[^a-z0-9]+', '', (meta.get('title') or '').lower())[:500],
                 authors=meta.get('authors') or [],
                 year=meta.get('year'),
                 venue=(meta.get('venue') or "")[:200],
@@ -1266,7 +1339,7 @@ def import_from_files(paper_id: str):
             db.session.add(item)
             created.append(item)
     
-    db.session.commit()
+    safe_commit()
     
     return jsonify({
         "created": [i.to_dict() for i in created],
@@ -1323,6 +1396,15 @@ def run_slr_legacy(paper_id: str):
     except (TypeError, ValueError):
         top_k = 50
     per_source = _safe_per_source(body.get("per_source"))
+
+    # N×10 fetch strategy: ambil top_k × 10 paper untuk AI re-ranking
+    if not body.get("per_source"):
+        default_source_count = 5
+        active_sources = body.get("sources") or None
+        source_count = max(len(active_sources) if active_sources else default_source_count, 1)
+        n_x10 = top_k * 10
+        per_source = max(per_source, (n_x10 // source_count) + 1)
+
     year_from, year_err = _validate_year(body.get("year_from"))
     if year_err:
         return year_err
@@ -1351,6 +1433,47 @@ def run_slr_legacy(paper_id: str):
         ai_model=ai_model,
     )
     return jsonify({"job_id": job.id, "status": job.status}), 202
+
+
+# ─── CHECKED LITERATURE (marked as read/reviewed) ─────────────────────────
+
+
+@slr_api.route("/api/papers/<paper_id>/literature/checked", methods=["GET"])
+@jwt_required()
+def get_checked_literature(paper_id: str):
+    """Return all checked literature items for a paper."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    # Get items where is_checked is true
+    items = LiteratureItem.query.filter_by(
+        paper_id=paper_id,
+        user_id=user_id,
+        is_checked=True,
+    ).order_by(LiteratureItem.score_total.desc().nullslast()).all()
+
+    result = []
+    for it in items:
+        d = it.to_dict()
+        result.append({
+            "id": d["id"],
+            "title": d.get("title", ""),
+            "authors": d.get("authors", []),
+            "abstract": d.get("abstract", ""),
+            "year": d.get("year"),
+            "publisher": d.get("publisher", ""),
+            "venue": d.get("venue", ""),
+            "doi": d.get("doi"),
+            "citations": d.get("citations", 0),
+            "url": d.get("url", ""),
+        })
+
+    return jsonify({"items": result})
 
 
 # ─── PINNED LITERATURE (prompt preview) ───────────────────────────────────
@@ -1706,7 +1829,7 @@ def review_literature_item(paper_id: str, item_id: int):
 
         if content:
             item.review = content
-            db.session.commit()
+            safe_commit()
 
         return jsonify({"review": content or "", "id": item_id})
 
@@ -1794,7 +1917,7 @@ def review_pinned_literature(paper_id: str):
                     "reason": str(e)[:200],
                 })
 
-        db.session.commit()
+        safe_commit()
     except Exception as e:
         db.session.rollback()
         log.exception("review_pinned_literature failed paper=%s: %s", paper_id, e)

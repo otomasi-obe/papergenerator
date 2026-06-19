@@ -100,6 +100,63 @@ XSL_CANDIDATES = [
 _XSLT = None
 
 
+def _clean_latex(text):
+    """Strip inline LaTeX markers dari text."""
+    if not isinstance(text, str) or not text.strip():
+        return text if isinstance(text, str) else ""
+    import re as _re
+    text = _re.sub(r'\$([^$]+)\$', r'\1', text)
+    text = _re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\mathbf\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\text\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\hat\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\vec\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\overline\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\sqrt\{([^}]*)\}', r'sqrt(\1)', text)
+    text = _re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1/\2)', text)
+    text = _re.sub(r'\\left[(\[{]', '(', text)
+    text = _re.sub(r'\\right[)\]]', ')', text)
+    text = _re.sub(r'\\begin\{cases\}', '', text)
+    text = _re.sub(r'\\end\{cases\}', '', text)
+    text = _re.sub(r'\\approx', chr(8776), text)
+    text = _re.sub(r'\\times', chr(215), text)
+    text = _re.sub(r'\\cdot', chr(183), text)
+    text = _re.sub(r'\\quad', ' ', text)
+    text = _re.sub(r'\\qquad', '  ', text)
+    text = _re.sub(r'\\infty', chr(8734), text)
+    text = _re.sub(r'\\circ', chr(176), text)
+    text = _re.sub(r'\\alpha', chr(945), text)
+    text = _re.sub(r'\\beta', chr(946), text)
+    text = _re.sub(r'\\gamma', chr(947), text)
+    text = _re.sub(r'\\theta', chr(952), text)
+    text = _re.sub(r'\\lambda', chr(955), text)
+    text = _re.sub(r'\\sigma', chr(963), text)
+    text = _re.sub(r'\\omega', chr(969), text)
+    text = _re.sub(r'\\pi', chr(960), text)
+    text = _re.sub(r'\\mu', chr(956), text)
+    text = _re.sub(r'\\Delta', chr(916), text)
+    text = _re.sub(r'\\partial', chr(8706), text)
+    text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    text = _re.sub(r'\\[a-zA-Z]+', '', text)
+    text = _re.sub(r'[{}]', '', text)
+    return text.strip()
+
+
+def _postprocess_clean_latex(doc):
+    """Walk all paragraphs and clean LaTeX from run text in-place."""
+    import re as _re
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                run.text = _clean_latex(run.text)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                            run.text = _clean_latex(run.text)
 def _append_inline_math(paragraph, latex):
     """Render LaTeX into the paragraph. Prefer native Word OMML (real equation
     objects); fall back to sanitized unicode text if conversion is unavailable.
@@ -668,7 +725,7 @@ def add_table(doc, table_data):
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
             set_paragraph_indent(p, first_line=0)
-            _append_rich_text(p, str(value), font_name=CFG["font_body"], size_pt=11)
+            p.add_run(_clean_latex(str(value)))
 
     # Spacer setelah tabel agar tidak nempel ke paragraf berikutnya
     p_spacer = doc.add_paragraph()
@@ -877,6 +934,7 @@ def generate():
     add_references(doc, data)
 
     _set_ai_prompt_color_red(doc)
+    _postprocess_clean_latex(doc)
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)

@@ -1,8 +1,9 @@
+[INFO] Menggunakan _template.json default (/home/sirobo/ANNABIL/Project Papergenerator_Annabil/papergenerator/backend/template/A FIX/A Script/_template.json)
 ============================================================
-[SKOR KECOCOKAN: 82%] -> STATUS: REVISI DIBUTUHKAN
-  Base: 100 | Penalty: -18 | Akhir: 82%
-   - Section Break Waste (MINOR): -3 x 6 = -18
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base: 100 | Penalty: -180 | Akhir: 0%
+   - Placeholder/Prompt Gambar Salah (MINOR): -5 x 10 = -50
+   - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 13 = -130
 ============================================================
-[INFO] WARNING: Skor 82% tapi ditemukan 1 kejanggalan visual.
-[INFO] Master prompt perbaikan ditulis: audit-unik_AEJ.txt
+[INFO] Run ini bersih, file audit-unik lama dihapus: audit-unik_AEJ.txt
 Audit selesai. Detail tersimpan: audit_AEJ_output.txt

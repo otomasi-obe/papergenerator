@@ -57,6 +57,7 @@ function createEmptyPaper() {
   return {
     journal: 'IEEE',
     citation_style: 'ieee',
+    language: 'id',
     title: '',
     authors: [{ name: '', affiliation: '', location: '', email: '' }],
     abstract: '',

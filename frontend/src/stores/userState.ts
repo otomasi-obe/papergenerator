@@ -29,7 +29,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import api from '../api/index.js'
 
 const LS_CACHE_KEY = 'pg_state_cache'
@@ -47,8 +47,11 @@ function _mk(paperId: string | null, key: string): string {
 }
 
 export const useUserStateStore = defineStore('userState', () => {
-  // Internal state map: compositeKey → value
-  const _map = ref<Record<string, any>>({})
+  // Internal state map: compositeKey → value.
+  // Use reactive() (not ref of object) so that adding/removing keys via the
+  // proxy stays reactive for both new AND existing keys. get() reads through
+  // this proxy so getters (getTab/getRightPanel/getToolsOpen) track deps.
+  const _map = reactive<Record<string, any>>({})
   // Set of composite keys that are dirty (need saving)
   const _dirty = new Set<string>()
   // Debounce timer
@@ -66,7 +69,7 @@ export const useUserStateStore = defineStore('userState', () => {
       if (raw) {
         const entries: StateEntry[] = JSON.parse(raw)
         for (const e of entries) {
-          _map.value[_mk(e.paper_id, e.key)] = e.value
+          _map[_mk(e.paper_id, e.key)] = e.value
         }
       }
     } catch { /* ignore corrupt cache */ }
@@ -84,7 +87,7 @@ export const useUserStateStore = defineStore('userState', () => {
       // For paper-scoped state, we need to load per-paper
       // For now, load all global state
       for (const [key, value] of Object.entries(state)) {
-        _map.value[_mk(null, key)] = value
+        _map[_mk(null, key)] = value
       }
 
       // Also update localStorage cache
@@ -102,7 +105,7 @@ export const useUserStateStore = defineStore('userState', () => {
       const res = await api.get('/api/me/state', { params: { paper_id: paperId } })
       const state = res.data?.state || {}
       for (const [key, value] of Object.entries(state)) {
-        _map.value[_mk(paperId, key)] = value
+        _map[_mk(paperId, key)] = value
       }
       _saveToCache()
     } catch { /* ignore */ }
@@ -111,15 +114,28 @@ export const useUserStateStore = defineStore('userState', () => {
   function _saveToCache() {
     try {
       const entries: StateEntry[] = []
-      for (const [compositeKey, value] of Object.entries(_map.value)) {
+      for (const [compositeKey, value] of Object.entries(_map)) {
         const pipeIdx = compositeKey.indexOf('|')
         const paperId = compositeKey.slice(0, pipeIdx) || null
         const key = compositeKey.slice(pipeIdx + 1)
         entries.push({ key, paper_id: paperId, value })
       }
-      // Cap cache at 500KB to avoid localStorage quota issues
-      const json = JSON.stringify(entries)
-      if (json.length < 500_000) {
+      // Cap cache at 500KB to avoid localStorage quota issues.
+      // If over limit, evict oldest entries (keep most recent subset).
+      let json = JSON.stringify(entries)
+      const MAX_BYTES = 500_000
+      if (json.length >= MAX_BYTES) {
+        // Sort by compositeKey (which encodes paperId) — this is a rough
+        // proxy for recency since newer entries tend to get set more often.
+        // Better than nothing; the server always has the full truth.
+        entries.sort((a, b) => b.key.localeCompare(a.key))
+        // Iteratively drop the tail until under limit
+        while (json.length >= MAX_BYTES && entries.length > 1) {
+          entries.pop()
+          json = JSON.stringify(entries)
+        }
+      }
+      if (json.length < MAX_BYTES) {
         localStorage.setItem(LS_CACHE_KEY, json)
       }
     } catch { /* quota exceeded, ignore */ }
@@ -129,19 +145,19 @@ export const useUserStateStore = defineStore('userState', () => {
 
   function get(key: string, paperId: string | null = null, defaultValue: any = null): any {
     const ck = _mk(paperId, key)
-    return ck in _map.value ? _map.value[ck] : defaultValue
+    return ck in _map ? _map[ck] : defaultValue
   }
 
   function set(key: string, paperId: string | null, value: any): void {
     const ck = _mk(paperId, key)
-    _map.value[ck] = value
+    _map[ck] = value
     _dirty.add(ck)
     _scheduleSave()
   }
 
   function deleteKey(key: string, paperId: string | null = null): void {
     const ck = _mk(paperId, key)
-    delete _map.value[ck]
+    delete _map[ck]
     _dirty.add(ck) // Will be sent as null in batch save
     _scheduleSave()
   }
@@ -162,7 +178,7 @@ export const useUserStateStore = defineStore('userState', () => {
       const pipeIdx = ck.indexOf('|')
       const paperId = ck.slice(0, pipeIdx) || null
       const key = ck.slice(pipeIdx + 1)
-      const value = _map.value[ck] ?? null
+      const value = _map[ck] ?? null
       items.push({ key, paper_id: paperId, value })
     }
 
@@ -192,7 +208,7 @@ export const useUserStateStore = defineStore('userState', () => {
             const pipeIdx = ck.indexOf('|')
             const paperId = ck.slice(0, pipeIdx) || null
             const key = ck.slice(pipeIdx + 1)
-            items.push({ key, paper_id: paperId, value: _map.value[ck] ?? null })
+            items.push({ key, paper_id: paperId, value: _map[ck] ?? null })
           }
           // fetch + keepalive ensures cookies are sent (sendBeacon has no credentials)
           fetch('/api/me/state', {

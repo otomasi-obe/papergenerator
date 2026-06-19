@@ -20,6 +20,7 @@ import os
 import shutil
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import threading
@@ -31,7 +32,7 @@ log = logging.getLogger(__name__)
 _REDIS = None
 _REDIS_LOCK = threading.Lock()
 
-def get_redis():
+def get_redis(_retry=0, _max_retries=3):
     global _REDIS
     if _REDIS is None:
         with _REDIS_LOCK:
@@ -50,7 +51,10 @@ def get_redis():
             except Exception:
                 pass
             _REDIS = None
-        return get_redis()
+        if _retry >= _max_retries:
+            log.warning("get_redis: ping failed after %d retries, giving up", _max_retries)
+            return None
+        return get_redis(_retry + 1, _max_retries)
     return _REDIS
 
 
@@ -78,8 +82,76 @@ def _is_cancelled(job_id):
         return False
 
 
+def _clean_redis_job_keys(job_id: str) -> int:
+    """Delete all Redis keys for a data job. Called on cleanup/error/cancel."""
+    count = 0
+    try:
+        r = get_redis()
+        if r:
+            for suffix in ("last", "cancel"):
+                key = f"datajob:{job_id}:{suffix}"
+                if r.delete(key):
+                    count += 1
+    except Exception:
+        pass
+    return count
+
+
+def _cleanup_stale_worker_state(job_id: str):
+    """Check if job is still in running/queued state in DB.
+    If so, mark as error and clean Redis.
+    If job is already in terminal state (done/error/cancelled), skip.
+    """
+    try:
+        from database.models import AiJob, db, safe_commit
+        j = AiJob.query.get(job_id)
+    except Exception:
+        return
+    if not j:
+        _clean_redis_job_keys(job_id)
+        return
+    if j.status in ("done", "error", "cancelled"):
+        # Already terminal — just clean Redis to be safe
+        _clean_redis_job_keys(job_id)
+        return
+    # Still running/queued → mark as error
+    j.status = "error"
+    j.stage = "error"
+    j.error = "Worker thread terminated unexpectedly."
+    j.finished_at = datetime.now(timezone.utc)
+    try:
+        safe_commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+    _publish(job_id, {
+        "status": "error",
+        "stage": "error",
+        "progress": 0,
+        "error": "Worker thread terminated unexpectedly.",
+        "message": "Worker thread terminated.",
+    })
+    _clean_redis_job_keys(job_id)
+    log.warning("DataJob %s: stale worker state cleaned (was %s)", job_id, j.status)
+
+
 def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_prompt):
     """Main worker entry point. Runs in a daemon thread."""
+    log.debug("DATA_WORKER_DEBUG: run_data_job ENTER — job_id=%s file_count=%d text_only=%s",
+              job_id, len(file_paths), len(file_paths) == 0)
+    # Publish immediately so SSE has something to show right away
+    # (overwrites the initial 'queued' state from create_data_job)
+    _publish(job_id, {
+        "status": "running",
+        "stage": "starting",
+        "progress": 1,
+        "message": "Memulai pemrosesan data...",
+        "file_count": len(file_paths),
+        "text_only": len(file_paths) == 0,
+    })
+    log.debug("DATA_WORKER_DEBUG: After initial _publish — job_id=%s", job_id)
     with app.app_context():
         try:
             from database.models import AiJob, Paper, PaperImage, db, safe_commit
@@ -87,26 +159,28 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
             job = AiJob.query.get(job_id)
             if not job:
                 log.error("DataJob %s not found", job_id)
+                _clean_redis_job_keys(job_id)
                 return
 
             # Mark running
             job.status = "running"
-            job.stage = "extracting"
-            job.progress = 5
-            try:
-                safe_commit()
-            except Exception:
-                db.session.rollback()
-                raise
-            _publish(job_id, {"status": "running", "stage": "extracting", "progress": 5, "message": "Memulai ekstraksi file..."})
-
-            if _is_cancelled(job_id):
-                _finish_cancelled(job)
-                return
-
-            # ── Step 1: Extract text from files (skip if text-only mode) ─────
-            extracted_texts = []
+            # Skip extraction stage entirely when no files (text-only mode)
             if file_paths:
+                job.stage = "extracting"
+                job.progress = 5
+                try:
+                    safe_commit()
+                except Exception:
+                    db.session.rollback()
+                    raise
+                _publish(job_id, {"status": "running", "stage": "extracting", "progress": 5, "message": "Memulai ekstraksi file..."})
+
+                if _is_cancelled(job_id):
+                    _finish_cancelled(job)
+                    return
+
+                # ── Step 1: Extract text from files ──────────────────────────
+                extracted_texts = []
                 for i, (fpath, fname) in enumerate(zip(file_paths, file_names)):
                     if _is_cancelled(job_id):
                         _finish_cancelled(job)
@@ -138,10 +212,9 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                     except Exception:
                         pass
                 try:
-                    if file_paths:
-                        parent = Path(file_paths[0]).parent
-                        if parent.name.startswith("datajob_"):
-                            shutil.rmtree(parent, ignore_errors=True)
+                    parent = Path(file_paths[0]).parent
+                    if parent.name.startswith("datajob_"):
+                        shutil.rmtree(parent, ignore_errors=True)
                 except Exception:
                     pass
 
@@ -150,15 +223,16 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                     return
 
                 combined_text = "\n\n".join(extracted_texts)
+                if combined_text and len(combined_text) > 15000:
+                    combined_text = combined_text[:15000] + "\n\n... [data terpotong]"
+
+                _publish(job_id, {"status": "running", "stage": "extracting", "progress": 20,
+                                 "message": f"Berhasil mengekstrak {len(file_paths)} file."})
             else:
-                # Text-only mode: use the user prompt directly as input data
+                # Text-only mode: skip extraction, go straight to AI formatting
                 combined_text = ""
-
-            if combined_text and len(combined_text) > 15000:
-                combined_text = combined_text[:15000] + "\n\n... [data terpotong]"
-
-            _publish(job_id, {"status": "running", "stage": "extracting", "progress": 20,
-                             "message": f"Berhasil mengekstrak {len(file_paths)} file." if file_paths else "Mode teks — memproses instruksi..."})
+                _publish(job_id, {"status": "running", "stage": "ai_formatting", "progress": 20,
+                                 "message": "Mode teks — langsung ke AI formatting..."})
 
             if _is_cancelled(job_id):
                 _finish_cancelled(job)
@@ -186,6 +260,27 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
             _hb_thread = threading.Thread(target=_heartbeat, daemon=True)
             _hb_thread.start()
 
+            # Overall deadline timer: if AI call hangs > 5 minutes, forcibly
+            # publish error and stop heartbeat. Prevents permanent stuck state
+            # when all endpoints are slow/unreachable.
+            _AI_DEADLINE = 300  # 5 minutes max for AI formatting
+            _ai_timeout_flag = [False]
+
+            def _ai_deadline_handler():
+                _ai_timeout_flag[0] = True
+                _ai_stop.set()
+                _publish(job_id, {
+                    "status": "error",
+                    "stage": "ai_formatting",
+                    "progress": 49,
+                    "error": "AI formatting timeout (>5 menit) — semua endpoint tidak responsif.",
+                    "message": "AI formatting timeout.",
+                })
+
+            _deadline_timer = threading.Timer(_AI_DEADLINE, _ai_deadline_handler)
+            _deadline_timer.daemon = True
+            _deadline_timer.start()
+
             try:
                 if file_paths:
                     # File mode: combine user prompt with extracted file text
@@ -200,14 +295,32 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                         return
                     result = format_data_with_ai(user_prompt, filename="Text Input")
             finally:
+                _deadline_timer.cancel()
                 _ai_stop.set()
 
-            if not result.get("tables"):
-                _finish_error(job, "AI tidak bisa memformat data dari file ini.", result=result)
+            # If AI deadline timer fired before we got a result
+            if _ai_timeout_flag[0]:
+                _finish_error(job, "AI formatting timeout (>5 menit) — semua endpoint tidak responsif.")
                 return
 
-            tables = result["tables"]
+            tables = result.get("tables", [])
             recs = result.get("chart_recommendations", [])
+
+            # Text-only mode: allow chart creation even without tables.
+            # Users can request charts directly via "Generate dari Teks".
+            is_text_only = len(file_paths) == 0
+
+            if not tables and is_text_only and recs:
+                # Build synthetic table from chart recommendations so
+                # _generate_chart_from_rec has data to work with.
+                tables = _build_synthetic_tables_from_charts(recs, user_prompt)
+                if not tables:
+                    _finish_error(job, "AI tidak bisa memformat data dari file ini.", result=result)
+                    return
+                log.info("Text-only mode: synthesised %d table(s) from chart recs", len(tables))
+            elif not tables:
+                _finish_error(job, "AI tidak bisa memformat data dari file ini.", result=result)
+                return
             summary = result.get("summary", {})
             model_used = result.get("_model_used", "")
 
@@ -303,6 +416,7 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
             job.status = "done"
             job.stage = "complete"
             job.progress = 100
+            job.finished_at = datetime.now(timezone.utc)
             job.result = job_result
             try:
                 safe_commit()
@@ -326,7 +440,15 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
                 from database.models import AiJob, db, safe_commit
                 j = AiJob.query.get(job_id)
                 if j:
-                    _finish_error(j, str(e))
+                    _finish_error(j, "Internal processing error. Please try again.")
+            except Exception:
+                pass
+        finally:
+            # Guard: if the thread was killed (gunicorn restart) or an
+            # unexpected exit path left the job in running/queued state,
+            # publish error + clean Redis so the job doesn't appear stuck.
+            try:
+                _cleanup_stale_worker_state(job_id)
             except Exception:
                 pass
 
@@ -335,6 +457,7 @@ def _finish_cancelled(job):
     from database.models import db, safe_commit
     job.status = "cancelled"
     job.stage = "cancelled"
+    job.finished_at = datetime.now(timezone.utc)
     try:
         safe_commit()
     except Exception:
@@ -348,6 +471,7 @@ def _finish_error(job, error_msg, result=None):
     job.status = "error"
     job.stage = "error"
     job.error = error_msg
+    job.finished_at = datetime.now(timezone.utc)
     if result:
         job.result = result
     try:
@@ -379,11 +503,13 @@ def _extract_pdf(filepath):
     try:
         import fitz
         doc = fitz.open(filepath)
-        texts = []
-        for page in doc:
-            texts.append(page.get_text())
-        doc.close()
-        return "\n".join(texts).strip()
+        try:
+            texts = []
+            for page in doc:
+                texts.append(page.get_text())
+            return "\n".join(texts).strip()
+        finally:
+            doc.close()
     except ImportError:
         try:
             from pdfminer.high_level import extract_text
@@ -391,37 +517,39 @@ def _extract_pdf(filepath):
         except ImportError:
             return "[PyMuPDF/pdfminer tidak tersedia]"
     except Exception as e:
-        return f"[Error extracting PDF: {e}]"
+        return "[Error extracting PDF: file tidak bisa dibaca]" 
 
 
 def _extract_excel(filepath):
     try:
         import openpyxl
         wb = openpyxl.load_workbook(filepath, data_only=True)
-        parts = []
-        for sheet_name in wb.sheetnames:
-            ws = wb[sheet_name]
-            rows = []
-            for row in ws.iter_rows(values_only=True):
-                rows.append([str(cell) if cell is not None else "" for cell in row])
-            if not rows:
-                continue
-            header = rows[0]
-            parts.append(f"### Sheet: {sheet_name}\n")
-            parts.append("| " + " | ".join(header) + " |")
-            parts.append("| " + " | ".join(["---"] * len(header)) + " |")
-            for row in rows[1:]:
-                # Copy row before padding to avoid mutating shared list entries
-                row = list(row)
-                row += [""] * (len(header) - len(row))
-                parts.append("| " + " | ".join(row[:len(header)]) + " |")
-            parts.append("")
-        wb.close()
-        return "\n".join(parts).strip()
+        try:
+            parts = []
+            for sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                rows = []
+                for row in ws.iter_rows(values_only=True):
+                    rows.append([str(cell) if cell is not None else "" for cell in row])
+                if not rows:
+                    continue
+                header = rows[0]
+                parts.append(f"### Sheet: {sheet_name}\n")
+                parts.append("| " + " | ".join(header) + " |")
+                parts.append("| " + " | ".join(["---"] * len(header)) + " |")
+                for row in rows[1:]:
+                    # Copy row before padding to avoid mutating shared list entries
+                    row = list(row)
+                    row += [""] * (len(header) - len(row))
+                    parts.append("| " + " | ".join(row[:len(header)]) + " |")
+                parts.append("")
+            return "\n".join(parts).strip()
+        finally:
+            wb.close()
     except ImportError:
         return "[openpyxl tidak tersedia]"
     except Exception as e:
-        return f"[Error extracting Excel: {e}]"
+        return "[Error extracting Excel: file tidak bisa dibaca]" 
 
 
 def _extract_csv(filepath, ext):
@@ -577,3 +705,96 @@ def _generate_chart_from_rec(rec, tables, paper_id, user_id, paper, paper_dir):
         "x_column": x_col_name,
         "y_columns": y_col_names,
     }
+
+
+# ── Synthetic table builder (text-only fallback) ─────────────────────────────
+
+def _build_synthetic_tables_from_charts(recs: list, user_prompt: str) -> list:
+    """Build synthetic tables from chart recommendations + user prompt data.
+
+    When AI returns chart recs without tables (text-only mode), try to
+    extract structured data from the user prompt so chart generation works.
+    """
+    import re
+
+    # Strategy 1: Parse "Name (details): Key1=Val1Unit, Key2=Val2Unit" patterns
+    rows = []
+    columns = None
+    kv_pattern = re.compile(r'(\w[\w\s]*?)\s*=\s*([\d.]+)\s*\w*')
+    all_metrics = set()
+
+    # Split prompt at each "Config\d+" to avoid text between configs
+    segments = re.split(r'(Config\d+|Konfigurasi\s*\d+)', user_prompt, flags=re.IGNORECASE)
+    for i in range(1, len(segments), 2):
+        config_name = segments[i].strip()
+        rest = segments[i + 1].strip() if i + 1 < len(segments) else ""
+        # Extract details from parenthesized block
+        det_m = re.match(r'\s*\(([^)]+)\)\s*:\s*(.*)', rest)
+        if not det_m:
+            continue
+        details = det_m.group(1).strip()
+        metrics_str = det_m.group(2).strip()
+        # Clean trailing punctuation only, don't split on decimal points
+        metrics_str = re.sub(r'[,.;]+$', '', metrics_str)
+
+        metrics = {}
+        for km in kv_pattern.finditer(metrics_str):
+            key = km.group(1).strip()
+            val = km.group(2)
+            metrics[key] = val
+            all_metrics.add(key)
+
+        row = {"Konfigurasi": config_name, "Detail": details, **metrics}
+        rows.append(row)
+
+    if rows and all_metrics:
+        columns = ["Konfigurasi", "Detail"] + sorted(all_metrics)
+
+    # Strategy 2: If prompt parsing failed, try chart recs analysis field
+    if not rows:
+        for rec in recs:
+            analysis = rec.get("analysis", "")
+            x = rec.get("x_column", "")
+            ys = rec.get("y_columns", [])
+            if analysis and x and ys:
+                # Try extracting key=value from analysis text
+                for km in kv_pattern.finditer(analysis):
+                    key = km.group(1).strip()
+                    val = km.group(2)
+                    rows.append({"label": key, x: val} if x else {"label": key, **{y: val for y in ys}})
+                if rows:
+                    columns = list(rows[0].keys()) if rows else None
+
+    if not rows or not columns:
+        return []
+
+    # Normalize rows to match columns
+    normalized = []
+    for row in rows:
+        normalized.append([str(row.get(c, "")) for c in columns])
+
+    table = {
+        "name": "Data (diextrak dari instruksi)",
+        "description": "Data yang diekstrak otomatis dari instruksi teks.",
+        "columns": columns,
+        "column_types": _detect_column_types(columns, normalized),
+        "rows": normalized,
+        "analysis": "Data diekstrak dari instruksi user.",
+    }
+    return [table]
+
+
+def _detect_column_types(columns: list, rows: list) -> list:
+    """Auto-detect column types: numerik vs kategori."""
+    types = []
+    for ci in range(len(columns)):
+        sample = [r[ci] for r in rows[:20] if ci < len(r) and r[ci] not in ("", None)]
+        if not sample:
+            types.append("kategori")
+            continue
+        try:
+            [float(v.replace(",", "")) for v in sample]
+            types.append("numerik")
+        except (ValueError, TypeError):
+            types.append("kategori")
+    return types

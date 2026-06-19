@@ -194,98 +194,9 @@ def generate_paper(
     log.info("generate_full: DONE in %.1fs", elapsed)
 
     # ── Post-process: fix mojibake + clean LaTeX artifacts ────
-    def _fix_mojibake(text):
-        """Attempt to recover UTF-8 mojibake (bytes decoded as Latin-1/CP1252)."""
-        if not isinstance(text, str):
-            return text
-        try:
-            return text.encode('latin-1').decode('utf-8')
-        except (UnicodeDecodeError, UnicodeEncodeError):
-            return text
-
-    def _clean_latex_notation(text):
-        """Convert common LaTeX notation to Unicode equivalents."""
-        if not isinstance(text, str):
-            return text
-        import re as _rl
-        _rl_patterns = [
-            (r'\^\{\\circ\}', '°'),
-            (r'\^\\circ', '°'),
-            (r'\\degree\b', '°'),
-            (r'\\circ\b', '°'),
-            (r'\\times\b', '×'),
-            (r'\\div\b', '÷'),
-            (r'\\pm\b', '±'),
-            (r'\\leq\b', '≤'),
-            (r'\\geq\b', '≥'),
-            (r'\\neq\b', '≠'),
-            (r'\\approx\b', '≈'),
-            (r'\\infty\b', '∞'),
-            (r'\\mu\b', 'μ'),
-            (r'\\alpha\b', 'α'),
-            (r'\\beta\b', 'β'),
-            (r'\\gamma\b', 'γ'),
-            (r'\\delta\b', 'δ'),
-            (r'\\lambda\b', 'λ'),
-            (r'\\sigma\b', 'σ'),
-            (r'\\pi\b', 'π'),
-            (r'\\omega\b', 'ω'),
-            (r'\\Omega\b', 'Ω'),
-            (r'\\Delta\b', 'Δ'),
-            (r'\\Sigma\b', 'Σ'),
-            (r'\\rightarrow\b', '→'),
-            (r'\\leftarrow\b', '←'),
-            (r'\\Rightarrow\b', '⇒'),
-            (r'\\Leftarrow\b', '⇐'),
-            (r'---', '—'),
-            (r'--', '–'),
-            # LaTeX spacing commands → remove
-            (r'\\[,;:!]\s*', ''),
-            (r'\\quad\b\s*', ' '),
-            (r'\\qquad\b\s*', '  '),
-            (r'\\hspace\{[^}]*\}\s*', ''),
-            (r'\\vspace\{[^}]*\}\s*', ''),
-            # LaTeX text formatting → extract content
-            (r'\\textit\{([^}]*)\}', r'\1'),
-            (r'\\textbf\{([^}]*)\}', r'\1'),
-            (r'\\emph\{([^}]*)\}', r'\1'),
-            (r'\\underline\{([^}]*)\}', r'\1'),
-            (r'\\mathrm\{([^}]*)\}', r'\1'),
-            (r'\\mathbf\{([^}]*)\}', r'\1'),
-            (r'\\mathit\{([^}]*)\}', r'\1'),
-            # Broken LaTeX commands (missing braces)
-            (r'\\(?:textit|textbf|emph|underline|mathrm|mathbf|mathit)\s+', ''),
-            (r'``', '"'),
-            (r"''", '"'),
-            (r'\^{(\d+)}', lambda m: ''.join('⁰¹²³⁴⁵⁶⁷⁸⁹'[int(c)] for c in m.group(1))),
-            (r'_{(\d+)}', lambda m: ''.join('₀₁₂₃₄₅₆₇₈₉'[int(c)] for c in m.group(1))),
-        ]
-        for pattern, repl in _rl_patterns:
-            text = _rl.sub(pattern, repl, text)
-        # Handle $...$ inline math delimiters
-        import re as _rl2
-        def _strip_math_dollar(m):
-            inner = m.group(1).replace('\\', '')
-            _sup = '⁰¹²³⁴⁵⁶⁷⁸⁹'
-            _sub = '₀₁₂₃₄₅₆₇₈₉'
-            inner = _rl2.sub(r'_(\d)', lambda x: _sub[int(x.group(1))], inner)
-            inner = _rl2.sub(r'\^(\d)', lambda x: _sup[int(x.group(1))], inner)
-            inner = _rl2.sub(r'[_^]([a-zA-Z])', r'\1', inner)
-            return inner
-        text = _rl2.sub(r'\$([^$]*)\$', _strip_math_dollar, text)
-        return text
-
-    def _clean_paper_data(data):
-        """Recursively clean all string values in paper data dict."""
-        if isinstance(data, dict):
-            return {k: _clean_paper_data(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [_clean_paper_data(item) for item in data]
-        elif isinstance(data, str):
-            return _clean_latex_notation(_fix_mojibake(data))
-        return data
-
-    paper_data = _clean_paper_data(paper_data)
+    from tools.paperfull.text_cleaner import clean_paper_data
+    paper_data = clean_paper_data(paper_data)
+    log.info("[paperfull] Applied mojibake fix + LaTeX cleanup to paper_data")
 
     # ── Post-process: programmatic humanization (anti-Turnitin) ────
     try:
@@ -376,13 +287,19 @@ def export_docx(paper_data: dict, journal_code: str = "IEEE", citation_style: Op
 
     try:
         mod = importlib.import_module(f"tools.Journal.{canonical}gen")
-        builder = getattr(mod, "build_document", None)
-        if not callable(builder):
-            log.error("Template generator missing build_document: %sgen", canonical)
-            return None
     except ImportError as e:
         log.error("Failed to import template %sgen: %s", canonical, e)
         return None
+
+    builder = getattr(mod, "build_document", None)
+    if not callable(builder):
+        gen_fn = getattr(mod, "generate", None)
+        if callable(gen_fn):
+            from main import _make_generate_adapter  # noqa: E402  # lazy import
+            builder = _make_generate_adapter(mod, gen_fn)
+        else:
+            log.error("Template generator missing build_document/generate: %sgen", canonical)
+            return None
 
     # Pre-process structured references into formatted strings
     # so generators that expect string references continue to work.

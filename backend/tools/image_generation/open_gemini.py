@@ -72,7 +72,6 @@ def _is_target_closed_error(exc: BaseException) -> bool:
         "Target page, context or browser has been closed" in msg
         or "TargetClosedError" in msg
         or "has been closed" in msg
-        and "Target" in msg
     )
 
 

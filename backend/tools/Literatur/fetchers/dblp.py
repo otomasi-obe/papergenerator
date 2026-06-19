@@ -4,6 +4,7 @@ from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
+from ._abstract_enrich import enrich_abstract_via_doi
 
 BASE = "https://dblp.org/search/publ/api"
 
@@ -44,6 +45,9 @@ def _parse_hit(hit: dict) -> Paper | None:
         elif "journal" in pl:
             venue_type = "journal"
 
+    abstract = None
+    # DBLP doesn't provide abstracts, but DOIs can be cross-referenced
+
     # Build PDF URL: prioritize DOI, then ee (electronic edition) link
     doi = info.get("doi")
     pdf_url = None
@@ -70,7 +74,7 @@ def _parse_hit(hit: dict) -> Paper | None:
         source_id=hit.get("@id") or info.get("key", ""),
         title=title,
         authors=authors,
-        abstract=None,  # DBLP tidak menyediakan abstract
+        abstract=abstract,
         year=year,
         venue=venue,
         venue_type=venue_type,
@@ -105,6 +109,9 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         for hit in hits:
             paper = _parse_hit(hit)
             if paper:
+                # Enrich abstract via DOI cross-reference to OpenAlex
+                if not paper.abstract and paper.doi:
+                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:

@@ -984,11 +984,20 @@ export const useChatStore = defineStore('chat', () => {
       }
 
     } finally {
-      // Guaranteed cleanup
+      // Guaranteed cleanup: always release lock and abort controller.
       _sendingLock = false
-      stream.isStreaming = false
-      stream.streamingMessage = null
       stream.abortCtrl = null
+      // Only null streamingMessage if the stream did NOT finish normally
+      // (i.e. error/abort path). When streamPhase is 'done', the message
+      // was already finalized in stream.messages — nulling streamingMessage
+      // here would cause a flash of missing content before re-render.
+      if (stream.streamPhase !== 'done') {
+        stream.isStreaming = false
+        stream.streamingMessage = null
+      } else {
+        stream.isStreaming = false
+        // Leave streamingMessage as the finalized reference so UI doesn't flash.
+      }
       stream.streamPhase = 'idle'
       if (stream.connectionState !== 'disconnected') {
         stream.connectionState = 'idle'
@@ -1143,7 +1152,13 @@ export const useChatStore = defineStore('chat', () => {
     if (event === 'paper_applied') {
       try {
         const paperStore = usePaperStore()
-        if (paperStore.currentPaperId) {
+        if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          console.error('[chat] paper_applied errors:', data.errors)
+          window.dispatchEvent(new CustomEvent('papergenerator-toast', {
+            detail: { message: 'Apply error: ' + data.errors.join('; '), type: 'error' },
+          }))
+        }
+        if (data?.success !== false && paperStore.currentPaperId) {
           await paperStore.loadPaperFromDb(paperStore.currentPaperId)
         }
       } catch { /* defensive: never break the SSE loop */ }
@@ -1188,6 +1203,41 @@ export const useChatStore = defineStore('chat', () => {
         }
         break
       case 'composing_start':
+        stream.streamPhase = 'composing'
+        break
+      case 'search_phase_start':
+        // Search phase started — show "Mencari referensi..." in UI
+        stream.streamPhase = 'searching'
+        stream.searchResults = []
+        stream.searchMessage = data.message || 'Mencari referensi...'
+        break
+      case 'search_started':
+        // Individual search query started
+        if (!stream.searchResults) stream.searchResults = []
+        stream.searchResults.push({
+          type: data.type,
+          query: data.query,
+          icon: data.icon || '🔍',
+          status: 'running',
+          results: [],
+        })
+        break
+      case 'search_complete':
+        // Individual search completed — update results
+        if (stream.searchResults) {
+          const idx = stream.searchResults.findIndex(
+            s => s.type === data.type && s.query === data.query && s.status === 'running'
+          )
+          if (idx >= 0) {
+            stream.searchResults[idx].status = 'done'
+            stream.searchResults[idx].results = data.results || []
+            stream.searchResults[idx].count = data.count || 0
+            stream.searchResults[idx].error = data.error || null
+          }
+        }
+        break
+      case 'search_phase_end':
+        // All searches done — transition to composing
         stream.streamPhase = 'composing'
         break
       case 'replace_text':
@@ -1363,7 +1413,23 @@ export const useChatStore = defineStore('chat', () => {
         if (data.message_id) msg.id = data.message_id
         // BUG 26: Capture actual message count from done event if available
         if (data.message_count != null) stream._finalMessageCount = data.message_count
+        // Capture DOCX file info if present
+        if (data.file_url) {
+          msg.metadata = {
+            ...(msg.metadata || {}),
+            file_url: data.file_url,
+            file_name: data.file_name || '',
+          }
+        }
         stream.streamPhase = 'done'
+        break
+      case 'docx_ready':
+        // DOCX file generated — stamp download info on streaming message
+        msg.metadata = {
+          ...(msg.metadata || {}),
+          file_url: data.url || '',
+          file_name: data.filename || '',
+        }
         break
       case 'error':
         msg.content += `\n\n_${_safeErrorMessage(data && data.message)}_`

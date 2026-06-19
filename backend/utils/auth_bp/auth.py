@@ -111,7 +111,6 @@ def _claim_admin_atomically(user: "User") -> None:
     rc = get_redis()
     _lock_key = "papergenerator:admin_claim_lock"
     _lock_ttl = 10  # seconds
-    released = False
 
     if rc is not None:
         # Spin-acquire with short timeout
@@ -135,7 +134,7 @@ def _claim_admin_atomically(user: "User") -> None:
         else:
             user.role = "user"
     finally:
-        if rc is not None and not released:
+        if rc is not None:
             try:
                 rc.delete(_lock_key)
             except Exception:
@@ -206,7 +205,7 @@ def _verify_signed_state(signed_state: str) -> str | None:
             pass
         return state_bytes.decode()
     except Exception:
-        pass
+        log.warning("OAuth state verification failed", exc_info=True)
     return None
 
 def _state_redirect_to(verified_state: str | None) -> str | None:
@@ -595,7 +594,15 @@ def update_settings():
                 return jsonify({"error": "Password saat ini salah"}), 400
         else:
             # OAuth user setting password for first time — require email verification
-            # or a fresh Google token to prevent account takeover
+            # or a fresh Google token to prevent account takeover.
+            # TODO(security): the google_token / email_verified flags are currently
+            # trusted as-is from the request body. They should be replaced by a full
+            # Google token verification (verify signature + audience against Google's
+            # tokeninfo endpoint) to fully prevent account takeover. Until then we at
+            # least require that the user is actually a Google-linked OAuth account
+            # (has google_id) before allowing the email_verified bypass path.
+            if not user.google_id:
+                return jsonify({"error": "Akun ini bukan akun OAuth; tidak dapat set password tanpa password lama"}), 400
             if not body.get("google_token") and not body.get("email_verified"):
                 return jsonify({"error": "Akun OAuth harus verifikasi email dulu sebelum set password"}), 400
         user.set_password(new_pw)

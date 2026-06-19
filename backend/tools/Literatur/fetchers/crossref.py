@@ -7,6 +7,7 @@ from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
+from ._abstract_enrich import enrich_abstract_via_doi
 
 BASE = "https://api.crossref.org/works"
 
@@ -110,6 +111,9 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         for item in items:
             paper = _parse_item(item)
             if paper:
+                # Enrich abstract via DOI → OpenAlex fallback
+                if not paper.abstract and paper.doi:
+                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:

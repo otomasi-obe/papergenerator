@@ -73,20 +73,16 @@ def downgrade():
     op.drop_index('ix_ai_jobs_started_at', table_name='ai_jobs')
     
     # Conversations
-    op.drop_index('ix_conversations_user_id', table_name='conversations')
     op.drop_index('ix_conversations_paper_id', table_name='conversations')
     op.drop_index('ix_conversations_updated_at', table_name='conversations')
     
     # ChatMessage
-    op.drop_index('ix_chat_messages_conversation_id', table_name='chat_messages')
     op.drop_index('ix_chat_messages_created_at', table_name='chat_messages')
     
     # PaperImage
     op.drop_index('ix_paper_images_paper_id', table_name='paper_images')
-    op.drop_index('ix_paper_images_user_id', table_name='paper_images')
     
     # ApiUsageLog
-    op.drop_index('ix_api_usage_logs_user_id', table_name='api_usage_logs')
     op.drop_index('ix_api_usage_logs_created_at', table_name='api_usage_logs')
     op.drop_index('ix_api_usage_logs_endpoint', table_name='api_usage_logs')
     

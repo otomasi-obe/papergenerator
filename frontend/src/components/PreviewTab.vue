@@ -209,9 +209,9 @@
                 <input v-if="editMode" v-model="item.latex"
                   class="w-full text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 font-mono dark:text-ash-100"
                   placeholder="LaTeX formula..." />
-                <div v-else class="flex items-center justify-center gap-2">
-                  <span v-html="renderFormula(item.latex)"></span>
-                  <span class="text-xs opacity-50 ml-2">({{ getItemNum(item) }})</span>
+                <div v-else class="flex items-center justify-between">
+                  <span class="flex-1 text-center" v-html="renderFormula(item.latex)"></span>
+                  <span class="text-xs opacity-50 ml-4 tabular-nums">({{ getItemNum(item) }})</span>
                 </div>
               </div>
             </template>
@@ -250,8 +250,11 @@
                     <tbody><tr v-for="(row,ri) in item.Rows" :key="ri"><td v-for="(cell,ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center">{{ cell }}</td></tr></tbody>
                   </table>
                 </div>
-                <div v-else-if="item.id === 'rumus'" class="my-3 text-center">
-                  <span v-html="renderFormula(item.latex || item.text)"></span>
+                <div v-else-if="item.id === 'rumus' && (item.latex || item.text)" class="my-3">
+                  <div class="flex items-center justify-between">
+                    <span class="flex-1 text-center" v-html="renderFormula(item.latex || item.text)"></span>
+                    <span class="text-xs opacity-50 ml-4 tabular-nums">({{ getItemNum(item) }})</span>
+                  </div>
                 </div>
               </template>
             </div>

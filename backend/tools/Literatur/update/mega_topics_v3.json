@@ -1,0 +1,5266 @@
+[
+  {
+    "field": "Akuntansi",
+    "topic": "financial accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "managerial accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "cost accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "tax accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "auditing"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "forensic accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "financial reporting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "earnings management"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "fair value accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "goodwill impairment"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "revenue recognition"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "lease accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "consolidation accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "intercompany transactions"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "foreign currency translation"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "hedging accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "pension accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "stock compensation accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "environmental accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "social accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "sustainability reporting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "integrated reporting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "management control systems"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "balanced scorecard"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "activity based costing"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "target costing"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "kaizen costing"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "life cycle costing"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "transfer pricing"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "tax planning"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "tax avoidance"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "tax compliance"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "audit quality"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "audit fees"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "internal audit"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "audit committee"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "corporate governance accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "board independence"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "executive compensation"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "accounting standards IFRS"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "accounting convergence"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "accounting ethics"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "public sector accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "government accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "not for profit accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "Islamic accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "Shariah accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "zakat accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "accounting information systems"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "ERP systems accounting"
+  },
+  {
+    "field": "Akuntansi",
+    "topic": "blockchain accounting"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax policy"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax reform"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax compliance"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax avoidance"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax evasion"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax planning"
+  },
+  {
+    "field": "Pajak",
+    "topic": "transfer pricing"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax havens"
+  },
+  {
+    "field": "Pajak",
+    "topic": "corporate taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "personal income tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "value added tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "goods services tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "digital economy taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "BEPS base erosion"
+  },
+  {
+    "field": "Pajak",
+    "topic": "OECD tax framework"
+  },
+  {
+    "field": "Pajak",
+    "topic": "double taxation treaty"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax treaty abuse"
+  },
+  {
+    "field": "Pajak",
+    "topic": "treaty shopping"
+  },
+  {
+    "field": "Pajak",
+    "topic": "carbon tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "environmental tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "sin tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "luxury tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "property tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "land value tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "wealth tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "inheritance tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax incentives"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax holidays"
+  },
+  {
+    "field": "Pajak",
+    "topic": "investment tax credit"
+  },
+  {
+    "field": "Pajak",
+    "topic": "R&D tax credit"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax administration"
+  },
+  {
+    "field": "Pajak",
+    "topic": "e-tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "digital tax filing"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax collection efficiency"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax morale"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax fairness"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax equity"
+  },
+  {
+    "field": "Pajak",
+    "topic": "progressive taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "international taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "global minimum tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "Pillar Two OECD"
+  },
+  {
+    "field": "Pajak",
+    "topic": "cryptocurrency taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "digital services tax"
+  },
+  {
+    "field": "Pajak",
+    "topic": "e-commerce taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "SME taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "informal sector taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "shadow economy taxation"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax audit"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax dispute resolution"
+  },
+  {
+    "field": "Pajak",
+    "topic": "tax court"
+  },
+  {
+    "field": "Pajak",
+    "topic": "fiscal federalism"
+  },
+  {
+    "field": "Pajak",
+    "topic": "intergovernmental fiscal transfers"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "public relations"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "corporate communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "crisis communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "media relations"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "social media communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "digital public relations"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "strategic communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "organizational communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "internal communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "stakeholder engagement"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "reputation management"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "brand communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "corporate storytelling"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "government communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "political communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "health communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "environmental communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "risk communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "science communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "media literacy"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "information literacy"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "digital literacy"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "journalism"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "investigative journalism"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "data journalism"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "citizen journalism"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "fake news"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "misinformation"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "disinformation"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "fact checking"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "media effects"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "agenda setting theory"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "framing theory"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "uses gratifications"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "public opinion"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "polling methodology"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "survey research communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "advertising communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "marketing communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "integrated marketing"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "content marketing"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "influencer marketing"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "viral communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "intercultural communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "cross cultural communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "diplomacy communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "information systems"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "knowledge management"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "information governance"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "data privacy communication"
+  },
+  {
+    "field": "Informasi dan Humas",
+    "topic": "freedom of information"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supply chain management"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "logistics optimization"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "warehouse management"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "inventory control"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "transportation logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "freight management"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "last mile delivery"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "cold chain logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "reverse logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "green logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "sustainable supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "circular supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supply chain resilience"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supply chain risk management"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supply chain disruption"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "procurement strategy"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supplier selection"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supplier relationship management"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "demand forecasting"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "demand planning"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "sales operations planning"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "lean logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "agile supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "just in time logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "blockchain supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "IoT supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "AI supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "digital twin logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "autonomous vehicles logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "drone delivery"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "cross docking"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "distribution network design"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "facility location optimization"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "vehicle routing problem"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "fleet management"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "route optimization"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "port logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "maritime logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "intermodal transportation"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "e-commerce logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "omnichannel logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "fulfillment center operations"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "humanitarian logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "disaster relief logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "military logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "food supply chain"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "pharmaceutical logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "hazardous materials logistics"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "supply chain finance"
+  },
+  {
+    "field": "Manajemen Logistik",
+    "topic": "trade finance logistics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "macroeconomics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "microeconomics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "monetary policy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "fiscal policy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "inflation targeting"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "interest rate policy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "exchange rate dynamics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "economic growth"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "GDP forecasting"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "business cycle"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "economic recession"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "labor economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "wage inequality"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "unemployment dynamics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "labor market flexibility"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "development economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "poverty reduction"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "economic inequality"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "Gini coefficient"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "international trade"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "trade policy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "tariffs"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "free trade agreements"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "financial markets"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "stock market"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "bond market"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "foreign exchange market"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "banking"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "financial regulation"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "Basel III"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "systemic risk"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "behavioral economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "nudge theory"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "prospect theory"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "bounded rationality"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "environmental economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "carbon pricing"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "green economy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "sustainable development"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "digital economy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "platform economy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "gig economy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "cryptocurrency economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "health economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "pharmaceutical economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "insurance markets"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "agricultural economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "food economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "commodity markets"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "urban economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "regional economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "spatial economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "public economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "tax policy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "government spending"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "public debt"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "innovation economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "knowledge economy"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "technology transfer"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "Islamic economics"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "Shariah finance"
+  },
+  {
+    "field": "Ekonomi",
+    "topic": "sukuk market"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "thermodynamics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "heat transfer"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "fluid mechanics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "computational fluid dynamics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "combustion engineering"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "internal combustion engine"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "gas turbine"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "steam turbine"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "renewable energy systems"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "solar thermal"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "geothermal energy"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "biomass energy"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "HVAC systems"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "refrigeration"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "air conditioning"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "thermal comfort"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "mechanical design"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "finite element analysis"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "stress analysis"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "fatigue analysis"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "vibration analysis"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "rotor dynamics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "noise control"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "acoustics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "manufacturing processes"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "CNC machining"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "additive manufacturing"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "3D printing metal"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "welding technology"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "casting"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "forging"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "sheet metal forming"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "robotics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "mechatronics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "automation systems"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "industrial robots"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "tribology"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "lubrication"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "wear analysis"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "surface engineering"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "automotive engineering"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "vehicle dynamics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "aerodynamics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "wind tunnel testing"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "power generation"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "combined cycle"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "cogeneration"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "energy efficiency"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "nanotechnology"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "nanofluids"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "microfluidics"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "MEMS devices"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "composite materials"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "smart materials"
+  },
+  {
+    "field": "Teknik Mesin",
+    "topic": "shape memory alloys"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power systems"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power generation"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power transmission"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power distribution"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "smart grid"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "microgrid"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "renewable energy integration"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "grid stability"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "high voltage engineering"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power electronics"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power quality"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "harmonic analysis"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "electric motor"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "induction motor"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "synchronous machine"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "motor drive"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "transformer design"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "circuit breaker"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "protection relay"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "fault analysis"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "solar photovoltaic"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "wind energy conversion"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "energy storage systems"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "battery management"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "electric vehicle"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "EV charging infrastructure"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "wireless power transfer"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power system optimization"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "load forecasting"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "demand response"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "SCADA systems"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "substation automation"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "distribution automation"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "FACTS devices"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "HVDC transmission"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "flexible AC transmission"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "lightning protection"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "grounding systems"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "electromagnetic compatibility"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "electrical safety"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "arc flash analysis"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "insulation coordination"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "digital signal processing"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "power system communication"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "IoT power systems"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "energy management"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "building automation"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "industrial automation"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "control systems"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "PLC programming"
+  },
+  {
+    "field": "Teknik Listrik",
+    "topic": "supervisory control"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "structural engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "reinforced concrete"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "prestressed concrete"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "steel structures"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "earthquake engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "seismic design"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "base isolation"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "structural health monitoring"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "geotechnical engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "soil mechanics"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "foundation engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "slope stability"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "transportation engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "highway design"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "pavement engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "traffic engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "bridge engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "tunnel engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "dam engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "retaining walls"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "construction management"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "project management"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "BIM building information modeling"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "sustainable construction"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "green building"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "LEED certification"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "concrete technology"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "high performance concrete"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "self healing concrete"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "recycled aggregate"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "water resources engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "hydrology"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "flood management"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "stormwater management"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "environmental engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "water treatment"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "wastewater treatment"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "solid waste management"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "coastal engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "port engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "offshore structures"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "wind engineering"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "tall buildings"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "composite structures"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "urban infrastructure"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "smart infrastructure"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "resilient infrastructure"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "construction safety"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "construction productivity"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "lean construction"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "finite element method structures"
+  },
+  {
+    "field": "Teknik Sipil",
+    "topic": "structural optimization"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "architectural design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "sustainable architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "green architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "passive design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "parametric design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "computational architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "generative design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "digital fabrication"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "vernacular architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "traditional architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "cultural heritage conservation"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "urban design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "public space design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "placemaking"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "walkable cities"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "housing design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "affordable housing"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "social housing"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "modular housing"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "interior architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "adaptive reuse"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "building renovation"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "landscape architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "urban landscape"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "ecological design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "tropical architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "bioclimatic design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "natural ventilation"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "architectural theory"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "phenomenology architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "critical regionalism"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "BIM architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "virtual reality architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "augmented reality design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "healthcare architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "hospital design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "healing environment"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "educational architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "school design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "campus planning"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "religious architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "mosque architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "sacred space design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "high rise architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "skyscraper design"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "mixed use development"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "disaster resilient architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "post disaster reconstruction"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "architectural history"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "modern architecture"
+  },
+  {
+    "field": "Arsitektur",
+    "topic": "contemporary architecture"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "naval architecture"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship design"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship hydrodynamics"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship resistance"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship propulsion"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "marine engine"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "diesel engine marine"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "LNG propulsion"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship structural analysis"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship strength"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "fatigue ship structure"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "corrosion marine"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship stability"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "intact stability"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "damage stability"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "load line"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "shipbuilding"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship production"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "shipyard management"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "block construction"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "marine materials"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "composite hull"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "aluminum ship"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "steel ship"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "offshore engineering"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "floating production"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "FPSO"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "subsea systems"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "marine renewable energy"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "wave energy"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "tidal energy"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "offshore wind"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship automation"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "autonomous ship"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "unmanned vessel"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "smart ship"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ballast water management"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship emission control"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "scrubber system"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "port operations"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "container terminal"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship scheduling"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "fisheries vessel"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "fishing boat design"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "aquaculture vessel"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "passenger ship"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ferry design"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "cruise ship"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "ship repair"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "dry docking"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "marine survey"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "maritime safety"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "SOLAS compliance"
+  },
+  {
+    "field": "Perkapalan",
+    "topic": "maritime regulation"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "regional planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "spatial planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "land use planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "smart city"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "digital city"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "sustainable city"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "resilient city"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "transportation planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "transit oriented development"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "public transport"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban sprawl"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban growth boundary"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "compact city"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "new urbanism"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "housing policy"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "slum upgrading"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban regeneration"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "gentrification"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban economics"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "real estate development"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "property market"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban ecology"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "green infrastructure"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban biodiversity"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "disaster risk reduction"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "flood risk planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "earthquake preparedness"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "participatory planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "community engagement"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "bottom up planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "GIS planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "spatial analysis"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "remote sensing urban"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban heat island"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "climate adaptation planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban climate"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "water sensitive urban design"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "sponge city"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "blue green infrastructure"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "heritage conservation"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "historic district"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "cultural landscape"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "industrial zone planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "economic zone"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "special economic zone"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "rural development"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "village planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "rural urban linkage"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "urban governance"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "decentralization planning"
+  },
+  {
+    "field": "Perencanaan Wilayah dan Kota",
+    "topic": "metropolitan governance"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "climate change"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "global warming"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "carbon emission"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "greenhouse gas"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "biodiversity conservation"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "ecosystem services"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "habitat restoration"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "air pollution"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "water pollution"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "soil contamination"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "noise pollution"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "waste management"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "circular economy"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "zero waste"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "plastic pollution"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental impact assessment"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "strategic environmental assessment"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "renewable energy"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "energy transition"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "net zero emission"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "water resources"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "water scarcity"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "groundwater management"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "watershed management"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "deforestation"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "reforestation"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "forest conservation"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "peatland restoration"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "marine conservation"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "coral reef protection"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "mangrove restoration"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental policy"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental law"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental governance"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "sustainable agriculture"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "organic farming"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "agroecology"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental monitoring"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "remote sensing environment"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "air quality monitoring"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "ecotoxicology"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental health"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "pollution control"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "carbon capture"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "carbon sequestration"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "nature based solutions"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "environmental education"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "sustainability literacy"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "eco labeling"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "urban environment"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "industrial ecology"
+  },
+  {
+    "field": "Lingkungan",
+    "topic": "life cycle assessment"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "oceanography"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "physical oceanography"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "chemical oceanography"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "biological oceanography"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine biology"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine ecology"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine biodiversity"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "deep sea biology"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "coral reef ecology"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "mangrove ecosystem"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "seagrass ecosystem"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean acidification"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "sea level rise"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean warming"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine heatwave"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine pollution"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "microplastics ocean"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "oil spill"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine debris"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "fisheries science"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "fish stock assessment"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "sustainable fisheries"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "aquaculture"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine biotechnology"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine natural products"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "bioactive compounds marine"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean energy"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "wave energy"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "tidal energy"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean thermal energy"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine spatial planning"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean governance"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "law of the sea"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "coastal management"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "integrated coastal zone management"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "coastal erosion"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine remote sensing"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean observation"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "underwater acoustics"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine geology"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "seafloor mapping"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine geophysics"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine protected area"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "no take zone"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine conservation"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean circulation"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean currents"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "upwelling"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ocean fronts"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "marine climate"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "ENSO El Nino"
+  },
+  {
+    "field": "Kelautan",
+    "topic": "Indian Ocean Dipole"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "aquaculture"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish farming"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "shrimp farming"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "seaweed farming"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish nutrition"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish feed"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "probiotics aquaculture"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "immunostimulant fish"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish disease"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish pathology"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "vaccine fish"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "antimicrobial resistance aquaculture"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish genetics"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish breeding"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "selective breeding aquaculture"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "genomic selection fish"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fisheries management"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish stock assessment"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "maximum sustainable yield"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "capture fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fishing gear"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fishing vessel"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "IUU fishing"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish processing"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish preservation"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "cold chain fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish quality"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "sustainable aquaculture"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "recirculating aquaculture system"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "biofloc technology"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "integrated multi trophic aquaculture"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "aquaponics"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "rice fish farming"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fisheries economics"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "aquaculture business"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "seafood trade"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "seafood certification"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "marine protected area fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "community based fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "small scale fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "climate change fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "ocean acidification fisheries"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish behavior"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish physiology"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "fish reproduction"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "seafood safety"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "seafood traceability"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "blockchain seafood"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "ornamental fish"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "aquarium trade"
+  },
+  {
+    "field": "Perikanan",
+    "topic": "coral reef fish"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "clinical psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "cognitive behavioral therapy"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "psychotherapy"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "trauma therapy"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "developmental psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "child development"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "adolescent psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "aging psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "social psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "group dynamics"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "prejudice"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "prosocial behavior"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "cognitive psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "memory"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "attention"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "decision making"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "neuropsychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "brain injury"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "cognitive rehabilitation"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "executive function"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "organizational psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "workplace well being"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "job satisfaction"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "burnout"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "health psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "stress management"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "coping strategies"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "resilience"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "educational psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "learning motivation"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "academic achievement"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "test anxiety"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "positive psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "happiness"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "life satisfaction"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "character strengths"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "forensic psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "criminal behavior"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "eyewitness testimony"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "risk assessment"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "sports psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "performance anxiety"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "mental toughness"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "flow state"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "cultural psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "acculturation"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "collectivism individualism"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "addiction psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "substance abuse"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "gambling addiction"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "internet addiction"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "personality psychology"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "Big Five personality"
+  },
+  {
+    "field": "Psikologi",
+    "topic": "dark triad"
+  },
+  {
+    "field": "Kimia",
+    "topic": "organic chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "organic synthesis"
+  },
+  {
+    "field": "Kimia",
+    "topic": "C-H activation"
+  },
+  {
+    "field": "Kimia",
+    "topic": "cross coupling reactions"
+  },
+  {
+    "field": "Kimia",
+    "topic": "inorganic chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "coordination chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "organometallic chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "physical chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "chemical kinetics"
+  },
+  {
+    "field": "Kimia",
+    "topic": "thermochemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "electrochemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "analytical chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "spectroscopy"
+  },
+  {
+    "field": "Kimia",
+    "topic": "chromatography"
+  },
+  {
+    "field": "Kimia",
+    "topic": "mass spectrometry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "polymer chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "conducting polymers"
+  },
+  {
+    "field": "Kimia",
+    "topic": "biodegradable polymers"
+  },
+  {
+    "field": "Kimia",
+    "topic": "catalysis"
+  },
+  {
+    "field": "Kimia",
+    "topic": "photocatalysis"
+  },
+  {
+    "field": "Kimia",
+    "topic": "electrocatalysis"
+  },
+  {
+    "field": "Kimia",
+    "topic": "enzyme catalysis"
+  },
+  {
+    "field": "Kimia",
+    "topic": "green chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "sustainable chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "solvent free reactions"
+  },
+  {
+    "field": "Kimia",
+    "topic": "nanochemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "nanoparticles"
+  },
+  {
+    "field": "Kimia",
+    "topic": "quantum dots"
+  },
+  {
+    "field": "Kimia",
+    "topic": "nanocomposites"
+  },
+  {
+    "field": "Kimia",
+    "topic": "medicinal chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "drug design"
+  },
+  {
+    "field": "Kimia",
+    "topic": "structure activity relationship"
+  },
+  {
+    "field": "Kimia",
+    "topic": "computational chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "molecular dynamics"
+  },
+  {
+    "field": "Kimia",
+    "topic": "density functional theory"
+  },
+  {
+    "field": "Kimia",
+    "topic": "materials chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "metal organic frameworks"
+  },
+  {
+    "field": "Kimia",
+    "topic": "perovskite materials"
+  },
+  {
+    "field": "Kimia",
+    "topic": "battery chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "lithium ion battery"
+  },
+  {
+    "field": "Kimia",
+    "topic": "solid state battery"
+  },
+  {
+    "field": "Kimia",
+    "topic": "supercapacitor"
+  },
+  {
+    "field": "Kimia",
+    "topic": "food chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "natural products"
+  },
+  {
+    "field": "Kimia",
+    "topic": "essential oils"
+  },
+  {
+    "field": "Kimia",
+    "topic": "antioxidants"
+  },
+  {
+    "field": "Kimia",
+    "topic": "environmental chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "water treatment chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "advanced oxidation"
+  },
+  {
+    "field": "Kimia",
+    "topic": "surface chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "colloid science"
+  },
+  {
+    "field": "Kimia",
+    "topic": "self assembly"
+  },
+  {
+    "field": "Kimia",
+    "topic": "biochemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "protein chemistry"
+  },
+  {
+    "field": "Kimia",
+    "topic": "enzyme engineering"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "operations research"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "optimization"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "linear programming"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "integer programming"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "production planning"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "scheduling"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "capacity planning"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "aggregate planning"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "quality management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "Six Sigma"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "statistical process control"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "total quality management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "lean manufacturing"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "Toyota production system"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "kaizen"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "value stream mapping"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "ergonomics"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "human factors"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "workplace design"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "occupational safety"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "supply chain management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "inventory management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "warehouse optimization"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "facility layout"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "material handling"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "plant design"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "simulation"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "discrete event simulation"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "Monte Carlo simulation"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "agent based simulation"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "data analytics"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "predictive analytics"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "machine learning manufacturing"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "Industry 4.0"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "smart manufacturing"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "digital twin"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "cyber physical systems"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "product design"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "design for manufacturing"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "design for assembly"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "project management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "agile project management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "critical path method"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "reliability engineering"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "maintenance optimization"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "predictive maintenance"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "human resource management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "workforce planning"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "performance management"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "sustainability manufacturing"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "circular economy manufacturing"
+  },
+  {
+    "field": "Teknik Industri",
+    "topic": "green manufacturing"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "industrial automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "PLC programming"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "SCADA systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "DCS distributed control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "process automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "batch process control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "continuous process control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "robotics"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "industrial robot"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "collaborative robot"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "robot programming"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "machine vision"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "image processing"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "pattern recognition"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "deep learning vision"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "sensor technology"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "IoT sensors"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "wireless sensor network"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "control systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "PID control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "model predictive control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "adaptive control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "artificial intelligence automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "machine learning control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "reinforcement learning control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "autonomous systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "autonomous vehicle"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "autonomous drone"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "autonomous robot"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "digital twin"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "virtual commissioning"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "simulation automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "smart factory"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "Industry 4.0"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "cyber physical systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "motion control"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "servo drive"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "stepper motor"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "linear actuator"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "pneumatic systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "hydraulic systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "electromechanical systems"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "building automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "home automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "smart building"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "network security automation"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "OT security"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "industrial cybersecurity"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "human machine interface"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "operator training"
+  },
+  {
+    "field": "Otomasi",
+    "topic": "augmented reality maintenance"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "electric vehicle"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "hybrid vehicle"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "fuel cell vehicle"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "battery electric vehicle"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive engine"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "internal combustion engine"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "turbocharger"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "engine efficiency"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive transmission"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "CVT"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "dual clutch transmission"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automatic transmission"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "vehicle dynamics"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "suspension system"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "brake system"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "steering system"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "autonomous driving"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "ADAS"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "lane keeping assist"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "adaptive cruise control"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "vehicle aerodynamics"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "drag reduction"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "downforce optimization"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive materials"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "lightweight materials"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "carbon fiber automotive"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "aluminum body"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive electronics"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "ECU"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "CAN bus"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "vehicle to everything V2X"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "connected vehicle"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "telematics"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "over the air update"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive manufacturing"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "assembly line"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "robotic welding"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "paint shop"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive safety"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "crashworthiness"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "airbag system"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "pedestrian protection"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive NVH"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "noise vibration harshness"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "acoustic comfort"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive emissions"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "emission control"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "aftertreatment system"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "Euro 7 standard"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "automotive aftermarket"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "vehicle maintenance"
+  },
+  {
+    "field": "Otomotif",
+    "topic": "diagnostic systems"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "second language acquisition"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "foreign language teaching"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language pedagogy"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "communicative language teaching"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "task based language teaching"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "content based instruction"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "English for specific purposes"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "English for academic purposes"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "business English"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "translation studies"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "machine translation"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "literary translation"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "localization"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "interpreting studies"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "simultaneous interpreting"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "consecutive interpreting"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "applied linguistics"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language testing"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language assessment"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "proficiency testing"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "bilingualism"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "multilingualism"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "code switching"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "translanguaging"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "discourse analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "critical discourse analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "genre analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "corpus linguistics"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "lexical analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "collocation studies"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "pragmatics"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "speech act theory"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "politeness theory"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "implicature"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "sociolinguistics"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language ideology"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language policy"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language planning"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "computational linguistics"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "natural language processing"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "sentiment analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "contrastive analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "error analysis"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "interlanguage"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "language learning technology"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "CALL computer assisted"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "mobile learning language"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "vocabulary acquisition"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "reading comprehension"
+  },
+  {
+    "field": "Bahasa Asing",
+    "topic": "writing instruction"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food safety"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food microbiology"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "foodborne pathogens"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "HACCP"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food processing"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "thermal processing"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "non thermal processing"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "high pressure processing"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food preservation"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "drying technology"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "freeze drying"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "modified atmosphere packaging"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food fermentation"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "probiotics"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "prebiotics"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "synbiotics"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "functional food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "nutraceuticals"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "bioactive compounds"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "antioxidant food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food chemistry"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "Maillard reaction"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "lipid oxidation"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food emulsion"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food packaging"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "active packaging"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "intelligent packaging"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "biodegradable packaging"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food quality"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "sensory evaluation"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "texture analysis"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "color measurement"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food engineering"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "extrusion technology"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "membrane filtration"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "ultrasound food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "plant based food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "meat analog"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "dairy alternative"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "insect protein"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food waste"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food loss reduction"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "upcycling food waste"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "traditional food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "indigenous food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "ethnic food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food regulation"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food labeling"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "food traceability"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "blockchain food"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "nutrigenomics"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "personalized nutrition"
+  },
+  {
+    "field": "Teknologi Pangan",
+    "topic": "dietary fiber"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "drug discovery"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "drug design"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "structure based drug design"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "virtual screening"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmaceutical formulation"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "tablet formulation"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "nanoparticle drug delivery"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "liposome"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmacokinetics"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmacodynamics"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "drug metabolism"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "bioavailability"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "clinical pharmacy"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "medication therapy management"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmaceutical care"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "natural product pharmacy"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "herbal medicine"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "phytochemistry"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "traditional medicine"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "biopharmaceutics"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "biologics"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "biosimilars"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "monoclonal antibody"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "drug delivery systems"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "targeted delivery"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "controlled release"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "transdermal delivery"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmaceutical analysis"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "HPLC"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "LC-MS"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "method validation"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmacovigilance"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "adverse drug reaction"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "drug safety"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmaceutical technology"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "continuous manufacturing"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "quality by design"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "regulatory affairs"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "drug approval"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "bioequivalence"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmaceutical marketing"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmacy management"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "community pharmacy"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "antimicrobial resistance"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "antibiotic stewardship"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "antiviral drugs"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "cancer pharmacology"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "chemotherapy"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "immunotherapy drugs"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "pharmacogenomics"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "precision medicine"
+  },
+  {
+    "field": "Farmasi",
+    "topic": "personalized therapy"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "public health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "epidemiology"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "disease surveillance"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "pandemic preparedness"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health policy"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "healthcare financing"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "universal health coverage"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health insurance"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "primary healthcare"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "community health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "rural health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "telemedicine"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "maternal health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "child health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "neonatal health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "reproductive health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "infectious diseases"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "tuberculosis"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "HIV AIDS"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "malaria"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "dengue"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "non communicable diseases"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "diabetes"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "hypertension"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "cardiovascular disease"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "mental health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "depression"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "anxiety disorder"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "suicide prevention"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "nutrition"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "malnutrition"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "obesity"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "stunting"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health promotion"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health education"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health literacy"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "behavior change"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "environmental health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "occupational health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "workplace safety"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health informatics"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "electronic health records"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health data analytics"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "global health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "health equity"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "social determinants health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "aging health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "geriatric care"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "palliative care"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "emergency medicine"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "disaster health"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "trauma care"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "healthcare quality"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "patient safety"
+  },
+  {
+    "field": "Kesehatan",
+    "topic": "clinical governance"
+  },
+  {
+    "field": "Biologi",
+    "topic": "molecular biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "gene expression"
+  },
+  {
+    "field": "Biologi",
+    "topic": "PCR"
+  },
+  {
+    "field": "Biologi",
+    "topic": "CRISPR gene editing"
+  },
+  {
+    "field": "Biologi",
+    "topic": "cell biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "cell signaling"
+  },
+  {
+    "field": "Biologi",
+    "topic": "apoptosis"
+  },
+  {
+    "field": "Biologi",
+    "topic": "cell cycle"
+  },
+  {
+    "field": "Biologi",
+    "topic": "genetics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "genomics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "epigenetics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "population genetics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "microbiology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "bacteriology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "virology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "mycology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "ecology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "biodiversity"
+  },
+  {
+    "field": "Biologi",
+    "topic": "conservation biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "ecosystem ecology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "evolutionary biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "phylogenetics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "speciation"
+  },
+  {
+    "field": "Biologi",
+    "topic": "molecular evolution"
+  },
+  {
+    "field": "Biologi",
+    "topic": "plant biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "photosynthesis"
+  },
+  {
+    "field": "Biologi",
+    "topic": "plant physiology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "plant breeding"
+  },
+  {
+    "field": "Biologi",
+    "topic": "zoology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "animal behavior"
+  },
+  {
+    "field": "Biologi",
+    "topic": "ethology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "wildlife biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "bioinformatics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "computational biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "systems biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "multi omics"
+  },
+  {
+    "field": "Biologi",
+    "topic": "biotechnology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "synthetic biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "metabolic engineering"
+  },
+  {
+    "field": "Biologi",
+    "topic": "bioprocess"
+  },
+  {
+    "field": "Biologi",
+    "topic": "neuroscience"
+  },
+  {
+    "field": "Biologi",
+    "topic": "neurobiology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "neuroplasticity"
+  },
+  {
+    "field": "Biologi",
+    "topic": "neurodegeneration"
+  },
+  {
+    "field": "Biologi",
+    "topic": "developmental biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "stem cells"
+  },
+  {
+    "field": "Biologi",
+    "topic": "tissue engineering"
+  },
+  {
+    "field": "Biologi",
+    "topic": "regenerative biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "marine biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "coral biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "deep sea biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "entomology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "pollinator biology"
+  },
+  {
+    "field": "Biologi",
+    "topic": "insect ecology"
+  },
+  {
+    "field": "Fisika",
+    "topic": "quantum mechanics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "quantum computing"
+  },
+  {
+    "field": "Fisika",
+    "topic": "quantum entanglement"
+  },
+  {
+    "field": "Fisika",
+    "topic": "quantum cryptography"
+  },
+  {
+    "field": "Fisika",
+    "topic": "condensed matter physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "superconductivity"
+  },
+  {
+    "field": "Fisika",
+    "topic": "topological insulators"
+  },
+  {
+    "field": "Fisika",
+    "topic": "semiconductor physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "particle physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "Higgs boson"
+  },
+  {
+    "field": "Fisika",
+    "topic": "neutrino physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "dark matter"
+  },
+  {
+    "field": "Fisika",
+    "topic": "astrophysics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "cosmology"
+  },
+  {
+    "field": "Fisika",
+    "topic": "gravitational waves"
+  },
+  {
+    "field": "Fisika",
+    "topic": "black holes"
+  },
+  {
+    "field": "Fisika",
+    "topic": "nuclear physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "nuclear fusion"
+  },
+  {
+    "field": "Fisika",
+    "topic": "nuclear fission"
+  },
+  {
+    "field": "Fisika",
+    "topic": "radioactivity"
+  },
+  {
+    "field": "Fisika",
+    "topic": "optics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "photonics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "laser physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "nonlinear optics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "plasma physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "fusion plasma"
+  },
+  {
+    "field": "Fisika",
+    "topic": "magnetohydrodynamics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "statistical mechanics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "thermodynamics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "non equilibrium physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "fluid dynamics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "turbulence"
+  },
+  {
+    "field": "Fisika",
+    "topic": "microfluidics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "rheology"
+  },
+  {
+    "field": "Fisika",
+    "topic": "materials physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "nanomaterials"
+  },
+  {
+    "field": "Fisika",
+    "topic": "2D materials"
+  },
+  {
+    "field": "Fisika",
+    "topic": "metamaterials"
+  },
+  {
+    "field": "Fisika",
+    "topic": "biophysics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "protein folding"
+  },
+  {
+    "field": "Fisika",
+    "topic": "molecular dynamics simulation"
+  },
+  {
+    "field": "Fisika",
+    "topic": "medical physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "radiation therapy"
+  },
+  {
+    "field": "Fisika",
+    "topic": "medical imaging"
+  },
+  {
+    "field": "Fisika",
+    "topic": "MRI physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "geophysics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "seismology"
+  },
+  {
+    "field": "Fisika",
+    "topic": "atmospheric physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "climate physics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "acoustics"
+  },
+  {
+    "field": "Fisika",
+    "topic": "ultrasound"
+  },
+  {
+    "field": "Fisika",
+    "topic": "sonic crystal"
+  }
+]

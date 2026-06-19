@@ -396,6 +396,27 @@
 
       <!-- Old error-only block removed — replaced by the unified tool display above -->
 
+      <!-- DOCX Download Button — shown when message has generated .docx file -->
+      <div
+        v-if="message.metadata?.file_url && message.role === 'assistant'"
+        class="mt-3 pt-3 border-t border-cream-300 dark:border-ash-600"
+      >
+        <a
+          :href="message.metadata.file_url"
+          :download="message.metadata.file_name || 'document.docx'"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                 bg-navy-500 hover:bg-navy-600 dark:bg-cream-400 dark:hover:bg-cream-500
+                 text-cream-50 dark:text-ash-900
+                 transition-colors shadow-sm hover:shadow"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <span>📄 {{ message.metadata.file_name || 'Download DOCX' }}</span>
+        </a>
+      </div>
+
 
     </div>
 
@@ -833,7 +854,8 @@ const isActivelyStreaming = computed(() => {
 }
 
 .prose :deep(pre) {
-  background: #1e1e2e;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-soft);
   border-radius: 0.75rem;
   padding: 1rem;
   overflow-x: auto;
@@ -842,9 +864,12 @@ const isActivelyStreaming = computed(() => {
 html.dark .prose :deep(pre) { background: #0a1628; border: 1px solid var(--border-soft); }
 
 .prose :deep(pre code) {
-  color: #cdd6f4;
+  color: var(--text-strong);
   font-size: 0.8rem;
   line-height: 1.5;
+}
+html.dark .prose :deep(pre code) {
+  color: #cdd6f4;
 }
 
 .prose :deep(code:not(pre code)) {

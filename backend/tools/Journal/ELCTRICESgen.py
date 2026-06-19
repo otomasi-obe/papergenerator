@@ -63,6 +63,63 @@ class RenderState:
     table_count: int = 0
 
 
+def _clean_latex(text):
+    """Strip inline LaTeX markers dari text."""
+    if not isinstance(text, str) or not text.strip():
+        return text if isinstance(text, str) else ""
+    import re as _re
+    text = _re.sub(r'\$([^$]+)\$', r'\1', text)
+    text = _re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\mathbf\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\text\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\hat\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\vec\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\overline\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\sqrt\{([^}]*)\}', r'sqrt(\1)', text)
+    text = _re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1/\2)', text)
+    text = _re.sub(r'\\left[(\[{]', '(', text)
+    text = _re.sub(r'\\right[)\]]', ')', text)
+    text = _re.sub(r'\\begin\{cases\}', '', text)
+    text = _re.sub(r'\\end\{cases\}', '', text)
+    text = _re.sub(r'\\approx', chr(8776), text)
+    text = _re.sub(r'\\times', chr(215), text)
+    text = _re.sub(r'\\cdot', chr(183), text)
+    text = _re.sub(r'\\quad', ' ', text)
+    text = _re.sub(r'\\qquad', '  ', text)
+    text = _re.sub(r'\\infty', chr(8734), text)
+    text = _re.sub(r'\\circ', chr(176), text)
+    text = _re.sub(r'\\alpha', chr(945), text)
+    text = _re.sub(r'\\beta', chr(946), text)
+    text = _re.sub(r'\\gamma', chr(947), text)
+    text = _re.sub(r'\\theta', chr(952), text)
+    text = _re.sub(r'\\lambda', chr(955), text)
+    text = _re.sub(r'\\sigma', chr(963), text)
+    text = _re.sub(r'\\omega', chr(969), text)
+    text = _re.sub(r'\\pi', chr(960), text)
+    text = _re.sub(r'\\mu', chr(956), text)
+    text = _re.sub(r'\\Delta', chr(916), text)
+    text = _re.sub(r'\\partial', chr(8706), text)
+    text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    text = _re.sub(r'\\[a-zA-Z]+', '', text)
+    text = _re.sub(r'[{}]', '', text)
+    return text.strip()
+
+
+def _postprocess_clean_latex(doc):
+    """Walk all paragraphs and clean LaTeX from run text in-place."""
+    import re as _re
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                run.text = _clean_latex(run.text)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                            run.text = _clean_latex(run.text)
 def _set_ai_prompt_color_red(doc):
     """Scan output DOCX, set warna text MERAH untuk semua run di paragraf
     yang berisi pola '[PROMPT UNTUK AI GAMBAR'.
@@ -915,7 +972,7 @@ def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | No
         cell.text = ""
         _set_cell_format(cell, header=True)
         paragraph = cell.paragraphs[0]
-        _append_rich_text(paragraph, str(value), samples["body_rpr"])
+        paragraph.add_run(_clean_latex(str(value)))
         for run in paragraph.runs:
             run.bold = True
 
@@ -926,7 +983,7 @@ def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | No
             _set_cell_format(cell, header=False)
             if column_index < len(row_data):
                 paragraph = cell.paragraphs[0]
-                _append_rich_text(paragraph, str(row_data[column_index]), samples["body_rpr"])
+                paragraph.add_run(_clean_latex(str(row_data[column_index])))
 
     doc.add_paragraph()
 
@@ -1172,6 +1229,7 @@ def build_document(
     _update_running_headers(doc, config)
 
     _set_ai_prompt_color_red(doc)
+    _postprocess_clean_latex(doc)
     doc.save(str(final_output))
     print(f"Generated: {final_output}")
     return final_output

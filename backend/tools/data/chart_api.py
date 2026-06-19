@@ -18,6 +18,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import uuid
 from pathlib import Path
@@ -113,7 +114,8 @@ def list_charts(paper_id: str):
         "charts": [
             {
                 **img.to_dict(),
-                "kind": img.original_name.split("-")[1] if "-" in img.original_name else "unknown"
+                "kind": img.original_name.split("-")[1] if "-" in img.original_name else "unknown",
+                "image_id": img.id,  # Alias for frontend compatibility
             }
             for img in charts
         ]
@@ -182,15 +184,16 @@ def create_chart(paper_id: str):
     try:
         spec = _build_spec(data)
     except Exception as e:
-        return _err(f"Invalid chart spec: {e}", "BAD_SPEC", 400)
+        log.warning("Invalid chart spec for paper=%s: %s", paper_id, e)
+        return _err("Invalid chart specification.", "BAD_SPEC", 400)
 
     try:
         out_path = Path(generate_chart(paper_id, spec, user_id=user_id, judul_paper=paper.title))
-    except ValueError as e:
-        return _err(f"Invalid chart spec: {e}", "BAD_SPEC", 400)
+    except ValueError:
+        return _err("Invalid chart specification.", "BAD_SPEC", 400)
     except Exception as e:
         log.exception("chart.generate failed paper=%s", paper_id)
-        return _err(f"Chart generation failed: {e}", "GENERATE_ERROR", 500)
+        return _err("Chart generation failed. Please check your data.", "GENERATE_ERROR", 500)
 
     paper_dir = safe_paper_image_dir(paper_id)
     if paper_dir is None:
@@ -253,15 +256,16 @@ def preview_chart(paper_id: str):
         spec.dpi = min(spec.dpi, 100)
         spec.figsize = (7, 4)
     except Exception as e:
-        return _err(f"Invalid chart spec: {e}", "BAD_SPEC", 400)
+        log.warning("Invalid chart spec for preview paper=%s: %s", paper_id, e)
+        return _err("Invalid chart specification.", "BAD_SPEC", 400)
 
     try:
         b64 = render_chart_base64(spec)
-    except ValueError as e:
-        return _err(str(e), "BAD_SPEC", 400)
+    except ValueError:
+        return _err("Invalid chart specification.", "BAD_SPEC", 400)
     except Exception as e:
         log.exception("chart.preview failed paper=%s", paper_id)
-        return _err(f"Preview failed: {e}", "PREVIEW_ERROR", 500)
+        return _err("Chart preview failed. Please check your data.", "PREVIEW_ERROR", 500)
 
     return jsonify({"image": b64, "kind": kind}), 200
 
@@ -466,6 +470,17 @@ def upload_chart_data(paper_id: str):
             "BAD_FILE_TYPE", 400
         )
 
+    # Check file size before saving — 10 MB max for chart data
+    MAX_SIZE = 10 * 1024 * 1024  # 10 MB
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)  # reset to beginning for later save
+    if file_size > MAX_SIZE:
+        return _err(
+            f"File too large ({file_size / (1024*1024):.1f} MB). Maximum allowed: 10 MB",
+            "FILE_TOO_LARGE", 400
+        )
+
     paper_dir = safe_paper_dir(paper_id)
     if paper_dir is None:
         return _err("Invalid paper id", "BAD_REQUEST", 400)
@@ -477,8 +492,8 @@ def upload_chart_data(paper_id: str):
     try:
         file.save(str(temp_path))
     except Exception as e:
-        log.exception("Failed to save uploaded file paper=%s", paper_id)
-        return _err(f"File save failed: {e}", "SAVE_ERROR", 500)
+        log.exception("Failed to save uploaded file paper=%s: %s", paper_id, e)
+        return _err("File save failed", "SAVE_ERROR", 500)
 
     try:
         parsed = parse_data_file(str(temp_path))
@@ -486,14 +501,16 @@ def upload_chart_data(paper_id: str):
         return _err("File not found after upload", "INTERNAL_ERROR", 500)
     except ValueError as e:
         temp_path.unlink(missing_ok=True)
-        return _err(f"Unsupported file format: {e}", "BAD_FILE_TYPE", 400)
+        log.warning("Unsupported file format for paper=%s: %s", paper_id, e)
+        return _err("Unsupported file format", "BAD_FILE_TYPE", 400)
     except RuntimeError as e:
         temp_path.unlink(missing_ok=True)
-        return _err(str(e), "PARSE_ERROR", 500)
+        log.warning("Data file parse error for paper=%s: %s", paper_id, e)
+        return _err("File parsing failed", "PARSE_ERROR", 500)
     except Exception as e:
-        log.exception("Failed to parse data file paper=%s", paper_id)
+        log.exception("Failed to parse data file paper=%s: %s", paper_id, e)
         temp_path.unlink(missing_ok=True)
-        return _err(f"File parsing failed: {e}", "PARSE_ERROR", 500)
+        return _err("File parsing failed", "PARSE_ERROR", 500)
 
     # Save to user storage data/ dir
     try:

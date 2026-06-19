@@ -6,16 +6,25 @@ import 'katex/dist/katex.min.css'
  * @param latex - raw LaTeX (tanpa $ atau $$)
  * @param displayMode - true = display (centered), false = inline
  */
+function sanitizeHtml(html: string): string {
+  // Strip dangerous event handlers and javascript: URIs from KaTeX output
+  return html
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/\bon\w+\s*=\s*[^\s>]+/gi, '')
+    .replace(/javascript\s*:/gi, '')
+}
+
 export function renderLatex(latex: string, displayMode = false): string {
   if (!latex || !latex.trim()) return ''
   try {
-    return katex.renderToString(latex, {
+    const html = katex.renderToString(latex, {
       displayMode,
       throwOnError: false,
-      trust: true,
+      trust: false,
       strict: false,
       output: 'html',
     })
+    return sanitizeHtml(html)
   } catch {
     // Fallback: return raw text
     return `<span class="text-red-400" title="LaTeX error">${escapeHtml(latex)}</span>`
@@ -46,6 +55,9 @@ function decodeStrayEscapes(text: string): string {
     })
   }
   if (out.includes('\\t')) out = out.replace(/\\t(?![a-zA-Z])/g, ' ')
+  // Convert literal \n (backslash+n, not real newline) to line breaks,
+  // but skip LaTeX commands like \nabla, \neq, \nsubseteq, etc.
+  if (out.includes('\\n')) out = out.replace(/\\n(?![a-zA-Z])/g, '<br/>')
   // Strip literal backspace char (U+0008) — shows as empty box
   out = out.replace(/\x08/g, '')
   return out
@@ -159,8 +171,8 @@ export function renderRichText(text: string): string {
       }
     }
 
-    // \b bold toggle
-    if (text[i] === '\\' && text[i + 1] === 'b') {
+    // \b bold toggle (only when NOT followed by a lowercase letter, to avoid \beta, \binom, \bmod — but allow \bBOLD)
+    if (text[i] === '\\' && text[i + 1] === 'b' && !/[a-z]/.test(text[i + 2] || '')) {
       result += closeTags()
       bold = !bold
       result += openTags()
@@ -168,8 +180,8 @@ export function renderRichText(text: string): string {
       continue
     }
 
-    // \i italic toggle
-    if (text[i] === '\\' && text[i + 1] === 'i') {
+    // \i italic toggle (guard: NOT followed by lowercase letter to avoid \int, \in, \infty — but allow \iITALIC)
+    if (text[i] === '\\' && text[i + 1] === 'i' && !/[a-z]/.test(text[i + 2] || '')) {
       result += closeTags()
       italic = !italic
       result += openTags()
@@ -177,8 +189,8 @@ export function renderRichText(text: string): string {
       continue
     }
 
-    // \u underline toggle
-    if (text[i] === '\\' && text[i + 1] === 'u') {
+    // \u underline toggle (guard: NOT followed by lowercase letter/hex to avoid \u2022 etc.)
+    if (text[i] === '\\' && text[i + 1] === 'u' && !/[a-z0-9]/.test(text[i + 2] || '')) {
       result += closeTags()
       underline = !underline
       result += openTags()
@@ -227,13 +239,14 @@ export function renderRichText(text: string): string {
 
 /**
  * Lightweight inner render for nested markdown (bold/italic content).
- * Only handles math, no recursive formatting.
+ * Handles math AND formatting toggles (\b \i \u).
  */
 function renderRichTextInner(text: string): string {
   let result = ''
   let i = 0
   const len = text.length
   while (i < len) {
+    // $$...$$ display math
     if (text[i] === '$' && text[i + 1] === '$') {
       const end = text.indexOf('$$', i + 2)
       if (end !== -1) {
@@ -245,6 +258,7 @@ function renderRichTextInner(text: string): string {
         continue
       }
     }
+    // $...$ inline math
     if (text[i] === '$' && text[i + 1] !== '$') {
       const end = text.indexOf('$', i + 1)
       if (end !== -1 && end > i + 1) {
@@ -256,6 +270,16 @@ function renderRichTextInner(text: string): string {
           continue
         }
       }
+    }
+    // \b \i \u toggles
+    if (text[i] === '\\' && text[i + 1] === 'b' && !/[a-zA-Z]/.test(text[i + 2] || '')) {
+      i += 2; continue
+    }
+    if (text[i] === '\\' && text[i + 1] === 'i' && !/[a-zA-Z]/.test(text[i + 2] || '')) {
+      i += 2; continue
+    }
+    if (text[i] === '\\' && text[i + 1] === 'u' && !/[a-zA-Z0-9]/.test(text[i + 2] || '')) {
+      i += 2; continue
     }
     result += escapeHtml(text[i])
     i++

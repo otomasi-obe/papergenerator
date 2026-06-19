@@ -1,9 +1,10 @@
+[INFO] Menggunakan _template.json default (/home/sirobo/ANNABIL/Project Papergenerator_Annabil/papergenerator/backend/template/A FIX/A Script/_template.json)
 ============================================================
-[SKOR KECOCOKAN: 27%] -> STATUS: REVISI MAYOR
-  Base: 100 | Penalty: -73 | Akhir: 27%
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base: 100 | Penalty: -213 | Akhir: 0%
    - Placeholder/Prompt Gambar Salah (MINOR): -5 x 14 = -70
+   - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 14 = -140
    - Section Break Waste (MINOR): -3
 ============================================================
-[INFO] WARNING: Skor 27% tapi ditemukan 1 kejanggalan visual.
 [INFO] Master prompt perbaikan ditulis: audit-unik_JRC.txt
 Audit selesai. Detail tersimpan: audit_JRC_output.txt

@@ -125,6 +125,9 @@
                      extractProgress.stage === 'ai_formatting' ? 'AI memformat data' :
                      extractProgress.stage === 'generating_charts' ? 'Membuat grafik' :
                      extractProgress.stage === 'finalizing' ? 'Menyimpan hasil' :
+                     extractProgress.stage === 'starting' ? 'Memulai...' :
+                     extractProgress.stage === 'complete' ? 'Selesai' :
+                     extractProgress.stage === 'queued' ? 'Mengantri...' :
                      extractProgress.stage }}
         </div>
       </div>
@@ -817,13 +820,13 @@ const legendPositions = ['best', 'upper right', 'upper left', 'lower right', 'lo
 async function loadMeta() {
   if (!paperId.value) return
   try {
-    const [kindsRes, palettesRes] = await Promise.all([
-      chartsApi.getKinds(paperId.value),
-      chartsApi.getPalettes(paperId.value),
-    ])
+    const kindsRes = await chartsApi.getKinds(paperId.value)
     if (kindsRes.kinds) chartKindsMap.value = kindsRes.kinds
+  } catch { /* use defaults for kinds */ }
+  try {
+    const palettesRes = await chartsApi.getPalettes(paperId.value)
     if (palettesRes.palettes) colorPalettes.value = palettesRes.palettes
-  } catch { /* use defaults */ }
+  } catch { /* use defaults for palettes */ }
 }
 
 // ─── Add source ─────────────────────────────────────────────────────────
@@ -885,7 +888,15 @@ function saveExtractionToSources(result: any) {
     title: c.title || 'Grafik',
     kind: c.kind || 'bar',
     imageId: c.image_id,
+    tableIndex: c.table_index ?? 0,
   }))
+
+  // Link charts to tables based on table_index from AI
+  allTables.forEach((tbl: any, idx: number) => {
+    tbl.chartIds = chartImages
+      .filter((c: any) => c.tableIndex === idx)
+      .map((c: any) => c.imageId)
+  })
 
   // Summary / analysis text
   const analysis = result.summary?.analysis || result.summary?.data_overview || ''
@@ -1826,5 +1837,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   closeEventSource()
+  if (_previewTimer) clearTimeout(_previewTimer)
 })
 </script>

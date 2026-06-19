@@ -194,7 +194,7 @@ app.config["SIGNED_URL_SECRET"] = os.getenv("SIGNED_URL_SECRET") or _secret_key
 # but multipart uploads bundle all selected files in one POST so 4 PDFs of
 # ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
 # can ride the same multipart payload (form overhead included).
-app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024  # 60MB max upload
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB total upload (unrestricted)
 
 
 # Friendlier 413 — Werkzeug's default returns an HTML page that the chat
@@ -412,13 +412,25 @@ def add_correlation_id():
     g.correlation_id = str(uuid.uuid4())
     # BUG-21: Cache user_id here so after_request doesn't re-verify JWT
     g.user_id = None
+    # Skip JWT verification for requests that never carry auth: CORS preflight
+    # (OPTIONS), the public health endpoint, and static assets. Avoids needless
+    # work and noise.
+    if (
+        request.method == "OPTIONS"
+        or request.path.startswith("/api/health")
+        or (request.endpoint == "static")
+        or request.path.startswith("/static/")
+    ):
+        return
     try:
         verify_jwt_in_request(optional=True)
         identity = get_jwt_identity()
         if identity:
             g.user_id = int(identity)
-    except Exception:
-        pass
+    except Exception as e:
+        # Don't fail the request on a bad/expired token here (optional auth),
+        # but don't swallow it silently either — log at debug for diagnostics.
+        logging.debug("add_correlation_id: optional JWT verification failed: %s", e)
 
 
 app.register_blueprint(auth)
@@ -439,6 +451,14 @@ app.register_blueprint(health)
 app.register_blueprint(tools_api)
 app.register_blueprint(logging_api)
 app.register_blueprint(state_bp)
+
+# ─── Image generation provider health endpoint ─────────────────────
+@app.route("/api/image-providers/status", methods=["GET"])
+@jwt_required()
+def image_providers_status():
+    """Return health status of all image generation providers (API-first)."""
+    from tools.image_generation.image_api import get_provider_status
+    return jsonify(get_provider_status())
 
 
 # ─── Observability routes: /metrics, /api/metrics, /api/healthz ───────────────
@@ -516,6 +536,9 @@ def _security_headers(response):
     # Content Security Policy
     csp = (
         "default-src 'self'; "
+        # NOTE: 'unsafe-inline' in script-src is INTENTIONAL and REQUIRED for the
+        # Vue SPA (inline bootstrap/hydration scripts). Removing it breaks the app.
+        # Do not tighten this without migrating the frontend to nonces/hashes.
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "img-src 'self' data: https:; "
@@ -618,15 +641,107 @@ def _available_journals():
 
 def _resolve_journal_code(raw: str | None) -> str:
     available = _available_journals()
+    if not available:
+        # No journal templates registered — fail loudly instead of returning a
+        # bogus "IEEE" code that later blows up with an opaque ValueError.
+        raise ValueError(
+            "No journal templates available; cannot resolve journal code. "
+            "Check journal template configuration."
+        )
     if not raw:
-        return "IEEE" if "IEEE" in available else (available[0] if available else "IEEE")
+        return "IEEE" if "IEEE" in available else available[0]
     raw_norm = str(raw).strip()
     if not raw_norm:
-        return "IEEE" if "IEEE" in available else (available[0] if available else "IEEE")
+        return "IEEE" if "IEEE" in available else available[0]
 
     # Case-insensitive match to avoid client-side casing bugs
     m = {c.lower(): c for c in available}
     return m.get(raw_norm.lower(), raw_norm)
+
+
+def _count_inline_gambar(obj, depth=0) -> int:
+    """Recursively count gambar items inside section content (including subsections)."""
+    count = 0
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "content" and isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict) and item.get("id") in ("gambar", "image"):
+                        count += 1
+            if isinstance(v, (dict, list)):
+                count += _count_inline_gambar(v, depth + 1)
+    elif isinstance(obj, list):
+        for item in obj:
+            count += _count_inline_gambar(item, depth + 1)
+    return count
+
+
+def _distribute_figures_to_sections(paper: dict):
+    """Move items from paper['figures'] array into section content as inline
+    {id: "gambar", ...} items so generators that only read section.content
+    can render them.
+
+    Distribution strategy: round-robin across sections that have content.
+    Skips if inline gambar items already exist anywhere in the paper
+    (including subsections), since those take precedence over the figures
+    array which is often stale/empty.
+    """
+    figures = paper.get("figures", [])
+    if not figures:
+        return
+
+    # Count existing inline gambar (recursive across all sections/subsections)
+    existing_gambar = _count_inline_gambar(paper)
+    if existing_gambar >= len(figures):
+        return  # already has enough inline gambar, skip
+
+    # Find sections with text content
+    sections_with_content = []
+    for sk in ["section1", "section2", "section3", "section4", "section5"]:
+        s = paper.get(sk, {})
+        c = s.get("content", [])
+        if isinstance(c, list) and any(
+            isinstance(item, dict) and item.get("id") == "text" and item.get("text")
+            for item in c
+        ):
+            sections_with_content.append(sk)
+        elif isinstance(c, str) and c.strip():
+            sections_with_content.append(sk)
+
+    if not sections_with_content:
+        # No sections with content — use section2 as default
+        sections_with_content = ["section2"]
+
+    # Distribute figures round-robin
+    for i, fig in enumerate(figures):
+        if not isinstance(fig, dict):
+            continue
+        section_key = sections_with_content[i % len(sections_with_content)]
+        s = paper[section_key]
+        c = s.get("content", [])
+        if not isinstance(c, list):
+            c = []
+            s["content"] = c
+
+        inline_item = {
+            "id": "gambar",
+            "Title": fig.get("Title") or fig.get("title") or f"Figure {i+1}",
+        }
+        if fig.get("Prompt") or fig.get("prompt"):
+            inline_item["Prompt"] = fig.get("Prompt") or fig.get("prompt")
+        if fig.get("image_url"):
+            inline_item["image_url"] = fig["image_url"]
+        if fig.get("caption"):
+            inline_item["caption"] = fig["caption"]
+        # Copy Path + ImageNumber so DOCX generators can embed the image
+        fig_path = fig.get("Path") or fig.get("path")
+        if fig_path:
+            inline_item["Path"] = fig_path
+        fig_num = fig.get("ImageNumber") or fig.get("imageNumber")
+        if fig_num:
+            inline_item["ImageNumber"] = fig_num
+
+        c.append(inline_item)
 
 
 def _make_generate_adapter(mod, gen_fn):
@@ -646,6 +761,28 @@ def _make_generate_adapter(mod, gen_fn):
 
     def adapter(json_path, output_path=None):
         from pathlib import Path as _P
+        # Normalize the JSON file before the generator reads it:
+        # - Unwrap paper_data.paper so generators get flat structure
+        # - Distribute figures array into section content as inline items
+        _json_path = _P(json_path)
+        try:
+            with open(str(_json_path), "r", encoding="utf-8") as _f:
+                _data = json.load(_f)
+            _paper = _data
+            was_wrapped = isinstance(_data, dict) and "paper_data" in _data
+            if was_wrapped:
+                pd = _data.get("paper_data", {})
+                # Handle both old format (paper_data = flat) and new format (paper_data = {"paper": ...})
+                _paper = pd.get("paper", pd) if isinstance(pd, dict) else _data
+            if isinstance(_paper, dict) and "figures" in _paper:
+                _distribute_figures_to_sections(_paper)
+            # Always save the unwrapped version so generators get a flat
+            # structure with sections at the top level.
+            _to_save = _paper if was_wrapped else _data
+            with open(str(_json_path), "w", encoding="utf-8") as _f:
+                json.dump(_to_save, _f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass  # best-effort; skip on any error
         with _ADAPTER_LOCK:
             in_name = next((n for n in INPUT_NAMES if hasattr(mod, n)), None)
             out_name = next((n for n in OUTPUT_NAMES if hasattr(mod, n)), None)
@@ -793,14 +930,11 @@ if not app.config.get("TESTING"):
         )
 
 # ─── Health Check ────────────────────────────────────────────────────────────
-
-
-@app.route("/api/health", methods=["GET"])
-@limiter.exempt
-def health():
-    return jsonify(
-        {"status": "ok", "model": AIOTOMASI_MODEL, "timestamp": datetime.now().isoformat()}
-    )
+# NOTE: The /api/health endpoint is served by the `health` Blueprint
+# (utils.health, url_prefix='/api/health', returns {"status": "healthy", ...}).
+# A previous app-level `def health()` here registered the SAME /api/health route
+# AND collided with the Blueprint's name in the import namespace. It was removed
+# as redundant — do not re-add an app-level /api/health route.
 
 
 # ─── AI Generate (Section) ───────────────────────────────────────────────────
@@ -901,7 +1035,7 @@ def generate():
         raise
     except Exception as e:
         log.exception("unhandled error")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # ─── Generate Full Paper ─────────────────────────────────────────────────────
@@ -1090,6 +1224,8 @@ def _run_generate_full_job(
             log.exception("[job:%s] checkpoint failed at stage=%s", job_id, stage)
         _publish(stage, progress, "running" if int(progress) < 100 else "complete")
 
+    paper_data = None  # scoped so except handlers can persist partial content
+
     try:
         from utils.ai_tools.model_config import get_endpoint_chain
         if not get_endpoint_chain(heavy=True):
@@ -1139,6 +1275,32 @@ def _run_generate_full_job(
             job_id=job_id,
             user_id=user_id,
         )
+
+        # ── PARTIAL SAVE: persist raw paper_data to Paper.data immediately ──
+        # If the worker crashes, gets killed, or hits any error after this point
+        # the user at least keeps the content the model already returned.
+        if uid is not None and paper_id:
+            try:
+                with app.app_context():
+                    paper = Paper.query.filter_by(id=paper_id, user_id=uid).first()
+                    if paper:
+                        partial = dict(paper_data)
+                        partial["_partial"] = True
+                        paper.data = partial
+                        paper.title = (
+                            (paper_data.get("title") or "").strip()
+                            or paper.title
+                            or "Untitled"
+                        )
+                        paper.updated_at = datetime.now(timezone.utc)
+                        safe_commit()
+                        log.info("[job:%s] partial content saved to paper %s", job_id, paper_id)
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                log.exception("[job:%s] failed to persist partial content to paper %s", job_id, paper_id)
 
         # Validate that the model returned a complete paper before persisting.
         # Without this, an upstream truncation (e.g. the model stopped at
@@ -1283,6 +1445,8 @@ def _run_generate_full_job(
                 try:
                     paper = Paper.query.filter_by(id=paper_id, user_id=uid).first()
                     if paper:
+                        # Remove _partial flag — this is the final, complete paper
+                        paper_data.pop("_partial", None)
                         paper.data = paper_data
                         paper.title = (
                             (paper_data.get("title") or "").strip()
@@ -1349,11 +1513,42 @@ def _run_generate_full_job(
                     (
                         f"Generation timed out after {int(elapsed)}s. Try a shorter topic."
                         if timeout_flag
-                        else err_str
+                        else "Generation failed due to internal error. Please try again."
                     ),
                     timeout_flag=timeout_flag,
                 )
+            # ── Preserve partial content in Paper.data on error ──
+            # The early partial save (right after the API returned) already
+            # wrote the content to Paper.data. Here we just add error metadata
+            # so the frontend can surface it. If paper_data is None the API
+            # call never returned — nothing to preserve.
+            if paper_id and uid is not None and paper_data is not None:
+                try:
+                    paper = Paper.query.filter_by(id=paper_id, user_id=uid).first()
+                    if paper and paper.data:
+                        paper.data["_partial"] = True
+                        paper.data["_generation_error"] = err_str[:500]
+                        paper.updated_at = datetime.now(timezone.utc)
+                        safe_commit()
+                        log.info(
+                            "[job:%s] partial content preserved in paper %s after error",
+                            job_id, paper_id,
+                        )
+                except Exception:
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
+                    log.exception(
+                        "[job:%s] failed to annotate partial paper %s with error",
+                        job_id, paper_id,
+                    )
     finally:
+        # Always stop the progress ticker so the background thread can exit —
+        # the per-path .set() calls above don't cover every early-return / raise
+        # site, and without this a thread could leak (join below would block its
+        # full timeout). Setting an already-set Event is a harmless no-op.
+        _ticker_stop.set()
         _ticker_thread.join(timeout=2)
 
 
@@ -1406,7 +1601,7 @@ def generate_full():
 
         from utils.ai_tools.model_config import get_endpoint_chain
         if not get_endpoint_chain(heavy=True):
-            raise Exception("AIOTOMASI endpoint not configured (set AIOTOMASI_API{1,2,3} + AIOTOMASI_APIKEY{1,2,3})")
+            return jsonify({"error": "AIOTOMASI endpoint not configured (set AIOTOMASI_API{1,2,3} + AIOTOMASI_APIKEY{1,2,3})"}), 503
 
         user_id = _get_current_user_id()
         if not user_id:
@@ -1423,7 +1618,7 @@ def generate_full():
 
     except Exception as e:
         log.exception("unhandled error")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/job/<job_id>", methods=["GET"])
@@ -1469,13 +1664,14 @@ def get_job_status(job_id):
 
     err = job.error or "Unknown error"
     timeout_flag = bool(job.timeout)
-    return jsonify({"status": "error", "error": err, "timeout": timeout_flag})
+    return jsonify({"status": "error", "error": err, "timeout": timeout_flag, "elapsed": elapsed})
 
 
 # ─── Topics / Styles / PDF Upload ─────────────────────────────────────────────
 
 
 @app.route("/api/topics", methods=["GET"])
+@jwt_required()
 def list_topics():
     """Return sorted list of available topic slugs (cached)."""
     from utils.core.cache import cached
@@ -1490,6 +1686,7 @@ def list_topics():
 
 
 @app.route("/api/styles", methods=["GET"])
+@jwt_required()
 def list_styles():
     """Return sorted list of available citation style slugs (cached)."""
     from utils.core.cache import cached
@@ -1602,7 +1799,7 @@ def list_journals():
     try:
         return jsonify({"journals": _available_journals()})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # ─── Legacy Image Upload ──────────────────────────────────────────────────────
@@ -1643,9 +1840,6 @@ def upload_image_legacy():
         file.stream.seek(0, 2)
         size = file.stream.tell()
         file.stream.seek(0)
-        if size > 10 * 1024 * 1024:
-            return jsonify({"error": "Ukuran file > 10 MB"}), 413
-
         head = file.stream.read(16)
         file.stream.seek(0)
         if not _is_image_bytes(head, ext):
@@ -1665,7 +1859,7 @@ def upload_image_legacy():
         )
     except Exception as e:
         log.exception("unhandled error")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # ─── Export DOCX ──────────────────────────────────────────────────────────────
@@ -1697,7 +1891,8 @@ def export_docx():
         try:
             canonical_journal, builder = _get_builder_for_journal(journal_code)
         except Exception as e:
-            return jsonify({"error": str(e), "available": _available_journals()}), 400
+            log.exception("journal builder error")
+            return jsonify({"error": "Internal server error", "available": _available_journals()}), 400
 
         # Wire any completed image-generation jobs into the paper's figure
         # Path fields so the exporter embeds real images instead of falling
@@ -1710,6 +1905,14 @@ def export_docx():
                     reconcile_figure_images(_pid, paper, UPLOAD_FOLDER)
         except Exception:
             log.warning("figure image reconciliation failed", exc_info=True)
+
+        # Normalize paper structure: distribute figures array into sections
+        # as inline items so generators that read section.content can find them.
+        try:
+            if isinstance(paper, dict):
+                _distribute_figures_to_sections(paper)
+        except Exception:
+            log.warning("figure distribution to sections failed", exc_info=True)
 
         # Inject a formatted ``text`` into structured reference dicts so every
         # journal generator (most read ref["text"]) renders citations instead
@@ -1786,7 +1989,7 @@ def export_docx():
             json_filepath.unlink(missing_ok=True)
     except Exception as e:
         log.exception("unhandled error")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # ─── Paper CRUD ───────────────────────────────────────────────────────────────
@@ -1877,8 +2080,8 @@ def word_addon_static(filepath):
     return _office_cors(send_file(str(safe_path), mimetype=mimetype))
 
 
-@limiter.limit("10 per minute")
 @app.route("/api/word-addon/extract", methods=["POST", "OPTIONS"])
+@limiter.limit("10 per minute")  # prevent resource exhaustion from unauthenticated uploads
 @jwt_required(optional=True)
 def word_addon_extract():
     """Extract text from uploaded PDF, DOCX, or TXT file."""
@@ -1920,7 +2123,8 @@ def word_addon_extract():
             text = " ".join(words)
         return _office_cors(jsonify({"text": text}))
     except Exception as e:
-        return _office_cors(jsonify({"error": f"Extraction failed: {str(e)[:200]}"})), 500
+        log.exception("office extraction failed")
+        return _office_cors(jsonify({"error": "Internal server error"})), 500
 
 
 _INSTALL_HTML = """<!DOCTYPE html>

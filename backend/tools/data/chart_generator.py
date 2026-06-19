@@ -480,8 +480,18 @@ RENDERERS = {
 }
 
 
-def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=None) -> str:
-    """Generate a chart PNG and return absolute path (thread-safe)."""
+def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=None, target_path: str = None) -> str:
+    """Generate a chart PNG and return absolute path (thread-safe).
+
+    Args:
+        paper_id: Paper ID for organizing output directory.
+        spec: ChartSpec with chart configuration.
+        user_id: User ID for storage (optional).
+        judul_paper: Paper title for storage (optional).
+        target_path: Target filename from paper JSON Path (e.g.,
+            'gambar/fig4_1_settling_time.png'). When provided, this overrides
+            the random UUID filename. Basename is extracted and used.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.figure
@@ -498,8 +508,26 @@ def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=Non
     out_dir = os.path.join(CHARTS_DIR, safe_paper_id)
     os.makedirs(out_dir, exist_ok=True)
 
-    chart_id = str(uuid.uuid4())[:8]
-    out_path = os.path.join(out_dir, f"{chart_id}.png")
+    # Determine filename: use target_path if provided, else UUID
+    if target_path:
+        import re as _re
+        base = _re.sub(r'[<>:"/\\\\|?*]', '_', os.path.basename(target_path))
+        if not base:
+            base = f"{str(uuid.uuid4())[:8]}.png"
+        # Ensure .png extension
+        root, fext = os.path.splitext(base)
+        if fext.lower() not in ('.png', '.jpg', '.jpeg', '.svg', '.pdf'):
+            base = root + '.png'
+        # Avoid collisions
+        final_name = base
+        counter = 1
+        while os.path.exists(os.path.join(out_dir, final_name)):
+            final_name = f"{root}_{counter}.png"
+            counter += 1
+        chart_id = final_name
+    else:
+        chart_id = f"{str(uuid.uuid4())[:8]}.png"
+    out_path = os.path.join(out_dir, chart_id)
 
     # Apply style to figure directly (thread-safe, no global state mutation)
     _theme_name = MPL_THEMES.get(spec.theme, "default")

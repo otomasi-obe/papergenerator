@@ -72,6 +72,63 @@ class RenderState:
     figure_number: int = 0
 
 
+def _clean_latex(text):
+    """Strip inline LaTeX markers dari text."""
+    if not isinstance(text, str) or not text.strip():
+        return text if isinstance(text, str) else ""
+    import re as _re
+    text = _re.sub(r'\$([^$]+)\$', r'\1', text)
+    text = _re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\mathbf\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\text\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\hat\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\vec\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\overline\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'\\sqrt\{([^}]*)\}', r'sqrt(\1)', text)
+    text = _re.sub(r'\\frac\{([^}]*)\}\{([^}]*)\}', r'(\1/\2)', text)
+    text = _re.sub(r'\\left[(\[{]', '(', text)
+    text = _re.sub(r'\\right[)\]]', ')', text)
+    text = _re.sub(r'\\begin\{cases\}', '', text)
+    text = _re.sub(r'\\end\{cases\}', '', text)
+    text = _re.sub(r'\\approx', chr(8776), text)
+    text = _re.sub(r'\\times', chr(215), text)
+    text = _re.sub(r'\\cdot', chr(183), text)
+    text = _re.sub(r'\\quad', ' ', text)
+    text = _re.sub(r'\\qquad', '  ', text)
+    text = _re.sub(r'\\infty', chr(8734), text)
+    text = _re.sub(r'\\circ', chr(176), text)
+    text = _re.sub(r'\\alpha', chr(945), text)
+    text = _re.sub(r'\\beta', chr(946), text)
+    text = _re.sub(r'\\gamma', chr(947), text)
+    text = _re.sub(r'\\theta', chr(952), text)
+    text = _re.sub(r'\\lambda', chr(955), text)
+    text = _re.sub(r'\\sigma', chr(963), text)
+    text = _re.sub(r'\\omega', chr(969), text)
+    text = _re.sub(r'\\pi', chr(960), text)
+    text = _re.sub(r'\\mu', chr(956), text)
+    text = _re.sub(r'\\Delta', chr(916), text)
+    text = _re.sub(r'\\partial', chr(8706), text)
+    text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    text = _re.sub(r'\\[a-zA-Z]+', '', text)
+    text = _re.sub(r'[{}]', '', text)
+    return text.strip()
+
+
+def _postprocess_clean_latex(doc):
+    """Walk all paragraphs and clean LaTeX from run text in-place."""
+    import re as _re
+    for para in doc.paragraphs:
+        for run in para.runs:
+            if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                run.text = _clean_latex(run.text)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for run in para.runs:
+                        if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
+                            run.text = _clean_latex(run.text)
 def _strict_to_trans(data: bytes) -> bytes:
     for old, new in NS_MAP_STRICT.items():
         data = data.replace(old, new)
@@ -628,7 +685,8 @@ def _fill_cell_text(cell, text: str, *, size_pt: float, bold: bool = False,
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     paragraph = cell.paragraphs[0]
     paragraph.alignment = align
-    _append_rich_text(paragraph, text, size_pt=size_pt, bold=bold, italic=italic)
+    run = paragraph.add_run(_clean_latex(str(text)))
+    _format_run(run, size_pt=size_pt, bold=bold, italic=italic)
 
 
 def _add_figure(doc: Document, item: dict, json_path: Path,
@@ -853,6 +911,7 @@ def build_document(json_path: Path = JSON_PATH,
     _render_sections(doc, config, Path(json_path), state)
     _add_references(doc, config)
 
+    _postprocess_clean_latex(doc)
     doc.save(str(final_output))
 
     print(f"Generated: {final_output}")

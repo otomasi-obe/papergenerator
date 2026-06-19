@@ -362,16 +362,19 @@ let _refreshTimer = null
 async function loadAll() {
   loading.value = true
   try {
-    const [usageRes, papersRes, usersRes, statsRes] = await Promise.all([
+    const results = await Promise.allSettled([
       api.get('/api/admin/usage'),
       api.get('/api/admin/papers'),
       api.get('/api/admin/users'),
       api.get('/api/admin/stats'),
     ])
-    usage.value = usageRes.data
-    allPapers.value = papersRes.data.papers || []
-    allUsers.value = usersRes.data.users || []
-    stats.value = statsRes.data
+    const [usageRes, papersRes, usersRes, statsRes] = results.map((r) =>
+      r.status === 'fulfilled' ? r.value : { data: null }
+    )
+    if (usageRes?.data) usage.value = usageRes.data
+    if (papersRes?.data?.papers) allPapers.value = papersRes.data.papers
+    if (usersRes?.data?.users) allUsers.value = usersRes.data.users
+    if (statsRes?.data) stats.value = statsRes.data
   } catch (e) {
     console.error('Failed to load admin data', e)
   } finally {

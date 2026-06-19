@@ -83,6 +83,15 @@
     <template v-else>
       <!-- Header bar with clear chat -->
       <header class="px-4 py-2 bg-cream-50 dark:bg-ash-800 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
+        <button
+          @click="currentConversationId = null"
+          :disabled="isStreaming"
+          class="flex items-center gap-1 px-2 py-1 min-h-[36px] text-[11px] font-medium text-[var(--text-muted)] hover:text-navy-600 dark:hover:text-cream-300 rounded-md hover:bg-navy-50 dark:hover:bg-ash-700 disabled:opacity-40 transition-colors active:scale-95"
+          title="Kembali ke daftar chat"
+        >
+          <span aria-hidden="true">←</span>
+          <span>Chats</span>
+        </button>
         <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1 truncate">
           {{ currentChat?.title || 'AI Chat' }}
         </h3>
@@ -278,12 +287,12 @@
         </div>
 
         <!-- Attached files preview -->
-        <div v-if="attachedFiles.length" class="mb-2 flex flex-wrap gap-1.5">
+        <div v-if="attachedFiles.length" class="mb-2 overflow-x-auto flex flex-nowrap gap-1.5 pb-1">
           <div
             v-for="(f, i) in attachedFiles"
             :key="i"
             :class="[
-              'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px]',
+              'flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] shrink-0',
               f.uploadError
                 ? 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-900 dark:text-red-100'
                 : f.uploading
@@ -318,11 +327,11 @@
         <p v-if="attachWarning" class="text-[10px] text-amber-700 dark:text-amber-300 mb-1">{{ attachWarning }}</p>
 
         <!-- Attached images preview -->
-        <div v-if="attachedImages.length" class="mb-2 flex flex-wrap gap-1.5">
+        <div v-if="attachedImages.length" class="mb-2 overflow-x-auto flex flex-nowrap gap-1.5 pb-1">
           <div
             v-for="(img, i) in attachedImages"
             :key="'img-' + i"
-            class="relative group rounded-md overflow-hidden border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700"
+            class="relative group rounded-md overflow-hidden border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 shrink-0"
           >
             <img
               :src="img.preview"
@@ -371,6 +380,11 @@
                   :disabled="!currentPaperId"
                   class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 disabled:opacity-40 border-t border-cream-300 dark:border-ash-600"
                 ><span>📁</span><span>Dari file paper ini</span></button>
+                <button
+                  type="button"
+                  @click="openLiteraturePicker()"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-cream-200 dark:hover:bg-ash-600 text-ink-800 dark:text-ink-100 flex items-center gap-2 disabled:opacity-40 border-t border-cream-300 dark:border-ash-600"
+                ><span>📚</span><span>Literatur</span></button>
               </div>
             </div>
             <input
@@ -484,6 +498,15 @@
         <div v-else-if="!paperFiles.length" class="text-xs text-ink-500 dark:text-ink-300 italic p-2">
           Belum ada file yang diupload ke paper ini.
         </div>
+        <!-- Select All -->
+        <label
+          v-if="paperFiles.length"
+          class="flex items-center gap-2 text-xs font-semibold cursor-pointer hover:bg-cream-100 dark:hover:bg-ash-700 p-2 rounded border-b border-cream-200 dark:border-ash-600"
+        >
+          <input type="checkbox" :checked="areAllFilesPicked" @change="toggleSelectAllFiles" class="rounded" />
+          <span class="flex-1">Pilih Semua</span>
+          <span class="text-ink-500 dark:text-ink-300 text-[10px] shrink-0">{{ pickedFileIds.size }} / {{ paperFiles.length }}</span>
+        </label>
         <label
           v-for="f in paperFiles"
           :key="f.id"
@@ -503,6 +526,9 @@
         >Tambah ({{ pickedFileIds.size }})</button>
       </template>
     </AppDialog>
+
+
+    
 
     <!-- Toast notifications -->
     <Teleport to="body">
@@ -530,6 +556,7 @@ import { usePaperStore } from '../stores/paper'
 import { useAuthStore } from '../stores/auth'
 import { useUserStateStore } from '../stores/userState'
 import api from '../api/index'
+import { useLiteratureStore } from '../stores/literature'
 import ChatMessage from './ChatMessage.vue'
 import AppDialog from './AppDialog.vue'
 import SuggestedPrompts from './SuggestedPrompts.vue'
@@ -708,7 +735,7 @@ function pickImage(): void {
   imageInput.value?.click()
 }
 
-const _MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10 MB
+const _MAX_IMAGE_SIZE = 1024 * 1024 * 1024  // 1GB per image (unrestricted)
 
 function onImageChange(e: Event): void {
   const target = e.target as HTMLInputElement
@@ -722,21 +749,20 @@ function addAttachedImages(files: File[]): void {
   if (files.length !== imageFiles.length) {
     attachWarning.value = 'Hanya gambar JPG, PNG, GIF, WebP yang didukung.'
     if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
-    _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+    _attachWarningTimer = window.setTimeout(() => { attachWarning.value = '' }, 5000)
   }
-  const remaining = 5 - attachedImages.value.length
-  const toAdd = imageFiles.slice(0, remaining)
-  if (toAdd.length < imageFiles.length) {
+  const toAdd = imageFiles
+  if (false) {  // no image count limit
     attachWarning.value = 'Maksimal 5 gambar per pesan. Sisanya diabaikan.'
     if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
-    _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+    _attachWarningTimer = window.setTimeout(() => { attachWarning.value = '' }, 5000)
   }
 
   for (const file of toAdd) {
     if (file.size > _MAX_IMAGE_SIZE) {
       attachWarning.value = `Gambar "${file.name}" terlalu besar (maks 10 MB).`
       if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
-      _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+      _attachWarningTimer = window.setTimeout(() => { attachWarning.value = '' }, 5000)
       continue
     }
     // Read file as base64
@@ -765,6 +791,19 @@ const paperFiles = ref<PaperFile[]>([])
 const paperFilesLoading = ref(false)
 const pickedFileIds = ref<Set<number>>(new Set())
 
+// Literature picker state
+interface LitItem {
+  id: number
+  title: string
+  authors?: string[]
+  year?: number | null
+  publisher?: string
+  venue?: string
+  doi?: string | null
+  citations?: number
+  abstract?: string
+}
+
 async function openExistingFiles(): Promise<void> {
   attachMenuOpen.value = false
   if (!currentPaperId.value) return
@@ -789,6 +828,18 @@ function togglePickFile(f: PaperFile): void {
   if (next.has(f.id)) next.delete(f.id)
   else next.add(f.id)
   pickedFileIds.value = next
+}
+
+const areAllFilesPicked = computed(() => {
+  return paperFiles.value.length > 0 && pickedFileIds.value.size === paperFiles.value.length
+})
+
+function toggleSelectAllFiles(): void {
+  if (areAllFilesPicked.value) {
+    pickedFileIds.value = new Set()
+  } else {
+    pickedFileIds.value = new Set(paperFiles.value.map(f => f.id))
+  }
 }
 
 async function confirmPickFiles(): Promise<void> {
@@ -828,6 +879,113 @@ function humanSize(b: number): string {
   if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB'
   return (b / 1024 / 1024).toFixed(1) + ' MB'
 }
+
+// ─── Literature picker ───
+async function openLiteraturePicker(): Promise<void> {
+  attachMenuOpen.value = false
+  if (!currentPaperId.value) return
+  try {
+    const res = await api.get(`/api/papers/${currentPaperId.value}/literature/checked`)
+    const items: any[] = (res.data?.items || [])
+    if (items.length === 0) {
+      showToast('Belum ada literatur yang di-check di tab Literatur.', 'info')
+      return
+    }
+    for (const lit of items) {
+      const authorsStr = Array.isArray(lit.authors) ? lit.authors.join(', ') : '\u2013'
+      const yearStr = lit.year || '\u2013'
+      const pubStr = lit.publisher || lit.venue || '\u2013'
+      const doiStr = lit.doi || '\u2013'
+      const abstractStr = lit.abstract || '\u2013'
+      const text = [
+        '--- Literatur: ' + lit.title + ' ---',
+        'Judul: ' + lit.title,
+        'Penulis: ' + authorsStr,
+        'Tahun: ' + yearStr,
+        'Penerbit: ' + pubStr,
+        'DOI: ' + doiStr,
+        'Abstract: ' + abstractStr,
+        '\u2014\u2014\u2014 akhir literatur \u2014\u2014\u2014',
+      ].join('\n')
+      attachedFiles.value.push({
+        name: '\ud83d\udcda ' + lit.title.slice(0, 50) + (lit.title.length > 50 ? '\u2026' : ''),
+        __preExtracted: true,
+        __text: text,
+        __literature: true,
+        uploading: false,
+      } as unknown as AttachedFile)
+    }
+    showToast(`Menambahkan ${items.length} literatur`, 'success')
+    scrollToBottom()
+  } catch {
+    showToast('Gagal memuat literatur', 'error')
+  }
+}
+
+// ─── Literature auto-attach (all checked) ───
+const litStore = useLiteratureStore()
+
+async function handleReviewIntent(intent: any): Promise<void> {
+  if (!intent || intent.action !== 'review_checked' || !intent.items || !Array.isArray(intent.items)) return
+  const items = intent.items as LitItem[]
+
+  // Auto-create conversation if none exists yet
+  const chatStore = useChatStore()
+  if (!chatStore.currentConversationId.value) {
+    if (!chatStore.currentPaperId.value) return
+    const conv = await chatStore.createConversation(chatStore.currentPaperId.value)
+    if (conv) {
+      chatStore.currentConversationId.value = conv.id
+      await chatStore.openConversation(conv.id)
+    }
+    if (!chatStore.currentConversationId.value) return
+  }
+
+  // Attach all literatures as pre-extracted context files
+  for (const lit of items) {
+    const authorsStr = lit.authors && lit.authors.length ? (lit.authors as string[]).join(', ') : '\u2013'
+    const yearStr = lit.year || '\u2013'
+    const pubStr = lit.publisher || lit.venue || '\u2013'
+    const doiStr = lit.doi || '\u2013'
+    const abstractStr = lit.abstract || '\u2013'
+    const text = [
+      '--- Literatur: ' + lit.title + ' ---',
+      'Judul: ' + lit.title,
+      'Penulis: ' + authorsStr,
+      'Tahun: ' + yearStr,
+      'Penerbit: ' + pubStr,
+      'DOI: ' + doiStr,
+      'Abstract: ' + abstractStr,
+      '\u2014\u2014\u2014 akhir literatur \u2014\u2014\u2014',
+    ].join('\n')
+    attachedFiles.value.push({
+      name: '\ud83d\udcda ' + lit.title.slice(0, 50) + (lit.title.length > 50 ? '\u2026' : ''),
+      __preExtracted: true,
+      __text: text,
+      __literature: true,
+      uploading: false,
+    } as unknown as AttachedFile)
+  }
+
+  // Set prompt and auto-send
+  showSuggestions.value = false
+  inputText.value = 'reviewkan lengkap dan gap riset'
+  nextTick(() => {
+    handleSend()
+  })
+}
+
+// Watch for review intent — fires when intent is set while ChatTab is already mounted.
+// onMounted handles the case where intent was set BEFORE ChatTab mounted (switch from Literatur).
+watch(
+  () => litStore.pendingIntent,
+  async (intent) => {
+    if (!intent || intent.action !== 'review_checked') return
+    if (!currentPaperId.value) return
+    litStore.consumeIntent()
+    await handleReviewIntent(intent)
+  }
+)
 
 // ─── Export Draft state ───
 const exportDraftOpen = ref(false)
@@ -1063,6 +1221,12 @@ onMounted(async () => {
         }
       }
     } catch { /* ignore restore errors */ }
+
+    // Process pending literature review intent (from LiteratureTab → switch to chat)
+    const pendingIntent = litStore.consumeIntent()
+    if (pendingIntent && pendingIntent.action === 'review_checked') {
+      await handleReviewIntent(pendingIntent)
+    }
   }
 })
 
@@ -1509,7 +1673,7 @@ async function handleSend(): Promise<void> {
       attachWarning.value = warnings.join('; ')
       if (attachWarning.value) {
         if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
-        _attachWarningTimer = setTimeout(() => { attachWarning.value = ''; _attachWarningTimer = null }, 5000) as unknown as number
+        _attachWarningTimer = window.setTimeout(() => { attachWarning.value = ''; _attachWarningTimer = null }, 5000)
       }
       
       // Show success toast for file upload
@@ -1624,7 +1788,7 @@ function addAttachedFiles(files: File[]): void {
   if (unsupported.length) {
     attachWarning.value = 'File tidak didukung. Gunakan PDF, DOCX, DOC, atau gambar (JPG, PNG, GIF, WebP).'
     if (_attachWarningTimer) clearTimeout(_attachWarningTimer)
-    _attachWarningTimer = setTimeout(() => { attachWarning.value = '' }, 5000) as unknown as number
+    _attachWarningTimer = window.setTimeout(() => { attachWarning.value = '' }, 5000)
   }
 
   if (!docFiles.length) return

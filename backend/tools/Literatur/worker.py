@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 import uuid
@@ -348,19 +349,25 @@ def _run_job(app, job_id: str):
                 log.exception("slr.progress callback failed job=%s", job_id)
 
         def save_cb(records: list[dict]):
-            """Final save: update scores/summaries for existing rows, insert new ones."""
+            """Save LiteratureItem rows from pipeline record dicts.
+            
+            Called twice: phase 1 (PG-scored) and phase 2 (AI-ranked).
+            Phase 2 updates existing rows with AI rank + refreshed db_score.
+            """
             # NOTE: already inside outer app_context from _run_job
             try:
-                # Re-fetch job to get fresh state
                 j = db.session.query(SlrJob).filter_by(id=job_id).first()
                 if not j or j.status != "running":
                     return
 
-                # Load existing DOIs for this job
-                existing = db.session.query(LiteratureItem.id, LiteratureItem.doi).filter_by(
-                    slr_job_id=job_id
+                # Load existing DOIs + title_norm for this paper (cross-job dedup)
+                existing = db.session.query(
+                    LiteratureItem.id, LiteratureItem.doi, LiteratureItem.title_norm
+                ).filter_by(
+                    paper_id=job.paper_id
                 ).all()
-                existing_by_doi = {d.lower(): id for id, d in existing if d}
+                existing_by_doi = {d.lower(): id for id, d, _ in existing if d}
+                existing_by_title_norm = {tn: id for id, _, tn in existing if tn}
 
                 seen_dois: set[str] = set()
                 for rec in records:
@@ -372,18 +379,28 @@ def _run_job(app, job_id: str):
                     if doi_key and doi_key in seen_dois:
                         continue
 
+                    # Title-based dedup (catches papers without DOI across SLR runs)
+                    title_norm = re.sub(r'[^a-z0-9]+', '', title.lower())
+                    if not doi_key and title_norm and title_norm in existing_by_title_norm:
+                        continue
+
                     pi = rec.get("publisher_info") or {}
-                    
-                    # Update existing or insert new
+                    ml_score = rec.get("score_total")  # ML scoring (SBERT + sitasi + cosine)
+                    db_sc = rec.get("db_score") or 0   # PostgreSQL FTS score
+                    final_score = ml_score if ml_score is not None else db_sc
+                    must_read_threshold = 0.55 if ml_score is not None else 2.0
+
                     if doi_key and doi_key in existing_by_doi:
+                        # Update existing row (phase 2: AI rank update)
                         item = db.session.get(LiteratureItem, existing_by_doi[doi_key])
                         if item:
-                            item.score_total = rec.get("score_total")
-                            item.score_breakdown = rec.get("score_breakdown") or {}
-                            item.summary = rec.get("summary") or ""
-                            item.gap_riset = rec.get("gap_riset") or ""
+                            item.score_total = final_score
+                            item.score_breakdown = {"score_total": final_score, "db_score": rec.get("db_score"), "ai_rank": rec.get("rank")}
                             item.citations = rec.get("citations")
-                            item.is_relevant = bool(rec.get("is_relevant", True))
+                            item.is_relevant = True
+                            item.must_read = bool(final_score >= must_read_threshold)
+                            if not item.title_norm and title_norm:
+                                item.title_norm = title_norm
                     else:
                         item = LiteratureItem(
                             paper_id=job.paper_id,
@@ -391,6 +408,7 @@ def _run_job(app, job_id: str):
                             source_kind="slr",
                             source=rec.get("venue") or rec.get("publisher") or rec.get("source") or "",
                             title=title,
+                            title_norm=title_norm,
                             authors=rec.get("authors") or [],
                             year=rec.get("year") or pi.get("year"),
                             venue=rec.get("venue") or pi.get("venue") or "",
@@ -399,105 +417,55 @@ def _run_job(app, job_id: str):
                             url=rec.get("url") or "",
                             pdf_url=rec.get("pdf_url") or None,
                             abstract=rec.get("abstract") or "",
-                            summary=rec.get("summary") or "",
-                            gap_riset=rec.get("gap_riset") or "",
+                            summary="",
+                            gap_riset="",
                             citations=rec.get("citations"),
-                            score_total=rec.get("score_total"),
-                            score_breakdown=rec.get("score_breakdown") or {},
-                            must_read=bool(rec.get("score_total", 0) >= 85),
-                            is_relevant=bool(rec.get("is_relevant", True)),
+                            score_total=final_score,
+                            score_breakdown={"score_total": final_score, "db_score": rec.get("db_score"), "ai_rank": rec.get("rank")},
+                            must_read=bool(final_score >= must_read_threshold),
+                            is_relevant=True,
+                            is_checked=False,  # User must manually check — only checked items go to chat/paperfull
                             slr_job_id=job_id,
                         )
                         db.session.add(item)
                         if doi_key:
                             seen_dois.add(doi_key)
-                _safe_commit(job_id, where="save_cb.final")
-                log.info("slr.save_cb: updated %d papers for job=%s", len(records), job_id)
+                _safe_commit(job_id, where="save_cb")
+                log.info("slr.save_cb: saved %d papers for job=%s", len(records), job_id)
             except Exception as e:
                 log.exception("slr.save_cb failed job=%s: %s", job_id, e)
 
-        # Track streaming state for this job (mutable container to avoid function attribute LSP warning)
-        streaming_state = {'cleared': False}
-
-        def source_save_cb(papers: list):
-            """Streaming save per-source: insert papers immediately after fetch."""
-            # NOTE: already inside outer app_context from _run_job
-            try:
-                    j = db.session.query(SlrJob).filter_by(id=job_id).first()
-                    if not j or j.status != "running":
-                        return
-
-                    # Clear on first source (re-run scenario)
-                    if not streaming_state['cleared']:
-                        db.session.query(LiteratureItem).filter_by(slr_job_id=job_id).delete(
-                            synchronize_session=False
-                        )
-                        streaming_state['cleared'] = True
-
-                    # Load existing DOIs
-                    existing_dois = set(
-                        d for (d,) in db.session.query(LiteratureItem.doi).filter_by(
-                            slr_job_id=job_id
-                        ).all() if d
-                    )
-                    existing_dois = {d.lower() for d in existing_dois}
-
-                    count = 0
-                    for p in papers:
-                        title = (p.title or "").strip()
-                        if not title:
-                            continue
-                        doi_raw = p.doi or None
-                        doi_key = (doi_raw or "").strip().lower()
-                        if doi_key and doi_key in existing_dois:
-                            continue
-
-                        item = LiteratureItem(
-                            paper_id=job.paper_id,
-                            user_id=job.user_id,
-                            source_kind="slr",
-                            source=p.venue or p.publisher or p.source or "",
-                            title=title,
-                            authors=p.authors or [],
-                            year=p.year,
-                            venue=p.venue or "",
-                            publisher=p.publisher or "",
-                            doi=doi_raw,
-                            url=p.url or "",
-                            pdf_url=p.pdf_url or None,
-                            abstract=p.abstract or "",
-                            summary="",
-                            gap_riset="",
-                            citations=p.citations,
-                            score_total=None,  # Will be updated in final save_cb
-                            score_breakdown={},
-                            must_read=False,
-                            is_relevant=True,
-                            slr_job_id=job_id,
-                        )
-                        db.session.add(item)
-                        if doi_key:
-                            existing_dois.add(doi_key)
-                        count += 1
-
-                    if count > 0:
-                        _safe_commit(job_id, where="source_save_cb.streaming")
-                        log.info("slr.source_save_cb: saved %d papers for job=%s", count, job_id)
-            except Exception as e:
-                log.exception("slr.source_save_cb failed job=%s: %s", job_id, e)
-
         try:
+            # ── Active Learning: ambil DOIs yang sudah di-pin user ──
+            pinned_dois = []
+            try:
+                if job.paper_id:
+                    pinned_items = (
+                        db.session.query(LiteratureItem.doi)
+                        .filter(
+                            LiteratureItem.paper_id == job.paper_id,
+                            LiteratureItem.pinned == True,
+                            LiteratureItem.doi != None,
+                            LiteratureItem.doi != "",
+                        )
+                        .all()
+                    )
+                    pinned_dois = [item.doi for item in pinned_items if item.doi]
+                    if pinned_dois:
+                        log.info("slr.active_learning: %d pinned DOIs for paper=%s",
+                                 len(pinned_dois), job.paper_id)
+            except Exception as e:
+                log.warning("slr.active_learning: failed to load pinned DOIs: %s", e)
+
             payload = run_slr_pipeline(
                 query=job.query,
-                sources=(job.sources or None),
-                per_source=int(job.per_source) if job.per_source is not None else 60,
                 top_k=int(job.top_k) if job.top_k is not None else 50,
                 year_from=job.year_from,
-                ai_summarize=bool(job.ai_summarize),
+                sources=(job.sources or None),
                 ai_model=job.ai_model or None,
                 progress_cb=progress,
                 save_cb=save_cb,
-                source_save_cb=source_save_cb,
+                pinned_dois=pinned_dois if pinned_dois else None,
             )
         except WorkerCancelled:
             log.info("slr.job cancelled by user job=%s", job_id)
@@ -589,50 +557,81 @@ def _run_job(app, job_id: str):
         j.finished_at = datetime.now(timezone.utc)
         _safe_commit(job_id, where="done")
 
+        # ── Auto-fetch new topics from SLR results ─────────────────────
+        # DISABLED per user request — stop mega fetcher.
+        # Previously: extract keywords from paper titles, queue undiscovered
+        # topics into mega_fetch_progress for background bulk_fetch_v2.py sync.
+        # try:
+        #     from .auto_fetch import auto_fetch_new_topics_from_slr
+        #     n_queued = auto_fetch_new_topics_from_slr(
+        #         payload=payload,
+        #         slr_query=job.query or "",
+        #         slr_job_id=job_id,
+        #     )
+        #     if n_queued:
+        #         log.info(
+        #             "slr.auto_fetch: queued %d new topics for job=%s",
+        #             n_queued, job_id,
+        #         )
+        # except Exception as e:
+        #     log.warning("slr.auto_fetch: non-fatal error: %s", e)
+
 
 def _stage_to_pct(stage: str, info: dict) -> int:
-    if stage == "fetching":
+    # Tool Literatur stages: DB filter → API fetch (jika perlu) → scoring → tampil → AI rerank → tampil
+    if stage == "db_searching":
         return 5
-    if stage == "source_done":
-        completed = int(info.get("completed") or 0)
-        total = max(1, int(info.get("total") or 1))
-        return min(50, int(5 + 45 * completed / total))
-    if stage == "dedup_done":
-        return 55
-    if stage == "scoring":
-        return 60
-    if stage == "scored":
-        return 65
-    if stage == "summarizing":
-        return 68
-    if stage == "summarized":
-        done = int(info.get("done") or 0)
-        total = max(1, int(info.get("total") or 1))
-        return min(95, int(68 + 27 * done / total))
+    if stage == "db_scored":
+        return 20
+    # ── API fetch stages ──
+    if stage == "api_fetching":
+        return 10
+    if stage == "api_fetched":
+        return 20
+    if stage.startswith("fetch_"):
+        return 15
+    if stage == "displaying_initial":
+        return 25
+    if stage == "displayed_initial":
+        return 35
+    if stage == "ai_reranking":
+        return 40
+    if stage == "ai_reranked":
+        return 75
+    if stage == "displaying_final":
+        return 80
     if stage == "complete":
         return 100
     return 0
 
 
 def _stage_message(stage: str, info: dict) -> str:
-    if stage == "fetching":
-        srcs = ", ".join(info.get("sources") or [])
-        return f"Mencari paper di {info.get('total', 0)} sumber ({srcs})…"
-    if stage == "source_done":
-        return (
-            f"{info.get('source', '?')} → {info.get('count', 0)} hasil "
-            f"({info.get('completed', 0)}/{info.get('total', 0)})"
-        )
-    if stage == "dedup_done":
-        return f"Dedup selesai: {info.get('count', 0)} unique paper"
-    if stage == "scoring":
-        return f"Ranking {info.get('count', 0)} paper (SBERT + sitasi + recency)…"
-    if stage == "scored":
-        return f"{info.get('count', 0)} paper terskor"
-    if stage == "summarizing":
-        return f"Scoring programmatik {info.get('count', 0)} paper…"
-    if stage == "summarized":
-        return f"Scoring selesai ({info.get('done', 0)}/{info.get('total', 0)})"
+    if stage == "db_searching":
+        return f"Mencari di database (topik: {info.get('query', '?')[:50]})…"
+    if stage == "db_scored":
+        return f"Ditemukan {info.get('count', 0)} paper (scoring PostgreSQL: judul + sitasi + abstract)"
+    # ── API fetch stages ──
+    if stage == "api_fetching":
+        db_count = info.get('db_count', 0)
+        target = info.get('target', 0)
+        return f"Database hanya {db_count} paper (butuh {target}) — mengambil dari API ({', '.join(info.get('sources', ['arxiv']))})…"
+    if stage == "api_fetched":
+        return f"Selesai fetch dari API: {info.get('count', 0)} paper total (DB + API)"
+    if stage.startswith("fetch_"):
+        source = stage.replace("fetch_", "")
+        return f"Fetch {source}: {info.get('count', 0)} paper…"
+    if stage == "displaying_initial":
+        return f"Menampilkan {info.get('count', 0)} hasil scoring database…"
+    if stage == "displayed_initial":
+        return f"Hasil DB ditampilkan ({info.get('count', 0)} paper)"
+    if stage == "ai_reranking":
+        return f"AI menganalisa ranking relevansi {info.get('count', 0)} paper…"
+    if stage == "ai_reranked":
+        skipped = info.get("skipped")
+        n = info.get("count", 0)
+        return f"AI selesai ranking ({n} paper)" if not skipped else f"AI ranking dilewati ({n} paper, fallback ke DB score)"
+    if stage == "displaying_final":
+        return f"Menyimpan {info.get('count', 0)} hasil ranking AI…"
     if stage == "complete":
         return f"Selesai: top-{info.get('top_k', 0)} dari {info.get('total', 0)} paper"
     return stage

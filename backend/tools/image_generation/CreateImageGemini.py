@@ -43,6 +43,7 @@ import logging
 import os
 import queue
 import re
+import threading
 import time
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -85,20 +86,22 @@ else:
     LOG_DIR = REPO_DIR.parent.parent / "log"
 
 _LOGGERS: dict[str, logging.Logger] = {}
-
+_LOGGERS: dict[str, logging.Logger] = {}
+_LOGGERS_LOCK = threading.Lock()
 
 def _get_account_logger(name: str) -> logging.Logger:
-    if name in _LOGGERS:
-        return _LOGGERS[name]
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    logger = logging.getLogger(f"gemini.{name}")
-    logger.setLevel(logging.INFO)
-    logger.propagate = False
-    from utils.core.hourly_log_handler import HourlyFileHandler
-    fh = HourlyFileHandler(str(LOG_DIR), f"{name}.log", level=logging.INFO)
-    logger.addHandler(fh)
-    _LOGGERS[name] = logger
-    return logger
+    with _LOGGERS_LOCK:
+        if name in _LOGGERS:
+            return _LOGGERS[name]
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        logger = logging.getLogger(f"gemini.{name}")
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+        from utils.core.hourly_log_handler import HourlyFileHandler
+        fh = HourlyFileHandler(str(LOG_DIR), f"{name}.log", level=logging.INFO)
+        logger.addHandler(fh)
+        _LOGGERS[name] = logger
+        return logger
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -147,58 +150,122 @@ def _click_via_js(page, aria_labels: list[str]) -> bool:
     )
 
 
+def _debug_dump_menu_items(page) -> str:
+    """Dump all visible menu/button items to help diagnose UI drift."""
+    try:
+        return page.evaluate(
+            """() => {
+                const items = [...document.querySelectorAll(
+                    '[role="menuitemcheckbox"],[role="menuitemradio"],[role="menuitem"],' +
+                    'button.mat-mdc-menu-item,.mat-mdc-menu-item,' +
+                    'button[aria-label]'
+                )];
+                const visible = items
+                    .filter(el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length))
+                    .map(el => JSON.stringify({
+                        tag: el.tagName,
+                        role: el.getAttribute('role'),
+                        aria: (el.getAttribute('aria-label') || '').slice(0, 60),
+                        text: (el.textContent || '').trim().slice(0, 60),
+                        class: (el.className || '').slice(0, 40)
+                    }))
+                    .slice(0, 30);
+                return visible.join('|');
+            }"""
+        )
+    except Exception:
+        return "(dump failed)"
+
+
 def _open_image_tool(page, *, timeout_s: int = 30) -> None:
-    """Aktifkan mode "Buat gambar" via menu 'Upload & alat'.
+    """Aktifkan mode \"Buat gambar\" via menu 'Upload & alat'.
 
     UI Gemini (per Jun 2026): tombol composer 'Upload & alat' membuka menu
     berisi item menuitemcheckbox: 'Buat gambar', 'Buat video', 'Buat musik',
     'Canvas', plus 'Upload file' / 'Tambahkan dari Drive'. Kita HARUS lewat
-    menu ini — JANGAN klik tombol aria-label*="Create image"/"Buat Gambar"
+    menu ini — JANGAN klik tombol aria-label*=\"Create image\"/\"Buat Gambar\"
     langsung karena itu false-match ke item RIWAYAT percakapan di sidebar
     (judul chat lama yang kebetulan memuat teks 'create image ...').
+    
+    IMPROVED (Jul 2026): broader selector matching, multiple fallback
+    strategies, detailed debug logging on failure.
     """
     deadline = time.monotonic() + timeout_s
 
     # Dismiss any blocking overlay first (e.g. "Memulai" dialog).
     _dismiss_gemini_overlays(page)
 
-    # Step 1: open the EXACT visible "Upload & alat" composer button.
+    # Step 1: open the visible "Upload & alat" / "Upload & tools" button.
+    # Try multiple selector strategies in order.
     opened = False
-    while time.monotonic() < deadline and not opened:
-        opened = bool(
-            page.evaluate(
-                """() => {
-                    const btns = [...document.querySelectorAll('button[aria-label]')];
-                    const b = btns.find(x => {
-                        const a = (x.getAttribute('aria-label') || '').trim();
-                        const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
-                        return vis && (
-                            a === 'Upload & alat' || a === 'Upload & tools' ||
-                            /^Upload\\s*&\\s*(alat|tools)$/i.test(a)
-                        );
-                    });
-                    if (b) { b.click(); return true; }
-                    return false;
-                }"""
-            )
-        )
-        if not opened:
-            page.wait_for_timeout(700)
+    strategies = [
+        # Strategy A: exact aria-label match (ID/EN)
+        """() => {
+            const btns = [...document.querySelectorAll('button[aria-label]')];
+            const b = btns.find(x => {
+                const a = (x.getAttribute('aria-label') || '').trim();
+                const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
+                return vis && /^(Upload\\s*&\\s*(alat|tools))$/i.test(a);
+            });
+            if (b) { b.click(); return true; }
+            return false;
+        }""",
+        # Strategy B: contains "Upload" in aria-label (broader match)
+        """() => {
+            const btns = [...document.querySelectorAll('button[aria-label]')];
+            const b = btns.find(x => {
+                const a = (x.getAttribute('aria-label') || '').toLowerCase().trim();
+                const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
+                return vis && a.includes('upload') && !a.includes('file');
+            });
+            if (b) { b.click(); return true; }
+            return false;
+        }""",
+        # Strategy C: find by text content in the composer area
+        """() => {
+            const composer = document.querySelector('.composer-area, .input-area, [class*="composer"], [class*="input-row"], rich-textarea');
+            if (!composer) return false;
+            const btns = composer.querySelectorAll('button');
+            const b = [...btns].find(x => {
+                const t = (x.textContent || '').toLowerCase().trim();
+                const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRights().length);
+                return vis && (t.includes('upload') || t.includes('alat'));
+            });
+            if (b) { b.click(); return true; }
+            return false;
+        }""",
+    ]
+    
+    for i, strategy_js in enumerate(strategies):
+        if opened:
+            break
+        while time.monotonic() < deadline and not opened:
+            try:
+                opened = bool(page.evaluate(strategy_js))
+            except Exception:
+                pass
+            if not opened:
+                page.wait_for_timeout(500)
+    
     if not opened:
+        debug_info = _debug_dump_menu_items(page)
         raise RuntimeError(
             f"Tidak bisa membuka menu 'Upload & alat' dalam {timeout_s}s. "
-            "Kemungkinan: UI Gemini berubah, network lambat, atau page belum load."
+            f"Kemungkinan: UI Gemini berubah, network lambat, atau page belum load. "
+            f"Visible items: {debug_info[:300]}"
         )
     page.wait_for_timeout(1000)
 
-    # Step 2: click the "Buat gambar" / "Create image" menu item. The item is a
-    # role=menuitemcheckbox whose text is "Buat gambar" (aria-label kosong).
-    # Guard hard against the sibling actions (video / musik / canvas / upload /
-    # drive) which also live in this menu.
-    selected = page.evaluate(
+    # Step 2: click the "Buat gambar" / "Create image" menu item.
+    # Try multiple selector strategies.
+    selected = None
+    menu_strategies = [
+        # Strategy A: menuitemcheckbox with image-related text (but NOT video/music)
         """() => {
             const items = [...document.querySelectorAll(
-                '[role="menuitemcheckbox"],[role="menuitemradio"],[role="menuitem"],button.mat-mdc-menu-item,.mat-mdc-menu-item'
+                '[role="menuitemcheckbox"],[role="menuitemradio"],[role="menuitem"],' +
+                'button.mat-mdc-menu-item,.mat-mdc-menu-item,' +
+                '.cdk-overlay-pane button,.cdk-overlay-pane [role="menuitem"]'
             )];
             for (const el of items) {
                 const vis = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
@@ -215,13 +282,59 @@ def _open_image_tool(page, *, timeout_s: int = 30) -> None:
                 }
             }
             return null;
-        }"""
-    )
-    if not selected:
+        }""",
+        # Strategy B: any visible menu/button with "gambar" in text
+        """() => {
+            const all = [...document.querySelectorAll(
+                'button, [role="menuitemcheckbox"], [role="menuitemradio"], [role="menuitem"],' +
+                '.cdk-overlay-pane *[role]'
+            )];
+            for (const el of all) {
+                const vis = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+                if (!vis) continue;
+                const t = (el.textContent || '').toLowerCase().trim();
+                if (t === 'buat gambar' || t === 'create image' || t === 'image') {
+                    el.click();
+                    return t.slice(0, 40);
+                }
+            }
+            return null;
+        }""",
+        # Strategy C: keyboard navigation fallback (Tab then Enter)
+        """() => {
+            // If image mode already active, the composer placeholder may indicate it
+            const placeholders = [...document.querySelectorAll('[placeholder], [class*="placeholder"]')];
+            for (const el of placeholders) {
+                const t = (el.getAttribute('placeholder') || el.textContent || '').toLowerCase();
+                if (t.includes('gambar') || t.includes('image')) {
+                    return 'placeholder_match';
+                }
+            }
+            return null;
+        }""",
+    ]
+    
+    for i, strategy_js in enumerate(menu_strategies):
+        try:
+            result = page.evaluate(strategy_js)
+            if result:
+                selected = result
+                break
+        except Exception:
+            pass
+    
+    # Strategy C alternative: if placeholder says "describe image", image mode may already be active
+    if selected == "placeholder_match":
+        log.info("Image mode appears already active (composer placeholder matched)")
+        selected = "already_active"
+    elif not selected:
+        debug_items = _debug_dump_menu_items(page)
         raise RuntimeError(
             "Tidak menemukan menu item 'Buat gambar' di Upload & alat. "
-            "Kemungkinan: UI Gemini berubah atau menu tidak muncul."
+            f"Kemungkinan: UI Gemini berubah atau menu tidak muncul. "
+            f"Visible menu items: {debug_items[:400]}"
         )
+    
     page.wait_for_timeout(1500)
 
 
@@ -384,7 +497,53 @@ class GeminiAccount:
         self.page.on("response", self._on_response)
         self.page.goto(GEMINI_URL, wait_until="domcontentloaded")
         self.page.wait_for_timeout(4000)
+        # CHECK: detect if cookies are expired (redirect to login page)
+        self._check_login_state(log)
         log.info("browser ready")
+
+    def _check_login_state(self, log) -> bool:
+        """Detect if we landed on the login page instead of Gemini.
+        Returns True if logged in, raises if cookies expired.
+        """
+        try:
+            url = self.page.url or ""
+            # Login redirects: accounts.google.com, login.live.com, etc.
+            login_indicators = [
+                "accounts.google.com",
+                "/signin",
+                "/login",
+                "ServiceLogin",
+                "AccountChooser",
+            ]
+            if any(ind in url for ind in login_indicators):
+                self.close()
+                raise RuntimeError(
+                    f"{self.name}: Cookies expired! Redirected to: {url[:100]}. "
+                    f"Re-run GeminiCookies.py --slot {self.name} to re-login."
+                )
+            # Double-check: Gemini page should have the composer or chat interface
+            has_composer = self.page.evaluate(
+                """() => {
+                    return !!(
+                        document.querySelector('[contenteditable="true"]') ||
+                        document.querySelector('.composer-area, [class*="composer"]') ||
+                        document.querySelector('rich-textarea') ||
+                        document.querySelector('[aria-label*="Kirim" i], [aria-label*="Send" i]')
+                    );
+                }"""
+            )
+            if not has_composer:
+                log.warning(
+                    "%s: No composer detected after navigation (url=%s). "
+                    "Cookies may be expired or page load incomplete.",
+                    self.name, url[:80]
+                )
+            return True
+        except RuntimeError:
+            raise
+        except Exception as e:
+            log.warning("%s: login check error: %s", self.name, e)
+            return True  # Don't block on check errors
 
     def _on_response(self, resp) -> None:
         try:

@@ -27,11 +27,12 @@ CFG = {
     "font_body": "Calibri",
     "font_title": "Calibri",
     "font_heading": "Calibri",
-    "size_body": 10,
+    "size_body": 9,
     "size_title": 14,
-    "size_heading1": 10,
+    "size_heading1": 11,
     "size_heading2": 10,
     "size_caption": 8,
+    "heading_color": (0x94, 0x36, 0x34),
     "size_reference": 8,
     "columns": 2,
     "first_line_indent_tw": 0,
@@ -98,57 +99,160 @@ def set_para_indent(para, first_line_tw=None, left_tw=None, hanging_tw=None):
         if ind.get(qn("w:firstLine")):
             del ind.attrib[qn("w:firstLine")]
 
+def _detect_table_borders(doc):
+    """Scan template for first body table and extract its border style.
+    Returns a dict of {side: {val, sz, color}} compatible with set_table_borders."""
+    body = doc._element.body
+    body_tbl_found = False
+    for child in body:
+        if child.tag == qn("w:tbl"):
+            # Skip first table (masthead) — no borders
+            if not body_tbl_found:
+                body_tbl_found = True
+                continue
+            # Second table = body table
+            tblPr = child.find(qn("w:tblPr"))
+            if tblPr is None:
+                return None
+            borders_elem = tblPr.find(qn("w:tblBorders"))
+            if borders_elem is None:
+                return None
+            
+            result = {}
+            for side in ["top", "left", "bottom", "right", "insideH", "insideV"]:
+                border = borders_elem.find(qn(f"w:{side}"))
+                if border is not None:
+                    result[side] = {
+                        "val": border.get(qn("w:val"), "none"),
+                        "sz": border.get(qn("w:sz"), "0"),
+                        "color": border.get(qn("w:color"), "auto"),
+                    }
+                else:
+                    result[side] = None  # Not set = inherit (none)
+            
+            # Also check cell-level borders on first row
+            first_row = child.find(qn("w:tr"))
+            if first_row is not None:
+                first_cell = first_row.find(qn("w:tc"))
+                if first_cell is not None:
+                    tcPr = first_cell.find(qn("w:tcPr"))
+                    if tcPr is not None:
+                        cell_borders = tcPr.find(qn("w:tcBorders"))
+                        if cell_borders is not None:
+                            result["_cell"] = {}
+                            for side in ["top", "left", "bottom", "right"]:
+                                cb = cell_borders.find(qn(f"w:{side}"))
+                                if cb is not None:
+                                    result["_cell"][side] = {
+                                        "val": cb.get(qn("w:val"), "none"),
+                                        "sz": cb.get(qn("w:sz"), "0"),
+                                    }
+            return result
+    return None
 
-def set_table_borders(table, style="three_line"):
-    tblPr = table._element.find(qn("w:tblPr"))
+
+def set_table_borders(table, style_borders):
+    """Apply border style to a table. style_borders can be:
+    - dict: direct border definition from _detect_table_borders
+    - str: legacy keyword ("full", "horizontal", "partial", "none")
+    """
+    from docx.oxml import OxmlElement
+    tblPr = table._tbl.find(qn("w:tblPr"))
     if tblPr is None:
         tblPr = OxmlElement("w:tblPr")
-        table._element.insert(0, tblPr)
-    borders = tblPr.find(qn("w:tblBorders"))
-    if borders is not None:
-        tblPr.remove(borders)
-    borders = OxmlElement("w:tblBorders")
-
-    if style == "three_line":
-        for side in ("top", "bottom", "insideH"):
+        table._tbl.insert(0, tblPr)
+    # Remove existing borders
+    existing = tblPr.find(qn("w:tblBorders"))
+    if existing is not None:
+        tblPr.remove(existing)
+    
+    if isinstance(style_borders, dict):
+        borders = OxmlElement("w:tblBorders")
+        sides = ["top", "left", "bottom", "right", "insideH", "insideV"]
+        for side in sides:
             el = OxmlElement(f"w:{side}")
-            el.set(qn("w:val"), "single")
-            el.set(qn("w:sz"), "4")
-            el.set(qn("w:space"), "0")
-            el.set(qn("w:color"), "000000")
+            if side in style_borders and style_borders[side] is not None:
+                b = style_borders[side]
+                el.set(qn("w:val"), str(b.get("val", "none")))
+                el.set(qn("w:sz"), str(b.get("sz", "0")))
+                el.set(qn("w:space"), "0")
+                el.set(qn("w:color"), str(b.get("color", "auto")))
+            else:
+                el.set(qn("w:val"), "none")
+                el.set(qn("w:sz"), "0")
+                el.set(qn("w:space"), "0")
+                el.set(qn("w:color"), "auto")
             borders.append(el)
-        for side in ("left", "right", "insideV"):
-            el = OxmlElement(f"w:{side}")
-            el.set(qn("w:val"), "none")
-            el.set(qn("w:sz"), "0")
-            el.set(qn("w:space"), "0")
-            el.set(qn("w:color"), "auto")
-            borders.append(el)
-    elif style == "full":
+        tblPr.append(borders)
+    elif isinstance(style_borders, str):
+        style = style_borders
+        borders = OxmlElement("w:tblBorders")
         for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
             el = OxmlElement(f"w:{side}")
-            el.set(qn("w:val"), "single")
-            el.set(qn("w:sz"), "4")
-            el.set(qn("w:space"), "0")
-            el.set(qn("w:color"), "000000")
+            if style == "horizontal":
+                if side in ("top", "bottom", "insideH"):
+                    el.set(qn("w:val"), "single")
+                    el.set(qn("w:sz"), "4")
+                    el.set(qn("w:space"), "0")
+                    el.set(qn("w:color"), "000000")
+                else:
+                    el.set(qn("w:val"), "none")
+                    el.set(qn("w:sz"), "0")
+                    el.set(qn("w:space"), "0")
+                    el.set(qn("w:color"), "auto")
+            elif style == "full":
+                el.set(qn("w:val"), "single")
+                el.set(qn("w:sz"), "4")
+                el.set(qn("w:space"), "0")
+                el.set(qn("w:color"), "000000")
+            elif style == "partial":
+                if side in ("insideV", "left", "right"):
+                    el.set(qn("w:val"), "none")
+                    el.set(qn("w:sz"), "0")
+                    el.set(qn("w:space"), "0")
+                    el.set(qn("w:color"), "auto")
+                else:
+                    el.set(qn("w:val"), "single")
+                    el.set(qn("w:sz"), "4")
+                    el.set(qn("w:space"), "0")
+                    el.set(qn("w:color"), "auto")
+            else:  # none
+                el.set(qn("w:val"), "none")
+                el.set(qn("w:sz"), "0")
+                el.set(qn("w:space"), "0")
+                el.set(qn("w:color"), "auto")
             borders.append(el)
-    elif style == "partial":
-        for side in ("top", "bottom", "insideH", "insideV"):
-            el = OxmlElement(f"w:{side}")
-            el.set(qn("w:val"), "single")
-            el.set(qn("w:sz"), "4")
-            el.set(qn("w:space"), "0")
-            el.set(qn("w:color"), "auto")
-            borders.append(el)
-    elif style == "none":
-        for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
-            el = OxmlElement(f"w:{side}")
-            el.set(qn("w:val"), "none")
-            el.set(qn("w:sz"), "0")
-            el.set(qn("w:space"), "0")
-            el.set(qn("w:color"), "auto")
-            borders.append(el)
-
+        tblPr.append(borders)
+    
+    # Apply cell-level borders if detected
+    if isinstance(style_borders, dict) and "_cell" in style_borders:
+        cell_cfg = style_borders["_cell"]
+        for row in table.rows:
+            for cell in row.cells:
+                tcPr = cell._tc.find(qn("w:tcPr"))
+                if tcPr is None:
+                    tcPr = OxmlElement("w:tcPr")
+                    cell._tc.insert(0, tcPr)
+                existing_cb = tcPr.find(qn("w:tcBorders"))
+                if existing_cb is not None:
+                    tcPr.remove(existing_cb)
+                if any(cell_cfg.get(s) for s in ["top", "bottom", "left", "right"]):
+                    cell_borders = OxmlElement("w:tcBorders")
+                    for side in ["top", "bottom", "left", "right"]:
+                        el = OxmlElement(f"w:{side}")
+                        if side in cell_cfg and cell_cfg[side] is not None:
+                            cb = cell_cfg[side]
+                            el.set(qn("w:val"), str(cb.get("val", "none")))
+                            el.set(qn("w:sz"), str(cb.get("sz", "0")))
+                            el.set(qn("w:space"), "0")
+                            el.set(qn("w:color"), "auto")
+                        else:
+                            el.set(qn("w:val"), "none")
+                            el.set(qn("w:sz"), "0")
+                            el.set(qn("w:space"), "0")
+                            el.set(qn("w:color"), "auto")
+                        cell_borders.append(el)
+                    tcPr.append(cell_borders)
     tblPr.append(borders)
 
 
@@ -373,9 +477,8 @@ def remove_trailing_empty_sectpr_paras(doc):
     return removed_count
 
 
-def _remove_trailing_empty_sectpr_paras(doc, keep=None):
-    """Hapus paragraf kosong bersectPr yang dijejer di ekor body.
-    keep: set of id() — sectPr paragraphs to never remove."""
+def _remove_trailing_empty_sectpr_paras(doc):
+    """Hapus paragraf kosong bersectPr (incl. zero-width) di ekor body."""
     body = doc._element.body
     to_remove = []
     for child in reversed(list(body)):
@@ -383,13 +486,11 @@ def _remove_trailing_empty_sectpr_paras(doc, keep=None):
             continue
         if child.tag != qn("w:p"):
             break
-        if keep is not None and id(child) in keep:
-            break
         pPr = child.find(qn("w:pPr"))
         if pPr is None or pPr.find(qn("w:sectPr")) is None:
             break
         txt = "".join(t.text or "" for t in child.findall(f".//{qn('w:t')}")).strip()
-        if not txt:
+        if not txt or all(c == '\u200B' for c in txt):
             to_remove.append(child)
         else:
             break
@@ -441,7 +542,7 @@ def add_authors(doc, data):
 
 
 def add_abstract(doc, data):
-    abstract = str(data.get("abstract", "")).strip()
+    abstract = _clean_latex(str(data.get("abstract", "")).strip())
     if not abstract:
         return
     # Label
@@ -455,7 +556,7 @@ def add_abstract(doc, data):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=0, after_pt=6)
     run = p.add_run(abstract)
-    set_run_font(run, CFG["font_body"], CFG["size_body"])
+    set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True)
 
 
 def add_keywords(doc, data):
@@ -482,7 +583,7 @@ def add_section_heading(doc, title):
     set_para_spacing(p, before_pt=6, after_pt=3)
     display = title.upper() if CFG["section_heading_upper"] else title
     run = p.add_run(display)
-    set_run_font(run, CFG["font_heading"], CFG["size_heading1"], bold=True)
+    set_run_font(run, CFG["font_heading"], CFG["size_heading1"], bold=True, color=CFG["heading_color"])
 
 
 def add_subsection_heading(doc, title):
@@ -492,6 +593,184 @@ def add_subsection_heading(doc, title):
     set_para_spacing(p, before_pt=3, after_pt=3)
     run = p.add_run(title)
     set_run_font(run, CFG["font_heading"], CFG["size_heading2"], bold=True)
+
+
+
+def _inject_masthead_content(doc, data):
+    """Inject title, author, and abstract into masthead table cells.
+    Replaces placeholder text (TITLE OF THE ARTICLE, A GOOD ABSTRACT, example authors)
+    with actual paper data.
+    """
+    from lxml import etree
+    from docx.oxml.ns import qn as qn2
+    body = doc._element.body
+
+    # Find masthead table — first table with drawings (branding)
+    masthead_table = None
+    for child in body:
+        if child.tag == qn("w:tbl") and child.findall(f".//{qn('w:drawing')}"):
+            masthead_table = child
+            break
+    if masthead_table is None:
+        return
+
+    rows = masthead_table.findall(qn("w:tr"))
+    if len(rows) < 7:
+        return
+
+    title = _clean_latex(str(data.get("title", "")).strip())
+    abstract = _clean_latex(str(data.get("abstract", "")).strip())
+    authors_data = data.get("authors", [])
+    if isinstance(authors_data, list) and authors_data:
+        author_str = ", ".join(str(a.get("name", a)) if isinstance(a, dict) else str(a) for a in authors_data)
+    else:
+        author_str = ""
+    # Find institution from various possible keys
+    institution = str(data.get("institution", "")).strip()
+    if not institution and isinstance(authors_data, list) and authors_data and isinstance(authors_data[0], dict):
+        first_author = authors_data[0]
+        institution = str(first_author.get("affiliation", first_author.get("institute", ""))).strip()
+    email = str(data.get("email", "")).strip()
+    if not email and isinstance(authors_data, list) and authors_data and isinstance(authors_data[0], dict):
+        email = str(authors_data[0].get("email", "")).strip()
+    if isinstance(data.get("keywords"), list):
+        kw_str = _clean_latex(", ".join(data["keywords"]))
+    else:
+        kw_str = _clean_latex(str(data.get("keywords", "")))
+
+    # Row 3 Cell 0: TITLE + AUTHORS — clear all, inject full title+author
+    row3 = rows[3]
+    tc = row3.findall(qn("w:tc"))
+    if tc:
+        cell = tc[0]
+        # Inject title in first paragraph — title in Run1, author+affiliation in Run2+
+        all_ps = cell.findall(qn("w:p"))
+        if all_ps:
+            p = all_ps[0]
+            all_runs = p.findall(qn("w:r"))
+            
+            # Clear all runs in first paragraph
+            for r in all_runs:
+                for t in r.findall(f".//{qn('w:t')}"):
+                    t.text = ""
+                    t.set(qn("xml:space"), "preserve")
+            
+            # Run0: title
+            r0 = all_runs[0] if all_runs else etree.SubElement(p, qn("w:r"))
+            t0 = r0.find(qn("w:t"))
+            if t0 is not None and title:
+                t0.text = title
+                t0.set(qn("xml:space"), "preserve")
+            
+            # p[1]: author
+            if len(all_ps) > 1 and author_str:
+                p2 = all_ps[1]
+                p2_runs = p2.findall(qn("w:r"))
+                for r in p2_runs:
+                    for t in r.findall(f".//{qn('w:t')}"):
+                        t.text = ""
+                        t.set(qn("xml:space"), "preserve")
+                r_auth = p2_runs[0] if p2_runs else etree.SubElement(p2, qn("w:r"))
+                t_auth = r_auth.find(qn("w:t"))
+                if t_auth is None:
+                    t_auth = etree.SubElement(r_auth, qn("w:t"))
+                t_auth.text = author_str
+                t_auth.set(qn("xml:space"), "preserve")
+            
+            # p[2]: institution
+            if len(all_ps) > 2 and institution:
+                p3 = all_ps[2]
+                p3_runs = p3.findall(qn("w:r"))
+                for r in p3_runs:
+                    for t in r.findall(f".//{qn('w:t')}"):
+                        t.text = ""
+                        t.set(qn("xml:space"), "preserve")
+                r_inst = p3_runs[0] if p3_runs else etree.SubElement(p3, qn("w:r"))
+                t_inst = r_inst.find(qn("w:t"))
+                if t_inst is None:
+                    t_inst = etree.SubElement(r_inst, qn("w:t"))
+                t_inst.text = institution
+                t_inst.set(qn("xml:space"), "preserve")
+            
+            # p[3]: email
+            if len(all_ps) > 3 and email:
+                p4 = all_ps[3]
+                p4_runs = p4.findall(qn("w:r"))
+                for r in p4_runs:
+                    for t in r.findall(f".//{qn('w:t')}"):
+                        t.text = ""
+                        t.set(qn("xml:space"), "preserve")
+                r_em = p4_runs[0] if p4_runs else etree.SubElement(p4, qn("w:r"))
+                t_em = r_em.find(qn("w:t"))
+                if t_em is None:
+                    t_em = etree.SubElement(r_em, qn("w:t"))
+                t_em.text = email
+                t_em.set(qn("xml:space"), "preserve")
+            
+            # Clear remaining paragraphs (p[4+])
+            for pi in range(4, len(all_ps)):
+                p_rem = all_ps[pi]
+                body = doc._element.body
+                # Remove paragraph from parent
+                parent = p_rem.getparent()
+                if parent is not None:
+                    parent.remove(p_rem)
+                else:
+                    for t in p_rem.findall(f".//{qn('w:t')}"):
+                        t.text = ""
+                        t.set(qn("xml:space"), "preserve")
+
+    # Row 5 Cell 1: ABSTRACT — clear ALL content, inject full abstract
+    if len(rows) > 5:
+        row5 = rows[5]
+        tc = row5.findall(qn("w:tc"))
+        if len(tc) > 1:
+            cell = tc[1]
+            # Clear all existing paragraph text runs EXCEPT p[0] (Abstract heading)
+            for idx, p in enumerate(cell.findall(qn("w:p"))):
+                if idx == 0:
+                    continue  # preserve "Abstract" heading
+                for t in p.findall(f".//{qn('w:t')}"):
+                    t.text = ""
+                    t.set(qn("xml:space"), "preserve")
+            # Inject abstract into p[2] (content paragraph after heading)
+            all_cell_ps = cell.findall(qn("w:p"))
+            if len(all_cell_ps) >= 3 and abstract:
+                p_content = all_cell_ps[2]
+                first_run = p_content.find(qn("w:r"))
+                if first_run is None:
+                    from lxml import etree
+                    first_run = etree.SubElement(p_content, qn("w:r"))
+                first_t = first_run.find(qn("w:t"))
+                if first_t is not None:
+                    first_t.text = abstract
+                    first_t.set(qn("xml:space"), "preserve")
+            
+            # Inject keywords in the keywords paragraph (p[4] typically)
+            if kw_str:
+                all_cell_ps = cell.findall(qn("w:p"))
+                if len(all_cell_ps) >= 5:
+                    kw_p = all_cell_ps[4]
+                    kw_runs = kw_p.findall(qn("w:r"))
+                    # Clear existing keyword runs, inject new
+                    if len(kw_runs) >= 2:
+                        # First run: "Keywords:" (preserve formatting)
+                        kw_t0 = kw_runs[0].find(qn("w:t"))
+                        if kw_t0 is not None:
+                            kw_t0.text = "Keywords"
+                            kw_t0.set(qn("xml:space"), "preserve")
+                        # Second run: actual keywords (clean+inject)
+                        kw_t1 = kw_runs[1].find(qn("w:t"))
+                        if kw_t1 is not None:
+                            kw_t1.text = f": {kw_str}."
+                            kw_t1.set(qn("xml:space"), "preserve")
+                        # Third run (KEYWORDS REQUIRED): clear
+                        if len(kw_runs) > 2:
+                            for kw_t_rem in kw_runs[2:]:
+                                t = kw_t_rem.find(qn("w:t"))
+                                if t is not None:
+                                    t.text = ""
+                                    t.set(qn("xml:space"), "preserve")
 
 
 def _clean_latex(text):
@@ -528,7 +807,7 @@ def _clean_latex(text):
     text = re.sub(r'\\Delta', chr(916), text)
     text = re.sub(r'\\partial', chr(8706), text)
     text = re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
-    text = re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    text = re.sub(r"[_^]([a-zA-Z0-9])", r"\1", text)  # single-char sub/super like _1, ^2
     text = re.sub(r'\\[a-zA-Z]+', '', text)
     text = re.sub(r'[{}]', '', text)
     return text.strip()
@@ -542,13 +821,13 @@ def add_body_text(doc, text):
     if CFG["first_line_indent_tw"] > 0:
         set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
     run = p.add_run(cleaned)
-    set_run_font(run, CFG["font_body"], CFG["size_body"])
+    set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True)
 
 
 def add_figure(doc, fig_data, fig_counter):
     fig_no = str(fig_data.get("ImageNumber", fig_counter)).strip()
-    title = _clean_latex(str(fig_data.get("Title", f"Figure {fig_no}")).strip())
-    prompt_hint = _clean_latex(str(fig_data.get("Prompt", "")).strip())
+    title = str(fig_data.get("Title", f"Figure {fig_no}")).strip()
+    prompt_hint = str(fig_data.get("Prompt", "")).strip()
 
     # AI prompt (red italic)
     p_img = doc.add_paragraph()
@@ -572,9 +851,10 @@ def add_figure(doc, fig_data, fig_counter):
     set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
 
 
-def add_table_element(doc, tbl_data, tbl_counter):
+def add_table_element(doc, tbl_data, tbl_counter, borders=None):
+    """Add table from data with border style matching template."""
     tbl_no = str(tbl_data.get("TableNumber", tbl_counter)).strip()
-    title = _clean_latex(str(tbl_data.get("Title", f"Table {tbl_no}")).strip())
+    title = str(tbl_data.get("Title", f"Table {tbl_no}")).strip()
     headers = tbl_data.get("Headers", [])
     rows = tbl_data.get("Rows", [])
 
@@ -596,7 +876,7 @@ def add_table_element(doc, tbl_data, tbl_counter):
     n_rows = len(rows) + (1 if headers else 0)
     table = doc.add_table(rows=n_rows, cols=n_cols)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    set_table_borders(table, CFG["table_borders"])
+    set_table_borders(table, borders if borders is not None else CFG["table_borders"])
 
     # Header row
     if headers:
@@ -633,15 +913,78 @@ def add_formula(doc, formula_data):
     number = str(formula_data.get("FormulaNumber", "")).strip()
     if not latex:
         return
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p, before_pt=3, after_pt=3)
-    cleaned = _clean_latex(latex)
-    display = cleaned
-    if number:
-        display = f"{cleaned}    ({number})"
-    run = p.add_run(display)
-    set_run_font(run, "Cambria Math", CFG["size_body"], italic=True)
+    
+    from lxml import etree
+    from latex2mathml.converter import convert as latex2mathml
+    from mathml2omml import convert as mathml2omml
+    
+    try:
+        # LaTeX → MathML → OMML
+        mathml_str = latex2mathml(latex)
+        omml_str = mathml2omml(mathml_str)
+        
+        # OMML string uses 'm:' prefix without namespace — wrap with declaration
+        MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+        omml_wrapped = f'<m:oMathPara xmlns:m="{MATH_NS}">{omml_str}</m:oMathPara>'
+        oMathPara = etree.fromstring(omml_wrapped)
+        
+        # Insert BEFORE the final sectPr (same behavior as doc.add_paragraph())
+        body = doc._element.body
+        final_sectpr = body.find(qn("w:sectPr"))
+        
+        p_elem = etree.Element(qn("w:p"))
+        pPr = etree.SubElement(p_elem, qn("w:pPr"))
+        jc = etree.SubElement(pPr, qn("w:jc"))
+        jc.set(qn("w:val"), "center")
+        spacing = etree.SubElement(pPr, qn("w:spacing"))
+        spacing.set(qn("w:before"), "60")
+        spacing.set(qn("w:after"), "60")
+        spacing.set(qn("w:line"), "240")
+        spacing.set(qn("w:lineRule"), "auto")
+        p_elem.append(oMathPara)
+        
+        # Set OMML run fonts to Cambria Math for proper math rendering
+        MATH_NS_LOCAL = MATH_NS
+        for omath_run in oMathPara.iter(f'{{{MATH_NS_LOCAL}}}r'):
+            rPr = omath_run.find(f'{{{MATH_NS_LOCAL}}}rPr')
+            if rPr is None:
+                rPr = etree.SubElement(omath_run, f'{{{MATH_NS_LOCAL}}}rPr')
+            # Add w:rPr with Cambria Math font and body size
+            wrPr = etree.SubElement(omath_run, qn('w:rPr'))
+            wrFonts = etree.SubElement(wrPr, qn('w:rFonts'))
+            wrFonts.set(qn('w:ascii'), 'Cambria Math')
+            wrFonts.set(qn('w:hAnsi'), 'Cambria Math')
+            wrSz = etree.SubElement(wrPr, qn('w:sz'))
+            wrSz.set(qn('w:val'), str(CFG["size_body"] * 2))
+        
+        # Add number at end if present
+        if number:
+            run = etree.SubElement(p_elem, qn("w:r"))
+            tab = etree.SubElement(run, qn("w:tab"))
+            run2 = etree.SubElement(p_elem, qn("w:r"))
+            rPr = etree.SubElement(run2, qn("w:rPr"))
+            rFonts = etree.SubElement(rPr, qn("w:rFonts"))
+            rFonts.set(qn("w:ascii"), CFG["font_body"])
+            sz = etree.SubElement(rPr, qn("w:sz"))
+            sz.set(qn("w:val"), str(CFG["size_body"] * 2))
+            t = etree.SubElement(run2, qn("w:t"))
+            t.text = f"({number})"
+            t.set(qn("xml:space"), "preserve")
+        
+        # Insert before final sectPr (maintaining document structure)
+        if final_sectpr is not None:
+            final_sectpr.addprevious(p_elem)
+        else:
+            body.append(p_elem)
+        
+    except Exception as e:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_para_spacing(p, before_pt=3, after_pt=3)
+        cleaned = _clean_latex(latex)
+        display = f"{cleaned}    ({number})" if number else cleaned
+        run = p.add_run(display)
+        set_run_font(run, CFG["font_body"], CFG["size_body"], bold=True, color=CFG["heading_color"])
 
 
 def add_references(doc, data):
@@ -672,7 +1015,7 @@ def add_references(doc, data):
         set_run_font(run, CFG["font_body"], CFG["size_reference"])
 
 
-def process_content_items(doc, content_list, fig_counter, tbl_counter):
+def process_content_items(doc, content_list, fig_counter, tbl_counter, table_borders=None):
     """Process a list of content items (text, gambar, rumus, tabel)."""
     if not isinstance(content_list, list):
         return fig_counter, tbl_counter
@@ -693,7 +1036,7 @@ def process_content_items(doc, content_list, fig_counter, tbl_counter):
 
         elif kind in ("tabel", "table"):
             tbl_counter += 1
-            add_table_element(doc, item, tbl_counter)
+            add_table_element(doc, item, tbl_counter, borders=table_borders)
 
         elif kind in ("rumus", "equation", "formula", "persamaan"):
             add_formula(doc, item)
@@ -701,7 +1044,7 @@ def process_content_items(doc, content_list, fig_counter, tbl_counter):
     return fig_counter, tbl_counter
 
 
-def process_section(doc, section_data, fig_counter, tbl_counter):
+def process_section(doc, section_data, fig_counter, tbl_counter, table_borders=None):
     """Process a section (and its subsections) recursively."""
     if not isinstance(section_data, dict):
         return fig_counter, tbl_counter
@@ -713,7 +1056,7 @@ def process_section(doc, section_data, fig_counter, tbl_counter):
 
     # Content items at this level
     content = section_data.get("content", section_data.get("Content", []))
-    fig_counter, tbl_counter = process_content_items(doc, content, fig_counter, tbl_counter)
+    fig_counter, tbl_counter = process_content_items(doc, content, fig_counter, tbl_counter, table_borders=table_borders)
 
     # Find subsections (keys like section2a, section2b, etc.)
     for key in sorted(section_data.keys()):
@@ -726,7 +1069,7 @@ def process_section(doc, section_data, fig_counter, tbl_counter):
             if sub_title:
                 add_subsection_heading(doc, sub_title)
             sub_content = val.get("content", val.get("Content", []))
-            fig_counter, tbl_counter = process_content_items(doc, sub_content, fig_counter, tbl_counter)
+            fig_counter, tbl_counter = process_content_items(doc, sub_content, fig_counter, tbl_counter, table_borders=table_borders)
 
             # Check for sub-subsections
             for subkey in sorted(val.keys()):
@@ -738,7 +1081,7 @@ def process_section(doc, section_data, fig_counter, tbl_counter):
                     if ssub_title:
                         add_subsection_heading(doc, ssub_title)
                     ssub_content = subval.get("content", subval.get("Content", []))
-                    fig_counter, tbl_counter = process_content_items(doc, ssub_content, fig_counter, tbl_counter)
+                    fig_counter, tbl_counter = process_content_items(doc, ssub_content, fig_counter, tbl_counter, table_borders=table_borders)
 
     return fig_counter, tbl_counter
 
@@ -781,9 +1124,8 @@ def generate():
     shutil.copy2(str(TEMPLATE_DOCX), str(OUTPUT_DOCX))
     doc = Document(str(OUTPUT_DOCX))
 
-    # Ukur bobot konten tiap section ORIGINAL sebelum clear_body (untuk distribusi
-    # body proporsional yang mempertahankan layout multi-kolom AEJ).
-    section_weights = _measure_section_weights(doc)
+    # Detect table border style from template body table (before clear_body removes it)
+    table_borders = _detect_table_borders(doc)
 
     # Clear body but keep section break paragraphs in place
     sectpr_paras = clear_body(doc)
@@ -796,10 +1138,11 @@ def generate():
         insert_before = body.find(qn("w:sectPr"))
 
     # Generate title block
-    add_title(doc, data)
-    add_authors(doc, data)
-    add_abstract(doc, data)
-    add_keywords(doc, data)
+    # Masthead inject: replace placeholder text in table cells with real data
+    _inject_masthead_content(doc, data)
+    
+    # add_keywords(doc, data) — already done via inject
+    # add_abstract(doc, data) — abstract is in masthead orange box via inject, skip to avoid duplicate
 
     # Move title block paragraphs to before first section break
     if insert_before is not None:
@@ -826,7 +1169,7 @@ def generate():
     for i in range(1, 30):
         key = f"section{i}"
         if key in data:
-            fig_counter, tbl_counter = process_section(doc, data[key], fig_counter, tbl_counter)
+            fig_counter, tbl_counter = process_section(doc, data[key], fig_counter, tbl_counter, table_borders=table_borders)
 
     # References
     add_references(doc, data)
@@ -909,9 +1252,39 @@ def generate():
             else:
                 body.append(el)
 
-    # Cleanup: hanya hapus trailing empty sectPr yang BUKAN preserved boundary
-    _remove_trailing_empty_sectpr_paras(doc, keep=set(id(sp) for sp in sectpr_paras))
-
+    # Fill empty sections with invisible paragraphs to prevent blank pages
+    # Each sectPr boundary needs at least one content paragraph before it
+    # otherwise Word creates a blank page for the empty section
+    from docx.oxml import OxmlElement
+    
+    for i, sp in enumerate(sectpr_paras):
+        if sp is sectpr_paras[0]:
+            continue  # skip first (masthead, already has content)
+        
+        # Check if this sectPr has content before it
+        idx = list(body).index(sp)
+        has_content = False
+        for j in range(idx - 1, -1, -1):
+            child = list(body)[j]
+            if child.tag == qn("w:p"):
+                child_pPr = child.find(qn("w:pPr"))
+                if child_pPr is not None and child_pPr.find(qn("w:sectPr")) is not None:
+                    break  # previous sectPr boundary
+                child_txt = "".join(t.text or "" for t in child.iter(qn('w:t')))
+                if child_txt.strip():
+                    has_content = True
+                    break
+            elif child.tag == qn("w:sectPr"):
+                break
+        
+        if not has_content:
+            # Create invisible paragraph before this sectPr
+            new_p = OxmlElement("w:p")
+            new_pPr = OxmlElement("w:pPr")
+            new_p.append(new_pPr)
+            # Minimal spacing so it doesn't affect layout
+            body.insert(idx, new_p)
+    
     # Save
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")

@@ -10,15 +10,16 @@ bind = "0.0.0.0:8001"
 backlog = 4096  # Doubled for 1000+ concurrent users; nginx queues overflow
 
 # === Worker Processes ===
-# 16 workers × 8 threads = 128 concurrent request slots.
-# Most requests are I/O-bound (AI API calls, DB queries, image gen polling)
-# so threads are cheap. Each worker ~150MB → ~2.4GB total.
-# For 1000+ users, nginx handles static + connection queuing;
-# gunicorn handles application logic.
-workers = min(16, multiprocessing.cpu_count() * 2 + 1)
+# 4 workers × 4 threads = 16 concurrent request slots.
+# REDUCED from 16 to 4 (2026-06-18): 16 workers + 4 image workers (Playwright/Chrome)
+# = 4-7 GB RAM → OOM kill → orphan port 8001 → 100K+ restart loop.
+# With 4 workers: ~1.2 GB base + ~2 GB image pool = ~3.2 GB total, safe for 23 GB.
+workers = 4
 worker_class = "gthread"
-threads = 8  # Doubled from 4 for higher I/O concurrency
+threads = 4  # Reduced from 8 to 4 — still enough for I/O-bound AI API calls
 worker_connections = 1000  # Used by gevent/eventlet; no-op for gthread but harmless
+# SO_REUSEPORT: prevent orphan workers from blocking new gunicorn on port 8001
+reuse_port = True
 
 # === Timeouts ===
 timeout = 1800       # 30min for AI generation tasks
@@ -32,9 +33,22 @@ loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # === Process ===
-preload_app = True          # Load app once, fork workers (saves memory)
+preload_app = False          # DO NOT enable: with preload_app=True gunicorn preloads the app
+                             # in the master BEFORE forking workers. The import-time
+                             # side-effects (image worker threads, SLR pool checks) cause
+                             # the master to crash silently during fork → PM2 loses PID
+                             # tracking → restart loop → orphan workers on port 8001.
+                             # Without preload, each worker loads the app independently
+                             # (~150MB × 16 = 2.4GB, system has 23GB — ample headroom).
 max_requests = 2000         # Recycle workers after N requests (prevent leaks)
 max_requests_jitter = 200   # Randomize to avoid thundering herd
+
+# === Log Rotation ===
+# Built-in log rotation via USR1 signal: kill -USR1 <master_pid>
+# Also add to cron: 0 3 * * * kill -USR1 $(cat /tmp/gunicorn.pid 2>/dev/null || echo 0) 2>/dev/null
+# Manual truncation if logs grow beyond 10MB:
+#   truncate -s 0 /home/sirobo/papergenerator/backend/logs/gunicorn-error.log
+#   truncate -s 0 /home/sirobo/papergenerator/backend/logs/gunicorn-access.log
 
 # === Security ===
 limit_request_line = 8190

@@ -73,6 +73,14 @@ export const useImageGenStore = defineStore('imageGen', () => {
     }
   }
 
+  // Public dispose — stop the poller unconditionally (for onUnmounted cleanup).
+  function stopPoller(): void {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+  }
+
   async function _poll(): Promise<void> {
     const inflightIds = Object.entries(jobs)
       .filter(([, j]) => j.status === 'queued' || j.status === 'running')
@@ -253,6 +261,7 @@ export const useImageGenStore = defineStore('imageGen', () => {
     getJob,
     findActive,
     resume,
+    stopPoller,
     clearFinished,
   }
 })

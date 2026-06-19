@@ -433,6 +433,7 @@ import ContentList from '../components/ContentList.vue'
 import { useToolsStore } from '../stores/tools.ts'
 import { useImageGenStore } from '../stores/imageGen.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
+import { useQuotaStore } from '../stores/quota.js'
 import { useUserStateStore } from '../stores/userState'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useKeyboardShortcuts'
 
@@ -455,6 +456,7 @@ const authStore = useAuthStore()
 const toolsStore = useToolsStore()
 const imageGenStore = useImageGenStore()
 const paperJobsStore = usePaperJobsStore()
+const quotaStore = useQuotaStore()
 const userState = useUserStateStore()
 const route = useRoute()
 const router = useRouter()
@@ -776,6 +778,9 @@ onUnmounted(() => {
   clearInterval(tickTimer)
   window.removeEventListener('resize', resizeAbstract)
   paperJobsStore.stopPolling()
+  paperJobsStore.stopGlobalPolling()
+  imageGenStore.stopPoller()
+  quotaStore.stopPolling()
   chatStore.stopActiveJobPolling()
 })
 
@@ -787,27 +792,32 @@ onMounted(async () => {
   paperJobsStore.startGlobalPolling()
   const paperId = route.params.paperId
   const lang = authStore.user?.preferred_language || 'id'
-  if (paperId && paperId !== 'null' && paperId !== 'undefined') {
-    const paperIdStr = Array.isArray(paperId) ? paperId[0] : paperId
-    const loaded = await store.loadPaperFromDb(paperIdStr)
+
+  // Helper: restore right panel from persisted state, defaulting to 'chat'.
+  function _restorePanel(): void {
+    const saved = store.currentPaperId ? ui.getRightPanel(store.currentPaperId) : ''
+    rightPanel.value = saved || 'chat'
+  }
+
+  const paperIdRaw = Array.isArray(paperId) ? paperId[0] : paperId
+  if (paperIdRaw && paperIdRaw !== 'null' && paperIdRaw !== 'undefined') {
+    const loaded = await store.loadPaperFromDb(paperIdRaw)
     if (loaded) _justLoaded = true
     if (!loaded && !store.currentPaperId) {
-      // Paper no longer exists — start a fresh paper instead of leaving the
-      // user on a broken editor with cascading 404s.
       await store.newPaper(lang)
       const newId = await store.savePaperToDb(true)
       if (newId) {
         router.replace({ name: 'editor', params: { paperId: newId } })
       }
     }
-    rightPanel.value = 'chat'
+    _restorePanel()
   } else {
     await store.newPaper(lang)
-    rightPanel.value = 'chat'
+    _restorePanel()
     const newId = await store.savePaperToDb(true)
     if (newId) {
       router.replace({ name: 'editor', params: { paperId: newId } })
-      rightPanel.value = 'chat'
+      _restorePanel()
     }
   }
   // Start active-job poller for whichever paper we ended up on.
@@ -816,10 +826,13 @@ onMounted(async () => {
     await userState.loadForPaper(store.currentPaperId)
   }
   try {
-    const [tRes, sRes] = await Promise.all([
+    const results = await Promise.allSettled([
       store.apiGet('/api/topics'),
       store.apiGet('/api/styles'),
     ])
+    const [tRes, sRes] = results.map((r: any) =>
+      r.status === 'fulfilled' ? r.value : null
+    )
     availableTopics.value = tRes?.data?.topics || []
     availableStyles.value = sRes?.data?.styles || []
   } catch (e) { /* non-critical */ }
@@ -849,15 +862,19 @@ watch(() => store.paper.abstract, () => resizeAbstract())
 watch(() => rightPanel.value, () => resizeAbstract())
 
 watch(() => route.params.paperId, async (newId, oldId) => {
-  if (newId && newId !== 'null' && newId !== 'undefined' && newId !== oldId && newId !== store.currentPaperId) {
-    const newIdStr = Array.isArray(newId) ? newId[0] : newId
-    const loaded = await store.loadPaperFromDb(newIdStr)
+  // Guard: handle array and various nullish values.
+  const pid = Array.isArray(newId) ? newId[0] : newId
+  if (!pid || pid === 'null' || pid === 'undefined') return
+  if (pid !== oldId && pid !== store.currentPaperId) {
+    const loaded = await store.loadPaperFromDb(pid)
     if (!loaded && !store.currentPaperId) {
       // Paper deleted — redirect to dashboard to pick a valid paper.
       router.replace({ name: 'dashboard' })
       return
     }
-    rightPanel.value = 'chat'
+    // Restore right panel from per-paper state; fallback 'chat' if never set.
+    const saved = store.currentPaperId ? ui.getRightPanel(store.currentPaperId) : ''
+    rightPanel.value = saved || 'chat'
     resizeAbstract()
   }
 })

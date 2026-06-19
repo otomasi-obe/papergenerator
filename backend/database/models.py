@@ -191,7 +191,7 @@ class PaperFile(db.Model):
     extracted_text = db.Column(db.Text, default="")  # cached text for preview
     # PDF metadata — extracted during upload before file is deleted
     meta_title = db.Column(db.Text, default="")
-    meta_authors = db.Column(db.Text, default="")  # JSON array
+    meta_authors = db.Column(JSON().with_variant(JSONB, "postgresql"), default=list)  # list[str]
     meta_doi = db.Column(db.String(500), default="")
     meta_year = db.Column(db.Integer, nullable=True)
     meta_abstract = db.Column(db.Text, default="")
@@ -234,7 +234,7 @@ class Conversation(db.Model):
 
     __tablename__ = "conversations"
 
-    id = db.Column(db.String(20), primary_key=True)
+    id = db.Column(db.String(36), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=True)
     title = db.Column(db.Text, default="New Chat")
@@ -250,14 +250,24 @@ class Conversation(db.Model):
         order_by="ChatMessage.created_at",
     )
 
-    def to_dict(self, include_messages=False):
+    def to_dict(self, include_messages=False, message_count=None):
+        # BUG: message_count query runs per-row -> N+1 when listing conversations.
+        # Pass a pre-computed count to skip the per-row query; default keeps
+        # to_dict() working standalone (backward compatible).
+        if message_count is None:
+            message_count = (
+                db.session.query(db.func.count(ChatMessage.id))
+                .filter_by(conversation_id=self.id)
+                .scalar()
+                or 0
+            )
         result = {
             "id": self.id,
             "user_id": self.user_id,
             "paper_id": self.paper_id,
             "title": self.title,
             "mode": self.mode,
-            "message_count": db.session.query(db.func.count(ChatMessage.id)).filter_by(conversation_id=self.id).scalar() or 0,
+            "message_count": message_count,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
@@ -270,11 +280,11 @@ class ChatMessage(db.Model):
     __tablename__ = "chat_messages"
 
     id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.String(20), db.ForeignKey("conversations.id"), nullable=False, index=True)
+    conversation_id = db.Column(db.String(36), db.ForeignKey("conversations.id"), nullable=False, index=True)
     role = db.Column(db.String(20), nullable=False)
     content = db.Column(db.Text, default="")
     thinking = db.Column(db.Text, nullable=True)
-    tool_calls = db.Column(db.JSON, nullable=True)
+    tool_calls = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
 
     def to_dict(self):
@@ -313,7 +323,7 @@ class ProjectMemory(db.Model):
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     conversation_id = db.Column(
-        db.String(20),
+        db.String(36),
         db.ForeignKey("conversations.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
@@ -378,7 +388,7 @@ class AiJob(db.Model):
     progress = db.Column(db.Integer, default=0)  # 0..100
     stage = db.Column(db.String(60), default="")  # 'outline' | 'sections' | 'references' | ...
     prompt = db.Column(db.Text)
-    result = db.Column(db.JSON, nullable=True, default=dict)
+    result = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
     error = db.Column(db.Text)
     timeout = db.Column(db.Boolean, default=False)
     started_at = db.Column(db.DateTime, default=_utcnow)
@@ -415,7 +425,8 @@ class LiteratureItem(db.Model):
     source_kind = db.Column(db.String(20), default="slr")  # slr | file | manual
     source = db.Column(db.String(40), default="")  # arxiv|ieee|sinta|...
     title = db.Column(db.Text, default="")
-    authors = db.Column(db.JSON, nullable=True, default=list)  # list[str]
+    title_norm = db.Column(db.Text, nullable=True, default="")
+    authors = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=list)  # list[str]
     year = db.Column(db.Integer, nullable=True)
     venue = db.Column(db.Text, default="")
     publisher = db.Column(db.Text, default="")
@@ -426,13 +437,14 @@ class LiteratureItem(db.Model):
     summary = db.Column(db.Text, default="")
     citations = db.Column(db.Integer, nullable=True)
     score_total = db.Column(db.Float, nullable=True)
-    score_breakdown = db.Column(db.JSON, nullable=True, default=dict)
+    score_breakdown = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
     must_read = db.Column(db.Boolean, default=False)
     is_relevant = db.Column(db.Boolean, default=True)
     notes = db.Column(db.Text, default="")  # user-editable notes
     gap_riset = db.Column(db.Text, default="")  # AI-generated research gap suggestion
     review = db.Column(db.Text, default="")  # AI-generated review (viola-chat)
     pinned = db.Column(db.Boolean, default=False)  # user-pinned to top
+    is_checked = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text("false"))
     file_id = db.Column(db.Integer, db.ForeignKey("paper_files.id"), nullable=True)
     slr_job_id = db.Column(
         db.String(20), db.ForeignKey("slr_jobs.id", ondelete="SET NULL"), nullable=True, index=True
@@ -448,6 +460,14 @@ class LiteratureItem(db.Model):
             unique=True,
             postgresql_where=db.text("doi IS NOT NULL"),
             sqlite_where=db.text("doi IS NOT NULL"),
+        ),
+        db.Index(
+            "uq_literature_title_norm",
+            "paper_id",
+            "title_norm",
+            unique=True,
+            postgresql_where=db.text("title_norm IS NOT NULL AND title_norm != ''"),
+            sqlite_where=db.text("title_norm IS NOT NULL AND title_norm != ''"),
         ),
     )
 
@@ -476,6 +496,7 @@ class LiteratureItem(db.Model):
             "gap_riset": self.gap_riset or "",
             "review": self.review or "",
             "pinned": bool(self.pinned),
+            "is_checked": bool(self.is_checked),
             "file_id": self.file_id,
             "slr_job_id": self.slr_job_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -499,11 +520,11 @@ class ChatDraft(db.Model):
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=True, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     conversation_id = db.Column(
-        db.String(20), db.ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True, index=True
+        db.String(36), db.ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True, index=True
     )
     name = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, default="")
-    tags = db.Column(db.JSON, nullable=True, default=list)  # optional tags for search
+    tags = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=list)  # optional tags for search
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -532,9 +553,9 @@ class SlrJob(db.Model):
     id = db.Column(db.String(20), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id"), nullable=False, index=True)
-    conversation_id = db.Column(db.String(20), db.ForeignKey("conversations.id"), nullable=True)
+    conversation_id = db.Column(db.String(36), db.ForeignKey("conversations.id"), nullable=True)
     query = db.Column(db.Text, nullable=False)
-    sources = db.Column(db.JSON, nullable=True, default=list)
+    sources = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=list)
     top_k = db.Column(db.Integer, default=50)
     per_source = db.Column(db.Integer, default=60)
     year_from = db.Column(db.Integer, nullable=True)
@@ -546,7 +567,7 @@ class SlrJob(db.Model):
     stage = db.Column(db.String(40), default="")
     progress = db.Column(db.Integer, default=0)  # 0..100
     progress_message = db.Column(db.Text, default="")
-    result = db.Column(db.JSON, nullable=True, default=dict)
+    result = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
     """Full pipeline output. Callers MUST keep this small (top_k items + stats only);
     the worker is responsible for trimming large payloads before persisting."""
     error = db.Column(db.Text, default="")

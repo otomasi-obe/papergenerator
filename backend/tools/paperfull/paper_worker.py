@@ -135,6 +135,26 @@ def run_generate_paper(
 
             def _checkpoint_cb(stage: str, progress: int, partial: dict) -> None:
                 _checkpoint(job_id, stage, progress, status="running", partial=partial)
+                # ── Persist partial to Paper.data so mid-failure preserves content ──
+                if paper_id and partial:
+                    try:
+                        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+                        if paper:
+                            partial_data = dict(partial)
+                            partial_data["_partial"] = True
+                            paper.data = partial_data
+                            paper.title = (
+                                (partial.get("title") or "").strip()
+                                or paper.title
+                                or "Untitled"
+                            )
+                            paper.updated_at = datetime.now(timezone.utc)
+                            safe_commit()
+                    except Exception:
+                        try:
+                            db.session.rollback()
+                        except Exception:
+                            pass
 
             paper_data = generate_paper_json_chunked(
                 judul=prompt,
@@ -239,15 +259,30 @@ def run_generate_paper(
         except Exception as e:
             tb = traceback.format_exc(limit=3)
             err_msg = f"{type(e).__name__}: {e}"
+            err_msg_safe = "Paper generation failed. Please try again."
             try:
                 job = AiJob.query.filter_by(id=job_id).first()
                 if job:
                     job.status = "error"
-                    job.error = (err_msg + "\n" + tb)[:4000]
+                    job.error = "Paper generation failed"
                     safe_commit()
             except Exception:
                 pass
-            _checkpoint(job_id, "error", 100, status="error", error=err_msg)
+            # ── Annotate Paper.data with error info so frontend can surface it ──
+            if paper_id:
+                try:
+                    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+                    if paper and paper.data:
+                        paper.data["_partial"] = True
+                        paper.data["_generation_error"] = err_msg_safe
+                        paper.updated_at = datetime.now(timezone.utc)
+                        safe_commit()
+                except Exception:
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
+            _checkpoint(job_id, "error", 100, status="error", error=err_msg_safe)
             raise
 
 
@@ -287,7 +322,7 @@ def _auto_enqueue_figure_images(
             continue
 
         # Skip data/chart figures — those are matplotlib territory
-        fig_id = str(fig.get("ID") or "").lower()
+        fig_id = str(fig.get("id") or fig.get("ID") or "").lower()
         if any(kw in fig_id for kw in ("data", "chart", "grafik", "plot")):
             logger.info(
                 "[auto_image] Skipping data figure '%s' (chart/plot)",
@@ -298,6 +333,23 @@ def _auto_enqueue_figure_images(
         # Enrich prompt with figure context for better results
         img_number = fig.get("ImageNumber") or fig.get("Title") or "Figure"
         title = fig.get("Title") or ""
+
+        # Derive target_path from figure Path for meaningful filename (e.g., "gambar/fig1.png" → "fig1.jpg")
+        target_path = None
+        orig_path = str(fig.get("Path") or fig.get("path") or "")
+        if orig_path:
+            import os
+            base = os.path.splitext(os.path.basename(orig_path))[0]
+            if base and base != "image":
+                target_path = base + ".jpg"
+        if not target_path:
+            # Fallback: use ImageNumber
+            raw_num = str(img_number)
+            if isinstance(fig.get("ImageNumber"), (int, float)):
+                raw_num = str(int(fig["ImageNumber"]))
+            if raw_num and raw_num not in ("", "Figure"):
+                target_path = f"fig{raw_num}.jpg"
+
         enriched = (
             f"{prompt}\n\n"
             f"Context: This is {img_number} ({title}) for an academic paper. "
@@ -324,6 +376,7 @@ def _auto_enqueue_figure_images(
             paper_id=paper_id,
             prompt=enriched[:2000],  # MAX_PROMPT_CHARS
             status="queued",
+            target_path=target_path[:500] if target_path else None,
         )
         db.session.add(job)
         enqueued += 1
@@ -378,49 +431,51 @@ def _generate_images_background(
     2. Generate data charts (matplotlib) - these run in parallel threads
     """
     import logging
+    from main import app
     from tools.data.auto_data_tools import auto_generate_data_charts
 
     logger = logging.getLogger(__name__)
 
-    try:
-        logger.info("[image_bg] Starting background image generation for paper_id=%s", paper_id)
-
-        # 1. Enqueue figure images (Gemini) - these use the existing ImageGenJob queue
-        _auto_enqueue_figure_images(paper_id, user_id, paper_data)
-
-        # 2. Generate data charts (matplotlib) in parallel
-        results = auto_generate_data_charts(paper_id, user_id, paper_data)
-        if results["charts_generated"] > 0:
-            logger.info(
-                "[image_bg] Generated %d data charts for paper_id=%s",
-                results["charts_generated"],
-                paper_id,
-            )
-            # Update paper_data with generated chart paths
-            from database.models import Paper, db, safe_commit
-            paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            if paper:
-                paper.data = paper_data
-                safe_commit()
-
-        logger.info("[image_bg] Background image generation complete for paper_id=%s", paper_id)
-
-    except Exception:
-        logger.warning(
-            "[image_bg] Error in background image generation for paper_id=%s",
-            paper_id,
-            exc_info=True,
-        )
-        # BUG-6.3: update DB so error is visible instead of silent death
+    with app.app_context():
         try:
-            from database.models import Paper, db, safe_commit  # noqa: PLC0415
-            paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            if paper and paper.data:
-                paper.data["image_gen_error"] = "Image generation failed — see server logs"
-                safe_commit()
+            logger.info("[image_bg] Starting background image generation for paper_id=%s", paper_id)
+
+            # 1. Enqueue figure images (Gemini) - these use the existing ImageGenJob queue
+            _auto_enqueue_figure_images(paper_id, user_id, paper_data)
+
+            # 2. Generate data charts (matplotlib) in parallel
+            results = auto_generate_data_charts(paper_id, user_id, paper_data)
+            if results["charts_generated"] > 0:
+                logger.info(
+                    "[image_bg] Generated %d data charts for paper_id=%s",
+                    results["charts_generated"],
+                    paper_id,
+                )
+                # Update paper_data with generated chart paths
+                from database.models import Paper, db, safe_commit
+                paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+                if paper:
+                    paper.data = paper_data
+                    safe_commit()
+
+            logger.info("[image_bg] Background image generation complete for paper_id=%s", paper_id)
+
         except Exception:
             logger.warning(
-                "[image_bg] Failed to record image gen error in DB for paper_id=%s",
+                "[image_bg] Error in background image generation for paper_id=%s",
                 paper_id,
                 exc_info=True,
             )
+            # BUG-6.3: update DB so error is visible instead of silent death
+            try:
+                from database.models import Paper, db, safe_commit  # noqa: PLC0415
+                paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+                if paper and paper.data:
+                    paper.data["image_gen_error"] = "Image generation failed — see server logs"
+                    safe_commit()
+            except Exception:
+                logger.warning(
+                    "[image_bg] Failed to record image gen error in DB for paper_id=%s",
+                    paper_id,
+                    exc_info=True,
+                )

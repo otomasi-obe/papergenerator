@@ -40,8 +40,9 @@ data_jobs = Blueprint("data_jobs", __name__)
 _REDIS = None
 
 
-def get_redis():
+def get_redis(_depth=0):
     global _REDIS
+    MAX_REDIS_RETRIES = 3
     if _REDIS is None:
         try:
             _REDIS = redis.Redis.from_url(
@@ -50,7 +51,7 @@ def get_redis():
             )
         except Exception:
             return None
-    # Health check: reconnect if stale
+    # Health check: reconnect if stale (with recursion guard)
     try:
         _REDIS.ping()
     except Exception:
@@ -59,7 +60,9 @@ def get_redis():
         except Exception:
             pass
         _REDIS = None
-        return get_redis()
+        if _depth < MAX_REDIS_RETRIES:
+            return get_redis(_depth + 1)
+        return None
     return _REDIS
 
 
@@ -77,7 +80,7 @@ def _publish(job_id: str, payload: dict) -> None:
         _r = get_redis()
         if _r:
             _r.publish(_progress_channel(job_id), msg)
-            _r.setex(f"datajob:{job_id}:last", 86400, msg)
+            _r.setex(f"datajob:{job_id}:last", 3600, msg)
     except Exception:
         pass
 
@@ -95,7 +98,61 @@ def _is_cancelled(job_id: str) -> bool:
 ALLOWED_EXTS = {".pdf", ".xlsx", ".xls", ".csv", ".tsv", ".doc", ".docx", ".pptx", ".ppt"}
 
 
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+def _cleanup_stale_data_jobs(paper_id: str, user_id: int, threshold_minutes: int = 3) -> int:
+    """Auto-mark stale data_extract jobs as error and clean Redis keys. Returns count of cleaned jobs."""
+    stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    stale_jobs = AiJob.query.filter_by(
+        paper_id=paper_id, user_id=user_id, kind="data_extract"
+    ).filter(
+        AiJob.status.in_(["queued", "running"]),
+        AiJob.updated_at < stale_threshold,
+    ).all()
+    for sj in stale_jobs:
+        sj.status = "error"
+        sj.stage = "error"
+        sj.error = f"Job timeout — worker tidak respons (>{threshold_minutes} menit tanpa update)"
+        # Clean Redis keys so SSE doesn't show stale progress
+        _clean_redis_job_keys(sj.id)
+        log.info("Auto-marked stale data job %s as error (paper=%s, user=%s)", sj.id, paper_id, user_id)
+    if stale_jobs:
+        safe_commit()  # single commit for all cleaned jobs
+    return len(stale_jobs)
+
+
+def _clean_redis_job_keys(job_id: str) -> int:
+    """Delete all Redis keys for a data job. Returns count of keys deleted."""
+    count = 0
+    try:
+        r = get_redis()
+        if r:
+            for suffix in ("last", "cancel"):
+                key = f"datajob:{job_id}:{suffix}"
+                if r.delete(key):
+                    count += 1
+    except Exception:
+        pass
+    return count
+
+
 # ── Endpoints ───────────────────────────────────────────────────────────────
+
+def _finish_error_direct(job_id, error_msg):
+    """Mark job as error directly (used when worker thread fails to start)."""
+    try:
+        job = AiJob.query.get(job_id)
+        if job:
+            job.status = "error"
+            job.stage = "error"
+            job.error = error_msg
+            job.finished_at = datetime.now(timezone.utc)
+            safe_commit()
+        _publish(job_id, {"status": "error", "stage": "error", "progress": 0, "error": error_msg})
+        _clean_redis_job_keys(job_id)
+    except Exception:
+        pass
+
 
 @data_jobs.route("/api/papers/<paper_id>/data-jobs", methods=["POST"])
 @jwt_required()
@@ -111,20 +168,7 @@ def create_data_job(paper_id: str):
         return jsonify({"error": "Paper not found"}), 404
 
     # ── Bug fix #1: Auto-mark stale data_extract jobs as error ────────
-    # Jobs stuck >10 min without progress update (worker died, restart, etc.)
-    stale_threshold = datetime.now(timezone.utc) - timedelta(minutes=10)
-    stale_jobs = AiJob.query.filter_by(
-        paper_id=paper_id, user_id=user_id, kind="data_extract"
-    ).filter(
-        AiJob.status.in_(["queued", "running"]),
-        AiJob.updated_at < stale_threshold,
-    ).all()
-    for sj in stale_jobs:
-        sj.status = "error"
-        sj.stage = "error"
-        sj.error = "Job timeout — worker tidak respons (>10 menit tanpa update)"
-        safe_commit()
-        log.info("Auto-marked stale data job %s as error", sj.id)
+    _cleanup_stale_data_jobs(paper_id, user_id)
 
     # Check for active job
     active = AiJob.query.filter_by(
@@ -183,18 +227,36 @@ def create_data_job(paper_id: str):
     db.session.add(job)
     safe_commit()
 
+    # Publish initial state to Redis so SSE has something to show immediately
+    # (before the worker thread gets CPU time to publish its first event)
+    _publish(job_id, {
+        "status": "queued",
+        "stage": "queued",
+        "progress": 0,
+        "message": "Mempersiapkan pemrosesan..." if prompt else f"Mempersiapkan ekstraksi {len(file_paths)} file...",
+        "file_count": len(file_paths),
+        "text_only": len(file_paths) == 0,
+    })
+    log.debug("DATA_JOB_DEBUG: Published initial queued state — job_id=%s", job_id)
+
     # Start worker thread
     from tools.data.data_worker import run_data_job
     # Get Flask app from current context
     from flask import current_app
     flask_app = current_app._get_current_object()
 
-    t = threading.Thread(
-        target=run_data_job,
-        args=(flask_app, job_id, file_paths, file_names, paper_id, user_id, prompt),
-        daemon=True,
-    )
-    t.start()
+    try:
+        t = threading.Thread(
+            target=run_data_job,
+            args=(flask_app, job_id, file_paths, file_names, paper_id, user_id, prompt),
+            daemon=True,
+        )
+        t.start()
+        log.debug("DATA_JOB_DEBUG: Worker thread started — job_id=%s", job_id)
+    except Exception as e:
+        log.exception("Failed to start data job worker thread for %s", job_id)
+        _finish_error_direct(job_id, "Gagal memulai pemrosesan. Silakan coba lagi.")
+        return jsonify({"error": "Gagal memulai pemrosesan. Silakan coba lagi."}), 500
 
     return jsonify({
         "job_id": job_id,
@@ -212,6 +274,9 @@ def list_data_jobs(paper_id: str):
         user_id = int(get_jwt_identity())
     except (ValueError, TypeError):
         return jsonify({"error": "Unauthorized"}), 401
+
+    # Auto-cleanup stale jobs (frontend polls this endpoint every few seconds)
+    _cleanup_stale_data_jobs(paper_id, user_id)
 
     jobs = AiJob.query.filter_by(
         paper_id=paper_id, user_id=user_id, kind="data_extract"
@@ -296,13 +361,21 @@ def stream_data_job(job_id: str):
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
+    # If job is stuck and stale, auto-mark as error so frontend doesn't hang
+    if job.paper_id and job.status in ("queued", "running"):
+        _cleanup_stale_data_jobs(job.paper_id, user_id)
+        # Re-fetch to get updated status
+        job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
+        if not job or job.status == "error":
+            return jsonify({"error": job.error if job else "Job expired", "code": "JOB_STALE"}), 410
+
     app = current_app._get_current_object()
 
     def event_stream():
         with app.app_context():
             _r = get_redis()
             if not _r:
-                yield "event: error\ndata: {\"message\": \"Redis unavailable\"}\n\n"
+                yield "data: {\"status\": \"error\", \"error\": \"Redis unavailable\"}\n\n"
                 return
             pubsub = _r.pubsub()
             try:
@@ -314,7 +387,7 @@ def stream_data_job(job_id: str):
             try:
                 last = _r.get(f"datajob:{job_id}:last")
                 if last:
-                    yield f"event: progress\ndata: {last}\n\n"
+                    yield f"data: {last}\n\n"
             except Exception:
                 pass
 
@@ -322,33 +395,32 @@ def stream_data_job(job_id: str):
             try:
                 j = AiJob.query.get(job_id)
                 if j and j.status in ("done", "error", "cancelled"):
-                    yield f"event: {j.status}\ndata: {json.dumps({'status': j.status, 'progress': j.progress, 'result': j.result, 'error': j.error}, default=str)}\n\n"
+                    yield f"data: {json.dumps({'status': j.status, 'progress': j.progress, 'result': j.result, 'error': j.error}, default=str)}\n\n"
                     return
             except Exception:
                 pass
 
             # Stream live events
             try:
-                deadline = time.time() + 900  # 15 min max (data tools AI calls can take time)
-                _hb_counter = [0]  # mutable counter for DB polling
+                deadline = time.time() + 900  # 15 min max
+                _hb_counter = [0]
                 while time.time() < deadline:
                     msg = pubsub.get_message(timeout=3)
                     if msg and msg["type"] == "message":
                         data = msg["data"]
-                        yield f"event: progress\ndata: {data}\n\n"
+                        yield f"data: {data}\n\n"
                         # Check for terminal event
                         try:
                             payload = json.loads(data)
                             if payload.get("status") in ("done", "error", "cancelled"):
-                                yield f"event: {payload['status']}\ndata: {data}\n\n"
+                                _clean_redis_job_keys(job_id)
                                 return
                         except (json.JSONDecodeError, KeyError):
                             pass
                     else:
-                        # Heartbeat — also check DB periodically for terminal status
-                        yield f": heartbeat\n\n"
-                        # Every 5th heartbeat (~15s), poll DB for job completion
-                        # This catches cases where Redis pub/sub event was missed
+                        # Heartbeat
+                        yield ": heartbeat\n\n"
+                        # Every 5th heartbeat (~15s), poll DB
                         _hb_counter[0] += 1
                         if _hb_counter[0] % 5 == 0:
                             try:
@@ -359,7 +431,7 @@ def stream_data_job(job_id: str):
                                             'status': j.status, 'progress': j.progress,
                                             'result': j.result, 'error': j.error
                                         }, default=str)
-                                        yield f"event: {j.status}\ndata: {result_data}\n\n"
+                                        yield f"data: {result_data}\n\n"
                                         return
                             except Exception:
                                 pass
@@ -412,6 +484,8 @@ def cancel_data_job(job_id: str):
     safe_commit()
 
     _publish(job_id, {"status": "cancelled", "progress": job.progress, "stage": "cancelled"})
+    # Clean Redis keys so SSE doesn't show stale progress
+    _clean_redis_job_keys(job_id)
 
     return jsonify({"status": "cancelled"}), 200
 

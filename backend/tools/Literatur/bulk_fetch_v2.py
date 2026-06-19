@@ -68,6 +68,7 @@ DELAYS = {
     'cambridge': 1.0,
     'sciencedirect': 2.5,
     'scopus': 2.0,
+    'scopus_oa': 0.15,   # OpenAlex enrichment for Scopus — 10/s polite
     'dimensions': 1.0,
     'lens': 1.0,
     'crossref_publishers': 1.5,
@@ -174,6 +175,8 @@ def get_pending_topics(limit: int = 1) -> list[dict]:
         put_db(conn)
 
 
+ALLOWED_COLUMNS = {"status", "progress", "fetched_count", "last_cursor", "error_msg", "updated_at", "finished_at"}
+
 def update_progress(topic_id: int, fetched: int, cursor: str = None,
                     status: str = None, error: str = None):
     conn = get_db()
@@ -193,6 +196,11 @@ def update_progress(topic_id: int, fetched: int, cursor: str = None,
             parts.append("error_msg = %s")
             params.append(error[:500] if error else None)
         params.append(topic_id)
+        # Validate all column names against whitelist
+        col_names = [p.split()[0] for p in parts]
+        for cn in col_names:
+            if cn not in ALLOWED_COLUMNS:
+                raise ValueError(f"Invalid column name: {cn}")
         cur.execute(f"UPDATE mega_fetch_progress SET {', '.join(parts)} WHERE id = %s", params)
         conn.commit()
         cur.close()
@@ -201,6 +209,26 @@ def update_progress(topic_id: int, fetched: int, cursor: str = None,
 
 
 # ── Paper upsert ────────────────────────────────────────────────────────────
+def _update_abstract(source_id: str, abstract: str, source: str) -> bool:
+    """Update abstract for an existing paper by source_id + source."""
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE papers SET abstract = %s
+            WHERE source_id = %s AND source = %s AND (abstract IS NULL OR abstract = '')
+        """, (abstract[:5000], source_id, source))
+        updated = cur.rowcount
+        conn.commit()
+        cur.close()
+        return updated > 0
+    except Exception:
+        conn.rollback()
+        return False
+    finally:
+        put_db(conn)
+
+
 def upsert_papers(papers: list[dict]) -> int:
     """Batch upsert papers. Returns count of NEW papers inserted."""
     if not papers:
@@ -228,10 +256,33 @@ def upsert_papers(papers: list[dict]) -> int:
                 VALUES {','.join(placeholders)}
                 ON CONFLICT (title_normalized) DO UPDATE SET
                     citations = GREATEST(papers.citations, EXCLUDED.citations),
-                    abstract = COALESCE(papers.abstract, EXCLUDED.abstract),
-                    doi = COALESCE(papers.doi, EXCLUDED.doi),
-                    pdf_url = COALESCE(papers.pdf_url, EXCLUDED.pdf_url),
-                    is_open_access = papers.is_open_access OR EXCLUDED.is_open_access
+                    abstract = CASE
+                        WHEN source_priority(EXCLUDED.source) >= source_priority(papers.source)
+                        AND EXCLUDED.abstract IS NOT NULL AND EXCLUDED.abstract != ''
+                        THEN EXCLUDED.abstract
+                        ELSE papers.abstract
+                    END,
+                    doi = CASE
+                        WHEN source_priority(EXCLUDED.source) >= source_priority(papers.source)
+                        AND EXCLUDED.doi IS NOT NULL AND EXCLUDED.doi != ''
+                        THEN EXCLUDED.doi
+                        ELSE papers.doi
+                    END,
+                    pdf_url = CASE
+                        WHEN source_priority(EXCLUDED.source) >= source_priority(papers.source)
+                        AND EXCLUDED.pdf_url IS NOT NULL AND EXCLUDED.pdf_url != ''
+                        THEN EXCLUDED.pdf_url
+                        ELSE papers.pdf_url
+                    END,
+                    source = CASE
+                        WHEN source_priority(EXCLUDED.source) >= source_priority(papers.source)
+                        THEN EXCLUDED.source
+                        ELSE papers.source
+                    END,
+                    is_open_access = papers.is_open_access OR EXCLUDED.is_open_access,
+                    venue = COALESCE(EXCLUDED.venue, papers.venue),
+                    venue_type = COALESCE(EXCLUDED.venue_type, papers.venue_type),
+                    publisher = COALESCE(EXCLUDED.publisher, papers.publisher)
                 RETURNING xmax = 0 AS is_new
             """
             try:
@@ -655,7 +706,7 @@ def fetch_arxiv_page(query: str, start: int = 0, per_page: int = 50) -> list[dic
             pub_el = entry.find("atom:published", NS)
             if pub_el is not None and pub_el.text:
                 try: year = int(pub_el.text[:4])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi_el = entry.find("arxiv:doi", NS)
             doi = (doi_el.text or "").strip() if doi_el is not None else ""
             venue_el = entry.find("arxiv:journal_ref", NS)
@@ -708,7 +759,7 @@ def fetch_dblp_page(query: str, offset: int = 0, per_page: int = 100) -> list[di
             year = None
             if info.get("year"):
                 try: year = int(info["year"])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi = info.get("doi")
             ee = info.get("ee", "")
             pdf_url = ""
@@ -758,7 +809,7 @@ def fetch_europepmc_page(query: str, cursor: str = "*", per_page: int = 100) -> 
             year = None
             if item.get("pubYear"):
                 try: year = int(item["pubYear"])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi = item.get("doi")
             pmcid = item.get("pmcid")
             pdf_url = ""
@@ -815,7 +866,7 @@ def fetch_doaj_page(query: str, page: int = 1, per_page: int = 100) -> list[dict
             y = bib.get("year")
             if y:
                 try: year = int(str(y)[:4])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             journal = bib.get("journal") or {}
             doi = None
             pdf_url = ""
@@ -872,7 +923,7 @@ def fetch_hal_page(query: str, start: int = 0, per_page: int = 50) -> list[dict]
                 y = doc.get(yk)
                 if y:
                     try: year = int(str(y)[:4]); break
-                    except: pass
+                    except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi_raw = doc.get("doiId_s") or doc.get("doi_s")
             doi = doi_raw if isinstance(doi_raw, str) else (doi_raw[0] if isinstance(doi_raw, list) and doi_raw else None)
             abstract = doc.get("abstract_s")
@@ -928,7 +979,7 @@ def fetch_plos_page(query: str, start: int = 0, per_page: int = 100) -> list[dic
             pub_date = doc.get("publication_date")
             if pub_date:
                 try: year = int(str(pub_date)[:4])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi = doc.get("id")
             pdf_url = ""
             landing = ""
@@ -996,7 +1047,7 @@ def fetch_openaire_page(query: str, page: int = 1, per_page: int = 50) -> list[d
                 ds = d.get("$") if isinstance(d, dict) else str(d) if d else ""
                 if ds:
                     try: year = int(ds[:4]); break
-                    except: pass
+                    except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             pid = oaf.get("pid") or {}
             doi = pid.get("$") if isinstance(pid, dict) else None
             abstract_raw = oaf.get("description") or []
@@ -1079,11 +1130,19 @@ def fetch_datacite_page(query: str, page: int = 1, per_page: int = 50) -> list[d
             pub_year = attr.get("publicationYear") or attr.get("created")
             if pub_year:
                 try: year = int(str(pub_year)[:4])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi = attr.get("doi")
             abstract = ""
             descs = attr.get("descriptions") or []
-            if descs and isinstance(descs[0], dict):
+            for desc in descs:
+                if isinstance(desc, dict):
+                    d_type = desc.get("descriptionType", "")
+                    d_text = desc.get("description") or ""
+                    # Prioritize Abstract type, fall back to first description
+                    if d_type == "Abstract" and d_text:
+                        abstract = d_text
+                        break
+            if not abstract and descs and isinstance(descs[0], dict):
                 abstract = descs[0].get("description") or ""
             publisher = attr.get("publisher")
             if isinstance(publisher, dict):
@@ -1137,7 +1196,7 @@ def fetch_zenodo_page(query: str, page: int = 1, per_page: int = 50) -> list[dic
             pub_date = metadata.get("publication_date") or metadata.get("date") or ""
             if pub_date:
                 try: year = int(str(pub_date)[:4])
-                except: pass
+                except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
             doi = metadata.get("doi") or hit.get("doi")
             pdf_url = ""
             for f in (hit.get("files") or []):
@@ -1481,6 +1540,7 @@ def _run_scopus(topic, target, counter, lock):
                 title = entry.get("dc:title", "")
                 if not title: continue
                 doi = entry.get("prism:doi", "")
+                source_id = entry.get("dc:identifier", "").replace("SCOPUS_ID:", "")
                 papers.append({
                     "doi": doi[:1000] if doi else "",
                     "title": title[:2000],
@@ -1488,21 +1548,47 @@ def _run_scopus(topic, target, counter, lock):
                     "year": int(str(entry.get("prism:coverDate", "2020"))[:4]),
                     "venue": entry.get("prism:publicationName", "")[:500],
                     "venue_type": "journal" if entry.get("prism:aggregationType") == "Journal" else "conference" if "conference" in entry.get("prism:aggregationType", "").lower() else "",
-                    "abstract": "",  # Scopus search doesn't return abstracts
+                    "abstract": "",  # enriched below via OpenAlex
                     "citations": int(entry.get("citedby-count", 0)) if entry.get("citedby-count") else 0,
                     "is_open_access": entry.get("openaccess") == "1",
                     "url": f"https://doi.org/{doi}" if doi else "",
                     "pdf_url": "",
                     "source": "scopus",
-                    "source_id": entry.get("dc:identifier", "").replace("SCOPUS_ID:", ""),
+                    "source_id": source_id,
                     "paper_type": entry.get("prism:aggregationType", "")[:100],
                     "publisher": entry.get("dc:publisher", "")[:500],
                 })
             if papers:
+                # Phase 1: insert without abstracts
                 inserted = upsert_papers(papers)
                 logging.getLogger(__name__).info(f"scopus: fetched {len(papers)}, inserted {inserted}")
-                with lock: counter['total'] += inserted
                 total += inserted
+
+                # Phase 2: enrich abstracts via OpenAlex DOI lookup
+                enriched = 0
+                for p in papers:
+                    p_doi = p.get("doi")
+                    if not p_doi:
+                        continue
+                    try:
+                        _rate_wait('scopus_oa')
+                        oa_url = f"https://api.openalex.org/works/doi:{p_doi}"
+                        oa_r = httpx.get(oa_url, timeout=10.0)
+                        if oa_r.status_code == 200:
+                            oa_data = oa_r.json()
+                            inv_idx = oa_data.get("abstract_inverted_index")
+                            if inv_idx and isinstance(inv_idx, dict):
+                                abstract = decode_abstract(inv_idx)
+                                if abstract:
+                                    _update_abstract(p["source_id"], abstract, "scopus")
+                                    enriched += 1
+                    except Exception:
+                        pass
+                if enriched:
+                    logging.getLogger(__name__).info(f"scopus: enriched {enriched}/{len(papers)} abstracts via OpenAlex")
+
+                with lock:
+                    counter['total'] += inserted
             start += len(entries)
             time.sleep(0.5)
         except Exception as e:
@@ -1562,7 +1648,7 @@ def _run_core(topic, target, counter, lock):
                 y = item.get("yearPublished")
                 if y:
                     try: year = int(str(y)[:4])
-                    except: pass
+                    except Exception as _e: logging.getLogger(__name__).debug("parse/op skipped: %s", _e)
                 papers.append({
                     "doi": (doi or "")[:1000], "title": title[:2000],
                     "authors": json.dumps(authors)[:5000], "year": year,

@@ -1,56 +1,43 @@
-"""End-to-end SLR pipeline.
+"""Tool Literatur — pipeline: DB-first → API fallback → ML scoring → AI rerank.
 
-Algoritma sesuai spec:
+Flow:
+1. DB-FILTER: PostgreSQL FTS + hybrid score (title + abstract)
+2. API-FALLBACK: if DB < MIN_FETCH_TARGET (1000), call orchestrator.fetch_titles()
+   → parallel multi-source API fetch with DB dedup
+3. ML-SCORING: SBERT cosine (50%) + citations (10%) + TF-IDF (10%) + recency (8%)
+   + venue (10%) + keyword (7%) + author (5%) — programmatic, no LLM
+4. TAMPIL FASE 1: save scored results → frontend
+5. AI-RANK: AI re-rank untuk urutan relevansi final
+6. TAMPIL FASE 2: update ranking hasil AI
 
-1. SEARCH dulu semua API (max 10 worker, judul + metadata yg gratis disertakan
-   sumber). Lihat orchestrator.fetch_titles.
-2. RANK dengan kombinasi sinyal SBERT + TF-IDF + citation + recency + venue
-   quality (scoring.score_papers). Hasil disort descending.
-3. SUMMARIZE top-K (default 50) dengan AI MODELGENERATE (summarizer.summarize_with_ai),
-   sisanya pakai extractive supaya tetap dapat preview cepat.
-4. Output JSON siap dipakai frontend.
-
-Pipeline ini dipanggil dari `slr_jobs.run_slr_job` (worker queue) sehingga
-panggilan AI yang lama tidak memblokir API request.
+Minimum 1000 papers per topic. Semua paper disimpan ke paper_database.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Callable
 
-from .orchestrator import fetch_titles, pick_sources_for_topic
 from .paper import Paper
-from .scoring import ScoredPaper, score_papers
-from .summarizer import summarize as extractive_summarize
-from .summarizer import summarize_with_ai
-from .unpaywall import enrich_papers_without_pdf
 from . import db_cache
+from .text_cleaner import detect_mojibake
 
 log = logging.getLogger(__name__)
 
-
-def _publisher_info(p: Paper) -> dict:
-    return {
-        "publisher": p.publisher,
-        "venue": p.venue,
-        "venue_type": p.venue_type,
-        "type": p.type,
-        "year": p.year,
-        "is_open_access": p.is_open_access,
-    }
+# Minimum target per topic — auto trigger API fetch if DB insufficient
+MIN_FETCH_TARGET = 1000
 
 
-def _paper_record(idx: int, sp: ScoredPaper, summary: str | None = None, gap_riset: str | None = None) -> dict:
-    p = sp.paper
+def _paper_record(idx: int, p: Paper, rank: int | None = None, score_total: float | None = None) -> dict:
+    """Build paper record dict for frontend/save."""
     return {
         "id": idx,
+        "rank": rank,  # AI rank position (1 = paling relevan)
         "title": p.title,
         "authors": p.authors,
-        "publisher_info": _publisher_info(p),
         "doi": p.doi,
         "url": p.url,
         "pdf_url": p.pdf_url,
@@ -60,16 +47,21 @@ def _paper_record(idx: int, sp: ScoredPaper, summary: str | None = None, gap_ris
         "publisher": p.publisher,
         "citations": p.citations,
         "abstract": p.abstract,
-        "summary": summary or "",
-        "gap_riset": gap_riset or "",
-        "score_total": sp.score_total,
-        "score_breakdown": sp.score_breakdown or {},
-        "is_relevant": sp.is_relevant,
-        "must_read": sp.must_read,
+        "db_score": round(p.db_score, 4) if p.db_score else None,
+        "score_total": round(score_total, 4) if score_total else None,
+        "is_open_access": p.is_open_access,
+        "publisher_info": {
+            "publisher": p.publisher,
+            "venue": p.venue,
+            "venue_type": p.venue_type,
+            "type": p.type,
+            "year": p.year,
+            "is_open_access": p.is_open_access,
+        },
     }
 
 
-def _stats(query: str, papers: list[Paper], scored: list[ScoredPaper]) -> dict:
+def _stats(query: str, papers: list[Paper]) -> dict:
     by_source: dict[str, int] = {}
     by_year: dict[int, int] = {}
     n_with_abs = 0
@@ -89,265 +81,438 @@ def _stats(query: str, papers: list[Paper], scored: list[ScoredPaper]) -> dict:
         "with_doi": n_with_doi,
         "papers_by_source": by_source,
         "papers_by_year": dict(sorted(by_year.items(), reverse=True)),
-        "scored": len(scored),
-        "must_read_count": sum(1 for s in scored if s.must_read),
-        "is_relevant_count": sum(1 for s in scored if s.is_relevant),
     }
+
+
+def _ai_rerank(query: str, papers: list[Paper], ai_model: str | None) -> list[int] | None:
+    """Send papers to AI for relevance re-ranking. Returns reordered indices or None.
+    
+    Issues fixed June 2026:
+    - Hanya top 50 paper dikirim (sebelumnya SEMUA paper → overflow context)
+    - Filter paper dengan teks garbled (mojibake) sebelum dikirim ke AI
+    - Prompt diperkuat: AI diinstruksikan menolak paper mojibake
+    """
+    if not papers:
+        return None
+
+    # ── Filter: hanya top 50 + bersih dari mojibake ──
+    # Paper di pipeline sudah terurut berdasarkan ML score (sebelum AI rerank)
+    # Ambil top 50 yang teksnya bersih. Ini mencegah:
+    # 1. Context window overflow (1000+ paper)
+    # 2. AI memberikan perhatian ke paper sampah
+    # 3. Hallucination karena model kewalahan
+    clean_papers = []
+    for p in papers:
+        t_mojo = detect_mojibake(p.title)
+        a_mojo = detect_mojibake(p.abstract)
+        if t_mojo > 0.5 or a_mojo > 0.5:
+            continue  # Skip paper dengan teks garbled
+        clean_papers.append(p)
+        if len(clean_papers) >= 50:
+            break
+
+    if not clean_papers:
+        log.warning("tool_literatur.ai_rerank: no clean papers after mojibake filter")
+        return None
+
+    # Map original indices for return
+    original_indices = {id(p): i for i, p in enumerate(papers)}
+    clean_list = clean_papers  # Items already sorted by score
+
+    # Build input: only title + abstract (citations is NOT relevance)
+    items = []
+    for p in clean_papers:
+        # Truncate abstract to 500 chars to save tokens
+        abstr = (p.abstract or "")[:500]
+        items.append({
+            "id": id(p),  # Use Python id as unique identifier
+            "title": p.title or "",
+            "abstract": abstr,
+            "citations": p.citations or 0,
+        })
+
+    system_prompt = f"""Anda adalah asisten riset akademik. Tugas Anda: urutkan ulang paper berdasarkan RELEVANSI LANGSUNG dengan topik penelitian spesifik user.
+
+TOPIK: {query}
+
+ATURAN KRITIS:
+1. Paper yang PALING RELEVAN adalah yang secara LANGSUNG membahas topik "{query}" — judul atau abstract menyebut topik utama.
+2. Paper yang judulnya mengandung "{query}" secara eksplisit → HARUS di atas.
+3. Paper yang hanya menyebut kata kunci sekilas (contoh: di daftar referensi, di list aplikasi) → tempatkan di bawah.
+4. Paper dengan judul atau abstract yang tidak jelas, rusak (garbled), atau tidak bisa dibaca → tempatkan di PALING BAWAH.
+5. Jumlah sitasi BUKAN indikator relevansi — jangan biarkan paper populer yang tidak relevan menang.
+
+Daftar paper (format: id|judul|abstract|sitasi). Urutkan dari yang PALING RELEVAN (1) ke yang KURANG RELEVAN.
+
+Output HARUS berupa JSON array berisi ID saja, berurutan dari paling relevan:
+[<id1>, <id2>, <id3>, ...]
+
+HANYA output JSON array, tidak ada teks lain — tidak ada markdown, tidak ada backticks, tidak ada penjelasan."""
+
+    user_text = "\n".join(
+        f"{it['id']}|{it['title']}|{it['abstract']}|sitasi:{it['citations']}"
+        for it in items
+    )
+
+    try:
+        from utils.ai_tools.model_router import route_chat_call
+        resp, model_used = route_chat_call(
+            model=ai_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_text}
+            ],
+            temperature=0.3,
+            max_tokens=65536,  # 64K output token
+            timeout=120,
+        )
+        # route_chat_call returns (requests.Response, model_name) tuple
+        data = resp.json() if hasattr(resp, 'json') else resp
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        match = re.search(r'\[[\d,\s]+\]', content)
+        if match:
+            raw_ids = json.loads(match.group())
+            # Map Python object IDs back to sequential indices
+            valid = []
+            for obj_id in raw_ids:
+                if isinstance(obj_id, int):
+                    orig_idx = original_indices.get(obj_id)
+                    if orig_idx is not None:
+                        valid.append(orig_idx)
+            if len(valid) >= 10:
+                log.info(
+                    "tool_literatur.ai_rerank: reordered %d papers (got %d valid indices)",
+                    len(papers), len(valid),
+                )
+                return valid
+    except Exception as e:
+        log.warning("tool_literatur.ai_rerank failed: %s", e)
+
+    return None
+
+
+def _apply_rerank(papers: list[Paper], reordered_indices: list[int]) -> list[Paper]:
+    """Apply AI re-ranking: put AI-ranked papers first, then remaining."""
+    papers_map = {i: p for i, p in enumerate(papers)}
+    result = []
+    seen = set()
+    for idx in reordered_indices:
+        if idx in papers_map and idx not in seen:
+            result.append(papers_map[idx])
+            seen.add(idx)
+    for i, p in enumerate(papers):
+        if i not in seen:
+            result.append(p)
+    return result
 
 
 def run(
     query: str,
-    sources: list[str] | None = None,
-    per_source: int = 60,
-    max_total: int | None = None,
     top_k: int = 50,
     year_from: int | None = None,
-    skip_predatory: bool = True,
-    ai_summarize: bool = False,
+    sources: list[str] | None = None,
     ai_model: str | None = None,
     progress_cb: Callable[[str, dict], None] | None = None,
     save_cb: Callable[[list[dict]], None] | None = None,
-    source_save_cb: Callable[[list[Paper]], None] | None = None,
+    pinned_dois: list[str] | None = None,
+    enable_snowball: bool = True,
 ) -> dict:
-    """Eksekusi penuh pipeline. progress_cb dipanggil di tiap milestone:
-    - "fetching" / "source_done" / "dedup_done" — dari orchestrator
-    - "scoring" / "scored" — dari sini
-    - "summarizing" / "summarized" / "complete" — dari sini
+    """Jalankan tool literatur: DB filter → tampil → AI rank → tampil.
 
-    save_cb dipanggil dengan list paper records setelah fetch selesai (streaming save).
-    source_save_cb dipanggil per-source setelah fetch selesai (true streaming).
-    Returns dict siap di-dump JSON.
+    progress_cb dipanggil di tiap milestone:
+    - "db_searching" / "db_scored" — dari DB
+    - "snowballing" / "snowballed" — citation chaining
+    - "displaying_initial" / "displayed_initial" — tampil hasil PG
+    - "ai_reranking" / "ai_reranked" — AI rerank
+    - "displaying_final" / "complete" — tampil final
+
+    save_cb dipanggil 2x:
+    - Setelah DB scoring (hasil awal, phase 1)
+    - Setelah AI rerank (hasil final, phase 2)
+
+    pinned_dois: list DOI paper yang di-pin user → active learning signal
+    enable_snowball: aktifkan citation snowballing (default True)
     """
-    sources = sources or pick_sources_for_topic(query)
+    # ── 1. DB FILTER: PostgreSQL scoring ──────────────────────────────
+    if progress_cb:
+        progress_cb("db_searching", {"query": query, "top_k": top_k})
 
-    # Build filters dict to pass year_from to fetchers that support it
-    filters = {}
+    fetch_limit = top_k * 10  # Oversample untuk AI rerank headroom
     if year_from:
-        filters["year_from"] = year_from
+        fetch_limit = fetch_limit * 2  # Extra headroom untuk year filter
 
-    # 1. FETCH — DB FIRST from paper_database (PostgreSQL full-text search)
-    # target = top_k × 5 for scoring headroom
-    target = top_k * 5
-
-    # When year_from is set, fetch 2x then filter so we don't end up below target.
-    # (some fetchers don't support year filtering at API level)
-    fetch_target = target
-    if year_from:
-        fetch_target = target * 2
-
-    # DB-FIRST: query paper_database using PostgreSQL full-text search + sorting
-    log.info("slr.db_search: query=%s sources=%s limit=%d year_from=%s", query, sources, fetch_target, year_from)
-    raw_papers = db_cache.search_papers(
+    papers = db_cache.search_papers(
         query=query,
-        limit=fetch_target,
+        limit=fetch_limit,
         year_from=year_from,
         sources=sources,
     )
-    log.info("slr.db_search: got %d papers from paper_database", len(raw_papers))
+    log.info("tool_literatur.db_search: got %d papers from paper_database", len(papers))
 
-    # Fallback to API if DB returns too few results
-    if len(raw_papers) < top_k:
-        log.info("slr.api_fallback: DB returned %d, need at least %d, fetching from APIs", len(raw_papers), top_k)
-        api_papers = fetch_titles(
-            query=query,
-            sources=sources,
-            limit_per_source=per_source,
-            filters=filters if filters else None,
-            max_total=fetch_target,
-            skip_predatory=skip_predatory,
-            progress_cb=progress_cb,
-            source_save_cb=source_save_cb,
-        )
-        # Merge and deduplicate
-        seen_dois = {p.doi for p in raw_papers if p.doi}
-        seen_titles = {db_cache.normalize_title(p.title) for p in raw_papers}
-        for ap in api_papers:
-            doi_norm = ap.doi.lower() if ap.doi else None
-            title_norm = db_cache.normalize_title(ap.title)
-            if (doi_norm and doi_norm in seen_dois) or (title_norm and title_norm in seen_titles):
-                continue
-            raw_papers.append(ap)
-            if doi_norm:
-                seen_dois.add(doi_norm)
-            if title_norm:
-                seen_titles.add(title_norm)
-        log.info("slr.merged: %d total papers after API fallback + dedup", len(raw_papers))
-    elif progress_cb:
-        progress_cb("fetching", {"count": len(raw_papers)})
-
-    # Post-filter for fetchers that don't support year filtering at API level
+    # Year post-filter (search_papers sudah filter di SQL, safety net)
     if year_from:
-        raw_papers = [p for p in raw_papers if p.year and p.year >= year_from]
-        if max_total:
-            raw_papers = raw_papers[:max_total]
+        papers = [p for p in papers if p.year and p.year >= year_from]
 
-    if not raw_papers:
+    # ── 1b. API FALLBACK: fetch if DB insufficient ───────────────────────
+    if len(papers) < MIN_FETCH_TARGET:
+        log.info("tool_literatur.api_fallback: DB has %d papers < %d target, fetching from APIs",
+                 len(papers), MIN_FETCH_TARGET)
         if progress_cb:
-            progress_cb("complete", {"top_k": 0, "total": 0})
-        return {
-            "query": query,
-            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "stats": {
-                "query": query,
-                "total_unique_papers": 0,
-                "papers_by_source": {},
-                "papers_by_year": {},
-                "scored": 0,
-                "must_read_count": 0,
-                "is_relevant_count": 0,
-                "with_abstract": 0,
-                "with_doi": 0,
-            },
-            "papers": [],
-            "top_k": [],
-        }
-
-    # 2. RANK (programmatic — no AI)
-    if progress_cb:
-        progress_cb("scoring", {"count": len(raw_papers)})
-    scored = score_papers(query, raw_papers)
-    if progress_cb:
-        progress_cb("scored", {"count": len(scored)})
-
-    # Stable indices by id() for joining back later.
-    score_lookup = {id(s.paper): s for s in scored}
-
-    # 2.5 Enrich with Unpaywall PDF URLs for papers missing pdf_url
-    try:
-        top_records = []
-        for sp in scored[:top_k]:
-            p = sp.paper
-            top_records.append({
-                "doi": p.doi,
-                "pdf_url": p.pdf_url,
+            progress_cb("api_fetching", {
+                "db_count": len(papers), "target": MIN_FETCH_TARGET,
+                "sources": sources or [],
             })
-        n_enriched = enrich_papers_without_pdf(top_records)
-        if n_enriched:
-            log.info("slr.unpaywall: enriched %d/%d papers with pdf_url", n_enriched, len(top_records))
-        for i, sp in enumerate(scored[:top_k]):
-            if i < len(top_records) and top_records[i].get("pdf_url"):
-                sp.paper.pdf_url = top_records[i]["pdf_url"]
-    except Exception as e:
-        log.warning("slr.unpaywall enrichment failed: %s", e)
 
-    # 2.6 Streaming save: save ALL papers to DB immediately after fetch+rank
-    # This allows frontend to show papers as they come in (streaming).
-    if save_cb:
-        all_records_for_save = []
-        for global_idx, p in enumerate(raw_papers):
-            sp = score_lookup.get(id(p))
-            if sp is None:
-                continue
-            all_records_for_save.append(_paper_record(global_idx, sp, summary="", gap_riset=""))
         try:
-            save_cb(all_records_for_save)
-        except Exception as e:
-            log.warning("slr.save_cb failed: %s", e)
-
-    # 3. AI SUMMARIZE top-K (rest gets extractive)
-    top_scored = scored[:top_k]
-    summaries: dict[int, dict] = {}
-    ai_used = False
-    top_input = []
-    for i, sp in enumerate(top_scored):
-        top_input.append(
-            {
-                "id": i,
-                "title": sp.paper.title,
-                "year": sp.paper.year,
-                "abstract": sp.paper.abstract or "",
-            }
-        )
-
-    if ai_summarize and top_input:
-        if progress_cb:
-            progress_cb("summarizing", {"count": len(top_input)})
-        try:
-            summaries, ai_used = summarize_with_ai(
-                top_input,
+            from .orchestrator import fetch_titles
+            api_papers = fetch_titles(
                 query=query,
-                model=ai_model,
-                progress_cb=progress_cb,
+                sources=sources,
+                max_total=MIN_FETCH_TARGET,
+                use_cache=True,  # DB-first internally
+                progress_cb=lambda stage, info: (
+                    progress_cb(f"fetch_{stage}", info) if progress_cb else None
+                ),
             )
-        except BaseException as e:
-            # Preserve any partial summaries the summarizer attached before
-            # the cancel/error so we still return useful data on cancellation.
-            partial = getattr(e, "partial_summaries", None)
-            if isinstance(partial, dict):
-                summaries = partial
-            partial_ai_used = getattr(e, "partial_ai_used", None)
-            if isinstance(partial_ai_used, bool):
-                ai_used = partial_ai_used
-            if isinstance(e, Exception) and not isinstance(e, KeyboardInterrupt):
-                # Re-raise progress-callback-driven cancels (e.g. WorkerCancelled
-                # in slr_worker) so the worker can mark the job cancelled.
-                # Generic AI errors are swallowed and we continue with extractive.
-                exc_name = e.__class__.__name__
-                if (
-                    exc_name in ("WorkerCancelled", "CancelledByCaller")
-                    or "cancel" in exc_name.lower()
-                ):
-                    raise
-                log.warning("AI summarize failed: %s", e)
-                if not isinstance(partial, dict):
-                    summaries = {}
-            else:
-                raise
+            if api_papers:
+                # Merge: prefer API results (freshly dedupped), append unique DB papers
+                existing_titles = {p.title.lower() for p in api_papers}
+                for p in papers:
+                    if (p.title or "").lower() not in existing_titles:
+                        api_papers.append(p)
+                papers = api_papers
+                log.info("tool_literatur.api_fallback: fetched %d papers total", len(papers))
+        except Exception as e:
+            log.warning("tool_literatur.api_fallback failed: %s", e)
+            # Continue with whatever DB returned
 
-    # 4. Assemble records (with summaries if any)
-    top_pos = {id(s.paper): i for i, s in enumerate(top_scored)}
-    global_pos = {id(p): i for i, p in enumerate(raw_papers)}
+        if progress_cb:
+            progress_cb("api_fetched", {"count": len(papers)})
 
-    def _get_summary_gap(top_idx: int, paper) -> tuple[str, str]:
-        """Return (summary, gap_riset) for a paper."""
-        if top_idx >= 0 and top_idx in summaries:
-            entry = summaries[top_idx]
-            if isinstance(entry, dict):
-                return entry.get("summary", ""), entry.get("gap_riset", "")
-            else:
-                # Legacy format (string) from partial_summaries
-                return entry, ""
-        return "", ""  # No extractive fallback — user wants clean data
+    # ── 1c. ML SCORING + ACTIVE LEARNING + SNOWBALLING ──────────────
+    ml_scored = {}
+    prisma_stats = {
+        "identified": len(papers),
+        "screened": 0,
+        "eligible": 0,
+        "included": 0,
+        "duplicates_removed": 0,
+        "snowball_added": 0,
+    }
 
-    all_records: list[dict] = []
-    for global_idx, p in enumerate(raw_papers):
-        sp = score_lookup.get(id(p))
-        if sp is None:
-            continue
-        top_idx = top_pos.get(id(sp.paper), -1)
-        summary, gap_riset = _get_summary_gap(top_idx, p)
-        all_records.append(_paper_record(global_idx, sp, summary=summary, gap_riset=gap_riset))
+    try:
+        from .scoring import score_papers_with_feedback
 
-    top_records = []
-    for top_idx, sp in enumerate(top_scored):
-        global_idx = global_pos.get(id(sp.paper))
-        if global_idx is None:
-            continue
-        summary, gap_riset = _get_summary_gap(top_idx, sp.paper)
-        top_records.append(_paper_record(global_idx, sp, summary=summary, gap_riset=gap_riset))
+        # Build pinned_papers list dari pinned_dois
+        pinned_papers = []
+        if pinned_dois:
+            pinned_papers = [p for p in papers if p.doi and p.doi.lower() in {d.lower() for d in pinned_dois}]
+            if pinned_papers:
+                log.info("active_learning: %d pinned papers dari %d DOIs",
+                         len(pinned_papers), len(pinned_dois))
+
+        scored_results = score_papers_with_feedback(
+            query, papers, pinned_papers=pinned_papers if pinned_papers else None,
+        )
+        for sp in scored_results:
+            ml_scored[sp.paper.title.lower()] = sp
+        log.info("tool_literatur.ml_scoring: scored %d papers", len(scored_results))
+
+        # ── 1d. CITATION SNOWBALLING ──────────────────────────────
+        # Ambil top-10 seed papers dari hasil scoring
+        if enable_snowball and len(scored_results) >= 10:
+            if progress_cb:
+                progress_cb("snowballing", {"seed_count": 10})
+            try:
+                from .snowball import snowball
+                top_seeds = [sp.paper for sp in scored_results[:10]]
+                snowball_papers = snowball(
+                    top_seeds, query,
+                    top_n_seeds=10, max_per_seed=10, max_total=100,
+                )
+                if snowball_papers:
+                    # Score snowball papers
+                    snowball_scored = score_papers_with_feedback(
+                        query, snowball_papers, pinned_papers=pinned_papers if pinned_papers else None,
+                    )
+                    # Merge: snowball papers sebagai supplementary
+                    snowball_titles = {}
+                    for sp in snowball_scored:
+                        key = sp.paper.title.lower()
+                        old = ml_scored.get(key)
+                        # Jika paper sudah ada, merge citation info; jangan ganti kalau score lama lebih tinggi
+                        if old and sp.score_total <= old.score_total:
+                            continue
+                        snowball_titles[key] = sp
+                        ml_scored[key] = sp
+                    prisma_stats["snowball_added"] = len(snowball_titles)
+                    log.info("snowballing: merged %d new papers", len(snowball_titles))
+                    if progress_cb:
+                        progress_cb("snowballed", {
+                            "found": len(snowball_papers),
+                            "merged": len(snowball_titles),
+                        })
+            except Exception as e:
+                log.warning("snowballing failed: %s", e)
+
+    except Exception as e:
+        log.warning("tool_literatur.ml_scoring failed: %s", e)
+        # Fall through — papers still usable without ML scores
+
+    # Sort by score_total descending if available, else db_score
+    if ml_scored:
+        def _get_score(p: Paper) -> float:
+            sp = ml_scored.get((p.title or "").lower())
+            return sp.score_total if sp else 0.0
+        papers.sort(key=_get_score, reverse=True)
+    else:
+        papers.sort(key=lambda p: p.db_score or 0, reverse=True)
+
+    # ── KEYWORD BOOST (ringan): hanya sebagai safety net ──
+    # scoring.py 17% weight + long-term boost sudah mencakup keyword match.
+    # Boost di pipeline hanya additive kecil untuk preventif.
+    query_lower = query.lower()
+    query_terms = re.findall(r'[a-z0-9]{3,}', query_lower)
+    if query_terms and ml_scored:
+        def _keyword_boost(p: Paper) -> float:
+            """Small additive boost (max 0.3) — tidak overwrite ML score."""
+            title = (p.title or '').lower()
+            if query_lower in title:
+                return 0.3
+            # All query terms in title → small boost
+            if all(term in title for term in query_terms):
+                return 0.2
+            # Partial match in title
+            title_matches = sum(1 for term in query_terms if term in title)
+            if title_matches / len(query_terms) >= 0.5:
+                return 0.1
+            return 0.0
+
+        # Final sort: ml_score + keyword boost (additive, not replacing)
+        def _final_key(p: Paper) -> float:
+            sp = ml_scored.get((p.title or '').lower())
+            ml = sp.score_total if sp else 0.0
+            return ml + _keyword_boost(p)
+        papers.sort(key=_final_key, reverse=True)
+        log.info("tool_literatur.keyword_boost: applied additive boost on ML scores")
+    elif query_terms:
+        # No ML scores — use db_score + keyword boost (legacy fallback)
+        def _keyword_score(p: Paper) -> float:
+            title = (p.title or '').lower()
+            abstract = (p.abstract or '').lower()
+            if query_lower in title:
+                return 3.0
+            if all(term in title for term in query_terms):
+                return 2.0
+            title_matches = sum(1 for term in query_terms if term in title)
+            if title_matches > 0:
+                return 1.0 * title_matches / len(query_terms)
+            if all(term in abstract for term in query_terms):
+                return 0.5
+            return 0.0
+
+        papers.sort(key=lambda p: (p.db_score or 0) + _keyword_score(p) * 2.0, reverse=True)
 
     if progress_cb:
-        progress_cb("complete", {"top_k": len(top_records), "total": len(all_records)})
+        progress_cb("db_scored", {"count": len(papers)})
 
-    stats = _stats(query, raw_papers, scored)
-    stats["ai_summary_used"] = bool(ai_used)
+    # ── 2. TAMPIL FASE 1: hasil DB scoring ─────────────────────────────
+    if progress_cb:
+        progress_cb("displaying_initial", {"count": len(papers)})
+
+    # Simpan hasil scoring ke frontend
+    if save_cb:
+        records_phase1 = [
+            _paper_record(i, p,
+                          score_total=(
+                              ml_scored.get((p.title or "").lower()).score_total
+                              if ml_scored.get((p.title or "").lower()) else None
+                          ))
+            for i, p in enumerate(papers)
+        ]
+        try:
+            save_cb(records_phase1)
+            log.info("tool_literatur.phase1_save: saved %d scored papers", len(records_phase1))
+        except Exception as e:
+            log.warning("tool_literatur.phase1_save failed: %s", e)
+
+    if progress_cb:
+        progress_cb("displayed_initial", {"count": len(papers)})
+
+    # ── 3. AI RERANK ───────────────────────────────────────────────────
+    if progress_cb:
+        progress_cb("ai_reranking", {"count": len(papers)})
+
+    reordered = _ai_rerank(query, papers, ai_model)
+
+    if reordered:
+        papers = _apply_rerank(papers, reordered)
+        log.info("tool_literatur.ai_rerank: applied new ordering")
+        if progress_cb:
+            progress_cb("ai_reranked", {"count": len(papers)})
+    else:
+        log.info("tool_literatur.ai_rerank: skipped (no valid reorder)")
+        if progress_cb:
+            progress_cb("ai_reranked", {"count": len(papers), "skipped": True})
+
+    # ── 4. TAMPIL FASE 2: hasil AI ranking ─────────────────────────────
+    if progress_cb:
+        progress_cb("displaying_final", {"count": min(len(papers), top_k)})
+
+    # Build final records dengan AI rank position
+    all_records = []
+    ai_rank_map = {}
+    if reordered:
+        # Build rank lookup: paper title → AI rank position
+        for rank_pos, p in enumerate(papers, 1):
+            key = (p.title or "").lower()
+            ai_rank_map[key] = rank_pos
+
+    for i, p in enumerate(papers):
+        rank = ai_rank_map.get((p.title or "").lower())
+        sp = ml_scored.get((p.title or "").lower())
+        st = sp.score_total if sp else None
+        all_records.append(_paper_record(i, p, rank=rank, score_total=st))
+
+    top_k_records = all_records[:top_k]
+
+    # Simpan hasil AI ranking
+    if save_cb:
+        try:
+            save_cb(all_records)
+            log.info("tool_literatur.phase2_save: saved %d AI-ranked papers", len(all_records))
+        except Exception as e:
+            log.warning("tool_literatur.phase2_save failed: %s", e)
+
+    if progress_cb:
+        progress_cb("complete", {
+            "total": len(all_records),
+            "top_k": len(top_k_records),
+            "ai_reranked": bool(reordered),
+        })
+
+    stats = _stats(query, papers)
+    stats["ai_reranked"] = bool(reordered)
+    stats["prisma"] = {
+        "identified": len(papers),
+        "screened": len(papers),  # All papers screened by ML
+        "eligible": sum(1 for sp in ml_scored.values() if sp.is_relevant),
+        "included": min(len(top_k_records), top_k),
+        "duplicates_removed": 0,  # DB dedup already handled upstream
+        "snowball_added": prisma_stats.get("snowball_added", 0),
+    }
 
     return {
         "query": query,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "stats": stats,
         "papers": all_records,
-        "top_k": top_records,
+        "top_k": top_k_records,
     }
 
 
-def save(payload: dict, out_path: str | Path) -> Path:
+def save(payload: dict, out_path: str) -> None:
+    from pathlib import Path
     path = Path(out_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
-    return path
-
-
-def run_and_save(query: str, out_path: str | Path = "results/slr.json", **kwargs) -> Path:
-    payload = run(query, **kwargs)
-    return save(payload, out_path)

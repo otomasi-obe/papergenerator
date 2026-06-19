@@ -191,7 +191,7 @@ def save_paper_json(username, judul_paper, paper_data, paper_id=None):
     payload = {
         "judul": judul_paper,
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "paper_data": paper_data,
+        "paper_data": {"paper": paper_data},
     }
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -212,7 +212,7 @@ def save_paper_json_by_id(username, paper_id, paper_data):
     payload = {
         "paper_id": paper_id,
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "paper_data": paper_data,
+        "paper_data": {"paper": paper_data},
     }
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)

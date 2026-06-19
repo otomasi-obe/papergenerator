@@ -11,9 +11,10 @@ import re
 import threading
 import uuid
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import redis
-from flask import Blueprint, Response, request, stream_with_context, jsonify
+from flask import Blueprint, Response, request, stream_with_context, jsonify, send_file
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from sqlalchemy import desc
@@ -64,8 +65,13 @@ def _stream_key(conv_id: str) -> str:
     return f"chat:stream:{conv_id}"
 
 
+def _cancel_key(conv_id: str) -> str:
+    """Redis key for cancel flag — separate from stream state to avoid overwrite."""
+    return f"chat:cancel:{conv_id}"
+
+
 def _gen_id():
-    return uuid.uuid4().hex[:16]
+    return uuid.uuid4().hex[:12]
 
 
 def _current_user_id() -> int | None:
@@ -121,12 +127,25 @@ def get_paper_context(paper_id: str | None) -> str:
     if not paper:
         return f"Paper ID: {paper_id}\n(Paper not found in database.)"
 
-    data = paper.data if isinstance(paper.data, dict) else {}
+    data = dict(paper.data) if isinstance(paper.data, dict) else {}
     if not data:
         return f"Paper: {paper.title or 'Untitled'}\nPaper ID: {paper_id}\n(Paper data is empty — belum ada konten.)"
 
     # Always include paper_id in the context for [APPLY_PAPER] operations
     data["_paper_id"] = paper_id
+
+    # Normalize keyed sections → "sections" array so AI sees consistent format
+    try:
+        from tools.chat.tools import normalize_paper_to_array
+        normalize_paper_to_array(data)
+        # Strip keyed entries + internal metadata to avoid duplication in context
+        import re as _re
+        for key in list(data.keys()):
+            if _re.match(r'^section\d+[a-z]?$', key):
+                del data[key]
+        data.pop("_section_keys", None)
+    except Exception as e:
+        log.warning("Failed to normalize paper data for %s: %s", paper_id, e)
 
     # Serialize full paper data
     try:
@@ -155,7 +174,14 @@ def get_paper_context(paper_id: str | None) -> str:
     result = json.dumps(d, indent=2, ensure_ascii=False)
     if len(result) <= MAX_CONTEXT:
         if truncated:
-            result += "\n// Beberapa konten section dipotong. Gunakan [APPLY_PAPER] untuk membaca/mengedit section lengkap."
+            # Embed truncation note as a JSON property instead of appending
+            # (appending after closing brace creates invalid JSON)
+            d["_truncated"] = "Beberapa konten section dipotong. Gunakan [APPLY_PAPER] untuk membaca/mengedit section lengkap."
+            result = json.dumps(d, indent=2, ensure_ascii=False)
+            if len(result) > MAX_CONTEXT:
+                # Still too big after adding note — remove and append silently
+                d.pop("_truncated", None)
+                result = json.dumps(d, indent=2, ensure_ascii=False)
         return result
 
     # Step 2: trim references (keep 40)
@@ -175,7 +201,11 @@ def get_paper_context(paper_id: str | None) -> str:
     result = json.dumps(d, indent=2, ensure_ascii=False)
     if len(result) <= MAX_CONTEXT:
         if truncated:
-            result += "\n// Paper context dipotong. Gunakan [APPLY_PAPER] untuk mengedit section di luar konteks yang terlihat."
+            d["_truncated"] = "Paper context dipotong. Gunakan [APPLY_PAPER] untuk mengedit section di luar konteks yang terlihat."
+            result = json.dumps(d, indent=2, ensure_ascii=False)
+            if len(result) > MAX_CONTEXT:
+                d.pop("_truncated", None)
+                result = json.dumps(d, indent=2, ensure_ascii=False)
         return result
 
     # Step 3: harder trim (1000 chars per text block)
@@ -185,7 +215,10 @@ def get_paper_context(paper_id: str | None) -> str:
                 block["text"] = block["text"][:1000] + "... [dipotong]"
 
     result = json.dumps(d, indent=2, ensure_ascii=False)
-    result += "\n// [Truncated: sections beyond 80K chars not shown — some content was aggressively trimmed. Use [APPLY_PAPER] to edit specific sections.]"
+    if len(result) > MAX_CONTEXT:
+        # If still oversized even after trimming, embed note as property
+        d["_truncated"] = "Paper context melebihi 80K chars — beberapa section telah dipangkas. Gunakan [APPLY_PAPER] untuk mengedit section spesifik."
+        result = json.dumps(d, indent=2, ensure_ascii=False)
     return result
 
 
@@ -424,11 +457,8 @@ def send_message(conv_id: str):
             institution = current_user.institution or ""
             if institution:
                 user_prefs.append(f"- Institusi user: **{institution}**")
+            # Language: paper-level > user-level > default 'id'
             lang = current_user.preferred_language or "id"
-            if lang == "en":
-                user_prefs.append("- SELALU gunakan Bahasa Inggris (English) untuk respons dan penulisan paper, kecuali user meminta bahasa lain.")
-            else:
-                user_prefs.append("- Gunakan Bahasa Indonesia sebagai bahasa utama untuk respons dan penulisan paper.")
             if user_prefs:
                 system_content += "## User Preferences\n" + "\n".join(user_prefs) + "\n\n"
     except Exception as e:
@@ -441,6 +471,53 @@ def send_message(conv_id: str):
                 system_content += f"## Paper Context\nBerikut adalah data JSON lengkap paper user saat ini (selalu up-to-date dari database):\n\n```json\n{paper_block}\n```\n\n"
         except Exception as e:
             log.warning("Failed to build paper context for %s: %s", conv.paper_id, e)
+
+    # Resolve language: paper data > user DB > default "id"
+    resolved_lang = "id"
+    try:
+        if conv.paper_id:
+            paper_obj = Paper.query.get(conv.paper_id)
+            if paper_obj and isinstance(paper_obj.data, dict):
+                paper_lang = paper_obj.data.get("language")
+                if paper_lang in ("en", "id"):
+                    resolved_lang = paper_lang
+        if resolved_lang == "id":
+            try:
+                from database.models import User as _UM
+                _u = _UM.query.get(user_id)
+                if _u and _u.preferred_language in ("en", "id"):
+                    resolved_lang = _u.preferred_language
+            except Exception:
+                pass
+    except Exception as e:
+        log.warning("Failed to resolve language: %s", e)
+
+    # Inject language directive
+    if resolved_lang == "en":
+        lang_instruction = "## ⚠️ LANGUAGE\nSELALU gunakan Bahasa Inggris (English) untuk respons dan penulisan paper. Jika user menulis dalam bahasa Indonesia, tetap jawab dengan English. Editor output WAJIB English.\n\n"
+    else:
+        lang_instruction = "## ⚠️ BAHASA\nGunakan Bahasa Indonesia sebagai bahasa utama untuk respons dan penulisan paper. Jika user menulis dalam English, tetap jawab dengan Bahasa Indonesia. Editor output WAJIB Bahasa Indonesia.\n\n"
+    system_content += lang_instruction
+
+    # Inject citation style guide from paper data
+    try:
+        if conv.paper_id:
+            if paper_obj and isinstance(paper_obj.data, dict):
+                cs = paper_obj.data.get("citation_style")
+                if cs:
+                    ALLOWED_CITATION_STYLES = {"IEEE", "APA", "MLA", "CHICAGO", "HARVARD", "VANCOUVER", "ACS"}
+                    if cs.upper() not in ALLOWED_CITATION_STYLES:
+                        log.warning("Invalid citation style: %s", cs)
+                        cs = None
+                    if cs:
+                        from pathlib import Path as _CSPath
+                        style_dir = _CSPath(__file__).resolve().parent.parent / "paperfull" / "prompt" / "style"
+                        style_file = style_dir / f"{cs.upper()}.txt"
+                        if style_file.exists():
+                            system_content += f"## CITATION STYLE GUIDE — {cs.upper()}\n{style_file.read_text(encoding='utf-8')}\n\n"
+                            log.info("Injected citation style %s into chat for paper=%s", cs, conv.paper_id)
+    except Exception as e:
+        log.warning("Failed to inject citation style into chat: %s", e)
 
     # ── @slr tag: inject pinned literature into system prompt ────────────
     # User ketik @slr di pesan → ambil literatur yang di-pin dan injeksi
@@ -472,28 +549,78 @@ def send_message(conv_id: str):
     # and inject as context. Tag removed from message before AI call.
     draft_tag_detected = False
     if conv.paper_id:
-        # BUG-23: Limit input before regex to prevent ReDoS (max 500 chars)
+        # BUG-23: Limit input before parsing to prevent ReDoS (max 500 chars)
         _draft_search_input = content[:500]
-        # Match "@draft name" or "@draft name1,name2" (comma-separated names)
-        draft_match = re.search(r"@draft\s+([^\s@]+(?:\s*,\s*[^\s@]+)*)", _draft_search_input, flags=re.IGNORECASE)
-        if draft_match:
-            draft_tag_detected = True
-            raw_names = draft_match.group(1)
-            # Split by comma, strip, filter empty
-            names = [n.strip() for n in raw_names.split(",") if n.strip()]
-            # Remove the whole "@draft ..." from user content
-            content = content[: draft_match.start()].strip() + " " + content[draft_match.end():].strip()
-            content = re.sub(r"\s+", " ", content).strip()
-            try:
-                from tools.chat.drafts import get_drafts_by_names
-                draft_block = get_drafts_by_names(conv.paper_id, user_id, names, max_items=5)
-                if draft_block:
-                    system_content += f"## Chat Drafts (user-curated context)\n{draft_block}\n\n"
-                    log.info("@draft tag: injected %d draft(s) for paper=%s names=%s", draft_block.count("### Draft:"), conv.paper_id, names)
-                else:
-                    log.info("@draft tag: no matching drafts found for names=%s paper=%s", names, conv.paper_id)
-            except Exception as e:
-                log.warning("@draft tag: failed to load drafts: %s", e)
+        # Non-regex parse: find "@draft" token, take the rest of that line as
+        # a comma-separated list of names. Avoids the nested-quantifier regex
+        # r"@draft\s+([^\s@]+(?:\s*,\s*[^\s@]+)*)" which is ReDoS-prone.
+        _lower = _draft_search_input.lower()
+        _tag_pos = _lower.find("@draft")
+        if _tag_pos != -1:
+            # Position just after the literal "@draft"
+            _after = _tag_pos + len("@draft")
+            _rest = _draft_search_input[_after:]
+            # Names must be preceded by whitespace ("@draft name", not "@drafting")
+            if _rest[:1] in (" ", "\t"):
+                _stripped = _rest.lstrip(" \t")
+                _consumed_ws = len(_rest) - len(_stripped)
+                # Consume a contiguous comma-separated list of name tokens.
+                # A name token = run of non-space, non-comma, non-@ chars.
+                # Optional spaces are allowed only immediately around commas.
+                # Linear scan (no regex backtracking) → no ReDoS.
+                i = 0
+                names: list[str] = []
+                cur = []
+                n = len(_stripped)
+                while i < n:
+                    ch = _stripped[i]
+                    if ch in (" ", "\t"):
+                        # Look ahead: spaces are part of the list only if a comma
+                        # follows (possibly after more spaces). Otherwise the list ends.
+                        j = i
+                        while j < n and _stripped[j] in (" ", "\t"):
+                            j += 1
+                        if j < n and _stripped[j] == ",":
+                            i = j  # jump to the comma; comma handler advances
+                            continue
+                        break  # end of name list
+                    if ch == ",":
+                        if cur:
+                            names.append("".join(cur))
+                            cur = []
+                        i += 1
+                        # skip spaces after comma
+                        while i < n and _stripped[i] in (" ", "\t"):
+                            i += 1
+                        continue
+                    if ch == "@" or ch == "\n":
+                        break
+                    cur.append(ch)
+                    i += 1
+                if cur:
+                    names.append("".join(cur))
+                names = [x.strip() for x in names if x.strip()]
+                # Total chars consumed from the original (post-@draft) rest string
+                _match_len = len("@draft") + _consumed_ws + i
+            else:
+                names = []
+                _match_len = 0
+            if names:
+                draft_tag_detected = True
+                # Remove the whole "@draft ..." span from user content
+                _match_end = _tag_pos + _match_len
+                content = (content[:_tag_pos].strip() + " " + content[_match_end:].strip()).strip()
+                content = re.sub(r"\s+", " ", content).strip()
+                try:
+                    from tools.chat.drafts import get_drafts_by_names
+                    draft_block = get_drafts_by_names(conv.paper_id, user_id, names, max_items=5)
+                    if draft_block:
+                        system_content += f"## Chat Drafts (user-curated context)\n{draft_block}\n\n"
+                        log.info("@draft tag: injected %d draft(s) for paper=%s names=%s", draft_block.count("### Draft:"), conv.paper_id, names)
+                    else:
+                        log.info("@draft tag: no matching drafts found for names=%s paper=%s", names, conv.paper_id)
+                except Exception as e:
+                    log.warning("@draft tag: failed to load drafts: %s", e)
 
     # ── @tabel / @grafik tag: inject data items into system prompt ──────
     # User ketik @tabel atau @grafik di pesan → ambil data items dari paper
@@ -667,6 +794,15 @@ def send_message(conv_id: str):
         except Exception as e:
             log.warning("Failed to trigger SLR from chat: %s", e)
 
+    # Pre-fetch chat history outside generator (avoids DB query mid-stream)
+    _history = (
+        ChatMessage.query.filter_by(conversation_id=conv.id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    _history.reverse()
+
     def generate():
         assistant_content = ""
         thinking_content = ""
@@ -722,7 +858,8 @@ def send_message(conv_id: str):
             """
             nonlocal _finalized, model_used
             out = {"message_id": None, "content": final_content,
-                   "paper_applied": None, "ask_user": None, "empty": False}
+                   "paper_applied": None, "ask_user": None, "empty": False,
+                   "docx_url": None, "docx_filename": None}
             if _finalized:
                 return out
             _finalized = True
@@ -731,19 +868,58 @@ def send_message(conv_id: str):
                 content = final_content or ""
                 if parsed["has_operations"] and conv.paper_id:
                     try:
-                        result = apply_operations(conv.paper_id, parsed["operations"])
+                        result = apply_operations(conv.paper_id, parsed["operations"], user_id=user_id)
                         out["paper_applied"] = {
                             "operations": parsed["operations"],
-                            "results": result.get("results"),
-                            "errors": result.get("errors"),
+                            "results": result.get("results", []),
+                            "errors": result.get("errors", []),
+                            "success": result.get("success", False),
                         }
-                    except Exception:
+                    except Exception as e:
                         log.exception("apply_operations failed during finalize")
+                        out["paper_applied"] = {
+                            "operations": parsed["operations"],
+                            "results": [],
+                            "errors": ["Apply gagal: Internal server error"],
+                            "success": False,
+                        }
                     content = parsed["cleaned_text"] or content
                 if parsed["has_ask_user"] and parsed["ask_user"]:
                     out["ask_user"] = parsed["ask_user"]
                     if parsed["cleaned_text"]:
                         content = parsed["cleaned_text"]
+
+                # ── [GENERATE_DOCX]: Render JSON spec to .docx file ──────
+                if parsed["has_docx"] and parsed["docx_spec"]:
+                    try:
+                        from tools.chat.docx_renderer import render_docx
+                        import re as _re
+                        from pathlib import Path as _Path
+
+                        docx_spec = parsed["docx_spec"]
+                        safe_title = _re.sub(r'[^a-zA-Z0-9_\-]+', '_', str(docx_spec.get("title", "document"))).strip("_")[:60] or "document"
+                        ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+                        docx_filename = f"{safe_title}_{ts}.docx"
+
+                        # Storage path: user/<username>/<paper_id>/chat_docs/<conv_id>/
+                        if conv.paper_id:
+                            from utils.core.user_storage import get_username as _get_uname
+                            _uname = _get_uname(user_id=user_id)
+                        else:
+                            _uname = f"user_{user_id}"
+                        # USER_BASE defined at module level (same as main.py)
+                        _chat_docs_dir = _Path(__file__).resolve().parent.parent.parent / "user" / _uname / (conv.paper_id or "global") / "chat_docs" / conv_id
+                        _chat_docs_dir.mkdir(parents=True, exist_ok=True)
+                        _docx_path = _chat_docs_dir / docx_filename
+
+                        render_docx(docx_spec, _docx_path)
+                        out["docx_url"] = f"/api/chat/conversations/{conv_id}/files/{docx_filename}"
+                        out["docx_filename"] = docx_filename
+                        log.info("GENERATE_DOCX: rendered %s (%d bytes)", docx_filename, _docx_path.stat().st_size)
+                    except Exception as docx_err:
+                        log.warning("GENERATE_DOCX rendering failed: %s", docx_err)
+                        # Don't fail the whole response — just log the error
+
                 out["content"] = content
 
                 if content and content.strip():
@@ -763,7 +939,7 @@ def send_message(conv_id: str):
                                 thinking=thinking if thinking else None,
                             )
                             db.session.add(msg)
-                            db.session.commit()
+                            safe_commit()
                             mid = msg.id
                             break
                         except (OperationalError, DBAPIError) as _e:
@@ -882,15 +1058,7 @@ def send_message(conv_id: str):
             # Build message list: system + history + current user message
             messages_phase1 = [{"role": "system", "content": system_content}]
 
-            # Include recent history (last 20 messages)
-            history = (
-                ChatMessage.query.filter_by(conversation_id=conv.id)
-                .order_by(ChatMessage.created_at.desc())
-                .limit(20)
-                .all()
-            )
-            history.reverse()
-            for msg in history:
+            for msg in _history:
                 role = msg.role if msg.role in ("user", "assistant") else "user"
                 messages_phase1.append({"role": role, "content": msg.content})
 
@@ -907,10 +1075,11 @@ def send_message(conv_id: str):
                 json={
                     "messages": messages_phase1,
                     "stream": True,
-                    "max_tokens": 8192,
+                    "max_tokens": 65536,
+                    "reasoning": {"effort": "high"},
                 },
                 stream=True,
-                timeout=900,
+                timeout=1800,
             )
 
             for line in response_p1.iter_lines():
@@ -999,14 +1168,12 @@ def send_message(conv_id: str):
                                 _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
                             except Exception:
                                 pass
-                            # Check cancel using the same fetch cadence
+                            # Check cancel using separate key (never overwritten by generator)
                             try:
-                                _raw = _r.get(_stream_key(conv_id))
-                                if _raw:
-                                    _st = json.loads(_raw)
-                                    if _st.get("status") == "cancelled":
-                                        yield _sse("done", {"message_id": None, "cancelled": True})
-                                        return
+                                _cancel_raw = _r.get(_cancel_key(conv_id))
+                                if _cancel_raw:
+                                    yield _sse("done", {"message_id": None, "cancelled": True})
+                                    return
                             except (json.JSONDecodeError, KeyError):
                                 pass
                 # Update Redis state
@@ -1014,6 +1181,11 @@ def send_message(conv_id: str):
                 try:
                     if _r:
                         _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                except Exception:
+                    pass
+                # Close phase 1 response to release the underlying socket
+                try:
+                    response_p1.close()
                 except Exception:
                     pass
 
@@ -1064,7 +1236,7 @@ def send_message(conv_id: str):
                 phase2_system = system_content + "\n\n" + search_results_context
 
                 messages_phase2 = [{"role": "system", "content": phase2_system}]
-                for msg in history:
+                for msg in _history:
                     role = msg.role if msg.role in ("user", "assistant") else "user"
                     messages_phase2.append({"role": role, "content": msg.content})
 
@@ -1080,10 +1252,11 @@ def send_message(conv_id: str):
                     json={
                         "messages": messages_phase2,
                         "stream": True,
-                        "max_tokens": 8192,
+                        "max_tokens": 65536,
+                        "reasoning": {"effort": "high"},
                     },
                     stream=True,
-                    timeout=900,
+                    timeout=1800,
                 )
 
                 for line in response_p2.iter_lines():
@@ -1116,15 +1289,13 @@ def send_message(conv_id: str):
                                 _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
                         except Exception:
                             pass
-                        # Check cancel every ~20 tokens
+                        # Check cancel every ~20 tokens using separate key
                         if _token_count % 20 == 0 and _r:
                             try:
-                                _raw = _r.get(_stream_key(conv_id))
-                                if _raw:
-                                    _st = json.loads(_raw)
-                                    if _st.get("status") == "cancelled":
-                                        yield _sse("done", {"message_id": None, "cancelled": True})
-                                        return
+                                _cancel_raw = _r.get(_cancel_key(conv_id))
+                                if _cancel_raw:
+                                    yield _sse("done", {"message_id": None, "cancelled": True})
+                                    return
                             except (json.JSONDecodeError, KeyError):
                                 pass
                     thinking_raw = (
@@ -1181,9 +1352,9 @@ def send_message(conv_id: str):
                         {"role": "user", "content": thinking_content[-4000:]},
                     ]
                     fb_resp, _ = route_chat_call(
-                        json={"messages": fallback_messages, "stream": False, "max_tokens": 4096},
+                        json={"messages": fallback_messages, "stream": False, "max_tokens": 65536},
                         stream=False,
-                        timeout=120,
+                        timeout=1800,
                     )
                     fb_choices = fb_resp.json().get("choices", [])
                     if fb_choices:
@@ -1246,8 +1417,19 @@ def send_message(conv_id: str):
                 yield _sse("ask_user", _fin["ask_user"])
                 yield _sse("replace_text", {"content": _fin["content"]})
 
+            # Emit docx_ready event with download URL
+            if _fin.get("docx_url"):
+                yield _sse("docx_ready", {
+                    "url": _fin["docx_url"],
+                    "filename": _fin["docx_filename"],
+                })
+
             if _fin.get("message_id"):
-                yield _sse("done", {"message_id": _fin["message_id"]})
+                done_data = {"message_id": _fin["message_id"]}
+                if _fin.get("docx_url"):
+                    done_data["file_url"] = _fin["docx_url"]
+                    done_data["file_name"] = _fin["docx_filename"]
+                yield _sse("done", done_data)
             elif _fin.get("empty"):
                 yield _sse("error", {"message": "AI returned an empty response."})
             else:
@@ -1274,7 +1456,7 @@ def send_message(conv_id: str):
                 log.warning("Rollback failed: %s", rb_err)
             # Mark stream as error in Redis
             stream_state["status"] = "error"
-            stream_state["error"] = str(e)[:200]
+            stream_state["error"] = "Terjadi kesalahan pada server"
             try:
                 if _r:
                     _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
@@ -1296,6 +1478,7 @@ def send_message(conv_id: str):
             else:
                 msg = "AI belum berhasil merespons. Coba lagi atau ubah permintaan Anda."
             yield _sse("error", {"message": msg})
+            yield _sse("done", {"message_id": None, "error": msg})
 
     return Response(
         stream_with_context(generate()),
@@ -1354,8 +1537,9 @@ def get_stream_status(conv_id: str):
 def cancel_stream(conv_id: str):
     """Cancel an active streaming session.
     
-    Marks the stream as 'cancelled' in Redis so the backend knows to stop.
-    The actual cancellation happens when the streaming generator checks the flag.
+    Sets the cancel flag in a separate Redis key (never overwritten by the
+    streaming generator) so the backend can reliably detect cancellation.
+    Also marks the stream state as 'cancelled' for frontend polling.
     """
     user_id = _current_user_id()
     if user_id is None:
@@ -1368,7 +1552,10 @@ def cancel_stream(conv_id: str):
 
     try:
         _r = get_redis()
-        raw = _r.get(_stream_key(conv_id)) if _r else None
+        if not _r:
+            return jsonify({"error": "Redis unavailable"}), 500
+
+        raw = _r.get(_stream_key(conv_id))
         if not raw:
             return jsonify({"status": "not_found", "message": "No active stream"})
         
@@ -1376,11 +1563,13 @@ def cancel_stream(conv_id: str):
         if state.get("status") != "streaming":
             return jsonify({"status": state.get("status"), "message": "Stream not active"})
         
-        # Mark as cancelled
+        # Mark as cancelled in BOTH keys:
+        # - stream key for frontend polling
+        # - cancel key for generator to detect (never overwritten by generator writes)
         state["status"] = "cancelled"
         state["cancelled_at"] = datetime.now(timezone.utc).isoformat()
-        if _r:
-            _r.setex(_stream_key(conv_id), 60, json.dumps(state))
+        _r.setex(_stream_key(conv_id), 60, json.dumps(state))
+        _r.setex(_cancel_key(conv_id), 60, "1")
         
         return jsonify({"status": "cancelled", "message": "Stream cancelled successfully"})
     except Exception as e:
@@ -1469,3 +1658,97 @@ def get_faq_analytics():
         "period": period,
         "total_messages": total_messages,
     })
+
+
+# ── Chat DOCX File Serving ─────────────────────────────────────────────────
+
+@simple_chat.route("/api/chat/conversations/<conv_id>/files/<filename>", methods=["GET"])
+@jwt_required()
+def serve_chat_docx_file(conv_id: str, filename: str):
+    """Serve a generated chat DOCX file."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Invalid user"}), 401
+
+    # Verify conversation ownership
+    conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    # Security: prevent path traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        return jsonify({"error": "Invalid filename"}), 400
+
+    # Build file path
+    try:
+        from utils.core.user_storage import get_username as _get_uname
+        uname = _get_uname(user_id=user_id)
+    except Exception:
+        uname = f"user_{user_id}"
+
+    base = Path(__file__).resolve().parent.parent.parent / "user" / uname
+    chat_docs_dir = base / (conv.paper_id or "global") / "chat_docs" / conv_id
+    file_path = chat_docs_dir / filename
+
+    if not file_path.exists():
+        return jsonify({"error": "File not found"}), 404
+
+    download_name = filename
+    return send_file(
+        str(file_path),
+        as_attachment=True,
+        download_name=download_name,
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+@simple_chat.route("/api/chat/conversations/<conv_id>/generate-docx", methods=["POST"])
+@jwt_required()
+def generate_chat_docx(conv_id: str):
+    """Generate a DOCX file from a JSON spec, save it, and return download URL.
+
+    Request body: the full JSON spec (same format as [GENERATE_DOCX] tag content).
+    Returns: {"url": "/api/chat/.../files/...", "filename": "..."}
+    """
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Invalid user"}), 401
+
+    conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    spec = request.get_json(silent=True)
+    if not spec or not isinstance(spec, dict):
+        return jsonify({"error": "Invalid JSON spec"}), 400
+
+    try:
+        from tools.chat.docx_renderer import render_docx
+        from pathlib import Path as _Path
+
+        safe_title = re.sub(r'[^a-zA-Z0-9_\-]+', '_', str(spec.get("title", "document"))).strip("_")[:60] or "document"
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        docx_filename = f"{safe_title}_{ts}.docx"
+
+        try:
+            from utils.core.user_storage import get_username as _get_uname
+            uname = _get_uname(user_id=user_id)
+        except Exception:
+            uname = f"user_{user_id}"
+
+        base = Path(__file__).resolve().parent.parent.parent / "user" / uname
+        chat_docs_dir = base / (conv.paper_id or "global") / "chat_docs" / conv_id
+        chat_docs_dir.mkdir(parents=True, exist_ok=True)
+        docx_path = chat_docs_dir / docx_filename
+
+        render_docx(spec, docx_path)
+        docx_url = f"/api/chat/conversations/{conv_id}/files/{docx_filename}"
+
+        return jsonify({
+            "url": docx_url,
+            "filename": docx_filename,
+            "size": docx_path.stat().st_size,
+        })
+    except Exception as e:
+        log.exception("generate_chat_docx failed")
+        return jsonify({"error": "Internal server error"}), 500

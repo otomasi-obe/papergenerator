@@ -1,7 +1,8 @@
+[INFO] Menggunakan _template.json default (/home/sirobo/ANNABIL/Project Papergenerator_Annabil/papergenerator/backend/template/A FIX/A Script/_template.json)
 ============================================================
-[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT
-  Base: 100 | Penalty: -0 | Akhir: 100%
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base: 100 | Penalty: -190 | Akhir: 0%
+   - Placeholder/Prompt Gambar Salah (MINOR): -5 x 10 = -50
+   - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 14 = -140
 ============================================================
-[INFO] WARNING: Skor 100% tapi ditemukan 1 kejanggalan visual.
-[INFO] Master prompt perbaikan ditulis: audit-unik_IJB.txt
 Audit selesai. Detail tersimpan: audit_IJB_output.txt

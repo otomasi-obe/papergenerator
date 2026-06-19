@@ -116,7 +116,7 @@ def configure_app(app):
     # but multipart uploads bundle all selected files in one POST so 4 PDFs of
     # ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
     # can ride the same multipart payload (form overhead included).
-    app.config["MAX_CONTENT_LENGTH"] = 60 * 1024 * 1024  # 60MB max upload
+    app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB total upload (unrestricted)
 
     return _in_tests
 

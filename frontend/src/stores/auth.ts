@@ -16,7 +16,8 @@ interface User {
 export const useAuthStore = defineStore('auth', () => {
   let _user: User | null = null
   try {
-    _user = JSON.parse(localStorage.getItem('user') || 'null')
+    const stored = localStorage.getItem('pg_user')
+    if (stored) _user = JSON.parse(stored)
   } catch { _user = null }
   const user = ref<User | null>(_user)
   const _loaded = ref(false)
@@ -29,9 +30,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = userData
     try {
       if (userData) {
-        localStorage.setItem('user', JSON.stringify(userData))
+        localStorage.setItem('pg_user', JSON.stringify(userData))
       } else {
-        localStorage.removeItem('user')
+        localStorage.removeItem('pg_user')
       }
     } catch {
       // localStorage can throw (quota, private browsing, security restrictions)
@@ -75,8 +76,6 @@ export const useAuthStore = defineStore('auth', () => {
     setUser(null)
     window.location.href = '/'
   }
-
-  fetchMe()
 
   return { user, isLoggedIn, isAdmin, setUser, fetchMe, loginWithGoogle, logout, _loaded }
 })

@@ -58,7 +58,7 @@ def _default_api_call(
     payload = kwargs.pop("json", {}) or {}
     payload.setdefault("model", model)
 
-    timeout = kwargs.pop("timeout", 180)
+    timeout = kwargs.pop("timeout", 1800)
 
     # SSL verify: skip if env var set (upstream cert may be self-signed/expired)
     verify = kwargs.pop("verify", None)
@@ -123,7 +123,7 @@ def _route(
             except Exception as e:  # noqa: BLE001
                 last_err = e
                 err_str = str(e).lower()
-                if re.search(r"\b(40[0134])\b", err_str):
+                if re.search(r"\b(40[0134]|429)\b", err_str):
                     log.warning("%s non-retryable index=%d %s: %s", label, idx, model, e)
                     cb.record_failure()
                     break

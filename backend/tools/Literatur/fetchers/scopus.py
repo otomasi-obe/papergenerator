@@ -47,12 +47,21 @@ def _parse_entry(entry: dict) -> Paper | None:
     elif "book" in agg_type:
         venue_type = "book"
 
+    # Scopus search API returns abstracts via dc:description field
+    abstract = entry.get("dc:description") or entry.get("prism:teaser")
+    # Clean HTML/XML tags from abstract
+    if abstract:
+        import re as _re, html as _html
+        abstract = _re.sub(r"<[^>]+>", " ", abstract)
+        abstract = _html.unescape(abstract)
+        abstract = " ".join(abstract.split()).strip() or None
+
     return Paper(
         source="scopus",
         source_id=scopus_id,
         title=title,
         authors=authors,
-        abstract=None,  # Scopus search API doesn't return abstracts
+        abstract=abstract,
         year=year,
         venue=entry.get("prism:publicationName"),
         venue_type=venue_type,

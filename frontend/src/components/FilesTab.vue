@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
       <div>
         <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Files</h2>
-        <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD / XLSX / XLS / CSV / PPTX — max 30MB per file. Bisa upload banyak file sekaligus.</p>
+        <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD / XLSX / XLS / CSV / PPTX — tanpa batasan ukuran file. Bisa upload banyak file sekaligus.</p>
       </div>
       <div class="flex items-center gap-2">
         <input
@@ -139,7 +139,7 @@ interface FileItem {
 
 const store = usePaperStore()
 
-const MAX_FILE_SIZE = 30 * 1024 * 1024
+const MAX_FILE_SIZE = 1024 * 1024 * 1024  // 1GB per file (unrestricted)
 
 const files = ref<FileItem[]>([])
 const loading = ref(false)
@@ -215,7 +215,7 @@ async function onFileChange(e: Event): Promise<void> {
   const oversized = list.filter(f => f.size > MAX_FILE_SIZE)
   if (oversized.length > 0) {
     const names = oversized.map(f => f.name).join(', ')
-    warning.value = `File terlalu besar (max 30MB): ${names}`
+    warning.value = `File terlalu besar: ${names}`
     if (oversized.length === list.length) return
   }
 

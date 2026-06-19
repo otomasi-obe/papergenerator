@@ -406,7 +406,7 @@ def add_section_heading(doc, title):
     set_para_spacing(p, before_pt=6, after_pt=3)
     display = title.upper() if CFG["section_heading_upper"] else title
     run = p.add_run(display)
-    set_run_font(run, CFG["font_heading"], CFG["size_heading1"], bold=True)
+    set_run_font(run, CFG["font_heading"], CFG["size_heading1"], bold=True, color=(0x94, 0x36, 0x34, color=(0x94, 0x36, 0x34)))
 
 
 def add_subsection_heading(doc, title):
@@ -474,17 +474,63 @@ def add_figure(doc, fig_data, fig_counter):
     title = _clean_latex(str(fig_data.get("Title", f"Figure {fig_no}")).strip())
     prompt_hint = _clean_latex(str(fig_data.get("Prompt", "")).strip())
 
-    # AI prompt (red italic)
+    image_path_str = str(fig_data.get("Path", "")).strip()
+    image_url = str(fig_data.get("url", "")).strip()
+    has_image = fig_data.get("hasImage", False)
+
+    # ── Resolve actual image file ────────────────────────────────────────
+    actual_image = None
+    if image_path_str or image_url:
+        candidates = []
+
+        # 1) Absolute path
+        if image_path_str and os.path.isabs(image_path_str):
+            candidates.append(Path(image_path_str))
+
+        # 2) Relative to TEMPLATE_JSON's image/ sibling folder
+        try:
+            json_dir = Path(str(TEMPLATE_JSON)).parent
+            paper_dir = json_dir.parent
+            image_dir = paper_dir / "image"
+            if image_dir.is_dir() and image_path_str:
+                candidates.append(image_dir / image_path_str)
+                stem = os.path.splitext(image_path_str)[0]
+                if stem:
+                    for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+                        candidates.append(image_dir / f"{stem}{ext}")
+        except Exception:
+            pass
+
+        # 3) Direct path from fig_data
+        if image_path_str:
+            candidates.append(Path(image_path_str))
+
+        for cand in candidates:
+            if cand.exists() and cand.is_file():
+                actual_image = cand
+                break
+
+    # ── Embed gambar atau fallback prompt ────────────────────────────────
     p_img = doc.add_paragraph()
     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_para_spacing(p_img, before_pt=3, after_pt=3)
-    dyn_prompt = prompt_hint or (
-        f"Buatkan gambar/diagram/ilustrasi teknis yang merepresentasikan "
-        f"'{title}'. Pastikan visualnya profesional dan cocok untuk jurnal akademik."
-    )
-    prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {dyn_prompt}]"
-    run = p_img.add_run(prompt_text)
-    set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
+
+    if actual_image:
+        try:
+            run_img = p_img.add_run()
+            run_img.add_picture(str(actual_image), width=Inches(5.5))
+        except Exception:
+            actual_image = None
+
+    if not actual_image:
+        # AI prompt fallback (red italic)
+        dyn_prompt = prompt_hint or (
+            f"Buatkan gambar/diagram/ilustrasi teknis yang merepresentasikan "
+            f"'{title}'. Pastikan visualnya profesional dan cocok untuk jurnal akademik."
+        )
+        prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {dyn_prompt}]"
+        run = p_img.add_run(prompt_text)
+        set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
 
     # Caption
     p_cap = doc.add_paragraph()
@@ -498,7 +544,7 @@ def add_figure(doc, fig_data, fig_counter):
 
 def add_table_element(doc, tbl_data, tbl_counter):
     tbl_no = str(tbl_data.get("TableNumber", tbl_counter)).strip()
-    title = _clean_latex(str(tbl_data.get("Title", f"Table {tbl_no}")).strip())
+    title = _clean_latex(_clean_latex(_clean_latex(str(tbl_data.get("Title", f"Table {tbl_no}")).strip())))
     headers = tbl_data.get("Headers", [])
     rows = tbl_data.get("Rows", [])
 
@@ -678,7 +724,9 @@ def generate():
     n_breaks = clear_body(doc)
 
     # Generate content
-    add_title(doc, data)
+    # Masthead inject
+    _inject_masthead_content(doc, data)
+    # add_title(doc, data) — replaced by inject
     add_authors(doc, data)
     add_abstract(doc, data)
     add_keywords(doc, data)
@@ -702,7 +750,9 @@ def generate():
         insert_before = body.find(qn("w:sectPr"))
 
     # Generate title block
-    add_title(doc, data)
+    # Masthead inject
+    _inject_masthead_content(doc, data)
+    # add_title(doc, data) — replaced by inject
     add_authors(doc, data)
     add_abstract(doc, data)
     add_keywords(doc, data)

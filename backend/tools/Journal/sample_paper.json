@@ -15,14 +15,21 @@
     }
   ],
   "abstract": "Machine learning has revolutionized healthcare by enabling predictive analytics, personalized treatment, and improved diagnostic accuracy. This paper provides a comprehensive review of machine learning applications in healthcare, covering supervised learning, unsupervised learning, and deep learning approaches. We examine recent advances in medical imaging, disease prediction, drug discovery, and patient monitoring. Our analysis reveals that machine learning models achieve high accuracy in various healthcare tasks, with deep learning showing particular promise in image-based diagnostics. However, challenges remain in data privacy, model interpretability, and clinical integration. We discuss future directions including federated learning, explainable AI, and real-time clinical decision support systems.",
-  "keywords": ["machine learning", "healthcare", "deep learning", "medical imaging", "predictive analytics", "clinical decision support"],
+  "keywords": [
+    "machine learning",
+    "healthcare",
+    "deep learning",
+    "medical imaging",
+    "predictive analytics",
+    "clinical decision support"
+  ],
   "section1": {
     "number": "1",
     "title": "Introduction",
     "content": [
       {
         "id": "text",
-        "text": "Healthcare systems worldwide face increasing challenges in managing growing patient populations, rising costs, and the need for personalized treatment approaches. Machine learning (ML) has emerged as a transformative technology that addresses these challenges by enabling data-driven decision making and automated pattern recognition in complex medical data."
+        "text": "Healthcare systems worldwide face increasing challenges in managing growing patient populations, rising costs, and the need for personalized treatment approaches. Machine learning (ML) has emerged as a transformative technology that addresses these challenges by enabling data-driven decision making and automated pattern recognition in complex medical data. Tabel I merangkum. Tabel II membandingkan."
       },
       {
         "id": "text",
@@ -101,12 +108,37 @@
           "id": "table",
           "TableNumber": "1",
           "Title": "Performance of ML Models in Medical Imaging",
-          "Headers": ["Task", "Model", "Accuracy", "Dataset Size"],
+          "Headers": [
+            "Task",
+            "Model",
+            "Accuracy",
+            "Dataset Size"
+          ],
           "Rows": [
-            ["Diabetic Retinopathy", "ResNet-50", "95.2%", "128,000"],
-            ["Lung Nodule Detection", "3D CNN", "92.8%", "45,000"],
-            ["Breast Cancer", "DenseNet", "94.5%", "60,000"],
-            ["Brain Tumor Segmentation", "U-Net", "91.3%", "35,000"]
+            [
+              "Diabetic Retinopathy",
+              "ResNet-50",
+              "95.2%",
+              "128,000"
+            ],
+            [
+              "Lung Nodule Detection",
+              "3D CNN",
+              "92.8%",
+              "45,000"
+            ],
+            [
+              "Breast Cancer",
+              "DenseNet",
+              "94.5%",
+              "60,000"
+            ],
+            [
+              "Brain Tumor Segmentation",
+              "U-Net",
+              "91.3%",
+              "35,000"
+            ]
           ]
         }
       ]
@@ -243,5 +275,6 @@
       "id": "5",
       "text": "Ching, T., Himmelstein, D. S., Beaulieu-Jones, B. K., Kalinin, A. A., Do, B. T., Way, G. P., ... & Greene, C. S. (2018). Opportunities and obstacles for deep learning in biology and medicine. Journal of The Royal Society Interface, 15(141), 20170387."
     }
-  ]
+  ],
+  "submitted": "1 January XXXX"
 }

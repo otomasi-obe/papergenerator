@@ -57,33 +57,6 @@
         </div>
       </div>
 
-      <!-- Language Section -->
-      <div class="bg-white dark:bg-ash-800 rounded-xl border border-cream-300 dark:border-ash-700 p-6 mb-6">
-        <h2 class="text-base font-semibold text-ink-900 dark:text-ink-50 mb-4">🌐 Bahasa & Gaya Penulisan</h2>
-        <p class="text-xs text-ink-500 dark:text-ink-300 mb-3">
-          AI akan menggunakan gaya bahasa ini saat menulis paper dan merespons chat.
-        </p>
-        <div class="grid grid-cols-2 gap-3">
-          <button
-            v-for="lang in langOptions"
-            :key="lang.value"
-            @click="form.preferred_language = lang.value"
-            :class="[
-              'flex items-center gap-3 p-4 rounded-lg border-2 transition-all active:scale-95 transition-transform',
-              form.preferred_language === lang.value
-                ? 'border-navy-500 dark:border-cream-300 bg-navy-50 dark:bg-navy-900/30'
-                : 'border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-900 hover:border-cream-400 dark:hover:border-ash-500',
-            ]"
-          >
-            <span class="text-2xl">{{ lang.icon }}</span>
-            <div class="text-left">
-              <div class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ lang.label }}</div>
-              <div class="text-[11px] text-ink-500 dark:text-ink-300">{{ lang.desc }}</div>
-            </div>
-          </button>
-        </div>
-      </div>
-
       <!-- Password Section -->
       <div class="bg-white dark:bg-ash-800 rounded-xl border border-cream-300 dark:border-ash-700 p-6 mb-6">
         <h2 class="text-base font-semibold text-ink-900 dark:text-ink-50 mb-4">🔒 Ganti Password</h2>
@@ -156,11 +129,6 @@ const router = useRouter()
 
 const saving = ref(false)
 const hasPassword = ref(false)
-
-const langOptions = [
-  { value: 'id', label: 'Bahasa Indonesia', icon: '🇮🇩', desc: 'Paper & chat dalam Bahasa Indonesia' },
-  { value: 'en', label: 'English', icon: '🔤', desc: 'Paper & chat in English' },
-]
 
 const form = reactive({
   name: '',

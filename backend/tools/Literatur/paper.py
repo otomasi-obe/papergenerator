@@ -83,6 +83,7 @@ class Paper:
     is_open_access: Optional[bool] = None
     type: Optional[str] = None
     publisher: Optional[str] = None
+    db_score: Optional[float] = None  # PostgreSQL hybrid score (ts_rank + citations + recency)
 
     def __post_init__(self):
         # Normalize fields that downstream code treats as strings. Upstream

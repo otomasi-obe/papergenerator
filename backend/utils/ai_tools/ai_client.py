@@ -59,7 +59,7 @@ def chat(
     heavy: bool = False,
     max_tokens: int = 4096,
     temperature: float | None = None,
-    timeout: int = 180,
+    timeout: int = 1800,
     retry_count: int | None = None,
     extra_payload: dict[str, Any] | None = None,
 ) -> tuple[str, str]:
@@ -141,7 +141,7 @@ def stream_chat(
     heavy: bool = False,
     max_tokens: int = 4096,
     temperature: float | None = None,
-    timeout: int = 180,
+    timeout: int = 1800,
     extra_payload: dict[str, Any] | None = None,
 ) -> Iterator[str]:
     """Streaming chat completion with per-index failover.

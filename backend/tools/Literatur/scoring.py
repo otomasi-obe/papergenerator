@@ -38,7 +38,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from .paper import Paper
-from .text_cleaner import clean_abstract, clean_title
+from .text_cleaner import clean_abstract, clean_title, detect_mojibake
 
 log = logging.getLogger(__name__)
 
@@ -128,24 +128,69 @@ def _venue_score(p: Paper) -> float:
 
 
 def _keyword_density_score(query: str, p: Paper) -> float:
-    """Bonus for papers whose title contains exact query terms.
+    """Bonus for papers whose title/abstract directly contain query terms.
 
-    Extracts meaningful terms (≥4 chars) from the query and checks how many
-    appear in the paper title. Returns 0.0–1.0 proportional to coverage.
+    Returns 0.0–1.0:
+    - Full query phrase in title → 1.0 (perfect match — mutlak paling relevan)
+    - Full query phrase in abstract → 0.8
+    - All meaningful terms in title → 0.7+
+    - Partial terms in title → proportional
+    - Terms only in abstract → lower score (0.2–0.5)
+
+    Abstract matching diperluas (sebelumnya title-only). User ingin
+    paper yang benar2 relate, bukan yang hanya menyebut 1 kata kunci.
     """
     title = (p.title or "").lower()
-    if not title:
+    abstract = (p.abstract or "").lower()
+    query_lower = query.lower().strip()
+
+    if not title and not abstract:
         return 0.0
-    # Extract meaningful terms (skip short stopwords and boolean operators)
-    _stopwords = {"and", "the", "for", "with", "from", "that", "this", "are", "was", "but", "not", "can", "all", "any", "has", "its", "may", "who", "which", "their"}
+
+    # Full phrase match in title → absolutely relevant
+    if query_lower in title:
+        return 1.0
+
+    # Full phrase match in abstract → very relevant
+    if query_lower in abstract:
+        return 0.8
+
+    # Individual term matching
+    _stopwords = {
+        "and", "the", "for", "with", "from", "that", "this", "are",
+        "was", "but", "not", "can", "all", "any", "has", "its", "may",
+        "who", "which", "their", "how", "what", "why", "use", "based",
+        "using", "study", "analysis", "approach", "method", "model",
+        "system", "data", "also", "been", "were", "will", "have",
+    }
     terms = [
-        t.lower() for t in re.findall(r"[a-zA-Z]{4,}", query)
+        t.lower() for t in re.findall(r"[a-zA-Z]{3,}", query_lower)
         if t.lower() not in _stopwords
     ]
     if not terms:
-        return 0.0
-    matched = sum(1 for t in terms if re.search(rf'\b{re.escape(t)}\b', title))
-    return min(1.0, matched / len(terms))
+        # Short query fallback
+        terms = [t.lower() for t in re.findall(r"[a-zA-Z0-9]{2,}", query_lower)]
+        if not terms:
+            return 0.0
+
+    n = len(terms)
+    # Title match counts 3x vs abstract match
+    title_matched = sum(1 for t in terms if re.search(rf'\b{re.escape(t)}\b', title))
+    abs_matched = sum(1 for t in terms if re.search(rf'\b{re.escape(t)}\b', abstract))
+
+    # Cap at meaningful level — a paper with 1/5 terms should not score high
+    # unless it matches the unique/longest terms
+    score = (title_matched * 3 + abs_matched) / (n * 4) if n > 0 else 0
+
+    # Boost for matching the LONGEST terms (most specific) — these are
+    # typically the most meaningful signal of relevance
+    if terms and title_matched > 0:
+        longest = sorted(terms, key=len, reverse=True)[:3]
+        longest_in_title = sum(1 for t in longest if re.search(rf'\b{re.escape(t)}\b', title))
+        if longest_in_title >= 2:
+            score = max(score, 0.65)  # At least medium-high if longest terms appear
+
+    return min(1.0, score)
 
 
 def _author_prestige_score(p: Paper) -> float:
@@ -189,18 +234,18 @@ def _embed(texts: Sequence[str], batch_size: int = 200) -> np.ndarray:
     sbert = _get_sbert()
     if sbert == _TFIDF_FALLBACK:
         if not texts:
-            return np.zeros((0, 384), dtype=np.float32)
+            return np.zeros((0, 768), dtype=np.float32)
         try:
             vec = TfidfVectorizer(
-                stop_words="english",
-                max_features=384,
-                ngram_range=(1, 2),
+                max_features=768,
+                ngram_range=(1, 3),
+                analyzer="char_wb",
                 sublinear_tf=True,
             )
             mat = vec.fit_transform(list(texts)).astype(np.float32).toarray()
         except ValueError:
             # Empty vocab (e.g. all-stopword inputs) → fall back to zeros.
-            return np.zeros((len(texts), 384), dtype=np.float32)
+            return np.zeros((len(texts), 768), dtype=np.float32)
         norms = np.linalg.norm(mat, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         return mat / norms
@@ -242,6 +287,11 @@ def score_papers(
     if not plist:
         return []
 
+    # ── Deteksi apakah SBERT tersedia ──
+    # TF-IDF fallback kurang akurat secara semantik → keyword + struktur text
+    # mendapat bobot lebih besar.
+    _using_sbert = _get_sbert() != _TFIDF_FALLBACK
+
     texts = [_build_text(p) for p in plist]
     has_signal = [_has_signal(p) for p in plist]
 
@@ -253,7 +303,13 @@ def score_papers(
     # Sinyal pelengkap: TF-IDF cosine. Bekerja walau abstract pendek.
     try:
         max_df = 1.0 if len(plist) < 20 else 0.9
-        vec = TfidfVectorizer(stop_words="english", max_df=max_df, min_df=1, ngram_range=(1, 2))
+        vec = TfidfVectorizer(
+            max_df=max_df,
+            min_df=1,
+            ngram_range=(1, 3),
+            analyzer="char_wb",
+            sublinear_tf=True,
+        )
         mat = vec.fit_transform([query] + texts)
         tfidf_sims = cosine_similarity(mat[0:1], mat[1:]).flatten()
     except ValueError:
@@ -270,20 +326,43 @@ def score_papers(
         author_s = _author_prestige_score(p)
         signal_penalty = 0.0 if has_signal[i] else 0.15
 
-        # Weights: SBERT is the most important signal (0.50)
+        # ── Tekstualitas: deteksi mojibake ──
+        # Paper dengan teks rusak (mojibake) di-judul atau abstract
+        # mendapat penalty multiplicative HARD sehingga tidak bisa menang
+        # dari SBERT atau FTS score.
+        garbled_title = detect_mojibake(p.title)
+        garbled_abs = detect_mojibake(p.abstract)
+        text_quality = 1.0 - max(garbled_title, garbled_abs)
+        # text_quality: 0.0 (garbled total) → 1.0 (clean)
+        # Multiplicative: paper garbled → score_total ~0
+
+        # ── Keyword density weight dinaikkan ──
+        # Keyword match di judul/abstract lebih penting dari venue/sitasi
+        # untuk relevance ranking. User ingin paper yang judulnya
+        # mengandung kata kunci lebih diutamakan.
+        #
+        # ADAPTIVE: saat SBERT tersedia → keyword 17%, SBERT 40%.
+        # Saat TF-IDF fallback → keyword 25%, SBERT 25% (TF-IDF kurang
+        # akurat secara semantik, keyword matching lebih reliable).
+        if _using_sbert:
+            w_sbert, w_tfidf, w_cite, w_recency, w_venue, w_kw, w_author = (
+                0.40, 0.10, 0.08, 0.08, 0.10, 0.17, 0.07
+            )
+        else:
+            w_sbert, w_tfidf, w_cite, w_recency, w_venue, w_kw, w_author = (
+                0.25, 0.15, 0.06, 0.06, 0.08, 0.25, 0.05
+            )
         base_score = (
-            0.50 * sbert_s
-            + 0.10 * tfidf_s
-            + 0.10 * cite_s
-            + 0.08 * recency_s
-            + 0.10 * venue_s
-            + 0.07 * keyword_s
-            + 0.05 * author_s
+            w_sbert * sbert_s
+            + w_tfidf * tfidf_s
+            + w_cite * cite_s
+            + w_recency * recency_s
+            + w_venue * venue_s
+            + w_kw * keyword_s
+            + w_author * author_s
         )
-        # Multiplicative penalty: a paper with high SBERT but signal issues
-        # still gets a meaningful score (0.85 of base) rather than being
-        # crushed by an additive -0.15 that can zero out strong matches.
-        total = base_score * (1.0 - signal_penalty)
+        # Multiplicative penalty: signal issues + text quality
+        total = base_score * (1.0 - signal_penalty) * text_quality
         total = max(0.0, min(1.0, total))
 
         breakdown = {
@@ -296,6 +375,7 @@ def score_papers(
             "author_prestige": round(author_s, 4),
             "has_signal": has_signal[i],
             "signal_penalty": signal_penalty,
+            "text_quality": round(text_quality, 4),
         }
 
         out.append(
@@ -310,3 +390,97 @@ def score_papers(
 
     out.sort(key=lambda s: -s.score_total)
     return out
+
+
+def _pinned_similarity_score(
+    papers: list[Paper],
+    pinned_papers: list[Paper],
+    sbert_sims: np.ndarray,
+) -> list[float]:
+    """Active Learning: boost paper yang mirip dengan paper yang sudah di-pin user."""
+    if len(pinned_papers) < 2:
+        return [0.0] * len(papers)
+
+    # GABUNG pinned + candidates dalam satu panggilan _embed()
+    # agar dimensi konsisten (penting untuk TF-IDF fallback yang
+    # vocabulary-nya tergantung input)
+    pinned_texts = [_build_text(p) for p in pinned_papers]
+    all_texts = [_build_text(p) for p in papers]
+    
+    combined = pinned_texts + all_texts
+    try:
+        combined_embs = _embed(combined)
+    except Exception:
+        return [0.0] * len(papers)
+
+    pinned_embs = combined_embs[:len(pinned_texts)]
+    all_embs = combined_embs[len(pinned_texts):]
+
+    avg_pinned_emb = pinned_embs.mean(axis=0, keepdims=True)
+    similarities = (all_embs @ avg_pinned_emb.T).flatten()
+
+    sim_min = similarities.min()
+    sim_max = similarities.max()
+    if sim_max - sim_min < 0.001:
+        return [0.0] * len(papers)
+
+    return [float((s - sim_min) / (sim_max - sim_min)) for s in similarities]
+
+
+def score_papers_with_feedback(
+    query: str,
+    papers: Iterable[Paper],
+    pinned_papers: list[Paper] | None = None,
+    sbert_threshold: float = 0.45,
+    must_read_threshold: float = 0.55,
+) -> list[ScoredPaper]:
+    """Skor batch paper DENGAN active learning dari user-pinned papers.
+
+    Kalau user sudah pin ≥ 2 paper, signal active_learning (5%)
+    ikut mempengaruhi ranking — paper yang mirip dengan yang sudah
+    di-pin user dapat bonus score.
+
+    Benchmark: ASReview LAB v2 — active learning + user feedback
+    meningkatkan recall ke 95% setelah screening 38% dataset.
+    """
+    # ── Step 1: Score regular (7 signals) ──
+    scored = score_papers(query, papers, sbert_threshold, must_read_threshold)
+
+    # ── Step 2: Active Learning boost ──
+    if pinned_papers and len(pinned_papers) >= 2:
+        plist = [sp.paper for sp in scored]
+        # Ambil SCORED paper yang di-pin (bukan input paper mentah)
+        pinned_titles = {(p.title or "").lower() for p in pinned_papers}
+        pinned_scored = [sp.paper for sp in scored
+                         if (sp.paper.title or "").lower() in pinned_titles]
+
+        if len(pinned_scored) >= 2:
+            sims = _pinned_similarity_score(
+                plist, pinned_scored,
+                np.array([sp.score_breakdown.get("sbert", 0) for sp in scored]),
+            )
+
+            # Apply 5% active learning boost (additive)
+            for i, sp in enumerate(scored):
+                al_boost = sims[i] * 0.05  # max 5%
+                old_total = sp.score_total
+                new_total = max(0.0, min(1.0, old_total + al_boost))
+                sp.score_total = round(new_total, 4)
+                sp.score_breakdown["active_learning"] = round(al_boost, 4)
+                sp.score_breakdown["active_learning_raw"] = round(sims[i], 4)
+
+            # Re-sort setelah active learning boost
+            scored.sort(key=lambda s: -s.score_total)
+            log.info(
+                "active_learning: applied with %d pinned papers, "
+                "boosted %d candidates (max +0.05)",
+                len(pinned_scored), sum(1 for s in scored
+                                         if s.score_breakdown.get("active_learning", 0) > 0),
+            )
+        else:
+            log.info("active_learning: skipped — pinned papers not found in candidate list")
+    else:
+        log.info("active_learning: skipped — need ≥ 2 pinned papers (got %d)",
+                 len(pinned_papers or []))
+
+    return scored

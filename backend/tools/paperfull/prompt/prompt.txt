@@ -56,12 +56,35 @@ B. TECHNICAL RULES: LaTeX · FIGURES · TABLES · CITATIONS
 
 ── B1. LaTeX (pipeline: LaTeX → latex2mathml → MathML → OMML → DOCX) ────────
 
-SAFE:
-  Greek: \\alpha \\beta \\gamma \\theta \\lambda \\mu \\sigma \\omega \\pi ...
-         \\Gamma \\Delta \\Theta \\Sigma \\Omega ...
+╔═══════════════════════════════════════════════════════════════════════════╗
+║ ⚠️  CRITICAL LATEX RULES — VIOLATION BREAKS DOCX RENDERING               ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║ 1. SUBSCRIPT/SUPERSCRIPT — ALWAYS use LaTeX braces syntax:               ║
+║    ✅ CORRECT:   \\sum_{i=1}^{N}   x_{i}   e^{-t}   N^{2}                ║
+║    ❌ WRONG:     \\sumn=1⁸   x₁   e⁻ᵗ   N²                                ║
+║    ❌ WRONG:     \\sum_{i=1}⁸   (Unicode superscript ⁸)                   ║
+║                                                                            ║
+║ 2. SUM/PROD/INT — ALWAYS with subscript/superscript braces:              ║
+║    ✅ CORRECT:   \\sum_{n=1}^{8}   \\prod_{i=0}^{k}   \\int_{0}^{t}       ║
+║    ❌ WRONG:     \\sumn=1⁸   \\sum_n=1^8   \\sumi=1to8                     ║
+║                                                                            ║
+║ 3. FRACTION — ALWAYS use \\frac{numerator}{denominator}:                 ║
+║    ✅ CORRECT:   \\frac{a + b}{c}   \\frac{\\sum_{i=1}^{N} x_i}{N}        ║
+║    ❌ WRONG:     \\frac a+b/c   a+b/c                                      ║
+║                                                                            ║
+║ 4. NEVER use Unicode math symbols inside $...$ or $$...$$:               ║
+║    ❌ FORBIDDEN: ⁰¹²³⁴⁵⁶⁷⁸⁹ ₀₁₂₃₄₅₆₇₈₉ × ÷ ≤ ≥ ≠ ≈ ∞ α β γ θ λ μ σ ω π Ω  ║
+║    ✅ USE LATEX: ^{0} _{1} \\times \\div \\leq \\geq \\neq \\approx \\infty ║
+║                  \\alpha \\beta \\gamma \\theta \\lambda \\mu \\sigma      ║
+║                  \\omega \\pi \\Omega                                      ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+SAFE COMMANDS:
+  Greek: \\alpha \\beta \\gamma \\delta \\theta \\lambda \\mu \\sigma \\omega \\pi
+         \\Gamma \\Delta \\Theta \\Sigma \\Omega
   Math:  \\frac{a}{b} \\sqrt{x} \\sqrt[n]{x} x_{i} x^{2} e^{-x}
   Sum:   \\sum_{i=1}^{N}  \\prod_{i=1}^{N}  \\int_0^t
-  Matrix: \\begin{bmatrix} a & b \\\\\\\\\\\\\\\\ c & d \\end{bmatrix}
+  Matrix: \\begin{bmatrix} a & b \\\\\\\\ c & d \\end{bmatrix}
   Cases:  \\begin{cases} ... \\end{cases}
   Text:   \\mathrm{...}  \\mathbf{...}  \\mathit{...}
   Vector: \\vec{x}  \\overrightarrow{AB}  \\dot{x}
@@ -71,7 +94,7 @@ SAFE:
   Space:  \\, \\; \\: \\quad
   Dots:   \\ldots \\cdots \\vdots
 
-FORBIDDEN (causes rendering failures):
+  FORBIDDEN (causes rendering failures):
   \\text{...} → \\mathrm{...}
   \\mathbb \\mathcal \\mathscr \\mathfrak → don't use
   \\boldsymbol \\bm → don't use (use \\mathbf)
@@ -111,10 +134,16 @@ FIGURE DISTRIBUTION (all via id "gambar", rendered by image generator):
     (flowchart, system architecture, block diagram, prototype, data flow diagram).
     Prompts MUST have ≥150 word descriptions. Rendered via Gemini.
   • CHAPTER 4 (Results): DATA CHARTS from Excel/user data.
-    Prompts in section 4 MUST contain COMPLETE CHART SPECIFICATIONS (not empty!).
+    ⚠️ ABSOLUTE RULE — SECTION 4 PROMPTS CANNOT BE EMPTY OR GENERIC:
+    Prompts in section 4 MUST contain COMPLETE CHART SPECIFICATIONS.
+    DO NOT write generic descriptions ("A chart of the results"). DO NOT write
+    "as shown in the data" without writing the data. WRITE EVERY NUMBER.
     Section 4 prompts MUST include ALL of the following:
-    1. CHART TYPE: bar / line / scatter / pie / stacked_bar / heatmap / area
-    2. COMPLETE DATA: WRITE ALL numbers/values EXACTLY from Excel in structured format.
+    1. CHART TYPE: bar / line / scatter / pie / stacked_bar / combo / heatmap / area
+    2. COMPLETE DATA: WRITE ALL numbers/values EXACTLY from data, row by row.
+       Example WRONG: "A bar chart showing Daya for all configurations."
+       Example RIGHT: "Config1 (7.4V 1000mAh): 2.37W. Config2 (7.4V 1500mAh): 3.55W.
+       Config3 (7.4V 2000mAh): 4.74W. Config4 (11.1V 1000mAh): 3.22W..."
     3. AXIS LABELS: X-axis = "...", Y-axis = "..."
     4. TITLE: Clear chart title
     5. LEGEND/CATEGORIES: Categories or series to display
@@ -242,11 +271,20 @@ RESULTS AND DISCUSSION / CHAPTER 4 (350–550 words/subsection, each paragraph 5
   aspect of results (e.g., performance, comparison, sensitivity analysis, validation, anomalies).
   Pattern per discussion: key number/variable in FIRST sentence → analysis of WHY →
   comparison with ≥3 prior works → anomalies/limitations → deployment relevance.
-  DATA CHARTS: Chart figures from Excel/user data via id "gambar" with
-  Prompt = "" (EMPTY). Data tools auto-generate charts from user's Excel.
+  DATA CHARTS: Chart figures from Excel/user data via id "gambar".
+  ⚠️ SECTION 4 PROMPT RULES (CRITICAL — PROMPT HARUS LENGKAP, JANGAN KOSONG):
+    • Setiap "gambar" di section 4 WAJIB punya Prompt yang LENGKAP — TIDAK BOLEH kosong.
+    • Prompt HARUS memuat SELURUH data: tipe grafik, SEMUA angka/nilai dari data,
+      label sumbu, judul, legenda/kategori, dan preferensi gaya.
+    • TULIS SEMUA baris data di dalam prompt — jangan singkat atau ringkas.
+    • Format contoh: "A bar chart comparing accuracy of 5 methods. Data: Method A=94.2%,
+      Method B=89.1%, Method C=85.7%, Method D=82.3%, Method E=78.5%. X-axis: 'Method',
+      Y-axis: 'Accuracy (%)'. Title: 'Model Accuracy Comparison'. Academic color palette.
+      White background. Clean academic paper figure style."
+    • Prompt section 4 akan dibaca oleh Data Tools untuk generate grafik otomatis.
   QUANTITY: MINIMUM 2 charts + 2 tables PER uploaded Excel file
   (5 Excel → minimum 10 charts + 10 tables). If no data upload →
-  minimum 4 placeholder charts. LLM MUST NOT fill prompts in section 4.
+  minimum 4 placeholder charts with conceptual descriptions in Prompt.
   Each chart/table MUST appear in JSON (Path, Title, ImageNumber/TableNumber)
   followed by "text" analysis (not just reading numbers). Analysis narrative
   MUST discuss data in detail: specific numbers, trends, patterns, anomalies.
@@ -326,21 +364,65 @@ See HUMANIZE GUIDE for detailed anti-AI-detection rules.
 F. CHAPTER 4 DATA (RESULTS AND DISCUSSION)
 ================================================================================
 
-⚠️ TOP PRIORITY: USER DATA = SOURCE OF TRUTH
+⚠️ IMPORTANT: USER PROMPT MAY CONTAIN DIFFERENT SECTIONS.
+YOU MUST CHECK WHICH SECTIONS ARE PRESENT — EACH HAS DIFFERENT RULES.
 
-• User PROVIDES data (via ## DATA SOURCE or file upload) →
-  MUST use EXACT NUMBERS from that data in tables, charts, formulas, narrative.
-  DON'T use placeholders (X1, a1, etc) when real data is available.
-  Example correct table (with data):
+── HOW TO IDENTIFY SECTIONS ──────────────────────────────────────────────
+
+Check the user prompt for these headers (read carefully):
+
+1. "## 📊 DATA SUMBER — INI DATA BENERAN" → REAL DATA FILES
+   ↓ If this section EXISTS → user uploaded actual data (Excel/CSV with numbers)
+   → MUST use EXACT numbers from this section
+   → DON'T use placeholders (X1, a1)
+
+2. "## REFERENSI / DRAFT (WAJIB DIGUNAKAN — BUKAN DATA)" → REFERENCE PAPERS/DRAFTS
+   ↓ If this section EXISTS → user uploaded reference papers, PDFs, or drafts
+   → ⛔ THIS IS NOT DATA. Do NOT extract numbers from here for section 4.
+   → ONLY for: literature review context, citations, writing direction.
+   → Numbers in references = state-of-the-art comparison in section 2 (Literature Review)
+     ONLY. NOT experimental data for section 4 (Results).
+
+3. "## LITERATUR (CHECKED — WAJIB DIGUNAKAN SEBAGAI REFERENSI)" → LITERATURE PAPERS
+   ↓ Same rule as #2: NOT data for section 4.
+
+── CRITICAL DECISION RULE ────────────────────────────────────────────────
+
+• IF "## DATA SUMBER" is PRESENT in the user prompt →
+  You have REAL DATA. MUST use EXACT numbers from that data.
+  DON'T use placeholders.
+
+• IF "## DATA SUMBER" is ABSENT (only ## REFERENSI, ## LITERATUR, or nothing) →
+  There is NO experimental data. MUST use PLACEHOLDER VARIABLES.
+  NEVER fabricate numbers. NEVER guess.
+
+── WITH DATA (## DATA SUMBER EXISTS) ─────────────────────────────────────
+
+• MUST use EXACT NUMBERS from data in tables, charts, formulas, narrative.
+• DON'T use placeholders (X1, a1, etc).
+• Example correct table (with data):
     ["Method", "Success Rate", "Travel Time (s)", "Conflicts/100 ep"]
     ["DQN + Shared", "94.5%", "12.3", "2.1"]
     ["Double DQN", "89.2%", "15.7", "5.8"]
-  Charts in section 4: Prompts MUST contain complete chart specifications — chart type,
-  exact data, axis labels, title, legend. Data tools will read these prompts
-  to generate matplotlib charts automatically.
-  Also include "data_tools_payload" field on every section 4 figure, format:
+
+  ⚠️ SECTION 4 CHART PROMPTS — WRITE ALL DATA (CRITICAL):
+  • Charts in section 4: Prompt field MUST contain COMPLETE chart specification.
+  • WRITE OUT EVERY data point: EVERY row, EVERY value, EVERY number.
+    Do NOT summarize (e.g., "data from battery test"). Do NOT use "etc." or "...".
+    Do NOT write "as shown in the table" without writing the actual numbers.
+  • Format: chart type → EVERY data value with label → axis labels → title → style.
+  • Example BAD prompt: "A bar chart showing battery test results."
+  • Example GOOD prompt: "A bar chart comparing Daya (W) across 8 configurations.
+    Config1 (7.4V 1000mAh 40cm/s): 2.37W. Config2 (7.4V 1500mAh 60cm/s): 3.55W.
+    Config3 (7.4V 2000mAh 80cm/s): 4.74W. Config4 (11.1V 1000mAh 40cm/s): 3.22W.
+    Config5 (11.1V 1500mAh 60cm/s): 4.77W. Config6 (11.1V 2000mAh 80cm/s): 6.44W.
+    Config7 (11.1V 2200mAh 100cm/s): 7.99W. Config8 (12.6V 2200mAh 100cm/s): 8.69W.
+    X-axis: 'Konfigurasi', Y-axis: 'Daya (W)'. Title: 'Perbandingan Daya per Konfigurasi'.
+    Academic color palette, white background, clean figure style."
+
+  • Also include "data_tools_payload" field on every section 4 figure, format:
     "data_tools_payload": {
-      "kind": "bar|line|scatter|pie|stacked_bar|heatmap|...",
+      "kind": "bar|line|scatter|pie|stacked_bar|combo|heatmap|...",
       "title": "Chart Title",
       "xlabel": "X label",
       "ylabel": "Y label",
@@ -350,8 +432,16 @@ F. CHAPTER 4 DATA (RESULTS AND DISCUSSION)
       "color_palette": "academic",
       "theme": "clean"
     }
+  • data_tools_payload MUST contain the SAME data as the Prompt — mirror each other.
 
-• User DOES NOT provide data → use PURE PLACEHOLDER VARIABLES:
+── WITHOUT DATA (## DATA SUMBER ABSENT) ──────────────────────────────────
+
+• ⛔ ABSOLUTELY FORBIDDEN: Creating fabricated numbers (94.5%, 3.2, 0.075, etc.)
+• ⛔ ABSOLUTELY FORBIDDEN: Extracting numbers from REFERENSI/DRAFT/LITERATUR
+  as if they are experimental data for section 4.
+• ⛔ ABSOLUTELY FORBIDDEN: Writing data_tools_payload with fabricated values.
+
+• use PURE PLACEHOLDER VARIABLES:
   - Main variables (experimental results): X1, X2, X3, X4, etc.
   - Supporting variables/parameters: a1, a2, a3, b1, b2, etc.
   - Comparison variables: Y1, Y2, Y3, etc.
@@ -365,16 +455,20 @@ F. CHAPTER 4 DATA (RESULTS AND DISCUSSION)
   - Example text: "The proposed method achieved precision $X_1 = a_1$ and
     recall $X_2 = a_2$, yielding F1-Score $X_3 = a_3$."
   - Section 4 charts: Prompts contain conceptual specifications (chart type,
-    placeholder variables, axis labels). No numeric data.
+    placeholder variables, axis labels). Write ALL placeholder variables in prompt.
+    data_tools_payload with placeholder values too (e.g. "X1", "a1", etc.).
   - Every variable in tables/charts MUST be referenced and analyzed in narrative.
 
 SECTION 4 / CHAPTER 4 (RESULTS AND DISCUSSION) MUST contain:
   - MINIMUM 4 discussion points/subsections (section4a–section4d), different result aspects
-  - TABLES: MINIMUM 2 tables PER uploaded Excel file. Each table MUST
-    contain REAL data from Excel (exact numbers, not placeholders). Format:
-    Headers array + Rows array with complete detailed data.
-  - CHARTS: MINIMUM 2 charts PER uploaded Excel file via id "gambar" —
-    Prompts MUST contain COMPLETE CHART SPECIFICATIONS (type + data + axis + title).
+  - TABLES:
+    - IF data exists: MINIMUM 2 tables PER uploaded Excel file. REAL data.
+    - IF no data: minimum 2 tables using placeholder variables (X1, X2, a1, etc.)
+  - CHARTS:
+    - IF data exists: MINIMUM 2 charts PER uploaded Excel file via id "gambar"
+    - IF no data: minimum 4 placeholder charts with conceptual descriptions
+    - Prompts MUST contain COMPLETE CHART SPECIFICATIONS (type + data + axis + title)
+      when data exists; conceptual specs with placeholders when no data.
     Chart type matched to data:
     bar (category comparison), line (time trends), scatter (correlation), pie
     (proportions), stacked_bar (composition), heatmap (matrix), etc.
@@ -382,7 +476,7 @@ SECTION 4 / CHAPTER 4 (RESULTS AND DISCUSSION) MUST contain:
     sentences. Discuss: specific numbers, up/down trends, outliers, patterns, anomalies.
   - Comparison with ≥3 methods/baselines
   - Result anomalies/limitations
-  - IF user uploads N Excel files → minimum 2N tables + 2N charts in section 4
+  - IF user uploads N data files → minimum 2N tables + 2N charts in section 4
   - IF no data upload → minimum 2 tables + 4 placeholder charts
 
 Consistency: table data = text data = abstract data = conclusion data.
@@ -396,7 +490,8 @@ G. FINAL CHECKLIST
 □ Every section starts with "text"; formulas/tables/figures followed by explanatory "text"
 □ FORMULAS: each formula has explanatory text (what & symbol meanings); NO empty latex
 □ ≥ 4500 words. References: MODE A (user provides N refs) = EXACTLY N items from user. MODE B (no user refs) = minimum 20 items. REGULAR paper: 5 conceptual figures (Ch.2: 2 + Ch.3: 3) + data charts Ch.4, 3+ formulas, 3–5 tables. REVIEW paper: 6+ conceptual figures, 3–5 comparison tables.
-□ FIGURES: REGULAR — conceptual ≥150 words (Gemini), data charts sec4 with complete specs + data_tools_payload JSON (for auto-generate via data tools). REVIEW — all figures ≥150 words via Gemini, min 6 total.
+□ FIGURES: REGULAR — conceptual ≥150 words (Gemini), data charts sec4 with complete specs (ALL data written in Prompt + data_tools_payload JSON with same data). REVIEW — all figures ≥150 words via Gemini, min 6 total.
+□ SECTION 4 CHARTS: EVERY Prompt contains ALL data row-by-row — NO generic descriptions, NO empty Prompts, NO summarization.
 □ Each paragraph 5–8 dense sentences (all sections & subsections)
 □ CHARACTERS: DON'T output literal \\u2022/\\uXXXX — use actual characters (bullet "• ")
 □ REFERENCES: MODE A (user provides N refs) = EXACTLY N items, EXACT user data, DON'T fabricate DOIs. MODE B = minimum 20 structured items (authors, year, title, type, journal/venue)

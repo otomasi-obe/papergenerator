@@ -194,7 +194,98 @@ def _validate_and_fix_output(data: dict) -> dict:
             "warnings": [],
         }
 
+    # ── Clean LaTeX math notation → Unicode in all text fields ──
+    data = _clean_latex_recursive(data)
+
     return data
+
+
+def _clean_latex_from_text(text: str) -> str:
+    """Convert LaTeX math notation to Unicode in plain text fields.
+
+    Handles cases where AI ignores prompt and outputs raw LaTeX like \\sum, \\cdot, etc.
+    Runs BEFORE text reaches frontend/chart renderer.
+    """
+    if not isinstance(text, str) or not text:
+        return text
+    s = text
+    # Greek letters
+    s = s.replace("\\alpha", "α")
+    s = s.replace("\\beta", "β")
+    s = s.replace("\\gamma", "γ")
+    s = s.replace("\\delta", "δ")
+    s = s.replace("\\epsilon", "ε")
+    s = s.replace("\\theta", "θ")
+    s = s.replace("\\lambda", "λ")
+    s = s.replace("\\mu", "μ")
+    s = s.replace("\\sigma", "σ")
+    s = s.replace("\\Sigma", "Σ")
+    s = s.replace("\\phi", "φ")
+    s = s.replace("\\omega", "ω")
+    s = s.replace("\\Omega", "Ω")
+    # Math operators/symbols (longer patterns first)
+    s = s.replace("\\times", "×")
+    s = s.replace("\\cdot", "·")
+    s = s.replace("\\pm", "±")
+    s = s.replace("\\mp", "∓")
+    s = s.replace("\\div", "÷")
+    s = s.replace("\\circ", "°")
+    s = s.replace("\\degree", "°")
+    s = s.replace("\\sum", "Σ")
+    s = s.replace("\\prod", "∏")
+    s = s.replace("\\int", "∫")
+    s = s.replace("\\sqrt", "√")
+    s = s.replace("\\infty", "∞")
+    s = s.replace("\\partial", "∂")
+    s = s.replace("\\nabla", "∇")
+    s = s.replace("\\approx", "≈")
+    s = s.replace("\\neq", "≠")
+    s = s.replace("\\leq", "≤")
+    s = s.replace("\\geq", "≥")
+    s = s.replace("\\propto", "∝")
+    s = s.replace("\\sim", "∼")
+    s = s.replace("\\rightarrow", "→")
+    s = s.replace("\\leftarrow", "←")
+    s = s.replace("\\Rightarrow", "⇒")
+    # Subscript/superscript with braces
+    import re
+    def _sub_repl(m):
+        digits = m.group(1)
+        sub_map = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+        return digits.translate(sub_map)
+    def _sup_repl(m):
+        digits = m.group(1)
+        sup_map = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+        return digits.translate(sup_map)
+    s = re.sub(r'_{(\d+)}', _sub_repl, s)
+    s = re.sub(r'\^{(\d+)}', _sup_repl, s)
+    # LaTeX formatting
+    s = re.sub(r'\\textit\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\textbf\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\emph\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', s)
+    # LaTeX fractions
+    s = re.sub(r'\\frac\{([^}]*)}\{([^}]*)\}', r'\1/\2', s)
+    # LaTeX inline math $...$ → strip
+    def _dollar_repl(m):
+        inner = m.group(1)
+        inner = _clean_latex_from_text(inner)
+        return inner
+    s = re.sub(r'\$([^$]+)\$', _dollar_repl, s)
+    # Stray backslash-space
+    s = s.replace("\\ ", " ")
+    return s
+
+
+def _clean_latex_recursive(obj):
+    """Recursively clean LaTeX from all string values in a nested dict/list."""
+    if isinstance(obj, dict):
+        return {k: _clean_latex_recursive(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_clean_latex_recursive(item) for item in obj]
+    elif isinstance(obj, str):
+        return _clean_latex_from_text(obj)
+    return obj
 
 
 def _is_number(val: str) -> bool:
@@ -224,9 +315,9 @@ def format_data_with_ai(
     """
     system_prompt = _load_system_prompt()
 
-    # Batasi ukuran input (max ~15000 chars untuk konteks)
-    if len(raw_text) > 15000:
-        raw_text = raw_text[:15000] + "\n\n... [data terpotong, sisa data terlalu panjang]"
+    # Batasi ukuran input (max ~12000 chars, seimbang dengan system prompt ~3700 chars = total ~15K chars)
+    if len(raw_text) > 12000:
+        raw_text = raw_text[:12000] + "\n\n... [data terpotong, sisa data terlalu panjang]"
 
     user_msg = f"Berikut data mentah yang perlu diformat:\n\n"
     if filename:
@@ -239,13 +330,29 @@ def format_data_with_ai(
             {"role": "user", "content": user_msg},
         ],
         "temperature": 0.3,
-        "max_tokens": 16000,
+        "max_tokens": 8000,
     }
 
     try:
-        # Use shorter timeout for data tools (60s per endpoint, not default 180s)
-        # Data formatting should complete quickly; long hangs indicate upstream issues
-        resp, model_used = route_chat_call(json=payload, timeout=90)
+        # Data formatting: prioritise fast models (OpenRouter) over local VIOLA.
+        # VIOLA-CHAT at localhost can be very slow for data prompts → skip it.
+        # Save & restore env so other callers aren't affected.
+        _saved1 = os.environ.pop('MODELCHAT1', None)
+        _saved2 = os.environ.pop('MODELCHAT2', None)
+        _saved3 = os.environ.pop('MODELCHAT3', None)
+        try:
+            # First try local MODELCHAT2/3 if they point to OpenRouter
+            if _saved2:
+                os.environ['MODELCHAT1'] = _saved2
+            if _saved3:
+                os.environ['MODELCHAT2'] = _saved3
+            if _saved1:
+                os.environ['MODELCHAT3'] = _saved1  # local VIOLA as last resort
+            resp, model_used = route_chat_call(json=payload, timeout=180)
+        finally:
+            if _saved1 is not None: os.environ['MODELCHAT1'] = _saved1
+            if _saved2 is not None: os.environ['MODELCHAT2'] = _saved2
+            if _saved3 is not None: os.environ['MODELCHAT3'] = _saved3
         # Robust JSON parsing — AI API may return malformed response (streaming chunks, extra text)
         try:
             resp_data = resp.json()
@@ -265,7 +372,6 @@ def format_data_with_ai(
                         "key_insights": [],
                         "warnings": ["AI API response bukan JSON yang valid."],
                     },
-                    "_raw_response": text[:500],
                 }
         
         if "choices" not in resp_data or not resp_data["choices"]:
@@ -278,7 +384,7 @@ def format_data_with_ai(
                     "key_insights": [],
                     "warnings": ["AI API response tidak memiliki field 'choices'."],
                 },
-                "_raw_response": str(resp_data)[:500],
+
             }
         content = resp_data["choices"][0]["message"]["content"]
 
@@ -293,7 +399,7 @@ def format_data_with_ai(
                     "key_insights": [],
                     "warnings": ["AI response tidak dalam format JSON yang valid."],
                 },
-                "_raw_response": content[:500],
+
             }
 
         result = _validate_and_fix_output(result)
@@ -306,9 +412,9 @@ def format_data_with_ai(
             "tables": [],
             "chart_recommendations": [],
             "summary": {
-                "data_overview": f"Error saat memproses data: {e}",
+                "data_overview": "Error saat memproses data. Silakan coba lagi.",
                 "key_insights": [],
-                "warnings": [str(e)],
+                "warnings": ["Terjadi kesalahan saat memproses data."],
             },
         }
 

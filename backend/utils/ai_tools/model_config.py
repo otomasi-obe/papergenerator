@@ -52,10 +52,19 @@ def get_generate_model_chain() -> list[str]:
 
 
 def get_retry_count() -> int:
-    """Per-model retry limit (env AI_RETRY_COUNT, default 5)."""
+    """Per-model retry limit (env AI_RETRY_COUNT, default 5, capped at 3)."""
+    env_val = os.getenv("AI_RETRY_COUNT", str(_DEFAULT_RETRIES))
     try:
-        return min(_DEFAULT_RETRIES, max(1, int(os.getenv("AI_RETRY_COUNT", str(_DEFAULT_RETRIES)))))
+        parsed = int(env_val)
+        if parsed > _DEFAULT_RETRIES:
+            log.warning(
+                "AI_RETRY_COUNT=%s exceeds cap %s, using %s. "
+                "Higher values cause excessive wait times with endpoint failover.",
+                parsed, _DEFAULT_RETRIES, _DEFAULT_RETRIES,
+            )
+        return min(_DEFAULT_RETRIES, max(1, parsed))
     except (TypeError, ValueError):
+        log.warning("Invalid AI_RETRY_COUNT value '%s', using default %s", env_val, _DEFAULT_RETRIES)
         return _DEFAULT_RETRIES
 
 

@@ -16,8 +16,14 @@ Endpoints:
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+import logging
 
 from database.models import Paper, UserState, db, safe_commit
+
+log = logging.getLogger(__name__)
 
 state_bp = Blueprint("user_state", __name__, url_prefix="/api/me/state")
 
@@ -36,7 +42,12 @@ def get_all_state():
     if paper_id is not None:
         q = q.filter_by(paper_id=paper_id)
 
-    states = q.all()
+    states = []
+    try:
+        states = q.all()
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({"error": "Failed to load state"}), 500
     # Return as flat dict: {key: value, ...}
     result = {}
     for s in states:
@@ -105,28 +116,58 @@ def batch_upsert_state():
             skipped += 1
             continue
 
-        # Upsert: find existing or create new
-        existing = UserState.query.filter_by(
-            user_id=user_id, paper_id=paper_id, state_key=key
-        ).first()
-
-        if existing:
-            existing.state_value = value
-        else:
-            new_state = UserState(
+        # Concurrency-safe upsert. A naive SELECT-then-INSERT races under
+        # concurrent requests and raises IntegrityError on the uq_user_state
+        # unique constraint. We use PostgreSQL INSERT ... ON CONFLICT DO UPDATE
+        # so concurrent writers converge without error. Note: paper_id is
+        # nullable and Postgres treats NULLs as distinct in unique indexes, so
+        # ON CONFLICT won't match NULL-paper_id rows — those are handled with a
+        # find-or-create fallback wrapped in an IntegrityError retry.
+        if paper_id is not None:
+            stmt = pg_insert(UserState.__table__).values(
                 user_id=user_id,
                 paper_id=paper_id,
                 state_key=key,
                 state_value=value,
             )
-            db.session.add(new_state)
-        saved += 1
+            stmt = stmt.on_conflict_do_update(
+                constraint="uq_user_state",
+                set_={"state_value": value},
+            )
+            db.session.execute(stmt)
+            saved += 1
+        else:
+            existing = UserState.query.filter_by(
+                user_id=user_id, paper_id=None, state_key=key
+            ).first()
+            if existing:
+                existing.state_value = value
+            else:
+                try:
+                    with db.session.begin_nested():
+                        db.session.add(
+                            UserState(
+                                user_id=user_id,
+                                paper_id=None,
+                                state_key=key,
+                                state_value=value,
+                            )
+                        )
+                except IntegrityError:
+                    # Lost the race — another writer inserted; update instead.
+                    existing = UserState.query.filter_by(
+                        user_id=user_id, paper_id=None, state_key=key
+                    ).first()
+                    if existing:
+                        existing.state_value = value
+            saved += 1
 
     try:
         safe_commit()
     except Exception:
         db.session.rollback()
-        raise
+        log.exception("batch_upsert_state commit failed")
+        return jsonify({"error": "Failed to save state"}), 500
     return jsonify({"saved": saved, "skipped": skipped}), 200
 
 
@@ -149,7 +190,8 @@ def delete_state_key(key: str):
         safe_commit()
     except Exception:
         db.session.rollback()
-        raise
+        log.exception("delete_state_key commit failed")
+        return jsonify({"error": "Failed to delete state"}), 500
     return jsonify({"deleted": deleted}), 200
 
 
@@ -171,5 +213,6 @@ def delete_all_state_for_paper():
         safe_commit()
     except Exception:
         db.session.rollback()
-        raise
+        log.exception("delete_all_state_for_paper commit failed")
+        return jsonify({"error": "Failed to delete state"}), 500
     return jsonify({"deleted": deleted}), 200

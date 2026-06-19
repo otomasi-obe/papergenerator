@@ -10,7 +10,7 @@
       menyimpannya ke paper aktif.
     </p>
 
-    <!-- Hidden file inputs: Data + Referensi (PDF/DOCX/Excel/CSV) -->
+    <!-- Hidden file inputs: Data + File (PDF/DOCX/Excel/CSV) -->
     <input
       ref="dataInputRef"
       type="file"
@@ -82,8 +82,6 @@
         placeholder="Masukkan topik paper (mis. 'optimasi rute AGV dengan reinforcement learning')"
         class="w-full px-3 py-2 border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-900 text-ink-900 dark:text-ink-50 rounded-lg text-sm disabled:opacity-50"
       ></textarea>
-    </div>
-
     <!-- Connection lost indicator -->
     <div
       v-if="connectionLost"
@@ -101,6 +99,22 @@
       </button>
     </div>
 
+    <!-- Generation options -->
+    <div class="flex items-center gap-4 px-2 py-2 rounded-lg bg-cream-100 dark:bg-ash-700/50 text-xs">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" v-model="enablePaperReview" class="rounded w-4 h-4 accent-navy-600" />
+        <span class="text-ink-800 dark:text-ink-100 font-medium">Paper Review</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" v-model="enableImageGen" class="rounded w-4 h-4 accent-navy-600" />
+        <span class="text-ink-800 dark:text-ink-100 font-medium">Generate Images</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" v-model="enableRevisiSemua" class="rounded w-4 h-4 accent-navy-600" />
+        <span class="text-ink-800 dark:text-ink-100 font-medium">Revisi Semua</span>
+      </label>
+    </div>
+
     <!-- Action buttons -->
     <div class="flex items-center gap-2">
       <button
@@ -114,70 +128,6 @@
         </span>
         <span v-else>Generate</span>
       </button>
-    </div>
-
-    <!-- Reasoning / Process output (below generating card) -->
-    <div
-      v-if="generating || activeJob || reasoningText"
-      class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-cream-50 dark:bg-ash-800 overflow-hidden shadow-sm"
-    >
-      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-cream-100 to-cream-50 dark:from-ash-700 dark:to-ash-800">
-        <span class="w-2 h-2 rounded-full animate-pulse" :class="generating ? 'bg-amber-500' : 'bg-blue-500'"></span>
-        <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">🧠 AI Reasoning</span>
-        <span v-if="generating" class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">(live)</span>
-        <button
-          v-if="!generating"
-          @click="dismissGenerationPanel"
-          class="ml-auto text-ink-500 hover:text-ink-900 dark:hover:text-ink-50 text-xs px-1.5 py-0.5 rounded hover:bg-cream-200 dark:hover:bg-ash-600 transition-colors"
-          title="Dismiss"
-        >✕</button>
-      </div>
-      <div ref="reasoningScroll" class="max-h-[350px] overflow-y-auto p-4 scroll-smooth reasoning-panel">
-        <div v-if="!reasoningText" class="text-xs text-ink-500 dark:text-ink-300 italic flex items-center gap-2">
-          <span class="w-3 h-3 border-2 border-navy-300 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></span>
-          <span>Menunggu data dari server...</span>
-        </div>
-        <div v-else>
-          <!-- Reasoning section: monospace for thinking trace -->
-          <div
-            class="text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink-600 dark:text-ink-300 font-mono"
-          >{{ reasoningText }}</div>
-        </div>
-        <!-- Animated indicator while still thinking -->
-        <div v-if="generating && !contentText" class="flex items-center gap-2 py-2 px-3 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 mt-3">
-          <div class="thinking-dots">
-            <span></span><span></span><span></span>
-          </div>
-          <span class="text-[11px] text-amber-700 dark:text-amber-300 animate-pulse">Menyusun paper...</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Content output box (separate from reasoning) -->
-    <div
-      v-if="contentText"
-      class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
-    >
-      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-emerald-50 to-cream-50 dark:from-emerald-900/20 dark:to-ash-800">
-        <span class="w-2 h-2 rounded-full" :class="generating ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-600'"></span>
-        <span class="text-xs font-semibold text-emerald-800 dark:text-emerald-200">
-          {{ generating ? '📄 Generating Paper...' : '✅ Generation Complete' }}
-        </span>
-        <span v-if="generating" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">(streaming)</span>
-        <button
-          v-if="!generating"
-          @click="dismissGenerationPanel"
-          class="ml-auto text-ink-500 hover:text-ink-900 dark:hover:text-ink-50 text-xs px-1.5 py-0.5 rounded hover:bg-cream-200 dark:hover:bg-ash-600 transition-colors"
-          title="Dismiss"
-        >✕</button>
-      </div>
-      <div ref="contentScrollRef" class="max-h-[600px] overflow-y-auto p-4 scroll-smooth">
-        <div 
-          ref="contentRenderEl"
-          class="content-render text-[12px] leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap break-words"
-          v-html="renderedContentHtml"
-        ></div>
-      </div>
     </div>
 
     <!-- Image Generation Progress (separate box) -->
@@ -207,7 +157,7 @@
       </div>
     </div>
 
-    <!-- Input file: dua bucket terpisah (Data + Referensi) dengan inline file list -->
+    <!-- Input file: dua bucket terpisah (Data + File) dengan inline file list -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <!-- DATA bucket -->
       <div
@@ -248,6 +198,12 @@
         </p>
         <!-- Inline paper files list with checkboxes -->
         <div v-if="paperFilesList.length" class="mt-2">
+          <!-- Select All for Data -->
+          <label class="flex items-center gap-2 px-2 py-1 cursor-pointer text-xs font-semibold hover:bg-cream-100 dark:hover:bg-ash-600 border-b border-cream-200 dark:border-ash-600">
+            <input type="checkbox" :checked="areAllDataPicked" @change="toggleSelectAllData" class="rounded w-3.5 h-3.5 accent-navy-600" />
+            <span class="flex-1">Pilih Semua</span>
+            <span class="text-ink-500 dark:text-ink-300 text-[10px] shrink-0">{{ pickedDataFiles.length }} / {{ paperFilesList.length }}</span>
+          </label>
           <div class="max-h-36 overflow-y-auto rounded-lg border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 divide-y divide-cream-200 dark:divide-ash-600">
             <label
               v-for="pf in paperFilesList"
@@ -280,7 +236,7 @@
         </div>
       </div>
 
-      <!-- REFERENSI bucket -->
+      <!-- FILE bucket -->
       <div
         @dragover.prevent="refDragOver = true"
         @dragleave.prevent="refDragOver = false"
@@ -293,7 +249,7 @@
       >
         <div class="flex items-center gap-2 mb-1">
           <span class="text-base">📚</span>
-          <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">Referensi</span>
+          <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">File</span>
           <!-- + upload button -->
           <div class="relative ml-auto">
             <button
@@ -315,6 +271,12 @@
         </p>
         <!-- Inline paper files list with checkboxes -->
         <div v-if="paperFilesList.length" class="mt-2">
+          <!-- Select All for File -->
+          <label class="flex items-center gap-2 px-2 py-1 cursor-pointer text-xs font-semibold hover:bg-cream-100 dark:hover:bg-ash-600 border-b border-cream-200 dark:border-ash-600">
+            <input type="checkbox" :checked="areAllRefPicked" @change="toggleSelectAllRef" class="rounded w-3.5 h-3.5 accent-emerald-600" />
+            <span class="flex-1">Pilih Semua</span>
+            <span class="text-ink-500 dark:text-ink-300 text-[10px] shrink-0">{{ pickedRefFiles.length }} / {{ paperFilesList.length }}</span>
+          </label>
           <div class="max-h-36 overflow-y-auto rounded-lg border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-700 divide-y divide-cream-200 dark:divide-ash-600">
             <label
               v-for="pf in paperFilesList"
@@ -329,7 +291,7 @@
             v-if="pickedRefFiles.length"
             @click="confirmRefFiles"
             class="mt-1.5 w-full px-2 py-1 text-[10px] font-semibold rounded-md bg-emerald-700 hover:bg-emerald-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 transition-colors"
-          >Tambah Referensi ({{ pickedRefFiles.length }})</button>
+          >Tambah File ({{ pickedRefFiles.length }})</button>
         </div>
         <div v-if="referenceFiles.length" class="flex flex-wrap gap-1.5 mt-2">
           <div
@@ -348,12 +310,117 @@
       </div>
     </div>
 
+      <!-- Literatur section (checked papers from SLR — auto-injected to prompt) -->
+      <div
+        class="rounded-xl border-2 border-dashed px-3 py-3 transition-colors border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/10"
+      >
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-base">📚</span>
+          <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">Literatur</span>
+          <span v-if="literatureLoading" class="text-[10px] text-ink-500 dark:text-ink-300 italic ml-auto">Memuat...</span>
+          <span v-else class="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+            :class="literatureItems.length ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'bg-ivory-100 dark:bg-ash-600 text-ink-500 dark:text-ink-300'"
+          >{{ literatureItems.length }} checked</span>
+        </div>
+        <p class="text-[10px] text-emerald-600 dark:text-emerald-400 leading-snug">
+          Otomatis dikirim ke AI saat generate. Check/uncheck di tab Literatur.
+        </p>
+        <div v-if="!literatureLoading && !literatureItems.length" class="mt-2 text-[11px] text-ink-500 dark:text-ink-300 italic p-2">
+          Belum ada literatur yang di-check.
+        </div>
+        <div v-else-if="literatureItems.length" class="mt-2">
+          <div class="max-h-48 overflow-y-auto rounded-lg border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-700 divide-y divide-cream-200 dark:divide-ash-600">
+            <div v-for="lit in literatureItems" :key="lit.id" class="flex items-center gap-2 px-2 py-1.5 text-xs">
+              <span class="text-[10px] text-emerald-500 shrink-0">✓</span>
+              <div class="flex-1 min-w-0">
+                <div class="truncate text-ink-800 dark:text-ink-100 font-medium">{{ lit.title }}</div>
+                <div class="text-[10px] text-ink-500 dark:text-ink-300 truncate">
+                  {{ lit.authors ? lit.authors.join(', ') : '--' }} &middot; {{ lit.year || '--' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reasoning / Process output -->
+    <div
+      v-if="generating || activeJob || reasoningText"
+      class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-cream-50 dark:bg-ash-800 overflow-hidden shadow-sm"
+    >
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-cream-100 to-cream-50 dark:from-ash-700 dark:to-ash-800">
+        <span class="w-2 h-2 rounded-full animate-pulse" :class="generating ? 'bg-amber-500' : 'bg-blue-500'"></span>
+        <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">🧠 AI Reasoning</span>
+        <span v-if="generating" class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">(live)</span>
+        <button
+          v-if="!generating"
+          @click="dismissGenerationPanel"
+          class="ml-auto text-ink-500 hover:text-ink-900 dark:hover:text-ink-50 text-xs px-1.5 py-0.5 rounded hover:bg-cream-200 dark:hover:bg-ash-600 transition-colors"
+          title="Dismiss"
+        >✕</button>
+      </div>
+      <div ref="reasoningScroll" class="max-h-[350px] overflow-y-auto p-4 scroll-smooth reasoning-panel">
+        <div v-if="!reasoningText" class="text-xs text-ink-500 dark:text-ink-300 italic flex items-center gap-2">
+          <span class="w-3 h-3 border-2 border-navy-300 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></span>
+          <span>Menunggu data dari server...</span>
+        </div>
+        <div v-else>
+          <div
+            class="text-[11px] leading-relaxed whitespace-pre-wrap break-words text-ink-600 dark:text-ink-300 font-mono"
+          >{{ reasoningText }}</div>
+        </div>
+        <div v-if="generating && !contentText" class="flex items-center gap-2 py-2 px-3 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-700/40 mt-3">
+          <div class="thinking-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="text-[11px] text-amber-700 dark:text-amber-300 animate-pulse">Menyusun paper...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content output box (separate from reasoning) -->
+    <div
+      v-if="contentText"
+      class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
+    >
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-emerald-50 to-cream-50 dark:from-emerald-900/20 dark:to-ash-800">
+        <span class="w-2 h-2 rounded-full" :class="generating ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-600'"></span>
+        <span class="text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+          {{ generating ? '📄 Generating Paper...' : '✅ Generation Complete' }}
+        </span>
+        <span v-if="generating" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">(streaming)</span>
+        <button
+          v-if="!generating"
+          @click="dismissGenerationPanel"
+          class="ml-auto text-ink-500 hover:text-ink-900 dark:hover:text-ink-50 text-xs px-1.5 py-0.5 rounded hover:bg-cream-200 dark:hover:bg-ash-600 transition-colors"
+          title="Dismiss"
+        >✕</button>
+      </div>
+      <div ref="contentScrollRef" class="max-h-[600px] overflow-y-auto p-4 scroll-smooth">
+        <div 
+          ref="contentRenderEl"
+          class="content-render text-[12px] leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap break-words"
+          v-html="renderedContentHtml"
+        ></div>
+      </div>
+    </div>
+
     <!-- Existing file picker dialog (dari paper ini) -->
     <AppDialog v-if="existingFilePickerOpen" :open="existingFilePickerOpen" title="Pilih file" @close="existingFilePickerOpen = false">
       <div class="space-y-2 max-h-60 overflow-y-auto">
         <div v-if="!paperFilesList.length" class="text-xs text-ink-500 dark:text-ink-300 italic p-2">
           Belum ada file yang diupload ke paper ini.
         </div>
+        <!-- Select All -->
+        <label
+          v-if="paperFilesList.length"
+          class="flex items-center gap-2 text-xs font-semibold cursor-pointer hover:bg-cream-100 dark:hover:bg-ash-700 p-2 rounded border-b border-cream-200 dark:border-ash-600"
+        >
+          <input type="checkbox" :checked="areAllExistingPicked" @change="toggleSelectAllExisting" class="rounded" />
+          <span class="flex-1">Pilih Semua</span>
+          <span class="text-ink-500 dark:text-ink-300 text-[10px] shrink-0">{{ pickedExistingFiles.length }} / {{ paperFilesList.length }}</span>
+        </label>
         <label
           v-for="pf in paperFilesList"
           :key="pf.id"
@@ -543,13 +610,14 @@ onMounted(async () => {
   window.addEventListener('beforeunload', _handleBeforeUnload)
   // Refresh drafts list when chat exports a new draft (cross-component signal)
   window.addEventListener('chat-draft-saved', _handleDraftSaved)
-  window.addEventListener('data-sources-updated', () => { dataSourcesVersion.value++ })
+  window.addEventListener('data-sources-updated', _handleDataSourcesUpdated)
   // Close + picker dropdowns when clicking outside
   document.addEventListener('click', _handleClickOutside)
   // Load chat drafts for current paper
   if (store.currentPaperId) {
     loadDrafts(store.currentPaperId)
     loadPaperFilesList()
+    loadLiterature()
   }
 })
 
@@ -558,6 +626,10 @@ function _handleDraftSaved(e: any) {
   // selector without a manual reload. Scope to the current paper.
   const pid = e?.detail?.paperId || store.currentPaperId
   if (pid && pid === store.currentPaperId) loadDrafts(pid)
+}
+
+function _handleDataSourcesUpdated() {
+  dataSourcesVersion.value++
 }
 
 function _handleBeforeUnload() {
@@ -577,8 +649,11 @@ function _handleBeforeUnload() {
 }
 
 onUnmounted(() => {
+  _stopStatusPoll()
+  _stopChartRefreshPolling()
   window.removeEventListener('beforeunload', _handleBeforeUnload)
   window.removeEventListener('chat-draft-saved', _handleDraftSaved)
+  window.removeEventListener('data-sources-updated', _handleDataSourcesUpdated)
   document.removeEventListener('click', _handleClickOutside)
   if (_pollTimer) clearInterval(_pollTimer)
   // Save state to Pinia store if actively generating (survives panel switch)
@@ -646,9 +721,29 @@ const hasDataAnalysis = computed(() => {
 })
 const paperFilesList = ref<any[]>([])
 const pickedExistingFiles = ref<any[]>([])
-// Inline file list picks (Data & Referensi)
+// Inline file list picks (Data & File)
 const pickedDataFiles = ref<any[]>([])
 const pickedRefFiles = ref<any[]>([])
+
+// Literatur section
+interface LitFullItem {
+  id: number
+  title: string
+  authors?: string[]
+  year?: number | null
+  publisher?: string
+  venue?: string
+  doi?: string | null
+  citations?: number
+  abstract?: string
+}
+const literatureItems = ref<LitFullItem[]>([])
+const literatureLoading = ref(false)
+
+// Generation options
+const enablePaperReview = ref(false)
+const enableImageGen = ref(true)
+const enableRevisiSemua = ref(false)
 
 async function loadPaperFilesList() {
   if (!store.currentPaperId) { paperFilesList.value = []; return }
@@ -706,6 +801,65 @@ async function confirmRefFiles() {
   }
   pickedRefFiles.value = []
 }
+
+// ── Select All helpers ──
+const areAllDataPicked = computed(() => {
+  return paperFilesList.value.length > 0 && pickedDataFiles.value.length === paperFilesList.value.length
+})
+function toggleSelectAllData(): void {
+  if (areAllDataPicked.value) {
+    pickedDataFiles.value = []
+  } else {
+    pickedDataFiles.value = paperFilesList.value.map(f => f.id)
+  }
+}
+const areAllRefPicked = computed(() => {
+  return paperFilesList.value.length > 0 && pickedRefFiles.value.length === paperFilesList.value.length
+})
+function toggleSelectAllRef(): void {
+  if (areAllRefPicked.value) {
+    pickedRefFiles.value = []
+  } else {
+    pickedRefFiles.value = paperFilesList.value.map(f => f.id)
+  }
+}
+const areAllExistingPicked = computed(() => {
+  return paperFilesList.value.length > 0 && pickedExistingFiles.value.length === paperFilesList.value.length
+})
+function toggleSelectAllExisting(): void {
+  if (areAllExistingPicked.value) {
+    pickedExistingFiles.value = []
+  } else {
+    pickedExistingFiles.value = paperFilesList.value.map(f => f.id)
+  }
+}
+// ── End Select All ──
+
+// Literatur functions — otomatis di-inject ke prompt oleh backend.
+// Cukup check/uncheck di tab Literatur; PaperfullTab hanya preview.
+async function loadLiterature(): Promise<void> {
+  if (!store.currentPaperId) return
+  literatureLoading.value = true
+  try {
+    const res = await api.get(`/api/papers/${store.currentPaperId}/literature/checked`)
+    literatureItems.value = (res.data?.items || []).map((it: any) => ({
+      id: it.id,
+      title: it.title || '',
+      authors: it.authors || [],
+      year: it.year || null,
+      publisher: it.publisher || it.venue || '',
+      venue: it.venue || '',
+      doi: it.doi || null,
+      citations: it.citations ?? 0,
+      abstract: it.abstract || '',
+    }))
+  } catch {
+    literatureItems.value = []
+  } finally {
+    literatureLoading.value = false
+  }
+}
+
 // Draft picker dialog
 const draftPickerOpen = ref(false)
 const pickedDrafts = ref<string[]>([])
@@ -1034,7 +1188,7 @@ async function confirmExistingFiles() {
   saveState()
 }
 
-// ── + picker: chat drafts → masuk ke bucket Referensi ─────────────────
+// ── + picker: chat drafts → masuk ke bucket File ─────────────────
 function openDraftPicker() {
   pickedDrafts.value = []
   draftPickerOpen.value = true
@@ -1616,6 +1770,8 @@ watch(() => store.currentPaperId, (newId, oldId) => {
   }
   if (newId) {
     loadDrafts(newId)
+    loadPaperFilesList()
+    loadLiterature()
     checkActiveJob()
   }
 })
@@ -1707,10 +1863,14 @@ async function generate() {
       const formData = new FormData()
       formData.append('prompt', t)
       formData.append('paper_id', store.currentPaperId)
-      formData.append('language', auth.user?.preferred_language || 'id')
+      formData.append('language', store.paper?.language || auth.user?.preferred_language || 'id')
       if (store.paper?.citation_style) {
         formData.append('style', store.paper.citation_style)
       }
+      // Generation options from checkboxes
+      formData.append('generate_images', String(enableImageGen.value))
+      formData.append('revisi_semua', String(enableRevisiSemua.value))
+      if (enablePaperReview.value) formData.append('paper_kind', 'review')
       
       // Selected chat drafts (now from referenceFiles, not separate checkbox)
       if (draftEntries.length > 0) {
@@ -1744,8 +1904,11 @@ async function generate() {
         prompt: t,
         paper_id: store.currentPaperId,
         include_status: true,
-        language: auth.user?.preferred_language || 'id',
+        language: store.paper?.language || auth.user?.preferred_language || 'id',
         style: store.paper?.citation_style || null,
+        generate_images: enableImageGen.value,
+        revisi_semua: enableRevisiSemua.value,
+        ...(enablePaperReview.value ? { paper_kind: 'review' } : {}),
       }
       
       // Selected chat drafts (now from referenceFiles, not separate checkbox)
@@ -2085,18 +2248,34 @@ async function consumeSSEStream(res) {
             doneReceived = true
             contentText.value += `\n[Paper generated in ${payload.elapsed || '?'}s — ${payload.tokens || '?'} tokens]\n`
             // Backend now sends done BEFORE images, so JSON is parsed to editor first
-            if (payload.image_jobs && payload.image_jobs.length > 0) {
-              contentText.value += `\n✅ Paper content loaded! ${payload.image_jobs.length} image(s) generating in background...\n`
+            const imgJobCount = payload.image_jobs ? payload.image_jobs.length : 0
+            const chartJob = payload.chart_job || payload.chart_job_id || null
+            const totalImgJobs = imgJobCount + (chartJob ? 1 : 0)
+            if (totalImgJobs > 0) {
+              contentText.value += `\n✅ Paper content loaded! ${imgJobCount} image(s) + ${chartJob ? '1 chart' : '0 charts'} generating in background...\n`
+              // Show initial progress immediately — progress events update incrementally
+              imageGenProgress.value = {
+                total: totalImgJobs,
+                done: 0,
+                message: `Generating ${totalImgJobs} images...`,
+              }
             }
             // Pass paper_data from backend directly to editor (faster than fetching from DB)
             finishGeneration(payload.paper)
             // Don't return — continue listening for images_complete event
           } else if (currentEvent === 'images_complete') {
             // All images done — reload paper (image paths reconciled) + refresh charts
-            imageGenProgress.value = { total: 0, done: 0, message: 'All images complete!' }
+            const errCount = payload.errors || 0
+            const totalCount = payload.total || 0
+            if (errCount > 0) {
+              imageGenProgress.value = { total: totalCount, done: totalCount, message: `${totalCount - errCount}/${totalCount} images — ${errCount} failed!` }
+              contentText.value += `\n⚠️ ${totalCount - errCount}/${totalCount} images generated — ${errCount} errors\\n`
+            } else {
+              imageGenProgress.value = { total: totalCount, done: totalCount, message: 'All images complete!' }
+              contentText.value += `\n✅ All images generated and embedded!\n`
+            }
             await store.loadPaperFromDb(store.currentPaperId)
             await store.loadPaperCharts(store.currentPaperId)
-            contentText.value += `\n✅ All images generated and embedded!\n`
             return
           } else if (currentEvent === 'error') {
             doneReceived = true
