@@ -34,9 +34,9 @@ log = logging.getLogger(__name__)
 files = Blueprint("files", __name__, url_prefix="/api/papers")
 
 ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"}
-# Per-file size cap. Reference papers (esp. scanned PDFs from journals) easily
-# No upload size limit — users requested unrestricted file uploads.
-MAX_FILE_BYTES = 1024 * 1024 * 1024  # 1GB per file
+# 50MB per file — sufficient for large PDFs and scanned documents,
+# prevents DoS via memory/disk exhaustion from giant files.
+MAX_FILE_BYTES = 50 * 1024 * 1024  # 50MB
 MAX_PREVIEW_CHARS = 20_000
 
 # Magic bytes for file type validation (first few bytes of file)

@@ -120,22 +120,21 @@ def _detect_paper_kind(paper_data: dict) -> str:
 
 
 def _collect_gambar_prompts(paper_data: dict, paper_kind: Optional[str] = None) -> list[dict]:
-    """Walk the paper JSON and extract image generation prompts from gambar items.
+    """Walk ALL sections and collect gambar prompts for AI image generation.
 
-    Image scope rules:
-      - REGULAR paper (default): sections 2-3 ONLY (conceptual figures).
-        Section 4 MUST use data tools (charts), NOT Gemini image generation.
-      - REVIEW paper: ALL sections — section 4 images are conceptual (no chart data).
-
-    Section 4 gambar (REGULAR):
-      - Always SKIP — data tools pipeline handles section 4 charts.
-        Handled by _collect_section4_chart_specs for data tools pipeline.
+    ALL gambar items with filled Prompt across ALL sections → image_gen (Gemini).
+    No data tools pipeline — everything goes through image generation.
+    Section 4 chart data prompts are sent to image_gen directly.
 
     Args:
         paper_data: Full paper JSON.
-        paper_kind: 'regular' or 'review'. Auto-detected if None.
+        paper_kind: 'regular' or 'review'. Ignored — all papers use image_gen.
 
     Returns a list of dicts: {prompt, image_number, title, original_path}.
+
+    Filters:
+      - Gambar with existing valid Path → skipped (no regeneration)
+      - Empty prompts → skipped
     """
     if paper_kind is None:
         paper_kind = _detect_paper_kind(paper_data)
@@ -144,81 +143,36 @@ def _collect_gambar_prompts(paper_data: dict, paper_kind: Optional[str] = None) 
     if not isinstance(paper_data, dict):
         return prompts
 
-    def _has_chart_data(prompt: str) -> bool:
-        """Check if prompt contains structured chart data (table/numbers)."""
-        if not prompt:
-            return False
-        # Check for markdown table pattern
-        import re
-        md_rows = re.findall(r'\|(.+?)\|', prompt)
-        if len(md_rows) >= 3:
-            # Check if rows have numeric content
-            numeric_count = sum(1 for r in md_rows if re.search(r'\d+\.?\d*', r))
-            if numeric_count >= 2:
-                return True
-        # Check for {Key: Val} pattern with numbers
-        kv_matches = re.findall(r'\{[^}]*\d+[^}]*\}', prompt)
-        if len(kv_matches) >= 2:
-            return True
-        return False
-
-    def _is_section_dict(obj) -> bool:
-        """Detect if a dict looks like a paper section (has title + content)."""
-        if not isinstance(obj, dict):
-            return False
-        return "title" in obj and "content" in obj
-
     def walk(obj, current_section=None):
         if isinstance(obj, dict):
             if obj.get("id") == "gambar":
                 p = obj.get("Prompt") or obj.get("prompt") or ""
+                # Skip if already has a valid image file (uploaded)
+                existing_path = str(obj.get("Path") or obj.get("path") or "").strip()
+                if existing_path and os.path.isabs(existing_path) and os.path.exists(existing_path):
+                    return  # skip — already has a valid image
                 if not p.strip():
-                    pass  # skip empty prompts
-                elif current_section == "section4":
-                    # Section 4: REVIEW mode → include conceptual images (no chart data).
-                    # REGULAR mode → ALWAYS skip (data tools handles charts).
-                    if paper_kind == "review" and not _has_chart_data(p):
-                        prompts.append({
-                            "prompt": p.strip(),
-                            "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
-                            "title": obj.get("Title") or obj.get("title") or "",
-                            "original_path": obj.get("Path") or obj.get("path") or "",
-                        })
-                elif current_section in ("section2", "section3"):
-                    # Sections 2-3: include for both regular and review
-                    prompts.append({
-                        "prompt": p.strip(),
-                        "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
-                        "title": obj.get("Title") or obj.get("title") or "",
-                        "original_path": obj.get("Path") or obj.get("path") or "",
-                        "_section": current_section,
-                    })
-                elif current_section is None:
-                    # Top-level gambar (rare): include only for review mode
-                    if paper_kind == "review":
-                        prompts.append({
-                            "prompt": p.strip(),
-                            "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
-                            "title": obj.get("Title") or obj.get("title") or "",
-                            "original_path": obj.get("Path") or obj.get("path") or "",
-                        })
+                    return  # skip empty prompts
+                # ALL gambar with prompts → image_gen (including section 4 chart data)
+                prompts.append({
+                    "prompt": p.strip(),
+                    "image_number": obj.get("ImageNumber") or obj.get("imageNumber") or "",
+                    "title": obj.get("Title") or obj.get("title") or "",
+                    "original_path": obj.get("Path") or obj.get("path") or "",
+                    "_section": current_section or "",
+                })
             for k, v in obj.items():
                 child_section = current_section
                 if isinstance(k, str):
                     m = re.match(r'(section\d+)[a-z]?$', k)
                     if m:
                         child_section = m.group(1)
-                    # Detect list-based sections/subsection structures.
-                    # When key is "sections" or "subsections", the list items
-                    # are section-like dicts → track position as section number.
                     if k in ("sections", "subsections") and isinstance(v, list) and current_section is None:
-                        # Determine base section number from position in sections[]
-                        # sections[0] = Pendahuluan (section1), sections[1] = Tinjauan Pustaka (section2), etc.
                         if k == "sections":
                             for i, item in enumerate(v):
-                                section_num = i + 1  # 1-based
+                                section_num = i + 1
                                 walk(item, current_section=f"section{section_num}")
-                            continue  # already walked with section context
+                            continue
                 walk(v, current_section=child_section)
         elif isinstance(obj, list):
             for item in obj:
@@ -303,6 +257,114 @@ def _collect_section4_chart_specs(paper_data: dict, paper_kind: Optional[str] = 
 
     walk(paper_data)
     return specs
+
+
+def _verify_data_integrity(paper_data: dict, data_texts: list[str], paper_id: str) -> list[dict]:
+    """Verify numbers in section 4 JSON match source data texts.
+
+    Extracts all numeric values from source data texts and from paper section 4,
+    then checks that every number in the paper can be traced to source data.
+    Also detects placeholder variables (x1, x2, etc.) when real data exists.
+
+    Returns list of warnings: [{\"path\": \"section4b.text\", \"found\": \"94.5%\", \"source_sample\": [...], \"severity\": \"error\"}]
+    Empty list = integrity check passed.
+    """
+    import re
+
+    warnings = []
+
+    # First: check for placeholder variables when data exists
+    if data_texts:
+        _PLACEHOLDER_RE = re.compile(
+            r'\b(x\d+|X\d+|X₁|X₂|X₃|X₄|X₅|X₆|X₇|X₈|X₉|X₁₀'
+            r'|a\d+|a₁|a₂|a₃|a₄|a₅|b\d+|b₁|b₂|b₃|b₄|b₅'
+            r'|variabel\s+X|nilai\s+X|placeholder)\b',
+            re.IGNORECASE
+        )
+
+        def _scan_for_placeholders(obj, path="paper"):
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if k.startswith("_") or k in ("Prompt", "data_tools_payload"):
+                        continue
+                    new_path = f"{path}.{k}"
+                    if isinstance(v, str):
+                        matches = _PLACEHOLDER_RE.findall(v)
+                        for m in matches:
+                            warnings.append({
+                                "path": new_path,
+                                "found": m,
+                                "issue": "PLACEHOLDER_VARIABLE_WITH_DATA",
+                                "severity": "error",
+                                "detail": f"Placeholder '{m}' found but ## DATA SUMBER exists. Replace with actual data values."
+                            })
+                    elif isinstance(v, (dict, list)):
+                        _scan_for_placeholders(v, new_path)
+            elif isinstance(obj, list):
+                for i, item in enumerate(obj):
+                    _scan_for_placeholders(item, f"{path}[{i}]")
+
+        _scan_for_placeholders(paper_data)
+
+    # Second: extract all numbers from source data for cross-reference
+    source_numbers: set[str] = set()
+    source_decimals: set[float] = set()
+    if data_texts:
+        for dt in data_texts:
+            if not dt:
+                continue
+            clean_dt = re.sub(r'[|*_#`]', ' ', dt)
+            for m in re.finditer(r'(\d+[.,]\d+|\d+)(\s*[%]?|\s*\w+)?', clean_dt):
+                num_str = m.group(1).replace(',', '.')
+                try:
+                    num = float(num_str)
+                    source_decimals.add(num)
+                    source_numbers.add(m.group(0).strip())
+                except ValueError:
+                    pass
+
+    # Walk section 4 content looking for numeric claims
+    def walk_paper(obj, path="paper"):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k.startswith("_") or k in ("Prompt", "ImagePath", "TablePrefix"):
+                    continue
+                new_path = f"{path}.{k}"
+                if isinstance(v, str) and ("section4" in path.lower() or
+                                           any(hint in new_path.lower() for hint in ["result", "discuss", "findings", "analys"])):
+                    # Extract numbers from text
+                    paper_text = str(v)
+                    for m in re.finditer(r'(\d+[.,]\d+|\d+)(\s*[%]?|\s*\w+)?', paper_text):
+                        num_match = m.group(0).strip()
+                        # Skip years, equation numbers, citation numbers
+                        if re.match(r'^\d{4}$', num_match) and 'year' not in new_path.lower():
+                            continue
+                        num_str = m.group(1).replace(',', '.')
+                        try:
+                            num = float(num_str)
+                            # Check if this number exists in source (allow tolerance for rounding)
+                            found = False
+                            for sd in source_decimals:
+                                if abs(num - sd) < 1e-6 or abs(round(num) - round(sd)) < 1e-6:
+                                    found = True
+                                    break
+                            if not found:
+                                warnings.append({
+                                    "path": new_path,
+                                    "found": num_match,
+                                    "source_sample": list(source_numbers)[:20],
+                                    "severity": "error" if abs(num) > 0.01 else "warning"
+                                })
+                        except ValueError:
+                            pass
+                elif isinstance(v, (dict, list)):
+                    walk_paper(v, new_path)
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                walk_paper(item, f"{path}[{i}]")
+
+    walk_paper(paper_data)
+    return warnings
 
 
 def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path) -> None:
@@ -2995,6 +3057,18 @@ def generate_stream(paper_id: str):
             except Exception as _hum_e:
                 log.warning("[paperfull] Post-humanization failed, continuing: %s", _hum_e)
 
+            # ── Post-process: data integrity verification ────
+            _stored_data_texts = paper_data.get("_data_texts", []) or []
+            if _stored_data_texts:
+                try:
+                    _verify_result = _verify_data_integrity(paper_data, _stored_data_texts, paper_id)
+                    if _verify_result:
+                        paper_data["_data_warnings"] = _verify_result
+                        log.warning("[paperfull] ⚠ Data integrity issues found for paper %s: %d warnings",
+                                   paper_id, len(_verify_result))
+                except Exception as _dv_e:
+                    log.warning("[paperfull] Data verification failed: %s", _dv_e)
+
             # ── Inject data_texts for chart generation ──────────────
             # Priority: closure var → paper_data from LLM → pre-stored in Paper.data
             _injected_data_texts = data_texts or paper_data.get("_data_texts", []) or []
@@ -3082,56 +3156,21 @@ def generate_stream(paper_id: str):
                                 _img_submit(jid)
                             except Exception:
                                 pass  # dispatcher poll will pick it up
-                        log.info("Auto-enqueued %d image jobs (sec 2/3) for paper %s", len(image_job_ids), paper_id)
+                        log.info("Auto-enqueued %d image jobs (all sections) for paper %s", len(image_job_ids), paper_id)
                 except Exception as e_img:
                     db.session.rollback()
                     log.warning("Auto-image-gen failed for paper %s: %s", paper_id, e_img)
-
-            # ── Auto-generate data charts for section 4 ───────────────
-            # Two sources of chart data:
-            # 1. Section 4 gambar items with chart specs in Prompt (from LLM)
-            # 2. Uploaded data_files text (Excel raw data, fallback)
-            chart_job_id = None
-            if generate_images:
-                _section4_specs = _collect_section4_chart_specs(paper_data, paper_kind=paper_kind)
-                _effective_data_texts = data_texts or paper_data.get("_data_texts", []) or []
-                log.info(
-                    "[paperfull] sec4 chart trigger: specs=%d items, data_texts=%d items for paper %s",
-                    len(_section4_specs),
-                    len(_effective_data_texts),
-                    paper_id,
-                )
-                # Use section4 specs if available (new architecture: LLM wrote chart details)
-                # Fall back to data_texts pipeline if no specs but data was uploaded
-                if _section4_specs:
-                    try:
-                        chart_job_id = _auto_generate_section4_charts(
-                            paper_id, user_id, _section4_specs, _effective_data_texts
-                        )
-                        if chart_job_id:
-                            log.info("Auto-enqueued section4 chart job %s for paper %s", chart_job_id, paper_id)
-                    except Exception as e_chart:
-                        log.warning("Auto-section4-chart failed for paper %s: %s", paper_id, e_chart)
-                elif _effective_data_texts:
-                    try:
-                        chart_job_id = _auto_generate_data_charts(paper_id, user_id, _effective_data_texts)
-                        if chart_job_id:
-                            log.info("Auto-enqueued data chart job %s (legacy) for paper %s", chart_job_id, paper_id)
-                    except Exception as e_chart:
-                        log.warning("Auto-data-chart failed for paper %s: %s", paper_id, e_chart)
 
             # ── Send done event FIRST (JSON parsed to editor) ───────────
             # User sees paper content immediately. Images generate in background.
             _update_bell_job("done", 100)
             _pf_snapshot("done", reasoning_acc, full_content, force=True)
-            yield f"event: done\ndata: {_json.dumps({'paper': paper_data, 'elapsed': elapsed, 'tokens': token_count, 'image_jobs': image_job_ids, 'chart_job': chart_job_id, 'total_jobs': len(image_job_ids) + (1 if chart_job_id else 0), 'images_pending': generate_images and (bool(image_job_ids) or bool(chart_job_id))})}\n\n"
+            yield f"event: done\ndata: {_json.dumps({'paper': paper_data, 'elapsed': elapsed, 'tokens': token_count, 'image_jobs': image_job_ids, 'total_jobs': len(image_job_ids) , 'images_pending': generate_images and (bool(image_job_ids) )})}\n\n"
 
             # ── Wait for ALL image jobs in background ─────────────────────
             # Continue SSE stream to send progress updates while images generate.
             # Frontend shows separate image progress panel.
             _all_job_ids = [jid for jid in image_job_ids if jid]
-            if chart_job_id:
-                _all_job_ids.append(chart_job_id)
 
             if _all_job_ids:
                 _total_jobs = len(_all_job_ids)
@@ -3162,17 +3201,7 @@ def generate_stream(paper_id: str):
                                     _img_done += 1
                                     _img_errors += 1
 
-                        # Check AiJob (chart) statuses
-                        _chart_done = 0
-                        if chart_job_id:
-                            _cjob = AiJob.query.get(chart_job_id)
-                            if _cjob and _cjob.status in ("done", "error", "failed"):
-                                _chart_done = 1
-                            elif _cjob:
-                                # Chart progress from AiJob
-                                yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': f'Generating charts: {_cjob.stage or _cjob.status} ({_cjob.progress}%)', 'total': _total_jobs, 'done': _img_done})}\n\n"
-
-                        _all_done = _img_done + _chart_done
+                        _all_done = _img_done
                         _pending = _total_jobs - _all_done
 
                         # Emit progress every 3 seconds at most
@@ -3227,15 +3256,11 @@ def generate_stream(paper_id: str):
                         _img = ImageGenJob.query.get(_jid)
                         if _img and _img.status in ("error", "failed"):
                             error_count += 1
-                    if chart_job_id:
-                        _cjob = AiJob.query.get(chart_job_id)
-                        if _cjob and _cjob.status in ("error", "failed"):
-                            error_count += 1
                 except Exception:
                     pass
 
             # ── Send images_complete event ─────────────────────────────
-            yield f"event: images_complete\ndata: {_json.dumps({'image_jobs': image_job_ids, 'chart_job': chart_job_id, 'errors': error_count, 'total': len(image_job_ids) + (1 if chart_job_id else 0)})}\n\n"
+            yield f"event: images_complete\ndata: {_json.dumps({'image_jobs': image_job_ids, 'errors': error_count, 'total': len(image_job_ids) })}\n\n"
 
         except GeneratorExit:
             # Client disconnected before SSE finished. Do NOT try to write to

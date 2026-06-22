@@ -126,7 +126,6 @@ LETTER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 # HELPERS
 # ======================================================================
 
-
 def _set_ai_prompt_color_red(doc):
     """Post-process output DOCX:
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
@@ -182,11 +181,9 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
 
-
 def load_json():
     with open(TEMPLATE_JSON, encoding="utf-8") as f:
         return json.load(f)
-
 
 def set_run_font(
     run,
@@ -222,18 +219,17 @@ def set_run_font(
     if subscript:
         run.font.subscript = True
 
-
 def add_run(paragraph, text, **kwargs):
     run = paragraph.add_run(text)
     set_run_font(run, **kwargs)
     return run
-
 
 def set_para_spacing(
     p,
     before_pt=None,
     after_pt=None,
     line_pt=None,
+    line_tw=120,
     alignment=None,
     left_tw=None,
     right_tw=None,
@@ -248,6 +244,14 @@ def set_para_spacing(
         pf.space_after = Pt(after_pt)
     if line_pt is not None:
         pf.line_spacing = Pt(line_pt)
+    elif line_tw is not None:
+        pPr = p._element.get_or_add_pPr()
+        spacing = pPr.find(qn("w:spacing"))
+        if spacing is None:
+            spacing = OxmlElement("w:spacing")
+            pPr.append(spacing)
+        spacing.set(qn("w:line"), str(line_tw))
+        spacing.set(qn("w:lineRule"), "auto")
     if alignment is not None:
         p.alignment = alignment
     if left_tw is not None:
@@ -260,7 +264,6 @@ def set_para_spacing(
         pf.first_line_indent = Twips(-hanging_tw)
     if keep_next:
         pf.keep_with_next = True
-
 
 def remove_numpr(p):
     """Lepas numbering otomatis (numPr) dari pPr.
@@ -282,7 +285,6 @@ def remove_numpr(p):
     numId.set(qn("w:val"), "0")
     new_numPr.append(numId)
     pPr.append(new_numPr)
-
 
 def make_sectpr(
     top_tw,
@@ -332,7 +334,6 @@ def make_sectpr(
 
     return sp
 
-
 def insert_section_break(
     doc,
     top_tw,
@@ -362,7 +363,6 @@ def insert_section_break(
     )
     return p
 
-
 def set_final_sectpr(doc):
     body = doc.element.body
     for old in body.findall(qn("w:sectPr")):
@@ -378,7 +378,6 @@ def set_final_sectpr(doc):
             col_space_tw=CFG["col_space_tw"],
         )
     )
-
 
 def _fill_empty_sections(doc):
     """Inject invisible paragraph ke setiap section yg kosong total.
@@ -433,7 +432,6 @@ def _fill_empty_sections(doc):
         if not injected:
             break
 
-
 def _clean_latex(text):
     """Strip inline LaTeX markers dari body text."""
     import re as _re
@@ -469,11 +467,14 @@ def _clean_latex(text):
     text = _re.sub(r'\\Delta', chr(916), text)
     text = _re.sub(r'\\partial', chr(8706), text)
     text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
-    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    # Convert bare subscript/superscript to Unicode
+    text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
+    text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
     text = _re.sub(r'\\[a-zA-Z]+', '', text)
-    text = _re.sub(r'[{}]', '', text)
+    text = re.sub(r'[{}]', '', text)
+    # Strip any remaining stray $ (unmatched math delimiters)
+    text = re.sub(r'\$', '', text)
     return text.strip()
-
 
 def _postprocess_clean_latex(doc):
     """Walk all paragraphs and tables, clean LaTeX from run text in-place."""
@@ -489,7 +490,6 @@ def _postprocess_clean_latex(doc):
                     for run in para.runs:
                         if run.text and _re.search(r'\\[a-zA-Z]|[$]', run.text):
                             run.text = _clean_latex(run.text)
-
 
 def clear_body(doc):
     body = doc.element.body
@@ -508,7 +508,6 @@ def clear_body(doc):
             )
         )
 
-
 def _resolve_style(doc, style_name):
     """Cari style berdasarkan style_id ATAU display name (suppress deprecation warning)."""
     for s in doc.styles:
@@ -519,10 +518,8 @@ def _resolve_style(doc, style_name):
             continue
     return None
 
-
 def style_exists(doc, style_name):
     return _resolve_style(doc, style_name) is not None
-
 
 # ======================================================================
 # LATEX → UNICODE (sama seperti generator lain)
@@ -595,7 +592,6 @@ LATEX_SYMBOLS = {
     "\\$": "$",
 }
 
-
 def _find_balanced(s, start):
     assert s[start] == "{"
     depth = 1
@@ -607,7 +603,6 @@ def _find_balanced(s, start):
             depth -= 1
         i += 1
     return i
-
 
 def _expand_brace_command(s, cmd, transform):
     out = []
@@ -636,7 +631,6 @@ def _expand_brace_command(s, cmd, transform):
         i = end
     return "".join(out)
 
-
 def _expand_frac(s):
     while True:
         idx = s.find("\\frac")
@@ -661,7 +655,6 @@ def _expand_frac(s):
         a_r = latex_to_unicode(a)
         b_r = latex_to_unicode(b)
         s = s[:idx] + f"({a_r})/({b_r})" + s[b_end:]
-
 
 _SUPER = {
     "0": "⁰",
@@ -709,18 +702,15 @@ _SUB = {
     "x": "ₓ",
 }
 
-
 def _to_super(s):
     if all(c in _SUPER for c in s):
         return "".join(_SUPER[c] for c in s)
     return "^(" + s + ")"
 
-
 def _to_sub(s):
     if all(c in _SUB for c in s):
         return "".join(_SUB[c] for c in s)
     return "_" + s if len(s) == 1 else "_(" + s + ")"
-
 
 def _expand_super_sub(s):
     out = []
@@ -743,7 +733,6 @@ def _expand_super_sub(s):
         out.append(c)
         i += 1
     return "".join(out)
-
 
 def latex_to_unicode(s: str) -> str:
     if not s:
@@ -772,7 +761,6 @@ def latex_to_unicode(s: str) -> str:
     s = re.sub(r"[ \t]+", " ", s).strip()
     return s
 
-
 # ======================================================================
 # INLINE FORMATTING
 # ======================================================================
@@ -782,10 +770,15 @@ _INLINE_RE = re.compile(
     re.DOTALL,
 )
 
-
 def add_runs_with_inline(
     paragraph, text, base_font, base_size, base_bold=False, base_italic=False, base_color=None
 ):
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     pos = 0
     text = text.replace(" ", " ")
     for m in _INLINE_RE.finditer(text):
@@ -855,17 +848,14 @@ def add_runs_with_inline(
                 color=base_color,
             )
 
-
 # ======================================================================
 # CONTENT GENERATORS
 # ======================================================================
 
 _PARA_FIRST = {"first": True}
 
-
 def reset_first_para():
     _PARA_FIRST["first"] = True
-
 
 def _new_para(doc, style=None):
     """Buat paragraph baru. Bila style ada di template, pakai. Kalau tidak, fallback Normal."""
@@ -876,14 +866,12 @@ def _new_para(doc, style=None):
             return p
     return doc.add_paragraph()
 
-
 def add_title(doc, data):
     title = data.get("title", "Paper Title Goes Here")
     p = _new_para(doc, "papertitle")
     remove_numpr(p)
     set_para_spacing(p, before_pt=5, after_pt=6, alignment=WD_ALIGN_PARAGRAPH.CENTER)
     add_run(p, title, name=CFG["font_serif"], size_pt=CFG["size_title"], color=(0, 0, 0))
-
 
 def add_author_notes(doc, data):
     """Dua paragraf catatan IEEE setelah title (Author style, size 8pt) — match
@@ -899,7 +887,6 @@ def add_author_notes(doc, data):
         remove_numpr(p)
         set_para_spacing(p, before_pt=0, after_pt=0, alignment=WD_ALIGN_PARAGRAPH.CENTER)
         add_run(p, note, name=CFG["font_serif"], size_pt=8.0, italic=True, color=(0, 0, 0))
-
 
 def add_authors(doc, data):
     authors = data.get("authors", []) or [
@@ -969,7 +956,6 @@ def add_authors(doc, data):
                 ap2, a["email"], name=CFG["font_serif"], size_pt=CFG["size_affil"], color=(0, 0, 0)
             )
 
-
 def add_abstract(doc, data):
     abstract = data.get(
         "abstract",
@@ -996,7 +982,6 @@ def add_abstract(doc, data):
     add_runs_with_inline(
         p, abstract, base_font=CFG["font_serif"], base_size=CFG["size_abstract"], base_bold=True
     )
-
 
 def add_keywords(doc, data):
     kws = data.get("keywords", ["keyword1", "keyword2", "keyword3"])
@@ -1028,7 +1013,6 @@ def add_keywords(doc, data):
         color=(0, 0, 0),
     )
 
-
 def add_section_heading(doc, title, num):
     """IEEE Heading1: 'I. SECTION TITLE' uppercase center."""
     label = f"{ROMAN[num]}. {title.upper()}"
@@ -1044,7 +1028,6 @@ def add_section_heading(doc, title, num):
     )
     add_run(p, label, name=CFG["font_serif"], size_pt=CFG["size_heading1"], color=(0, 0, 0))
     reset_first_para()
-
 
 def add_subsection_heading(doc, title, sub_idx):
     """IEEE Heading2: 'A. Title Case' italic left."""
@@ -1064,7 +1047,6 @@ def add_subsection_heading(doc, title, sub_idx):
     )
     reset_first_para()
 
-
 def add_body_text(doc, text):
     p = _new_para(doc, "BodyText")
     remove_numpr(p)
@@ -1080,7 +1062,6 @@ def add_body_text(doc, text):
     )
     add_runs_with_inline(p, text, base_font=CFG["font_serif"], base_size=CFG["size_body"])
 
-
 def add_figure(doc, fig):
     img_p = _new_para(doc, "Figure")
     remove_numpr(img_p)
@@ -1088,7 +1069,12 @@ def add_figure(doc, fig):
         img_p, before_pt=4, after_pt=2, alignment=WD_ALIGN_PARAGRAPH.CENTER, first_line_tw=0
     )
     img_path = fig.get("Path", "")
-    full_path = BASE / img_path if img_path else None
+    full_path = None
+    if img_path:
+        for cand in (Path(img_path), BASE / img_path):
+            if cand.is_file():
+                full_path = cand
+                break
     inserted = False
     if full_path and full_path.exists():
         try:
@@ -1132,41 +1118,25 @@ def add_figure(doc, fig):
     )
     reset_first_para()
 
-
 def add_formula(doc, fm):
-    latex = fm.get("latex", "")
-    num = fm.get("FormulaNumber", "?")
-    p = doc.add_paragraph()
-    set_para_spacing(
-        p, before_pt=4, after_pt=4, line_pt=12, alignment=WD_ALIGN_PARAGRAPH.LEFT, first_line_tw=0
-    )
-    pf = p.paragraph_format
-    pf.tab_stops.add_tab_stop(Twips(2200), WD_TAB_ALIGNMENT.CENTER)
-    pf.tab_stops.add_tab_stop(Twips(4400), WD_TAB_ALIGNMENT.RIGHT)
-    add_run(p, "\t", name=CFG["font_serif"], size_pt=CFG["size_formula"])
-    _omml_done = False
-    try:
-        from _math_omml import append_omml_math as _omml_fn
-        _lx = (latex)
-        _omml_done = bool(str(_lx or "").strip()) and _omml_fn(p, _lx)
-    except Exception:
-        _omml_done = False
-    if not _omml_done:
-        formula_text = latex_to_unicode(latex)
-        add_run(
-            p,
-            formula_text,
-            name=CFG["font_math"],
-            size_pt=CFG["size_formula"],
-            italic=True,
-            color=(0, 0, 0),
-        )
-    add_run(
-        p, "\t(" + num + ")", name=CFG["font_serif"], size_pt=CFG["size_formula"], color=(0, 0, 0)
-    )
-    reset_first_para()
+    import sys
+    from pathlib import Path as _Path
+    _jdir = _Path(__file__).resolve().parent
+    if str(_jdir) not in sys.path:
+        sys.path.insert(0, str(_jdir))
+    from _formula_omml import add_omml_formula
 
-
+    latex = str(fm.get("latex", fm.get("Formula", ""))).strip()
+    number = str(fm.get("FormulaNumber", "")).strip()
+    if not latex:
+        return
+        # Calculate max formula width (same rules as images)
+    columns = CFG.get("columns", 1)
+    col_w = CFG.get("col_width_cm", 16.0)
+    max_fw = (col_w / 2) * 0.7 if columns == 2 else col_w * 0.7
+    add_omml_formula(doc, latex, number, CFG, before_pt=4, after_pt=4,
+                     alignment="center", font_body=CFG.get("font_body", "Times New Roman"),
+                     size_body=CFG.get("size_body", 10), max_width_cm=max_fw)
 def _set_cell_three_line(cell, top=None, bottom=None, header_bottom=None):
     tcPr = cell._tc.get_or_add_tcPr()
     tcBorders = tcPr.find(qn("w:tcBorders"))
@@ -1187,7 +1157,6 @@ def _set_cell_three_line(cell, top=None, bottom=None, header_bottom=None):
         el.set(qn("w:color"), "000000")
         tcBorders.append(el)
     tcPr.append(tcBorders)
-
 
 def add_table(doc, tb):
     num = tb.get("TableNumber", "?")
@@ -1257,8 +1226,21 @@ def add_table(doc, tb):
                 cp, str(val), base_font=CFG["font_serif"], base_size=CFG["size_table"]
             )
             _set_cell_three_line(cell, top=None, bottom=12 if is_last else None)
-    reset_first_para()
+    reset_first_para(
 
+)
+    # Spacer after table
+    p_spacer = doc.add_paragraph()
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+    ppr = p_spacer._p.get_or_add_pPr()
+    spacing = ppr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = ppr.makeelement(qn("w:spacing"), {})
+        ppr.append(spacing)
+    spacing.set(qn("w:before"), "120")
+    spacing.set(qn("w:after"), "120")
+    p_spacer.add_run(" ").font.size = Pt(1)
 
 def process_section_content(doc, content):
     if not content:
@@ -1281,7 +1263,6 @@ def process_section_content(doc, content):
             if txt:
                 add_body_text(doc, txt)
 
-
 def process_section(doc, sec, num):
     title = sec.get("title", f"Section {num}")
     add_section_heading(doc, title, num)
@@ -1299,7 +1280,6 @@ def process_section(doc, sec, num):
         add_subsection_heading(doc, sub_title, sub_idx)
         if "content" in sub:
             process_section_content(doc, sub["content"])
-
 
 def add_references(doc, data):
     refs = data.get("references", {})
@@ -1339,11 +1319,9 @@ def add_references(doc, data):
         add_run(p, f"[{i}] ", name=CFG["font_serif"], size_pt=CFG["size_ref"], color=(0, 0, 0))
         add_runs_with_inline(p, (str(ref.get("text") or ref.get("Text") or "").strip() if isinstance(ref, dict) else str(ref)), base_font=CFG["font_serif"], base_size=CFG["size_ref"])
 
-
 # ======================================================================
 # MAIN
 # ======================================================================
-
 
 def generate():
     if not TEMPLATE_DOCX.exists():
@@ -1469,6 +1447,9 @@ def generate():
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)
 
-
 if __name__ == "__main__":
     generate()
+# --- Hermes patch: masthead no-op ---
+def _inject_masthead_content(doc, data):
+    """No-op — masthead injection not needed for this template."""
+    pass

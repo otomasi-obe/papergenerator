@@ -1,6 +1,0 @@
-============================================================
-[SKOR KECOCOKAN: 30%] -> STATUS: REVISI MAYOR
-  Base: 100 | Penalty: -70 | Akhir: 30%
-   - Placeholder/Prompt Gambar Salah (MINOR): -5 x 14 = -70
-============================================================
-Audit selesai. Detail tersimpan: audit_ROTASI_output.txt

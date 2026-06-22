@@ -121,6 +121,17 @@
               />
               <button v-if="slrYearFrom" @click="slrYearFrom = null" class="ml-2 text-[10px] text-red-500 hover:underline">Reset</button>
             </div>
+            <!-- Page size selector -->
+            <div>
+              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tampilkan:</div>
+              <input
+                v-model="pageSizeInput"
+                type="number"
+                min="5"
+                max="500"
+                class="w-20 px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
+              />
+            </div>
           </div>
         </div>
 
@@ -181,18 +192,43 @@
           >🤖 Review Pinned</button>
           <span>{{ filteredItems.length }} / {{ items.length }} literatur · {{ pinnedCount }} pinned</span>
           <button
+            @click="clearAllFilters"
+            class="px-2 py-1 rounded-lg text-[10px] font-medium bg-gray-500 hover:bg-gray-600 text-white active:scale-95 transition-transform"
+            title="Reset semua filter, sort, dan uncheck literatur"
+          >Clear all</button>
+          <button
             v-if="checkedCount > 0"
             @click="deleteChecked"
             class="px-2 py-1 rounded-lg text-[10px] font-medium bg-red-600 hover:bg-red-700 text-white active:scale-95 transition-transform"
             title="Hapus semua literatur yang di-check"
           >🗑 Hapus ({{ checkedCount }})</button>
         </div>
-        <!-- Page size selector -->
-        <div class="flex items-center gap-1 text-[11px]">
-          <span class="text-ink-500 dark:text-anthracite-200">Tampilkan:</span>
-          <button @click="setPageSize(100)" :class="['px-2 py-0.5 rounded text-[10px] font-medium border transition-colors', pageSize === 100 ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']">100</button>
-          <button @click="setPageSize(200)" :class="['px-2 py-0.5 rounded text-[10px] font-medium border transition-colors', pageSize === 200 ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']">200</button>
-        </div>
+        
+      </div>
+
+      <!-- Search & filter bar -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <input
+          v-model="filter"
+          type="text"
+          placeholder="Cari judul, penulis, venue..."
+          class="flex-1 min-w-[200px] px-2 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 outline-none focus:ring-1 focus:ring-[#238f7f]/30"
+        />
+        <select
+          v-model="filterSource"
+          class="px-2 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+        >
+          <option value="">Semua sumber</option>
+          <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
+        </select>
+        <input
+          v-model.number="minYear"
+          type="number"
+          placeholder="Min tahun"
+          :min="1900"
+          :max="new Date().getFullYear() + 1"
+          class="w-24 px-2 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500"
+        />
       </div>
 
       <!-- Quick sort buttons -->
@@ -331,7 +367,7 @@
                     <div><span class="text-ink-500 dark:text-anthracite-300">Sitasi:</span> {{ it.citations ?? '\u2013' }}</div>
                     <div v-if="it.authors && it.authors.length">
                       <span class="text-ink-500 dark:text-anthracite-300">Penulis:</span>
-                      <span :title="(it.authors||[]).join(', ')">{{ formatAuthors(it.authors) }}</span>
+                      <span :title="safeAuthorsJoin(it.authors)">{{ formatAuthors(normalizeAuthors(it.authors)) }}</span>
                     </div>
                     <div v-if="it.venue || it.publisher" class="text-ink-500 dark:text-anthracite-200 italic">
                       {{ it.venue || it.publisher }}
@@ -423,16 +459,37 @@
       </p>
     </div>
   </div>
+
+  <!-- Centered confirmation dialog -->
+  <AppDialog v-if="dg.open" :open="dg.open" :title="dg.title" @close="dg.open = false">
+    <p class="text-ink-700 dark:text-ink-200 text-sm whitespace-pre-wrap">{{ dg.message }}</p>
+    <template #actions>
+      <button @click="dg.open = false" class="px-4 py-2.5 min-h-[44px] border border-cream-400 dark:border-ash-500 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">Batal</button>
+      <button @click="dg.onConfirm(); dg.open = false" class="px-4 py-2.5 min-h-[44px] bg-[#c43655] hover:bg-[#c43655]/90 text-white rounded-xl text-sm font-medium transition-colors">{{ dg.actionLabel || 'OK' }}</button>
+    </template>
+  </AppDialog>
 </template>
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePaperStore } from '../stores/paper'
 import { useLiteratureStore } from '../stores/literature'
 import { useUiStore } from '../stores/ui'
 import api from '../api/index'
+import AppDialog from './AppDialog.vue'
+
+// Centered confirmation dialog state
+const dg = reactive({ open: false, title: '', message: '', actionLabel: '', onConfirm: () => {} })
+
+function askConfirm(title: string, message: string, actionLabel: string, onConfirm: () => void): void {
+  dg.title = title
+  dg.message = message
+  dg.actionLabel = actionLabel
+  dg.onConfirm = onConfirm
+  dg.open = true
+}
 
 interface LiteratureItem {
   id: number
@@ -487,6 +544,7 @@ interface FilterState {
   filterSource: string
   onlyPinned: boolean
   minYear: number | null
+  pageSize?: number
 }
 
 const store = usePaperStore()
@@ -551,6 +609,14 @@ const sortDir = ref<'asc' | 'desc'>('desc')
 // ── Deteksi duplikat ───────────────────────────────────────────
 type DuplicateMode = 'off' | 'show_duplicates' | 'hide_duplicates'
 const duplicateMode = ref<DuplicateMode>('off')
+const hasActiveFilters = computed(() =>
+  filter.value !== '' ||
+  filterSource.value !== '' ||
+  onlyPinned.value ||
+  minYear.value != null ||
+  duplicateMode.value !== 'off' ||
+  sortKey.value !== 'default'
+)
 
 /** Set of IDs yang judulnya muncul lebih dari 1× (case-insensitive, trim). */
 const duplicateIds = computed<Set<number>>(() => {
@@ -577,8 +643,25 @@ const reviewBusy = ref(false)
 const paperTitle = computed<string>(() => store.paper?.title || '')
 
 // Pagination
-const pageSize = ref(100)
+const pageSize = ref(50)
+const pageSizeInput = ref(String(pageSize.value))
 const currentPage = ref(1)
+
+// Sync input → pageSize
+watch(pageSizeInput, (val) => {
+  const n = parseInt(val, 10)
+  if (!isNaN(n) && n >= 5 && n <= 500) {
+    pageSize.value = n
+    currentPage.value = 1
+  }
+})
+
+// Sync pageSize → input (saat restore dari localStorage)
+watch(pageSize, (val) => {
+  if (String(val) !== pageSizeInput.value) {
+    pageSizeInput.value = String(val)
+  }
+})
 
 // Expandable abstract — Set of item IDs that are expanded (default = collapsed via line-clamp-3)
 const expandedAbstract = ref<Set<number>>(new Set())
@@ -615,7 +698,7 @@ const filteredItems = computed<LiteratureItem[]>(() => {
     if (!q) return true
     const hay = [
       it.title, it.venue, it.publisher, it.doi, it.url, it.pdf_url,
-      ((it.authors || []).join(', ')),
+      safeAuthorsJoin(it.authors),
     ].join(' ').toLowerCase()
     return hay.includes(q)
   })
@@ -654,8 +737,8 @@ const displayedItems = computed<LiteratureItem[]>(() => {
         vb = b.citations ?? -Infinity
         break
       case 'authors':
-        va = ((a.authors || [])[0] || (a.authors || []).join(',')).toLowerCase()
-        vb = ((b.authors || [])[0] || (b.authors || []).join(',')).toLowerCase()
+        va = (normalizeAuthors(a.authors)[0] || safeAuthorsJoin(a.authors)).toLowerCase()
+        vb = (normalizeAuthors(b.authors)[0] || safeAuthorsJoin(b.authors)).toLowerCase()
         break
       default:
         return 0
@@ -687,11 +770,6 @@ const visiblePageNumbers = computed(() => {
   pages.push(total)
   return pages
 })
-
-function setPageSize(size: number): void {
-  pageSize.value = size
-  currentPage.value = 1
-}
 
 const pinnedCount = computed<number>(() => items.value.filter(i => i.pinned).length)
 
@@ -775,6 +853,7 @@ function isAllFiltersDefault(): boolean {
     && !filterSource.value
     && !onlyPinned.value
     && (minYear.value == null || minYear.value === '')
+    && pageSize.value === 50
 }
 
 function saveFilterState(): void {
@@ -789,6 +868,7 @@ function saveFilterState(): void {
       filterSource: filterSource.value,
       onlyPinned: onlyPinned.value,
       minYear: minYear.value,
+      pageSize: pageSize.value,
     }
     localStorage.setItem(filterStorageKey(currentPaperId.value), JSON.stringify(payload))
   } catch { /* ignore quota / unavailable */ }
@@ -809,17 +889,23 @@ function applySavedFilter(saved: FilterState | null): void {
     filterSource.value = ''
     onlyPinned.value = false
     minYear.value = null
+    pageSize.value = 50
+    pageSizeInput.value = '50'
     return
   }
   filter.value = saved.filter || ''
   filterSource.value = saved.filterSource || ''
   onlyPinned.value = !!saved.onlyPinned
   minYear.value = (saved.minYear === '' || saved.minYear == null) ? null : Number(saved.minYear)
+  if (typeof saved.pageSize === 'number' && saved.pageSize > 0) {
+    pageSize.value = saved.pageSize
+    pageSizeInput.value = String(saved.pageSize)
+  }
 }
 
 let _filterSaveTimer: ReturnType<typeof setTimeout> | null = null
 watch(
-  [filter, filterSource, onlyPinned, minYear],
+  [filter, filterSource, onlyPinned, minYear, pageSize],
   () => {
     if (_filterSaveTimer) clearTimeout(_filterSaveTimer)
     _filterSaveTimer = setTimeout(() => { saveFilterState() }, 300)
@@ -1042,13 +1128,14 @@ async function runSLR(): Promise<void> {
 }
 
 async function cancelJob(jobId: number): Promise<void> {
-  if (!confirm('Hentikan job SLR ini? Hasil parsial dihilangkan.')) return
-  try {
-    await api.delete(`/api/slr/jobs/${jobId}`)
-    await loadJobs()
-  } catch (e: any) {
-    toast('Cancel failed: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  }
+  askConfirm('Hentikan SLR?', 'Job akan dihentikan. Hasil parsial akan dihilangkan.', 'Hentikan', async () => {
+    try {
+      await api.delete(`/api/slr/jobs/${jobId}`)
+      await loadJobs()
+    } catch (e: any) {
+      toast('Cancel failed: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+    }
+  })
 }
 
 async function startSLRFromPaperTopic(): Promise<void> {
@@ -1165,18 +1252,18 @@ async function addManual(): Promise<void> {
 
 async function deleteItem(it: LiteratureItem): Promise<void> {
   if (!currentPaperId.value) return
-  if (!confirm(`Hapus "${it.title?.slice(0, 80) || 'literatur ini'}"?`)) return
-  try {
-    await api.delete(`/api/papers/${currentPaperId.value}/literature/${it.id}`)
-    // Also remove from checked
-    const next = new Set(checkedIds.value)
-    next.delete(it.id)
-    checkedIds.value = next
-    await loadItems()
-    toast('Dihapus', 'success')
-  } catch (e: any) {
-    toast('Hapus gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  }
+  askConfirm('Hapus literatur?', `"${it.title?.slice(0, 80) || 'literatur ini'}" akan dihapus permanen.`, 'Hapus', async () => {
+    try {
+      await api.delete(`/api/papers/${currentPaperId.value}/literature/${it.id}`)
+      const next = new Set(checkedIds.value)
+      next.delete(it.id)
+      checkedIds.value = next
+      await loadItems()
+      toast('Dihapus', 'success')
+    } catch (e: any) {
+      toast('Hapus gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
+    }
+  })
 }
 
 // CHECKED functions
@@ -1223,21 +1310,41 @@ function toggleCheckAllVisible(): void {
   }
 }
 
+function clearAllFilters(): void {
+  askConfirm('Kosongkan tabel?', 'Semua literatur akan dihapus dari tampilan tabel. Data tetap aman — muat ulang atau jalankan SLR baru untuk menampilkan lagi.', 'Kosongkan', () => {
+    items.value = []
+    checkedIds.value = new Set()
+    filter.value = ''
+    filterSource.value = ''
+    onlyPinned.value = false
+    minYear.value = null
+    pageSize.value = 50
+    pageSizeInput.value = '50'
+    duplicateMode.value = 'off'
+    sortKey.value = 'default'
+    sortDir.value = 'desc'
+    currentPage.value = 1
+    if (currentPaperId.value) {
+      localStorage.removeItem(filterStorageKey(currentPaperId.value))
+    }
+  })
+}
+
 async function deleteChecked(): Promise<void> {
   const ids = Array.from(checkedIds.value)
   if (ids.length === 0 || !currentPaperId.value) return
-  if (!confirm(`Hapus ${ids.length} literatur yang di-check? Tindakan ini tidak bisa dibatalkan.`)) return
-  
-  try {
-    const res = await api.post(`/api/papers/${currentPaperId.value}/literature/bulk-delete`, { ids })
-    const deleted = res.data?.deleted || 0
-    checkedIds.value = new Set()
-    await loadItems()
-    toast(`Dihapus ${deleted} literatur`, 'success')
-  } catch (e: any) {
-    toast('Hapus gagal: ' + (e?.response?.data?.error || e?.message || 'coba lagi'), 'error')
-    await loadItems()
-  }
+  askConfirm('Hapus literatur?', `Hapus ${ids.length} literatur yang di-check?\nTindakan ini tidak bisa dibatalkan.`, 'Hapus', async () => {
+    try {
+      const res = await api.post(`/api/papers/${currentPaperId.value}/literature/bulk-delete`, { ids })
+      const deleted = res.data?.deleted || 0
+      checkedIds.value = new Set()
+      await loadItems()
+      toast(`Dihapus ${deleted} literatur`, 'success')
+    } catch (e: any) {
+      toast('Hapus gagal: ' + (e?.response?.data?.error || e?.message || 'coba lagi'), 'error')
+      await loadItems()
+    }
+  })
 }
 
 function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations' | 'authors'): void {
@@ -1259,6 +1366,21 @@ function setSort(key: 'default' | 'title' | 'year' | 'score' | 'citations' | 'au
 function sortIndicator(key: string): string {
   if (sortKey.value !== key) return ''
   return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+function normalizeAuthors(authors: unknown): string[] {
+  if (!authors) return []
+  if (Array.isArray(authors)) return authors as string[]
+  if (typeof authors === 'string') {
+    // Backend kadang serialize authors sebagai comma-separated string
+    return authors.split(',').map(s => s.trim()).filter(Boolean)
+  }
+  return []
+}
+
+function safeAuthorsJoin(authors: unknown): string {
+  const arr = normalizeAuthors(authors)
+  return arr.length ? arr.join(', ') : ''
 }
 
 function formatAuthors(authors: string[] | undefined): string {
@@ -1288,18 +1410,7 @@ async function reviewAllChecked(): Promise<void> {
     return
   }
   
-  reviewBusy.value = true
-  try {
-    // Warning: cek duplikat di antara item yang di-check
-    const checkedDuplicates = checked.filter(it => duplicateIds.value.has(it.id))
-    if (checkedDuplicates.length > 0) {
-      if (!confirm(checkedDuplicates.length + ' paper duplikat terdeteksi!\nIni dapat mempengaruhi kualitas analisis.\n\nTetap lanjutkan review?')) {
-        reviewBusy.value = false
-        return
-      }
-    }
-
-    // Build review payload and redirect to chat
+  const doReview = () => {
     litStore.setIntent({
       action: 'review_checked',
       items: checked.map(it => ({
@@ -1314,14 +1425,22 @@ async function reviewAllChecked(): Promise<void> {
       })),
       query: slrQuery.value || paperTitle.value || '',
     })
-    // Auto-switch ke Chat tab (right panel)
     if (currentPaperId.value) {
       uiStore.setRightPanel(currentPaperId.value, 'chat')
     }
     toast(`Mengirim ${checked.length} literatur ke Chat untuk review...`, 'success')
-  } catch (e: any) {
-    toast('Review gagal: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  } finally {
+  }
+  
+  reviewBusy.value = true
+  const checkedDuplicates = checked.filter(it => duplicateIds.value.has(it.id))
+  if (checkedDuplicates.length > 0) {
+    askConfirm('Paper duplikat terdeteksi',
+      `${checkedDuplicates.length} paper duplikat terdeteksi!\nIni dapat mempengaruhi kualitas analisis.\n\nTetap lanjutkan review?`,
+      'Lanjutkan',
+      () => { doReview(); reviewBusy.value = false },
+    )
+  } else {
+    doReview()
     reviewBusy.value = false
   }
 }

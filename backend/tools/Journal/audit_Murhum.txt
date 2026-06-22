@@ -1,0 +1,107 @@
+============================================================
+[SKOR KECOCOKAN: 70%] -> STATUS: REVISI DIBUTUHKAN
+  Base Score: 100 | Penalty: -30 | Final: 70%
+============================================================
+[AUDIT] Scanning: Murhum.docx vs Murhum_output.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 1, Output: 1
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 18 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 1, Output: 1
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 0
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, invalid: 0)
+  [C] Ekspektasi dari _template.json   : 6
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 6, extra: 0
+  Gambar fisik di Original (referensi)  : 2
+  [!] GAMBAR KURANG: Template membutuhkan 6 gambar konten. Output hanya punya 0 gambar konten + 0 prompt AI = 0. Kurang 6 elemen.
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 0 | Figures dengan referensi: 0 | Caption-first valid: 0 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=0 out=0 | AbstractIds: orig=0 out=0
+  [OK] Heading numbering konsisten.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 0 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 0 | OK: 0 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: CUSTOM_STYLE
+  [OK] Semua tabel data punya border match dengan template.
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 0 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di top paragraphs)...
+  Logo original: 0 | Logo output: 0 | Preservation rate: 100.0% | Missing: 0
+  [OK] Template tidak memiliki logo di top paragraphs (skip check).
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 1, Output: 1
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 1, Output: 0, Expected (orig + JSON): 3 (JSON tables: 3, toleransi: 3) | Missing: 3 | Extra empty: 0 | Extra filled: 0
+  [OK] Jumlah tabel body sesuai (dalam toleransi).
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 1, Output: 1 | Original berkonten: 1 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `Murhumgen.py`. Tolong perbaiki kodingan `Murhumgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- GAMBAR KURANG: Template membutuhkan 6 gambar konten. Output hanya punya 0 gambar konten + 0 prompt AI = 0. Kurang 6 elemen.
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 70%] -> STATUS: REVISI DIBUTUHKAN
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Placeholder/Prompt Gambar Salah (MINOR): -5 x 6 = -30
+  Total Penalty: -30
+  Skor Akhir: 70%

@@ -1,0 +1,1095 @@
+{
+  "paper_id": "4f7015193fd5",
+  "updated_at": "2026-06-16T01:31:23.298691+00:00",
+  "paper_data": {
+    "journal": "IEEE",
+    "title": "Machine Learning untuk Diagnosis Penyakit: Tinjauan Aplikasi AI dalam Pelayanan Kesehatan",
+    "authors": [
+      {
+        "affiliation": "Fakultas Ilmu Kesehatan, Universitas Indonesia",
+        "email": "qatestuser@ui.ac.id",
+        "location": "Depok, Indonesia",
+        "name": "QA Test User"
+      }
+    ],
+    "abstract": "Diagnosis penyakit yang akurat dan tepat waktu merupakan fondasi pelayanan kesehatan modern. Namun, keterbatasan sumber daya manusia dan fasilitas diagnostik di banyak negara berkembang menyebabkan keterlambatan penanganan. Kecerdasan buatan (AI), khususnya machine learning (ML), menawarkan potensi besar untuk meningkatkan akurasi dan kecepatan diagnosis. Paper ini menyajikan tinjauan sistematis terhadap literatur terkini tentang aplikasi ML dalam diagnosis penyakit. Kami mengidentifikasi 40 artikel relevan dari basis data PubMed, IEEE Xplore, dan ScienceDirect (2015â2025). Analisis menunjukkan bahwa model deep learning (DL) mencapai akurasi rata-rata X1 (a1%) pada pencitraan medis, sementara model ensemble mencapai X2 (a2%) pada data tabular. Tiga temuan utama muncul: pertama, DL unggul dalam data tidak terstruktur (gambar, sinyal); kedua, model ensemble lebih robust pada data klinik yang noise; ketiga, validasi eksternal jarang dilakukan (hanya Y1% studi). Kesenjangan utama meliputi kurangnya data representatif, interpretabilitas model yang rendah, dan minimnya integrasi ke alur kerja klinis. Tinjauan ini menyimpulkan bahwa meskipun ML menjanjikan, adopsi klinis memerlukan standarisasi dataset, pengembangan model explainable, dan uji coba prospektif. Dampak potensial mencakup pemerataan akses diagnostik dan penurunan beban tenaga kesehatan.",
+    "keywords": [
+      "machine learning",
+      "diagnosis penyakit",
+      "kecerdasan buatan",
+      "pelayanan kesehatan",
+      "deep learning",
+      "tinjauan literatur"
+    ],
+    "section1": {
+      "title": "PENDAHULUAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Diagnosis dini dan akurat adalah pilar utama pelayanan kesehatan yang efektif. Di Indonesia, keterbatasan dokter spesialis dan alat diagnostik canggih seringkali menyebabkan keterlambatan deteksi penyakit seperti kanker, tuberkulosis, dan diabetes [1]. Akibatnya, angka mortalitas dan morbiditas meningkat signifikan. Sistem kesehatan global menghadapi tantangan serupa: permintaan diagnostik melonjak sementara tenaga ahli terbatas. Kecerdasan buatan (AI), khususnya machine learning (ML), muncul sebagai solusi potensial untuk mengatasi kesenjangan ini [2]."
+        },
+        {
+          "id": "text",
+          "text": "Penelitian tentang ML untuk diagnosis telah berkembang pesat dalam dekade terakhir. Model convolutional neural network (CNN) mampu mendeteksi pneumonia dari foto toraks dengan akurasi melampaui radiolog junior [3]. Algoritma random forest dan gradient boosting menunjukkan performa baik dalam memprediksi risiko diabetes berdasarkan data rekam medis [4]. Namun, sebagian besar studi dilakukan di negara maju dengan dataset homogen. Ini menimbulkan pertanyaan tentang generalisabilitas model ke populasi beragam seperti di Indonesia [5]."
+        },
+        {
+          "id": "text",
+          "text": "Meskipun potensinya besar, adopsi klinis ML masih terhambat oleh beberapa masalah. Pertama, banyak model yang dilatih pada dataset kecil dan tidak representatif, menyebabkan overfitting dan bias [6]. Kedua, interpretabilitas model rendah â dokter sulit mempercayai keputusan dari \"black box\" seperti deep learning [7]. Ketiga, validasi prospektif dan uji klinis masih jarang dilakukan; sebagian besar studi hanya retrospektif dengan data historis [8]. Keempat, integrasi ke alur kerja klinis yang sibuk memerlukan antarmuka yang intuitif dan waktu respons cepat [9]."
+        },
+        {
+          "id": "text",
+          "text": "Tinjauan ini bertujuan untuk mensintesis bukti terkini tentang aplikasi ML dalam diagnosis penyakit, mengidentifikasi kesenjangan, dan memberikan rekomendasi untuk penelitian dan implementasi ke depan. Kontribusi spesifik paper ini meliputi:"
+        },
+        {
+          "id": "text",
+          "text": "â¢ Klasifikasi sistematis model ML berdasarkan jenis data diagnostik (gambar, sinyal, teks, tabular)."
+        },
+        {
+          "id": "text",
+          "text": "â¢ Analisis performa kuantitatif dari 40 studi, termasuk metrik akurasi, sensitivitas, spesifisitas, dan AUC."
+        },
+        {
+          "id": "text",
+          "text": "â¢ Identifikasi hambatan utama adopsi klinis: data, interpretabilitas, validasi, dan integrasi."
+        },
+        {
+          "id": "text",
+          "text": "â¢ Rekomendasi berbasis bukti untuk penelitian masa depan dan kebijakan kesehatan."
+        },
+        {
+          "id": "text",
+          "text": "Paper ini disusun sebagai berikut. Bagian 2 menjelaskan metodologi tinjauan. Bagian 3 membahas temuan berdasarkan jenis data. Bagian 4 menyajikan analisis performa dan perbandingan. Bagian 5 mengidentifikasi kesenjangan dan tantangan. Bagian 6 memberikan rekomendasi. Bagian 7 menyimpulkan."
+        }
+      ]
+    },
+    "section2": {
+      "title": "METODOLOGI TINJAUAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Tinjauan ini mengikuti pedoman PRISMA (Preferred Reporting Items for Systematic Reviews and Meta-Analyses) [10]. Pencarian literatur dilakukan pada tiga basis data utama: PubMed, IEEE Xplore, dan ScienceDirect. Kata kunci yang digunakan adalah kombinasi dari \"machine learning\", \"deep learning\", \"diagnosis\", \"disease\", dan \"healthcare\". Rentang waktu publikasi dibatasi dari Januari 2015 hingga Desember 2025."
+        },
+        {
+          "id": "text",
+          "text": "Kriteria inklusi meliputi: (1) artikel peer-reviewed dalam bahasa Inggris atau Indonesia; (2) fokus pada aplikasi ML untuk diagnosis penyakit pada manusia; (3) melaporkan metrik performa kuantitatif (akurasi, sensitivitas, spesifisitas, AUC); (4) studi eksperimental atau observasional. Kriteria eksklusi: (1) studi hanya tentang prognosis atau prediksi risiko tanpa diagnosis; (2) studi pada hewan atau in vitro; (3) review naratif tanpa data baru; (4) artikel opini atau editorial."
+        },
+        {
+          "id": "text",
+          "text": "Proses seleksi dilakukan dalam dua tahap. Tahap pertama, dua penulis (QT dan rekan) menyaring judul dan abstrak secara independen. Tahap kedua, teks penuh artikel yang lolos dinilai kelayakannya. Perbedaan pendapat diselesaikan melalui diskusi atau melibatkan penulis ketiga. Ekstraksi data dilakukan menggunakan formulir standar yang mencakup: tahun publikasi, jenis data, model ML, metrik performa, ukuran dataset, dan validasi."
+        },
+        {
+          "id": "text",
+          "text": "Pencarian awal menghasilkan 1.247 artikel. Setelah menghapus duplikat (n=312), 935 artikel disaring berdasarkan judul dan abstrak, menyisakan 178 artikel untuk review teks penuh. Dari jumlah tersebut, 40 artikel memenuhi kriteria inklusi dan dimasukkan dalam sintesis akhir. Diagram alir PRISMA disajikan pada Fig. 1."
+        },
+        {
+          "ImageNumber": "1",
+          "Path": "gambar/prisma_diagram.png",
+          "Prompt": "(create an image \"A PRISMA flow diagram for systematic review selection. Top box: 'Records identified through database searching (n=1247)'. Arrow down to box: 'Records after duplicates removed (n=935)'. Arrow right to box: 'Duplicates excluded (n=312)'. Arrow down from 935 to box: 'Records screened (n=935)'. Arrow right to box: 'Records excluded based on title/abstract (n=757)'. Arrow down to box: 'Full-text articles assessed for eligibility (n=178)'. Arrow right to box: 'Full-text articles excluded (n=138) with reasons: not diagnosis focus (n=52), no quantitative metrics (n=41), review articles (n=28), non-human (n=17)'. Arrow down to final box: 'Studies included in qualitative synthesis (n=40)'. All boxes have clean white background, black borders, blue fill for inclusion boxes, red fill for exclusion boxes. Arrows are black with arrowheads. Text is black Arial font. Clean academic paper figure style.\")",
+          "Title": "Diagram alir PRISMA proses seleksi studi",
+          "id": "gambar"
+        },
+        {
+          "id": "text",
+          "text": "Fig. 1 menunjukkan proses seleksi studi. Dari 1.247 artikel awal, 40 artikel lolos ke sintesis kualitatif. Alasan utama eksklusi adalah fokus bukan diagnosis (n=52), tidak ada metrik kuantitatif (n=41), dan artikel review (n=28)."
+        },
+        {
+          "Headers": [
+            "Karakteristik",
+            "Jumlah (n=40)",
+            "Persentase (%)"
+          ],
+          "Rows": [
+            [
+              "Jenis data: Gambar medis",
+              "22",
+              "55"
+            ],
+            [
+              "Jenis data: Sinyal (EKG, EEG)",
+              "8",
+              "20"
+            ],
+            [
+              "Jenis data: Data tabular klinik",
+              "6",
+              "15"
+            ],
+            [
+              "Jenis data: Teks (laporan patologi)",
+              "4",
+              "10"
+            ],
+            [
+              "Validasi eksternal",
+              "8",
+              "20"
+            ],
+            [
+              "Validasi internal (cross-validation)",
+              "32",
+              "80"
+            ]
+          ],
+          "TableNumber": "I",
+          "Title": "Karakteristik studi yang diinklusi",
+          "id": "tabel"
+        },
+        {
+          "id": "text",
+          "text": "Table I merangkum karakteristik studi yang diinklusi. Sebagian besar studi (55%) menggunakan data gambar medis, diikuti sinyal (20%), data tabular (15%), dan teks (10%). Hanya 20% studi melakukan validasi eksternal pada dataset independen, menunjukkan keterbatasan generalisabilitas."
+        }
+      ]
+    },
+    "section3": {
+      "title": "HASIL DAN PEMBAHASAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Bagian ini menyajikan temuan utama dari 40 studi yang direview. Analisis dikelompokkan berdasarkan jenis data diagnostik: gambar medis, sinyal fisiologis, data tabular klinik, dan teks. Setiap subbagian membahas performa model, kelebihan, dan keterbatasan."
+        }
+      ],
+      "section3a": {
+        "title": "Aplikasi ML pada Data Gambar Medis",
+        "content": [
+          {
+            "id": "text",
+            "text": "Data gambar medis mendominasi literatur (55% studi). Model deep learning, terutama CNN, menjadi pilihan utama karena kemampuannya mengekstraksi fitur spasial secara otomatis. Studi oleh Esteva et al. [3] menggunakan CNN untuk klasifikasi lesi kulit dari foto dermatoskopik, mencapai akurasi setara dermatolog. Rajpurkar et al. [11] mengembangkan CheXNet yang mendeteksi pneumonia dari foto toraks dengan AUC $X_1 = a_1$."
+          },
+          {
+            "id": "text",
+            "text": "Temuan konsisten menunjukkan bahwa CNN dengan arsitektur residual (ResNet, DenseNet) unggul dalam tugas klasifikasi gambar medis. Rata-rata akurasi pada dataset internal mencapai $X_2 = a_2$%, namun turun menjadi $X_3 = a_3$% pada dataset eksternal [6]. Ini mengindikasikan overfitting terhadap karakteristik dataset asal. Gambar 2 menyajikan perbandingan akurasi antar arsitektur."
+          },
+          {
+            "ImageNumber": "2",
+            "Path": "gambar/cnn_accuracy.png",
+            "Prompt": "(create an image \"A vertical bar chart comparing accuracy of CNN architectures for medical image diagnosis. X-axis labeled 'Model Architecture' with five categories: VGG16, ResNet50, DenseNet121, InceptionV3, and EfficientNetB4. Y-axis labeled 'Accuracy (%)' from 0 to 100. Bars show VGG16 at X1=72, ResNet50 at X2=85, DenseNet121 at X3=89, InceptionV3 at X4=87, EfficientNetB4 at X5=91. Each bar is colored in different shades of blue. Above each bar, the accuracy value is annotated. A horizontal dashed line at Y=90 indicates 'Clinical Threshold'. Error bars are shown on top of each bar representing standard deviation. X-axis label font size 12, Y-axis label font size 12. White background. Clean academic paper figure style.\")",
+            "Title": "Perbandingan akurasi model CNN pada diagnosis gambar medis",
+            "id": "gambar"
+          },
+          {
+            "id": "text",
+            "text": "Fig. 2 menunjukkan akurasi lima arsitektur CNN pada dataset gambar medis gabungan. EfficientNetB4 mencapai akurasi tertinggi ($X_5 = a_5$%), melampaui threshold klinis 90% yang ditandai garis putus-putus. VGG16 memiliki akurasi terendah ($X_1 = a_1$%), menunjukkan bahwa arsitektur yang lebih dalam tidak selalu lebih baik jika tidak dioptimasi."
+          },
+          {
+            "Headers": [
+              "Studi",
+              "Penyakit",
+              "Model",
+              "Akurasi (%)",
+              "AUC"
+            ],
+            "Rows": [
+              [
+                "Esteva et al. [3]",
+                "Kanker kulit",
+                "CNN (InceptionV3)",
+                "a1",
+                "a2"
+              ],
+              [
+                "Rajpurkar et al. [11]",
+                "Pneumonia",
+                "DenseNet121",
+                "a3",
+                "a4"
+              ],
+              [
+                "Gulshan et al. [12]",
+                "Retinopati diabetik",
+                "InceptionV3",
+                "a5",
+                "a6"
+              ],
+              [
+                "Ardila et al. [13]",
+                "Kanker paru",
+                "3D CNN",
+                "a7",
+                "a8"
+              ]
+            ],
+            "TableNumber": "II",
+            "Title": "Ringkasan studi diagnosis berbasis gambar medis",
+            "id": "tabel"
+          },
+          {
+            "id": "text",
+            "text": "Table II merangkum empat studi representatif. Semua studi melaporkan AUC di atas $a_2$, menunjukkan diskriminasi yang baik. Namun, variasi akurasi antar studi cukup besar ($a_1$ hingga $a_7$), tergantung pada kompleksitas penyakit dan kualitas dataset."
+          }
+        ]
+      },
+      "section3b": {
+        "title": "Aplikasi ML pada Data Sinyal Fisiologis",
+        "content": [
+          {
+            "id": "text",
+            "text": "Data sinyal seperti elektrokardiogram (EKG) dan elektroensefalogram (EEG) digunakan untuk diagnosis aritmia dan epilepsi. Model yang umum digunakan adalah CNN 1D dan recurrent neural network (RNN). Hannun et al. [14] mengembangkan model CNN 1D untuk deteksi 12 jenis aritmia dari sinyal EKG, mencapai AUC $X_4 = a_4$."
+          },
+          {
+            "id": "text",
+            "text": "Kelebihan utama CNN 1D adalah kemampuannya menangkap pola temporal lokal, sementara RNN (LSTM) unggul dalam ketergantungan jangka panjang. Namun, training RNN lebih lambat dan rentan terhadap vanishing gradient [15]. Studi terbaru menggunakan transformer untuk menangani kedua aspek, menunjukkan peningkatan akurasi $X_5 = a_5$% pada dataset EKG publik [16]."
+          },
+          {
+            "ImageNumber": "3",
+            "Path": "gambar/ekg_performance.png",
+            "Prompt": "(create an image \"A grouped bar chart comparing three models for ECG arrhythmia detection: CNN 1D, LSTM, and Transformer. X-axis has three groups: Accuracy, Sensitivity, Specificity. Each group has three bars side by side. For Accuracy: CNN 1D at X1=87, LSTM at X2=83, Transformer at X3=91. For Sensitivity: CNN 1D at X4=85, LSTM at X5=81, Transformer at X6=89. For Specificity: CNN 1D at X7=89, LSTM at X8=85, Transformer at X9=93. CNN 1D bars in blue, LSTM in green, Transformer in orange. Y-axis labeled 'Percentage (%)' from 0 to 100. Legend at top right. Each bar has its value annotated above. White background. Clean academic paper figure style.\")",
+            "Title": "Perbandingan performa model pada deteksi aritmia dari sinyal EKG",
+            "id": "gambar"
+          },
+          {
+            "id": "text",
+            "text": "Fig. 3 membandingkan tiga model pada deteksi aritmia. Transformer unggul di semua metrik: akurasi $X_3 = a_3$%, sensitivitas $X_6 = a_6$%, dan spesifisitas $X_9 = a_9$%. LSTM memiliki performa terendah, kemungkinan karena dataset yang terbatas menyebabkan overfitting."
+          }
+        ]
+      },
+      "section3c": {
+        "title": "Aplikasi ML pada Data Tabular Klinik",
+        "content": [
+          {
+            "id": "text",
+            "text": "Data tabular klinik (hasil lab, demografi, riwayat penyakit) digunakan untuk diagnosis penyakit metabolik dan infeksi. Model ensemble seperti random forest, XGBoost, dan LightGBM mendominasi karena kemampuannya menangani data heterogen dan missing values [17]. Studi oleh Chen et al. [18] menggunakan XGBoost untuk diagnosis diabetes, mencapai AUC $X_7 = a_7$."
+          },
+          {
+            "id": "text",
+            "text": "Perbandingan antara model ensemble dan deep learning pada data tabular menunjukkan hasil menarik. Random forest cenderung lebih robust terhadap noise dan outlier, sementara deep learning memerlukan data dalam jumlah besar untuk performa optimal [19]. Tabel III menyajikan perbandingan performa pada dataset diabetes publik."
+          },
+          {
+            "Headers": [
+              "Model",
+              "Akurasi (%)",
+              "AUC",
+              "F1-Score"
+            ],
+            "Rows": [
+              [
+                "Logistic Regression",
+                "a1",
+                "a2",
+                "a3"
+              ],
+              [
+                "Random Forest",
+                "a4",
+                "a5",
+                "a6"
+              ],
+              [
+                "XGBoost",
+                "a7",
+                "a8",
+                "a9"
+              ],
+              [
+                "Deep Neural Network (3 hidden)",
+                "a10",
+                "a11",
+                "a12"
+              ]
+            ],
+            "TableNumber": "III",
+            "Title": "Perbandingan model pada diagnosis diabetes (dataset PIMA Indian)",
+            "id": "tabel"
+          },
+          {
+            "id": "text",
+            "text": "Table III menunjukkan bahwa XGBoost mencapai akurasi tertinggi ($a_7$%) diikuti oleh random forest ($a_4$%). DNN dengan tiga hidden layer memiliki akurasi lebih rendah ($a_{10}$%), kemungkinan karena dataset yang kecil (768 sampel) tidak cukup untuk melatih jaringan dalam."
+          }
+        ]
+      },
+      "section3d": {
+        "title": "Aplikasi ML pada Data Teks Medis",
+        "content": [
+          {
+            "id": "text",
+            "text": "Data teks seperti laporan patologi dan catatan klinis digunakan untuk diagnosis penyakit langka dan klasifikasi temuan. Model natural language processing (NLP) seperti BERT dan ClinicalBERT telah diadaptasi untuk tugas ini [20]. Studi oleh Lee et al. [21] menggunakan BioBERT untuk mengekstraksi diagnosis dari laporan patologi, mencapai F1-score $X_8 = a_8$."
+          },
+          {
+            "id": "text",
+            "text": "Tantangan utama pada data teks adalah variasi terminologi medis dan singkatan yang tidak standar. Fine-tuning model bahasa umum pada korpus medis spesifik domain meningkatkan performa secara signifikan [22]. Namun, kebutuhan komputasi tinggi dan data terbatas menjadi kendala adopsi luas."
+          },
+          {
+            "ImageNumber": "4",
+            "Path": "gambar/nlp_performance.png",
+            "Prompt": "(create an image \"A horizontal bar chart comparing F1-scores of NLP models for diagnosis extraction from pathology reports. Y-axis lists four models: BERT-base, BioBERT, ClinicalBERT, and PubMedBERT. X-axis labeled 'F1-Score' from 0 to 1.0. Bars show BERT-base at X1=0.72, BioBERT at X2=0.81, ClinicalBERT at X3=0.85, PubMedBERT at X4=0.88. Each bar is colored in gradient from light blue to dark blue. The highest bar (PubMedBERT) is highlighted with a star symbol. A vertical dashed line at F1=0.80 indicates 'Clinical Acceptability Threshold'. White background. Clean academic paper figure style.\")",
+            "Title": "Perbandingan F1-score model NLP pada ekstraksi diagnosis",
+            "id": "gambar"
+          },
+          {
+            "id": "text",
+            "text": "Fig. 4 menunjukkan bahwa PubMedBERT mencapai F1-score tertinggi ($X_4 = a_4$), melampaui threshold klinis 0,80. ClinicalBERT juga di atas threshold ($X_3 = a_3$), sementara BERT-base ($X_1 = a_1$) berada di bawahnya. Ini menegaskan pentingnya fine-tuning pada korpus medis."
+          }
+        ]
+      }
+    },
+    "section4": {
+      "title": "ANALISIS PERFORMA DAN PERBANDINGAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Bagian ini menyajikan analisis kuantitatif performa model secara keseluruhan dan perbandingan antar jenis data. Metrik utama yang dilaporkan adalah akurasi, AUC, dan F1-score. Analisis dilakukan dengan mengumpulkan data dari 40 studi dan menghitung rata-rata tertimbang."
+        }
+      ],
+      "section4a": {
+        "title": "Performa Rata-rata Berdasarkan Jenis Data",
+        "content": [
+          {
+            "id": "text",
+            "text": "Tabel IV menyajikan rata-rata akurasi dan AUC untuk setiap jenis data. Data gambar medis menunjukkan akurasi rata-rata tertinggi ($X_9 = a_9$%), diikuti sinyal ($X_{10} = a_{10}$%), data tabular ($X_{11} = a_{11}$%), dan teks ($X_{12} = a_{12}$%). Namun, variasi antar studi cukup besar, tercermin dari standar deviasi yang tinggi."
+          },
+          {
+            "Headers": [
+              "Jenis Data",
+              "Rata-rata Akurasi (%)",
+              "SD Akurasi",
+              "Rata-rata AUC",
+              "SD AUC"
+            ],
+            "Rows": [
+              [
+                "Gambar medis",
+                "a1",
+                "a2",
+                "a3",
+                "a4"
+              ],
+              [
+                "Sinyal fisiologis",
+                "a5",
+                "a6",
+                "a7",
+                "a8"
+              ],
+              [
+                "Data tabular klinik",
+                "a9",
+                "a10",
+                "a11",
+                "a12"
+              ],
+              [
+                "Teks medis",
+                "a13",
+                "a14",
+                "a15",
+                "a16"
+              ]
+            ],
+            "TableNumber": "IV",
+            "Title": "Rata-rata performa model berdasarkan jenis data",
+            "id": "tabel"
+          },
+          {
+            "id": "text",
+            "text": "Table IV menunjukkan bahwa model pada data gambar medis memiliki akurasi tertinggi, tetapi juga variasi terbesar. Ini mungkin karena perbedaan kompleksitas tugas (deteksi pneumonia vs. kanker) dan kualitas dataset. Data teks memiliki akurasi terendah, mencerminkan tantangan pemrosesan bahasa alami medis."
+          }
+        ]
+      },
+      "section4b": {
+        "title": "Perbandingan dengan Metode Konvensional",
+        "content": [
+          {
+            "id": "text",
+            "text": "Beberapa studi membandingkan performa ML dengan diagnosis manual oleh tenaga kesehatan. Esteva et al. [3] melaporkan bahwa CNN setara dengan dermatolog dalam klasifikasi lesi kulit. Rajpurkar et al. [11] menemukan bahwa CheXNet melampaui radiolog dalam deteksi pneumonia (AUC $a_1$ vs. $a_2$). Namun, Ardila et al. [13] mencatat bahwa model 3D CNN masih di bawah radiolog untuk kanker paru stadium awal."
+          },
+          {
+            "ImageNumber": "5",
+            "Path": "gambar/ml_vs_human.png",
+            "Prompt": "(create an image \"A scatter plot comparing AUC of machine learning models (x-axis) versus human clinicians (y-axis) for diagnosis tasks. Each point represents a study. X-axis labeled 'ML Model AUC' from 0.6 to 1.0. Y-axis labeled 'Human Clinician AUC' from 0.6 to 1.0. A diagonal dashed line y=x indicates equal performance. Points above the line indicate ML outperforms human, points below indicate human outperforms ML. Four points are plotted: Esteva et al. (0.94, 0.91) above line, Rajpurkar et al. (0.97, 0.92) above line, Ardila et al. (0.85, 0.90) below line, and Gulshan et al. (0.92, 0.89) above line. Each point is labeled with the study name. White background. Clean academic paper figure style.\")",
+            "Title": "Perbandingan AUC model ML vs. tenaga kesehatan",
+            "id": "gambar"
+          },
+          {
+            "id": "text",
+            "text": "Fig. 5 menunjukkan perbandingan AUC antara ML dan tenaga kesehatan. Sebagian besar titik berada di atas garis diagonal, mengindikasikan ML unggul. Namun, Ardila et al. [13] menunjukkan bahwa untuk kanker paru, radiolog masih lebih baik. Ini menekankan bahwa ML belum siap menggantikan manusia sepenuhnya."
+          }
+        ]
+      },
+      "section4c": {
+        "title": "Analisis Kesenjangan Validasi",
+        "content": [
+          {
+            "id": "text",
+            "text": "Salah satu temuan kritis adalah minimnya validasi eksternal. Hanya 20% studi (8 dari 40) melakukan pengujian pada dataset independen dari institusi lain. Dari 8 studi tersebut, rata-rata penurunan akurasi adalah $X_{13} = a_{13}$% [6]. Kesenjangan ini menunjukkan bahwa performa yang dilaporkan mungkin terlalu optimistis."
+          },
+          {
+            "id": "text",
+            "text": "Studi yang melakukan validasi eksternal cenderung menggunakan dataset publik seperti MIMIC-CXR [23] atau CheXpert [24]. Namun, dataset ini juga memiliki bias demografis (mayoritas populasi AS dan Eropa). Validasi pada populasi Asia Tenggara masih sangat jarang [25]."
+          },
+          {
+            "Headers": [
+              "Dataset",
+              "Jumlah Studi",
+              "Negara Asal",
+              "Jumlah Sampel"
+            ],
+            "Rows": [
+              [
+                "ChestX-ray14",
+                "6",
+                "AS",
+                "x1"
+              ],
+              [
+                "MIMIC-CXR",
+                "4",
+                "AS",
+                "x2"
+              ],
+              [
+                "Kaggle (beragam)",
+                "5",
+                "Global",
+                "x3"
+              ],
+              [
+                "Dataset lokal (non-AS)",
+                "3",
+                "Indonesia, India, Brasil",
+                "x4"
+              ]
+            ],
+            "TableNumber": "V",
+            "Title": "Karakteristik dataset pada studi yang diinklusi",
+            "id": "tabel"
+          },
+          {
+            "id": "text",
+            "text": "Table V menunjukkan dominasi dataset AS dalam studi yang direview. Hanya 3 studi menggunakan dataset lokal dari Indonesia, India, dan Brasil. Ini menjadi perhatian karena model yang dilatih pada populasi AS mungkin tidak generalisabel ke populasi Asia dengan karakteristik fisiologis berbeda."
+          }
+        ]
+      },
+      "section4d": {
+        "title": "Tantangan Interpretabilitas dan Kepercayaan",
+        "content": [
+          {
+            "id": "text",
+            "text": "Interpretabilitas model menjadi isu sentral dalam adopsi klinis. Hanya 12 dari 40 studi (30%) menyertakan visualisasi seperti saliency map atau Grad-CAM [26]. Tanpa interpretasi, dokter enggan mempercayai keputusan model, terutama jika hasilnya bertentangan dengan intuisi klinis [7]."
+          },
+          {
+            "id": "text",
+            "text": "Studi oleh Adebayo et al. [27] menunjukkan bahwa saliency map bisa menyesatkan jika tidak divalidasi dengan benar. Oleh karena itu, pengembangan metode explainable AI (XAI) yang terpercaya menjadi prioritas. Beberapa pendekatan seperti LIME dan SHAP telah diadopsi, tetapi komputasinya mahal untuk data gambar [28]."
+          },
+          {
+            "ImageNumber": "6",
+            "Path": "gambar/interpretability.png",
+            "Prompt": "(create an image \"A pie chart showing proportion of studies that include interpretability analysis. The pie has two segments: 'With Interpretability (30%)' in blue, and 'Without Interpretability (70%)' in gray. The blue segment has a label '30%' inside. A callout box on the right side lists the types of interpretability methods used: Grad-CAM (6 studies), Saliency Map (4 studies), SHAP (1 study), LIME (1 study). White background. Clean academic paper figure style.\")",
+            "Title": "Proporsi studi yang menyertakan analisis interpretabilitas",
+            "id": "gambar"
+          },
+          {
+            "id": "text",
+            "text": "Fig. 6 menunjukkan bahwa 70% studi tidak menyertakan analisis interpretabilitas. Di antara yang menyertakan, Grad-CAM adalah metode paling populer (6 studi). Ini menunjukkan kesenjangan besar antara pengembangan model dan kebutuhan klinis akan transparansi."
+          }
+        ]
+      }
+    },
+    "section5": {
+      "title": "REKOMENDASI DAN IMPLIKASI",
+      "content": [
+        {
+          "id": "text",
+          "text": "Berdasarkan temuan di atas, kami merumuskan rekomendasi untuk penelitian dan implementasi ML dalam diagnosis penyakit. Rekomendasi ini dikelompokkan menjadi tiga area: data, model, dan integrasi klinis."
+        },
+        {
+          "id": "text",
+          "text": "Pertama, pengembangan dataset yang representatif dan beragam sangat mendesak. Kolaborasi antar rumah sakit di Indonesia untuk membangun dataset gambar medis dan data klinik yang terstandarisasi akan meningkatkan generalisabilitas model [29]. Inisiatif seperti Indonesian Medical Image Database (IMID) perlu didorong. Kedua, validasi eksternal wajib dilakukan pada dataset dari institusi dan populasi berbeda. Tanpa validasi ini, klaim performa hanya bersifat teoretis [6]."
+        },
+        {
+          "id": "text",
+          "text": "Ketiga, pengembangan model explainable harus menjadi prioritas. Dokter perlu memahami alasan di balik diagnosis model. Pendekatan hybrid yang menggabungkan deep learning dengan aturan berbasis pengetahuan (knowledge-based) dapat meningkatkan kepercayaan [30]. Keempat, uji coba prospektif dan klinis diperlukan untuk mengukur dampak nyata pada luaran pasien. Studi retrospektif saja tidak cukup [8]."
+        },
+        {
+          "id": "text",
+          "text": "Implikasi kebijakan juga perlu diperhatikan. Regulasi yang jelas tentang validasi, keamanan, dan etika AI dalam diagnosis harus segera dirumuskan oleh Kementerian Kesehatan dan organisasi profesi [31]. Pelatihan tenaga kesehatan dalam literasi AI juga penting untuk mempersiapkan adopsi di masa depan [32]."
+        }
+      ]
+    },
+    "section6": {
+      "title": "KESIMPULAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Tinjauan sistematis terhadap 40 studi menunjukkan bahwa machine learning memiliki potensi besar untuk meningkatkan diagnosis penyakit, terutama pada data gambar medis dan sinyal fisiologis. Model deep learning mencapai akurasi rata-rata $X_9 = a_9$% pada gambar medis, sementara model ensemble unggul pada data tabular dengan AUC $X_7 = a_7$. Namun, adopsi klinis masih terhambat oleh tiga kesenjangan utama: kurangnya dataset representatif, rendahnya interpretabilitas model, dan minimnya validasi eksternal."
+        },
+        {
+          "id": "text",
+          "text": "Keterbatasan tinjauan ini meliputi: (1) hanya mencakup tiga basis data, kemungkinan melewatkan studi relevan; (2) bias publikasi positif (studi dengan hasil negatif cenderung tidak dipublikasikan); (3) heterogenitas metrik performa antar studi menyulitkan meta-analisis kuantitatif. Meskipun demikian, pola yang konsisten muncul: ML menjanjikan, tapi belum siap implementasi luas tanpa perbaikan fundamental."
+        },
+        {
+          "id": "text",
+          "text": "Penelitian masa depan perlu fokus pada: (1) pembangunan dataset multietnis dan multi-institusi; (2) pengembangan metode XAI yang terpercaya dan efisien; (3) uji klinis prospektif yang mengukur dampak pada luaran pasien dan efisiensi alur kerja; (4) integrasi model ke sistem rekam medis elektronik dengan antarmuka yang intuitif. Dengan mengatasi tantangan ini, ML dapat menjadi alat yang efektif untuk pemerataan akses diagnostik dan peningkatan kualitas pelayanan kesehatan di Indonesia dan negara berkembang lainnya."
+        }
+      ]
+    },
+    "references": {
+      "number": "VII",
+      "title": "REFERENCES",
+      "content": [
+        {
+          "authors": [
+            "World Health Organization"
+          ],
+          "location": "Geneva, Switzerland",
+          "publisher": "WHO",
+          "title": "Global strategy on digital health 2020-2025",
+          "type": "book",
+          "year": 2021
+        },
+        {
+          "authors": [
+            "Topol, E. J."
+          ],
+          "doi": "10.1038/s41591-018-0300-7",
+          "issue": "1",
+          "journal": "Nature Medicine",
+          "pages": "44-56",
+          "title": "High-performance medicine: the convergence of human and artificial intelligence",
+          "type": "journal",
+          "volume": "25",
+          "year": 2019
+        },
+        {
+          "authors": [
+            "Esteva, A.",
+            "Kuprel, B.",
+            "Novoa, R. A.",
+            "Ko, J.",
+            "Swetter, S. M.",
+            "Blau, H. M.",
+            "Thrun, S."
+          ],
+          "doi": "10.1038/nature21056",
+          "issue": "7639",
+          "journal": "Nature",
+          "pages": "115-118",
+          "title": "Dermatologist-level classification of skin cancer with deep neural networks",
+          "type": "journal",
+          "volume": "542",
+          "year": 2017
+        },
+        {
+          "authors": [
+            "Chen, T.",
+            "Guestrin, C."
+          ],
+          "conference": "Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining",
+          "doi": "10.1145/2939672.2939785",
+          "pages": "785-794",
+          "title": "XGBoost: a scalable tree boosting system",
+          "type": "conference",
+          "year": 2016
+        },
+        {
+          "authors": [
+            "Wiens, J.",
+            "Shenoy, E. S."
+          ],
+          "doi": "10.1093/cid/cix731",
+          "issue": "1",
+          "journal": "Clinical Infectious Diseases",
+          "pages": "149-153",
+          "title": "Machine learning for healthcare: on the verge of a major shift in healthcare epidemiology",
+          "type": "journal",
+          "volume": "66",
+          "year": 2018
+        },
+        {
+          "authors": [
+            "Zech, J. R.",
+            "Badgeley, M. A.",
+            "Liu, M.",
+            "Costa, A. B.",
+            "Titano, J. J.",
+            "Oermann, E. K."
+          ],
+          "doi": "10.1371/journal.pmed.1002683",
+          "issue": "11",
+          "journal": "PLoS Medicine",
+          "pages": "e1002683",
+          "title": "Variable generalization performance of a deep learning model to detect pneumonia in chest radiographs: a cross-sectional study",
+          "type": "journal",
+          "volume": "15",
+          "year": 2018
+        },
+        {
+          "authors": [
+            "Lipton, Z. C."
+          ],
+          "doi": "10.1145/3233231",
+          "issue": "10",
+          "journal": "Communications of the ACM",
+          "pages": "36-43",
+          "title": "The mythos of model interpretability",
+          "type": "journal",
+          "volume": "61",
+          "year": 2018
+        },
+        {
+          "authors": [
+            "Park, S. H.",
+            "Han, K."
+          ],
+          "doi": "10.1148/radiol.2017171920",
+          "issue": "3",
+          "journal": "Radiology",
+          "pages": "800-809",
+          "title": "Methodologic guide for evaluating clinical performance and effect of artificial intelligence technology for medical diagnosis and prediction",
+          "type": "journal",
+          "volume": "286",
+          "year": 2018
+        },
+        {
+          "authors": [
+            "Bates, D. W.",
+            "Saria, S.",
+            "Ohno-Machado, L.",
+            "Shah, A.",
+            "Escobar, G."
+          ],
+          "doi": "10.1377/hlthaff.2014.0041",
+          "issue": "7",
+          "journal": "Health Affairs",
+          "pages": "1123-1131",
+          "title": "Big data in health care: using analytics to identify and manage high-risk and high-cost patients",
+          "type": "journal",
+          "volume": "33",
+          "year": 2014
+        },
+        {
+          "authors": [
+            "Moher, D.",
+            "Liberati, A.",
+            "Tetzlaff, J.",
+            "Altman, D. G."
+          ],
+          "doi": "10.1136/bmj.b2535",
+          "issue": "7716",
+          "journal": "BMJ",
+          "pages": "b2535",
+          "title": "Preferred reporting items for systematic reviews and meta-analyses: the PRISMA statement",
+          "type": "journal",
+          "volume": "339",
+          "year": 2009
+        },
+        {
+          "authors": [
+            "Rajpurkar, P.",
+            "Irvin, J.",
+            "Ball, R. L.",
+            "Zhu, K.",
+            "Yang, B.",
+            "Mehta, H.",
+            "Duan, T.",
+            "Ding, D.",
+            "Bagul, A.",
+            "Langlotz, C. P.",
+            "Patel, B. N.",
+            "Yeom, K. W.",
+            "Shpanskaya, K.",
+            "Blankenberg, F. G.",
+            "Parekh, A.",
+            "Lungren, M. P."
+          ],
+          "doi": "10.1371/journal.pmed.1002686",
+          "issue": "11",
+          "journal": "PLoS Medicine",
+          "pages": "e1002686",
+          "title": "Deep learning for chest radiograph diagnosis: a retrospective comparison of the CheXNeXt algorithm to practicing radiologists",
+          "type": "journal",
+          "volume": "15",
+          "year": 2018
+        },
+        {
+          "authors": [
+            "Gulshan, V.",
+            "Peng, L.",
+            "Coram, M.",
+            "Stumpe, M. C.",
+            "Wu, D.",
+            "Narayanaswamy, A.",
+            "Venugopalan, S.",
+            "Widner, K.",
+            "Madams, T.",
+            "Cuadros, J.",
+            "Kim, R.",
+            "Raman, R.",
+            "Nelson, P. C.",
+            "Mega, J. L.",
+            "Webster, D. R."
+          ],
+          "doi": "10.1001/jama.2016.17216",
+          "issue": "22",
+          "journal": "JAMA",
+          "pages": "2402-2410",
+          "title": "Development and validation of a deep learning algorithm for detection of diabetic retinopathy in retinal fundus photographs",
+          "type": "journal",
+          "volume": "316",
+          "year": 2016
+        },
+        {
+          "authors": [
+            "Ardila, D.",
+            "Kiraly, A. P.",
+            "Bharadwaj, S.",
+            "Choi, B.",
+            "Reicher, J. J.",
+            "Peng, L.",
+            "Tse, D.",
+            "Etzioni, R.",
+            "Coram, M.",
+            "Han, S. S.",
+            "Nayor, M.",
+            "Shetty, S.",
+            "Corrado, G. S.",
+            "Kohli, M.",
+            "Liu, Y."
+          ],
+          "doi": "10.1038/s41591-019-0447-x",
+          "issue": "6",
+          "journal": "Nature Medicine",
+          "pages": "954-961",
+          "title": "End-to-end lung cancer screening with three-dimensional deep learning on low-dose chest computed tomography",
+          "type": "journal",
+          "volume": "25",
+          "year": 2019
+        },
+        {
+          "authors": [
+            "Hannun, A. Y.",
+            "Rajpurkar, P.",
+            "Haghpanahi, M.",
+            "Tison, G. H.",
+            "Bourn, C.",
+            "Turakhia, M. P.",
+            "Ng, A. Y."
+          ],
+          "doi": "10.1038/s41591-018-0268-3",
+          "issue": "1",
+          "journal": "Nature Medicine",
+          "pages": "65-69",
+          "title": "Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network",
+          "type": "journal",
+          "volume": "25",
+          "year": 2019
+        },
+        {
+          "authors": [
+            "Hochreiter, S.",
+            "Schmidhuber, J."
+          ],
+          "doi": "10.1162/neco.1997.9.8.1735",
+          "issue": "8",
+          "journal": "Neural Computation",
+          "pages": "1735-1780",
+          "title": "Long short-term memory",
+          "type": "journal",
+          "volume": "9",
+          "year": 1997
+        },
+        {
+          "authors": [
+            "Vaswani, A.",
+            "Shazeer, N.",
+            "Parmar, N.",
+            "Uszkoreit, J.",
+            "Jones, L.",
+            "Gomez, A. N.",
+            "Kaiser, L.",
+            "Polosukhin, I."
+          ],
+          "conference": "Proc. 31st Conf. Neural Information Processing Systems (NeurIPS)",
+          "pages": "5998-6008",
+          "title": "Attention is all you need",
+          "type": "conference",
+          "year": 2017
+        },
+        {
+          "authors": [
+            "FernÃ¡ndez-Delgado, M.",
+            "Cernadas, E.",
+            "Barro, S.",
+            "Amorim, D."
+          ],
+          "issue": "1",
+          "journal": "Journal of Machine Learning Research",
+          "pages": "3133-3181",
+          "title": "Do we need hundreds of classifiers to solve real world classification problems?",
+          "type": "journal",
+          "volume": "15",
+          "year": 2014
+        },
+        {
+          "authors": [
+            "Chen, M.",
+            "Hao, Y.",
+            "Hwang, K.",
+            "Wang, L.",
+            "Wang, L."
+          ],
+          "doi": "10.1109/ACCESS.2017.2694446",
+          "journal": "IEEE Access",
+          "pages": "8869-8879",
+          "title": "Disease prediction by machine learning over big data from healthcare communities",
+          "type": "journal",
+          "volume": "5",
+          "year": 2017
+        },
+        {
+          "authors": [
+            "Grinsztajn, L.",
+            "Oyallon, E.",
+            "Varoquaux, G."
+          ],
+          "conference": "Proc. 36th Conf. Neural Information Processing Systems (NeurIPS)",
+          "pages": "1-14",
+          "title": "Why do tree-based models still outperform deep learning on typical tabular data?",
+          "type": "conference",
+          "year": 2022
+        },
+        {
+          "authors": [
+            "Lee, J.",
+            "Yoon, W.",
+            "Kim, S.",
+            "Kim, D.",
+            "Kim, S.",
+            "So, C. H.",
+            "Kang, J."
+          ],
+          "doi": "10.1093/bioinformatics/btz682",
+          "issue": "4",
+          "journal": "Bioinformatics",
+          "pages": "1234-1240",
+          "title": "BioBERT: a pre-trained biomedical language representation model for biomedical text mining",
+          "type": "journal",
+          "volume": "36",
+          "year": 2020
+        },
+        {
+          "authors": [
+            "Lee, J.",
+            "Yoon, W.",
+            "Kim, S.",
+            "Kim, D.",
+            "Kim, S.",
+            "So, C. H.",
+            "Kang, J."
+          ],
+          "doi": "10.1093/bioinformatics/btz682",
+          "issue": "4",
+          "journal": "Bioinformatics",
+          "pages": "1234-1240",
+          "title": "BioBERT: a pre-trained biomedical language representation model for biomedical text mining",
+          "type": "journal",
+          "volume": "36",
+          "year": 2020
+        },
+        {
+          "authors": [
+            "Alsentzer, E.",
+            "Murphy, J. R.",
+            "Boag, W.",
+            "Weng, W. H.",
+            "Jin, D.",
+            "Naumann, T.",
+            "McDermott, M. B. A."
+          ],
+          "conference": "Proc. 2nd Clinical Natural Language Processing Workshop (NAACL)",
+          "pages": "72-78",
+          "title": "Publicly available clinical BERT embeddings",
+          "type": "conference",
+          "year": 2019
+        },
+        {
+          "authors": [
+            "Johnson, A. E. W.",
+            "Pollard, T. J.",
+            "Shen, L.",
+            "Lehmann, L. H.",
+            "Feng, M.",
+            "Ghassemi, M.",
+            "Moody, B.",
+            "Szolovits, P.",
+            "Celi, L. A.",
+            "Mark, R. G."
+          ],
+          "doi": "10.1038/sdata.2016.35",
+          "journal": "Scientific Data",
+          "pages": "160035",
+          "title": "MIMIC-III, a freely accessible critical care database",
+          "type": "journal",
+          "volume": "3",
+          "year": 2016
+        },
+        {
+          "authors": [
+            "Irvin, J.",
+            "Rajpurkar, P.",
+            "Ko, M.",
+            "Yu, Y.",
+            "Ciurea-Ilcus, S.",
+            "Chute, C.",
+            "Marklund, H.",
+            "Haghgoo, B.",
+            "Ball, R. L.",
+            "Shpanskaya, K.",
+            "Lungren, M. P."
+          ],
+          "conference": "Proc. AAAI Conf. Artificial Intelligence",
+          "pages": "590-597",
+          "title": "CheXpert: a large chest radiograph dataset with uncertainty labels and expert comparison",
+          "type": "conference",
+          "year": 2019
+        },
+        {
+          "authors": [
+            "Nair, A.",
+            "Sahni, S.",
+            "Sharma, R.",
+            "Joshi, A."
+          ],
+          "doi": "10.1016/S2589-7500(21)00166-7",
+          "issue": "10",
+          "journal": "The Lancet Digital Health",
+          "pages": "e619-e620",
+          "title": "Artificial intelligence in healthcare: a perspective from the Global South",
+          "type": "journal",
+          "volume": "3",
+          "year": 2021
+        },
+        {
+          "authors": [
+            "Selvaraju, R. R.",
+            "Cogswell, M.",
+            "Das, A.",
+            "Vedantam, R.",
+            "Parikh, D.",
+            "Batra, D."
+          ],
+          "conference": "Proc. IEEE Int. Conf. Computer Vision (ICCV)",
+          "doi": "10.1109/ICCV.2017.74",
+          "pages": "618-626",
+          "title": "Grad-CAM: visual explanations from deep networks via gradient-based localization",
+          "type": "conference",
+          "year": 2017
+        },
+        {
+          "authors": [
+            "Adebayo, J.",
+            "Gilmer, J.",
+            "Muelly, M.",
+            "Goodfellow, I.",
+            "Hardt, M.",
+            "Kim, B."
+          ],
+          "conference": "Proc. 32nd Conf. Neural Information Processing Systems (NeurIPS)",
+          "pages": "9505-9515",
+          "title": "Sanity checks for saliency maps",
+          "type": "conference",
+          "year": 2018
+        },
+        {
+          "authors": [
+            "Lundberg, S. M.",
+            "Lee, S. I."
+          ],
+          "conference": "Proc. 31st Conf. Neural Information Processing Systems (NeurIPS)",
+          "pages": "4765-4774",
+          "title": "A unified approach to interpreting model predictions",
+          "type": "conference",
+          "year": 2017
+        },
+        {
+          "authors": [
+            "Kementerian Kesehatan Republik Indonesia"
+          ],
+          "location": "Jakarta, Indonesia",
+          "publisher": "Kemenkes RI",
+          "title": "Rencana aksi nasional transformasi digital kesehatan 2023-2027",
+          "type": "book",
+          "year": 2023
+        },
+        {
+          "authors": [
+            "Tjoa, E.",
+            "Guan, C."
+          ],
+          "doi": "10.1109/TNNLS.2020.3027314",
+          "issue": "11",
+          "journal": "IEEE Transactions on Neural Networks and Learning Systems",
+          "pages": "4793-4813",
+          "title": "A survey on explainable artificial intelligence (XAI): toward medical XAI",
+          "type": "journal",
+          "volume": "32",
+          "year": 2020
+        },
+        {
+          "accessed": "15 Jan. 2025",
+          "authors": [
+            "U.S. Food and Drug Administration"
+          ],
+          "title": "Artificial intelligence and machine learning (AI/ML)-based medical devices",
+          "type": "website",
+          "url": "https://www.fda.gov/medical-devices/software-medical-device-samd/artificial-intelligence-and-machine-learning-aiml-based-medical-devices",
+          "year": 2021
+        },
+        {
+          "authors": [
+            "Paranjape, K.",
+            "Schinkel, M.",
+            "Panday, R. N.",
+            "Car, J.",
+            "Nanayakkara, P."
+          ],
+          "doi": "10.2196/16048",
+          "issue": "2",
+          "journal": "JMIR Medical Education",
+          "pages": "e16048",
+          "title": "Introducing artificial intelligence training in medical education",
+          "type": "journal",
+          "volume": "5",
+          "year": 2019
+        }
+      ]
+    },
+    "figures": [
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      }
+    ],
+    "id": "4f7015193fd5"
+  }
+}

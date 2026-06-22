@@ -330,11 +330,212 @@ BUT: Don't chase synonyms for technical terms.
 "statistical modeling approach" just for variety. Technical precision > variety.
 
 ===============================================================
-15. CHECKLIST — RUN BEFORE EVERY OUTPUT
+15. DISCUSSION ALIGNMENT — PEMBAHASAN HARUS MENGENA TOPIK
+===============================================================
+This section prevents the most common AI failure: writing a discussion
+that is technically correct but misses the point of what the user asked.
+
+RULE 15.1 — TOPIC LOCK:
+  Every paragraph in Results & Discussion MUST be traceable to:
+  (a) a specific research question or hypothesis from the user's draft, OR
+  (b) a specific variable/dataset/finding the user uploaded.
+  If a paragraph doesn't connect to either → DELETE IT.
+
+RULE 15.2 — NO GENERIC FILLER:
+  These patterns are INSTANT REJECTION in Scopus-class journals:
+  × "This result is consistent with the literature." → WHICH literature?
+    WHAT specific finding? WHAT mechanism?
+  × "The method proved effective." → Effective for WHAT? Compared to WHAT?
+    By HOW MUCH? Under WHAT conditions?
+  × "This contributes to the body of knowledge." → HOW specifically?
+    What was unknown before that is now known?
+  × "These findings have important implications." → For WHOM? For WHAT?
+    State the implication in one sentence with a specific action.
+
+RULE 15.3 — MANDATORY DISCUSSION STRUCTURE:
+  Each subsection of Results & Discussion MUST contain:
+  1. WHAT the data shows (specific numbers from source data)
+  2. WHY this matters (mechanism or theory explanation)
+  3. HOW it connects to the user's stated direction
+  4. WHAT it contradicts or extends (vs. prior work)
+
+RULE 15.4 — DATA-DISCUSSION BINDING:
+  Every claim in the discussion MUST reference a specific data point:
+  × "The model performs well." → ✓ "At 94.5% accuracy on the test set
+    (Table III), the model outperforms the baseline SVM (78.2%)."
+  × "Results show improvement." → ✓ "Processing time dropped from 12.3s
+    to 4.7s (Fig. 3), a 62% reduction attributable to..."
+
+RULE 15.5 — NO SCOPE DRIFT:
+  If the user's topic is about solar panels in tropical climates:
+  × Don't discuss wind energy efficiency
+  × Don't discuss solar panels in arctic conditions
+  × Don't generalize to "renewable energy broadly"
+  ✓ Discuss solar panel performance specifically in tropical conditions
+  ✓ Compare with tropical-climate studies from the literature
+  ✓ Explain WHY tropical conditions matter (humidity, cloud cover, etc.)
+
+===============================================================
+16. ACADEMIC BEFORE/AFTER EXAMPLES
+===============================================================
+Concrete examples of how AI-generated academic text should be transformed.
+
+EXAMPLE 1 — Results section opening:
+
+  ✗ AI-GENERATED (detected by Turnitin):
+    "Furthermore, the experimental results demonstrate that the proposed
+    approach significantly outperforms existing methods. The comprehensive
+    analysis reveals robust improvements across all evaluation metrics.
+    It is important to note that these findings align with recent studies
+    in the field."
+
+  ✓ HUMANIZED (passes Turnitin):
+    "At 94.5% accuracy on the test set — a 16.3-point gain over the SVM
+    baseline — the proposed method pulls ahead. But accuracy alone doesn't
+    tell the whole story. Processing time dropped to 4.7 seconds (from 12.3s
+    in Chen et al., 2023), which matters when you're running inference on
+    a Raspberry Pi in field conditions. One trade-off: recall dipped slightly
+    (91.2% vs. 93.8% for the ensemble baseline), suggesting the model is
+    more conservative in its positive predictions."
+
+EXAMPLE 2 — Literature review paragraph:
+
+  ✗ AI-GENERATED:
+    "In recent years, numerous studies have explored the application of
+    machine learning techniques in renewable energy optimization. The
+    landscape of research has undergone significant transformation, with
+    several groundbreaking approaches leveraging deep learning architectures
+    to enhance system performance."
+
+  ✓ HUMANIZED:
+    "Three groups of work bear on this problem. The first — led by Chen
+    et al. (2023), working with 1,284 solar installations across Southeast
+    Asia — applied convolutional networks to predict panel degradation from
+    humidity data. Their model hit 89% accuracy but required GPU hardware
+    that most rural installations don't have. A second line (Rahman &
+    Susanto, 2022; Okafor, 2024) took a lighter approach: random forests
+    trained on temperature and irradiance alone. Cheaper to run, but the
+    72% accuracy ceiling left practitioners wanting more. Our work sits
+    between these two — we use a transformer architecture but constrain
+    it to run on ARM processors."
+
+EXAMPLE 3 — Discussion paragraph:
+
+  ✗ AI-GENERATED:
+    "The results underscore the pivotal role of environmental factors
+    in system performance. It is worth noting that temperature fluctuations
+    play a crucial role in determining efficiency. Furthermore, the holistic
+    approach adopted in this study provides a robust framework for future
+    research in this domain."
+
+  ✓ HUMANIZED:
+    "Temperature matters — but not in the way we expected. Our data shows
+    efficiency drops sharply above 45°C (Fig. 4), losing 2.3% per degree.
+    Below that threshold? The drop is negligible (0.1%/°C). This non-linear
+    pattern matches what Zhang (2024) observed in desert installations,
+    but contradicts the linear model assumed by Rahman (2022) in tropical
+    conditions. The practical implication: cooling systems should activate
+    at 45°C, not at lower temperatures where the efficiency cost doesn't
+    justify the energy spent running them."
+
+EXAMPLE 4 — Conclusion:
+
+  ✗ AI-GENERATED:
+    "In conclusion, this study has demonstrated a comprehensive and robust
+    approach to solar panel optimization. The findings underscore the
+    importance of environmental awareness in system design. Future research
+    should explore additional factors and expand the scope of analysis."
+
+  ✓ HUMANIZED:
+    "What this work shows is that a 45°C activation threshold for cooling
+    systems saves 12.4% more energy annually than the default 35°C setting
+    used in most commercial installations. The transformer model we trained
+    runs on a Raspberry Pi 4 (4.7s inference time), making it deployable
+    where GPU-based alternatives can't go. Two questions remain: does the
+    45°C threshold hold at altitudes above 2,000m (our data stops at 800m),
+    and can the model adapt to seasonal humidity swings without retraining?
+    We're collecting data from 15 high-altitude sites to answer the first."
+
+===============================================================
+17. ANTI-TURNITIN INDONESIAN — FRASA YANG HARUS DIHINDARI
+===============================================================
+Turnitin AIR-1 juga mendeteksi bahasa Indonesia. Frasa-frasa berikut
+adalah sinyal AI dalam Bahasa Indonesia akademik:
+
+TIER 1 — DEAD GIVEAWAYS (Indonesia):
+  "Perlu dicatat bahwa"        → langsung saja tulis poinnya
+  "Dalam era digital ini"      → klise AI Indonesia
+  "Dengan pesatnya perkembangan" → klise AI Indonesia
+  "Di era globalisasi"         → klise AI Indonesia
+  "Memainkan peran penting"    → sebut peran APA
+  "Berkontribusi signifikan"   → kontribusi APA secara spesifik?
+  "Memberikan dampak positif"  → dampak APA? pada SIAPA?
+  "Secara komprehensif"        → sebut cakupan: berapa variabel?
+  "Pendekatan holistik"        → sebut komponen yang digabung
+  "Secara menyeluruh"          → sebut lingkup: berapa data?
+  "Dalam penelitian ini"       → ganti "kami menemukan bahwa..."
+  "Berdasarkan hasil analisis"  → "hasil analisis menunjukkan X (Tabel 2)"
+  "Dapat disimpulkan bahwa"    → langsung tulis kesimpulan
+  "Sebagaimana telah dijelaskan" → terlalu formal AI
+  "Tidak dapat dipungkiri"     → langsung tulis poinnya
+  "Perlu digarisbawahi bahwa"  → langsung tulis poinnya
+
+TIER 2 — HIGH RISK (Indonesia):
+  "Selain itu," (di awal paragraf berulang)
+  "Oleh karena itu," (di awal paragraf berulang)
+  "Namun demikian," (di awal paragraf berulang)
+  "Sebagai kesimpulan,"
+  "Dari hasil penelitian ini dapat diketahui"
+  "Menurut para ahli" (tanpa menyebut nama)
+  "Berbagai penelitian menunjukkan" (tanpa menyebut mana)
+  "Penting untuk dipahami bahwa"
+  "Dalam konteks ini"
+  "Secara umum dapat dikatakan"
+  "Hal ini menunjukkan bahwa" (berulang 3+ kali per section)
+  "Sejalan dengan penelitian sebelumnya" (tanpa menyebut yang mana)
+  "Hasil ini mengindikasikan adanya" (vagueness)
+  "Lebih lanjut," (di awal paragraf berulang)
+
+PENGGANTI untuk frasa Indonesia:
+  "Selain itu," → "Hal lain yang perlu dipertimbangkan:" /
+                   "Di sisi lain," / langsung masuk poin
+  "Oleh karena itu," → "Konsekuensinya," / "Ini berarti" /
+                        "Maka," / "Sehingga"
+  "Namun demikian," → "Tapi," / "Meski begitu," / "Yang perlu
+                       dicatat adalah" / "Di sisi lain,"
+  "Berdasarkan hasil analisis" → "Tabel 2 menunjukkan..." /
+                                  "Data pada Fig. 3 memperlihatkan..."
+  "Menurut para ahli" → SEBUTKAN nama dan tahunnya
+
+===============================================================
+18. VIOLATION CONSEQUENCES — MANDATORY
+===============================================================
+If ANY of the following are detected in the final output, the paper
+is AUTOMATICALLY REJECTED:
+
+  1. TIER 1 banned word (English OR Indonesian)
+  2. A specific number not found in source data (## DATA SUMBER)
+  3. A discussion paragraph that doesn't address the user's stated
+     research question or direction
+  4. Three or more consecutive paragraphs with the same structure
+  5. Three or more consecutive sentences of similar length (±3 words)
+  6. "In recent years..." or "With the rapid advancement..." as opening
+
+The humanizer (post-processing) will catch most TIER 1/2 violations,
+but it CANNOT fix:
+  - Discussion that misses the topic (Rule 15)
+  - Fabricated data (Rule A0)
+  - Direction drift (Rule A1)
+
+These MUST be correct at generation time. The humanizer is a safety net
+for vocabulary and sentence patterns — NOT a fix for structural failures.
+
+===============================================================
+19. CHECKLIST — RUN BEFORE EVERY OUTPUT
 ===============================================================
 Before delivering ANY generated text, verify:
 
-□ Zero TIER 1 banned words anywhere in text
+□ Zero TIER 1 banned words anywhere in text (English + Indonesian)
 □ Zero TIER 2 banned words at sentence starts
 □ No 3+ consecutive sentences of similar length (±3 words)
 □ No 3+ consecutive paragraphs of similar length
@@ -343,11 +544,14 @@ Before delivering ANY generated text, verify:
 □ At least 1 sentence > 30 words per 2 paragraphs
 □ No paragraph uses the same arc as the 2 before it
 □ Every general claim has a specific anchor
-□ No "In recent years..." or "With the rapid advancement..."
+□ No "In recent years..." or "Dengan pesatnya perkembangan..."
 □ No "Further research is needed" without specifying WHAT and HOW
-□ First 1500 characters satisfy Section 7 checklist
+□ First 1500 characters satisfying Section 7 checklist
 □ Transition density < 2 per paragraph
 □ At least 30% of paragraphs open without a transition word
 □ Vocabulary TTR between 0.62-0.72
 □ At least 1 rhetorical question per 400 words
 □ At least 1 concrete example per 500 words
+□ Discussion paragraphs traceable to user's research questions (Rule 15.1)
+□ Every discussion claim references specific data (Rule 15.4)
+□ No scope drift from user's stated topic (Rule 15.5)

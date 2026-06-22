@@ -295,6 +295,12 @@ def _append_inline_math(paragraph, latex: str) -> bool:
 
 
 def _normalize_text(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
@@ -337,16 +343,31 @@ def _iter_rich_tokens(text: str):
                 index += 2
                 continue
             if cmd == "b":
+                next_char = text[index + 2] if index + 2 < len(text) else ""
+                if next_char.islower():
+                    buf.append("\\b")
+                    index += 2
+                    continue
                 yield from flush()
                 bold = not bold
                 index += 2
                 continue
             if cmd == "i":
+                next_char = text[index + 2] if index + 2 < len(text) else ""
+                if next_char.islower():
+                    buf.append("\\i")
+                    index += 2
+                    continue
                 yield from flush()
                 italic = not italic
                 index += 2
                 continue
             if cmd == "u":
+                next_char = text[index + 2] if index + 2 < len(text) else ""
+                if next_char.islower():
+                    buf.append("\\u")
+                    index += 2
+                    continue
                 yield from flush()
                 underline = not underline
                 index += 2

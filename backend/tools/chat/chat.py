@@ -398,6 +398,15 @@ def send_message(conv_id: str):
     if len(images) > 5:
         return jsonify({"error": "Maksimal 5 gambar per pesan"}), 400
 
+    # ── Pre-flight: warn if payload is large (but don't block) ───────────
+    _large_payload_warning = ""
+    if len(content) > 50000:
+        _large_payload_warning = (
+            "\n\n⚠️ **CATATAN**: Data yang dikirim cukup besar (~{}K karakter). "
+            "Respons mungkin lebih lambat. Tips: gunakan tab Literatur untuk upload "
+            "paper lalu ketik @slr untuk analisis otomatis."
+        ).format(len(content) // 1000)
+
     log.info("simple_chat.send conv=%s user=%s len=%d images=%d image_only=%s", conv_id, user_id, len(content), len(images), image_only)
 
     # Save user message to database
@@ -811,6 +820,10 @@ def send_message(conv_id: str):
         _r = get_redis()
         log.info("Chat generate started for conv_id=%s", conv_id)
 
+        # Capture system_content from enclosing scope (BUGFIX: assignments
+        # below make Python treat it as local → UnboundLocalError at line 1072)
+        _sys = system_content
+
         # Save streaming state to Redis (for reconnect after refresh)
         stream_state = {
             "status": "streaming",
@@ -919,6 +932,10 @@ def send_message(conv_id: str):
                     except Exception as docx_err:
                         log.warning("GENERATE_DOCX rendering failed: %s", docx_err)
                         # Don't fail the whole response — just log the error
+
+                # Strip search tags from final content (Phase 2 AI sometimes leaks tags as text)
+                from tools.chat.search_tools import strip_search_tags as _sst
+                content = _sst(content)
 
                 out["content"] = content
 
@@ -1055,8 +1072,45 @@ def send_message(conv_id: str):
             _persist_chat_final(assistant_content, thinking_content)
 
         try:
+            # ── System prompt truncation ──────────────────────────────────
+            # Prevent context overflow when user sends large input (e.g. 70+ papers).
+            # Cap system_content at ~80K chars; if exceeded, truncate the paper
+            # context block first (least critical), then trim evenly.
+            MAX_SYSTEM_CHARS = 80000
+            if len(_sys) > MAX_SYSTEM_CHARS:
+                log.warning("System content %d chars exceeds max %d — truncating",
+                           len(_sys), MAX_SYSTEM_CHARS)
+                # Try to find and truncate "## Paper Context" block first
+                _pc_marker = "## Paper Context"
+                _pc_idx = _sys.find(_pc_marker)
+                _available = MAX_SYSTEM_CHARS - (len(_sys) - (_sys.find("\n", _pc_idx + 50) if _pc_idx != -1 else 0))
+                if _pc_idx != -1:
+                    # Keep everything before Paper Context, truncate Paper Context
+                    _before = _sys[:_pc_idx]
+                    _after_pc = _sys[_pc_idx:]
+                    _max_pc = max(500, _available - len(_before) - 200)
+                    if _max_pc > 0:
+                        _pc_end = _sys.find("```", _pc_idx + 200)
+                        if _pc_end != -1:
+                            # Truncate JSON: keep first _max_pc chars
+                            _truncated_pc = _after_pc[:_max_pc] + "\n... (truncated — too many papers for chat)"
+                            _sys = _before + _truncated_pc
+                        else:
+                            _sys = _sys[:MAX_SYSTEM_CHARS]
+                    else:
+                        _sys = _sys[:MAX_SYSTEM_CHARS]
+                else:
+                    _sys = _sys[:MAX_SYSTEM_CHARS]
+                _sys += ("\n\n⚠️ **SYSTEM NOTE**: Data dipotong karena terlalu besar. "
+                                   "Gunakan tab Literatur + @slr untuk analisis paper dalam jumlah banyak.\n")
+                log.info("System content truncated to %d chars", len(_sys))
+
+            # Inject large-payload warning into system prompt
+            if _large_payload_warning:
+                _sys += _large_payload_warning + "\n\n"
+
             # Build message list: system + history + current user message
-            messages_phase1 = [{"role": "system", "content": system_content}]
+            messages_phase1 = [{"role": "system", "content": _sys}]
 
             for msg in _history:
                 role = msg.role if msg.role in ("user", "assistant") else "user"
@@ -1233,7 +1287,7 @@ def send_message(conv_id: str):
                 yield _sse("composing_start", {})
 
                 # ── PHASE 2: AI synthesizes final answer with search data ──
-                phase2_system = system_content + "\n\n" + search_results_context
+                phase2_system = _sys + "\n\n" + search_results_context
 
                 messages_phase2 = [{"role": "system", "content": phase2_system}]
                 for msg in _history:

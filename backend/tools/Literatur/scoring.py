@@ -127,35 +127,118 @@ def _venue_score(p: Paper) -> float:
     return base
 
 
+def _extract_key_phrases(query: str) -> list[str]:
+    """Extract meaningful 2-4 word phrases from query for phrase-based matching.
+    
+    Unlike individual keyword matching, phrase matching ensures papers that
+    contain "project-based learning" (not just "learning" somewhere) get
+    properly boosted. This is critical for multi-concept queries like
+    "hybrid project-based learning social-emotional early childhood development".
+    
+    Returns list of key phrases sorted by specificity (longest first).
+    """
+    _generic_words = {
+        "and", "the", "for", "with", "from", "that", "this", "are",
+        "was", "but", "not", "can", "all", "any", "has", "its", "may",
+        "who", "which", "their", "how", "what", "why", "use",
+        "using", "study", "analysis", "approach", "method", "model",
+        "system", "data", "also", "been", "were", "will", "have",
+        "a", "an", "in", "on", "of", "to", "by", "is", "be", "at",
+        "or", "as", "if", "no", "so", "we", "he", "she", "it", "they",
+        "based", "effect", "impact", "review", "role", "case",
+    }
+    # Normalize: lowercase + replace hyphens with spaces for consistent matching
+    query_lower = query.lower().strip().replace('-', ' ')
+    words = query_lower.split()
+    if len(words) <= 1:
+        return [w for w in words if w not in _generic_words]
+    
+    phrases = []
+    for n in [4, 3, 2]:
+        for i in range(len(words) - n + 1):
+            phrase = " ".join(words[i:i+n])
+            content_words = [w for w in words[i:i+n] if w not in _generic_words]
+            if len(content_words) >= 2:
+                phrases.append(phrase)
+    
+    # Dedup keeping first occurrence (longer phrases first: 4,3,2)
+    seen = set()
+    unique = []
+    for p in phrases:
+        if p not in seen:
+            seen.add(p)
+            unique.append(p)
+    
+    # Ensure we have enough phrases for matching — add individual 
+    # content words (>=4 chars) not already covered
+    if len(unique) < 3:
+        for w in words:
+            if w not in _generic_words and len(w) >= 4 and w not in seen:
+                unique.append(w)
+                seen.add(w)
+    
+    return unique
+
+
 def _keyword_density_score(query: str, p: Paper) -> float:
     """Bonus for papers whose title/abstract directly contain query terms.
-
+    
     Returns 0.0–1.0:
-    - Full query phrase in title → 1.0 (perfect match — mutlak paling relevan)
-    - Full query phrase in abstract → 0.8
-    - All meaningful terms in title → 0.7+
-    - Partial terms in title → proportional
-    - Terms only in abstract → lower score (0.2–0.5)
-
+    - Multiple key phrases (2+ word sequences) in title → 1.0
+    - 1 key phrase in title → 0.85
+    - Multiple key phrases in abstract → 0.7
+    - 1 key phrase in abstract → 0.55
+    - Full query exact match in title → 1.0 (legacy, rare)
+    - Individual terms in title → proportional below 0.5
+    - Terms only in abstract → lower score (0.1–0.35)
+    
     Abstract matching diperluas (sebelumnya title-only). User ingin
     paper yang benar2 relate, bukan yang hanya menyebut 1 kata kunci.
     """
-    title = (p.title or "").lower()
-    abstract = (p.abstract or "").lower()
-    query_lower = query.lower().strip()
+    title = (p.title or "").lower().replace('-', ' ')
+    abstract = (p.abstract or "").lower().replace('-', ' ')
+    query_lower = query.lower().strip().replace('-', ' ')
 
     if not title and not abstract:
         return 0.0
 
-    # Full phrase match in title → absolutely relevant
-    if query_lower in title:
+    # Full phrase match in title → absolutely relevant (legacy)
+    if len(query_lower) > 8 and query_lower in title:
         return 1.0
 
-    # Full phrase match in abstract → very relevant
-    if query_lower in abstract:
-        return 0.8
+    # Full phrase match in abstract → very relevant (legacy)
+    if len(query_lower) > 8 and query_lower in abstract:
+        return 0.9
 
-    # Individual term matching
+    # ── PHRASE-BASED MATCHING (NEW) ──
+    # Extract key phrases (2-4 word sequences) and check matches
+    key_phrases = _extract_key_phrases(query_lower)
+    title_phrase_matches = sum(
+        1 for phrase in key_phrases
+        if phrase in title
+    )
+    abstract_phrase_matches = sum(
+        1 for phrase in key_phrases
+        if phrase in abstract and phrase not in title  # Don't double-count
+    )
+
+    n_phrases = len(key_phrases)
+    if n_phrases > 0 and title_phrase_matches > 0:
+        # Multiplicative: more phrases matched → higher score
+        if title_phrase_matches >= 3 and n_phrases >= 4:
+            return 1.0
+        if title_phrase_matches >= 2:
+            return 0.9
+        if title_phrase_matches >= 1:
+            return 0.85
+
+    if n_phrases > 0 and abstract_phrase_matches > 0:
+        if abstract_phrase_matches >= 2:
+            return 0.7
+        if abstract_phrase_matches >= 1:
+            return 0.55
+
+    # ── FALLBACK: Individual term matching ──
     _stopwords = {
         "and", "the", "for", "with", "from", "that", "this", "are",
         "was", "but", "not", "can", "all", "any", "has", "its", "may",
@@ -178,19 +261,18 @@ def _keyword_density_score(query: str, p: Paper) -> float:
     title_matched = sum(1 for t in terms if re.search(rf'\b{re.escape(t)}\b', title))
     abs_matched = sum(1 for t in terms if re.search(rf'\b{re.escape(t)}\b', abstract))
 
-    # Cap at meaningful level — a paper with 1/5 terms should not score high
-    # unless it matches the unique/longest terms
+    # Individual term score capped at 0.5 — phrase matching is stronger signal
     score = (title_matched * 3 + abs_matched) / (n * 4) if n > 0 else 0
+    score = min(0.5, score)
 
-    # Boost for matching the LONGEST terms (most specific) — these are
-    # typically the most meaningful signal of relevance
+    # Boost for matching the LONGEST terms (most specific)
     if terms and title_matched > 0:
         longest = sorted(terms, key=len, reverse=True)[:3]
         longest_in_title = sum(1 for t in longest if re.search(rf'\b{re.escape(t)}\b', title))
         if longest_in_title >= 2:
-            score = max(score, 0.65)  # At least medium-high if longest terms appear
+            score = max(score, 0.45)
 
-    return min(1.0, score)
+    return min(0.5, score)
 
 
 def _author_prestige_score(p: Paper) -> float:
@@ -336,21 +418,24 @@ def score_papers(
         # text_quality: 0.0 (garbled total) → 1.0 (clean)
         # Multiplicative: paper garbled → score_total ~0
 
-        # ── Keyword density weight dinaikkan ──
-        # Keyword match di judul/abstract lebih penting dari venue/sitasi
-        # untuk relevance ranking. User ingin paper yang judulnya
-        # mengandung kata kunci lebih diutamakan.
+        # ── KEYWORD-FIRST RANKING ──────────────────────────────────
+        # Keyword matching adalah sinyal TERKUAT — paper yang judulnya
+        # mengandung query HARUS di atas paper yang cuma semantic-similar.
         #
-        # ADAPTIVE: saat SBERT tersedia → keyword 17%, SBERT 40%.
-        # Saat TF-IDF fallback → keyword 25%, SBERT 25% (TF-IDF kurang
-        # akurat secara semantik, keyword matching lebih reliable).
+        # STRATEGI: keyword boost MULTIPLICATIVE, bukan additive.
+        # Paper dengan full query phrase di judul → dijamin skor tinggi.
+        # Paper yang keyword_s = 0 → skor tidak terpengaruh.
+        #
+        # Weight: keyword 25% (additive) + MULTIPLICATIVE boost untuk
+        # exact phrase match. SBERT dikurangi dari 40%→30% karena
+        # sering false-positive (paper unrelated tapi semantic-similar).
         if _using_sbert:
             w_sbert, w_tfidf, w_cite, w_recency, w_venue, w_kw, w_author = (
-                0.40, 0.10, 0.08, 0.08, 0.10, 0.17, 0.07
+                0.30, 0.10, 0.06, 0.08, 0.07, 0.25, 0.05
             )
         else:
             w_sbert, w_tfidf, w_cite, w_recency, w_venue, w_kw, w_author = (
-                0.25, 0.15, 0.06, 0.06, 0.08, 0.25, 0.05
+                0.20, 0.15, 0.04, 0.06, 0.05, 0.35, 0.05
             )
         base_score = (
             w_sbert * sbert_s
@@ -363,6 +448,33 @@ def score_papers(
         )
         # Multiplicative penalty: signal issues + text quality
         total = base_score * (1.0 - signal_penalty) * text_quality
+
+        # ── KEYWORD MULTIPLICATIVE BOOST (PHRASE-BASED) ────────────
+        # Paper dengan key phrase (2+ word sequences) di title 
+        # mendapat boost signifikan. Full query substring jarang match
+        # untuk query panjang (50+ karakter). Phrase-based lebih realistis.
+        key_phrases = _extract_key_phrases(query)
+        title_lower = (p.title or "").lower().replace('-', ' ')
+        abstract_lower = (p.abstract or "").lower().replace('-', ' ')
+        # Count how many key phrases appear in title
+        title_hits = sum(1 for ph in key_phrases if ph in title_lower)
+        abs_hits = sum(1 for ph in key_phrases if ph in abstract_lower and ph not in title_lower)
+        
+        if title_hits >= 3:
+            total *= 1.8  # Strong: multiple key concepts in title
+        elif title_hits >= 2:
+            total *= 1.5  # Good: 2 key concepts in title
+        elif title_hits >= 1:
+            total *= 1.25  # Decent: 1 key concept in title
+        elif abs_hits >= 2:
+            total *= 1.15  # Multiple concepts in abstract
+        elif abs_hits >= 1:
+            total *= 1.1  # Single concept in abstract
+        
+        # Bonus: paper dengan keyword_s = 1.0 (exact phrase match) → boost max
+        if keyword_s >= 0.9:
+            total *= 1.3
+
         total = max(0.0, min(1.0, total))
 
         breakdown = {
@@ -383,7 +495,8 @@ def score_papers(
                 paper=p,
                 score_total=round(total, 4),
                 score_breakdown=breakdown,
-                is_relevant=sbert_s >= sbert_threshold,
+                # is_relevant: keyword match > 0.5 ATAU sbert cukup tinggi
+                is_relevant=keyword_s >= 0.5 or sbert_s >= sbert_threshold,
                 must_read=total >= must_read_threshold,
             )
         )

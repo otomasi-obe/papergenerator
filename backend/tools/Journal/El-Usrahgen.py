@@ -172,7 +172,6 @@ def _set_ai_prompt_color_red(doc):
     2. Set border tabel data tegas (single/sz=4) supaya keliatan di Word.
     Idempotent dan aman dipanggil sebelum doc.save()."""
     from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
     from docx.shared import RGBColor
 
     RED = RGBColor(0xFF, 0x00, 0x00)

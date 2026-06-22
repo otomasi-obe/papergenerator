@@ -25,7 +25,6 @@ from lxml import etree
 _FOOTNOTE_COUNTER = 0  # global footnote counter
 _FOOTNOTES_INITIALIZED = False  # only run init once
 
-
 def _max_footnote_id(doc: Document) -> int:
     """Find the highest existing footnote ID in the footnotes part."""
     for rel in doc.part.rels.values():
@@ -46,7 +45,6 @@ def _max_footnote_id(doc: Document) -> int:
                     pass
             return max_id
     return 0
-
 
 def _init_footnotes(doc: Document):
     """Ensure footnotes.xml exists and set counter after any template footnotes."""
@@ -87,7 +85,6 @@ def _init_footnotes(doc: Document):
     doc.part.relate_to(part, rel_type)
     _FOOTNOTE_COUNTER = 0
     return True
-
 
 def _add_author_footnote(doc: Document, author: dict, fn_number: int, superscript: str) -> int:
     """Add an author affiliation footnote (like the template's [1], [2])."""
@@ -145,7 +142,6 @@ def _add_author_footnote(doc: Document, author: dict, fn_number: int, superscrip
 
     footnotes_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
     return fn_id
-
 
 def _add_footnote(doc: Document, paragraph, footnote_text: str) -> int:
     """Add a real Word footnote at the paragraph, return the footnote ID."""
@@ -221,7 +217,6 @@ def _add_footnote(doc: Document, paragraph, footnote_text: str) -> int:
     footnotes_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
     return fn_id
 
-
 # Roman → Arabic table reference conversion (same pattern as JAMRISgen)
 ROMAN_TABLE_REFS = [
     # Indonesian "Tabel" + English "Table" — Roman I–XX to Arabic
@@ -247,12 +242,10 @@ ROMAN_TABLE_REFS = [
     (r'(?i)\b[Tt]abel\s+I\b', 'Tabel 1'),
 ]
 
-
 def _replace_roman_table_refs(text: str) -> str:
     for pattern, replacement in ROMAN_TABLE_REFS:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     return text
-
 
 # ─── End Chicago helpers ─────────────────────────────────────────────
 
@@ -272,6 +265,7 @@ CFG = {
     "header_distance_tw": 720,
     "footer_distance_tw": 720,
     "columns": 1,
+    "col_width_cm": 16.5,
     "col_space_tw": 0,
     "font_body": "Times New Roman",
     "font_title": "Times New Roman",
@@ -293,7 +287,7 @@ CFG = {
     "fig_prefix": "Figure",
     "tbl_prefix": "Table",
     "tbl_number_format": "arabic",
-    "table_borders": "full",
+    "table_borders": "three_line",
     "line_spacing_body": 240,
     "line_spacing_rule": "auto",
     "first_line_indent_tw": 0,
@@ -309,7 +303,6 @@ XSL_CANDIDATES = [
     BASE.parent / "MML2OMML.XSL",
 ]
 _XSLT = None
-
 
 def _append_inline_math(paragraph, latex):
     """Render LaTeX into the paragraph. Prefer native Word OMML (real equation
@@ -374,11 +367,35 @@ def _append_inline_math(paragraph, latex):
         if new_s == s:
             break
         s = new_s
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     s = _re.sub(r"\\[a-zA-Z]+\*?", "", s)
     s = s.replace("{", "").replace("}", "").replace("$", "")
     paragraph.add_run(s)
     return True
-
 
 def _set_ai_prompt_color_red(doc):
     """Post-process output DOCX:
@@ -435,11 +452,9 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
 
-
 def load_json():
     with open(TEMPLATE_JSON, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None, color=None):
     if font_name:
@@ -462,7 +477,6 @@ def set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None, colo
     if color is not None:
         run.font.color.rgb = RGBColor(*color) if isinstance(color, tuple) else color
 
-
 def set_paragraph_spacing(paragraph, before=None, after=None, line=None, line_rule=None):
     pf = paragraph.paragraph_format
     if before is not None:
@@ -479,7 +493,6 @@ def set_paragraph_spacing(paragraph, before=None, after=None, line=None, line_ru
         if line_rule:
             spacing.set(qn("w:lineRule"), line_rule)
 
-
 def set_paragraph_indent(paragraph, left=None, right=None, first_line=None, hanging=None):
     ppr = paragraph._p.get_or_add_pPr()
     ind = ppr.find(qn("w:ind"))
@@ -495,13 +508,11 @@ def set_paragraph_indent(paragraph, left=None, right=None, first_line=None, hang
     if hanging is not None:
         ind.set(qn("w:hanging"), str(hanging))
 
-
 def clear_body(doc):
     body = doc._element.body
     for child in list(body):
         if child.tag != qn("w:sectPr"):
             body.remove(child)
-
 
 def add_paragraph(
     doc,
@@ -533,13 +544,17 @@ def add_paragraph(
         )
     return p
 
-
 def _normalize_text(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
-
 
 def _append_rich_text(
     paragraph, text: str, font_name=None, size_pt=None, base_bold=False, base_italic=False
@@ -599,7 +614,6 @@ def _append_rich_text(
         index += 1
     flush()
 
-
 def add_title(doc, data):
     title = data.get("title", "Paper Title Goes Here")
     p = doc.add_paragraph()
@@ -607,7 +621,6 @@ def add_title(doc, data):
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     run = p.add_run(title)
     set_run_font(run, font_name=CFG["font_title"], size_pt=CFG["size_title"], bold=True)
-
 
 def add_title_english(doc, data):
     title_en = data.get("title_english", "")
@@ -621,12 +634,10 @@ def add_title_english(doc, data):
         run, font_name=CFG["font_title"], size_pt=CFG["size_title"], bold=True
     )
 
-
 def add_empty_para(doc):
     p = doc.add_paragraph()
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     return p
-
 
 def add_authors(doc, data):
     authors = _parse_author_entries(data)
@@ -661,7 +672,6 @@ def add_authors(doc, data):
 
         # Add author affiliation as a Word footnote
         fn_id = _add_author_footnote(doc, author, i + 1, marker)
-
 
 def _parse_author_entries(data: dict) -> list[dict]:
     """Parse authors from JSON. Supports both old (affiliation, location) and new (department, institution, ...) field formats."""
@@ -718,7 +728,6 @@ def _parse_author_entries(data: dict) -> list[dict]:
 
     return entries
 
-
 def add_abstract(doc, data):
     add_empty_para(doc)
 
@@ -738,7 +747,6 @@ def add_abstract(doc, data):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     _append_rich_text(p, abstract_text)
-
 
 def add_keywords(doc, data):
     add_empty_para(doc)
@@ -761,7 +769,6 @@ def add_keywords(doc, data):
     run = p.add_run(keywords_text)
     set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
 
-
 def add_section_heading(doc, title):
     add_empty_para(doc)
 
@@ -770,7 +777,6 @@ def add_section_heading(doc, title):
     set_paragraph_spacing(p, before=3, after=3, line=240, line_rule="auto")
     run = p.add_run(title)
     set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading1"], bold=True)
-
 
 def add_subsection_heading(doc, title, level=1):
     add_empty_para(doc)
@@ -787,7 +793,6 @@ def add_subsection_heading(doc, title, level=1):
         # Third Layer: Italic only
         run = p.add_run(title)
         set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading3"], italic=True)
-
 
 def add_body_text(doc, text, first_paragraph=False):
     text = _replace_roman_table_refs(str(text))
@@ -818,14 +823,12 @@ def add_body_text(doc, text, first_paragraph=False):
     else:
         _append_rich_text(p, text)
 
-
 def add_block_quote(doc, text):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     set_paragraph_indent(p, left=567, right=567, first_line=0)
     _append_rich_text(p, text)
-
 
 def add_figure(doc, fig_data):
     image_number = str(fig_data.get("ImageNumber", "1")).strip()
@@ -836,9 +839,11 @@ def add_figure(doc, fig_data):
 
     image_path = None
     if path_text:
-        candidate = BASE / path_text
-        if candidate.is_file():
-            image_path = candidate
+        # Try direct path first, then BASE-relative
+        for cand in (Path(path_text), BASE / path_text):
+            if cand.is_file():
+                image_path = cand
+                break
 
     # Figure caption ABOVE the image/placeholder (JAT template rule)
     p_cap = doc.add_paragraph()
@@ -856,7 +861,12 @@ def add_figure(doc, fig_data):
         usable_width_cm = (
             CFG["page_width_tw"] - CFG["margin_left_tw"] - CFG["margin_right_tw"]
         ) / 567.0
-        max_width = min(usable_width_cm, 14.0)
+        max_width = min(usable_width_cm, 14.0)  # Cap prevent overflow
+        columns = CFG.get("columns", 1)
+        if columns == 2:
+            max_width = min((usable_width_cm / 2) * 0.7, 14.0)
+        else:
+            max_width = min(usable_width_cm * 0.5, 14.0)
         run = p.add_run()
         run.add_picture(str(image_path), width=Cm(max_width))
     else:
@@ -879,24 +889,26 @@ def add_figure(doc, fig_data):
     run = p_src.add_run("Source: The Authors")
     set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
 
-
 def add_formula(doc, formula_data):
-    formula_number = str(formula_data.get("FormulaNumber", "")).strip()
-    latex = formula_data.get("latex", "E = mc^2").strip()
+    # OMML via shared utility
+    import sys
+    from pathlib import Path as _Path
+    _jdir = _Path(__file__).resolve().parent
+    if str(_jdir) not in sys.path:
+        sys.path.insert(0, str(_jdir))
+    from _formula_omml import add_omml_formula
 
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p, before=3, after=3, line=240, line_rule="auto")
-
-    if not _append_inline_math(p, latex):
-        run = p.add_run(latex)
-        set_run_font(run, font_name="Cambria Math", size_pt=CFG["size_body"], italic=True)
-
-    if formula_number:
-        run = p.add_run(f"   ({formula_number})")
-        set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
-
-
+    latex = str(formula_data.get("latex", formula_data.get("Formula", ""))).strip()
+    number = str(formula_data.get("FormulaNumber", "")).strip()
+    if not latex:
+        return
+        # Calculate max formula width (same rules as images)
+    columns = CFG.get("columns", 1)
+    col_w = CFG.get("col_width_cm", 16.0)
+    max_fw = (col_w / 2) * 0.7 if columns == 2 else col_w * 0.7
+    add_omml_formula(doc, latex, number, CFG, before_pt=4, after_pt=4,
+                     alignment="center", font_body=CFG.get("font_body", "Times New Roman"),
+                     size_body=CFG.get("size_body", 10), max_width_cm=max_fw)
 def _roman_to_arabic(s: str) -> str:
     """Convert Roman numeral to Arabic. Returns original if not Roman."""
     roman_map = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5,
@@ -906,7 +918,6 @@ def _roman_to_arabic(s: str) -> str:
     if upper in roman_map:
         return str(roman_map[upper])
     return s
-
 
 def add_table(doc, table_data):
     table_number = _roman_to_arabic(str(table_data.get("TableNumber", "1")).strip())
@@ -953,8 +964,13 @@ def add_table(doc, table_data):
     p_src.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_paragraph_spacing(p_src, before=0, after=0, line=240, line_rule="auto")
     run = p_src.add_run("Source: The Authors")
-    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
+    set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"]
 
+)
+    # Spacer after table
+    p_spacer = doc.add_paragraph()
+    set_paragraph_spacing(p_spacer, before=6, after=6)
+    p_spacer.add_run(" ").font.size = Pt(1)
 
 def _set_table_borders_full(table):
     tbl = table._tbl
@@ -978,7 +994,6 @@ def _set_table_borders_full(table):
 
     tbl_pr.append(borders)
 
-
 # ─── IEEE → Chicago 18th converter ─────────────────────────────────
 __IEEE_REF_RE = re.compile(
     r'^(?P<authors>[^"]+?),?\s*"(?P<title>[^"]+?)",\s+(?P<journal>[^,]+?),?\s*'
@@ -988,7 +1003,6 @@ __IEEE_REF_RE = re.compile(
     r',?\s*(?:doi\s*[:\s]+\s*(?P<doi>[^\s,;]+))?'
     r'[\.]?\s*$', re.IGNORECASE
 )
-
 
 def _parse_authors(authors: str) -> list:
     """Parse author string into list of 'Last, Initials.' entries."""
@@ -1031,7 +1045,6 @@ def _parse_authors(authors: str) -> list:
         else:
             result.append(p)
     return result
-
 
 def _ieee_to_chicago(ref: str) -> str:
     """Convert IEEE-format reference to Chicago 18th notes-bibliography style."""
@@ -1079,7 +1092,6 @@ def _ieee_to_chicago(ref: str) -> str:
         result += f". https://doi.org/{doi}"
     result += "."
     return result
-
 
 def add_references(doc, data):
     ref_data = data.get("references", {})
@@ -1129,7 +1141,6 @@ def add_references(doc, data):
         p.paragraph_format.left_indent = Cm(1.27)
         _append_rich_text(p, ref_text)
 
-
 def process_content_item(doc, item):
     item_id = str(item.get("id", "")).lower()
 
@@ -1143,7 +1154,6 @@ def process_content_item(doc, item):
         add_formula(doc, item)
     elif item_id == "tabel" or item_id == "table":
         add_table(doc, item)
-
 
 def process_section(doc, section_data, section_key):
     if not isinstance(section_data, dict):
@@ -1191,7 +1201,6 @@ def process_section(doc, section_data, section_key):
             elif isinstance(sub_content, str) and sub_content.strip():
                 add_body_text(doc, sub_content)
 
-
 def add_acknowledgements(doc, data):
     ack_text = data.get("acknowledgements", "").strip()
     if not ack_text:
@@ -1204,7 +1213,6 @@ def add_acknowledgements(doc, data):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=240, line_rule="auto")
     _append_rich_text(p, ack_text)
-
 
 def generate():
     global _FOOTNOTE_COUNTER, _FOOTNOTES_INITIALIZED
@@ -1236,7 +1244,6 @@ def generate():
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)
-
 
 if __name__ == "__main__":
     generate()

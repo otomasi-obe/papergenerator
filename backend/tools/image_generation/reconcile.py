@@ -75,7 +75,7 @@ def reconcile_figure_images(paper_id: str, paper_data: dict, upload_base: Path) 
 
             matched = _match_image(current_path, fig.get("Title", ""), file_map, used_images, image_files)
             if matched:
-                fig["Path"] = matched.name
+                fig["Path"] = str(matched)
                 used_images.add(matched.name)
 
     # ── 2. Patch section content gambar items ───────────────────────────
@@ -189,7 +189,7 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
                 for fname, fpath in file_map.items():
                     num_in_name = re.search(r'(\d+)', fname)
                     if num_in_name and num_in_name.group(1) == str(img_num):
-                        item["Path"] = fpath.name
+                        item["Path"] = str(fpath)
                         patched += 1
                         log.debug("[reconcile] Patched content gambar via ImageNumber %s: → %s", img_num, item["Path"])
                         break
@@ -198,6 +198,29 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
         # Skip if already absolute and exists
         if os.path.isabs(path_text) and os.path.exists(path_text):
             continue
+
+        # Corrupt absolute path (exists on disk but not at this exact path)?
+        # Happens when AI introduces spaces inside filenames.
+        # Try matching against the real image files on disk.
+        if os.path.isabs(path_text) and not os.path.exists(path_text):
+            fname = os.path.basename(path_text)
+            if fname:
+                # Normalise: remove spaces from the stored filename
+                normalised = fname.replace(" ", "")
+                if normalised in file_map:
+                    item["Path"] = str(file_map[normalised])
+                    patched += 1
+                    log.debug("[reconcile] Corrupt path fixed: %s → %s", fname, item["Path"])
+                    continue
+                # Also try stem match with spaces removed
+                stem = os.path.splitext(normalised)[0]
+                for fkey, fpath in file_map.items():
+                    if os.path.splitext(fkey)[0] == stem:
+                        item["Path"] = str(fpath)
+                        patched += 1
+                        log.debug("[reconcile] Corrupt path stem-matched: %s → %s", fname, item["Path"])
+                        break
+                continue
 
         # Try to resolve the bare filename against the upload folder
         fname = os.path.basename(path_text)
@@ -214,7 +237,7 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
                         matched_path = fpath
                         break
             if matched_path:
-                item["Path"] = matched_path.name
+                item["Path"] = str(matched_path)
                 patched += 1
                 log.debug("[reconcile] Patched content gambar: %s → %s", fname, item["Path"])
                 continue
@@ -225,7 +248,7 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
             for fname_cand, fpath in file_map.items():
                 num_in_name = re.search(r'(\d+)', fname_cand)
                 if num_in_name and num_in_name.group(1) == str(img_num):
-                    item["Path"] = fpath.name
+                    item["Path"] = str(fpath)
                     patched += 1
                     log.debug("[reconcile] Patched content gambar via ImageNumber %s: → %s", img_num, item["Path"])
                     break

@@ -1,0 +1,1334 @@
+{
+  "acoustics": {
+    "key": "acoustics",
+    "short_name": "Acoustics",
+    "year": 2025,
+    "volume": 7,
+    "logo": "logos/acoustics.png",
+    "header_text": "Acoustics   2025 ,  7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Acoustics  2025 ,  7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "actuators": {
+    "key": "actuators",
+    "short_name": "Actuators",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/actuators.png",
+    "header_text": "Actuators  2025 ,  14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Actuators  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "admsci": {
+    "key": "admsci",
+    "short_name": "Adm. Sci.",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/admsci.png",
+    "header_text": "Adm. Sci.  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Adm. Sci.  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "adolescents": {
+    "key": "adolescents",
+    "short_name": "Adolescents",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/adolescents.png",
+    "header_text": "Adolescents   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Adolescents   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "aerospace": {
+    "key": "aerospace",
+    "short_name": "Aerospace",
+    "year": 2025,
+    "volume": 12,
+    "logo": "logos/aerospace.png",
+    "header_text": "Aerospace  2025 ,  12 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Aerospace  2025 ,  12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "agriculture": {
+    "key": "agriculture",
+    "short_name": "Agriculture",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/agriculture.png",
+    "header_text": "Agriculture  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Agriculture  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "agriengineering": {
+    "key": "agriengineering",
+    "short_name": "AgriEngineering",
+    "year": 2025,
+    "volume": 7,
+    "logo": "logos/agriengineering.png",
+    "header_text": "AgriEngineering   2025 ,  7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "AgriEngineering   2025 ,  7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "agrochemicals": {
+    "key": "agrochemicals",
+    "short_name": "Agrochemicals",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/agrochemicals.png",
+    "header_text": "Agrochemicals   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Agrochemicals   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "agronomy": {
+    "key": "agronomy",
+    "short_name": "Agronomy",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/agronomy.png",
+    "header_text": "Agronomy  2025 ,  15 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Agronomy  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "air": {
+    "key": "air",
+    "short_name": "Air",
+    "year": 2026,
+    "volume": 4,
+    "logo": "logos/air.png",
+    "header_text": "Air   2026 ,   4 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Air   2026 ,   4 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "algorithms": {
+    "key": "algorithms",
+    "short_name": "Algorithms",
+    "year": 2026,
+    "volume": 19,
+    "logo": "logos/algorithms.png",
+    "header_text": "Algorithms  2026 ,   19 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "allergies": {
+    "key": "allergies",
+    "short_name": "Allergies",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/allergies.png",
+    "header_text": "Allergies   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Allergies   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "alloys": {
+    "key": "alloys",
+    "short_name": "Alloys",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/alloys.png",
+    "header_text": "Alloys   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Alloys   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "analytica": {
+    "key": "analytica",
+    "short_name": "Analytica",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/analytica.png",
+    "header_text": "Analytica   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Analytica   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "analytics": {
+    "key": "analytics",
+    "short_name": "Analytics",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/analytics.png",
+    "header_text": "Analytics   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Analytics   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "anatomia": {
+    "key": "anatomia",
+    "short_name": "Anatomia",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/anatomia.png",
+    "header_text": "Anatomia   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Anatomia   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "antibodies": {
+    "key": "antibodies",
+    "short_name": "Antibodies",
+    "year": 2026,
+    "volume": 15,
+    "logo": "logos/antibodies.png",
+    "header_text": "Antibodies  2026 ,   15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Antibodies  2026 ,   15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "applbiosci": {
+    "key": "applbiosci",
+    "short_name": "Appl. Biosci.",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/applbiosci.png",
+    "header_text": "Appl. Biosci.   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Appl. Biosci.   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "applmech": {
+    "key": "applmech",
+    "short_name": "Appl. Mech.",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/applmech.png",
+    "header_text": "Appl. Mech.   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Appl. Mech.   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "applmicrobiol": {
+    "key": "applmicrobiol",
+    "short_name": "Appl. Microbiol.",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/applmicrobiol.png",
+    "header_text": "Appl. Microbiol.   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "applnano": {
+    "key": "applnano",
+    "short_name": "Appl. Nano",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/applnano.png",
+    "header_text": "Appl. Nano  2026 ,   7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Appl. Nano  2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "architecture": {
+    "key": "architecture",
+    "short_name": "Architecture",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/architecture.png",
+    "header_text": "Architecture   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Architecture   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "arthropoda": {
+    "key": "arthropoda",
+    "short_name": "Arthropoda",
+    "year": 2026,
+    "volume": 4,
+    "logo": "logos/arthropoda.png",
+    "header_text": "Arthropoda  2026 ,   4 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Arthropoda   2026 ,   4 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "arts": {
+    "key": "arts",
+    "short_name": "Arts",
+    "year": 2026,
+    "volume": 15,
+    "logo": "logos/arts.png",
+    "header_text": "Arts  2026 ,   15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "astronomy": {
+    "key": "astronomy",
+    "short_name": "Astronomy",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/astronomy.png",
+    "header_text": "Astronomy   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Astronomy   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "atmosphere": {
+    "key": "atmosphere",
+    "short_name": "Atmosphere",
+    "year": 2025,
+    "volume": 16,
+    "logo": "logos/atmosphere.png",
+    "header_text": "Atmosphere  2025 ,  16 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Atmosphere   2025 ,  16 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "atoms": {
+    "key": "atoms",
+    "short_name": "Atoms",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/atoms.png",
+    "header_text": "Atoms  2026 ,   14 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Atoms  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "audiolres": {
+    "key": "audiolres",
+    "short_name": "Audiol. Res.",
+    "year": 2026,
+    "volume": 16,
+    "logo": "logos/audiolres.png",
+    "header_text": "Audiol. Res.   2026 ,   16 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Audiol. Res.  2026 ,   16 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "automation": {
+    "key": "automation",
+    "short_name": "Automation",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/automation.png",
+    "header_text": "Automation  2026 ,   7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "axioms": {
+    "key": "axioms",
+    "short_name": "Axioms",
+    "year": 2026,
+    "volume": 15,
+    "logo": "logos/axioms.png",
+    "header_text": "Axioms  2026 ,   15 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Axioms  2026 ,   15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "bacteria": {
+    "key": "bacteria",
+    "short_name": "Bacteria",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/bacteria.png",
+    "header_text": "Bacteria   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "beverages": {
+    "key": "beverages",
+    "short_name": "Beverages",
+    "year": 2026,
+    "volume": 12,
+    "logo": "logos/beverages.png",
+    "header_text": "Beverages  2026 ,   12 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Beverages  2026 ,   12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biochem": {
+    "key": "biochem",
+    "short_name": "BioChem",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/biochem.png",
+    "header_text": "BioChem   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "biologics": {
+    "key": "biologics",
+    "short_name": "Biologics",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/biologics.png",
+    "header_text": "Biologics   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Biologics   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biology": {
+    "key": "biology",
+    "short_name": "Biology",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/biology.png",
+    "header_text": "Biology  2025 ,  14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Biology  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biomass": {
+    "key": "biomass",
+    "short_name": "Biomass",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/biomass.png",
+    "header_text": "Biomass   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "biomechanics": {
+    "key": "biomechanics",
+    "short_name": "Biomechanics",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/biomechanics.png",
+    "header_text": "Biomechanics   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Biomechanics   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biomed": {
+    "key": "biomed",
+    "short_name": "BioMed",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/biomed.png",
+    "header_text": "BioMed   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "BioMed   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biomedinformatics": {
+    "key": "biomedinformatics",
+    "short_name": "BioMedInformatics",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/biomedinformatics.png",
+    "header_text": "BioMedInformatics   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "biomimetics": {
+    "key": "biomimetics",
+    "short_name": "Biomimetics",
+    "year": 2026,
+    "volume": 11,
+    "logo": "logos/biomimetics.png",
+    "header_text": "Biomimetics  2026 ,   11 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "biophysica": {
+    "key": "biophysica",
+    "short_name": "Biophysica",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/biophysica.png",
+    "header_text": "Biophysica   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Biophysica   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biotech": {
+    "key": "biotech",
+    "short_name": "BioTech",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/biotech.png",
+    "header_text": "BioTech   2026 ,   7 ,  x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "BioTech   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "birds": {
+    "key": "birds",
+    "short_name": "Birds",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/birds.png",
+    "header_text": "Birds   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Birds   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "businesses": {
+    "key": "businesses",
+    "short_name": "Business es",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/businesses.png",
+    "header_text": "Businesses  2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Business es   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "cancers": {
+    "key": "cancers",
+    "short_name": "Cancers",
+    "year": 2025,
+    "volume": 17,
+    "logo": "logos/cancers.png",
+    "header_text": "Cancers  2025 ,  17 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Cancers  2025 ,  17 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "carbon": {
+    "key": "carbon",
+    "short_name": "C",
+    "year": 2026,
+    "volume": 12,
+    "logo": "logos/carbon.png",
+    "header_text": "C  2026 ,   12 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "C   2026 ,   12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "cardiogenetics": {
+    "key": "cardiogenetics",
+    "short_name": "Cardiogenetics",
+    "year": 2026,
+    "volume": 16,
+    "logo": "logos/cardiogenetics.png",
+    "header_text": "Cardiogenetics   2026 ,   16 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Cardiogenetics   2026 ,   16 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "catalysts": {
+    "key": "catalysts",
+    "short_name": "Catalysts",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/catalysts.png",
+    "header_text": "Catalysts  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Catalysts  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "cells": {
+    "key": "cells",
+    "short_name": "Cells",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/cells.png",
+    "header_text": "Cells  2025 ,  14 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Cells  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "ceramics": {
+    "key": "ceramics",
+    "short_name": "Ceramics",
+    "year": 2026,
+    "volume": 9,
+    "logo": "logos/ceramics.png",
+    "header_text": "Ceramics  2026 ,   9 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "challenges": {
+    "key": "challenges",
+    "short_name": "Challenges",
+    "year": 2026,
+    "volume": 17,
+    "logo": "logos/challenges.png",
+    "header_text": "Challenges   2026 ,   17 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Challenges   2026 ,   17 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "chemistry": {
+    "key": "chemistry",
+    "short_name": "Chemistry",
+    "year": 2026,
+    "volume": 8,
+    "logo": "logos/chemistry.png",
+    "header_text": "Chemistry   2026 ,   8 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Chemistry   2026 ,   8 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "chemosensors": {
+    "key": "chemosensors",
+    "short_name": "Chemosensors",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/chemosensors.png",
+    "header_text": "Chemosensors  2026 ,   14 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Chemosensors  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "children": {
+    "key": "children",
+    "short_name": "Children",
+    "year": 2025,
+    "volume": 12,
+    "logo": "logos/children.png",
+    "header_text": "Children  2025 ,  12 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Children  2025 ,  12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "chips": {
+    "key": "chips",
+    "short_name": "Chips",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/chips.png",
+    "header_text": "Chips   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Chips   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "civileng": {
+    "key": "civileng",
+    "short_name": "CivilEng",
+    "year": 2025,
+    "volume": 6,
+    "logo": "logos/civileng.png",
+    "header_text": "CivilEng   2025 ,  6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "CivilEng   2025 ,  6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "cleantechnol": {
+    "key": "cleantechnol",
+    "short_name": "Clean Technol.",
+    "year": 2025,
+    "volume": 7,
+    "logo": "logos/cleantechnol.png",
+    "header_text": "Clean Technol.   2025 ,  7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Clean Technol.   2025 ,  7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "climate": {
+    "key": "climate",
+    "short_name": "Climate",
+    "year": 2025,
+    "volume": 13,
+    "logo": "logos/climate.png",
+    "header_text": "Climate  2025 ,  13 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Climate  2025 ,  13 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "clinpract": {
+    "key": "clinpract",
+    "short_name": "Clin. Pract.",
+    "year": 2026,
+    "volume": 16,
+    "logo": "logos/clinpract.png",
+    "header_text": "Clin. Pract.  2026 ,   16 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "cmd": {
+    "key": "cmd",
+    "short_name": "Corros. Mater. Degrad.",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/cmd.png",
+    "header_text": "Corros. Mater. Degrad.  2026 ,   7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Corros. Mater. Degrad.   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "coasts": {
+    "key": "coasts",
+    "short_name": "Coasts",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/coasts.png",
+    "header_text": "Coasts   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Coasts   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "coatings": {
+    "key": "coatings",
+    "short_name": "Coatings",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/coatings.png",
+    "header_text": "Coatings  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Coatings  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "colloids": {
+    "key": "colloids",
+    "short_name": "Colloids Interfaces",
+    "year": 2026,
+    "volume": 10,
+    "logo": "logos/colloids.png",
+    "header_text": "Colloids Interfaces  2026 ,   10 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Colloids Interfaces  2026 ,   10 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "colorants": {
+    "key": "colorants",
+    "short_name": "Colorant s",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/colorants.png",
+    "header_text": "Colorant s   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Colorant s   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "commodities": {
+    "key": "commodities",
+    "short_name": "Commodities",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/commodities.png",
+    "header_text": "Commodities   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Commodities   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "computation": {
+    "key": "computation",
+    "short_name": "Computation",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/computation.png",
+    "header_text": "Computation  2026 ,   14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Computation  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "condensedmatter": {
+    "key": "condensedmatter",
+    "short_name": "Condens. Matter",
+    "year": 2026,
+    "volume": 11,
+    "logo": "logos/condensedmatter.png",
+    "header_text": "Condens. Matter  2026 ,   11 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Condens. Matter  2026 ,   11 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "conservation": {
+    "key": "conservation",
+    "short_name": "Conservation",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/conservation.png",
+    "header_text": "Conservation   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "cosmetics": {
+    "key": "cosmetics",
+    "short_name": "Cosmetics",
+    "year": 2025,
+    "volume": 12,
+    "logo": "logos/cosmetics.png",
+    "header_text": "Cosmetics  2025 ,  12 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Cosmetics  2025 ,  12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "covid": {
+    "key": "covid",
+    "short_name": "COVID",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/covid.png",
+    "header_text": "COVID   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "COVID   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "crops": {
+    "key": "crops",
+    "short_name": "Crops",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/crops.png",
+    "header_text": "Crops   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Crops   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "cryptography": {
+    "key": "cryptography",
+    "short_name": "Cryptography",
+    "year": 2026,
+    "volume": 10,
+    "logo": "logos/cryptography.png",
+    "header_text": "Cryptography  2026 ,   10 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Cryptography  2026 ,   10 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "crystals": {
+    "key": "crystals",
+    "short_name": "Crystals",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/crystals.png",
+    "header_text": "Crystals  2025 ,  15 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Crystals  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "curroncol": {
+    "key": "curroncol",
+    "short_name": "Curr. Oncol.",
+    "year": 2025,
+    "volume": 32,
+    "logo": "logos/curroncol.png",
+    "header_text": "Curr. Oncol.   2025 ,  32 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Curr. Oncol.  2025 ,  32 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dairy": {
+    "key": "dairy",
+    "short_name": "Dairy",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/dairy.png",
+    "header_text": "Dairy  2026 ,   7 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Dairy  2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "data": {
+    "key": "data",
+    "short_name": "Data",
+    "year": 2025,
+    "volume": 10,
+    "logo": "logos/data.png",
+    "header_text": "Data  2025 ,  10 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Data   2025 ,  10 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dentistry": {
+    "key": "dentistry",
+    "short_name": "Dent. J.",
+    "year": 2025,
+    "volume": 13,
+    "logo": "logos/dentistry.png",
+    "header_text": "Dent. J.  2025 ,  13 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Dent. J.  2025 ,  13 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dermato": {
+    "key": "dermato",
+    "short_name": "Dermato",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/dermato.png",
+    "header_text": "Dermato   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Dermato   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dermatopathology": {
+    "key": "dermatopathology",
+    "short_name": "Dermatopathology",
+    "year": 2026,
+    "volume": 13,
+    "logo": "logos/dermatopathology.png",
+    "header_text": "Dermatopathology   2026 ,   13 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Dermatopathology   2026 ,   13 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "designs": {
+    "key": "designs",
+    "short_name": "Designs",
+    "year": 2026,
+    "volume": 10,
+    "logo": "logos/designs.png",
+    "header_text": "Designs  2026 ,   10 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "diabetology": {
+    "key": "diabetology",
+    "short_name": "Diabetology",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/diabetology.png",
+    "header_text": "Diabetology  2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Diabetology  2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "diagnostics": {
+    "key": "diagnostics",
+    "short_name": "Diagnostics",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/diagnostics.png",
+    "header_text": "Diagnostics  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Diagnostics  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dietetics": {
+    "key": "dietetics",
+    "short_name": "Dietetics",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/dietetics.png",
+    "header_text": "Dietetics   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Dietetics   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "digital": {
+    "key": "digital",
+    "short_name": "Digital",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/digital.png",
+    "header_text": "Digital   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Digital   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "disabilities": {
+    "key": "disabilities",
+    "short_name": "Disabilities",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/disabilities.png",
+    "header_text": "Disabilities   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Disabilities   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "diseases": {
+    "key": "diseases",
+    "short_name": "Diseases",
+    "year": 2025,
+    "volume": 13,
+    "logo": "logos/diseases.png",
+    "header_text": "Diseases  2025 ,  13 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Diseases  2025 ,  13 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "diversity": {
+    "key": "diversity",
+    "short_name": "Diversity",
+    "year": 2025,
+    "volume": 17,
+    "logo": "logos/diversity.png",
+    "header_text": "Diversity  2025 ,  17 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Diversity  2025 ,  17 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dna": {
+    "key": "dna",
+    "short_name": "DNA",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/dna.png",
+    "header_text": "DNA   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "DNA   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "dynamics": {
+    "key": "dynamics",
+    "short_name": "Dynamics",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/dynamics.png",
+    "header_text": "Dynamics   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Dynamics   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "earth": {
+    "key": "earth",
+    "short_name": "Earth",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/earth.png",
+    "header_text": "Earth   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "ecologies": {
+    "key": "ecologies",
+    "short_name": "Ecologies",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/ecologies.png",
+    "header_text": "Ecologies   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Ecologies   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "econometrics": {
+    "key": "econometrics",
+    "short_name": "Econometrics",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/econometrics.png",
+    "header_text": "Econometrics  2026 ,   14 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Econometrics  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "electricity": {
+    "key": "electricity",
+    "short_name": "Electricity",
+    "year": 2025,
+    "volume": 6,
+    "logo": "logos/electricity.png",
+    "header_text": "Electricity  2025 ,  6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Electricity  2025 ,  6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "electrochem": {
+    "key": "electrochem",
+    "short_name": "Electrochem",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/electrochem.png",
+    "header_text": "Electrochem  2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Electrochem  2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "electronics": {
+    "key": "electronics",
+    "short_name": "Electronics",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/electronics.png",
+    "header_text": "Electronics  2025 ,  14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Electronics  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "energies": {
+    "key": "energies",
+    "short_name": "Energies",
+    "year": 2025,
+    "volume": 18,
+    "logo": "logos/energies.png",
+    "header_text": "Energies  2025 ,  18 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Energies   2025 ,  18 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "eng": {
+    "key": "eng",
+    "short_name": "Eng",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/eng.png",
+    "header_text": "Eng   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "entropy": {
+    "key": "entropy",
+    "short_name": "Entropy",
+    "year": 2025,
+    "volume": 27,
+    "logo": "logos/entropy.png",
+    "header_text": "Entropy  2025 ,  27 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Entropy   2025 ,  27 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "environments": {
+    "key": "environments",
+    "short_name": "Environments",
+    "year": 2025,
+    "volume": 12,
+    "logo": "logos/environments.png",
+    "header_text": "Environments  2025 ,  12 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Environments  2025 ,  12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "epidemiologia": {
+    "key": "epidemiologia",
+    "short_name": "Epidemiologia",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/epidemiologia.png",
+    "header_text": "Epidemiologia   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Epidemiologia   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "epigenomes": {
+    "key": "epigenomes",
+    "short_name": "Epigenomes",
+    "year": 2026,
+    "volume": 10,
+    "logo": "logos/epigenomes.png",
+    "header_text": "Epigenomes  2026 ,   10 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "fermentation": {
+    "key": "fermentation",
+    "short_name": "Fermentation",
+    "year": 2025,
+    "volume": 11,
+    "logo": "logos/fermentation.png",
+    "header_text": "Fermentation  2025 ,  11 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Fermentation   2025 ,  11 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fibers": {
+    "key": "fibers",
+    "short_name": "Fibers",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/fibers.png",
+    "header_text": "Fibers  2026 ,   14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Fibers  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fintech": {
+    "key": "fintech",
+    "short_name": "FinTech",
+    "year": 2026,
+    "volume": 5,
+    "logo": "logos/fintech.png",
+    "header_text": "FinTech   2026 ,   5 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "FinTech   2026 ,   5 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fire": {
+    "key": "fire",
+    "short_name": "Fire",
+    "year": 2025,
+    "volume": 8,
+    "logo": "logos/fire.png",
+    "header_text": "Fire  2025 ,  8 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Fire  2025 ,  8 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fishes": {
+    "key": "fishes",
+    "short_name": "Fishes",
+    "year": 2025,
+    "volume": 10,
+    "logo": "logos/fishes.png",
+    "header_text": "Fishes  2025 ,  10 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Fishes   2025 ,  10 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fluids": {
+    "key": "fluids",
+    "short_name": "Fluids",
+    "year": 2026,
+    "volume": 11,
+    "logo": "logos/fluids.png",
+    "header_text": "Fluids  2026 ,   11 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "foods": {
+    "key": "foods",
+    "short_name": "Foods",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/foods.png",
+    "header_text": "Foods  2025 ,  14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Foods  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "forecasting": {
+    "key": "forecasting",
+    "short_name": "Forecasting",
+    "year": 2026,
+    "volume": 8,
+    "logo": "logos/forecasting.png",
+    "header_text": "Forecasting  2026 ,   8 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Forecasting  2026 ,   8 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "forensicsci": {
+    "key": "forensicsci",
+    "short_name": "Forensic Sci.",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/forensicsci.png",
+    "header_text": "Forensic Sci.   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Forensic Sci.   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "forests": {
+    "key": "forests",
+    "short_name": "Forests",
+    "year": 2025,
+    "volume": 16,
+    "logo": "logos/forests.png",
+    "header_text": "Forests  2025 ,  16 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Forests   2025 ,  16 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fossils": {
+    "key": "fossils",
+    "short_name": "Fossils",
+    "year": 2025,
+    "volume": 1,
+    "logo": "logos/fossils.png",
+    "header_text": "Fossils   202 3 ,  1 , FOR PEER REVIEW 4",
+    "footer_text": "Fossils   202 3 ,  1 ,  Firstpage–Lastpage . https://doi.org/10.3390/xxxxx www.mdpi.com/ journal/ fossils"
+  },
+  "foundations": {
+    "key": "foundations",
+    "short_name": "Foundations",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/foundations.png",
+    "header_text": "Foundations   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Foundations   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "fuels": {
+    "key": "fuels",
+    "short_name": "Fuels",
+    "year": 2026,
+    "volume": 7,
+    "logo": "logos/fuels.png",
+    "header_text": "Fuels   2026 ,   7 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Fuels   2026 ,   7 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "future": {
+    "key": "future",
+    "short_name": "Future",
+    "year": 2026,
+    "volume": 4,
+    "logo": "logos/future.png",
+    "header_text": "Future   2026 ,   4 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Future   2026 ,   4 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "galaxies": {
+    "key": "galaxies",
+    "short_name": "Galaxies",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/galaxies.png",
+    "header_text": "Galaxies  2026 ,   14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Galaxies  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "games": {
+    "key": "games",
+    "short_name": "Games",
+    "year": 2026,
+    "volume": 17,
+    "logo": "logos/games.png",
+    "header_text": "Games  2026 ,   17 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Games  2026 ,   17 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "gases": {
+    "key": "gases",
+    "short_name": "Gases",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/gases.png",
+    "header_text": "Gases   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "gels": {
+    "key": "gels",
+    "short_name": "Gels",
+    "year": 2025,
+    "volume": 11,
+    "logo": "logos/gels.png",
+    "header_text": "Gels  2025 ,  11 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Gels  2025 ,  11 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "geographies": {
+    "key": "geographies",
+    "short_name": "Geographies",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/geographies.png",
+    "header_text": "Geographies   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Geographies   2026 ,   6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "geomatics": {
+    "key": "geomatics",
+    "short_name": "Geomatics",
+    "year": 2026,
+    "volume": 6,
+    "logo": "logos/geomatics.png",
+    "header_text": "Geomatics   2026 ,   6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "https://doi.org/10.3390/xxxxx"
+  },
+  "geometry": {
+    "key": "geometry",
+    "short_name": "Geometry",
+    "year": 2026,
+    "volume": 3,
+    "logo": "logos/geometry.png",
+    "header_text": "Geometry  2026 ,   3 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "Geometry  2026 ,   3 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "geosciences": {
+    "key": "geosciences",
+    "short_name": "Geosciences",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/geosciences.png",
+    "header_text": "Geosciences  2025 ,  15 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Geosciences  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "geriatrics": {
+    "key": "geriatrics",
+    "short_name": "Geriatrics",
+    "year": 2026,
+    "volume": 11,
+    "logo": "logos/geriatrics.png",
+    "header_text": "Geriatrics  2026 ,   11 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Geriatrics   2026 ,   11 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "hardware": {
+    "key": "hardware",
+    "short_name": "Hardware",
+    "year": 2026,
+    "volume": 4,
+    "logo": "logos/hardware.png",
+    "header_text": "Hardware   2026 ,   4 ,  x   FOR PEER REVIEW 2  of  8",
+    "footer_text": "Hardware   2026 ,   4 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "ijerph": {
+    "key": "ijerph",
+    "short_name": "Int. J. Environ. Res. Public Health",
+    "year": 2025,
+    "volume": 22,
+    "logo": "logos/ijerph.png",
+    "header_text": "Int. J. Environ. Res. Public Health  2025 ,  22 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Int. J. Environ. Res. Public Health   2025 ,  22 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "ijms": {
+    "key": "ijms",
+    "short_name": "Int. J. Mol. Sci.",
+    "year": 2025,
+    "volume": 26,
+    "logo": "logos/ijms.png",
+    "header_text": "Int. J. Mol. Sci.  2025 ,  26 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Int. J. Mol. Sci.   2025 ,  26 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "informatics": {
+    "key": "informatics",
+    "short_name": "Informatics",
+    "year": 2026,
+    "volume": 13,
+    "logo": "logos/informatics.png",
+    "header_text": "Informatics  2026 ,   13 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Informatics  2026 ,   13 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "information": {
+    "key": "information",
+    "short_name": "Information",
+    "year": 2025,
+    "volume": 16,
+    "logo": "logos/information.png",
+    "header_text": "Information  2025 ,  16 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Information  2025 ,  16 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "inorganics": {
+    "key": "inorganics",
+    "short_name": "Inorganics",
+    "year": 2026,
+    "volume": 14,
+    "logo": "logos/inorganics.png",
+    "header_text": "Inorganics  2026 ,   14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Inorganics  2026 ,   14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "insects": {
+    "key": "insects",
+    "short_name": "Insects",
+    "year": 2025,
+    "volume": 16,
+    "logo": "logos/insects.png",
+    "header_text": "Insects  2025 ,  16 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Insects  2025 ,  16 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "instruments": {
+    "key": "instruments",
+    "short_name": "Instruments",
+    "year": 2026,
+    "volume": 10,
+    "logo": "logos/instruments.png",
+    "header_text": "Instruments  2026 ,   10 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Instruments  2026 ,   10 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "ai": {
+    "key": "ai",
+    "short_name": "AI",
+    "year": 2025,
+    "volume": 6,
+    "logo": "logos/ai.png",
+    "header_text": "AI   2025 ,  6 ,  x   FOR PEER REVIEW 2  of  7",
+    "footer_text": "AI   2025 ,  6 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "animals": {
+    "key": "animals",
+    "short_name": "Animals",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/animals.png",
+    "header_text": "Animals  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Animals   2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "antibiotics": {
+    "key": "antibiotics",
+    "short_name": "Antibiotics",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/antibiotics.png",
+    "header_text": "Antibiotics  2025 ,  14 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Antibiotics  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "antioxidants": {
+    "key": "antioxidants",
+    "short_name": "Antioxidants",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/antioxidants.png",
+    "header_text": "Antioxidants  2025 ,  14 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Antioxidants  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "applsci": {
+    "key": "applsci",
+    "short_name": "Appl. Sci.",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/applsci.png",
+    "header_text": "Appl. Sci.  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Appl. Sci.   2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "batteries": {
+    "key": "batteries",
+    "short_name": "Batteries",
+    "year": 2025,
+    "volume": 11,
+    "logo": "logos/batteries.png",
+    "header_text": "Batteries  2025 ,  11 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Batteries   2025 ,  11 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "behavsci": {
+    "key": "behavsci",
+    "short_name": "Behav. Sci.",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/behavsci.png",
+    "header_text": "Behav. Sci.  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Behav. Sci.  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "bioengineering": {
+    "key": "bioengineering",
+    "short_name": "Bioengineering",
+    "year": 2025,
+    "volume": 12,
+    "logo": "logos/bioengineering.png",
+    "header_text": "Bioengineering  2025 ,  12 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Bioengineering  2025 ,  12 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biomedicines": {
+    "key": "biomedicines",
+    "short_name": "Biomedicines",
+    "year": 2025,
+    "volume": 13,
+    "logo": "logos/biomedicines.png",
+    "header_text": "Biomedicines  2025 ,  13 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Biomedicines  2025 ,  13 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biomolecules": {
+    "key": "biomolecules",
+    "short_name": "Biomolecules",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/biomolecules.png",
+    "header_text": "Biomolecules  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Biomolecules  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "biosensors": {
+    "key": "biosensors",
+    "short_name": "Biosensors",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/biosensors.png",
+    "header_text": "Biosensors  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Biosensors  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "brainsci": {
+    "key": "brainsci",
+    "short_name": "Brain Sci.",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/brainsci.png",
+    "header_text": "Brain Sci.  2025 ,  15 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Brain Sci.   2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "buildings": {
+    "key": "buildings",
+    "short_name": "Buildings",
+    "year": 2025,
+    "volume": 15,
+    "logo": "logos/buildings.png",
+    "header_text": "Buildings  2025 ,  15 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Buildings  2025 ,  15 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "computers": {
+    "key": "computers",
+    "short_name": "Computers",
+    "year": 2025,
+    "volume": 14,
+    "logo": "logos/computers.png",
+    "header_text": "Computers  2025 ,  14 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Computers  2025 ,  14 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "drones": {
+    "key": "drones",
+    "short_name": "Drones",
+    "year": 2025,
+    "volume": 9,
+    "logo": "logos/drones.png",
+    "header_text": "Drones  2025 ,  9 , x  FOR PEER REVIEW 2  of  8",
+    "footer_text": "Drones   2025 ,  9 ,  x https://doi.org/10.3390/xxxxx"
+  },
+  "economies": {
+    "key": "economies",
+    "short_name": "Economies",
+    "year": 2025,
+    "volume": 13,
+    "logo": "logos/economies.png",
+    "header_text": "Economies  2025 ,  13 , x  FOR PEER REVIEW 2  of  7",
+    "footer_text": "Economies  2025 ,  13 ,  x https://doi.org/10.3390/xxxxx"
+  }
+}

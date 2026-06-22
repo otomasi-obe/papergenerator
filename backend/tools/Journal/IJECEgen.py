@@ -41,6 +41,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
+from lxml import etree
 
 BASE = Path(__file__).resolve().parent
 TEMPLATE_DOCX = BASE / "IJECE.docx"
@@ -62,6 +63,7 @@ CFG = {
     "header_distance_tw": 1134,
     "footer_distance_tw": 1134,
     "columns": 1,
+    "col_width_cm": 15.5,
     "col_space_tw": 720,
     # Fonts: IJECE menggunakan Times New Roman di body
     "font_body": "Times New Roman",
@@ -113,7 +115,6 @@ XSL_CANDIDATES = [
 ]
 _XSLT = None
 
-
 def _clean_latex(text):
     """Strip inline LaTeX markers dari text."""
     if not isinstance(text, str) or not text.strip():
@@ -151,11 +152,39 @@ def _clean_latex(text):
     text = _re.sub(r'\\Delta', chr(916), text)
     text = _re.sub(r'\\partial', chr(8706), text)
     text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
-    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    # Convert bare subscript/superscript to Unicode
+    text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
+    text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     text = _re.sub(r'\\[a-zA-Z]+', '', text)
-    text = _re.sub(r'[{}]', '', text)
+    text = re.sub(r'[{}]', '', text)
+    # Strip any remaining stray $ (unmatched math delimiters)
+    text = re.sub(r'\$', '', text)
     return text.strip()
-
 
 def _postprocess_clean_latex(doc):
     """Walk all paragraphs and clean LaTeX from run text in-place."""
@@ -239,7 +268,6 @@ def _append_inline_math(paragraph, latex):
     paragraph.add_run(s)
     return True
 
-
 def _set_ai_prompt_color_red(doc):
     """Post-process output DOCX:
     1. Set warna text MERAH untuk paragraf prompt AI gambar.
@@ -295,11 +323,9 @@ def _set_ai_prompt_color_red(doc):
             el.set(qn("w:space"), "0")
             el.set(qn("w:color"), "000000")
 
-
 def load_json():
     with open(TEMPLATE_JSON, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None, color=None):
     if font_name:
@@ -328,7 +354,6 @@ def set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None, colo
     if color is not None:
         run.font.color.rgb = RGBColor(*color) if isinstance(color, tuple) else color
 
-
 def set_paragraph_spacing(paragraph, before=None, after=None, line=None, line_rule=None):
     pf = paragraph.paragraph_format
     if before is not None:
@@ -345,7 +370,6 @@ def set_paragraph_spacing(paragraph, before=None, after=None, line=None, line_ru
         if line_rule:
             spacing.set(qn("w:lineRule"), line_rule)
 
-
 def set_paragraph_indent(paragraph, left=None, right=None, first_line=None, hanging=None):
     ppr = paragraph._p.get_or_add_pPr()
     ind = ppr.find(qn("w:ind"))
@@ -361,7 +385,6 @@ def set_paragraph_indent(paragraph, left=None, right=None, first_line=None, hang
     if hanging is not None:
         ind.set(qn("w:hanging"), str(hanging))
 
-
 def clear_body(doc):
     """Hapus seluruh paragraf & tabel pada body, sisakan sectPr akhir."""
     body = doc._element.body
@@ -369,19 +392,22 @@ def clear_body(doc):
         if child.tag in (qn("w:p"), qn("w:tbl")):
             body.remove(child)
 
-
 def add_empty_para(doc, line=240):
     p = doc.add_paragraph()
     set_paragraph_spacing(p, before=0, after=0, line=line, line_rule="auto")
     return p
 
-
 def _normalize_text(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
     return text
-
 
 def _append_rich_text(
     paragraph, text: str, font_name=None, size_pt=None, base_bold=False, base_italic=False
@@ -441,11 +467,9 @@ def _append_rich_text(
         index += 1
     flush()
 
-
 # ============================================================
 # CONTENT GENERATORS
 # ============================================================
-
 
 def add_title(doc, data):
     title_text = data.get("title", "Paper Title Goes Here")
@@ -455,7 +479,6 @@ def add_title(doc, data):
     set_paragraph_indent(p, first_line=0)
     run = p.add_run(title_text)
     set_run_font(run, font_name=CFG["font_title"], size_pt=CFG["size_title"], bold=True)
-
 
 def add_authors(doc, data):
     authors = data.get("authors", [])
@@ -511,7 +534,6 @@ def add_authors(doc, data):
                 r_email, font_name=CFG["font_body"], size_pt=CFG["size_affil"], italic=True
             )
 
-
 def add_abstract(doc, data):
     add_empty_para(doc)
 
@@ -535,7 +557,6 @@ def add_abstract(doc, data):
     _append_rich_text(
         p, abstract_text, font_name=CFG["font_body"], size_pt=CFG["size_abstract"], base_italic=True
     )
-
 
 def add_keywords(doc, data):
     keywords = data.get("keywords", ["keyword1", "keyword2", "keyword3"])
@@ -562,7 +583,6 @@ def add_keywords(doc, data):
     run = p.add_run(keywords_text)
     set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_keywords"])
 
-
 def add_section_heading(doc, title, section_index):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -572,7 +592,6 @@ def add_section_heading(doc, title, section_index):
     run = p.add_run(f"{section_index}. {title_text}")
     set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading1"], bold=True)
 
-
 def add_subsection_heading(doc, title, section_index, sub_index):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -580,7 +599,6 @@ def add_subsection_heading(doc, title, section_index, sub_index):
     set_paragraph_indent(p, first_line=0)
     run = p.add_run(f"{section_index}.{sub_index}.  {title}")
     set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading2"], bold=True)
-
 
 def add_subsubsection_heading(doc, title, section_index, sub_index, subsub_index):
     p = doc.add_paragraph()
@@ -590,14 +608,12 @@ def add_subsubsection_heading(doc, title, section_index, sub_index, subsub_index
     run = p.add_run(f"{section_index}.{sub_index}.{subsub_index}. {title}")
     set_run_font(run, font_name=CFG["font_heading"], size_pt=CFG["size_heading3"], italic=True)
 
-
 def add_body_text(doc, text, first_paragraph=False):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_paragraph_spacing(p, before=0, after=0, line=CFG["line_spacing_body"], line_rule="auto")
     set_paragraph_indent(p, first_line=CFG["first_line_indent_tw"])
     _append_rich_text(p, text, font_name=CFG["font_body"], size_pt=CFG["size_body"])
-
 
 def _add_dynamic_prompt_placeholder(doc, title, prompt_text):
     """Tambahkan teks placeholder format Prompt AI Dinamis."""
@@ -615,7 +631,6 @@ def _add_dynamic_prompt_placeholder(doc, title, prompt_text):
         color=(0xFF, 0x00, 0x00),
     )
 
-
 def add_figure(doc, fig_data):
     image_number = str(fig_data.get("ImageNumber", "1")).strip()
     title = fig_data.get("Title", "Title of the figure")
@@ -624,9 +639,10 @@ def add_figure(doc, fig_data):
 
     image_path = None
     if path_text:
-        candidate = BASE / path_text
-        if candidate.is_file():
-            image_path = candidate
+        for cand in (Path(path_text), BASE / path_text):
+            if cand.is_file():
+                image_path = cand
+                break
 
     if image_path and image_path.is_file():
         p_img = doc.add_paragraph()
@@ -635,7 +651,12 @@ def add_figure(doc, fig_data):
         set_paragraph_indent(p_img, first_line=0)
         usable_tw = CFG["page_width_tw"] - CFG["margin_left_tw"] - CFG["margin_right_tw"]
         usable_cm = usable_tw / 567.0
-        max_width = min(usable_cm, 14.0)
+        max_width = min(usable_cm, 14.0)  # Cap prevent overflow
+        columns = CFG.get("columns", 1)
+        if columns == 2:
+            max_width = min((usable_cm / 2) * 0.7, 14.0)
+        else:
+            max_width = min(usable_cm * 0.5, 14.0)
         run = p_img.add_run()
         run.add_picture(str(image_path), width=Cm(max_width))
     else:
@@ -651,24 +672,67 @@ def add_figure(doc, fig_data):
     r_ttl = p_cap.add_run(title)
     set_run_font(r_ttl, font_name=CFG["font_caption"], size_pt=CFG["size_caption"])
 
-
 def add_formula(doc, formula_data):
     formula_number = str(formula_data.get("FormulaNumber", "")).strip()
     latex = formula_data.get("latex", "E = mc^2").strip()
 
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_paragraph_spacing(p, before=6, after=6, line=240, line_rule="auto")
-    set_paragraph_indent(p, first_line=0)
+    cleaned = re.sub(r'\$([^$]+)\$', r'\1', latex)
+    cleaned = cleaned.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
 
-    if not _append_inline_math(p, latex):
-        run = p.add_run(latex)
-        set_run_font(run, font_name="Cambria Math", size_pt=CFG["size_body"], italic=True)
+    try:
+        from latex2mathml.converter import convert as latex2mathml
+        from mathml2omml import convert as mathml2omml
 
-    if formula_number:
-        run = p.add_run(f"\t\t({formula_number})")
-        set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
+        mathml_str = latex2mathml(cleaned)
+        omml_str = mathml2omml(mathml_str)
 
+        # Fix mathml2omml bug: groupChrPr incorrectly closed by </m:groupChr>
+        omml_str = re.sub(r'(<m:groupChrPr>.*?</m:)groupChr>', r'\1groupChrPr>', omml_str)
+
+        MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+        omml_wrapped = f'<m:oMathPara xmlns:m="{MATH_NS}">{omml_str}</m:oMathPara>'
+        oMathPara = etree.fromstring(omml_wrapped)
+
+        body = doc._element.body
+        final_sectpr = body.find(qn("w:sectPr"))
+
+        p_elem = etree.Element(qn("w:p"))
+        pPr = etree.SubElement(p_elem, qn("w:pPr"))
+        jc = etree.SubElement(pPr, qn("w:jc"))
+        jc.set(qn("w:val"), "center")
+        spacing = etree.SubElement(pPr, qn("w:spacing"))
+        spacing.set(qn("w:before"), "120")
+        spacing.set(qn("w:after"), "120")
+        spacing.set(qn("w:line"), "240")
+        spacing.set(qn("w:lineRule"), "auto")
+        p_elem.append(oMathPara)
+
+        if formula_number:
+            run = etree.SubElement(p_elem, qn("w:r"))
+            rPr = etree.SubElement(run, qn("w:rPr"))
+            rFonts = etree.SubElement(rPr, qn("w:rFonts"))
+            rFonts.set(qn("w:ascii"), "Times New Roman")
+            sz = etree.SubElement(rPr, qn("w:sz"))
+            sz.set(qn("w:val"), "20")
+            t = etree.SubElement(run, qn("w:t"))
+            t.set(qn("xml:space"), "preserve")
+            t.text = f"    ({formula_number})"
+
+        if final_sectpr is not None:
+            final_sectpr.addprevious(p_elem)
+        else:
+            body.append(p_elem)
+
+    except Exception:
+        # Fallback: plain text
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_paragraph_spacing(p, before=6, after=6, line=240, line_rule="auto")
+        display = cleaned
+        if formula_number:
+            display = f"{cleaned}    ({formula_number})"
+        run = p.add_run(display)
+        set_run_font(run, "Cambria Math", CFG["size_body"], italic=True)
 
 def _set_table_borders_three_line(table):
     """Three-line: top double + bottom single + insideH single (header)."""
@@ -703,7 +767,6 @@ def _set_table_borders_three_line(table):
         borders.append(el)
 
     tbl_pr.append(borders)
-
 
 def add_table(doc, table_data):
     table_number = str(table_data.get("TableNumber", "1")).strip()
@@ -756,8 +819,13 @@ def add_table(doc, table_data):
 
     p_spacer = doc.add_paragraph()
     set_paragraph_spacing(p_spacer, before=0, after=0, line=240, line_rule="auto")
-    set_paragraph_indent(p_spacer, first_line=0)
+    set_paragraph_indent(p_spacer, first_line=0
 
+)
+    # Spacer after table
+    p_spacer = doc.add_paragraph()
+    set_paragraph_spacing(p_spacer, before=6, after=6)
+    p_spacer.add_run(" ").font.size = Pt(1)
 
 def add_references(doc, data):
     ref_data = data.get("references", {})
@@ -793,7 +861,6 @@ def add_references(doc, data):
             p, ref_text, font_name=CFG["font_reference"], size_pt=CFG["size_reference"]
         )
 
-
 def process_content_item(doc, item, first_paragraph=False):
     item_id = str(item.get("id", "")).lower()
     if item_id == "text":
@@ -806,7 +873,6 @@ def process_content_item(doc, item, first_paragraph=False):
         add_formula(doc, item)
     elif item_id in ("tabel", "table"):
         add_table(doc, item)
-
 
 def process_section(doc, section_data, section_key, section_index):
     if not isinstance(section_data, dict):
@@ -910,7 +976,6 @@ def process_section(doc, section_data, section_key, section_index):
             elif isinstance(ss_content, str) and ss_content.strip():
                 add_body_text(doc, ss_content, first_paragraph=True)
 
-
 def ensure_sectpr(doc):
     """Pastikan sectPr akhir punya page-size & margins sesuai analisa."""
     body = doc._element.body
@@ -937,11 +1002,9 @@ def ensure_sectpr(doc):
     pgmar.set(qn("w:footer"), str(CFG["footer_distance_tw"]))
     pgmar.set(qn("w:gutter"), str(CFG["margin_gutter_tw"]))
 
-
 # ============================================================
 # MAIN
 # ============================================================
-
 
 def generate():
     data = load_json()
@@ -974,7 +1037,6 @@ def generate():
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)
-
 
 if __name__ == "__main__":
     generate()

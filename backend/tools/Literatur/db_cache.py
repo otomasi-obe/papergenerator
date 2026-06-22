@@ -254,6 +254,66 @@ def save_papers(papers: list[Paper], source: str | None = None) -> int:
 #    Phase 2: if < limit results, OR of terms — broader, still ranked by score
 #    Phase 3: trigram similarity on title as last resort (rare)
 
+# ── Generic words to exclude from OR fallback queries ─────────────────
+# These appear in thousands of papers regardless of domain. Including them
+# in OR queries floods results with irrelevant papers.
+_OR_FILTER_WORDS = {
+    # Standard stopwords (already handled by tsvector but kept for safety)
+    "a", "an", "the", "in", "on", "of", "to", "by", "is", "be", "at",
+    "or", "as", "if", "no", "so", "we", "he", "she", "it", "they",
+    "and", "for", "with", "from", "that", "this", "are", "was", "but",
+    "not", "can", "all", "any", "has", "its", "may", "who", "which",
+    "their", "how", "what", "why", "use", "also", "been", "were",
+    "will", "have", "had", "do", "does", "did", "into", "than",
+    "just", "more", "most", "new", "other", "some", "such", "only",
+    "over", "when", "where", "each", "about", "after", "before",
+    "between", "during", "these", "those",
+    # Generic academic/method words — high-frequency, non-discriminative
+    "based", "using", "through", "approach", "method", "methods",
+    "model", "system", "systems", "data", "review",
+    "analysis", "study", "studies", "research", "paper",
+    "technique", "techniques", "algorithm", "algorithms",
+    "framework", "application", "applications",
+    "development", "validation", "evaluation", "implementation",
+    "design", "performance", "comparative", "comparison",
+    "effect", "impact", "role", "case", "survey",
+    "overview", "challenge", "challenges", "issue", "issues",
+    "trend", "advance", "advances", "recent", "comprehensive",
+    "state", "art",
+    # ML/CV method words — match 90%+ of CS papers regardless of domain
+    "deep", "learning", "machine", "neural", "network", "networks",
+    "computer", "vision", "image", "images", "video",
+    "detection", "recognition", "classification", "prediction",
+    "predicting", "enhanced", "improved", "novel", "automatic",
+    "automated", "efficient", "robust", "hybrid", "optimization",
+    "object", "feature", "features", "extraction", "segmentation",
+    "architecture", "architectures", "transfer", "training",
+    "dataset", "datasets", "benchmark", "accuracy", "precision",
+    "scalable", "adaptive", "embedded", "embedding", "embeddings",
+}
+_OR_MIN_WORD_LEN = 3  # Discard words shorter than this
+
+
+def _filter_or_words(words: list[str]) -> list[str]:
+    """Filter words for OR fallback: remove generic/method terms.
+
+    Only keeps domain-specific content words that are discriminative
+    for the search. Skipping generic terms prevents irrelevant papers
+    from polluting OR fallback results.
+    """
+    filtered = []
+    seen = set()
+    for w in words:
+        wl = w.lower()
+        if wl in _OR_FILTER_WORDS:
+            continue
+        if len(wl) < _OR_MIN_WORD_LEN:
+            continue
+        if wl not in seen:
+            filtered.append(wl)
+            seen.add(wl)
+    return filtered
+
 def _build_search_query(
     conn,
     conditions: list[str],
@@ -458,9 +518,15 @@ def _search_or_fallback(
     seen_dois = {p.doi for p in (seen_papers or []) if p.doi}
     seen_titles = {normalize_title(p.title) for p in (seen_papers or []) if p.title}
     
-    # Build OR tsquery: pid | control | optimization | ...
+    # Build OR tsquery: filter generic words first, then join with |
     words = re.findall(r"[a-zA-Z0-9]+", query.lower())
-    or_query = " | ".join(words) if words else query
+    filtered_words = _filter_or_words(words)
+    if not filtered_words:
+        log.warning("_search_or_fallback: all words filtered out for query='%s'", query[:80])
+        return list(seen_papers or [])
+    or_query = " | ".join(filtered_words)
+    log.info("_search_or_fallback: %d words → %d filtered, or_query=%s",
+             len(words), len(filtered_words), or_query[:120])
     
     conditions: list[str] = []
     params: list = []
@@ -515,6 +581,9 @@ def _search_or_fallback(
     papers = list(seen_papers or [])
     for r in rows:
         p = _row_to_paper(r)
+        # Minimum score threshold: weak OR matches (db_score < 0.15) are noise
+        if p.db_score is not None and p.db_score < 0.15:
+            continue
         doi_key = p.doi.lower() if p.doi else None
         title_key = normalize_title(p.title)
         if (doi_key and doi_key in seen_dois) or (title_key and title_key in seen_titles):

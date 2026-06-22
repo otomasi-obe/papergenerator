@@ -349,11 +349,434 @@ _TOPIC_KEYWORDS = {
         "forestry",
         "kehutanan",
     ),
+    "food_science": (
+        "functional food",
+        "nutraceutical",
+        "nutrasetikal",
+        "glycemic",
+        "glikemik",
+        "glycaemic",
+        "bioactive",
+        "bioaktif",
+        "antioxidant",
+        "antioksidan",
+        "fermentation",
+        "fermentasi",
+        "probiotic",
+        "probiotik",
+        "germination",
+        "perkecambahan",
+        "legume",
+        "kacang-kacangan",
+        "tuber",
+        "umbi",
+        "snack",
+        "snack bar",
+        "baked",
+        "roti",
+        "bread",
+        "extrusion",
+        "ekstrusi",
+        "organoleptic",
+        "organoleptik",
+        "sensory",
+        "sensoris",
+        "food processing",
+        "food product",
+        "dietary fiber",
+        "serat pangan",
+        "resistant starch",
+        "pati resisten",
+        "protein isolate",
+        "isolat protein",
+        "polyphenol",
+        "polifenol",
+        "flavonoid",
+        "mineral bioavail",
+        "phytic acid",
+        "asam fitat",
+        "tannin",
+        "pasting properties",
+        "gelatinization",
+        "gelatinisasi",
+        "nutritional",
+        "nutrition",
+        "nutrisi",
+        "gizi",
+        "food science",
+        "food technology",
+        "cereal",
+        "serealia",
+        "composite flour",
+        "tepung komposit",
+        "gluten free",
+        "bebas gluten",
+    ),
+    "chemistry": (
+        "chemist",
+        "kimia",
+        "chemical",
+        "organic",
+        "inorganic",
+        "polymer",
+        "polimer",
+        "catalyst",
+        "katalis",
+        "compound",
+        "senyawa",
+        "reaction",
+        "reaksi",
+        "synthesis",
+        "sintesis",
+        "derivative",
+        "turunan",
+        "ligand",
+        "ligan",
+        "nanoparticle",
+        "nanopartikel",
+        "electrochem",
+        "elektrokimia",
+        "spectroscop",
+        "spektroskopi",
+        "chromatograph",
+        "kromatografi",
+        "reagent",
+        "reagen",
+        "solvent",
+        "pelarut",
+        "ionic",
+        "covalent",
+        "kovalen",
+    ),
+    "materials": (
+        "nanomaterial",
+        "coating",
+        "pelapis",
+        "composite",
+        "komposit",
+        "alloy",
+        "paduan",
+        "ceramic",
+        "keramik",
+        "semiconductor",
+        "semikonduktor",
+        "thin film",
+        "superconduct",
+        "biomaterial",
+        "corrosion",
+        "korosi",
+        "mechanical properties",
+        "sifat mekanik",
+        "tensile",
+        "fatigue",
+        "fracture",
+        "wear",
+    ),
+    "environmental": (
+        "environment",
+        "lingkungan",
+        "pollution",
+        "polusi",
+        "pencemaran",
+        "waste",
+        "limbah",
+        "emission",
+        "emisi",
+        "carbon",
+        "karbon",
+        "greenhouse",
+        "climate",
+        "iklim",
+        "ecology",
+        "ekologi",
+        "conservation",
+        "konservasi",
+        "biodiversity",
+        "biodiversitas",
+        "deforestation",
+        "deforestasi",
+        "water quality",
+        "kualitas air",
+        "air pollution",
+        "sustainability",
+        "sustainable",
+        "berkelanjutan",
+        "recycling",
+        "daur ulang",
+        "circular economy",
+        "ekonomi sirkular",
+    ),
+    "psychology": (
+        "psycholog",
+        "psikolog",
+        "cognitive",
+        "kognitif",
+        "behavior",
+        "perilaku",
+        "mental",
+        "depression",
+        "depresi",
+        "anxiety",
+        "kecemasan",
+        "emotion",
+        "emosi",
+        "personality",
+        "kepribadian",
+        "trauma",
+        "therapy",
+        "terapi",
+        "counseling",
+        "konseling",
+        "mindfulness",
+        "wellbeing",
+        "well being",
+        "kesejahteraan",
+        "stress",
+        "stres",
+        "adolescent",
+        "remaja",
+        "attachment",
+        "development",
+        "perkembangan",
+    ),
+    "business_management": (
+        "management",
+        "manajemen",
+        "marketing",
+        "pemasaran",
+        "strategy",
+        "strategi",
+        "business",
+        "bisnis",
+        "entrepreneur",
+        "wirausaha",
+        "supply chain",
+        "rantai pasok",
+        "human resource",
+        "sdm",
+        "organizational",
+        "organisasi",
+        "leadership",
+        "kepemimpinan",
+        "consumer",
+        "konsumen",
+        "brand",
+        "merek",
+        "innovation",
+        "inovasi",
+        "startup",
+        "corporate",
+        "perusahaan",
+        "logistics",
+        "logistik",
+        "accounting",
+        "akuntansi",
+        "audit",
+    ),
+    "sports": (
+        "sport",
+        "olahraga",
+        "athlete",
+        "atlet",
+        "exercise",
+        "latihan",
+        "fitness",
+        "kebugaran",
+        "training",
+        "pelatihan",
+        "coach",
+        "pelatih",
+        "physical activity",
+        "aktivitas fisik",
+        "performance",
+        "performa",
+        "injury",
+        "cedera",
+        "rehabilitation",
+        "rehabilitasi",
+        "biomechanic",
+        "biomekanika",
+        "physiology",
+        "fisiologi",
+    ),
+    "linguistics": (
+        "linguistic",
+        "linguistik",
+        "language",
+        "bahasa",
+        "syntax",
+        "sintaksis",
+        "semantic",
+        "semantik",
+        "phonolog",
+        "fonologi",
+        "morpholog",
+        "morfologi",
+        "discourse",
+        "wacana",
+        "pragmatic",
+        "pragmatik",
+        "translation",
+        "penerjemahan",
+        "bilingual",
+        "multilingual",
+        "sociolinguistic",
+        "sosiolinguistik",
+        "corpus",
+        "korpus",
+    ),
+    "geology": (
+        "geolog",
+        "geology",
+        "mineral",
+        "rock",
+        "batuan",
+        "sediment",
+        "sedimen",
+        "volcanic",
+        "vulkanik",
+        "earthquake",
+        "gempa",
+        "seismic",
+        "seismik",
+        "tectonic",
+        "tektonik",
+        "geothermal",
+        "panas bumi",
+        "mining",
+        "pertambangan",
+        "petroleum",
+        "reservoir",
+        "hydrology",
+        "hidrologi",
+        "groundwater",
+        "air tanah",
+    ),
+    "pharmacology": (
+        "pharmacol",
+        "farmakologi",
+        "drug",
+        "obat",
+        "dose",
+        "dosis",
+        "toxicity",
+        "toksisitas",
+        "toxicology",
+        "toksikologi",
+        "pharmacokinetic",
+        "farmakokinetik",
+        "bioavailability",
+        "bioavailabilitas",
+        "medicine",
+        "prescription",
+        "reseptor",
+        "receptor",
+        "herbal",
+        "ekstrak",
+        "extract",
+        "clinical trial",
+        "uji klinis",
+        "adverse effect",
+        "efek samping",
+    ),
+    "arts_design": (
+        "design",
+        "desain",
+        "art",
+        "seni",
+        "visual",
+        "graphic",
+        "grafis",
+        "illustration",
+        "ilustrasi",
+        "aesthetic",
+        "estetika",
+        "creative",
+        "kreatif",
+        "architecture",
+        "arsitektur",
+        "fashion",
+        "textile",
+        "tekstil",
+        "craft",
+        "kerajinan",
+        "painting",
+        "lukisan",
+        "sculpture",
+        "patung",
+    ),
+    "tourism": (
+        "tourism",
+        "pariwisata",
+        "tourist",
+        "wisatawan",
+        "hospitality",
+        "hotel",
+        "destination",
+        "destinasi",
+        "travel",
+        "perjalanan",
+        "cultural heritage",
+        "warisan budaya",
+        "ecotourism",
+        "ekowisata",
+        "visitor",
+        "pengunjung",
+        "accommodation",
+        "akomodasi",
+    ),
+    "communication": (
+        "communication",
+        "komunikasi",
+        "media",
+        "journalism",
+        "jurnalisme",
+        "broadcasting",
+        "penyiaran",
+        "social media",
+        "media sosial",
+        "public relation",
+        "hubungan masyarakat",
+        "advertising",
+        "periklanan",
+        "persuasion",
+        "persuasi",
+        "interpersonal",
+        "digital media",
+        "media digital",
+    ),
+    "mathematics": (
+        "mathematics",
+        "matematika",
+        "mathematical",
+        "algorithm",
+        "algoritma",
+        "optimization",
+        "optimasi",
+        "statistics",
+        "statistik",
+        "statistika",
+        "probability",
+        "probabilitas",
+        "numerical",
+        "numerik",
+        "topology",
+        "topologi",
+        "geometry",
+        "geometri",
+        "algebra",
+        "aljabar",
+        "calculus",
+        "kalkulus",
+        "differential equation",
+        "persamaan diferensial",
+    ),
 }
 
 
 # Indonesian → English term mapping for query expansion
 _ID_TO_EN = {
+    # AI/CS
     "kecerdasan buatan": "artificial intelligence",
     "pembelajaran mesin": "machine learning",
     "pembelajaran mendalam": "deep learning",
@@ -368,17 +791,110 @@ _ID_TO_EN = {
     "pembelajaran daring": "e-learning",
     "sistem informasi": "information system",
     "rekayasa perangkat lunak": "software engineering",
+    # Health/Medical
     "kesehatan masyarakat": "public health",
+    "ilmu kedokteran": "medical science",
+    # Environment
     "ketahanan pangan": "food security",
     "energi terbarukan": "renewable energy",
     "perubahan iklim": "climate change",
     "pembangunan berkelanjutan": "sustainable development",
+    "pencemaran lingkungan": "environmental pollution",
+    "pengelolaan limbah": "waste management",
+    "daur ulang": "recycling",
+    "ekonomi sirkular": "circular economy",
+    # Law/Social
     "hak asasi manusia": "human rights",
     "kebijakan publik": "public policy",
+    "hukum pidana": "criminal law",
+    "hukum perdata": "civil law",
+    # Education
+    "pembelajaran hybrid": "hybrid learning",
+    "pembelajaran berbasis proyek": "project-based learning",
+    "project based learning": "project-based learning",
+    "sosial emosional": "social-emotional",
+    "perkembangan sosial emosional": "social-emotional development",
+    "anak usia dini": "early childhood",
+    "pendidikan anak usia dini": "early childhood education",
+    "paud": "preschool",
+    "pasca pandemi": "post-pandemic",
+    "pembelajaran jarak jauh": "distance learning",
+    "model pembelajaran": "learning model",
+    "efektivitas pembelajaran": "learning effectiveness",
+    "hasil belajar": "learning outcomes",
+    "kurikulum merdeka": "independent curriculum",
+    # Food Science
+    "pangan fungsional": "functional food",
+    "indeks glikemik": "glycemic index",
+    "senyawa bioaktif": "bioactive compound",
+    "aktivitas antioksidan": "antioxidant activity",
+    "tepung komposit": "composite flour",
+    "serat pangan": "dietary fiber",
+    "pati resisten": "resistant starch",
+    "bebas gluten": "gluten free",
+    "sifat organoleptik": "organoleptic properties",
+    "daya terima": "consumer acceptance",
+    "perkecambahan": "germination",
+    "kacang kacangan": "legumes",
+    "umbi umbian": "tubers",
+    # Chemistry
+    "senyawa kimia": "chemical compound",
+    "bahan kimia": "chemical substance",
+    "reaksi kimia": "chemical reaction",
+    # Materials
+    "sifat mekanik": "mechanical properties",
+    "material komposit": "composite material",
+    "lapisan tipis": "thin film",
+    # Psychology
+    "kesehatan mental": "mental health",
+    "perkembangan kognitif": "cognitive development",
+    "perilaku konsumen": "consumer behavior",
+    "kecerdasan emosional": "emotional intelligence",
+    "stres kerja": "work stress",
+    # Business
+    "manajemen sumber daya": "human resource management",
+    "pemasaran digital": "digital marketing",
+    "kewirausahaan": "entrepreneurship",
+    "rantai pasok": "supply chain",
+    "kepemimpinan": "leadership",
+    # Sports
+    "olahraga prestasi": "sports performance",
+    "cedera olahraga": "sports injury",
+    "aktivitas fisik": "physical activity",
+    "kebugaran jasmani": "physical fitness",
+    # Linguistics
+    "penerjemahan": "translation",
+    "analisis wacana": "discourse analysis",
+    "kemampuan berbahasa": "language proficiency",
+    # Geology
+    "panas bumi": "geothermal",
+    "bencana alam": "natural disaster",
+    "air tanah": "groundwater",
+    "pertambangan": "mining",
+    # Pharmacology
+    "obat tradisional": "herbal medicine",
+    "uji klinis": "clinical trial",
+    "efek samping": "adverse effect",
+    "toksisitas": "toxicity",
+    # Communication
+    "media sosial": "social media",
+    "hubungan masyarakat": "public relations",
+    "komunikasi massa": "mass communication",
+    "penyiaran": "broadcasting",
+    # Tourism
+    "pariwisata berkelanjutan": "sustainable tourism",
+    "destinasi wisata": "tourist destination",
+    "warisan budaya": "cultural heritage",
+    "ekowisata": "ecotourism",
+    # Mathematics/Stats
+    "persamaan diferensial": "differential equation",
+    "analisis statistik": "statistical analysis",
+    "optimasi": "optimization",
 }
 
 # Common academic synonym expansion (English → additional terms)
 _SYNONYMS = {
+    # AI/CS
     "machine learning": "ml",
     "deep learning": "dl",
     "natural language processing": "nlp",
@@ -394,11 +910,44 @@ _SYNONYMS = {
     "sentiment analysis": "opinion mining",
     "image classification": "image recognition",
     "object detection": "object recognition",
+    # Environment/Climate
     "climate change": "global warming",
     "renewable energy": "green energy",
     "sustainable development": "sustainability",
+    "circular economy": "circularity closed loop",
+    # Health
     "public health": "epidemiology",
     "mental health": "psychological well-being",
+    # Food Science
+    "functional food": "nutraceutical functional ingredient",
+    "glycemic index": "GI blood glucose response",
+    "bioactive compound": "phytochemical phenolic flavonoid",
+    "dietary fiber": "crude fiber soluble fiber",
+    "antioxidant activity": "DPPH radical scavenging",
+    "sensory evaluation": "organoleptic consumer acceptance",
+    "gluten free": "celiac wheat alternative",
+    # Chemistry
+    "chemical reaction": "chemical synthesis",
+    "catalyst": "catalysis catalytic",
+    # Materials
+    "composite material": "reinforced matrix",
+    "mechanical properties": "tensile strength hardness",
+    # Psychology
+    "cognitive": "mental intellectual",
+    "wellbeing": "wellness quality life",
+    # Business
+    "entrepreneurship": "startup venture",
+    "supply chain": "logistics distribution",
+    "human resource": "HR personnel management",
+    # Sports
+    "sports performance": "athletic performance",
+    "physical activity": "exercise physical exercise",
+    # Geoscience
+    "geothermal": "geothermal energy hot spring",
+    "groundwater": "aquifer subsurface water",
+    # Pharmacology
+    "herbal medicine": "traditional medicine phytomedicine",
+    "toxicity": "toxic effect poisoning",
 }
 
 
@@ -431,8 +980,12 @@ def expand_query(query: str) -> str:
             terms_added.append(syn)
 
     # Reverse synonym lookup (if user typed the short form, add the full form)
+    # Use word-boundary matching to avoid false positives (e.g. "rl" matching in "learning")
     for base_term, syn in _SYNONYMS.items():
-        if syn in q_lower and base_term not in q_lower:
+        # syn is the short form (e.g. "rl", "nlp")
+        # Only match if syn appears as a whole word in the query
+        pattern = rf'\b{re.escape(syn)}\b'
+        if re.search(pattern, q_lower) and base_term not in q_lower:
             terms_added.append(base_term)
 
     if not terms_added:
@@ -445,6 +998,279 @@ def expand_query(query: str) -> str:
     else:
         # Simple space-separated append — most academic APIs treat spaces as AND
         return f"{query} {' '.join(terms_added)}"
+
+
+def build_sub_queries(query: str) -> list[str]:
+    """Decompose a flat query into focused sub-queries for better API search.
+    
+    Problem: Flat queries like "project based learning hybrid social emotional 
+    early childhood development" sent to academic APIs as AND of all terms → 
+    few/no results; as OR → massive noise. 
+    
+    Solution: Identify core concepts (multi-word terms) and build 2-3 focused
+    sub-queries that combine complementary concepts. Each sub-query is short
+    enough for AND matching but specific enough to filter noise.
+    
+    Returns list of sub-queries (3-5 items), prioritized by specificity.
+    """
+    q_lower = query.lower().strip().replace('-', ' ')
+    words = q_lower.split()
+    
+    # ── Step 1: Identify known compound concepts ──
+    # These are multi-word terms that should NOT be split into n-grams
+    _KNOWN_CONCEPTS = [
+        # Food science concepts (NEW — critical for functional food/legume/snack queries)
+        "functional food", "functional foods", "functional snack", "snack bar",
+        "energy bar", "protein bar", "nutrition bar", "granola bar",
+        "low glycemic", "low glycaemic", "low glycemic index", "glycemic index",
+        "glycemic response", "glikemik", "indeks glikemik",
+        "legume flour", "legume protein", "cowpea", "mung bean", "kacang hijau",
+        "kidney bean", "chickpea", "lentil", "soybean", "kedelai",
+        "sweet potato", "ubi jalar", "cassava", "singkong", "taro", "talas",
+        "yam", "gembili", "local tuber", "local legume", "umbi lokal",
+        "composite flour", "tepung komposit", "germinated", "perkecambahan",
+        "fermented", "fermentasi", "bioactive compound", "senyawa bioaktif",
+        "antioxidant activity", "aktivitas antioksidan", "antioxidant capacity",
+        "polyphenol content", "total phenolic", "total flavonoid",
+        "dietary fiber", "serat pangan", "crude fiber", "resistant starch",
+        "pati resisten", "in vitro starch digestibility", "glucose response",
+        "protein digestibility", "mineral bioavailability",
+        "nutritional composition", "proximate analysis", "proksimat",
+        "amino acid profile", "fatty acid profile", "mineral content",
+        "sensory evaluation", "organoleptic test", "hedonic test",
+        "texture profile", "hardness", "chewiness", "water absorption",
+        "oil absorption", "water holding capacity", "swelling power",
+        "pasting properties", "gelatinization temperature", "thermal properties",
+        "food extrusion", "snack extrusion", "baking process",
+        "gluten free", "bebas gluten", "shelf life", "water activity",
+        "microbial stability", "food safety",
+        # Education concepts
+        "project based learning", "problem based learning", "inquiry based learning",
+        "hybrid learning", "blended learning", "online learning", "distance learning",
+        "social emotional", "socio emotional", "social emotional learning",
+        "early childhood", "early childhood education", "early childhood development",
+        "preschool education", "kindergarten education", "early childhood care",
+        "child development", "emotional development", "social development",
+        "play based learning", "game based learning", "game based",
+        "project based", "problem based", "inquiry based",
+        "e learning", "mobile learning", "collaborative learning",
+        "post pandemic", "post covid", "after pandemic",
+        # AI/CS concepts
+        "machine learning", "deep learning", "artificial intelligence",
+        "natural language processing", "computer vision", "data mining",
+        "neural network", "reinforcement learning", "object detection",
+        "internet of things", "cloud computing", "cyber security",
+        # Health concepts
+        "heart disease", "public health", "mental health",
+        # Environment concepts  
+        "climate change", "renewable energy", "food security",
+        "sustainable development", "air pollution", "water quality",
+        "waste management", "carbon emission", "circular economy",
+        # Chemistry concepts
+        "chemical reaction", "chemical synthesis", "thin layer chromatography",
+        "spectroscopy analysis", "molecular docking", "response surface",
+        "ascorbic acid", "essential oil", "extraction method",
+        # Materials concepts
+        "mechanical properties", "tensile strength", "composite material",
+        "thin film", "coating process", "corrosion resistance",
+        # Psychology concepts
+        "cognitive behavioral", "mental health", "social support",
+        "self esteem", "quality of life", "coping strategy",
+        "emotional regulation", "well being", "life satisfaction",
+        # Business/Management concepts
+        "human resource", "supply chain", "organizational commitment",
+        "job satisfaction", "customer satisfaction", "brand loyalty",
+        "digital marketing", "financial performance", "competitive advantage",
+        "corporate social", "decision making",
+        # Sports concepts
+        "physical activity", "sports performance", "exercise training",
+        "body composition", "muscle strength", "aerobic capacity",
+        "high intensity interval", "high intensity interval training", "HIIT training",
+        "resistance training", "flexibility training",
+        # Linguistics concepts
+        "speech recognition", "language acquisition", "second language",
+        "foreign language", "discourse analysis", "translation quality",
+        # Pharmacology/Medical concepts
+        "clinical trial", "drug delivery", "adverse effect",
+        "antimicrobial activity", "antibacterial activity", "cytotoxic activity",
+        "wound healing", "oxidative stress", "lipid profile",
+        "blood pressure", "body mass", "risk factor",
+        # Geology/Geography concepts
+        "land use", "remote sensing", "spatial analysis",
+        "geographic information", "land cover", "climate variability",
+        # Generic cross-domain academic terms
+        "artificial neural", "statistical analysis", "case study",
+        "literature review", "experimental study", "comparative analysis",
+        "correlation analysis", "regression analysis", "factor analysis",
+        "sensitivity analysis", "performance evaluation", "risk assessment",
+    ]
+    
+    # Sort by length (longest first) to match compound terms before shorter ones
+    _KNOWN_CONCEPTS.sort(key=lambda c: -len(c.split()))
+    
+    # Find concepts present in query — longest first, no overlaps, no duplicates
+    found_concepts: list[str] = []
+    consumed_positions: set[int] = set()  # word positions already claimed
+    seen_concepts: set[str] = set()  # concept names already added
+    for concept in _KNOWN_CONCEPTS:
+        if concept in seen_concepts:
+            continue
+        # Skip if this shorter concept is already contained in a longer one we found
+        if any(concept in c for c in seen_concepts if c != concept):
+            continue
+        concept_words = concept.split()
+        n = len(concept_words)
+        for i in range(len(words) - n + 1):
+            window = " ".join(words[i:i+n])
+            if window == concept:
+                positions = set(range(i, i+n))
+                if positions & consumed_positions:
+                    continue
+                found_concepts.append(concept)
+                consumed_positions.update(positions)
+                seen_concepts.add(concept)
+                break
+    
+    # Remaining single words that aren't in any concept
+    unconsumed_words = [words[i] for i in range(len(words)) if i not in consumed_positions]
+    leftover = sorted([w for w in unconsumed_words if len(w) >= 4 and w not in {
+        "the", "and", "for", "with", "from", "of", "to", "in", "on", "by",
+        "a", "an", "is", "be", "are", "was", "were", "has", "have", "been",
+        "that", "this", "which", "who", "what", "how", "why", "not", "but",
+        "using", "study", "analysis", "approach", "method", "model", "system",
+        "based", "effect", "impact", "review", "role", "case",
+    }])
+    
+    if not found_concepts:
+        # ── Fallback: auto-extract meaningful phrases from query ──
+        # When no known concepts match, extract 2-3 word n-grams as
+        # ad-hoc concepts. This prevents the flat query from being sent
+        # to APIs with OR semantics (which produces massive noise).
+        # Every domain benefits: chemistry, sports, tourism, linguistics,
+        # pharmacology, etc.
+        stop_words = {
+            "the", "and", "for", "with", "from", "of", "to", "in", "on", "by",
+            "a", "an", "is", "be", "are", "was", "were", "has", "have", "been",
+            "that", "this", "which", "who", "what", "how", "why", "not", "but",
+            "using", "study", "analysis", "approach", "method", "model", "system",
+            "based", "effect", "impact", "review", "role", "case", "also", "can",
+            "may", "its", "their", "our", "into", "or", "as", "at", "than",
+            "more", "less", "new", "used", "two", "one", "well",
+        }
+        n = len(words)
+        adhoc_concepts = []
+        # Extract 3-grams first (most specific), then 2-grams
+        for window_size in [3, 2]:
+            for i in range(n - window_size + 1):
+                phrase_words = words[i:i+window_size]
+                # Skip if any word is a stop word
+                if any(w in stop_words for w in phrase_words):
+                    continue
+                phrase = " ".join(phrase_words)
+                if phrase not in adhoc_concepts:
+                    adhoc_concepts.append(phrase)
+                if len(adhoc_concepts) >= 4:
+                    break
+            if len(adhoc_concepts) >= 2:
+                break
+        if adhoc_concepts:
+            # Build sub-queries from adhoc concepts
+            sub_queries = []
+            if len(adhoc_concepts) >= 3:
+                sub_queries.append(" ".join(adhoc_concepts[:3]))
+                sub_queries.append(" ".join(adhoc_concepts[1:4]) if len(adhoc_concepts)>=4 else " ".join(adhoc_concepts[1:]))
+            elif len(adhoc_concepts) == 2:
+                sub_queries.append(" ".join(adhoc_concepts))
+                sub_queries.append(adhoc_concepts[0])
+            else:
+                sub_queries.append(adhoc_concepts[0])
+            # Deduplicate + add original query
+            seen_sq = set()
+            unique_sq = []
+            for sq in sub_queries:
+                if sq and sq not in seen_sq:
+                    seen_sq.add(sq)
+                    unique_sq.append(sq)
+            if query not in seen_sq:
+                unique_sq.append(query)
+            return unique_sq[:5]
+        return [query]
+    
+    # ── Step 2: Build focused sub-queries ──
+    # Strategy: each sub-query = 2-3 core concepts
+    sub_queries = []
+    n_concepts = len(found_concepts)
+    
+    if n_concepts >= 3:
+        # Group 1: primary concepts (first 2-3)
+        sub_queries.append(" ".join(found_concepts[:3]))
+        # Group 2: secondary concepts (shift by 1)
+        sub_queries.append(" ".join(found_concepts[1:4]))
+        # Group 3: first + last (broad but anchored)
+        if n_concepts >= 4:
+            sub_queries.append(f"{found_concepts[0]} {found_concepts[-1]}")
+    elif n_concepts == 2:
+        # Two concepts: combine them + add leftover for specificity
+        if leftover:
+            sub_queries.append(f"{found_concepts[0]} {found_concepts[1]} {leftover[0]}")
+        sub_queries.append(f"{found_concepts[0]} {found_concepts[1]}")
+    else:
+        # Only 1 concept: combine with leftover
+        if leftover:
+            sub_queries.append(f"{found_concepts[0]} {leftover[0]} {leftover[1] if len(leftover)>1 else ''}".strip())
+        sub_queries.append(found_concepts[0])
+    
+    # Add a synonym-expanded variant for breadth
+    # Use domain-specific synonyms based on detected concepts
+    _FOOD_SCIENCE_SYNS = {
+        "functional food": "nutraceutical functional ingredients bioactive",
+        "snack bar": "energy bar protein bar granola bar nutrition bar",
+        "low glycemic": "low glycaemic glycemic index GI blood glucose",
+        "legume flour": "legume protein bean flour pulse flour",
+        "local tuber": "sweet potato cassava yam taro indigenous tuber",
+        "local legume": "cowpea mung bean kidney bean indigenous legume",
+        "composite flour": "blended flour mixed flour composite dough",
+        "germinated": "sprouted germination malted",
+        "fermented": "fermentation microbial lactic acid LAB",
+        "bioactive compound": "phenolic flavonoid antioxidant phytochemical",
+        "dietary fiber": "crude fiber carbohydrate soluble fiber insoluble fiber",
+        "resistant starch": "slowly digestible starch RS glycemic response",
+        "sensory evaluation": "organoleptic test hedonic test consumer acceptance",
+        "protein digestibility": "in vitro digestion protein quality amino acid",
+        "food extrusion": "extrusion cooking expanded snack twin screw",
+    }
+    _EDUCATION_SYNS = {
+        "project based learning": "PBL project approach",
+        "social emotional": "socioemotional SEL emotional regulation",
+        "early childhood": "preschool prekindergarten ECE",
+        "hybrid learning": "blended learning mixed-mode",
+        "post pandemic": "post-COVID after pandemic recovery",
+    }
+    # Merge: food science takes priority for synonym expansion
+    _ALL_DOMAIN_SYNS = {**_FOOD_SCIENCE_SYNS, **_EDUCATION_SYNS}
+    syn_variant_parts = []
+    for concept in found_concepts[:2]:
+        if concept in _ALL_DOMAIN_SYNS:
+            syn_variant_parts.append(_ALL_DOMAIN_SYNS[concept])
+        else:
+            syn_variant_parts.append(concept)
+    if syn_variant_parts:
+        sub_queries.append(" ".join(syn_variant_parts))
+    
+    # Deduplicate and limit to 5
+    seen = set()
+    unique = []
+    for sq in sub_queries:
+        sq_clean = sq.strip()
+        if sq_clean and sq_clean not in seen:
+            seen.add(sq_clean)
+            unique.append(sq_clean)
+    
+    # Always include original query as last fallback
+    if query not in seen:
+        unique.append(query)
+    
+    return unique[:5]
 
 
 def _detect_topics(query: str) -> set[str]:
@@ -548,6 +1374,13 @@ def fetch_titles(
     if expanded != query:
         log.debug("Query expanded: %r → %r", query, expanded)
 
+    # Build focused sub-queries for better API recall
+    sub_queries = build_sub_queries(expanded)
+    if len(sub_queries) > 1:
+        log.info("Using %d sub-queries for fetch: %s", len(sub_queries), sub_queries[:3])
+    else:
+        sub_queries = [expanded]
+
     # Target: how many papers we want for scoring (passed as max_total)
     target = max_total or limit_per_source * len(sources)
     new_papers_count = 0  # tracks API-fetched papers (0 in DB-only path)
@@ -602,12 +1435,15 @@ def fetch_titles(
             })
 
         with ThreadPoolExecutor(max_workers=workers) as ex:
-            futures = {
-                ex.submit(
-                    fetch_from_source, name, expanded, limit_per_source, filters
-                ): name
-                for name in sources
-            }
+            # Submit multiple sub-queries per source for better recall
+            futures = {}
+            per_sub_limit = max(limit_per_source // len(sub_queries), 10)
+            for name in sources:
+                for sq in sub_queries:
+                    fut = ex.submit(
+                        fetch_from_source, name, sq, per_sub_limit, filters
+                    )
+                    futures[fut] = (name, sq)
 
             try:
                 while True:
@@ -633,19 +1469,19 @@ def fetch_titles(
                         # Per-fetcher timeout: cancel slow sources
                         still_pending = [f for f in futures if not f.done()]
                         for f in still_pending:
-                            src = futures[f]
+                            name, sq = futures[f]
                             f.cancel()
-                            timed_out_sources.append(src)
+                            timed_out_sources.append(name)
                             log.warning(
                                 "SLR fetch [%s] timed out after %ds, skipping",
-                                src, PER_FETCHER_TIMEOUT,
+                                name, PER_FETCHER_TIMEOUT,
                             )
                         # BUG-6.1: continue collecting from completed futures
                         # instead of breaking out of the entire loop
                         continue
 
                     for fut in batch:
-                        name = futures[fut]
+                        name, sq = futures[fut]
                         try:
                             papers = fut.result(timeout=0) or []
                         except TimeoutError:

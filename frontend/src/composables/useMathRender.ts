@@ -73,15 +73,104 @@ function stripControlChars(text: string): string {
 }
 
 /**
+ * Fix missing spaces after LaTeX commands (e.g. \sumj → \sum j).
+ * AI-generated content sometimes omits the space between command and variable.
+ */
+function fixLatexSpacing(latex: string): string {
+  // Pattern: \<letters> immediately followed by another letter
+  // e.g. "\sumj" → "\sum j", "\prodj" → "\prod j"
+  return latex.replace(/\\([a-zA-Z]+)([a-zA-Z])/g, (_m, cmd, next) => {
+    return `\\${cmd} ${next}`
+  })
+}
+
+/**
  * Parse text yang mengandung inline ($...$) dan display ($$...$$) math,
  * plus formatting toggles (\b bold, \i italic, \u underline) and
  * Markdown (**bold**, *italic*). Returns HTML with all formatting rendered.
  */
+
+/**
+ * Auto-wrap raw LaTeX commands (like \\tau, \\omega_a) in $...$ delimiters
+ * when they appear outside existing math blocks.
+ */
+function wrapRawLatex(text: string): string {
+  if (!text) return text
+  let result = ''
+  let i = 0
+  const len = text.length
+  while (i < len) {
+    // Skip $$...$$ display math
+    if (text[i] === '$' && text[i + 1] === '$') {
+      const end = text.indexOf('$$', i + 2)
+      if (end !== -1) { result += text.slice(i, end + 2); i = end + 2; continue }
+    }
+    // Skip $...$ inline math
+    if (text[i] === '$') {
+      const end = text.indexOf('$', i + 1)
+      if (end !== -1) { result += text.slice(i, end + 1); i = end + 1; continue }
+    }
+    // Found backslash outside any math block
+    if (text[i] === '\\') {
+      const next = text[i + 1]
+      // Skip \b, \i, \u toggles when NOT followed by a letter
+      if (next === 'b' || next === 'i') {
+        const after = text[i + 2] || ''
+        if (!/[a-zA-Z]/.test(after)) { result += text[i]; i++; continue }
+      }
+      // Skip \u toggle and unicode escapes like \u2022
+      if (next === 'u') { result += text[i]; i++; continue }
+      // Skip \( and \[ LaTeX delimiters
+      if (next === '(' || next === '[') { result += text[i]; i++; continue }
+      // It's a raw LaTeX command like \tau, \omega — wrap in $...$
+      if (/[a-zA-Z]/.test(next || '')) {
+        let end = i + 1
+        while (end < len && /[a-zA-Z]/.test(text[end])) { end++ }
+        // Subscript: _text or _{text}
+        if (text[end] === '_') {
+          end++
+          if (text[end] === '{') {
+            let depth = 1; end++
+            while (end < len && depth > 0) {
+              if (text[end] === '{') depth++
+              else if (text[end] === '}') depth--
+              end++
+            }
+          } else {
+            while (end < len && /[a-zA-Z0-9]/.test(text[end])) { end++ }
+          }
+        }
+        // Superscript: ^text or ^{text}
+        if (text[end] === '^') {
+          end++
+          if (text[end] === '{') {
+            let depth = 1; end++
+            while (end < len && depth > 0) {
+              if (text[end] === '{') depth++
+              else if (text[end] === '}') depth--
+              end++
+            }
+          } else {
+            while (end < len && /[a-zA-Z0-9]/.test(text[end])) { end++ }
+          }
+        }
+        result += '$' + text.slice(i, end) + '$'
+        i = end
+        continue
+      }
+    }
+    result += text[i]
+    i++
+  }
+  return result
+}
+
 export function renderRichText(text: string): string {
   if (!text) return ''
 
   text = stripControlChars(text)
   text = decodeStrayEscapes(text)
+  text = wrapRawLatex(text)
 
   // State machine: track formatting toggles
   let result = ''
@@ -112,7 +201,7 @@ export function renderRichText(text: string): string {
     if (text[i] === '$' && text[i + 1] === '$') {
       const end = text.indexOf('$$', i + 2)
       if (end !== -1) {
-        const latex = text.slice(i + 2, end)
+        const latex = fixLatexSpacing(text.slice(i + 2, end))
         if (latex.trim()) {
           result += closeTags()
           result += `<span class="block text-center my-2">${renderLatex(latex, true)}</span>`
@@ -127,7 +216,7 @@ export function renderRichText(text: string): string {
     if (text[i] === '$' && text[i + 1] !== '$') {
       const end = text.indexOf('$', i + 1)
       if (end !== -1 && end > i + 1) {
-        const latex = text.slice(i + 1, end)
+        const latex = fixLatexSpacing(text.slice(i + 1, end))
         const isCurrency = /^[0-9,.]+(\s+(and|or|to|per))?$/.test(latex.trim())
         if (latex.trim() && !isCurrency) {
           result += closeTags()
@@ -141,11 +230,11 @@ export function renderRichText(text: string): string {
       }
     }
 
-    // Check for \(...\) (inline math)
+    // Check for \(...\) (inline math, LaTeX delimiters)
     if (text[i] === '\\' && text[i + 1] === '(') {
       const end = text.indexOf('\\)', i + 2)
       if (end !== -1) {
-        const latex = text.slice(i + 2, end)
+        const latex = fixLatexSpacing(text.slice(i + 2, end))
         if (latex.trim()) {
           result += closeTags()
           result += renderLatex(latex, false)
@@ -156,11 +245,11 @@ export function renderRichText(text: string): string {
       }
     }
 
-    // Check for \[...\] (display math)
+    // Check for \[...\] (display math, LaTeX delimiters)
     if (text[i] === '\\' && text[i + 1] === '[') {
       const end = text.indexOf('\\]', i + 2)
       if (end !== -1) {
-        const latex = text.slice(i + 2, end)
+        const latex = fixLatexSpacing(text.slice(i + 2, end))
         if (latex.trim()) {
           result += closeTags()
           result += `<span class="block text-center my-2">${renderLatex(latex, true)}</span>`
@@ -171,8 +260,8 @@ export function renderRichText(text: string): string {
       }
     }
 
-    // \b bold toggle (only when NOT followed by a lowercase letter, to avoid \beta, \binom, \bmod — but allow \bBOLD)
-    if (text[i] === '\\' && text[i + 1] === 'b' && !/[a-z]/.test(text[i + 2] || '')) {
+    // \b bold toggle (guard: NOT preceded by backslash, NOT followed by lowercase letter, to avoid \beta, \binom)
+    if (text[i] === '\\' && text[i + 1] === 'b' && !/[a-z]/.test(text[i + 2] || '') && !(i > 0 && /[a-z\\]/.test(text[i - 1]))) {
       result += closeTags()
       bold = !bold
       result += openTags()
@@ -180,8 +269,8 @@ export function renderRichText(text: string): string {
       continue
     }
 
-    // \i italic toggle (guard: NOT followed by lowercase letter to avoid \int, \in, \infty — but allow \iITALIC)
-    if (text[i] === '\\' && text[i + 1] === 'i' && !/[a-z]/.test(text[i + 2] || '')) {
+    // \i italic toggle (guard: NOT preceded by backslash/letter, NOT followed by lowercase letter, to avoid \int, \in, \infty)
+    if (text[i] === '\\' && text[i + 1] === 'i' && !/[a-z]/.test(text[i + 2] || '') && !(i > 0 && /[a-z\\]/.test(text[i - 1]))) {
       result += closeTags()
       italic = !italic
       result += openTags()
@@ -189,8 +278,8 @@ export function renderRichText(text: string): string {
       continue
     }
 
-    // \u underline toggle (guard: NOT followed by lowercase letter/hex to avoid \u2022 etc.)
-    if (text[i] === '\\' && text[i + 1] === 'u' && !/[a-z0-9]/.test(text[i + 2] || '')) {
+    // \u underline toggle (guard: NOT preceded by backslash/letter, NOT followed by lowercase letter/hex, to avoid \u2022 etc.)
+    if (text[i] === '\\' && text[i + 1] === 'u' && !/[a-z0-9]/.test(text[i + 2] || '') && !(i > 0 && /[a-z\\]/.test(text[i - 1]))) {
       result += closeTags()
       underline = !underline
       result += openTags()
@@ -250,7 +339,7 @@ function renderRichTextInner(text: string): string {
     if (text[i] === '$' && text[i + 1] === '$') {
       const end = text.indexOf('$$', i + 2)
       if (end !== -1) {
-        const latex = text.slice(i + 2, end)
+        const latex = fixLatexSpacing(text.slice(i + 2, end))
         if (latex.trim()) {
           result += `<span class="block text-center my-2">${renderLatex(latex, true)}</span>`
         }
@@ -262,7 +351,7 @@ function renderRichTextInner(text: string): string {
     if (text[i] === '$' && text[i + 1] !== '$') {
       const end = text.indexOf('$', i + 1)
       if (end !== -1 && end > i + 1) {
-        const latex = text.slice(i + 1, end)
+        const latex = fixLatexSpacing(text.slice(i + 1, end))
         const isCurrency = /^[0-9,.]+$/.test(latex.trim())
         if (latex.trim() && !isCurrency) {
           result += renderLatex(latex, false)
@@ -271,14 +360,14 @@ function renderRichTextInner(text: string): string {
         }
       }
     }
-    // \b \i \u toggles
-    if (text[i] === '\\' && text[i + 1] === 'b' && !/[a-zA-Z]/.test(text[i + 2] || '')) {
+    // \b \i \u toggles (guarded: NOT preceded by backslash/letter, NOT followed by lowercase)
+    if (text[i] === '\\' && text[i + 1] === 'b' && !/[a-zA-Z]/.test(text[i + 2] || '') && !(i > 0 && /[a-z\\]/.test(text[i - 1]))) {
       i += 2; continue
     }
-    if (text[i] === '\\' && text[i + 1] === 'i' && !/[a-zA-Z]/.test(text[i + 2] || '')) {
+    if (text[i] === '\\' && text[i + 1] === 'i' && !/[a-zA-Z]/.test(text[i + 2] || '') && !(i > 0 && /[a-z\\]/.test(text[i - 1]))) {
       i += 2; continue
     }
-    if (text[i] === '\\' && text[i + 1] === 'u' && !/[a-zA-Z0-9]/.test(text[i + 2] || '')) {
+    if (text[i] === '\\' && text[i + 1] === 'u' && !/[a-zA-Z0-9]/.test(text[i + 2] || '') && !(i > 0 && /[a-z\\]/.test(text[i - 1]))) {
       i += 2; continue
     }
     result += escapeHtml(text[i])

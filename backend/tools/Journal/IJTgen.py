@@ -307,6 +307,12 @@ def _convert_citations_to_harvard(text: str, ref_index: dict) -> str:
 
 
 def _strip_latex(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     text = re.sub(r"\\\[.*?\\\]", "", text)
     text = re.sub(r"\\\(.*?\\\)", "", text)
     text = re.sub(r"\$([^$]*)\$", r"\1", text)
@@ -384,6 +390,31 @@ def _strip_latex(text: str) -> str:
     }
     for pat, repl in replacements.items():
         text = re.sub(pat, repl, text)
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     text = re.sub(r"\\[a-zA-Z]+", "", text)
     text = re.sub(r"[{}]", "", text)
     return text

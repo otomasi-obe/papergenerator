@@ -112,11 +112,8 @@ def configure_app(app):
     # recommended to set a dedicated rotating value.
     app.config["SIGNED_URL_SECRET"] = os.getenv("SIGNED_URL_SECRET") or _secret_key
 
-    # Per-request body cap. Each PaperFile is capped at 10 MB by files_bp itself,
-    # but multipart uploads bundle all selected files in one POST so 4 PDFs of
-    # ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
-    # can ride the same multipart payload (form overhead included).
-    app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB total upload (unrestricted)
+    # Per-request body cap. 100MB — prevents DoS via memory exhaustion.
+    app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB
 
     return _in_tests
 

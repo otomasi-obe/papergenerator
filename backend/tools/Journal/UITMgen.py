@@ -291,6 +291,12 @@ def _patch_styles_bytes(xml_bytes: bytes) -> bytes:
 # Content cleaning
 # =============================================================================
 def clean_inline_text(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     """Bersihkan markup LaTeX inline ($...$, \\command{}, simbol greek, dst.)."""
     if not text:
         return ""

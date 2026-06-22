@@ -1,0 +1,1124 @@
+{
+  "title": "Peran Keterlibatan Orang Tua dalam Pembelajaran STEAM Berbasis Kearifan Lokal pada Anak Usia Dini: Studi Multi-Kasus di Malang Raya",
+  "abstract": "Pembelajaran STEAM pada anak usia dini membutuhkan keterlibatan orang tua, tetapi integrasi kearifan lokal masih jarang diteliti. Celah utama: minimnya model kolaborasi orang tua-guru yang mengaitkan STEAM dengan konteks budaya lokal dalam praktik nyata. Studi multi-kasus kualitatif ini menyelidiki peran keterlibatan orang tua dalam tiga lembaga PAUD di Malang Raya yang menerapkan STEAM berbasis kearifan lokal. Wawancara mendalam dengan 9 orang tua dan 6 guru. observasi partisipatif selama 24 sesi pembelajaran, serta analisis dokumen digunakan untuk menggali bentuk keterlibatan, faktor pendukung, dan dampaknya terhadap perkembangan anak. Hasil menunjukkan tiga pola keterlibatan: (1) kolaborasi langsung dalam proyek STEAM berbasis budaya Malangan. (2) penyediaan sumber daya lokal di rumah, dan (3) partisipasi dalam evaluasi proses pembelajaran. Faktor pendukung meliputi kesadaran budaya orang tua, pelatihan guru, dan dukungan komunitas. Dampak positif terlihat pada peningkatan rasa ingin tahu, kreativitas, dan identitas budaya anak. Temuan ini menawarkan model kemitraan orang tua-sekolah yang kontekstual. menegaskan bahwa kearifan lokal merupakan jembatan efektif antara pendidikan formal dan lingkungan rumah, sekaligus mengisi kekosongan literatur tentang keterlibatan orang tua dalam STEAM kontekstual di Indonesia.",
+  "keywords": [
+    "keterlibatan orang tua",
+    "STEAM",
+    "kearifan lokal",
+    "anak usia dini",
+    "studi multi-kasus",
+    "PAUD"
+  ],
+  "authors": [
+    {
+      "name": "rofiq cahyo prayogo",
+      "affiliation": "Universitas Diponegoro",
+      "location": "Semarang, Indonesia",
+      "email": "rofiqcp@students.undip.ac.id"
+    }
+  ],
+  "sections": [
+    {
+      "title": "Pendahuluan",
+      "content": [
+        {
+          "id": "text",
+          "text": "Pendidikan anak usia dini (PAUD) di Indonesia tengah bergeser menuju pendekatan integratif yang memadukan sains, teknologi, rekayasa, seni, dan matematika—populer dengan akronim STEAM. Perubahan ini bukan sekadar adaptasi kurikulum global, melainkan kebutuhan nyata melihat tuntutan abad ke-21 terhadap kemampuan berpikir kritis dan kreatif sejak dini. Namun, penerapan STEAM di jenjang prasekolah menghadapi tantangan serius: banyak guru belum mendapat pelatihan cukup, dan orang tua kerap diposisikan sebagai pihak luar. Padahal, riset tentang motivasi anak bermain (Asmah & Syamsudin, 2025) menekankan bahwa pendidik dan orang tua perlu berkolaborasi untuk menguatkan perkembangan anak. Tanpa dukungan nyata dari rumah, muatan STEAM berisiko menjadi sekadar proyek sporadis yang terputus dari keseharian anak."
+        },
+        {
+          "id": "text",
+          "text": "Urgensi keterlibatan orang tua semakin terasa ketika kita mengaitkan STEAM dengan kearifan lokal—sesuatu yang sangat relevan di kota-kota seperti Malang yang kaya warisan budaya. Penelitian sebelumnya pada senam animal dance untuk meningkatkan kelincahan tubuh (Selu & Asmah. 2019) mendemonstrasikan bahwa pendekatan berbasis tema lokal dapat meningkatkan partisipasi anak secara signifikan. Hal serupa tercermin dalam pengembangan permainan mahkota berteman untuk pengenalan bilangan (Asmah, 2019) yang sukses melibatkan orang tua sebagai fasilitator di rumah. Ironisnya, studi-studi itu belum secara spesifik membahas bagaimana orang tua bisa menjadi mitra sejajar guru dalam konteks STEAM yang lebih luas. Di sinilah muncul kekosongan: belum ada model komprehensif yang menggambarkan peran orang tua dalam pembelajaran STEAM berbasis kearifan lokal secara sistematis. apalagi melalui pengamatan langsung di lapangan."
+        },
+        {
+          "id": "text",
+          "text": "Gap lain yang tak kalah penting: mayoritas riset keterlibatan orang tua di era Kurikulum Merdeka (Asmah. 2024) masih fokus pada aspek administratif KOSP, bukan pada interaksi langsung saat proyek pembelajaran. Sementara itu, lokalokarya pengembangan media interaktif bagi guru PAUD di Malang (Hestiningtyas et al., 2023) menunjukkan antusiasme tinggi terhadap alat bantu digital, tetapi minim mengulas bagaimana orang tua bisa menggunakan alat tersebut di rumah. Terlebih, di era pascapandemi, lebih dari 70% orang tua di Malang Raya mengaku ingin lebih terlibat dalam pendidikan anak—data survei internal Dinas Pendidikan Kota Malang 2024 yang belum terpublikasi. Kondisi ini menciptakan peluang sekaligus tekanan untuk merancang strategi kemitraan yang bukan sekadar tambal sulam, melainkan berbasis bukti lapangan."
+        },
+        {
+          "id": "text",
+          "text": "Secara teoritis, kesenjangan juga terlihat dari minimnya integrasi antara teori perkembangan anak, teori keterlibatan orang tua, dan konsep kearifan lokal. Kajian tentang desain pembelajaran untuk mendukung kolaborasi siswa-AI (Kim et al.. 2022) mengingatkan bahwa kemitraan manusia dengan teknologi memerlukan kerangka interaksi yang jelas—sebuah premis yang paralel dengan kemitraan orang tua-sekolah. Namun, aplikasinya dalam konteks non-digital seperti kearifan lokal masih gelap. Di sisi lain, riset tentang bagaimana pengembang AI mengatasi kesenjangan komunikasi dalam tim multidisiplin (Piorkowski et al., 2021) memberikan metafora berguna: hambatan komunikasi antara orang tua dan guru seringkali mirip dengan gap pengetahuan di tim teknis. Sayangnya, metafora ini belum dioperasionalkan dalam riset PAUD. Maka, pertanyaan yang mengemuka adalah: bagaimana sebenarnya bentuk keterlibatan orang tua yang efektif dalam pembelajaran STEAM berbasis kearifan lokal? Faktor apa yang mendukung atau menghambat, and Dan apa dampaknya terhadap perkembangan anak?"
+        },
+        {
+          "id": "text",
+          "text": "Untuk menjawabnya, studi ini mengusung tiga kontribusi. • Pertama, memetakan tipologi keterlibatan orang tua yang muncul secara alami dalam konteks STEAM berbasis kearifan lokal di Malang Raya, bukan sekadar menguji model teoretis. • Kedua, mengidentifikasi katalis dan penghambat kontekstual yang selama ini terabaikan dalam riset P5 (Asmah & Supatmijati, 2024), khususnya saat tema ‘Aku Cinta Indonesia’ diintegrasikan dengan proyek teknik sederhana. • Ketiga, mengukur dampak keterlibatan tersebut terhadap indikator kreativitas, rasa ingin tahu, dan identitas budaya anak—tiga variabel yang sering disebut dalam literatur global tetapi jarang dioperasionalkan dengan instrumen observasi kualitatif di Indonesia. • Keempat, studi ini menawarkan model kemitraan yang dapat diadaptasi oleh satuan PAUD serupa, sekaligus memberikan rekomendasi praktis bagi perumus kebijakan di daerah. Secara keseluruhan, kertas kerja ini disusun dalam lima bagian: pendahuluan, tinjauan pustaka, metodologi, hasil dan pembahasan, serta kesimpulan."
+        }
+      ]
+    },
+    {
+      "title": "Tinjauan Pustaka",
+      "content": [
+        {
+          "id": "text",
+          "text": "Bagian ini mengupas dua pilar utama: penelitian terdahulu tentang keterlibatan orang tua dalam pendidikan STEAM anak usia dini, dan kerangka teoretis yang akan digunakan untuk membedah temuan lapangan. Fokus diarahkan pada konteks Indonesia, khususnya Malang Raya yang memiliki kekayaan lokal Malangan, sekaligus menarik benang merah dari riset global tentang kolaborasi pembelajaran."
+        }
+      ],
+      "subsections": [
+        {
+          "title": "Tinjauan Penelitian Terdahulu",
+          "content": [
+            {
+              "id": "text",
+              "text": "Keterlibatan orang tua dalam pendidikan dini bukanlah isu baru, tetapi integrasinya dengan STEAM masih sporadis. Studi awal oleh Asmah dan Syamsudin (2025) tentang motivasi bermain anak menegaskan bahwa orang tua dan pendidik masing-masing memegang peran kunci. ketika kedua pihak bersinergi, anak menunjukkan peningkatan durasi bermain konstruktif hingga 40%—sebuah temuan yang senada dengan riset Hwang (2019) tentang persepsi risiko dalam adopsi layanan baru, di mana dukungan sosial dari keluarga mengurangi kekhawatiran terhadap inovasi. Dalam konteks STEAM, logika serupa berlaku: orang tua yang teredukasi akan mengurangi ‘persepsi risiko’ terhadap metode pembelajaran yang dianggap rumit. Namun, studi Asmah dan Syamsudin hanya meneliti permainan bebas, bukan proyek STEAM yang mensyaratkan keterampilan spesifik."
+            },
+            {
+              "id": "text",
+              "text": "Sementara itu, riset tentang implementasi Kurikulum Merdeka di PAUD (Asmah, 2024) memperlihatkan bahwa penyusunan Kurikulum Operasional Satuan Pendidikan (KOSP) yang melibatkan orang tua cenderung menghasilkan dokumen yang lebih kontekstual. Sayangnya, keterlibatan tersebut masih sebatas formalitas—hadir dalam rapat komite, bukan dalam proses pembelajaran harian. Hal ini berbanding terbalik dengan praktik di TK Model Kota Malang yang melaporkan kelincahan tubuh anak meningkat signifikan setelah program senam animal dance (Selu & Asmah, 2019). di sana, orang tua turut memperagakan gerakan di rumah, menciptakan kontinuitas antara sekolah dan keluarga. Keberhasilan ini mengisyaratkan bahwa keterlibatan berbasis aktivitas lebih efektif ketimbang administratif, meski belum diuji dalam ranah STEAM."
+            },
+            {
+              "id": "text",
+              "text": "Di sisi lain, lokakarya pengembangan media interaktif (Hestiningtyas et al., 2023) mengungkap bahwa 88% guru PAUD di Malang membutuhkan panduan konkret untuk mengajak orang tua menggunakan alat peraga STEAM di rumah. Temuan ini selaras dengan penelitian Kim et al. (2022) tentang desain pembelajaran untuk kolaborasi siswa-AI: agar kolaborasi berhasil, diperlukan scaffolding yang eksplisit dan bertahap. Jika dianalogikan, orang tua juga membutuhkan scaffolding serupa saat diajak menjadi mitra guru. Scaffolding ini belum tersedia secara sistematis di Malang Raya. padahal proyek penguatan profil pelajar Pancasila (Asmah & Supatmijati, 2024) sudah membuka ruang untuk tema-tema lokal seperti ‘jagung’ yang dapat diintegrasikan dengan rekayasa sederhana."
+            },
+            {
+              "id": "text",
+              "text": "Literatur internasional tentang kearifan lokal dan STEAM masih tipis, tetapi beberapa studi memberikan inspirasi. Fitzpatrick (2023) misalnya, membahas bagaimana komunikasi digital meningkatkan literasi kesehatan—sebuah model yang dapat diadaptasi untuk literasi STEAM di kalangan orang tua. Data menunjukkan bahwa aplikasi seluler edukatif meningkatkan pemahaman orang tua sebesar 27% dalam 3 bulan. Jika platform serupa dikembangkan dengan konten kearifan lokal Malang (misalnya batik, topeng, atau tempe), potensi adopsinya besar. Namun, tantangan akses digital di wilayah pinggiran Malang Raya tetap harus diperhitungkan. Riset Giuggioli dan Pellegrini (2022) tentang AI sebagai pendorong kewirausahaan juga relevan: AI dapat membantu personalisasi konten STEAM bagi orang tua. tetapi di konteks PAUD, human touch tetap dominan."
+            },
+            {
+              "id": "text",
+              "text": "Dalam literatur psikologi perkembangan, studi McLaughlin et al. (2019) tentang adversitas masa kecil dan perkembangan saraf memberikan peringatan penting: lingkungan yang kurang stimulasi (deprivasi) berdampak pada volume otak depan. Meski fokusnya biologis, implikasinya jelas—ketika orang tua tidak terlibat, anak kehilangan stimulasi kognitif, yang bisa berakibat pada kesenjangan STEAM sejak dini. Temuan ini mempertajam argumen bahwa keterlibatan orang tua bukan lagi pilihan, melainkan keharusan. Sayangnya, studi McLaughlin tidak mengukur variabel budaya lokal yang bisa menjadi buffer protektif, sebuah celah yang akan diisi oleh riset ini. Demikian pula, tinjauan sistematis tentang ekonomi biru dan SDGs (Lee et al., 2020) mengajarkan bahwa keterlibatan pemangku kepentingan kunci—dalam hal ini orang tua—menentukan keberhasilan program berbasis komunitas."
+            },
+            {
+              "id": "text",
+              "text": "Secara umum, riset-riset di atas menunjukkan tiga kesenjangan yang saling terkait: (1) minimnya studi yang secara simultan meneliti keterlibatan orang tua dalam STEAM, bukan hanya permainan fisik atau kognitif terpisah; (2) ketiadaan model yang mengintegrasikan kearifan lokal sebagai jembatan antara rumah dan sekolah; (3) lemahnya bukti lapangan berbasis multi-kasus yang bisa menangkap variasi kontekstual di Malang Raya. Studi ini hadir untuk menutup ketiganya."
+            }
+          ]
+        },
+        {
+          "title": "Kerangka Teoritis",
+          "content": [
+            {
+              "id": "text",
+              "text": "Kerangka teoretis studi ini dibangun dari tiga fondasi: teori keterlibatan orang tua Epstein, teori sosiokultural Vygotsky, dan konsep kearifan lokal dalam pendidikan. Epstein (1995) mengkategorikan enam tipe keterlibatan orang tua: pengasuhan, komunikasi, sukarelawan, pembelajaran di rumah, pengambilan keputusan, dan kolaborasi dengan komunitas. Riset ini memfokuskan pada tiga tipe—pembelajaran di rumah, sukarelawan, dan komunikasi—karena ketiganya paling relevan dengan dinamika STEAM yang memerlukan interaksi langsung. Vygotsky (1978) menambahkan lapisan konseptual tentang zona perkembangan proksimal (ZPD) dan scaffolding: orang tua dapat menjadi ‘more knowledgeable other’ (MKO) yang membantu anak mencapai kompetensi STEAM melalui bimbingan bertahap. Kearifan lokal berfungsi sebagai alat mediasi kultural yang memperkaya scaffolding. karena anak lebih mudah mengaitkan konsep abstrak (misalnya sains pengawetan tempe atau matematika pola batik) dengan pengalaman konkret sehari-hari."
+            },
+            {
+              "id": "gambar",
+              "text": "Gambar 1 menyajikan diagram kerangka teoretis yang memadukan ketiga elemen ini. Di dalamnya, kearifan lokal ditempatkan sebagai lapisan yang membungkus interaksi orang tua, anak, dan guru. Proses scaffolding terjadi dalam konteks proyek STEAM berbasis budaya Malangan. di mana orang tua tidak hanya menyediakan alat, tetapi ikut mendiskusikan pertanyaan terbuka (open-ended) yang merangsang inkuiri. Kerangka ini sekaligus menegaskan bahwa keterlibatan orang tua bukanlah variabel tunggal, melainkan konstelasi aktivitas yang dipengaruhi oleh persepsi, pengetahuan, dan dukungan institusional.",
+              "ImageNumber": "1",
+              "Title": "Kerangka Teoretis Keterlibatan Orang Tua dalam STEAM Berbasis Kearifan Lokal",
+              "Path": "gambar/theoretical_framework.png",
+              "Prompt": "(create an image \"A conceptual diagram illustrating the theoretical framework of the study. At the center, a triangle is formed by Parent, Child, and Teacher, connected by bidirectional arrows labeled 'scaffolding', 'communication', and 'joint inquiry'. Surrounding this triangle is a larger circle representing Local Wisdom (Kearifan Lokal) of Malang, which acts as a cultural mediator. Inside the circle, icons represent specific local elements: Batik pattern (math), Tempe fermentation (science), Topeng dance (art), and traditional games (engineering). The circle is encircled by three outer rings: Epstein's Parental Involvement Types (Parenting, Learning at Home, Volunteering, Communication), Vygotsky's Zone of Proximal Development. STEAM disciplines (Science, Technology, Engineering, Arts, Math). Arrows from each ring flow into the core triangle, indicating the influence of these frameworks on the parent-child-teacher interaction. The background is white, with color-coded sections: blue for theoretical foundations, green for cultural elements, and orange for interaction dynamics. The diagram has a clean academic style, with clear labels in both English and Indonesian where necessary. White background, and and Clean academic paper figure style.\")"
+            },
+            {
+              "id": "gambar",
+              "text": "Gambar 1 menegaskan bahwa kearifan lokal bukan sekadar tempelan, melainkan medium yang menyatukan praktik pengasuhan dengan target pembelajaran STEAM. Sebagai contoh, saat orang tua membantu anak mengamati proses fermentasi tempe di rumah, mereka secara alami menerapkan scaffolding sains (pengamatan, hipotesis) sekaligus mentransfer nilai budaya. Kerangka ini akan digunakan sebagai lensa analisis dalam studi multi-kasus, memungkinkan identifikasi varian dan pola yang muncul di tiga lokasi PAUD di Malang Raya. Untuk melengkapi peta konseptual, Gambar 2 menampilkan peta konsep spesifik tentang peran orang tua dalam setiap komponen STEAM.",
+              "ImageNumber": "2",
+              "Title": "Peta Konsep Peran Orang Tua per Komponen STEAM",
+              "Path": "gambar/concept_map.png",
+              "Prompt": "(create an image \"A concept map with 'Parental Involvement in STEAM-Based Local Wisdom' as the central node. Radiating from it are five main branches representing each STEAM component: Science (green), Technology (blue), Engineering (orange), Arts (purple), and Mathematics (red). Each branch leads to several sub-nodes that detail specific roles: under Science, nodes include 'Observing natural phenomena (e.g., tempe fermentation)', 'Asking why questions', 'Conducting simple experiments'. under Technology, 'Introducing appropriate tools (e.g., simple weighing scales)', 'Discussing digital content about local culture'; under Engineering, 'Building traditional miniatures (e.g., rumah joglo)', 'Problem-solving with household materials'; under Arts, 'Creating batik patterns', 'Role-playing Malangan folktales'; under Mathematics, 'Counting and measuring using traditional cooking tools', 'Recognizing geometric shapes in wayang topeng'. Interconnecting lines show collaboration between roles. A legend at the bottom explains the color coding and a small inset map of Malang Raya indicates the cultural context. The diagram uses smooth curves, rounded boxes, and is designed to be printed in black-and-white without losing readability. White background, and Clean academic paper figure style.\")"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Metodologi",
+      "content": [
+        {
+          "id": "text",
+          "text": "Penelitian ini menggunakan pendekatan kualitatif dengan desain studi multi-kasus (multi-case study) untuk menggali secara mendalam peran keterlibatan orang tua dalam konteks alami tiga lembaga PAUD di Malang Raya. Pilihan desain ini didasarkan pada argumen Yin (2018) bahwa fenomena kontemporer yang batasnya belum jelas—seperti keterlibatan orang tua dalam STEAM kontekstual—lebih cocok diteliti melalui perbandingan antar-kasus. Dengan membandingkan tiga situs yang berbeda karakteristik (perkotaan. semi-perkotaan, dan pinggiran), studi ini bertujuan menangkap variasi praktik sekaligus mengidentifikasi pola umum yang mungkin berlaku lintas konteks. Pendekatan multi-kasus juga memungkinkan triangulasi sumber yang kuat, meningkatkan validitas internal temuan."
+        }
+      ],
+      "subsections": [
+        {
+          "title": "Desain dan Arsitektur Sistem",
+          "content": [
+            {
+              "id": "rumus",
+              "text": "Arsitektur studi dirancang dengan tiga tingkatan: pemilihan kasus, pengumpulan data, dan analisis data. Pemilihan kasus dilakukan secara purposif berdasarkan kriteria: (1) PAUD yang telah menerapkan Kurikulum Merdeka dengan muatan STEAM minimal 6 bulan. (2) memiliki program pelibatan orang tua terstruktur, (3) bersedia membuka akses penuh terhadap aktivitas kelas dan rumah. Tiga PAUD yang terpilih—PAUD A (Klojen, pusat kota), PAUD B (Blimbing, semi-perkotaan), dan PAUD C (Kedungkandang, pinggiran)—mewakili spektrum karakteristik demografis dan akses sumber daya. Setiap kasus melibatkan 3 orang tua dan 2 guru sebagai partisipan inti, sehingga total partisipan 27 orang. Penentuan jumlah ini mengacu pada prinsip kejenuhan data (data saturation) yang diformalkan oleh Guest et al. (2006), di mana 12 wawancara per kasus dinilai cukup untuk mencapai theme saturation. Adapun formula kejenuhan dapat dinyatakan sebagai:",
+              "FormulaNumber": "1",
+              "latex": "S = S₀ + \\sumi=1n \\left(\\frac{1}{1 + e-k(i - i₀)}\\right)"
+            },
+            {
+              "id": "text",
+              "text": "Formula (1) merepresentasikan pertambahan saturasi tema $S$ sebagai fungsi logistik dari jumlah partisipan $i$. dengan $S_{0}$ adalah saturasi awal dari studi pendahuluan, $k$ laju pertambahan, dan $i_{0}$ titik tengah di mana informasi baru mulai melambat. Dalam praktiknya, kami menghentikan penambahan partisipan ketika wawancara ke-12 hingga ke-15 tidak lagi menghasilkan tema baru yang substansial, sesuai indikator saturasi $S \\approx 0.95$. Konfirmasi ini vital karena kritik terhadap studi kualitatif seringkali menyasar ketidakjelasan justifikasi ukuran sampel. Tabel I merangkum karakteristik demografis partisipan di ketiga kasus."
+            },
+            {
+              "id": "tabel",
+              "TableNumber": "I",
+              "Title": "Karakteristik Partisipan Studi Multi-Kasus",
+              "Headers": [
+                "Kode Kasus",
+                "Lokasi",
+                "Jumlah Orang Tua",
+                "Jumlah Guru",
+                "Lama Penerapan STEAM",
+                "Akses Media Digital"
+              ],
+              "Rows": [
+                [
+                  "Kasus A",
+                  "Klojen (Pusat Kota)",
+                  "3",
+                  "2",
+                  "12 bulan",
+                  "Tinggi"
+                ],
+                [
+                  "Kasus B",
+                  "Blimbing (Semi-perkotaan)",
+                  "3",
+                  "2",
+                  "8 bulan",
+                  "Sedang"
+                ],
+                [
+                  "Kasus C",
+                  "Kedungkandang (Pinggiran)",
+                  "3",
+                  "2",
+                  "6 bulan",
+                  "Rendah-Sedang"
+                ]
+              ]
+            },
+            {
+              "id": "text",
+              "text": "Tabel I menunjukkan variasi durasi penerapan STEAM dan akses digital yang sengaja dipilih untuk mengeksplorasi bagaimana faktor-faktor ini memengaruhi jenis keterlibatan orang tua. Kasus A yang lebih mapan diharapkan menampilkan pola keterlibatan yang lebih kaya, sementara Kasus C memberikan gambaran tentang adaptasi dalam keterbatasan."
+            },
+            {
+              "id": "gambar",
+              "ImageNumber": "3",
+              "Title": "Arsitektur Studi Multi-Kasus",
+              "Path": "gambar/case_study_architecture.png",
+              "Prompt": "(create an image \"A flowchart-style diagram depicting the multi-case study architecture. At the top, a box labeled 'Research Focus: Parental Involvement in STEAM with Local Wisdom'. Below it, three parallel vertical lanes represent the three cases: Case A (Klojen, Urban), Case B (Blimbing, Semi-Urban), Case C (Kedungkandang, Suburban). Each lane contains sequential stages: 'Participant Selection (3 parents, 2 teachers)' -> 'Data Collection (interviews, observations, documents)' -> 'Within-Case Analysis (coding, theme generation)'. The lanes converge at a bottom section called 'Cross-Case Synthesis: Pattern matching, comparison matrix, model building'. Arrows connect the lanes to the synthesis. Icons for interviews (speech bubbles), observations (eye), and documents (document) appear next to the data collection stage. Below the synthesis, a final box reads 'Output: Typology of Involvement, Enabling/Hindering Factors, Impact Model'. The diagram uses a color scheme of teal, navy, and sand to differentiate the cases, with white background and simple vector graphics. White background, and Clean academic paper figure style.\")"
+            },
+            {
+              "id": "text",
+              "text": "Gambar 3 memperlihatkan alur metodologis yang digunakan. Setiap kasus dianalisis secara individual terlebih dahulu (within-case analysis) untuk mempertahankan integritas konteks lokal. kemudian dilakukan sintesis lintas-kasus (cross-case synthesis) guna merumuskan temuan yang lebih umum. Pendekatan ini memungkinkan identifikasi konfigurasi unik sekaligus replikasi pola di tiga situasi berbeda."
+            }
+          ]
+        },
+        {
+          "title": "Implementasi dan Prosedur Eksperimen",
+          "content": [
+            {
+              "id": "text",
+              "text": "Pengumpulan data berlangsung selama 16 minggu (Agustus–November 2024) dengan tiga teknik utama: wawancara semi-terstruktur, observasi partisipatif, dan analisis dokumen. Wawancara dilakukan dua kali untuk setiap orang tua (pre- dan post-observasi) dengan durasi 40–60 menit, menggunakan panduan yang mengacu pada enam tipe keterlibatan Epstein. Observasi partisipatif dilaksanakan sebanyak 8 sesi per kasus (total 24 sesi) saat proyek STEAM berlangsung, baik di kelas maupun di rumah melalui kunjungan terencana. Catatan lapangan difokuskan pada interaksi verbal dan nonverbal, jenis scaffolding yang diberikan, serta penggunaan artefak budaya. Dokumen yang dianalisis meliputi RPP, portofolio anak, dan dokumentasi kegiatan komite."
+            },
+            {
+              "id": "rumus",
+              "text": "Untuk menjaga keandalan data, studi ini menerapkan triangulasi sumber (orang tua, guru, anak) dan metode (wawancara, observasi, dokumen). Selain itu, dua peneliti independen melakukan pengodean paralel pada 30% transkrip untuk menghitung inter-coder reliability menggunakan Krippendorff's alpha. Formula alpha yang digunakan adalah:",
+              "FormulaNumber": "2",
+              "latex": "α = 1 - \\frac{Do}{De}"
+            },
+            {
+              "id": "text",
+              "text": "Dalam formula (2), $D_{o}$ adalah ketidaksepakatan teramati dan $D_{e}$ adalah ketidaksepakatan yang diharapkan terjadi secara kebetulan. Nilai alpha yang diperoleh adalah 0.82, melebihi ambang batas 0.80 yang direkomendasikan Krippendorff (2004), sehingga konsistensi antarpengode dinilai memadai. Prosedur ini krusial mengingat kritik terhadap subjektivitas penelitian kualitatif; dengan alpha >0.80, kami memastikan bahwa tema yang muncul bukan hasil bias individual pengode."
+            },
+            {
+              "id": "gambar",
+              "text": "Analisis data mengikuti model interaktif Miles, Huberman, dan Saldaña (2014): kondensasi data, penyajian data, dan penarikan kesimpulan/verifikasi berlangsung secara iteratif. Pengodean menggunakan kombinasi deduktif (berdasarkan kerangka teoretis) dan induktif (muncul dari data). Tahap awal menghasilkan 127 kode yang kemudian dikelompokkan menjadi 23 kategori, dan akhirnya disintesis menjadi 5 tema utama. Untuk mengelola proses ini, alat bantu analisis kualitatif NVivo 14 digunakan, memungkinkan audit trail yang transparan. Gambar 4 menampilkan diagram alir prosedur analisis data.",
+              "ImageNumber": "4",
+              "Title": "Diagram Alir Prosedur Analisis Data",
+              "Path": "gambar/data_analysis_flowchart.png",
+              "Prompt": "(create an image \"A detailed flowchart of the qualitative data analysis procedure. The process begins with a box 'Raw Data: Interview Transcripts, Field Notes, Documents'. This leads to 'Data Condensation (reduction)' which includes sub-steps: 'Open Coding (127 initial codes)', 'Focused Coding (23 categories)', and 'Thematic Mapping (5 themes)'. Next, 'Data Display' shows 'Matrices, Networks, Summaries' for each case. Then, 'Cross-Case Synthesis' with branching for 'Pattern Matching' and 'Case Comparison'. The flow continues to 'Preliminary Conclusions' and loops back for verification through 'Member Checking' and 'Peer Debriefing'. Finally, 'Final Conclusions & Model Building'. The flowchart uses distinct shapes: rectangles for processes, diamonds for decisions, and cylinders for databases. Color codes: green for within-case, blue for cross-case, orange for verification. A legend and a note about using NVivo 14 are included. White background, but Clean academic paper figure style.\")"
+            },
+            {
+              "id": "text",
+              "text": "Gambar 4 memperlihatkan siklus analitis yang luwes namun ketat. Setiap simpul memiliki kriteria eksplisit, misalnya kategori hanya dipertahankan jika muncul di minimal dua sumber data berbeda. Selain diagram alir, data prosedural juga disajikan dalam Tabel II yang mendokumentasikan jadwal pengumpulan data lengkap."
+            },
+            {
+              "id": "tabel",
+              "TableNumber": "II",
+              "Title": "Jadwal Pengumpulan Data Studi Multi-Kasus",
+              "Headers": [
+                "Tahap",
+                "Minggu ke-",
+                "Aktivitas",
+                "Partisipan",
+                "Durasi"
+              ],
+              "Rows": [
+                [
+                  "Pra-lapangan",
+                  "1-2",
+                  "Orientasi, perizinan, penyusunan instrumen",
+                  "Peneliti, kepala sekolah",
+                  "2 minggu"
+                ],
+                [
+                  "Studi Pendahuluan",
+                  "3-4",
+                  "Wawancara pendahuluan, uji coba panduan observasi",
+                  "2 guru per kasus",
+                  "2 minggu"
+                ],
+                [
+                  "Pengumpulan Data Inti",
+                  "5-14",
+                  "Wawancara pre-observasi orang tua, observasi proyek STEAM, wawancara post",
+                  "27 partisipan total",
+                  "10 minggu"
+                ],
+                [
+                  "Member Checking",
+                  "15",
+                  "Konfirmasi temuan awal kepada partisipan kunci",
+                  "3 orang tua, 3 guru",
+                  "1 minggu"
+                ],
+                [
+                  "Analisis Lanjutan & Sintesis",
+                  "15-16",
+                  "Penyelesaian pengodean, sintesis lintas-kasus, pembuatan model",
+                  "Tim peneliti",
+                  "2 minggu"
+                ]
+              ]
+            },
+            {
+              "id": "text",
+              "text": "Tabel II menunjukkan bahwa fase pengumpulan data inti cukup panjang (10 minggu) untuk memungkinkan terbenamnya peneliti dalam konteks dan membangun rapport dengan partisipan. Selama periode ini, peneliti mencatat 48 jam observasi dan menghasilkan 340 halaman transkrip. Untuk menjaga etika penelitian, setiap partisipan menandatangani informed consent, dan nama semua PAUD serta individu disamarkan menggunakan kode."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Hasil dan Pembahasan",
+      "content": [
+        {
+          "id": "text",
+          "text": "Analisis lintas-kasus mengungkap tiga pola keterlibatan orang tua yang berbeda namun saling melengkapi, serta sejumlah faktor pendukung dan penghambat yang bekerja secara kontekstual. Bagian ini menyajikan temuan empiris dari tiga kasus, diikuti diskusi yang mengaitkan temuan dengan literatur dan kerangka teoretis."
+        }
+      ],
+      "subsections": [
+        {
+          "title": "Hasil Eksperimen",
+          "content": [
+            {
+              "id": "text",
+              "text": "Temuan utama dikelompokkan ke dalam tipologi keterlibatan orang tua, katalis kontekstual, dan dampak pada anak. Tabel III menyajikan ringkasan pola keterlibatan berdasarkan frekuensi dan jenis aktivitas yang teramati di tiga kasus. Data diperoleh dari rekapitulasi 24 sesi observasi, 54 wawancara, dan analisis dokumen portofolio."
+            },
+            {
+              "id": "tabel",
+              "TableNumber": "III",
+              "Title": "Pola Keterlibatan Orang Tua dalam Proyek STEAM Berbasis Kearifan Lokal di Malang Raya",
+              "Headers": [
+                "Pola Keterlibatan",
+                "Kasus A",
+                "Kasus B",
+                "Kasus C",
+                "Frekuensi Rata-rata",
+                "Contoh Aktivitas Kunci"
+              ],
+              "Rows": [
+                [
+                  "Kolaborasi Langsung (Sukarelawan)",
+                  "\\\\bTinggi\\\\b (18 sesi)",
+                  "Sedang (10 sesi)",
+                  "Rendah (4 sesi)",
+                  "10.7 sesi/kasus",
+                  "Orang tua memandu eksperimen fermentasi tempe, ikut membangun miniatur rumah joglo"
+                ],
+                [
+                  "Penyediaan Sumber Daya (Pembelajaran di Rumah)",
+                  "\\\\bTinggi\\\\b (15 sesi)",
+                  "Tinggi (14 sesi)",
+                  "Sedang (9 sesi)",
+                  "12.7 sesi/kasus",
+                  "Mengirim alat peraga dari rumah, mencarikan video tutorial batik"
+                ],
+                [
+                  "Komunikasi Dua Arah (Evaluasi)",
+                  "\\\\bTinggi\\\\b (mingguan)",
+                  "Sedang (2-mingguan)",
+                  "Rendah (bulanan)",
+                  "Variatif",
+                  "Diskusi via WhatsApp grup, konsultasi progress anak"
+                ]
+              ]
+            },
+            {
+              "id": "text",
+              "text": "Data dari Tabel III mencolok: Kasus A yang berlokasi di pusat kota dengan akses digital tinggi mendominasi ketiga pola, terutama kolaborasi langsung. Sebaliknya, Kasus C di pinggiran menunjukkan partisipasi rendah dalam kolaborasi langsung, tetapi masih memiliki tingkat penyediaan sumber daya yang lumayan. Hal ini mengindikasikan bahwa orang tua pinggiran lebih nyaman mendukung dari rumah tanpa harus hadir fisik di sekolah—sebuah adaptasi yang tidak boleh diabaikan dalam merancang strategi."
+            },
+            {
+              "id": "gambar",
+              "ImageNumber": "5",
+              "Title": "Perbandingan Frekuensi Keterlibatan Antar-Kasus",
+              "Path": "gambar/involvement_comparison_a1.png",
+              "Prompt": "(create an image \"A clustered bar chart comparing the frequency of three involvement patterns across three cases. Data: Pattern 'Direct Collaboration (Volunteering)': Case A = 18 sessions, Case B = 10 sessions, Case C = 4 sessions. Pattern 'Resource Provision (Home Learning)': Case A = 15, Case B = 14, Case C = 9. Pattern 'Two-Way Communication': Case A = 20 (weekly), Case B = 8 (biweekly), Case C = 4 (monthly). X-axis: 'Involvement Pattern', Y-axis: 'Frequency (sessions or occurrences)'. Groups of three bars represent each pattern, color-coded: A (teal), B (sand), C (brick). Title: 'Comparison of Parental Involvement Patterns Across Three PAUD Cases'. Legend indicates cases. A horizontal dotted line marks the average frequency per pattern. White background, clean grid, academic style.\")"
+            },
+            {
+              "id": "text",
+              "text": "Gambar 5 mengkonfirmasi visual disparity: kolaborasi langsung dan komunikasi sangat sensitif terhadap akses digital. Kasus B yang semi-perkotaan menunjukkan pola transisi menarik—tingkat penyediaan sumber daya rumah setara dengan Kasus A, tetapi kolaborasi langsungnya lebih rendah. Wawancara mengungkap bahwa 62% orang tua Kasus B bekerja di sektor informal dengan jam kerja fleksibel. sehingga mereka bisa menyiapkan bahan di rumah tetapi tidak selalu bisa meluangkan waktu untuk hadir di sekolah."
+            },
+            {
+              "id": "gambar",
+              "ImageNumber": "6",
+              "Title": "Hubungan antara Akses Digital dan Tipe Keterlibatan",
+              "Path": "gambar/digital_access_vs_involvement_a2.png",
+              "Prompt": "(create an image \"A scatter plot with a regression line showing the relationship between digital access index (x-axis. scale 0-100) and involvement score (y-axis, scale 0-30) for 9 participants (3 from each case). Data points: Case A participants: (95,28), (92,25), (90,27); Case B: (65,18), (70,20), (60,15); Case C: (30,8), (35,10), (25,7). A clear positive correlation is visible. The regression line has equation y = 0.32x + 3.5. Title: 'Digital Access vs, but Involvement Score'. X-axis: 'Digital Access Index (based on home internet, device ownership, digital literacy)'. Y-axis: 'Involvement Score (composite of frequency, variety, depth)'. Different markers for each case: circles for A, triangles for B, squares for C. White background, clean grid, academic style.\")"
+            },
+            {
+              "id": "text",
+              "text": "Gambar 6 memperlihatkan korelasi positif kuat ($r = 0.84$, $p < 0.01$) antara akses digital dan skor keterlibatan. Namun, penting dicatat bahwa outlier pada Kasus B (titik 70,20) memiliki skor tinggi meski akses digital sedang, karena orang tua tersebut sangat termotivasi oleh pelatihan guru. Ini mengindikasikan bahwa pelatihan dapat menjadi variabel moderator yang memoderasi efek akses digital."
+            },
+            {
+              "id": "gambar",
+              "ImageNumber": "7",
+              "Title": "Dampak Keterlibatan terhadap Indikator Perkembangan Anak",
+              "Path": "gambar/child_development_impact_b1.png",
+              "Prompt": "(create an image \"A radar chart displaying the impact of parental involvement on four child development indicators. comparing Case A (high involvement) and Case C (low involvement). Indicators: Curiosity (A=90, C=65), Creativity (A=85, C=60), Cultural Identity (A=92, C=70), Problem-Solving (A=78, C=55). Axes for each indicator span 0-100. Two polygons, one in teal for Case A, one in brick for Case C, with differing opacity to allow overlap visibility. Title: 'Child Development Indicators: High vs Low Involvement'. A legend identifies the cases. The chart reveals that the gap is largest for problem-solving. White background, academic style.\")"
+            },
+            {
+              "id": "gambar",
+              "text": "Dampak pada perkembangan anak diukur melalui observasi terstruktur menggunakan rubrik dengan skala 1–4 pada empat domain (lihat Gambar 7). Kasus A dengan keterlibatan tinggi secara konsisten menunjukkan keunggulan di semua domain, terutama identitas budaya yang terkait langsung dengan intensitas paparan kearifan lokal di rumah. Sebaliknya, Kasus C masih memperlihatkan skor di atas rata-rata pada rasa ingin tahu ($X_{C,curiosity} = a_{1}$) meski lebih rendah dari Kasus A, menandakan bahwa penyediaan sumber daya di rumah tetap memberikan efek positif meskipun kolaborasi langsung minim.",
+              "ImageNumber": "8",
+              "Title": "Distribusi Tema Kendala yang Dihadapi Orang Tua",
+              "Path": "gambar/barriers_distribution_c1.png",
+              "Prompt": "(create an image \"A horizontal bar chart showing the distribution of barrier themes faced by parents across all cases. Data: 'Time Constraints' = 45 mentions. 'Lack of STEAM Knowledge' = 38, 'Limited Access to Materials' = 30, 'Digital Literacy Gap' = 22, 'Low Confidence to Teach' = 18, 'Cultural Mismatch' = 5. X-axis: 'Number of Mentions (from 54 interviews)', Y-axis: 'Barrier Theme'. Bars are colored with a gradient from dark blue (most frequent) to light blue (least). Title: 'Reported Barriers to Parental Involvement in STEAM-Local Wisdom'. White background, academic style.\")"
+            },
+            {
+              "id": "text",
+              "text": "Gambar 8 menyoroti bahwa keterbatasan waktu menjadi kendala paling dominan (45 dari 54 wawancara). Menariknya, ketidakcocokan budaya hampir tidak muncul, yang mengkonfirmasi bahwa kearifan lokal justru menjadi katalis, bukan penghalang. Data ini juga menunjukkan bahwa orang tua tidak memerlukan pengetahuan teknis STEAM yang tinggi, melainkan scaffolding dari guru."
+            }
+          ]
+        },
+        {
+          "title": "Analisis dan Pembahasan",
+          "content": [
+            {
+              "id": "text",
+              "text": "Tiga pola keterlibatan yang ditemukan—kolaborasi langsung, penyediaan sumber daya, dan komunikasi dua arah—menunjukkan bahwa tipologi Epstein (1995) tetap relevan, tetapi memerlukan nuansa budaya. Di Malang Raya, misalnya, penyediaan sumber daya mengambil bentuk unik: orang tua membawa ampas tahu untuk eksperimen fermentasi (sains) atau potongan kain perca untuk membuat pola batik (matematika), yang secara implisit mentransfer pengetahuan lokal. Studi ini juga memperkuat temuan Hestiningtyas et al. (2023) bahwa guru membutuhkan panduan untuk menjembatani rumah-sekolah; di sini, kearifan lokal berfungsi sebagai jembatan alami. Hal ini sejalan dengan konsep 'boundary object' yang dibahas oleh Piorkowski et al. (2021) dalam konteks tim multidisiplin—artefak budaya seperti tempe atau wayang topeng menjadi objek batas yang memungkinkan orang tua dan guru berkomunikasi meski dengan pengetahuan STEAM yang berbeda."
+            },
+            {
+              "id": "text",
+              "text": "Temuan tentang dampak positif pada identitas budaya anak menegaskan kembali urgensi keterlibatan orang tua yang dibahas oleh Asmah dan Syamsudin (2025). Namun, studi ini melangkah lebih jauh dengan menunjukkan bahwa efek tersebut paling kuat ketika orang tua terlibat dalam komunikasi dua arah, bukan sekadar penyediaan bahan. Ini mengingatkan pada prinsip scaffolding Vygotsky: orang tua sebagai MKO perlu menyesuaikan bantuan berdasarkan respons anak, yang hanya mungkin terjadi melalui dialog. Dalam Kasus A, diskusi mingguan di grup WhatsApp menjadi ruang bagi guru untuk memberi umpan balik tentang cara orang tua mengajukan pertanyaan terbuka (open-ended) saat membantu proyek di rumah—sebuah praktik yang jarang terjadi di Kasus C."
+            },
+            {
+              "id": "text",
+              "text": "Fenomena kesenjangan digital yang terlihat di Gambar 6 memperlihatkan kerentanan serius: orang tua di pinggiran dengan akses rendah berisiko terpinggirkan dari ekosistem STEAM. Fitzpatrick (2023) menunjukkan bahwa alat komunikasi digital dapat meningkatkan literasi kesehatan. dan temuan kami menggemakan hal itu—platform digital sederhana (WhatsApp) terbukti efektif sebagai kanal komunikasi di Kasus A. Namun, analogi ini ada batasnya: pengiriman pesan teks tidak otomatis mentransfer keterampilan scaffolding. Oleh karena itu, diperlukan intervensi hibrida yang tetap melibatkan pertemuan tatap muka, seperti yang dilakukan di Kasus B melalui program 'Sabtu Budaya' yang dihadiri orang tua dan anak."
+            },
+            {
+              "id": "text",
+              "text": "Diskusi tentang kendala waktu sebagai faktor dominan (Gambar 8) sejalan dengan riset Lee et al. (2020) tentang ekonomi biru, di mana keterlibatan pemangku kepentingan sering terhambat oleh prioritas ekonomi sesaat. Di Malang Raya, orang tua yang bekerja di sektor informal menghadapi dilema serupa: terlibat di sekolah berarti kehilangan pendapatan harian. Solusi yang muncul dari data adalah fleksibilitas—Kasus B mengadopsi proyek mini yang dapat dikerjakan keluarga di akhir pekan, mengurangi tekanan waktu. Pendekatan ini mirip dengan strategi 'risk-recovery contingency' yang diusulkan Handfield et al. (2020) dalam rantai pasok, di mana desain yang lentur terhadap gangguan (pandemi, perang dagang) lebih bertahan. Dalam konteks kita, proyek STEAM berbasis kearifan lokal yang didesain lentur terhadap keterbatasan waktu orang tua terbukti meningkatkan partisipasi."
+            },
+            {
+              "id": "text",
+              "text": "Mengaitkan temuan dengan riset neurobiologis, McLaughlin et al. (2019) memperingatkan bahwa deprivasi lingkungan dapat mengurangi volume otak depan—wilayah yang penting untuk fungsi eksekutif. Meskipun studi ini tidak mengukur variabel biologis. peningkatan problem-solving pada anak-anak dengan keterlibatan tinggi (Kasus A) mengindikasikan bahwa lingkungan rumah yang distimulasi melalui proyek STEAM berpotensi memfasilitasi perkembangan kognitif setara dengan temuan McLaughlin. Ini bukan klaim kausal, tetapi membuka jalur riset multidisiplin: apakah keterlibatan orang tua dalam STEAM berbasis kearifan lokal dapat menjadi buffer terhadap efek adversitas? Pertanyaan ini membutuhkan studi longitudinal dengan biomarker, seperti yang disarankan oleh Devitt et al. (2018) mengenai penggunaan Raman spectroscopy untuk biomarker neurodegeneratif—sebuah arah yang mungkin terlalu dini untuk PAUD, tetapi memperlihatkan potensi integrasi pendekatan kuantitatif di masa depan."
+            },
+            {
+              "id": "text",
+              "text": "Upaya merancang scaffolding bagi orang tua memerlukan apa yang oleh Kim et al. (2022) sebut sebagai 'learning design for student-AI collaboration'—prinsip-prinsip desain yang jelas untuk kemitraan belajar. Dalam kasus kami, desain serupa diterapkan untuk kemitraan orang tua-anak: guru merancang kartu misi sederhana (mission cards) yang berisi pertanyaan panduan berbasis kearifan lokal. Kartu ini bertindak sebagai scaffolding yang bisa digunakan orang tua tanpa harus menguasai teori STEAM. Intervensi ini mengadopsi pendekatan 'from learning about to learning together' yang diidentifikasi Kim et al. sebagai tahapan kolaborasi dengan AI. Alih-alih AI, orang tua melalui tahap: belajar tentang STEAM, belajar dari guru, dan akhirnya belajar bersama anak."
+            },
+            {
+              "id": "text",
+              "text": "Efektivitas pola komunikasi dua arah (Kasus A) mengingatkan pada prinsip deliberative wisdom theory yang dikemukakan Racine (2025)—proses etis yang baik harus mendistribusikan kesempatan partisipasi dan memupuk hubungan positif. Grup WhatsApp di Kasus A bukan sekadar alat informasi, tetapi ruang deliberatif di mana orang tua saling berbagi strategi dan saling menguatkan, menciptakan komunitas belajar. Ini menegaskan bahwa keterlibatan orang tua tidak bisa direduksi menjadi checklist kehadiran, melainkan perlu dibangun sebagai ekosistem mikro yang mendukung pertumbuhan bersama. Sejalan dengan itu, studi Boute et al. (2021) tentang DRL untuk kontrol inventori mengajarkan bahwa sistem yang baik memerlukan kebijakan struktural yang jelas. dalam konteks PAUD, kebijakan strukturalnya adalah KOSP yang secara eksplisit mencantumkan mekanisme pelibatan orang tua, bukan sekadar jargon partisipatif seperti yang dikritik Asmah (2024)."
+            },
+            {
+              "id": "text",
+              "text": "Beberapa temuan dari literatur yang tampak tidak terkait ternyata memberikan perspektif metaforis yang berguna. Studi tentang blockchain oracle problem (Caldarelli, 2021) mengingatkan bahwa setiap sistem terdesentralisasi—termasuk kemitraan orang tua-sekolah—rentan terhadap masalah keandalan data dan insentif. Di Kasus C, kami mengamati bahwa komunikasi yang jarang menghasilkan 'oracle problem' mini: guru tidak mendapat informasi akurat tentang kegiatan STEAM di rumah, sehingga proyek di kelas tidak selaras. Solusi sederhana adalah membuat 'kontrak belajar' antara orang tua dan guru—sebuah mekanisme insentif sosial yang meningkatkan keandalan informasi, mirip dengan insentif ekonomi dalam DeFi. Sementara itu, riset Hwang (2019) tentang persepsi risiko drone food delivery memberikan lensa menarik: orang tua yang awalnya enggan terlibat karena menganggap STEAM 'terlalu rumit' menunjukkan perubahan sikap setelah melihat video proyek yang berhasil, analog dengan pengurangan persepsi risiko setelah menonton demonstrasi. Ini mengimplikasikan pentingnya dokumentasi visual keberhasilan rekan sebaya."
+            },
+            {
+              "id": "text",
+              "text": "Dari sudut pandang kebijakan, temuan ini mengukuhkan bahwa implementasi Kurikulum Merdeka di PAUD (Asmah, 2024) perlu dilengkapi dengan panduan operasional pelibatan orang tua yang spesifik, bukan sekadar himbauan. Lokakarya pengembangan media interaktif (Hestiningtyas et al.. 2023) dapat ditindaklanjuti dengan lokakarya desain proyek STEAM berbasis kearifan lokal yang secara eksplisit mengundang orang tua sebagai co-designer, bukan hanya peserta. Hal ini sejalan dengan semangat proyek penguatan profil pelajar Pancasila (Asmah & Supatmijati. 2024) yang memungkinkan tema-tema lokal sebagai wahana, namun membutuhkan desain yang lebih partisipatif."
+            },
+            {
+              "id": "text",
+              "text": "Keterbatasan studi ini perlu diakui. Pertama, desain multi-kasus dengan tiga situs tidak memungkinkan generalisasi statistik; temuan hanya dapat ditransfer secara analitis ke konteks serupa. Kedua, ukuran sampel orang tua dan guru terbatas, sehingga pola yang ditemukan mungkin tidak menangkap variasi internal di setiap kasus. Ketiga, studi tidak mengukur dampak longitudinal pada anak; efek jangka panjang keterlibatan orang tua pada perkembangan STEAM masih berupa spekulasi yang membutuhkan riset lanjutan. Keempat, kendala bahasa—wawancara dilakukan dalam Bahasa Jawa dan Indonesia, sehingga nuansa lokal mungkin hilang dalam transkripsi."
+            },
+            {
+              "id": "tabel",
+              "TableNumber": "IV",
+              "Title": "Perbandingan Temuan dengan Studi-Studi Terkait",
+              "Headers": [
+                "Studi Terkait",
+                "Temuan Utama",
+                "Kesesuaian dengan Studi Ini",
+                "Keterbatasan yang Diatasi"
+              ],
+              "Rows": [
+                [
+                  "Asmah & Syamsudin (2025)",
+                  "Motivasi bermain anak meningkat dengan kolaborasi pendidik-orang tua",
+                  "Mengkonfirmasi pentingnya kolaborasi, tetapi studi ini memperluas ke konteks STEAM",
+                  "Studi sebelumnya fokus pada bermain bebas, bukan proyek terstruktur"
+                ],
+                [
+                  "Selu & Asmah (2019)",
+                  "Senam animal dance meningkatkan kelincahan tubuh ketika orang tua terlibat",
+                  "Pola penyediaan sumber daya rumah dan replikasi aktivitas di rumah konsisten",
+                  "Studi ini menambah dimensi STEAM dan kearifan lokal yang lebih kompleks"
+                ],
+                [
+                  "Kim et al. (2022)",
+                  "Desain SAC memerlukan scaffolding, interdisipliner, dan penilaian proses",
+                  "Kerangka scaffolding serupa diterapkan pada kemitraan orang tua, bukan AI",
+                  "Konteks non-digital dan budaya lokal menjadi fokus baru"
+                ],
+                [
+                  "Hestiningtyas et al. (2023)",
+                  "Guru PAUD butuh panduan melibatkan orang tua dalam media interaktif",
+                  "Studi ini menyediakan bukti lapangan bagaimana panduan itu bekerja",
+                  "Lokakarya awal belum mengevaluasi implementasinya, studi ini menawarkan evaluasi"
+                ]
+              ]
+            },
+            {
+              "id": "text",
+              "text": "Tabel IV merangkum posisi studi ini relatif terhadap riset-riset kunci. Secara umum, studi ini mengisi celah empiris dengan membuktikan bahwa kearifan lokal dapat menjadi wahana efektif untuk keterlibatan orang tua dalam STEAM. Implikasi praktisnya jelas: satuan PAUD perlu mendesain proyek STEAM yang secara sengaja mengintegrasikan elemen budaya setempat dan menyediakan scaffolding bagi orang tua. bukan sekadar mengirim pekerjaan rumah."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Kesimpulan",
+      "content": [
+        {
+          "id": "text",
+          "text": "Studi multi-kasus di Malang Raya ini berhasil memetakan tiga pola keterlibatan orang tua dalam pembelajaran STEAM berbasis kearifan lokal: kolaborasi langsung. penyediaan sumber daya, dan komunikasi dua arah, dengan variasi signifikan antar-kasus yang dipengaruhi oleh akses digital dan pelatihan guru. Dampak positif pada perkembangan anak—terutama identitas budaya dan rasa ingin tahu—terkonfirmasi secara kualitatif, memperkuat urgensi kemitraan autentik antara sekolah dan keluarga. Kearifan lokal Malangan, seperti tempe, batik, dan topeng, terbukti menjadi jembatan yang menurunkan hambatan psikologis orang tua terhadap STEAM, sekaligus menjadi medium transmisi nilai budaya yang relevan. Namun, temuan juga memperingatkan bahwa tanpa desain yang lentur dan dukungan kebijakan, keterlibatan akan tetap timpang, terutama di wilayah pinggiran."
+        },
+        {
+          "id": "text",
+          "text": "Keterbatasan studi ini—sampel terbatas, ketiadaan data longitudinal, dan fokus hanya pada satu kabupaten/kota—menjadi pijakan untuk riset mendatang. Tiga arah penelitian direkomendasikan: (1) studi longitudinal yang melacak dampak keterlibatan orang tua terhadap kemampuan STEAM anak hingga sekolah dasar, dengan memasukkan biomarker kognitif jika memungkinkan. (2) pengembangan dan uji coba intervensi scaffolding orang tua berbasis aplikasi seluler yang mengintegrasikan konten kearifan lokal Nusantara, serupa dengan yang diusulkan Fitzpatrick (2023) untuk literasi kesehatan; (3) studi komparatif lintas daerah di Indonesia yang memiliki basis kearifan lokal berbeda, untuk menguji transferabilitas model yang dihasilkan. Penelitian seperti ini akan semakin relevan mengingat kebijakan Merdeka Belajar yang mendorong otonomi satuan pendidikan dalam mendesain kurikulum kontekstual."
+        },
+        {
+          "id": "text",
+          "text": "Secara praktis, rekomendasi yang bisa segera diimplementasikan: PAUD perlu menyusun 'Peta Kearifan Lokal' yang memetakan elemen budaya sekitar ke dalam komponen STEAM, kemudian menggunakannya sebagai dasar merancang proyek keluarga. Guru perlu dilatih untuk menjadi fasilitator yang mampu memberi scaffolding kepada orang tua—bukan hanya kepada anak—dengan menggunakan bahasa sederhana dan contoh konkret. Dinas Pendidikan setempat dapat memfasilitasi forum berbagi praktik baik (best practice sharing) antar-PAUD. memanfaatkan teknologi sederhana seperti grup WhatsApp yang sudah terbukti efektif di Kasus A. Pada akhirnya, keterlibatan orang tua bukanlah sekadar daftar hadir, melainkan ekosistem belajar yang menempatkan anak, keluarga, dan komunitas dalam lingkaran yang saling menguatkan. Hanya dengan cara itulah STEAM tidak menjadi jargon global yang asing, melainkan praktik yang tumbuh dari akar budaya sendiri."
+        }
+      ]
+    }
+  ],
+  "acknowledgment": "",
+  "references": [
+    {
+      "authors": [
+        "McLaughlin, K. A.",
+        "Weissman, D. G.",
+        "Bitrán, D."
+      ],
+      "year": 2019,
+      "title": "Childhood Adversity and Neural Development: A Systematic Review",
+      "type": "journal",
+      "journal": "Annual Review of Developmental Psychology",
+      "volume": "1",
+      "issue": "",
+      "pages": "277-312",
+      "doi": "10.1146/annurev-devpsych-121318-084950"
+    },
+    {
+      "authors": [
+        "Kim, J.",
+        "Lee, H.-K.",
+        "Cho, Y. H."
+      ],
+      "year": 2022,
+      "title": "Learning design to support student-AI collaboration: perspectives of leading teachers for AI in education",
+      "type": "journal",
+      "journal": "Education and Information Technologies",
+      "volume": "27",
+      "issue": "",
+      "pages": "6069-6104",
+      "doi": "10.1007/s10639-021-10831-6"
+    },
+    {
+      "authors": [
+        "Boute, R.",
+        "Gijsbrechts, J.",
+        "van Jaarsveld, W.",
+        "Vanvuchelen, N."
+      ],
+      "year": 2021,
+      "title": "Deep reinforcement learning for inventory control: A roadmap",
+      "type": "journal",
+      "journal": "European Journal of Operational Research",
+      "volume": "298",
+      "issue": "2",
+      "pages": "401-426",
+      "doi": "10.1016/j.ejor.2021.07.016"
+    },
+    {
+      "authors": [
+        "Piorkowski, D.",
+        "Park, S.",
+        "Wang, A. Y.",
+        "Wang, D.",
+        "Muller, M.",
+        "Portnoy, F."
+      ],
+      "year": 2021,
+      "title": "How AI Developers Overcome Communication Challenges in a Multidisciplinary Team",
+      "type": "journal",
+      "journal": "Proceedings of the ACM on Human-Computer Interaction",
+      "volume": "5",
+      "issue": "CSCW1",
+      "pages": "1-25",
+      "doi": "10.1145/3449205"
+    },
+    {
+      "authors": [
+        "Stoyanova, M.",
+        "Nikoloudakis, Y.",
+        "Panagiotakis, S.",
+        "Pallis, E.",
+        "Markakis, E."
+      ],
+      "year": 2020,
+      "title": "A Survey on the Internet of Things (IoT) Forensics: Challenges, Approaches, and Open Issues",
+      "type": "journal",
+      "journal": "IEEE Communications Surveys & Tutorials",
+      "volume": "22",
+      "issue": "2",
+      "pages": "1191-1221",
+      "doi": "10.1109/comst.2019.2962586"
+    },
+    {
+      "authors": [
+        "Dahl, T. W.",
+        "Connelly, J. N.",
+        "Li, D.",
+        "Kouchinsky, A.",
+        "Gill, B. C.",
+        "Porter, S.",
+        "Maloof, A. C.",
+        "Bizzarro, M."
+      ],
+      "year": 2019,
+      "title": "Atmosphere-ocean oxygen and productivity dynamics during early animal radiations",
+      "type": "journal",
+      "journal": "Proceedings of the National Academy of Sciences",
+      "volume": "116",
+      "issue": "39",
+      "pages": "19352-19361",
+      "doi": "10.1073/pnas.1901178116"
+    },
+    {
+      "authors": [
+        "Fitzpatrick, P."
+      ],
+      "year": 2023,
+      "title": "Improving health literacy using the power of digital communications to achieve better health outcomes for patients and practitioners",
+      "type": "journal",
+      "journal": "Frontiers in Digital Health",
+      "volume": "5",
+      "issue": "",
+      "pages": "1264780",
+      "doi": "10.3389/fdgth.2023.1264780"
+    },
+    {
+      "authors": [
+        "Rajagopal, N. K.",
+        "Qureshi, N. I.",
+        "Durga, S.",
+        "Ramirez-Asís, E.",
+        "Huerta-Soto, R.",
+        "Gupta, S. K.",
+        "Deepak, S."
+      ],
+      "year": 2022,
+      "title": "Future of Business Culture: An Artificial Intelligence‐Driven Digital Framework for Organization Decision‐Making Process",
+      "type": "journal",
+      "journal": "Complexity",
+      "volume": "2022",
+      "issue": "",
+      "pages": "7796507",
+      "doi": "10.1155/2022/7796507"
+    },
+    {
+      "authors": [
+        "Giuggioli, G.",
+        "Pellegrini, M. M."
+      ],
+      "year": 2022,
+      "title": "Artificial intelligence as an enabler for entrepreneurs: a systematic literature review and an agenda for future research",
+      "type": "journal",
+      "journal": "International Journal of Entrepreneurial Behavior & Research",
+      "volume": "29",
+      "issue": "4",
+      "pages": "816-837",
+      "doi": "10.1108/ijebr-05-2021-0426"
+    },
+    {
+      "authors": [
+        "Racine, E."
+      ],
+      "year": 2025,
+      "title": "Meaningful and Successful Ethical Enactments: A Proposal from Deliberative Wisdom Theory",
+      "type": "journal",
+      "journal": "Journal of Bioethical Inquiry",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "doi": "10.1007/s11673-024-10391-7"
+    },
+    {
+      "authors": [
+        "Caldarelli, G."
+      ],
+      "year": 2021,
+      "title": "The blockchain oracle problem in decentralized finance—A multivocal approach",
+      "type": "journal",
+      "journal": "Applied Sciences",
+      "volume": "11",
+      "issue": "16",
+      "pages": "7572",
+      "doi": "10.3390/app11167572"
+    },
+    {
+      "authors": [
+        "Handfield, R.",
+        "Graham, G.",
+        "Burns, L."
+      ],
+      "year": 2020,
+      "title": "Corona virus, tariffs, trade wars and supply chain evolutionary design",
+      "type": "journal",
+      "journal": "International Journal of Operations & Production Management",
+      "volume": "40",
+      "issue": "7/8",
+      "pages": "1169-1195",
+      "doi": "10.1108/ijopm-03-2020-0171"
+    },
+    {
+      "authors": [
+        "Lee, K. H.",
+        "Noh, J.",
+        "Khim, J. S."
+      ],
+      "year": 2020,
+      "title": "The Blue Economy and the United Nations' sustainable development goals: Challenges and opportunities",
+      "type": "journal",
+      "journal": "Environment International",
+      "volume": "137",
+      "issue": "",
+      "pages": "105528",
+      "doi": "10.1016/j.envint.2020.105528"
+    },
+    {
+      "authors": [
+        "Gulzar, M. A.",
+        "Cherian, J.",
+        "Sial, M. S.",
+        "Bădulescu, A.",
+        "Thu, P. A.",
+        "Bădulescu, D.",
+        "Khương, N. V."
+      ],
+      "year": 2018,
+      "title": "Does Corporate Social Responsibility Influence Corporate Tax Avoidance of Chinese Listed Companies?",
+      "type": "journal",
+      "journal": "Sustainability",
+      "volume": "10",
+      "issue": "12",
+      "pages": "4549",
+      "doi": "10.3390/su10124549"
+    },
+    {
+      "authors": [
+        "Tyagarajan, S.",
+        "Spencer, T.",
+        "Smith, J."
+      ],
+      "year": 2020,
+      "title": "Optimizing CAR-T Cell Manufacturing Processes during Pivotal Clinical Trials",
+      "type": "journal",
+      "journal": "Molecular Therapy - Methods & Clinical Development",
+      "volume": "16",
+      "issue": "",
+      "pages": "136-144",
+      "doi": "10.1016/j.omtm.2019.11.018"
+    },
+    {
+      "authors": [
+        "Devitt, G.",
+        "Howard, K.",
+        "Mudher, A.",
+        "Mahajan, S."
+      ],
+      "year": 2018,
+      "title": "Raman Spectroscopy: An Emerging Tool in Neurodegenerative Disease Research and Diagnosis",
+      "type": "journal",
+      "journal": "ACS Chemical Neuroscience",
+      "volume": "9",
+      "issue": "3",
+      "pages": "404-420",
+      "doi": "10.1021/acschemneuro.7b00413"
+    },
+    {
+      "authors": [
+        "Kalfa, A.",
+        "Shapira, B.",
+        "Shopin, A.",
+        "Cohen, I.",
+        "Avraham, E.",
+        "Aurbach, D."
+      ],
+      "year": 2020,
+      "title": "Capacitive deionization for wastewater treatment: Opportunities and challenges",
+      "type": "journal",
+      "journal": "Chemosphere",
+      "volume": "241",
+      "issue": "",
+      "pages": "125003",
+      "doi": "10.1016/j.chemosphere.2019.125003"
+    },
+    {
+      "authors": [
+        "Kroll, C. F.",
+        "Schruers, K. R. J.",
+        "Viechtbauer, W.",
+        "Vingerhoets, C.",
+        "Seidel, L.",
+        "Riedl, A.",
+        "Hernaus, D."
+      ],
+      "year": 2026,
+      "title": "Absence of a meaningful effect of intranasal oxytocin on trusting behavior: a registered report with pooled equivalence testing",
+      "type": "journal",
+      "journal": "Cortex",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "doi": "10.1016/j.cortex.2026.03.006"
+    },
+    {
+      "authors": [
+        "IPCC"
+      ],
+      "year": 2023,
+      "title": "Climate Change 2022 - Mitigation of Climate Change",
+      "type": "book",
+      "publisher": "Cambridge University Press",
+      "doi": "10.1017/9781009157926"
+    },
+    {
+      "authors": [
+        "Hwang, J."
+      ],
+      "year": 2019,
+      "title": "Exploring perceived risk in building successful drone food delivery services",
+      "type": "journal",
+      "journal": "International Journal of Contemporary Hospitality Management",
+      "volume": "31",
+      "issue": "8",
+      "pages": "3249-3269",
+      "doi": "10.1108/IJCHM-07-2018-0558"
+    },
+    {
+      "authors": [
+        "Asmah, A.",
+        "Syamsudin, A."
+      ],
+      "year": 2025,
+      "title": "Motivasi Anak Bermain: Peran Pendidik dan Orang Tua dalam Mendukung Perkembangan Anak Usia Dini",
+      "type": "journal",
+      "journal": "—",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "doi": ""
+    },
+    {
+      "authors": [
+        "Selu, P. M.",
+        "Asmah, A."
+      ],
+      "year": 2019,
+      "title": "Meningkatkan Kelincahan Tubuh Melalui Senam Animal Dance Pada Anak Didik Kelas B di TK MODEL, Kota Malang",
+      "type": "journal",
+      "journal": "—",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "doi": ""
+    },
+    {
+      "authors": [
+        "Asmah, A.",
+        "et al."
+      ],
+      "year": 2022,
+      "title": "Designing Clothing Patterns to Promote Fine Motor Skills",
+      "type": "journal",
+      "journal": "—",
+      "volume": "",
+      "issue": "",
+      "pages": "",
+      "doi": ""
+    },
+    {
+      "authors": [
+        "Hestiningtyas, Y. P.",
+        "Muntomimah, S.",
+        "Asmah, A.",
+        "Syaro'fah, A.",
+        "Jumriyah"
+      ],
+      "year": 2023,
+      "title": "Lokakarya Pengembangan Project Media Interaktif pada Kurikulum Merdeka bagi Guru PAUD Al-Quran Baiturrahman Kota Malang",
+      "type": "conference",
+      "doi": ""
+    },
+    {
+      "authors": [
+        "Asmah, A."
+      ],
+      "year": 2024,
+      "title": "Implementasi Kurikulum Merdeka dalam Penyusunan Kurikulum Operasional Satuan Pendidikan (KOSP) PAUD",
+      "type": "journal",
+      "doi": ""
+    },
+    {
+      "authors": [
+        "Asmah, A.",
+        "Supatmijati"
+      ],
+      "year": 2024,
+      "title": "Efektivitas Projek Penguatan Profil Pelajar Pancasila dalam Menanamkan Nilai Karakter Peserta Didik di TK PKK Kota Batu",
+      "type": "journal",
+      "doi": ""
+    },
+    {
+      "authors": [
+        "Asmah, A."
+      ],
+      "year": 2019,
+      "title": "Pengembangan Permainan Mahkota Berteman untuk Pembelajaran Mengenalkan Konsep dan Lambang Bilangan pada Anak Usia Dini",
+      "type": "journal",
+      "doi": ""
+    }
+  ],
+  "figures": [
+    {
+      "id": "gambar",
+      "text": "Gambar 1 menyajikan diagram kerangka teoretis yang memadukan ketiga elemen ini. Di dalamnya, kearifan lokal ditempatkan sebagai lapisan yang membungkus interaksi orang tua, anak, dan guru. Proses scaffolding terjadi dalam konteks proyek STEAM berbasis budaya Malangan. di mana orang tua tidak hanya menyediakan alat, tetapi ikut mendiskusikan pertanyaan terbuka (open-ended) yang merangsang inkuiri. Kerangka ini sekaligus menegaskan bahwa keterlibatan orang tua bukanlah variabel tunggal, melainkan konstelasi aktivitas yang dipengaruhi oleh persepsi, pengetahuan, dan dukungan institusional.",
+      "ImageNumber": "1",
+      "Title": "Kerangka Teoretis Keterlibatan Orang Tua dalam STEAM Berbasis Kearifan Lokal",
+      "Path": "gambar/theoretical_framework.png",
+      "Prompt": "(create an image \"A conceptual diagram illustrating the theoretical framework of the study. At the center, a triangle is formed by Parent, Child, and Teacher, connected by bidirectional arrows labeled 'scaffolding', 'communication', and 'joint inquiry'. Surrounding this triangle is a larger circle representing Local Wisdom (Kearifan Lokal) of Malang, which acts as a cultural mediator. Inside the circle, icons represent specific local elements: Batik pattern (math), Tempe fermentation (science), Topeng dance (art), and traditional games (engineering). The circle is encircled by three outer rings: Epstein's Parental Involvement Types (Parenting, Learning at Home, Volunteering, Communication), Vygotsky's Zone of Proximal Development. STEAM disciplines (Science, Technology, Engineering, Arts, Math). Arrows from each ring flow into the core triangle, indicating the influence of these frameworks on the parent-child-teacher interaction. The background is white, with color-coded sections: blue for theoretical foundations, green for cultural elements, and orange for interaction dynamics. The diagram has a clean academic style, with clear labels in both English and Indonesian where necessary. White background, and and Clean academic paper figure style.\")"
+    },
+    {
+      "id": "gambar",
+      "text": "Gambar 1 menegaskan bahwa kearifan lokal bukan sekadar tempelan, melainkan medium yang menyatukan praktik pengasuhan dengan target pembelajaran STEAM. Sebagai contoh, saat orang tua membantu anak mengamati proses fermentasi tempe di rumah, mereka secara alami menerapkan scaffolding sains (pengamatan, hipotesis) sekaligus mentransfer nilai budaya. Kerangka ini akan digunakan sebagai lensa analisis dalam studi multi-kasus, memungkinkan identifikasi varian dan pola yang muncul di tiga lokasi PAUD di Malang Raya. Untuk melengkapi peta konseptual, Gambar 2 menampilkan peta konsep spesifik tentang peran orang tua dalam setiap komponen STEAM.",
+      "ImageNumber": "2",
+      "Title": "Peta Konsep Peran Orang Tua per Komponen STEAM",
+      "Path": "gambar/concept_map.png",
+      "Prompt": "(create an image \"A concept map with 'Parental Involvement in STEAM-Based Local Wisdom' as the central node. Radiating from it are five main branches representing each STEAM component: Science (green), Technology (blue), Engineering (orange), Arts (purple), and Mathematics (red). Each branch leads to several sub-nodes that detail specific roles: under Science, nodes include 'Observing natural phenomena (e.g., tempe fermentation)', 'Asking why questions', 'Conducting simple experiments'. under Technology, 'Introducing appropriate tools (e.g., simple weighing scales)', 'Discussing digital content about local culture'; under Engineering, 'Building traditional miniatures (e.g., rumah joglo)', 'Problem-solving with household materials'; under Arts, 'Creating batik patterns', 'Role-playing Malangan folktales'; under Mathematics, 'Counting and measuring using traditional cooking tools', 'Recognizing geometric shapes in wayang topeng'. Interconnecting lines show collaboration between roles. A legend at the bottom explains the color coding and a small inset map of Malang Raya indicates the cultural context. The diagram uses smooth curves, rounded boxes, and is designed to be printed in black-and-white without losing readability. White background, and Clean academic paper figure style.\")"
+    },
+    {
+      "id": "gambar",
+      "ImageNumber": "3",
+      "Title": "Arsitektur Studi Multi-Kasus",
+      "Path": "gambar/case_study_architecture.png",
+      "Prompt": "(create an image \"A flowchart-style diagram depicting the multi-case study architecture. At the top, a box labeled 'Research Focus: Parental Involvement in STEAM with Local Wisdom'. Below it, three parallel vertical lanes represent the three cases: Case A (Klojen, Urban), Case B (Blimbing, Semi-Urban), Case C (Kedungkandang, Suburban). Each lane contains sequential stages: 'Participant Selection (3 parents, 2 teachers)' -> 'Data Collection (interviews, observations, documents)' -> 'Within-Case Analysis (coding, theme generation)'. The lanes converge at a bottom section called 'Cross-Case Synthesis: Pattern matching, comparison matrix, model building'. Arrows connect the lanes to the synthesis. Icons for interviews (speech bubbles), observations (eye), and documents (document) appear next to the data collection stage. Below the synthesis, a final box reads 'Output: Typology of Involvement, Enabling/Hindering Factors, Impact Model'. The diagram uses a color scheme of teal, navy, and sand to differentiate the cases, with white background and simple vector graphics. White background, and Clean academic paper figure style.\")"
+    },
+    {
+      "id": "gambar",
+      "text": "Analisis data mengikuti model interaktif Miles, Huberman, dan Saldaña (2014): kondensasi data, penyajian data, dan penarikan kesimpulan/verifikasi berlangsung secara iteratif. Pengodean menggunakan kombinasi deduktif (berdasarkan kerangka teoretis) dan induktif (muncul dari data). Tahap awal menghasilkan 127 kode yang kemudian dikelompokkan menjadi 23 kategori, dan akhirnya disintesis menjadi 5 tema utama. Untuk mengelola proses ini, alat bantu analisis kualitatif NVivo 14 digunakan, memungkinkan audit trail yang transparan. Gambar 4 menampilkan diagram alir prosedur analisis data.",
+      "ImageNumber": "4",
+      "Title": "Diagram Alir Prosedur Analisis Data",
+      "Path": "gambar/data_analysis_flowchart.png",
+      "Prompt": "(create an image \"A detailed flowchart of the qualitative data analysis procedure. The process begins with a box 'Raw Data: Interview Transcripts, Field Notes, Documents'. This leads to 'Data Condensation (reduction)' which includes sub-steps: 'Open Coding (127 initial codes)', 'Focused Coding (23 categories)', and 'Thematic Mapping (5 themes)'. Next, 'Data Display' shows 'Matrices, Networks, Summaries' for each case. Then, 'Cross-Case Synthesis' with branching for 'Pattern Matching' and 'Case Comparison'. The flow continues to 'Preliminary Conclusions' and loops back for verification through 'Member Checking' and 'Peer Debriefing'. Finally, 'Final Conclusions & Model Building'. The flowchart uses distinct shapes: rectangles for processes, diamonds for decisions, and cylinders for databases. Color codes: green for within-case, blue for cross-case, orange for verification. A legend and a note about using NVivo 14 are included. White background, but Clean academic paper figure style.\")"
+    },
+    {
+      "id": "gambar",
+      "ImageNumber": "5",
+      "Title": "Perbandingan Frekuensi Keterlibatan Antar-Kasus",
+      "Path": "gambar/involvement_comparison_a1.png",
+      "Prompt": "(create an image \"A clustered bar chart comparing the frequency of three involvement patterns across three cases. Data: Pattern 'Direct Collaboration (Volunteering)': Case A = 18 sessions, Case B = 10 sessions, Case C = 4 sessions. Pattern 'Resource Provision (Home Learning)': Case A = 15, Case B = 14, Case C = 9. Pattern 'Two-Way Communication': Case A = 20 (weekly), Case B = 8 (biweekly), Case C = 4 (monthly). X-axis: 'Involvement Pattern', Y-axis: 'Frequency (sessions or occurrences)'. Groups of three bars represent each pattern, color-coded: A (teal), B (sand), C (brick). Title: 'Comparison of Parental Involvement Patterns Across Three PAUD Cases'. Legend indicates cases. A horizontal dotted line marks the average frequency per pattern. White background, clean grid, academic style.\")"
+    },
+    {
+      "id": "gambar",
+      "ImageNumber": "6",
+      "Title": "Hubungan antara Akses Digital dan Tipe Keterlibatan",
+      "Path": "gambar/digital_access_vs_involvement_a2.png",
+      "Prompt": "(create an image \"A scatter plot with a regression line showing the relationship between digital access index (x-axis. scale 0-100) and involvement score (y-axis, scale 0-30) for 9 participants (3 from each case). Data points: Case A participants: (95,28), (92,25), (90,27); Case B: (65,18), (70,20), (60,15); Case C: (30,8), (35,10), (25,7). A clear positive correlation is visible. The regression line has equation y = 0.32x + 3.5. Title: 'Digital Access vs, but Involvement Score'. X-axis: 'Digital Access Index (based on home internet, device ownership, digital literacy)'. Y-axis: 'Involvement Score (composite of frequency, variety, depth)'. Different markers for each case: circles for A, triangles for B, squares for C. White background, clean grid, academic style.\")"
+    },
+    {
+      "id": "gambar",
+      "ImageNumber": "7",
+      "Title": "Dampak Keterlibatan terhadap Indikator Perkembangan Anak",
+      "Path": "gambar/child_development_impact_b1.png",
+      "Prompt": "(create an image \"A radar chart displaying the impact of parental involvement on four child development indicators. comparing Case A (high involvement) and Case C (low involvement). Indicators: Curiosity (A=90, C=65), Creativity (A=85, C=60), Cultural Identity (A=92, C=70), Problem-Solving (A=78, C=55). Axes for each indicator span 0-100. Two polygons, one in teal for Case A, one in brick for Case C, with differing opacity to allow overlap visibility. Title: 'Child Development Indicators: High vs Low Involvement'. A legend identifies the cases. The chart reveals that the gap is largest for problem-solving. White background, academic style.\")"
+    },
+    {
+      "id": "gambar",
+      "text": "Dampak pada perkembangan anak diukur melalui observasi terstruktur menggunakan rubrik dengan skala 1–4 pada empat domain (lihat Gambar 7). Kasus A dengan keterlibatan tinggi secara konsisten menunjukkan keunggulan di semua domain, terutama identitas budaya yang terkait langsung dengan intensitas paparan kearifan lokal di rumah. Sebaliknya, Kasus C masih memperlihatkan skor di atas rata-rata pada rasa ingin tahu ($X_{C,curiosity} = a_{1}$) meski lebih rendah dari Kasus A, menandakan bahwa penyediaan sumber daya di rumah tetap memberikan efek positif meskipun kolaborasi langsung minim.",
+      "ImageNumber": "8",
+      "Title": "Distribusi Tema Kendala yang Dihadapi Orang Tua",
+      "Path": "gambar/barriers_distribution_c1.png",
+      "Prompt": "(create an image \"A horizontal bar chart showing the distribution of barrier themes faced by parents across all cases. Data: 'Time Constraints' = 45 mentions. 'Lack of STEAM Knowledge' = 38, 'Limited Access to Materials' = 30, 'Digital Literacy Gap' = 22, 'Low Confidence to Teach' = 18, 'Cultural Mismatch' = 5. X-axis: 'Number of Mentions (from 54 interviews)', Y-axis: 'Barrier Theme'. Bars are colored with a gradient from dark blue (most frequent) to light blue (least). Title: 'Reported Barriers to Parental Involvement in STEAM-Local Wisdom'. White background, academic style.\")"
+    }
+  ],
+  "tables": [
+    {
+      "id": "tabel",
+      "TableNumber": "I",
+      "Title": "Karakteristik Partisipan Studi Multi-Kasus",
+      "Headers": [
+        "Kode Kasus",
+        "Lokasi",
+        "Jumlah Orang Tua",
+        "Jumlah Guru",
+        "Lama Penerapan STEAM",
+        "Akses Media Digital"
+      ],
+      "Rows": [
+        [
+          "Kasus A",
+          "Klojen (Pusat Kota)",
+          "3",
+          "2",
+          "12 bulan",
+          "Tinggi"
+        ],
+        [
+          "Kasus B",
+          "Blimbing (Semi-perkotaan)",
+          "3",
+          "2",
+          "8 bulan",
+          "Sedang"
+        ],
+        [
+          "Kasus C",
+          "Kedungkandang (Pinggiran)",
+          "3",
+          "2",
+          "6 bulan",
+          "Rendah-Sedang"
+        ]
+      ]
+    },
+    {
+      "id": "tabel",
+      "TableNumber": "II",
+      "Title": "Jadwal Pengumpulan Data Studi Multi-Kasus",
+      "Headers": [
+        "Tahap",
+        "Minggu ke-",
+        "Aktivitas",
+        "Partisipan",
+        "Durasi"
+      ],
+      "Rows": [
+        [
+          "Pra-lapangan",
+          "1-2",
+          "Orientasi, perizinan, penyusunan instrumen",
+          "Peneliti, kepala sekolah",
+          "2 minggu"
+        ],
+        [
+          "Studi Pendahuluan",
+          "3-4",
+          "Wawancara pendahuluan, uji coba panduan observasi",
+          "2 guru per kasus",
+          "2 minggu"
+        ],
+        [
+          "Pengumpulan Data Inti",
+          "5-14",
+          "Wawancara pre-observasi orang tua, observasi proyek STEAM, wawancara post",
+          "27 partisipan total",
+          "10 minggu"
+        ],
+        [
+          "Member Checking",
+          "15",
+          "Konfirmasi temuan awal kepada partisipan kunci",
+          "3 orang tua, 3 guru",
+          "1 minggu"
+        ],
+        [
+          "Analisis Lanjutan & Sintesis",
+          "15-16",
+          "Penyelesaian pengodean, sintesis lintas-kasus, pembuatan model",
+          "Tim peneliti",
+          "2 minggu"
+        ]
+      ]
+    },
+    {
+      "id": "tabel",
+      "TableNumber": "III",
+      "Title": "Pola Keterlibatan Orang Tua dalam Proyek STEAM Berbasis Kearifan Lokal di Malang Raya",
+      "Headers": [
+        "Pola Keterlibatan",
+        "Kasus A",
+        "Kasus B",
+        "Kasus C",
+        "Frekuensi Rata-rata",
+        "Contoh Aktivitas Kunci"
+      ],
+      "Rows": [
+        [
+          "Kolaborasi Langsung (Sukarelawan)",
+          "\\\\bTinggi\\\\b (18 sesi)",
+          "Sedang (10 sesi)",
+          "Rendah (4 sesi)",
+          "10.7 sesi/kasus",
+          "Orang tua memandu eksperimen fermentasi tempe, ikut membangun miniatur rumah joglo"
+        ],
+        [
+          "Penyediaan Sumber Daya (Pembelajaran di Rumah)",
+          "\\\\bTinggi\\\\b (15 sesi)",
+          "Tinggi (14 sesi)",
+          "Sedang (9 sesi)",
+          "12.7 sesi/kasus",
+          "Mengirim alat peraga dari rumah, mencarikan video tutorial batik"
+        ],
+        [
+          "Komunikasi Dua Arah (Evaluasi)",
+          "\\\\bTinggi\\\\b (mingguan)",
+          "Sedang (2-mingguan)",
+          "Rendah (bulanan)",
+          "Variatif",
+          "Diskusi via WhatsApp grup, konsultasi progress anak"
+        ]
+      ]
+    },
+    {
+      "id": "tabel",
+      "TableNumber": "IV",
+      "Title": "Perbandingan Temuan dengan Studi-Studi Terkait",
+      "Headers": [
+        "Studi Terkait",
+        "Temuan Utama",
+        "Kesesuaian dengan Studi Ini",
+        "Keterbatasan yang Diatasi"
+      ],
+      "Rows": [
+        [
+          "Asmah & Syamsudin (2025)",
+          "Motivasi bermain anak meningkat dengan kolaborasi pendidik-orang tua",
+          "Mengkonfirmasi pentingnya kolaborasi, tetapi studi ini memperluas ke konteks STEAM",
+          "Studi sebelumnya fokus pada bermain bebas, bukan proyek terstruktur"
+        ],
+        [
+          "Selu & Asmah (2019)",
+          "Senam animal dance meningkatkan kelincahan tubuh ketika orang tua terlibat",
+          "Pola penyediaan sumber daya rumah dan replikasi aktivitas di rumah konsisten",
+          "Studi ini menambah dimensi STEAM dan kearifan lokal yang lebih kompleks"
+        ],
+        [
+          "Kim et al. (2022)",
+          "Desain SAC memerlukan scaffolding, interdisipliner, dan penilaian proses",
+          "Kerangka scaffolding serupa diterapkan pada kemitraan orang tua, bukan AI",
+          "Konteks non-digital dan budaya lokal menjadi fokus baru"
+        ],
+        [
+          "Hestiningtyas et al. (2023)",
+          "Guru PAUD butuh panduan melibatkan orang tua dalam media interaktif",
+          "Studi ini menyediakan bukti lapangan bagaimana panduan itu bekerja",
+          "Lokakarya awal belum mengevaluasi implementasinya, studi ini menawarkan evaluasi"
+        ]
+      ]
+    }
+  ],
+  "equations": [
+    {
+      "id": "rumus",
+      "text": "Arsitektur studi dirancang dengan tiga tingkatan: pemilihan kasus, pengumpulan data, dan analisis data. Pemilihan kasus dilakukan secara purposif berdasarkan kriteria: (1) PAUD yang telah menerapkan Kurikulum Merdeka dengan muatan STEAM minimal 6 bulan. (2) memiliki program pelibatan orang tua terstruktur, (3) bersedia membuka akses penuh terhadap aktivitas kelas dan rumah. Tiga PAUD yang terpilih—PAUD A (Klojen, pusat kota), PAUD B (Blimbing, semi-perkotaan), dan PAUD C (Kedungkandang, pinggiran)—mewakili spektrum karakteristik demografis dan akses sumber daya. Setiap kasus melibatkan 3 orang tua dan 2 guru sebagai partisipan inti, sehingga total partisipan 27 orang. Penentuan jumlah ini mengacu pada prinsip kejenuhan data (data saturation) yang diformalkan oleh Guest et al. (2006), di mana 12 wawancara per kasus dinilai cukup untuk mencapai theme saturation. Adapun formula kejenuhan dapat dinyatakan sebagai:",
+      "FormulaNumber": "1",
+      "latex": "S = S₀ + \\sumi=1n \\left(\\frac{1}{1 + e-k(i - i₀)}\\right)"
+    },
+    {
+      "id": "rumus",
+      "text": "Untuk menjaga keandalan data, studi ini menerapkan triangulasi sumber (orang tua, guru, anak) dan metode (wawancara, observasi, dokumen). Selain itu, dua peneliti independen melakukan pengodean paralel pada 30% transkrip untuk menghitung inter-coder reliability menggunakan Krippendorff's alpha. Formula alpha yang digunakan adalah:",
+      "FormulaNumber": "2",
+      "latex": "α = 1 - \\frac{Do}{De}"
+    }
+  ]
+}

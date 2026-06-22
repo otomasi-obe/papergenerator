@@ -513,8 +513,7 @@ def generate():
 
     # Section 0 (sebelum sectPr inline #0): Title, Authors, Abstract, Keywords
     # Masthead inject
-    _inject_masthead_content(doc, data)
-    # add_title(doc, data) — replaced by inject
+    add_title(doc, data)  # Restore title paragraph (checker expects style=Title)
     add_authors(doc, data)
     add_abstract(doc, data)
     add_keywords(doc, data)

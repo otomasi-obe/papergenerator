@@ -1,0 +1,98 @@
+============================================================
+[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT
+  Base Score: 100 | Penalty: -0 | Final: 100%
+============================================================
+[AUDIT] Scanning: MDPI.docx vs mdpi_template_test.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 1, Output: 1
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 20 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 1, Output: 1
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 9
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, invalid: 0)
+  [C] Ekspektasi dari _template.json   : 7
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 0, extra: 0
+  Gambar fisik di Original (referensi)  : 3
+  [OK] Semua gambar/prompt sesuai JSON, tidak ada placeholder usang.
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 7 | Figures dengan referensi: 7 | Caption-first valid: 7 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=15 out=15 | AbstractIds: orig=9 out=9
+  [OK] Heading numbering konsisten.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 4 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 4 | OK: 4 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: NO_BORDERS
+  [OK] Semua tabel data punya border match dengan template.
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 7 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di top paragraphs)...
+  Logo original: 2 | Logo output: 2 | Preservation rate: 100.0% | Missing: 0
+  Original logo rIds: ['rId3', 'rId4']
+  Preserved rIds: ['rId3', 'rId4']
+  [OK] Semua logo jurnal (branding) dipertahankan di output.
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 1, Output: 1
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 4, Output: 3, Expected (orig + JSON): 4 (JSON tables: 3, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 0
+  [OK] Jumlah tabel body sesuai (dalam toleransi).
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 1, Output: 1 | Original berkonten: 1 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+============================================================
+[PASS] AUDIT LULUS: dokumen output presisi terhadap template original.
+
+[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT

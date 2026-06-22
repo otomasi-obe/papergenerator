@@ -50,6 +50,7 @@ from tools.paperfull.jobs import jobs
 from tools.editor.papers import papers
 from utils.quota import quota, quota_exceeded
 from tools.Literatur.slr_api import slr_api
+from tools.Literatur.slr_api_v2 import register_slr_v2
 # from tools.chat.workflow_api import workflow_api
 from utils.ai_tools.tools_api import tools_api
 from utils.logging import logging_api
@@ -190,11 +191,9 @@ if _domain:
 # recommended to set a dedicated rotating value.
 app.config["SIGNED_URL_SECRET"] = os.getenv("SIGNED_URL_SECRET") or _secret_key
 
-# Per-request body cap. Each PaperFile is capped at 10 MB by files_bp itself,
-# but multipart uploads bundle all selected files in one POST so 4 PDFs of
-# ~9 MB each used to 413 the request. Bumped to 60 MB so up to 5 large PDFs
-# can ride the same multipart payload (form overhead included).
-app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2GB total upload (unrestricted)
+# Per-request body cap. 100MB — prevents DoS via memory exhaustion while still
+# allowing multi-file uploads of large PDFs (~10MB each × multiple files).
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB
 
 
 # Friendlier 413 — Werkzeug's default returns an HTML page that the chat
@@ -446,6 +445,7 @@ app.register_blueprint(data_jobs)
 app.register_blueprint(jobs)
 app.register_blueprint(image_jobs)
 app.register_blueprint(slr_api)
+app.register_blueprint(register_slr_v2())
 app.register_blueprint(quota)
 app.register_blueprint(health)
 app.register_blueprint(tools_api)
@@ -639,6 +639,8 @@ def _available_journals():
     return sorted(set(codes), key=str.lower)
 
 
+_JOURNAL_CODE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+
 def _resolve_journal_code(raw: str | None) -> str:
     available = _available_journals()
     if not available:
@@ -656,7 +658,18 @@ def _resolve_journal_code(raw: str | None) -> str:
 
     # Case-insensitive match to avoid client-side casing bugs
     m = {c.lower(): c for c in available}
-    return m.get(raw_norm.lower(), raw_norm)
+    resolved = m.get(raw_norm.lower())
+    if resolved:
+        return resolved
+    # Handle MDPI sub-journals: MDPI_acoustics → canonical 'MDPI'
+    if raw_norm.lower().startswith('mdpi_') and len(raw_norm) > 5:
+        if 'mdpi' in m:
+            return 'MDPI'
+        raise ValueError(f"MDPI journal template exists but sub-journal not resolved: {raw_norm!r}")
+    # Unknown journal code — must match safe pattern to prevent import injection
+    if not _JOURNAL_CODE_RE.match(raw_norm):
+        raise ValueError(f"Invalid journal code: {raw_norm!r}")
+    return raw_norm
 
 
 def _count_inline_gambar(obj, depth=0) -> int:
@@ -774,11 +787,16 @@ def _make_generate_adapter(mod, gen_fn):
                 pd = _data.get("paper_data", {})
                 # Handle both old format (paper_data = flat) and new format (paper_data = {"paper": ...})
                 _paper = pd.get("paper", pd) if isinstance(pd, dict) else _data
+                # Inject figures/tables from paper_data level into paper for generator
+                if isinstance(_paper, dict) and isinstance(pd, dict):
+                    for key in ("figures", "tables", "equations"):
+                        if key in pd and key not in _paper:
+                            _paper[key] = pd[key]
             if isinstance(_paper, dict) and "figures" in _paper:
                 _distribute_figures_to_sections(_paper)
-            # Always save the unwrapped version so generators get a flat
-            # structure with sections at the top level.
-            _to_save = _paper if was_wrapped else _data
+            # Always save the modified version so generators see distributed figures
+            # when the data isn't wrapped in paper_data.
+            _to_save = _paper
             with open(str(_json_path), "w", encoding="utf-8") as _f:
                 json.dump(_to_save, _f, ensure_ascii=False, indent=2)
         except Exception:
@@ -814,12 +832,17 @@ def _get_builder_for_journal(journal_code: str):
     Falls back to a ``generate()``-adapter for legacy single-entry generators
     that don't expose a ``build_document(json_path, output_path)`` signature.
     """
+    # Security: reject codes with dots, slashes, or other special chars that could
+    # lead to arbitrary module imports (e.g. "..os" → import os)
+    if not _JOURNAL_CODE_RE.match(journal_code):
+        raise ValueError(f"Invalid journal code (special chars not allowed): {journal_code!r}")
     available = _available_journals()
     m = {c.lower(): c for c in available}
     canonical = m.get(journal_code.lower())
     if not canonical:
         raise ValueError(f"Unknown journal template: {journal_code}")
     mod = importlib.import_module(f"tools.Journal.{canonical}gen")
+    mod = importlib.reload(mod)  # always use latest on-disk version
     builder = getattr(mod, "build_document", None)
     if callable(builder):
         return canonical, builder
@@ -1749,8 +1772,10 @@ def upload_pdfs():
             continue
         if filename.endswith(".pdf"):
             payloads.append(("pdf", f.filename, data))
-        elif filename.endswith(".docx") or filename.endswith(".doc"):
+        elif filename.endswith(".docx"):
             payloads.append(("docx", f.filename, data))
+        elif filename.endswith(".doc"):
+            payloads.append(("doc_legacy", f.filename, data))
         else:
             warnings.append(f"{f.filename}: format tidak didukung (hanya PDF dan DOCX)")
 
@@ -1758,7 +1783,26 @@ def upload_pdfs():
         try:
             if kind == "pdf":
                 return extract_text_from_pdf(io.BytesIO(blob))
-            doc = Document(io.BytesIO(blob))
+            if kind == "doc_legacy":
+                # Convert .doc → .docx via LibreOffice, then extract text
+                import tempfile, subprocess  # noqa: PLC0415
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    doc_path = os.path.join(tmpdir, name)
+                    with open(doc_path, "wb") as fh:
+                        fh.write(blob)
+                    subprocess.run(
+                        ["libreoffice", "--headless", "--convert-to", "docx", "--outdir", tmpdir, doc_path],
+                        capture_output=True, timeout=60,
+                    )
+                    conv_name = name.rsplit(".", 1)[0] + ".docx"
+                    conv_path = os.path.join(tmpdir, conv_name)
+                    if os.path.exists(conv_path):
+                        with open(conv_path, "rb") as fh:
+                            doc = Document(fh)
+                    else:
+                        return f"[Error converting {name}: output docx not found]"
+            else:
+                doc = Document(io.BytesIO(blob))
             return "\n".join(p.text for p in doc.paragraphs)
         except Exception as e:
             return f"[Error reading {name}: {e}]"
@@ -1798,6 +1842,42 @@ _FILENAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 def list_journals():
     try:
         return jsonify({"journals": _available_journals()})
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
+
+
+_MDPI_JOURNALS_CACHE = None
+
+def _mdpi_journals():
+    """Return MDPI sub-journal metadata from journals.json (cached)."""
+    global _MDPI_JOURNALS_CACHE
+    if _MDPI_JOURNALS_CACHE is not None:
+        return _MDPI_JOURNALS_CACHE
+    journals_path = TEMPLATE_FOLDER / "journals.json"
+    if not journals_path.exists():
+        _MDPI_JOURNALS_CACHE = []
+        return []
+    import json as _json
+    data = _json.loads(journals_path.read_text(encoding="utf-8"))
+    _MDPI_JOURNALS_CACHE = [
+        {
+            "key": v.get("key", k),
+            "short_name": v.get("short_name", k),
+            "year": v.get("year", 2025),
+            "volume": v.get("volume", 1),
+        }
+        for k, v in data.items()
+    ]
+    # Sort by short_name
+    _MDPI_JOURNALS_CACHE.sort(key=lambda j: j["short_name"].lower())
+    return _MDPI_JOURNALS_CACHE
+
+
+@app.route("/api/journals/mdpi", methods=["GET"])
+@jwt_required()
+def list_mdpi_journals():
+    try:
+        return jsonify({"mdpi_journals": _mdpi_journals()})
     except Exception as e:
         return jsonify({"error": "Internal server error"}), 500
 
@@ -2000,10 +2080,8 @@ def export_docx():
 WORD_ADDON_DIR = Path(__file__).parent / "word_addon"
 
 
-_WORD_ADDON_ORIGINS = {
-    "http://localhost:1000", "http://localhost:5173",
-    "http://localhost:3001", "http://localhost:8000",
-}
+_WORD_ADDON_ORIGINS_RAW = os.getenv("WORD_ADDON_CORS_ORIGINS", "http://localhost:1000,http://localhost:5173,http://localhost:3001,http://localhost:8000")
+_WORD_ADDON_ORIGINS = {o.strip() for o in _WORD_ADDON_ORIGINS_RAW.split(",") if o.strip()}
 
 
 def _office_cors(resp):
@@ -2109,9 +2187,29 @@ def word_addon_extract():
             return _office_cors(jsonify({"error": "File too large (max 30MB)"})), 413
         if filename.endswith(".pdf"):
             text = extract_text_from_pdf(io.BytesIO(data))
-        elif filename.endswith((".docx", ".doc")):
+        elif filename.endswith(".docx"):
             doc = Document(io.BytesIO(data))
             text = "\n".join(p.text for p in doc.paragraphs)
+        elif filename.endswith(".doc"):
+            # Convert .doc → .docx via LibreOffice
+            import tempfile, subprocess  # noqa: PLC0415
+            name = file.filename
+            with tempfile.TemporaryDirectory() as tmpdir:
+                doc_path = os.path.join(tmpdir, name)
+                with open(doc_path, "wb") as fh:
+                    fh.write(data)
+                subprocess.run(
+                    ["libreoffice", "--headless", "--convert-to", "docx", "--outdir", tmpdir, doc_path],
+                    capture_output=True, timeout=60,
+                )
+                conv_name = name.rsplit(".", 1)[0] + ".docx"
+                conv_path = os.path.join(tmpdir, conv_name)
+                if os.path.exists(conv_path):
+                    with open(conv_path, "rb") as fh:
+                        doc = Document(fh)
+                        text = "\n".join(p.text for p in doc.paragraphs)
+                else:
+                    return _office_cors(jsonify({"error": f"Failed to convert {name}"})), 500
         elif filename.endswith(".txt"):
             text = data.decode("utf-8", errors="replace")
         else:

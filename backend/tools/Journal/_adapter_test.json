@@ -1,0 +1,866 @@
+{
+  "journal": "AEJ",
+  "title": "Perancangan Sistem Kendali PID pada Lengan Robot Industri untuk Peningkatan Presisi Pengelasan Komponen Otomotif",
+  "authors": [
+    {
+      "affiliation": "Universitas Diponegoro",
+      "email": "annabilhisyammuyassa@students.undip.ac.id",
+      "location": "Semarang, Indonesia",
+      "name": "Annabil Hisyam"
+    }
+  ],
+  "abstract": "Presisi pengelasan pada lengan robot industri menjadi faktor krusial dalam produksi komponen otomotif, namun gangguan eksternal dan non-linearitas aktuator sering menyebabkan deviasi lintasan. Penelitian ini merancang sistem kendali Proporsional-Integral-Derivatif (PID) yang dioptimalkan untuk meningkatkan akurasi posisi ujung lengan robot pada proses pengelasan titik. Metode meliputi pemodelan kinematik lengan robot enam derajat kebebasan menggunakan transformasi Denavit-Hartenberg, penentuan parameter PID melalui metode Ziegler-Nichols, serta simulasi menggunakan MATLAB/Simulink. Hasil simulasi menunjukkan bahwa sistem kendali PID mampu mengurangi kesalahan keadaan tunak hingga nilai $X_1$ mm dan waktu naik $X_2$ detik. dengan overshoot maksimum $X_3$ persen. Dibandingkan dengan kendali proporsional murni dan kendali on-off, PID memberikan perbaikan waktu penetapan sebesar $X_4$ persen dan penurunan overshoot sebesar $X_5$ persen. Temuan ini mengindikasikan bahwa kendali PID dapat diandalkan untuk aplikasi pengelasan robotik yang memerlukan presisi tinggi.",
+  "keywords": [
+    "kendali PID",
+    "lengan robot",
+    "pengelasan otomotif",
+    "presisi",
+    "simulasi MATLAB",
+    "Ziegler-Nichols"
+  ],
+  "section1": {
+    "title": "Pendahuluan",
+    "content": [
+      {
+        "id": "text",
+        "text": "Industri otomotif global terus mendorong peningkatan produktivitas dan kualitas melalui otomatisasi proses produksi. Salah satu proses yang menuntut presisi tinggi adalah pengelasan komponen bodi kendaraan, di mana deviasi posisi ujung lengan robot dapat menyebabkan cacat sambungan [1]. Lengan robot enam sumbu telah diadopsi secara luas karena fleksibilitasnya, tetapi ketidaklinearan aktuator dan gesekan sendi menimbulkan tantangan dalam kontrol lintasan. Oleh karena itu, diperlukan sistem kendali yang mampu mempertahankan akurasi posisi sepanjang lintasan pengelasan."
+      },
+      {
+        "id": "text",
+        "text": "Penelitian sebelumnya telah mengeksplorasi berbagai strategi kendali untuk lengan robot. Kendali Proporsional-Integral-Derivatif (PID) tetap menjadi pilihan utama karena kesederhanaan dan efektivitasnya dalam banyak aplikasi industri [2]. Namun, parameter tetap PID seringkali tidak mencukupi saat menghadapi beban variabel dan perubahan lingkungan [3]. Hal ini mendorong pengembangan metode adaptif dan penalaan otomatis, termasuk penggunaan algoritma optimasi seperti Particle Swarm Optimization (PSO) dan Genetic Algorithm (GA). Meskipun demikian, implementasi metode tersebut memerlukan sumber daya komputasi yang lebih besar dan belum tentu sesuai untuk sistem lengan robot skala kecil-menengah [4]."
+      },
+      {
+        "id": "text",
+        "text": "Kesenjangan penelitian yang teridentifikasi adalah belum adanya studi yang secara spesifik merancang dan menguji kendali PID untuk pengelasan titik pada komponen otomotif dengan mempertimbangkan karakteristik beban dinamis dan gangguan eksternal. Sebagian besar penelitian berfokus pada aplikasi robot bongkar muat atau perakitan yang memiliki tuntutan presisi lebih rendah [5]. Oleh karena itu, penelitian ini bertujuan merancang sistem kendali PID yang dituning dengan metode Ziegler-Nichols dan memvalidasi kinerjanya melalui simulasi yang merepresentasikan skenario pengelasan sebenarnya."
+      },
+      {
+        "id": "text",
+        "text": "Kontribusi spesifik penelitian ini meliputi:"
+      },
+      {
+        "id": "text",
+        "text": "• Perancangan model kinematik lengan robot enam derajat kebebasan untuk lintasan pengelasan komponen otomotif."
+      },
+      {
+        "id": "text",
+        "text": "• Penentuan parameter PID optimal menggunakan metode Ziegler-Nichols kedua yang disesuaikan dengan respons loop tertutup."
+      },
+      {
+        "id": "text",
+        "text": "• Analisis komparatif kinerja kendali PID terhadap kendali proporsional murni dan kendali on-off pada indikator overshoot, waktu naik, waktu penetapan, dan kesalahan keadaan tunak."
+      },
+      {
+        "id": "text",
+        "text": "• Rekomendasi parameter awal untuk implementasi nyata pada pengontrol lengan robot berbasis mikrokontroler atau PLC."
+      },
+      {
+        "id": "text",
+        "text": "Sistematika penulisan paper ini adalah sebagai berikut. Bagian 2 menyajikan tinjauan pustaka mencakup penelitian terdahulu dan kerangka teoritis kendali PID serta pemodelan robot. Bagian 3 menjelaskan metodologi perancangan, termasuk pemodelan kinematik, penalaan PID, dan prosedur simulasi. Bagian 4 memaparkan hasil simulasi serta pembahasan yang membandingkan dengan metode lain. Bagian 5 memberikan kesimpulan dan saran untuk penelitian selanjutnya."
+      },
+      {
+        "type": "figure",
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": "",
+        "Path": "flowchart_tuning.jpg"
+      }
+    ]
+  },
+  "section2": {
+    "title": "Tinjauan Pustaka",
+    "content": [
+      {
+        "id": "text",
+        "text": "Tinjauan pustaka ini mengkaji studi-studi terkait kendali posisi lengan robot serta kerangka teoritis yang mendasari perancangan sistem kendali PID untuk pengelasan."
+      },
+      {
+        "type": "figure",
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": "",
+        "Path": "control_block_diagram.jpg"
+      }
+    ],
+    "section2a": {
+      "title": "Tinjauan Penelitian Terdahulu",
+      "content": [
+        {
+          "id": "text",
+          "text": "Penelitian di bidang kendali lengan robot telah banyak dilakukan dengan berbagai pendekatan. Smith et al. [6] mengimplementasikan kendali PID adaptif menggunakan algoritma Recursive Least Squares (RLS) pada lengan robot 3-DOF. Hasil eksperimen menunjukkan pengurangan kesalahan jejak sebesar $Y_1$ mm dibandingkan PID tetap. Namun, metode ini memerlukan pembaruan parameter secara online yang membebani prosesor."
+        },
+        {
+          "id": "text",
+          "text": "Chen dan Li [7] mengusulkan kendali PID berbasis jaringan syaraf tiruan untuk kompensasi gesekan pada sendi robot. Skema ini berhasil menurunkan overshoot hingga $Y_2$ persen tetapi memakan waktu pelatihan yang panjang. Sementara itu, Kumar et al. [8] membandingkan kinerja PID dengan kendali logika fuzzy pada lengan robot pengelasan. Mereka melaporkan bahwa kendali fuzzy unggul dalam menangani non-linearitas, namun implementasinya lebih kompleks."
+        },
+        {
+          "id": "text",
+          "text": "Dalam domain pengelasan robotik, Gonzalez et al. [9] merancang kendali solid $H_\\infty$ untuk menjaga kualitas las meskipun ada gangguan. Pendekatan tersebut memberikan jaminan stabilitas tetapi menghasilkan pengontrol orde tinggi yang sulit direalisasikan pada pengontrol industri murah. Penelitian lain oleh Park dan Kim [10] berfokus pada penalaan PID otomatis menggunakan optimasi Particle Swarm (PSO) untuk robot SCARA. memperoleh waktu penetapan rata-rata $Y_3$ detik."
+        },
+        {
+          "id": "text",
+          "text": "Keterbatasan yang terlihat dari penelitian-penelitian tersebut adalah: (1) sebagian besar menggunakan lengan robot dengan jumlah sumbu terbatas (3 atau 4 DOF), (2) beban yang digunakan tidak mewakili kondisi pengelasan titik dengan massa elektroda dan gaya kontak, dan (3) tidak ada yang secara eksplisit mempertimbangkan gangguan dari pergerakan konveyor atau getaran mesin. Oleh karena itu, penelitian ini mengisi gap dengan merancang PID untuk lengan robot 6-DOF pada skenario pengelasan komponen otomotif yang mencakup beban variabel."
+        },
+        {
+          "id": "text",
+          "text": "Selain itu, beberapa studi menggunakan data eksperimental nyata, namun penelitian ini memanfaatkan simulasi untuk menyediakan baseline perbandingan yang terkontrol. Hal ini penting karena variasi kondisi lapangan sulit direproduksi secara konsisten [11]."
+        }
+      ]
+    },
+    "section2b": {
+      "title": "Kerangka Teoritis",
+      "content": [
+        {
+          "id": "text",
+          "text": "Sistem kendali PID terdiri dari tiga komponen: aksi proporsional (P), integral (I), dan derivatif (D). Persamaan kendali PID kontinu dinyatakan oleh"
+        },
+        {
+          "FormulaNumber": "1",
+          "id": "rumus",
+          "latex": "u(t) = K_p e(t) + K_i \\int_0^t e(\\tau) d\\tau + K_d \\frac{de(t)}{dt}"
+        },
+        {
+          "id": "text",
+          "text": "dengan $u(t)$ adalah sinyal kontrol, $e(t)$ adalah error posisi (selisih antara posisi referensi dan aktual), $K_p$ adalah gain proporsional, $K_i$ adalah gain integral, $K_d$ adalah gain derivatif. Komponen P mengurangi error saat ini, komponen I menghilangkan offset keadaan tunak, dan komponen D memberikan efek antisipatif terhadap perubahan error. Penalaan parameter PID yang tepat sangat penting untuk mencapai trade-off antara respons cepat dan kestabilan."
+        },
+        {
+          "id": "text",
+          "text": "Pemodelan kinematik lengan robot menggunakan parameter Denavit-Hartenberg (DH) menyediakan hubungan antara sudut sendi dengan posisi dan orientasi ujung lengan. Matriks transformasi homogen $T_i^{i-1}$ untuk sendi ke-$i$ didefinisikan oleh parameter $\\theta_i$, $d_i$, $a_i$, dan $\\alpha_i$. Rantai kinematik total diperoleh dengan perkalian matriks: $T_6^0 = T_1^0 T_2^1 \\dots T_6^5$."
+        },
+        {
+          "FormulaNumber": "2",
+          "id": "rumus",
+          "latex": "T_ii-1 = \\begin{bmatrix} \\cos \\theta_i & -\\sin \\theta_i \\cos α_i & \\sin \\theta_i \\sin α_i & a_i \\cos \\theta_i \\\\ \\sin \\theta_i & \\cos \\theta_i \\cos α_i & -\\cos \\theta_i \\sin α_i & a_i \\sin \\theta_i \\\\ 0 & \\sin α_i & \\cos α_i & d_i \\\\ 0 & 0 & 0 & 1 \\end{bmatrix}"
+        },
+        {
+          "id": "text",
+          "text": "Persamaan (2) di atas digunakan untuk menghitung posisi ujung lengan dalam kerangka koordinat basis. Untuk lintasan pengelasan, diperlukan perencanaan jalur dalam ruang kerja yang menghasilkan trayektori posisi dan orientasi yang halus."
+        },
+        {
+          "id": "text",
+          "text": "Metode penalaan Ziegler-Nichols kedua (closed-loop) dilakukan dengan mengatur $K_i=0$. $K_d=0$ lalu meningkatkan $K_p$ hingga sistem berosilasi pada batas kestabilan, menghasilkan gain ultimat $K_u$ dan periode ultimat $T_u$. Parameter PID kemudian ditentukan berdasarkan tabel Ziegler-Nichols klasik. Meskipun sederhana, metode ini memberikan parameter awal yang cukup baik untuk kebanyakan proses industri [12]."
+        },
+        {
+          "ImageNumber": "1",
+          "Path": "flowchart_tuning.jpg",
+          "Prompt": "(create an image A block diagram of a closed-loop position control system for a robotic arm welding application. The diagram shows a reference position input (r) entering a summing junction with a minus sign for feedback. The error signal e flows into a PID controller block containing three parallel paths: proportional gain Kp, integral gain Ki with 1/s. derivative gain Kd with s. The output of the PID controller goes into a saturation limiter then into the plant model block representing the industrial robot arm dynamics (transfer function with inertia and friction). The plant output (actual position) is measured by an encoder sensor with a gain block and fed back to the summing junction. The welding torch end-effector is shown as a block after the plant. The diagram includes labeled signals: e(t) error, u(t) control signal, and y(t) output position. Use clean academic style with blue lines, black text, white background. Add small arrowheads on signal lines, and and Use rectangular blocks with rounded corners. Title the diagram 'Sistem Kendali Posisi Loop Tertutup dengan PID'. White background, and and Clean academic paper figure style.)",
+          "Title": "Diagram blok sistem kendali posisi lengan robot dengan kendali PID",
+          "id": "gambar"
+        },
+        {
+          "id": "text",
+          "text": "Gambar 1 memperlihatkan diagram blok sistem kendali posisi yang digunakan. Sinyal referensi $r$ berupa posisi sudut sendi yang direncanakan dari lintasan pengelasan. Error $e = r - y$ diumpankan ke pengontrol PID, yang menghasilkan sinyal kontrol $u$ setelah melalui penjenuhan (saturation) untuk membatasi torsi motor. Blok plant terdiri dari dinamika lengan robot termasuk inersia, gesekan, dan kopling antar sendi. Sensor encoder memberikan umpan balik posisi aktual $y$."
+        }
+      ]
+    }
+  },
+  "section3": {
+    "title": "Metodologi",
+    "content": [
+      {
+        "id": "text",
+        "text": "Bab ini menjelaskan langkah-langkah perancangan sistem kendali PID pada lengan robot industri untuk pengelasan. Metode mencakup pemodelan kinematik, penentuan parameter PID, serta prosedur simulasi."
+      },
+      {
+        "type": "figure",
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": "",
+        "Path": "system_architecture.jpg"
+      }
+    ],
+    "section3a": {
+      "title": "Desain dan Arsitektur Sistem",
+      "content": [
+        {
+          "id": "text",
+          "text": "Sistem yang dirancang terdiri dari lengan robot 6-DOF dengan konfigurasi sendi rotasi. Parameter Denavit-Hartenberg untuk lengan robot ditetapkan berdasarkan spesifikasi robot industri umum (misal model Fanuc M-710iC). Tabel I menyajikan parameter DH yang digunakan."
+        },
+        {
+          "Headers": [
+            "Sendi",
+            "\\iθ_i (rad)\\i",
+            "\\id_i (mm)\\i",
+            "\\ia_i (mm)\\i",
+            "\\iα_i (rad)\\i"
+          ],
+          "Rows": [
+            [
+              "1",
+              "q1",
+              "a1",
+              "a2",
+              "π/2"
+            ],
+            [
+              "2",
+              "q2",
+              "0",
+              "a3",
+              "0"
+            ],
+            [
+              "3",
+              "q3",
+              "0",
+              "a4",
+              "0"
+            ],
+            [
+              "4",
+              "q4",
+              "a5",
+              "0",
+              "-π/2"
+            ],
+            [
+              "5",
+              "q5",
+              "0",
+              "0",
+              "π/2"
+            ],
+            [
+              "6",
+              "q6",
+              "a6",
+              "0",
+              "0"
+            ]
+          ],
+          "TableNumber": "I",
+          "Title": "Parameter Denavit-Hartenberg Lengan Robot 6-DOF",
+          "id": "tabel"
+        },
+        {
+          "id": "text",
+          "text": "Parameter $a_1$ sampai $a_6$ merupakan panjang lengan dan offset yang diperoleh dari lembar data robot industri. Sudut sendi $q_1$ hingga $q_6$ adalah variabel yang dikendalikan. Matriks transformasi total $T_6^0$ dihitung menggunakan perkalian matriks dari Persamaan (2), kemudian digunakan untuk memperoleh posisi ujung lengan dalam kerangka basis."
+        },
+        {
+          "ImageNumber": "2",
+          "Path": "control_block_diagram.jpg",
+          "Prompt": "(create an image A system architecture diagram for a robotic welding cell using PID-controlled manipulator. The diagram has three main sections: (1) Robot Controller - a computer block labeled 'PID Controller' with inputs from a trajectory planner, outputs to servo drives. (2) Welding Equipment - a welding power source connected to a welding torch end-effector mounted on robot flange, with gas supply line and wire feeder; (3) Workpiece - an automotive body panel (door or fender) on a fixture with clamping devices. Signal flow arrows: trajectory reference (position points) from offline programming software to PID controller, feedback from encoder sensors on each robot joint (6 joints indicated with small circles), control signal to motor amplifiers. monitoring signals to PC. Include labels: 'Trajectory Generator', 'PID Control Law', 'Servo Drive', 'Encoder Feedback', 'Welding Torch', 'Workpiece', 'Fixture'. Use clean block diagram style, black and white with blue accents. Add a dashed box around the robot arm showing its 6 joints. White background, and Clean academic paper figure style.)",
+          "Title": "Arsitektur sistem kendali PID pada lengan robot untuk pengelasan komponen otomotif",
+          "id": "gambar"
+        },
+        {
+          "id": "text",
+          "text": "Gambar 2 menunjukkan arsitektur keseluruhan sistem. Trajektori pengelasan dihasilkan oleh perangkat lunak CAM offline, menghasilkan posisi referensi setiap sendi per interval waktu. Pengontrol PID pada masing-masing sendi menghitung sinyal torsi yang diperlukan untuk mencapai posisi tersebut. Umpan balik dari encoder resolusi tinggi memberikan informasi posisi aktual setiap sendi dengan presisi mikrometer."
+        },
+        {
+          "FormulaNumber": "3",
+          "id": "rumus",
+          "latex": ""
+        }
+      ]
+    },
+    "section3b": {
+      "title": "Implementasi dan Prosedur Eksperimen",
+      "content": [
+        {
+          "id": "text",
+          "text": "Simulasi dilakukan menggunakan MATLAB/Simulink R2023a. Pemodelan plant menggunakan fungsi alih orde dua plus waktu tunda untuk merepresentasikan dinamika satu sendi dengan beban elektroda las. Fungsi alih yang digunakan adalah"
+        },
+        {
+          "FormulaNumber": "4",
+          "id": "rumus",
+          "latex": "G(s) = \\frac{K}{\\tau s + 1} e-Ls"
+        },
+        {
+          "id": "text",
+          "text": "dengan $K$ adalah gain statis, $\\tau$ konstanta waktu, dan $L$ waktu tunda. Parameter $K$, $\\tau$, dan $L$ diperoleh dari identifikasi respons step hasil eksperimen pada lengan robot nyata (nilai placeholder: $K = a_1$, $\\tau = a_2$, $L = a_3$)."
+        },
+        {
+          "id": "text",
+          "text": "Penalaan PID dilakukan menggunakan metode Ziegler-Nichols closed-loop. Langkah-langkah: (1) set $K_i=0$, $K_d=0$, (2) tingkatkan $K_p$ hingga sistem berosilasi pada frekuensi ultimat $\\omega_u$, catat $K_u$ dan periode ultimat $T_u$, (3) hitung parameter PID berdasarkan Tabel II."
+        },
+        {
+          "Headers": [
+            "Tipe Kontrol",
+            "\\bK_p\\b",
+            "\\bT_i\\b",
+            "\\bT_d\\b"
+          ],
+          "Rows": [
+            [
+              "P",
+              "0.5 K_u",
+              "∞",
+              "0"
+            ],
+            [
+              "PI",
+              "0.45 K_u",
+              "0.83 T_u",
+              "0"
+            ],
+            [
+              "PID",
+              "0.6 K_u",
+              "0.5 T_u",
+              "0.125 T_u"
+            ]
+          ],
+          "TableNumber": "II",
+          "Title": "Parameter PID dari Metode Ziegler-Nichols Closed-Loop",
+          "id": "tabel"
+        },
+        {
+          "id": "text",
+          "text": "Setelah parameter PID diperoleh ($K_p = a_4$, $K_i = a_5$, $K_d = a_6$), simulasi dijalankan dengan sinyal referensi berupa step unit dan sinyal ramp yang merepresentasikan lintasan gerak kontinyu selama pengelasan. Skenario pengujian meliputi: (a) respons tanpa beban, (b) respons dengan beban elektroda (massa $m = a_7$ kg), (c) respons dengan gangguan sinusoidal (amplitude $A = a_8$, frekuensi $f = a_9$ Hz) mensimulasikan getaran konveyor."
+        },
+        {
+          "ImageNumber": "3",
+          "Path": "system_architecture.jpg",
+          "Prompt": "(create an image A flowchart illustrating the PID tuning and simulation procedure. Start with 'Mulai' (Start) oval. Then rectangles: 'Identifikasi plant (step test)' -> 'Ukur K. τ, L' -> 'Set Ki=0, Kd=0' -> 'Naikkan Kp hingga osilasi stabil' -> 'Catat Ku dan Tu' -> 'Hitung Kp, Ki, Kd dari tabel ZN' -> 'Implementasikan di Simulink' -> 'Jalankan simulasi step dan ramp' -> 'Catat respons (overshoot, settling time, rise time, steady-state error)'. A decision diamond after 'Catat respons': 'Overshoot < 5%?' If YES: 'Selesai' (End). If NO: 'Sesuaikan Kp, Ki, Kd secara manual' and loop back to 'Implementasikan di Simulink'. Use standard flowchart symbols with arrows. Color: blue for process boxes, green for decision, red for start/end. Add labels for each symbol, but White background. Clean academic paper figure style.)",
+          "Title": "Diagram alir prosedur penalaan PID dan simulasi",
+          "id": "gambar"
+        },
+        {
+          "id": "text",
+          "text": "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika setelah penerapan parameter Ziegler-Nichols overshoot melebihi $5\\%$, dilakukan fine-tuning manual dengan mengurangi $K_p$ dan menambah $K_d$ untuk meredam osilasi."
+        }
+      ]
+    },
+    "section3c": {
+      "title": "Algoritma Kendali dan Simulasi",
+      "content": [
+        {
+          "id": "text",
+          "text": "Implementasi algoritma kendali PID diskrit menggunakan metode backward difference untuk aproksimasi integral dan derivatif. Persamaan rekursif PID digital diberikan oleh"
+        },
+        {
+          "FormulaNumber": "5",
+          "id": "rumus",
+          "latex": "u_k = K_p e_k + K_i T_s \\sumj=0^k e_j + \\frac{K_d}{T_s} (e_k - ek-1)"
+        },
+        {
+          "id": "text",
+          "text": "dengan $u_k$ adalah keluaran kontrol pada langkah ke-$k$, $T_s$ adalah waktu cuplik (sampling time), $e_k$ error pada langkah ke-$k$, dan $e_{k-1}$ error sebelumnya. Parameter $K_p$, $K_i$, $K_d$ diperoleh dari Tabel II. Waktu cuplik ditetapkan $T_s = a_{10}$ ms, cukup cepat dibandingkan dinamika plant."
+        },
+        {
+          "id": "text",
+          "text": "Simulasi dilakukan untuk tiga konfigurasi kendali: PID, proporsional (P) murni dengan $K_p=K_u/2$, dan kendali on-off (bang-bang) dengan histeresis 0.1 mm. Skenario beban dan gangguan diterapkan secara terpisah. Metrik kinerja yang dicatat adalah overshoot ($M_p$), waktu naik ($t_r$), waktu penetapan ($t_s$) dengan kriteria 2%, dan kesalahan keadaan tunak ($e_{ss}$). Pengukuran dilakukan untuk respons step dan respons ramp (kecepatan konstan 0.1 m/s)."
+        }
+      ]
+    }
+  },
+  "section4": {
+    "title": "Hasil dan Pembahasan",
+    "content": [
+      {
+        "id": "text",
+        "text": "Bab ini menyajikan hasil simulasi sistem kendali PID pada lengan robot serta analisis perbandingan dengan metode kendali lainnya."
+      },
+      {
+        "type": "figure",
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": "",
+        "Path": "step_response_plot.jpg"
+      }
+    ],
+    "section4a": {
+      "title": "Hasil Simulasi Respons Step",
+      "content": [
+        {
+          "id": "text",
+          "text": "Hasil simulasi respons step untuk ketiga konfigurasi kendali tanpa beban tambahan disajikan pada Tabel III. Parameter PID hasil penalaan Ziegler-Nichols adalah $K_p = a_4$, $K_i = a_5$, $K_d = a_6$. Dari tabel terlihat bahwa PID menghasilkan overshoot terkecil ($M_p = X_1$%) dibandingkan kendali P ($M_p = X_2$%) dan kendali on-off ($M_p = X_3$%). Waktu naik PID lebih cepat dibandingkan kendali P, namun lebih lambat daripada kendali on-off."
+        },
+        {
+          "Headers": [
+            "Metode Kendali",
+            "\\bOvershoot $M_p$ (%) \\b",
+            "\\bWaktu Naik $t_r$ (s) \\b",
+            "\\bWaktu Penetapan $t_s$ (s) \\b",
+            "\\bKesalahan Keadaan Tunak $e_{ss}$ (mm) \\b"
+          ],
+          "Rows": [
+            [
+              "PID",
+              "X1",
+              "X2",
+              "X3",
+              "X4"
+            ],
+            [
+              "Proporsional (P)",
+              "X5",
+              "X6",
+              "X7",
+              "X8"
+            ],
+            [
+              "On-Off",
+              "X9",
+              "X10",
+              "X11",
+              "X12"
+            ]
+          ],
+          "TableNumber": "III",
+          "Title": "Perbandingan Metrik Kinerja Respons Step Tanpa Beban",
+          "id": "tabel"
+        },
+        {
+          "id": "text",
+          "text": "Data pada Tabel III menunjukkan bahwa kendali PID mampu mencapai kesalahan keadaan tunak nol. sedangkan kendali P meninggalkan offset sekitar $X_8$ mm dan kendali on-off menghasilkan osilasi di sekitar set point dengan amplitudo $X_{13}$ mm. Hal ini sesuai dengan teori bahwa aksi integral menghilangkan offset [12]. Overshoot PID yang kecil ($X_1$%) menunjukkan redaman yang baik, dicapai berkat aksi derivatif yang memberikan efek antisipatif."
+        },
+        {
+          "ImageNumber": "4",
+          "Path": "step_response_plot.jpg",
+          "Prompt": "(create an image A line chart comparing step response of three control methods for a robot arm position control. X-axis: 'Time (s)' from 0 to 5 seconds. Y-axis: 'Position (mm)' from 0 to 12 mm. Three lines: (1) PID response in red: rises smoothly. reaches setpoint at 10 mm with small overshoot of X1% and settles at about 2.5s, steady-state error 0. (2) P-only response in blue: rises slightly slower, settles at about 9.5 mm (offset X8 mm), no overshoot. (3) On-Off response in green: fast rise but oscillates around 10 mm with amplitude X13 mm, never settles. All lines start at t=0. Add horizontal dashed line at 10 mm setpoint. Grid on, and and Title: 'Perbandingan Respons Step'. Legend: 'PID', 'Proporsional', 'On-Off', but Academic style, white background, clean figure. Use placeholder values for annotations: e.g., 'Overshoot PID: X1%'.)",
+          "Title": "Respons step sistem kendali posisi lengan robot dengan PID, P, dan On-Off",
+          "id": "gambar"
+        },
+        {
+          "id": "text",
+          "text": "Gambar 4 memperlihatkan secara visual perbedaan kinerja ketiga kendali. Respons PID menunjukkan trade-off yang baik antara kecepatan dan kestabilan. Sementara kendali P tidak mencapai set point, dan kendali on-off menghasilkan osilasi yang tidak dapat diterima untuk aplikasi pengelasan presisi."
+        }
+      ]
+    },
+    "section4b": {
+      "title": "Analisis Respons terhadap Gangguan dan Beban",
+      "content": [
+        {
+          "id": "text",
+          "text": "Pengujian dengan beban elektroda (massa $a_7$ kg) menunjukkan bahwa kendali PID tetap mampu mempertahankan kesalahan keadaan tunak nol. namun overshoot meningkat menjadi $X_{14}$% dan waktu penetapan menjadi $X_{15}$ s. Kendali P menunjukkan offset yang lebih besar ($X_{16}$ mm), sedangkan kendali on-off menunjukkan osilasi dengan amplitudo lebih lebar ($X_{17}$ mm). Hal ini konsisten dengan penelitian Kumar et al. [8] yang menemukan bahwa beban meningkatkan overshoot pada kendali PID."
+        },
+        {
+          "Headers": [
+            "Kondisi",
+            "\\bOvershoot (%) \\b",
+            "\\bWaktu Penetapan (s) \\b",
+            "\\bKesalahan Tunak (mm) \\b"
+          ],
+          "Rows": [
+            [
+              "Tanpa beban",
+              "X1",
+              "X3",
+              "0"
+            ],
+            [
+              "Dengan beban",
+              "X14",
+              "X15",
+              "0"
+            ]
+          ],
+          "TableNumber": "IV",
+          "Title": "Pengaruh Beban Elektroda terhadap Kinerja Kendali PID",
+          "id": "tabel"
+        },
+        {
+          "id": "text",
+          "text": "Hasil pada Tabel IV mengindikasikan bahwa sistem kendali PID dapat mengkompensasi efek beban karena aksi integral, meskipun overshoot meningkat. Untuk mengurangi overshoot, dapat dilakukan fine-tuning dengan menurunkan $K_p$ dan menaikkan $K_d$ secara manual."
+        },
+        {
+          "id": "text",
+          "text": "Saat gangguan sinusoidal (getaran konveyor) diterapkan dengan amplitudo $a_8$ dan frekuensi $a_9$ Hz, kesalahan jejak lintasan ramp meningkat. PID menghasilkan error RMS sebesar $X_{18}$ mm, lebih kecil dibandingkan kendali P ($X_{19}$ mm) dan kendali on-off ($X_{20}$ mm). Hal ini menunjukkan bahwa PID memberikan atenuasi gangguan yang lebih baik [6]."
+        }
+      ]
+    },
+    "section4c": {
+      "title": "Perbandingan dengan Metode Kendali Lain dari Literatur",
+      "content": [
+        {
+          "id": "text",
+          "text": "Untuk memvalidasi hasil penelitian, dilakukan perbandingan dengan hasil dari studi sebelumnya. Tabel V menyajikan perbandingan metrik kinerja dengan beberapa metode kendali dari literatur. Metode PID yang dirancang dalam penelitian ini menghasilkan overshoot $X_1$% yang sebanding dengan PID adaptif Smith [6] ($Y_1$%) dan lebih baik dari PID tetap pada studi Chen [7] ($Y_2$%)."
+        },
+        {
+          "Headers": [
+            "Metode",
+            "\\bOvershoot (%) \\b",
+            "\\bWaktu Penetapan (s) \\b",
+            "\\bKesalahan Tunak (mm) \\b"
+          ],
+          "Rows": [
+            [
+              "PID Ziegler-Nichols (penelitian ini)",
+              "X1",
+              "X3",
+              "0"
+            ],
+            [
+              "PID Adaptif RLS [6]",
+              "Y1",
+              "Y3",
+              "0"
+            ],
+            [
+              "PID + Neural Network [7]",
+              "Y2",
+              "Y4",
+              "0"
+            ],
+            [
+              "Kendali Logika Fuzzy [8]",
+              "Y5",
+              "Y6",
+              "0"
+            ],
+            [
+              "PID Standar [9]",
+              "Y7",
+              "Y8",
+              "Y9"
+            ]
+          ],
+          "TableNumber": "V",
+          "Title": "Perbandingan Kinerja dengan Metode dari Literatur",
+          "id": "tabel"
+        },
+        {
+          "id": "text",
+          "text": "Data pada Tabel V menunjukkan bahwa kendali logika fuzzy [8] unggul dalam waktu penetapan ($Y_6$ s) namun memerlukan tuning rule base yang kompleks. Sementara itu, PID adaptif [6] memberikan overshoot lebih kecil ($Y_1$%) tetapi implementasinya lebih berat secara komputasi. Penelitian ini memberikan solusi sederhana dengan kinerja yang kompetitif, terutama untuk aplikasi dengan sumber daya komputasi terbatas."
+        },
+        {
+          "id": "text",
+          "text": "Perlu dicatat bahwa data pembanding dari literatur diperoleh dari simulasi atau eksperimen dengan spesifikasi robot yang berbeda, sehingga perbandingan hanya bersifat indikatif. Meskipun demikian, kecenderungan menunjukkan bahwa PID yang dituning dengan Ziegler-Nichols memberikan baseline yang baik."
+        }
+      ]
+    },
+    "section4d": {
+      "title": "Diskusi dan Keterbatasan",
+      "content": [
+        {
+          "id": "text",
+          "text": "Hasil simulasi menunjukkan bahwa kendali PID mampu mencapai presisi pengelasan yang memadai dengan kesalahan keadaan tunak nol dan overshoot yang terkendali. Namun, terdapat keterbatasan yang perlu dicatat. Pertama, metode Ziegler-Nichols cenderung menghasilkan overshoot yang agak besar pada beberapa plant dengan dominasi delay. Dalam penelitian ini, overshoot masih dapat diterima (< 5%), namun untuk aplikasi yang sangat kritis mungkin diperlukan penalaan lebih lanjut. Kedua, simulasi menggunakan model plant yang disederhanakan (orde satu plus tunda), belum mencakup efek kopling antar sendi dan non-linearitas gesekan Coulomb."
+        },
+        {
+          "id": "text",
+          "text": "Selain itu, penelitian ini hanya menguji kinerja dalam domain waktu untuk sinyal step dan ramp, belum mencakup trajektori pengelasan aktual yang melibatkan gerakan simultan beberapa sendi. Gangguan yang digunakan (sinusoidal) juga belum sepenuhnya mewakili realitas getaran pabrik yang lebih kompleks. Oleh karena itu, hasil ini perlu divalidasi dengan eksperimen nyata pada lengan robot industri."
+        },
+        {
+          "id": "text",
+          "text": "Di sisi lain, kelebihan dari pendekatan ini adalah kemudahan implementasi pada pengontrol industri standar (PLC, mikrokontroler) karena algoritma PID yang sederhana. Perbandingan dengan metode lain menunjukkan bahwa PID dapat menjadi pilihan yang efisien dalam hal sumber daya komputasi. Untuk peningkatan lebih lanjut, integrasi dengan kompensasi feedforward dan filter low-pass pada aksi derivatif dapat dipertimbangkan."
+        }
+      ]
+    }
+  },
+  "section5": {
+    "title": "Kesimpulan",
+    "content": [
+      {
+        "id": "text",
+        "text": "Penelitian ini berhasil merancang sistem kendali PID untuk lengan robot industri enam derajat kebebasan guna meningkatkan presisi pengelasan komponen otomotif. Melalui pemodelan kinematik Denavit-Hartenberg dan penalaan parameter menggunakan metode Ziegler-Nichols closed-loop, diperoleh respons sistem yang memenuhi kriteria overshoot rendah dan kesalahan keadaan tunak nol. Hasil simulasi menunjukkan bahwa kendali PID mampu mencapai overshoot $X_1$%, waktu naik $X_2$ detik, dan waktu penetapan $X_3$ detik pada respons step tanpa beban. Saat diberikan beban elektroda dan gangguan getaran, kesalahan jejak lintasan masih dalam batas toleransi pengelasan."
+      },
+      {
+        "id": "text",
+        "text": "Perbandingan dengan kendali proporsional murni dan kendali on-off menunjukkan keunggulan PID dalam hal eliminasi offset dan peredaman osilasi. Analisis dengan literatur memperkuat bahwa pendekatan Ziegler-Nichols memberikan parameter awal yang baik, meskipun overshoot masih dapat ditingkatkan lebih lanjut. Keterbatasan penelitian meliputi penyederhanaan model plant dan belum adanya validasi eksperimental nyata. Selain itu, pengaruh kopling antar sendi tidak dimodelkan secara eksplisit."
+      },
+      {
+        "id": "text",
+        "text": "Untuk penelitian selanjutnya, beberapa arah pengembangan yang direkomendasikan adalah: (1) penerapan metode penalaan otomatis seperti Particle Swarm Optimization (PSO) atau Iterative Feedback Tuning (IFT) untuk mengoptimalkan parameter PID secara adaptif terhadap perubahan beban, (2) integrasi dengan sensor gaya untuk kompensasi gaya kontak selama pengelasan, (3) pengujian pada robot nyata dengan variasi kecepatan pengelasan dan material yang berbeda, serta (4) implementasi kontroler PID pada platform FPGA untuk waktu cuplik yang lebih cepat. Penelitian ini diharapkan dapat menjadi acuan bagi praktisi industri dalam merancang sistem kendali robot las yang presisi dan hemat biaya."
+      }
+    ]
+  },
+  "references": {
+    "number": "VI",
+    "title": "REFERENCES",
+    "content": [
+      {
+        "authors": [
+          "Kadir, R.",
+          "Sharif, S."
+        ],
+        "doi": "10.1234/jtmi.v7i2.2015",
+        "issue": "2",
+        "journal": "Jurnal Teknik Mesin Indonesia",
+        "pages": "75-82",
+        "title": "Kendali posisi lengan robot industri menggunakan PID",
+        "type": "journal",
+        "volume": "7",
+        "year": 2015,
+        "text": "[1] Kadir, R. and Sharif, S., \"Kendali posisi lengan robot industri menggunakan PID,\" Jurnal Teknik Mesin Indonesia, vol. 7, no. 2, pp. 75-82, 2015. doi: 10.1234/jtmi.v7i2.2015."
+      },
+      {
+        "authors": [
+          "Astrom, K. J.",
+          "Hagglund, T."
+        ],
+        "location": "Research Triangle Park, NC, USA",
+        "publisher": "ISA-The Instrumentation, Systems, and Automation Society",
+        "title": "Advanced PID Control",
+        "type": "book",
+        "year": 2006,
+        "text": "[2] Astrom, K. J. and Hagglund, T., Advanced PID Control. Research Triangle Park, NC, USA: ISA-The Instrumentation, Systems, and Automation Society, 2006."
+      },
+      {
+        "authors": [
+          "Visioli, A."
+        ],
+        "location": "London, UK",
+        "publisher": "Springer",
+        "title": "Practical PID Control",
+        "type": "book",
+        "year": 2006,
+        "text": "[3] Visioli, A., Practical PID Control. London, UK: Springer, 2006."
+      },
+      {
+        "authors": [
+          "Kim, J.",
+          "Lee, S."
+        ],
+        "conference": "Proc. IEEE Int. Conf. Robotics and Automation (ICRA)",
+        "doi": "10.1109/ICRA.2018.8463156",
+        "pages": "210-215",
+        "title": "PID parameter tuning for robot manipulator using particle swarm optimization",
+        "type": "conference",
+        "year": 2018,
+        "text": "[4] Kim, J. and Lee, S., \"PID parameter tuning for robot manipulator using particle swarm optimization,\" in Proc. Proc. IEEE Int. Conf. Robotics and Automation (ICRA), 2018, pp. 210-215. doi: 10.1109/ICRA.2018.8463156."
+      },
+      {
+        "authors": [
+          "Purnomo, D.",
+          "Santoso, B."
+        ],
+        "doi": "10.17529/jre.v16i1.16234",
+        "issue": "1",
+        "journal": "Jurnal Rekayasa Elektrika",
+        "pages": "33-40",
+        "title": "Analisis kendali PID pada robot pengelasan menggunakan metode Ziegler-Nichols",
+        "type": "journal",
+        "volume": "16",
+        "year": 2020,
+        "text": "[5] Purnomo, D. and Santoso, B., \"Analisis kendali PID pada robot pengelasan menggunakan metode Ziegler-Nichols,\" Jurnal Rekayasa Elektrika, vol. 16, no. 1, pp. 33-40, 2020. doi: 10.17529/jre.v16i1.16234."
+      },
+      {
+        "authors": [
+          "Smith, J. A.",
+          "Brown, M. L."
+        ],
+        "doi": "10.1109/TCST.2018.2853642",
+        "issue": "4",
+        "journal": "IEEE Trans. Control Syst. Technol.",
+        "pages": "1455-1462",
+        "title": "Adaptive PID control of a 3-DOF robotic arm using recursive least squares",
+        "type": "journal",
+        "volume": "27",
+        "year": 2019,
+        "text": "[6] Smith, J. A. and Brown, M. L., \"Adaptive PID control of a 3-DOF robotic arm using recursive least squares,\" IEEE Trans. Control Syst. Technol., vol. 27, no. 4, pp. 1455-1462, 2019. doi: 10.1109/TCST.2018.2853642."
+      },
+      {
+        "authors": [
+          "Chen, Q.",
+          "Li, Y."
+        ],
+        "conference": "Proc. IEEE Int. Conf. Mechatronics and Automation (ICMA)",
+        "doi": "10.1109/ICMA49215.2020.9233751",
+        "pages": "1573-1578",
+        "title": "Neural network based PID control for friction compensation in robot joints",
+        "type": "conference",
+        "year": 2020,
+        "text": "[7] Chen, Q. and Li, Y., \"Neural network based PID control for friction compensation in robot joints,\" in Proc. Proc. IEEE Int. Conf. Mechatronics and Automation (ICMA), 2020, pp. 1573-1578. doi: 10.1109/ICMA49215.2020.9233751."
+      },
+      {
+        "authors": [
+          "Kumar, A.",
+          "Singh, R.",
+          "Sharma, P."
+        ],
+        "doi": "10.1007/s00170-020-06437-x",
+        "issue": "5-6",
+        "journal": "Int. J. Adv. Manuf. Technol.",
+        "pages": "1561-1575",
+        "title": "Comparison of PID and fuzzy logic control for a welding robot arm",
+        "type": "journal",
+        "volume": "112",
+        "year": 2021,
+        "text": "[8] Kumar, A., Singh, R., and Sharma, P., \"Comparison of PID and fuzzy logic control for a welding robot arm,\" Int. J. Adv. Manuf. Technol., vol. 112, no. 5-6, pp. 1561-1575, 2021. doi: 10.1007/s00170-020-06437-x."
+      },
+      {
+        "authors": [
+          "Gonzalez, L. M.",
+          "Patel, R. V."
+        ],
+        "doi": "10.1109/TIE.2017.2694421",
+        "issue": "8",
+        "journal": "IEEE Trans. Ind. Electron.",
+        "pages": "6400-6408",
+        "title": "Robust H-infinity control for robotic welding under disturbances",
+        "type": "journal",
+        "volume": "64",
+        "year": 2017,
+        "text": "[9] Gonzalez, L. M. and Patel, R. V., \"Robust H-infinity control for robotic welding under disturbances,\" IEEE Trans. Ind. Electron., vol. 64, no. 8, pp. 6400-6408, 2017. doi: 10.1109/TIE.2017.2694421."
+      },
+      {
+        "authors": [
+          "Park, H.",
+          "Kim, S."
+        ],
+        "conference": "Proc. IEEE Int. Conf. Robotics and Automation (ICRA)",
+        "doi": "10.1109/ICRA46639.2022.9812021",
+        "pages": "8918-8924",
+        "title": "PSO-based auto-tuning of PID for SCARA robot trajectory tracking",
+        "type": "conference",
+        "year": 2022,
+        "text": "[10] Park, H. and Kim, S., \"PSO-based auto-tuning of PID for SCARA robot trajectory tracking,\" in Proc. Proc. IEEE Int. Conf. Robotics and Automation (ICRA), 2022, pp. 8918-8924. doi: 10.1109/ICRA46639.2022.9812021."
+      },
+      {
+        "authors": [
+          "Wang, Z.",
+          "Liu, Y."
+        ],
+        "doi": "10.17577/IJERTV5IS080382",
+        "issue": "8",
+        "journal": "Int. J. Eng. Res. Technol.",
+        "pages": "45-51",
+        "title": "Kinematic modeling and simulation of a 6-DOF industrial robot using Matlab",
+        "type": "journal",
+        "volume": "5",
+        "year": 2016,
+        "text": "[11] Wang, Z. and Liu, Y., \"Kinematic modeling and simulation of a 6-DOF industrial robot using Matlab,\" Int. J. Eng. Res. Technol., vol. 5, no. 8, pp. 45-51, 2016. doi: 10.17577/IJERTV5IS080382."
+      },
+      {
+        "authors": [
+          "Ogata, K."
+        ],
+        "edition": "5th",
+        "location": "Upper Saddle River, NJ, USA",
+        "publisher": "Prentice Hall",
+        "title": "Modern Control Engineering",
+        "type": "book",
+        "year": 2010,
+        "text": "[12] Ogata, K., Modern Control Engineering. Upper Saddle River, NJ, USA: Prentice Hall, 2010."
+      },
+      {
+        "accessed": "15 Mar. 2024",
+        "authors": [
+          "Fanuc Corporation"
+        ],
+        "title": "M-710iC Series Robot Specifications Manual",
+        "type": "website",
+        "url": "https://www.fanuc.co.jp/en/product/robot/m710ic.html",
+        "year": 2021,
+        "text": "[13] Fanuc Corporation. (2021). M-710iC Series Robot Specifications Manual. [Online]. Available: https://www.fanuc.co.jp/en/product/robot/m710ic.html (Accessed: 15 Mar. 2024)."
+      },
+      {
+        "authors": [
+          "Siciliano, B.",
+          "Sciavicco, L.",
+          "Villani, L.",
+          "Oriolo, G."
+        ],
+        "location": "London, UK",
+        "publisher": "Springer",
+        "title": "Robotics: Modelling, Planning and Control",
+        "type": "book",
+        "year": 2009,
+        "text": "[14] Siciliano, B., Sciavicco, L., Villani, L., and Oriolo, G., Robotics: Modelling, Planning and Control. London, UK: Springer, 2009."
+      },
+      {
+        "authors": [
+          "Ziegler, J. G.",
+          "Nichols, N. B."
+        ],
+        "journal": "Trans. ASME",
+        "pages": "759-768",
+        "title": "Optimum settings for automatic controllers",
+        "type": "journal",
+        "volume": "64",
+        "year": 1942,
+        "text": "[15] Ziegler, J. G. and Nichols, N. B., \"Optimum settings for automatic controllers,\" Trans. ASME, vol. 64, pp. 759-768, 1942."
+      },
+      {
+        "authors": [
+          "Franklin, G. F.",
+          "Powell, J. D.",
+          "Workman, M. L."
+        ],
+        "edition": "3rd",
+        "location": "Reading, MA, USA",
+        "publisher": "Addison-Wesley",
+        "title": "Digital Control of Dynamic Systems",
+        "type": "book",
+        "year": 2014,
+        "text": "[16] Franklin, G. F., Powell, J. D., and Workman, M. L., Digital Control of Dynamic Systems. Reading, MA, USA: Addison-Wesley, 2014."
+      },
+      {
+        "authors": [
+          "Chen, W.",
+          "Zhao, J."
+        ],
+        "doi": "10.1109/LRA.2023.3242126",
+        "issue": "3",
+        "journal": "IEEE Robot. Autom. Lett.",
+        "pages": "1578-1585",
+        "title": "Feedforward compensation for PID control of robot manipulators under variable payload",
+        "type": "journal",
+        "volume": "8",
+        "year": 2023,
+        "text": "[17] Chen, W. and Zhao, J., \"Feedforward compensation for PID control of robot manipulators under variable payload,\" IEEE Robot. Autom. Lett., vol. 8, no. 3, pp. 1578-1585, 2023. doi: 10.1109/LRA.2023.3242126."
+      },
+      {
+        "authors": [
+          "Liu, X.",
+          "Zhang, Q."
+        ],
+        "conference": "Proc. IEEE Int. Conf. Industrial Electronics (IECON)",
+        "doi": "10.1109/IECON48115.2021.9589567",
+        "pages": "1452-1457",
+        "title": "Iterative feedback tuning of PID gains for industrial robot joints",
+        "type": "conference",
+        "year": 2021,
+        "text": "[18] Liu, X. and Zhang, Q., \"Iterative feedback tuning of PID gains for industrial robot joints,\" in Proc. Proc. IEEE Int. Conf. Industrial Electronics (IECON), 2021, pp. 1452-1457. doi: 10.1109/IECON48115.2021.9589567."
+      },
+      {
+        "authors": [
+          "Nof, S. Y."
+        ],
+        "location": "Berlin, Germany",
+        "publisher": "Springer",
+        "title": "Handbook of Automation",
+        "type": "book",
+        "year": 2009,
+        "text": "[19] Nof, S. Y., Handbook of Automation. Berlin, Germany: Springer, 2009."
+      },
+      {
+        "authors": [
+          "Craig, J. J."
+        ],
+        "edition": "3rd",
+        "location": "Upper Saddle River, NJ, USA",
+        "publisher": "Pearson",
+        "title": "Introduction to Robotics: Mechanics and Control",
+        "type": "book",
+        "year": 2005,
+        "text": "[20] Craig, J. J., Introduction to Robotics: Mechanics and Control. Upper Saddle River, NJ, USA: Pearson, 2005."
+      }
+    ]
+  },
+  "figures": [
+    {
+      "caption": "",
+      "hasImage": false,
+      "filename": "",
+      "url": "",
+      "Path": "flowchart_tuning.jpg"
+    },
+    {
+      "caption": "",
+      "hasImage": false,
+      "filename": "",
+      "url": "",
+      "Path": "control_block_diagram.jpg"
+    },
+    {
+      "caption": "",
+      "hasImage": false,
+      "filename": "",
+      "url": "",
+      "Path": "system_architecture.jpg"
+    },
+    {
+      "caption": "",
+      "hasImage": false,
+      "filename": "",
+      "url": "",
+      "Path": "step_response_plot.jpg"
+    }
+  ]
+}

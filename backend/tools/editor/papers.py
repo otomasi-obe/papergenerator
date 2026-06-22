@@ -161,7 +161,28 @@ def load_paper(paper_id: str):
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "Paper not found"}), 404
-    return jsonify({**(paper.data or {}), "id": paper.id})
+
+    data = dict(paper.data or {})
+
+    # Clean LaTeX → Unicode in all string values for preview readability.
+    # DOCX export has its own OMML pipeline; this is read-only view only.
+    try:
+        from tools.Journal._math_omml import clean_latex_for_preview as _clfp
+
+        def _walk(obj):
+            if isinstance(obj, str):
+                return _clfp(obj)
+            if isinstance(obj, dict):
+                return {k: _walk(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_walk(v) for v in obj]
+            return obj
+
+        data = _walk(data)
+    except Exception:
+        pass  # never break preview over a cleaner failure
+
+    return jsonify({**data, "id": paper.id})
 
 
 @papers.route("/<paper_id>", methods=["PUT"])

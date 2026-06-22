@@ -1,0 +1,9 @@
+[INFO] Menggunakan _template.json default (/home/sirobo/ANNABIL/Project Papergenerator_Annabil/papergenerator/backend/template/A FIX/A Script/_template.json)
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base: 100 | Penalty: -140 | Akhir: 0%
+   - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 14 = -140
+============================================================
+[INFO] WARNING: Skor 0% tapi ditemukan 3 kejanggalan visual.
+[INFO] Master prompt perbaikan ditulis: audit-unik_EASR.txt
+Audit selesai. Detail tersimpan: audit_EASR_output.txt

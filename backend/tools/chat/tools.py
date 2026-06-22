@@ -197,15 +197,16 @@ def parse_completion(text: str) -> dict:
 
     for match in apply_matches:
         try:
-            parsed = json.loads(match)
+            # Always pre-process backslash escapes FIRST.
+            # AI outputs raw LaTeX/bold markers (\frac, \b, \i, \u) inside JSON
+            # strings. Many of these (\b, \f, \n, \r, \t) are valid JSON escapes
+            # (backspace, form feed, newline, etc.) — json.loads SUCCEEDS but
+            # silently corrupts the value. We MUST double them BEFORE parsing so
+            # they become literal backslash sequences.
+            parsed = json.loads(_fix_json_escapes(match))
         except json.JSONDecodeError as e:
-            # Retry with escaped backslashes (common LaTeX-in-JSON issue)
-            try:
-                parsed = json.loads(_fix_json_escapes(match))
-                log.info("Recovered APPLY_PAPER via backslash escaping: %d items", len(parsed) if isinstance(parsed, list) else 1)
-            except json.JSONDecodeError as e2:
-                log.warning("Failed to parse APPLY_PAPER JSON: %s | Error: %s", match[:200], e2)
-                continue
+            log.warning("Failed to parse APPLY_PAPER JSON after escaping: %s | Error: %s", match[:200], e)
+            continue
 
         # Support both single object and array of objects
         items = [parsed] if isinstance(parsed, dict) else parsed if isinstance(parsed, list) else []

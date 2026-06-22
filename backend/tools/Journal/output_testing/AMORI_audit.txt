@@ -1,7 +1,0 @@
-============================================================
-[SKOR KECOCOKAN: 100%] -> STATUS: EXCELLENT
-  Base: 100 | Penalty: -0 | Akhir: 100%
-============================================================
-[INFO] WARNING: Skor 100% tapi ditemukan 3 kejanggalan visual.
-[INFO] Master prompt perbaikan ditulis: audit-unik_AMORI.txt
-Audit selesai. Detail tersimpan: audit_AMORI_output.txt

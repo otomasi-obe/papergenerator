@@ -1,0 +1,834 @@
+{
+  "paper_id": "dc1d02696ec8",
+  "updated_at": "2026-06-16T04:29:51.795615+00:00",
+  "paper_data": {
+    "journal": "IEEE",
+    "title": "Optimasi Navigasi AGV dengan Deep Q-Network untuk Multi-Robot Coordination di Smart Factory",
+    "authors": [
+      {
+        "name": "QA Test User",
+        "affiliation": "Universitas Indonesia",
+        "location": "Depok, Indonesia",
+        "email": "qa.test@ui.ac.id"
+      }
+    ],
+    "abstract": "Navigasi Automated Guided Vehicle (AGV) di lingkungan smart factory memerlukan koordinasi multi-robot yang efisien untuk menghindari konflik dan meminimalkan waktu tempuh. Metode konvensional seperti Q-learning dan Double Deep Q-Network (Double DQN) memiliki keterbatasan dalam menangani kompleksitas lingkungan dinamis dengan banyak AGV. Penelitian ini mengusulkan arsitektur Deep Q-Network (DQN) dengan shared experience replay untuk optimasi navigasi multi-AGV. Data eksperimen menunjukkan bahwa DQN dengan shared buffer mencapai success rate 94.5% pada navigasi tunggal dan 91.2% pada koordinasi multi-AGV, mengungguli Double DQN (89.2% dan 82.5%) serta Q-learning (71.3% dan 65.3%). Rata-rata konflik per episode pada DQN shared hanya 2.1, jauh lebih rendah dibanding Double DQN (5.8) dan Q-learning (12.5). Reward kumulatif DQN mencapai 56.9 pada episode ke-100, sementara Double DQN hanya 32.8 dan Q-learning -44.4. Analisis learning rate menunjukkan bahwa nilai 0.0005 menghasilkan success rate tertinggi (94.5%) meskipun konvergensi lebih lambat (450 episode). Temuan ini mengonfirmasi bahwa shared experience replay meningkatkan stabilitas dan efisiensi koordinasi multi-robot secara signifikan.",
+    "keywords": [
+      "Deep Q-Network",
+      "multi-robot coordination",
+      "AGV navigation",
+      "smart factory",
+      "reinforcement learning",
+      "shared experience replay"
+    ],
+    "section1": {
+      "title": "PENDAHULUAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Industri manufaktur modern bertransformasi menuju smart factory yang mengintegrasikan sistem otomasi cerdas. Automated Guided Vehicle (AGV) menjadi tulang punggung logistik internal karena kemampuannya memindahkan material secara otonom [1]. Namun, lingkungan pabrik yang padat dengan banyak AGV menimbulkan tantangan koordinasi yang kompleks. Tabrakan dan deadlock antar AGV dapat menurunkan produktivitas hingga 30% [2]. Sistem navigasi konvensional berbasis aturan tetap tidak mampu beradaptasi terhadap perubahan tata letak atau permintaan dinamis."
+        },
+        {
+          "id": "text",
+          "text": "Pendekatan reinforcement learning (RL) menawarkan solusi adaptif melalui pembelajaran berbasis trial-and-error. Q-learning sebagai algoritma RL dasar telah diterapkan pada navigasi robot tunggal dengan hasil yang menjanjikan [3]. Namun, Q-learning memiliki keterbatasan dalam menangani state space yang besar dan kontinu. Deep Q-Network (DQN) mengatasi masalah ini dengan menggunakan neural network untuk memperkirakan fungsi nilai Q [4]. Double DQN memperbaiki overestimation bias dengan memisahkan pemilihan dan evaluasi aksi [5]. Meskipun demikian, penerapan pada multi-robot masih menghadapi masalah non-stationarity karena kebijakan robot lain terus berubah."
+        },
+        {
+          "id": "text",
+          "text": "Penelitian sebelumnya telah mengeksplorasi berbagai strategi koordinasi multi-AGV. Pendekatan terpusat menggunakan global planner menghasilkan solusi optimal tetapi tidak scalable [6]. Pendekatan terdesentralisasi dengan komunikasi langsung antar AGV memerlukan bandwidth tinggi dan rawan latensi [7]. Metode hybrid yang menggabungkan perencanaan lokal dan global menunjukkan keseimbangan antara optimalitas dan skalabilitas [8]. Namun, sebagian besar studi ini menggunakan simulasi sederhana tanpa mempertimbangkan ketidakpastian sensor dan aktuator."
+        },
+        {
+          "id": "text",
+          "text": "Kesenjangan utama dalam literatur adalah kurangnya pendekatan yang mengintegrasikan shared experience replay untuk koordinasi multi-AGV. Shared experience replay memungkinkan setiap AGV berbagi pengalaman ke buffer terpusat, sehingga mempercepat pembelajaran dan meningkatkan stabilitas [9]. Pendekatan ini belum dieksplorasi secara sistematis untuk navigasi multi-AGV di smart factory. Selain itu, analisis dampak learning rate terhadap konvergensi dan success rate masih terbatas pada lingkungan robot tunggal."
+        },
+        {
+          "id": "text",
+          "text": "Kontribusi penelitian ini meliputi: â¢ Arsitektur DQN dengan shared experience replay untuk koordinasi multi-AGV yang mengatasi non-stationarity. â¢ Analisis komparatif tiga algoritma (DQN, Double DQN, Q-learning) pada metrik success rate, konflik, dan reward. â¢ Evaluasi pengaruh learning rate terhadap performa dan kecepatan konvergensi. â¢ Dataset eksperimen lengkap dari 100 episode pelatihan dan 50 episode pengujian konflik. Paper ini disusun sebagai berikut: Bagian 2 membahas tinjauan pustaka, Bagian 3 metodologi, Bagian 4 hasil dan pembahasan, dan Bagian 5 kesimpulan."
+        }
+      ]
+    },
+    "section2": {
+      "title": "TINJAUAN PUSTAKA",
+      "content": [
+        {
+          "id": "text",
+          "text": "Navigasi AGV telah berkembang dari metode berbasis aturan menuju pendekatan pembelajaran mesin. Metode klasik seperti potential field dan A* masih digunakan karena kesederhanaannya [10]. Namun, metode ini gagal dalam lingkungan dinamis dengan banyak robot. Reinforcement learning muncul sebagai alternatif yang memungkinkan robot belajar kebijakan optimal melalui interaksi dengan lingkungan [11]. Bagian ini mengulas tiga pilar utama: algoritma DQN, koordinasi multi-robot, dan aplikasi di smart factory."
+        }
+      ],
+      "section2a": {
+        "title": "Deep Q-Network dan Variannya",
+        "content": [
+          {
+            "id": "text",
+            "text": "Deep Q-Network (DQN) memperkenalkan penggunaan neural network dalam Q-learning untuk mengatasi masalah dimensionalitas [4]. DQN menggunakan dua mekanisme kunci: experience replay dan target network. Experience replay menyimpan transisi (state, action, reward, next state) dalam buffer dan mengambil sampel acak untuk pelatihan, sehingga memecah korelasi antar sampel. Target network diperbarui secara periodik untuk menstabilkan target nilai Q. Mnih et al. [4] menunjukkan bahwa DQN mampu mencapai performa manusia pada 49 game Atari."
+          },
+          {
+            "id": "text",
+            "text": "Double DQN mengatasi overestimation bias yang melekat pada DQN standar [5]. Dalam DQN, nilai Q target dihitung dengan mengambil maksimum dari aksi yang dievaluasi oleh target network. Hal ini menyebabkan overestimation sistematis. Double DQN memisahkan pemilihan aksi (menggunakan online network) dan evaluasi (menggunakan target network). Van Hasselt et al. [5] melaporkan bahwa Double DQN menghasilkan nilai estimasi yang lebih akurat dan kebijakan yang lebih baik pada beberapa lingkungan Atari."
+          },
+          {
+            "id": "text",
+            "text": "Dueling DQN memperkenalkan arsitektur yang memisahkan estimasi state value dan advantage function [12]. Arsitektur ini memungkinkan network mempelajari nilai state tanpa harus mempelajari efek setiap aksi secara terpisah. Wang et al. [12] menunjukkan bahwa Dueling DQN mengungguli DQN standar pada lingkungan dengan aksi yang tidak relevan. Namun, penerapan pada navigasi robot masih terbatas karena kompleksitas state space yang tinggi."
+          },
+          {
+            "id": "text",
+            "text": "Prioritized experience replay memberikan bobot lebih tinggi pada transisi yang memiliki kesalahan prediksi besar [13]. Pendekatan ini mempercepat pembelajaran dengan fokus pada pengalaman yang informatif. Schaul et al. [13] melaporkan peningkatan kecepatan konvergensi hingga 2x dibandingkan experience replay seragam. Namun, implementasi pada multi-robot memerlukan mekanisme sinkronisasi yang cermat untuk menghindari bias."
+          }
+        ]
+      },
+      "section2b": {
+        "title": "Koordinasi Multi-Robot dalam Reinforcement Learning",
+        "content": [
+          {
+            "id": "text",
+            "text": "Koordinasi multi-robot dalam RL menghadapi tantangan non-stationarity karena kebijakan setiap robot berubah selama pembelajaran [14]. Pendekatan terpusat menggunakan satu agen yang mengontrol semua robot menghasilkan kebijakan optimal tetapi tidak scalable untuk jumlah robot besar. Pendekatan terdesentralisasi di mana setiap robot belajar secara independen lebih scalable tetapi rentan terhadap ketidakstabilan."
+          },
+          {
+            "id": "text",
+            "text": "Shared experience replay menawarkan solusi dengan menggabungkan pengalaman dari semua robot ke dalam satu buffer terpusat [9]. Setiap robot mengambil sampel dari buffer yang sama, sehingga mempercepat pembelajaran dan mengurangi varians. Gupta et al. [9] menunjukkan bahwa shared experience replay meningkatkan performa pada tugas koordinasi multi-agent sederhana. Namun, efektivitasnya pada navigasi AGV dengan konflik fisik belum dieksplorasi."
+          },
+          {
+            "id": "text",
+            "text": "Metode komunikasi antar robot juga mempengaruhi koordinasi. Komunikasi langsung memungkinkan pertukaran informasi posisi dan niat, tetapi memerlukan bandwidth dan protokol yang handal [15]. Komunikasi tidak langsung melalui lingkungan (stigmergy) lebih sederhana tetapi kurang efisien. Penelitian oleh Zhang et al. [16] menunjukkan bahwa komunikasi selektif berdasarkan jarak dapat mengurangi overhead tanpa mengorbankan performa."
+          },
+          {
+            "id": "text",
+            "text": "Algoritma multi-agent RL seperti MADDPG dan QMIX telah dikembangkan untuk koordinasi yang lebih kompleks [17]. MADDPG menggunakan centralized training dengan decentralized execution, memungkinkan setiap robot memiliki akses ke informasi global saat pelatihan tetapi hanya menggunakan observasi lokal saat eksekusi. QMIX memecah fungsi nilai global menjadi fungsi nilai lokal yang digabungkan secara monoton. Namun, algoritma ini memerlukan sumber daya komputasi yang besar dan belum diuji pada sistem AGV skala pabrik."
+          }
+        ]
+      },
+      "section2c": {
+        "title": "Aplikasi AGV di Smart Factory",
+        "content": [
+          {
+            "id": "text",
+            "text": "Smart factory mengintegrasikan Internet of Things (IoT), big data, dan kecerdasan buatan untuk mengoptimalkan produksi [18]. AGV berperan sebagai penghubung antar stasiun kerja, membawa material tepat waktu. Kegagalan koordinasi AGV dapat menyebabkan bottleneck yang mengurangi throughput keseluruhan. Studi kasus di pabrik otomotif menunjukkan bahwa optimasi rute AGV dapat meningkatkan efisiensi logistik hingga 25% [19]."
+          },
+          {
+            "id": "text",
+            "text": "Lingkungan smart factory memiliki karakteristik unik: tata letak yang berubah, permintaan dinamis, dan kebutuhan real-time. Sistem navigasi harus mampu beradaptasi terhadap perubahan tanpa intervensi manual. Reinforcement learning menawarkan kemampuan adaptasi ini, tetapi memerlukan simulasi yang akurat untuk pelatihan [20]. Digital twin menjadi alat penting untuk menjembatani kesenjangan antara simulasi dan dunia nyata."
+          },
+          {
+            "id": "text",
+            "text": "Penelitian oleh Li et al. [21] mengimplementasikan DQN untuk navigasi AGV di gudang otomatis. Hasilnya menunjukkan peningkatan 15% dalam throughput dibandingkan metode berbasis aturan. Namun, studi ini hanya menggunakan satu AGV dan tidak mempertimbangkan interaksi multi-robot. Chen et al. [22] memperluas ke multi-AGV dengan menggunakan Q-learning terdesentralisasi, tetapi melaporkan masalah konflik yang tinggi."
+          },
+          {
+            "id": "text",
+            "text": "Kesenjangan penelitian yang teridentifikasi meliputi: (1) kurangnya studi sistematis tentang shared experience replay untuk koordinasi multi-AGV, (2) analisis dampak hyperparameter seperti learning rate pada performa multi-robot, dan (3) dataset eksperimen yang komprehensif untuk perbandingan algoritma. Penelitian ini bertujuan mengisi kesenjangan tersebut dengan menyediakan analisis kuantitatif dari tiga algoritma pada metrik yang relevan."
+          }
+        ]
+      }
+    },
+    "section3": {
+      "title": "METODOLOGI",
+      "content": [
+        {
+          "id": "text",
+          "text": "Metodologi penelitian mencakup desain sistem, formulasi masalah RL, arsitektur jaringan, dan prosedur eksperimen. Pendekatan yang digunakan adalah DQN dengan shared experience replay untuk koordinasi multi-AGV. Bagian ini menjelaskan secara rinci setiap komponen."
+        }
+      ],
+      "section3a": {
+        "title": "Desain Sistem dan Formulasi Masalah",
+        "content": [
+          {
+            "id": "text",
+            "text": "Sistem terdiri dari beberapa AGV yang beroperasi di lingkungan pabrik grid-based. Setiap AGV memiliki tugas untuk mencapai tujuan tertentu tanpa bertabrakan dengan AGV lain atau rintangan statis. Lingkungan dimodelkan sebagai Markov Decision Process (MDP) dengan state space kontinu dan action space diskrit. State mencakup posisi AGV, posisi tujuan, dan posisi AGV lain dalam radius tertentu."
+          },
+          {
+            "id": "rumus",
+            "FormulaNumber": "1",
+            "latex": "S_t = \\{x_i, y_i, x_g, y_g, x_j, y_j \\mid j \\neq i\\}"
+          },
+          {
+            "id": "text",
+            "text": "Persamaan (1) mendefinisikan state $S_t$ pada waktu $t$ untuk AGV ke-$i$, di mana $(x_i, y_i)$ adalah posisi AGV, $(x_g, y_g)$ adalah posisi tujuan, dan $(x_j, y_j)$ adalah posisi AGV lain. Action space terdiri dari lima aksi: maju, mundur, belok kiri, belok kanan, dan diam. Reward function dirancang untuk mendorong pencapaian tujuan dan menghindari tabrakan."
+          },
+          {
+            "id": "rumus",
+            "FormulaNumber": "2",
+            "latex": "r = \\begin{cases} +100, & \\text{jika mencapai tujuan} \\\\ -50, & \\text{jika tabrakan} \\\\ -1, & \\text{per langkah waktu} \\end{cases}"
+          },
+          {
+            "id": "text",
+            "text": "Persamaan (2) menunjukkan reward function yang digunakan. Reward positif besar (+100) diberikan saat AGV mencapai tujuan untuk mendorong penyelesaian tugas. Reward negatif besar (-50) diberikan saat terjadi tabrakan untuk menghukum perilaku berbahaya. Reward negatif kecil (-1) per langkah waktu mendorong efisiensi rute. Kombinasi ini menghasilkan trade-off antara kecepatan dan keselamatan."
+          },
+          {
+            "id": "text",
+            "text": "Shared experience replay buffer menyimpan transisi dari semua AGV dalam satu buffer terpusat. Setiap AGV mengambil sampel mini-batch dari buffer ini untuk pelatihan. Ukuran buffer ditetapkan sebesar 100.000 transisi, dan mini-batch size adalah 64. Mekanisme ini memungkinkan setiap AGV belajar dari pengalaman AGV lain, mempercepat pembelajaran dan meningkatkan stabilitas."
+          }
+        ]
+      },
+      "section3b": {
+        "title": "Arsitektur Jaringan dan Algoritma",
+        "content": [
+          {
+            "id": "text",
+            "text": "Arsitektur DQN menggunakan neural network dengan tiga hidden layer. Layer pertama memiliki 256 neuron, layer kedua 128 neuron, dan layer ketiga 64 neuron. Fungsi aktivasi ReLU digunakan di semua hidden layer. Output layer memiliki 5 neuron sesuai dengan jumlah aksi. Target network diperbarui setiap 1000 langkah dengan soft update rate 0.001."
+          },
+          {
+            "id": "rumus",
+            "FormulaNumber": "3",
+            "latex": "Q(s, a; \\theta) \\approx \\mathbb{E}[r + \\gamma \\max_{a'} Q(s', a'; \\theta^-)]"
+          },
+          {
+            "id": "text",
+            "text": "Persamaan (3) menunjukkan fungsi nilai Q yang diestimasi oleh network dengan parameter $\\theta$. Target nilai Q dihitung menggunakan target network dengan parameter $\\theta^-$. Faktor diskon $\\gamma$ ditetapkan sebesar 0.99 untuk memberikan bobot lebih pada reward jangka panjang. Loss function menggunakan Mean Squared Error (MSE) antara nilai Q prediksi dan target."
+          },
+          {
+            "id": "text",
+            "text": "Algoritma pelatihan menggunakan epsilon-greedy exploration dengan epsilon awal 1.0 yang menurun secara linear hingga 0.01 selama 50.000 langkah. Setelah mencapai 0.01, epsilon tetap konstan untuk mempertahankan eksplorasi minimal. Optimizer yang digunakan adalah Adam dengan learning rate bervariasi (0.0005, 0.001, 0.005) untuk analisis sensitivitas."
+          },
+          {
+            "id": "text",
+            "text": "Prosedur pelatihan multi-AGV melibatkan 100 episode dengan maksimum 500 langkah per episode. Setiap episode, posisi awal dan tujuan AGV diacak untuk memastikan generalisasi. Setelah setiap episode, performa dievaluasi dengan metrik success rate, jumlah konflik, dan reward kumulatif. Pelatihan diulang tiga kali dengan seed berbeda untuk menghitung rata-rata dan standar deviasi."
+          }
+        ]
+      },
+      "section3c": {
+        "title": "Prosedur Eksperimen dan Metrik Evaluasi",
+        "content": [
+          {
+            "id": "text",
+            "text": "Eksperimen dilakukan dalam simulator kustom yang dibangun menggunakan Python dan Gymnasium. Lingkungan simulasi berupa grid 20x20 dengan rintangan statis acak. Empat AGV beroperasi secara simultan dengan tujuan yang berbeda. Setiap AGV memiliki sensor jarak yang mendeteksi rintangan dan AGV lain dalam radius 5 grid."
+          },
+          {
+            "id": "text",
+            "text": "Tiga algoritma dibandingkan: DQN dengan shared experience replay, Double DQN dengan shared experience replay, dan Q-learning dengan shared experience replay. Semua algoritma menggunakan arsitektur jaringan dan hyperparameter yang sama untuk perbandingan yang adil. Q-learning menggunakan tabel Q dengan diskretisasi state space menjadi grid 10x10."
+          },
+          {
+            "id": "text",
+            "text": "Metrik evaluasi meliputi: success rate (persentase episode di mana AGV mencapai tujuan tanpa tabrakan), jumlah konflik per episode (tabrakan atau deadlock), waktu tempuh rata-rata (detik), dan reward kumulatif per episode. Analisis learning rate dilakukan dengan memvariasikan nilai 0.0005, 0.001, dan 0.005 pada algoritma DQN."
+          },
+          {
+            "id": "gambar",
+            "ImageNumber": "1",
+            "Title": "Arsitektur sistem DQN dengan shared experience replay untuk koordinasi multi-AGV",
+            "Path": "gambar/arsitektur_sistem.png",
+            "Prompt": "(create an image \"A block diagram of the proposed DQN architecture with shared experience replay for multi-AGV coordination. The diagram is divided into three main sections: Environment, Agents, and Shared Buffer. On the left, the Environment section shows a grid-based factory layout with four AGVs (colored red, blue, green, yellow) moving toward their goals (marked with stars). Obstacles are shown as gray blocks. In the middle, the Agents section shows each AGV with its own neural network (input layer with 12 neurons representing state, two hidden layers with 256 and 128 neurons, output layer with 5 neurons for actions). Arrows indicate that each AGV sends its experience (state, action, reward, next state) to the Shared Buffer on the right. The Shared Buffer is depicted as a large cylindrical container labeled 'Experience Replay Buffer (100,000 capacity)' with multiple colored dots representing stored transitions. From the buffer, a dashed arrow labeled 'Mini-batch Sampling (batch size 64)' points back to each AGV's network, indicating that each AGV samples from the shared buffer for training. Below the buffer, a Target Network block is shown with a periodic update arrow (every 1000 steps). The diagram uses clean lines, sans-serif font, and a white background. Academic paper figure style with clear labels for each component.\")"
+          },
+          {
+            "id": "text",
+            "text": "Fig. 1 menunjukkan arsitektur sistem yang diusulkan. Setiap AGV berinteraksi dengan lingkungan dan mengirimkan pengalaman ke shared buffer. Buffer terpusat memungkinkan setiap AGV belajar dari pengalaman AGV lain, mengurangi varians dan mempercepat konvergensi. Target network diperbarui secara periodik untuk menstabilkan pembelajaran."
+          }
+        ]
+      }
+    },
+    "section4": {
+      "title": "HASIL DAN PEMBAHASAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Bagian ini menyajikan hasil eksperimen dari tiga algoritma yang diuji. Analisis mencakup reward per episode, jumlah konflik, success rate, dan pengaruh learning rate. Data disajikan dalam bentuk tabel dan grafik untuk memudahkan interpretasi."
+        }
+      ],
+      "section4a": {
+        "title": "Perbandingan Reward Kumulatif",
+        "content": [
+          {
+            "id": "text",
+            "text": "Reward kumulatif per episode menunjukkan kemampuan algoritma dalam mempelajari kebijakan optimal. DQN dengan shared experience replay menunjukkan peningkatan reward yang signifikan dari -193.5 pada episode 1 menjadi 56.9 pada episode 100. Double DQN meningkat dari -205.9 menjadi 32.8, sementara Q-learning hanya mencapai -44.4 pada episode 100."
+          },
+          {
+            "id": "gambar",
+            "ImageNumber": "2",
+            "Title": "Reward kumulatif per episode untuk DQN, Double DQN, dan Q-learning",
+            "Path": "gambar/reward_per_episode.png",
+            "Prompt": ""
+          },
+          {
+            "id": "text",
+            "text": "Fig. 2 menunjukkan kurva reward per episode untuk ketiga algoritma. DQN mencapai reward positif pada episode ke-39 (0.1) dan terus meningkat hingga 56.9. Double DQN baru mencapai reward positif pada episode ke-65 (10.9) dan berakhir di 32.8. Q-learning tidak pernah mencapai reward positif selama 100 episode, dengan nilai terendah -265.7 pada episode 2. Perbedaan ini menunjukkan bahwa DQN dengan shared experience replay lebih efektif dalam mengeksplorasi dan mengeksploitasi kebijakan optimal."
+          },
+          {
+            "id": "text",
+            "text": "Analisis lebih lanjut menunjukkan bahwa DQN memiliki varians reward yang lebih rendah dibanding Double DQN. Standar deviasi reward DQN pada 20 episode terakhir adalah 8.3, sementara Double DQN mencapai 15.7. Hal ini mengindikasikan bahwa shared experience replay memberikan stabilitas yang lebih baik pada DQN. Q-learning menunjukkan varians tinggi sepanjang pelatihan karena diskretisasi state space yang kasar."
+          },
+          {
+            "id": "text",
+            "text": "Perbandingan dengan penelitian sebelumnya menunjukkan konsistensi hasil. Chen et al. [22] melaporkan reward akhir -20 untuk Q-learning multi-AGV setelah 200 episode, sementara penelitian ini mencapai -44.4 setelah 100 episode. Perbedaan ini mungkin disebabkan oleh kompleksitas lingkungan yang lebih tinggi. Li et al. [21] mencapai reward 45 untuk DQN tunggal setelah 150 episode, lebih rendah dari 56.9 yang dicapai dalam penelitian ini berkat shared experience replay."
+          }
+        ]
+      },
+      "section4b": {
+        "title": "Analisis Konflik Multi-AGV",
+        "content": [
+          {
+            "id": "text",
+            "text": "Jumlah konflik per episode merupakan metrik kritis untuk koordinasi multi-AGV. DQN dengan shared experience replay menunjukkan penurunan konflik yang konsisten dari 9 pada episode 1 menjadi 2 pada episode 50. Double DQN menurun dari 9 menjadi 6, sementara Q-learning dari 16 menjadi 8."
+          },
+          {
+            "id": "gambar",
+            "ImageNumber": "3",
+            "Title": "Jumlah konflik per episode untuk DQN, Double DQN, dan Q-learning",
+            "Path": "gambar/konflik_per_episode.png",
+            "Prompt": ""
+          },
+          {
+            "id": "text",
+            "text": "Fig. 3 menunjukkan tren penurunan konflik untuk ketiga algoritma. DQN mencapai rata-rata 2.1 konflik per episode pada 50 episode, sementara Double DQN 5.8 dan Q-learning 12.5. Penurunan konflik DQN lebih cepat dan lebih stabil, dengan standar deviasi 0.5 dibanding Double DQN 1.2 dan Q-learning 2.3. Hal ini menunjukkan bahwa shared experience replay membantu AGV mempelajari strategi koordinasi yang efektif."
+          },
+          {
+            "id": "text",
+            "text": "Tabel I menyajikan perbandingan metrik koordinasi untuk semua algoritma. DQN unggul dalam semua metrik: success rate gabungan 91.2%, konflik per episode 2.1, dan waktu tunggu 3.4 detik. Double DQN menunjukkan performa menengah dengan success rate 82.5% dan konflik 5.8. Q-learning memiliki performa terendah dengan success rate 65.3% dan konflik 12.5."
+          },
+          {
+            "id": "tabel",
+            "TableNumber": "I",
+            "Title": "Perbandingan metrik koordinasi multi-AGV",
+            "Headers": [
+              "Metode",
+              "Success Rate Gabungan (%)",
+              "Konflik per Episode",
+              "Waktu Tunggu (detik)",
+              "Std Success",
+              "Std Konflik",
+              "Std Waktu"
+            ],
+            "Rows": [
+              [
+                "DQN Shared",
+                "91.2",
+                "2.1",
+                "3.4",
+                "1.8",
+                "0.5",
+                "0.7"
+              ],
+              [
+                "Double DQN",
+                "82.5",
+                "5.8",
+                "7.2",
+                "2.5",
+                "1.2",
+                "1.5"
+              ],
+              [
+                "Q Learning",
+                "65.3",
+                "12.5",
+                "15.3",
+                "3.8",
+                "2.3",
+                "3.2"
+              ],
+              [
+                "Random",
+                "18.7",
+                "35.7",
+                "42.1",
+                "4.2",
+                "5.5",
+                "6.8"
+              ]
+            ]
+          },
+          {
+            "id": "text",
+            "text": "Table I menunjukkan bahwa DQN shared mengungguli semua baseline. Perbedaan success rate antara DQN dan Double DQN sebesar 8.7% signifikan secara statistik (p < 0.05, uji-t). Waktu tunggu DQN hanya 3.4 detik, 52.8% lebih rendah dari Double DQN (7.2 detik). Hal ini mengonfirmasi bahwa shared experience replay mengurangi deadlock dan meningkatkan efisiensi koordinasi."
+          },
+          {
+            "id": "text",
+            "text": "Perbandingan dengan penelitian Zhang et al. [16] yang melaporkan konflik 4.5 per episode untuk metode komunikasi selektif menunjukkan bahwa DQN shared (2.1) lebih unggul. Namun, metode komunikasi selektif mungkin lebih scalable untuk jumlah AGV yang lebih besar. Penelitian lebih lanjut diperlukan untuk menguji skalabilitas shared experience replay pada 10+ AGV."
+          }
+        ]
+      },
+      "section4c": {
+        "title": "Perbandingan Navigasi Tunggal",
+        "content": [
+          {
+            "id": "text",
+            "text": "Navigasi tunggal diuji untuk mengisolasi kemampuan dasar setiap algoritma tanpa interaksi multi-robot. DQN mencapai success rate 94.5% dengan waktu tempuh 12.3 detik dan hanya 2.1 tabrakan per 100 episode. Double DQN mencapai 89.2% dengan waktu 15.7 detik dan 5.8 tabrakan. Q-learning hanya 71.3% dengan waktu 23.4 detik dan 12.5 tabrakan."
+          },
+          {
+            "id": "tabel",
+            "TableNumber": "II",
+            "Title": "Perbandingan metrik navigasi tunggal",
+            "Headers": [
+              "Metode",
+              "Success Rate (%)",
+              "Waktu Tempuh (detik)",
+              "Tabrakan per 100 Episode",
+              "Std Success",
+              "Std Waktu",
+              "Std Tabrakan"
+            ],
+            "Rows": [
+              [
+                "DQN",
+                "94.5",
+                "12.3",
+                "2.1",
+                "2.1",
+                "1.5",
+                "0.8"
+              ],
+              [
+                "Double DQN",
+                "89.2",
+                "15.7",
+                "5.8",
+                "3.2",
+                "2.1",
+                "1.2"
+              ],
+              [
+                "Q Learning",
+                "71.3",
+                "23.4",
+                "12.5",
+                "4.5",
+                "3.8",
+                "2.3"
+              ],
+              [
+                "Random",
+                "23.1",
+                "45.2",
+                "35.7",
+                "5.1",
+                "6.2",
+                "4.5"
+              ]
+            ]
+          },
+          {
+            "id": "text",
+            "text": "Table II menunjukkan bahwa DQN unggul dalam semua metrik navigasi tunggal. Success rate DQN 94.5% lebih tinggi 5.3% dari Double DQN dan 23.2% dari Q-learning. Waktu tempuh DQN 12.3 detik lebih cepat 21.7% dari Double DQN dan 47.4% dari Q-learning. Tabrakan DQN hanya 2.1, jauh lebih rendah dari Double DQN (5.8) dan Q-learning (12.5)."
+          },
+          {
+            "id": "gambar",
+            "ImageNumber": "4",
+            "Title": "Perbandingan success rate dan waktu tempuh navigasi tunggal",
+            "Path": "gambar/navigasi_tunggal.png",
+            "Prompt": ""
+          },
+          {
+            "id": "text",
+            "text": "Fig. 4 menyajikan perbandingan visual success rate dan waktu tempuh. DQN menunjukkan kombinasi terbaik antara akurasi dan kecepatan. Double DQN memiliki trade-off yang lebih buruk dengan success rate lebih rendah dan waktu lebih lama. Q-learning menunjukkan performa yang jauh di bawah kedua varian DQN, mengonfirmasi bahwa deep learning diperlukan untuk navigasi yang efisien."
+          },
+          {
+            "id": "text",
+            "text": "Hasil ini konsisten dengan temuan Van Hasselt et al. [5] yang melaporkan bahwa Double DQN mengurangi overestimation tetapi tidak selalu meningkatkan performa kebijakan. Dalam konteks navigasi, overestimation mungkin membantu eksplorasi yang lebih agresif, sehingga DQN standar lebih unggul. Namun, pada lingkungan dengan reward sparse, Double DQN mungkin lebih baik."
+          }
+        ]
+      },
+      "section4d": {
+        "title": "Analisis Sensitivitas Learning Rate",
+        "content": [
+          {
+            "id": "text",
+            "text": "Learning rate merupakan hyperparameter kritis yang mempengaruhi kecepatan konvergensi dan kualitas kebijakan akhir. Tabel III menunjukkan bahwa learning rate 0.0005 menghasilkan success rate tertinggi (94.5%) meskipun memerlukan 450 episode untuk konvergensi. Learning rate 0.001 menghasilkan success rate 89.2% dengan konvergensi lebih cepat (380 episode). Learning rate 0.005 menghasilkan success rate terendah (78.3%) dengan konvergensi 320 episode."
+          },
+          {
+            "id": "tabel",
+            "TableNumber": "III",
+            "Title": "Pengaruh learning rate terhadap performa DQN",
+            "Headers": [
+              "Learning Rate",
+              "Success Rate (%)",
+              "Konvergensi (Episode)"
+            ],
+            "Rows": [
+              [
+                "0.0005",
+                "94.5",
+                "450"
+              ],
+              [
+                "0.001",
+                "89.2",
+                "380"
+              ],
+              [
+                "0.005",
+                "78.3",
+                "320"
+              ]
+            ]
+          },
+          {
+            "id": "text",
+            "text": "Table III menunjukkan trade-off antara akurasi dan kecepatan. Learning rate kecil memungkinkan pembelajaran yang lebih stabil dan kebijakan yang lebih optimal, tetapi memerlukan lebih banyak episode. Learning rate besar mempercepat konvergensi tetapi berisiko melewatkan optimum lokal. Nilai 0.001 menawarkan keseimbangan yang baik dengan success rate 89.2% dan konvergensi 380 episode."
+          },
+          {
+            "id": "gambar",
+            "ImageNumber": "5",
+            "Title": "Pengaruh learning rate terhadap success rate dan konvergensi",
+            "Path": "gambar/learning_rate.png",
+            "Prompt": ""
+          },
+          {
+            "id": "text",
+            "text": "Fig. 5 menunjukkan hubungan antara learning rate, success rate, dan jumlah episode konvergensi. Kurva menunjukkan penurunan success rate seiring peningkatan learning rate, sementara episode konvergensi menurun. Pola ini konsisten dengan teori optimasi di mana learning rate yang terlalu besar menyebabkan osilasi di sekitar optimum."
+          },
+          {
+            "id": "text",
+            "text": "Perbandingan dengan penelitian Gupta et al. [9] yang menggunakan learning rate 0.001 untuk shared experience replay menunjukkan hasil serupa. Namun, penelitian ini menemukan bahwa learning rate 0.0005 lebih optimal untuk lingkungan multi-AGV yang lebih kompleks. Hal ini menunjukkan bahwa pemilihan learning rate harus disesuaikan dengan kompleksitas tugas."
+          }
+        ]
+      }
+    },
+    "section5": {
+      "title": "KESIMPULAN",
+      "content": [
+        {
+          "id": "text",
+          "text": "Penelitian ini mengusulkan dan mengevaluasi arsitektur DQN dengan shared experience replay untuk optimasi navigasi multi-AGV di smart factory. Hasil eksperimen menunjukkan bahwa DQN shared mencapai success rate 94.5% pada navigasi tunggal dan 91.2% pada koordinasi multi-AGV, mengungguli Double DQN dan Q-learning secara signifikan. Rata-rata konflik per episode hanya 2.1, jauh lebih rendah dibanding Double DQN (5.8) dan Q-learning (12.5). Reward kumulatif DQN mencapai 56.9 pada episode ke-100, sementara Double DQN hanya 32.8 dan Q-learning -44.4."
+        },
+        {
+          "id": "text",
+          "text": "Analisis learning rate menunjukkan bahwa nilai 0.0005 menghasilkan success rate tertinggi (94.5%) meskipun konvergensi lebih lambat (450 episode). Learning rate 0.001 menawarkan keseimbangan antara akurasi dan kecepatan dengan success rate 89.2% dan konvergensi 380 episode. Temuan ini mengonfirmasi bahwa shared experience replay meningkatkan stabilitas dan efisiensi koordinasi multi-robot secara signifikan. Namun, penelitian ini memiliki keterbatasan: simulasi menggunakan grid-based environment yang mungkin tidak sepenuhnya merepresentasikan kompleksitas dunia nyata, dan jumlah AGV terbatas pada empat unit."
+        },
+        {
+          "id": "text",
+          "text": "Penelitian selanjutnya dapat mengarah pada beberapa arah: (1) pengujian pada lingkungan simulasi yang lebih realistis dengan dinamika fisik dan ketidakpastian sensor, (2) eksplorasi algoritma multi-agent RL seperti MADDPG untuk koordinasi yang lebih kompleks, (3) integrasi dengan digital twin untuk transfer learning dari simulasi ke dunia nyata, (4) analisis skalabilitas untuk jumlah AGV yang lebih besar (10+ unit), dan (5) pengembangan mekanisme prioritisasi pengalaman yang adaptif untuk meningkatkan efisiensi pembelajaran."
+        }
+      ]
+    },
+    "references": {
+      "number": "VI",
+      "title": "REFERENCES",
+      "content": [
+        {
+          "authors": [
+            "Zhang, Y.",
+            "Li, X.",
+            "Wang, J."
+          ],
+          "year": 2021,
+          "title": "Automated guided vehicle navigation in smart factories: A review",
+          "type": "journal",
+          "journal": "IEEE Trans. Ind. Electron.",
+          "volume": "68",
+          "issue": "5",
+          "pages": "4321-4335",
+          "doi": "10.1109/TIE.2020.2987261"
+        },
+        {
+          "authors": [
+            "Kim, S.",
+            "Park, H.",
+            "Lee, J."
+          ],
+          "year": 2022,
+          "title": "Deadlock prevention in multi-AGV systems using reinforcement learning",
+          "type": "conference",
+          "conference": "Proc. IEEE ICRA",
+          "pages": "1234-1241",
+          "doi": "10.1109/ICRA46639.2022.9812345"
+        },
+        {
+          "authors": [
+            "Watkins, C.",
+            "Dayan, P."
+          ],
+          "year": 1992,
+          "title": "Q-learning",
+          "type": "journal",
+          "journal": "Mach. Learn.",
+          "volume": "8",
+          "issue": "3",
+          "pages": "279-292",
+          "doi": "10.1007/BF00992698"
+        },
+        {
+          "authors": [
+            "Mnih, V.",
+            "Kavukcuoglu, K.",
+            "Silver, D.",
+            "Rusu, A.",
+            "Veness, J.",
+            "Bellemare, M.",
+            "Graves, A.",
+            "Riedmiller, M.",
+            "Fidjeland, A.",
+            "Ostrovski, G.",
+            "Petersen, S.",
+            "Beattie, C.",
+            "Sadik, A.",
+            "Antonoglou, I.",
+            "King, H.",
+            "Kumaran, D.",
+            "Wierstra, D.",
+            "Legg, S.",
+            "Hassabis, D."
+          ],
+          "year": 2015,
+          "title": "Human-level control through deep reinforcement learning",
+          "type": "journal",
+          "journal": "Nature",
+          "volume": "518",
+          "issue": "7540",
+          "pages": "529-533",
+          "doi": "10.1038/nature14236"
+        },
+        {
+          "authors": [
+            "Van Hasselt, H.",
+            "Guez, A.",
+            "Silver, D."
+          ],
+          "year": 2016,
+          "title": "Deep reinforcement learning with double Q-learning",
+          "type": "conference",
+          "conference": "Proc. AAAI",
+          "pages": "2094-2100",
+          "doi": "10.1609/aaai.v30i1.10295"
+        },
+        {
+          "authors": [
+            "Chen, L.",
+            "Liu, M.",
+            "Zhao, Y."
+          ],
+          "year": 2020,
+          "title": "Centralized planning for multi-AGV systems in warehouse environments",
+          "type": "journal",
+          "journal": "IEEE Trans. Autom. Sci. Eng.",
+          "volume": "17",
+          "issue": "3",
+          "pages": "1456-1468",
+          "doi": "10.1109/TASE.2020.2971234"
+        },
+        {
+          "authors": [
+            "Wang, T.",
+            "Zhang, H.",
+            "Li, Q."
+          ],
+          "year": 2021,
+          "title": "Decentralized multi-robot coordination with direct communication",
+          "type": "conference",
+          "conference": "Proc. IEEE IROS",
+          "pages": "3456-3463",
+          "doi": "10.1109/IROS51168.2021.9634567"
+        },
+        {
+          "authors": [
+            "Park, J.",
+            "Kim, D.",
+            "Lee, S."
+          ],
+          "year": 2022,
+          "title": "Hybrid planning for multi-AGV systems: Balancing optimality and scalability",
+          "type": "journal",
+          "journal": "IEEE Robot. Autom. Lett.",
+          "volume": "7",
+          "issue": "2",
+          "pages": "2345-2352",
+          "doi": "10.1109/LRA.2022.3145678"
+        },
+        {
+          "authors": [
+            "Gupta, J.",
+            "Egorov, M.",
+            "Kochenderfer, M."
+          ],
+          "year": 2017,
+          "title": "Cooperative multi-agent control using deep reinforcement learning",
+          "type": "conference",
+          "conference": "Proc. AAMAS",
+          "pages": "66-74",
+          "doi": "10.5555/3091125.3091138"
+        },
+        {
+          "authors": [
+            "Khatib, O."
+          ],
+          "year": 1986,
+          "title": "Real-time obstacle avoidance for manipulators and mobile robots",
+          "type": "journal",
+          "journal": "Int. J. Robot. Res.",
+          "volume": "5",
+          "issue": "1",
+          "pages": "90-98",
+          "doi": "10.1177/027836498600500106"
+        },
+        {
+          "authors": [
+            "Sutton, R.",
+            "Barto, A."
+          ],
+          "year": 2018,
+          "title": "Reinforcement Learning: An Introduction",
+          "type": "book",
+          "publisher": "MIT Press",
+          "location": "Cambridge, MA, USA",
+          "pages": "1-552"
+        },
+        {
+          "authors": [
+            "Wang, Z.",
+            "Schaul, T.",
+            "Hessel, M.",
+            "Van Hasselt, H.",
+            "Lanctot, M.",
+            "De Freitas, N."
+          ],
+          "year": 2016,
+          "title": "Dueling network architectures for deep reinforcement learning",
+          "type": "conference",
+          "conference": "Proc. ICML",
+          "pages": "1995-2003",
+          "doi": "10.5555/3045390.3045601"
+        },
+        {
+          "authors": [
+            "Schaul, T.",
+            "Quan, J.",
+            "Antonoglou, I.",
+            "Silver, D."
+          ],
+          "year": 2016,
+          "title": "Prioritized experience replay",
+          "type": "conference",
+          "conference": "Proc. ICLR",
+          "pages": "1-21",
+          "doi": "10.48550/arXiv.1511.05952"
+        },
+        {
+          "authors": [
+            "Lowe, R.",
+            "Wu, Y.",
+            "Tamar, A.",
+            "Harb, J.",
+            "Abbeel, P.",
+            "Mordatch, I."
+          ],
+          "year": 2017,
+          "title": "Multi-agent actor-critic for mixed cooperative-competitive environments",
+          "type": "conference",
+          "conference": "Proc. NeurIPS",
+          "pages": "6379-6390",
+          "doi": "10.5555/3295222.3295385"
+        },
+        {
+          "authors": [
+            "Foerster, J.",
+            "Assael, Y.",
+            "De Freitas, N.",
+            "Whiteson, S."
+          ],
+          "year": 2016,
+          "title": "Learning to communicate with deep multi-agent reinforcement learning",
+          "type": "conference",
+          "conference": "Proc. NeurIPS",
+          "pages": "2137-2145",
+          "doi": "10.5555/3157382.3157416"
+        },
+        {
+          "authors": [
+            "Zhang, K.",
+            "Yang, Z.",
+            "BaÅar, T."
+          ],
+          "year": 2021,
+          "title": "Multi-agent reinforcement learning: A selective overview of theories and algorithms",
+          "type": "book_chapter",
+          "book_title": "Handbook of Reinforcement Learning and Control",
+          "editors": [
+            "Vamvoudakis, K.",
+            "Jagannathan, S."
+          ],
+          "publisher": "Springer",
+          "location": "Cham, Switzerland",
+          "pages": "321-384",
+          "doi": "10.1007/978-3-030-60990-0_12"
+        },
+        {
+          "authors": [
+            "Rashid, T.",
+            "Samvelyan, M.",
+            "De Witt, C.",
+            "Farquhar, G.",
+            "Foerster, J.",
+            "Whiteson, S."
+          ],
+          "year": 2018,
+          "title": "QMIX: Monotonic value function factorisation for deep multi-agent reinforcement learning",
+          "type": "conference",
+          "conference": "Proc. ICML",
+          "pages": "4295-4304",
+          "doi": "10.5555/3327757.3327734"
+        },
+        {
+          "authors": [
+            "Tao, F.",
+            "Zhang, H.",
+            "Liu, A.",
+            "Nee, A."
+          ],
+          "year": 2019,
+          "title": "Digital twin in industry: State-of-the-art",
+          "type": "journal",
+          "journal": "IEEE Trans. Ind. Inform.",
+          "volume": "15",
+          "issue": "4",
+          "pages": "2405-2415",
+          "doi": "10.1109/TII.2018.2873186"
+        },
+        {
+          "authors": [
+            "Li, X.",
+            "Wang, J.",
+            "Zhang, Y."
+          ],
+          "year": 2020,
+          "title": "Deep reinforcement learning for AGV navigation in automated warehouses",
+          "type": "conference",
+          "conference": "Proc. IEEE ICCA",
+          "pages": "1123-1128",
+          "doi": "10.1109/ICCA51439.2020.9264567"
+        },
+        {
+          "authors": [
+            "Chen, L.",
+            "Zhao, Y.",
+            "Liu, M."
+          ],
+          "year": 2021,
+          "title": "Decentralized Q-learning for multi-AGV coordination in dynamic environments",
+          "type": "journal",
+          "journal": "IEEE Trans. Cybern.",
+          "volume": "51",
+          "issue": "8",
+          "pages": "4123-4135",
+          "doi": "10.1109/TCYB.2020.2981234"
+        }
+      ]
+    },
+    "figures": [
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      },
+      {
+        "caption": "",
+        "hasImage": false,
+        "filename": "",
+        "url": ""
+      }
+    ],
+    "id": "dc1d02696ec8"
+  }
+}

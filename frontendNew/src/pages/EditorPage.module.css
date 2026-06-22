@@ -1,0 +1,42 @@
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-background);
+  transition: background-color 0.3s ease;
+  overflow: hidden;
+}
+
+.splitRoot {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.leftPane {
+  height: 100%;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+  background-color: rgba(253, 252, 248, 0.5); /* cream-50/50 */
+  transition: width 0.3s ease;
+}
+
+.rightPane {
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--color-background);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+}
+
+.wHalf {
+  width: 50%;
+}
+
+.wFull {
+  width: 100%;
+}

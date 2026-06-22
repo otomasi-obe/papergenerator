@@ -1,0 +1,9 @@
+Toggle markers (use SINGLE backslash + letter in your output):
+  \b = bold  |  \i = italic  |  \u = underline  |  $...$ = math inline
+JSON: Since \b is a JSON backspace character, write it as \\b in JSON strings.
+  After JSON parse, \\b becomes \b (single backslash + b = your toggle marker).
+  ❌ NEVER write \\\\b (4x backslash + b) — that becomes \\b after parse (wrong).
+  ✅ Write \\b (2x backslash + b) → becomes \b after parse (correct).
+ALWAYS paired: \btext\b  |  JSON: "\\btext\\b"
+DON'T use: **bold** *italic* <b> HTML.
+Tables: ["\\bProposed\\b", "\\b3.2\\b"]

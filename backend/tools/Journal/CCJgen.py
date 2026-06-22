@@ -32,6 +32,7 @@ from docx import Document
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
+from lxml import etree
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor, Twips
 
@@ -262,7 +263,7 @@ def set_para(
     p,
     before_tw=None,
     after_tw=None,
-    line_tw=None,
+    line_tw=240,
     line_rule="auto",
     alignment=None,
     left_tw=None,
@@ -627,6 +628,12 @@ _INLINE_RE = re.compile(
 def add_runs_with_inline(
     paragraph, text, base_font, base_size, base_bold=False, base_italic=False, base_color=None
 ):
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     if base_color is None:
         base_color = CFG["color_text"]
     pos = 0
@@ -985,7 +992,12 @@ def add_figure_block(doc, fig):
     AI) + caption. Auto_checker scan top-level paragraphs untuk
     [PROMPT UNTUK AI GAMBAR: ...] sehingga harus di top-level."""
     img_path = fig.get("Path", "")
-    full = BASE / img_path if img_path else None
+    full = None
+    if img_path:
+        for cand in (Path(img_path), BASE / img_path):
+            if cand.is_file():
+                full = cand
+                break
     title = fig.get("Title", "Figure")
     prompt = fig.get("Prompt", "")
     num = fig.get("ImageNumber", "?")
@@ -1060,39 +1072,52 @@ def add_figure_block(doc, fig):
 
 
 def add_formula_block(doc, fm):
-    latex = fm.get("latex", "")
-    num = fm.get("FormulaNumber", "?")
-    p = doc.add_paragraph()
-    set_para(
-        p,
-        before_tw=120,
-        after_tw=120,
-        line_tw=300,
-        alignment=WD_ALIGN_PARAGRAPH.CENTER,
-        left_tw=CFG["content_left_tw"],
-        right_tw=CFG["content_right_tw"],
-    )
-    _omml_done = False
+    latex = str(fm.get("latex", fm.get("Formula", ""))).strip()
+    number = str(fm.get("FormulaNumber", "")).strip()
+    if not latex:
+        return
+    
+    cleaned = re.sub(r'\$([^$]+)\$', r'\1', latex)
+    cleaned = cleaned.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    cleaned = cleaned.strip()
+    if not cleaned:
+        return
+
     try:
-        from _math_omml import append_omml_math as _omml_fn
-        _omml_done = bool(str(latex or "").strip()) and _omml_fn(p, latex)
+        from latex2mathml.converter import convert as latex2mathml
+        from mathml2omml import convert as mathml2omml
+
+        mathml_str = latex2mathml(cleaned)
+        omml_str = mathml2omml(mathml_str)
+        omml_str = re.sub(r'(<m:groupChrPr>.*?</m:)groupChr>', r'\1groupChrPr>', omml_str)
+
+        MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+        omml_wrapped = f'<m:oMathPara xmlns:m="{MATH_NS}">{omml_str}</m:oMathPara>'
+        omml_elem = etree.fromstring(omml_wrapped)
+
+        p = doc.add_paragraph()
+        set_para(p, before_tw=120, after_tw=120, line_tw=300, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        pr_el = p._element.get_or_add_pPr()
+        jc = pr_el.find(qn("w:jc"))
+        if jc is not None:
+            jc.set(qn("w:val"), "center")
+        p._element.append(omml_elem)
+
+        if number:
+            run = p.add_run(f"    ({number})")
+            run.font.name = CFG.get("font_body", "Times New Roman")
+            run.font.size = Pt(CFG.get("size_body", 10))
     except Exception:
-        _omml_done = False
-    if not _omml_done:
-        formula_text = latex_to_unicode(latex)
-        add_run(
-            p,
-            formula_text,
-            name=CFG["font_math"],
-            size_pt=CFG["size_body"],
-            italic=True,
-            color=CFG["color_text"],
-        )
-    add_run(
-        p, f"    ({num})", name=CFG["font_body"], size_pt=CFG["size_body"], color=CFG["color_text"]
-    )
-
-
+        p = doc.add_paragraph()
+        set_para(p, before_tw=120, after_tw=120, line_tw=300, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        run = p.add_run(cleaned)
+        run.font.name = "Cambria Math"
+        run.font.size = Pt(CFG.get("size_body", 10))
+        run.font.italic = True
+        if number:
+            run2 = p.add_run(f"    ({number})")
+            run2.font.name = CFG.get("font_body", "Times New Roman")
+            run2.font.size = Pt(CFG.get("size_body", 10))
 def _three_line_borders(c, top=False, bottom_thick=False, bottom_thin=False):
     tcPr = c._tc.get_or_add_tcPr()
     old = tcPr.find(qn("w:tcBorders"))
@@ -1340,6 +1365,28 @@ def block_references(doc, data):
         items = refs
     else:
         items = []
+
+    # Add visible heading paragraph so the audit checker can detect the
+    # References boundary. Without this, "References" only exists inside an
+    # emerald-row table cell and the checker's body-paragraph scan misses it,
+    # causing ALL OMML formulas to be falsely flagged as "after references".
+    heading_p = doc.add_paragraph()
+    set_para(
+        heading_p,
+        before_tw=240,
+        after_tw=120,
+        line_tw=300,
+        left_tw=CFG["content_left_tw"],
+        right_tw=CFG["content_right_tw"],
+    )
+    add_run(
+        heading_p,
+        "References",
+        name=CFG["font_body"],
+        size_pt=CFG["size_ref"],
+        bold=True,
+        color=CFG["color_text"],
+    )
 
     def render(cell):
         items_local = items or ["[1] Author, Title, Journal, Year."]

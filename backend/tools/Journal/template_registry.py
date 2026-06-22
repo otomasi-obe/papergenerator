@@ -310,13 +310,90 @@ TEMPLATE_REGISTRY: Dict[str, TemplateMetadata] = {
         columns=2,
         notes="Energy and electricity journal"
     ),
+
+    "PST": TemplateMetadata(
+        code="PST",
+        name="PST",
+        full_name="Plant Science Today",
+        template_type=TemplateType.JOURNAL,
+        fields=[TemplateField.MULTIDISCIPLINARY],
+        citation_style=CitationStyle.VANCOUVER,
+        publisher="Horizon e-Publishing",
+        country="India",
+        columns=1,
+        page_size="A4",
+        abstract_word_limit=250,
+        section_numbering="arabic",
+        notes="Plant Science Today - single column, Vancouver style, Times New Roman 12pt"
+    ),
+    
+    "MURHUM": TemplateMetadata(
+        code="MURHUM",
+        name="Murhum",
+        full_name="Jurnal Murhum: Jurnal Pendidikan Anak Usia Dini",
+        template_type=TemplateType.JOURNAL,
+        fields=[TemplateField.MULTIDISCIPLINARY],
+        citation_style=CitationStyle.APA,
+        country="Indonesia",
+        language="Indonesian",
+        columns=1,
+        page_size="A4",
+        abstract_word_limit=250,
+        section_numbering="arabic",
+        notes="Jurnal Sinta 3 PAUD. Single column, APA style."
+    ),
+    "OBSESI": TemplateMetadata(
+        code="OBSESI",
+        name="Obsesi",
+        full_name="Jurnal Obsesi: Jurnal Pendidikan Anak Usia Dini",
+        template_type=TemplateType.JOURNAL,
+        fields=[TemplateField.MULTIDISCIPLINARY],
+        citation_style=CitationStyle.APA,
+        country="Indonesia",
+        language="Indonesian/English",
+        columns=1,
+        page_size="A4",
+        abstract_word_limit=250,
+        section_numbering="arabic",
+        notes="Jurnal Sinta 2 PAUD. Single column, APA style."
+    ),
+    "PAUDIA": TemplateMetadata(
+        code="PAUDIA",
+        name="PAUDIA",
+        full_name="Jurnal PAUDIA: Jurnal Penelitian dalam Bidang Pendidikan Anak Usia Dini",
+        template_type=TemplateType.JOURNAL,
+        fields=[TemplateField.MULTIDISCIPLINARY],
+        citation_style=CitationStyle.APA,
+        country="Indonesia",
+        language="Indonesian",
+        columns=1,
+        page_size="A4",
+        abstract_word_limit=250,
+        section_numbering="arabic",
+        notes="Jurnal Sinta 3 PAUD (UPGRIS). Single column, APA style."
+    ),
+    "PGPAUDTrunojoyo": TemplateMetadata(
+        code="PGPAUDTrunojoyo",
+        name="PGPAUDTrunojoyo",
+        full_name="Jurnal PG-PAUD Trunojoyo: Jurnal Pendidikan Guru Pendidikan Anak Usia Dini",
+        template_type=TemplateType.JOURNAL,
+        fields=[TemplateField.MULTIDISCIPLINARY],
+        citation_style=CitationStyle.APA,
+        country="Indonesia",
+        language="Indonesian",
+        columns=1,
+        page_size="A4",
+        abstract_word_limit=250,
+        section_numbering="arabic",
+        notes="Jurnal PG-PAUD Trunojoyo. Single column, APA style. TNR 12pt body, 16pt title, 10pt abstract."
+    ),
 }
 
 for code in [
     "AEJ", "AMORI", "CCJ", "CERiMRE", "EASR", "ELCTRICES", "ELKOLIND",
     "El-Usrah", "ICIMECE", "ICONIE", "IJB", "IJIMS", "IJITEE", "IJRED",
     "IJT", "JAMRIS", "JAT", "JCEF", "JEEMECS", "JIEB", "JMEM",
-    "JTMM", "JTRANSIENT", "JTUNDIP", "KKCK", "MEV", "UITM", "ULTIMACOMP"
+    "JTMM", "JTRANSIENT", "JTUNDIP", "KKCK", "MEV", "PST", "UITM", "ULTIMACOMP"
 ]:
     if code not in TEMPLATE_REGISTRY:
         TEMPLATE_REGISTRY[code] = TemplateMetadata(
@@ -329,6 +406,63 @@ for code in [
             columns=2,
             notes="Template metadata to be completed"
         )
+
+
+# ── MDPI Journal Sub-Templates (148+ journals) ──────────────────────────
+def _load_mdpi_journals() -> dict:
+    """Load MDPI journal metadata from journals.json and register as sub-templates."""
+    import json as _json
+    from pathlib import Path as _Path
+    
+    _journals_path = _Path(__file__).resolve().parent / "journals.json"
+    if not _journals_path.exists():
+        return {}
+    
+    _data = _json.loads(_journals_path.read_text(encoding="utf-8"))
+    
+    for key, info in _data.items():
+        code = f"MDPI_{key}".upper()  # Uppercase for consistent lookup
+        short = info.get("short_name", key)
+        year = info.get("year", 2025)
+        volume = info.get("volume", 1)
+        
+        TEMPLATE_REGISTRY[code] = TemplateMetadata(
+            code=code,
+            name=f"MDPI {short}",
+            full_name=f"MDPI {short} ({year}, Vol. {volume})",
+            template_type=TemplateType.JOURNAL,
+            fields=[TemplateField.MULTIDISCIPLINARY],
+            citation_style=CitationStyle.NUMBERED,
+            publisher="MDPI",
+            country="Switzerland",
+            columns=1,
+            page_size="A4",
+            abstract_word_limit=200,
+            section_numbering="arabic",
+            notes=f"MDPI {short} open access journal format",
+        )
+    
+    return _data
+
+MDPI_JOURNALS = _load_mdpi_journals()
+
+
+def get_mdpi_journal_info(key: str) -> dict | None:
+    """Get MDPI sub-journal metadata (short_name, year, volume, logo)."""
+    return MDPI_JOURNALS.get(key)
+
+
+def resolve_template_journal(code: str) -> tuple[str, str | None]:
+    """Resolve template code: returns (base_code, mdpi_sub_key or None).
+    
+    'MDPI_ACOUSTICS' → ('MDPI', 'acoustics')
+    'MDPI_acoustics' → ('MDPI', 'acoustics')
+    'IEEE' → ('IEEE', None)
+    """
+    upper = code.upper()
+    if upper.startswith('MDPI_') and len(upper) > 5:
+        return ('MDPI', upper[5:].lower())
+    return (code.upper(), None)
 
 
 def get_template(code: str) -> Optional[TemplateMetadata]:

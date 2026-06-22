@@ -34,6 +34,7 @@ CFG = {
     "size_caption": 8,
     "size_reference": 8,
     "columns": 1,
+    "col_width_cm": 16.0,
     "first_line_indent_tw": 0,
     "table_borders": "three_line",
     "fig_prefix": "Fig.",
@@ -67,7 +68,7 @@ def set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None, colo
         run.font.color.rgb = RGBColor(*color)
 
 
-def set_para_spacing(para, before_pt=None, after_pt=None, line_tw=None):
+def set_para_spacing(para, before_pt=None, after_pt=None, line_tw=240):
     pf = para.paragraph_format
     if before_pt is not None:
         pf.space_before = Pt(before_pt)
@@ -352,7 +353,7 @@ def add_authors(doc, data):
         p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
         set_para_spacing(p2, before_pt=0, after_pt=3)
         run2 = p2.add_run("; ".join(affiliations))
-        set_run_font(run2, CFG["font_title"], CFG["size_body"] - 1, italic=True)
+        set_run_font(run2, CFG["font_title"], CFG["size_body"] - 1, bold=True, italic=True)
 
     # Emails
     emails = [a.get("email", "") for a in authors if isinstance(a, dict) and a.get("email")]
@@ -378,7 +379,7 @@ def add_abstract(doc, data):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=0, after_pt=6)
-    run = p.add_run(abstract)
+    run = p.add_run(_clean_latex(abstract))
     set_run_font(run, CFG["font_body"], CFG["size_body"])
 
 
@@ -419,6 +420,12 @@ def add_subsection_heading(doc, title):
 
 
 def _clean_latex(text):
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     """Strip inline LaTeX markers dari body text supaya tidak bocor ke output."""
     text = re.sub(r'\$([^$]+)\$', r'\1', text)
     text = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
@@ -452,9 +459,38 @@ def _clean_latex(text):
     text = re.sub(r'\\Delta', chr(916), text)
     text = re.sub(r'\\partial', chr(8706), text)
     text = re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
-    text = re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    # Convert bare subscript/superscript to Unicode
+    text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
+    text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     text = re.sub(r'\\[a-zA-Z]+', '', text)
     text = re.sub(r'[{}]', '', text)
+    # Strip any remaining stray $ (unmatched math delimiters)
+    text = re.sub(r'\$', '', text)
     return text.strip()
 
 
@@ -513,12 +549,19 @@ def add_figure(doc, fig_data, fig_counter):
     # ── Embed gambar atau fallback prompt ────────────────────────────────
     p_img = doc.add_paragraph()
     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p_img, before_pt=3, after_pt=3)
+    set_para_spacing(p_img, before_pt=12, after_pt=8)
 
     if actual_image:
         try:
             run_img = p_img.add_run()
-            run_img.add_picture(str(actual_image), width=Inches(5.5))
+            # Dynamic image sizing based on column layout
+            columns = CFG.get("columns", 1)
+            col_w = CFG.get("col_width_cm", 16.0)
+            if columns == 2:
+                max_w_cm = (col_w / 2) * 0.7  # 2-col: 70% of each column
+            else:
+                max_w_cm = col_w * 0.5  # 1-col: 50% of text area
+            run_img.add_picture(str(actual_image), width=Inches(max_w_cm / 2.54))
         except Exception:
             actual_image = None
 
@@ -596,24 +639,34 @@ def add_table_element(doc, tbl_data, tbl_counter):
                 run = p.add_run(_clean_latex(str(val)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"])
 
+    # Spacer after table ensures text below has breathing room
+    p_spacer = doc.add_paragraph()
+    set_para_spacing(p_spacer, before_pt=6, after_pt=6)
+    run_s = p_spacer.add_run(" ")
+    set_run_font(run_s, CFG["font_body"], 1)
+
 
 
 def add_formula(doc, formula_data):
+    # OMML via shared utility
+    import sys
+    from pathlib import Path as _Path
+    _jdir = _Path(__file__).resolve().parent
+    if str(_jdir) not in sys.path:
+        sys.path.insert(0, str(_jdir))
+    from _formula_omml import add_omml_formula
+
     latex = str(formula_data.get("latex", formula_data.get("Formula", ""))).strip()
     number = str(formula_data.get("FormulaNumber", "")).strip()
     if not latex:
         return
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p, before_pt=3, after_pt=3)
-    cleaned = _clean_latex(latex)
-    display = cleaned
-    if number:
-        display = f"{cleaned}    ({number})"
-    run = p.add_run(display)
-    set_run_font(run, "Cambria Math", CFG["size_body"], italic=True)
-
-
+        # Calculate max formula width (same rules as images)
+    columns = CFG.get("columns", 1)
+    col_w = CFG.get("col_width_cm", 16.0)
+    max_fw = (col_w / 2) * 0.7 if columns == 2 else col_w * 0.7
+    add_omml_formula(doc, latex, number, CFG, before_pt=4, after_pt=4,
+                     alignment="center", font_body=CFG.get("font_body", "Times New Roman"),
+                     size_body=CFG.get("size_body", 10), max_width_cm=max_fw)
 def add_references(doc, data):
     refs_data = data.get("references", {})
     if isinstance(refs_data, dict):
@@ -634,6 +687,8 @@ def add_references(doc, data):
         ref_text = str(ref.get("text", ref) if isinstance(ref, dict) else ref).strip()
         if not ref_text:
             continue
+        # Strip existing bracket number prefix to avoid [1] [1] double numbering
+        ref_text = re.sub(r'^\[\d+\]\s*', '', ref_text)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_para_spacing(p, before_pt=0, after_pt=0)

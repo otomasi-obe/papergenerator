@@ -315,6 +315,13 @@ def append_line_break(paragraph):
 
 
 def _normalize_text_commands(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    # before any other processing.  Imported lazily to avoid circular deps.
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     # Replace literal escape sequences left after JSON parsing.
     # JSON spec consumes \n, \t, \b, \r, \f as real chars.
     # After json.loads, any REMAINING literal \n (backslash+n) was double-escaped
@@ -329,6 +336,18 @@ def _normalize_text_commands(text: str) -> str:
     # Bold/italic markdown → rich text markers
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
+
+    # Fix double-escaped toggle markers (AI often double-escapes in JSON)
+    # Blind replacement is safe: LaTeX commands appear inside math delimiters
+    # which are extracted BEFORE toggle parsing in _iter_rich_tokens.
+    text = text.replace('\\\\b', '\\b')
+    text = text.replace('\\\\i', '\\i')
+    text = text.replace('\\\\u', '\\u')
+    # Fix double-escaped math delimiters
+    text = text.replace('\\\\(', '\\(')
+    text = text.replace('\\\\)', '\\)')
+    text = text.replace('\\\\[', '\\[')
+    text = text.replace('\\\\]', '\\]')
     return text
 
 

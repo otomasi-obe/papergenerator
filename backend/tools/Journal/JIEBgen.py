@@ -136,6 +136,31 @@ def _append_inline_math(paragraph, latex):
         if new_s == s:
             break
         s = new_s
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     s = _re.sub(r"\\[a-zA-Z]+\*?", "", s)
     s = s.replace("{", "").replace("}", "").replace("$", "")
     paragraph.add_run(s)
@@ -296,6 +321,12 @@ def add_empty_para(doc):
 
 
 def _normalize_text(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
     text = re.sub(r"\*([^*\n]+?)\*", r"\\i\1\\i", text)
@@ -528,9 +559,11 @@ def add_figure(doc, fig_data):
 
     image_path = None
     if path_text:
-        candidate = BASE / path_text
-        if candidate.is_file():
-            image_path = candidate
+        # Try direct path first (handles full/relative paths), then BASE-relative
+        for cand in (Path(path_text), BASE / path_text):
+            if cand.is_file():
+                image_path = cand
+                break
 
     if image_path and image_path.is_file():
         p = doc.add_paragraph()
@@ -564,22 +597,21 @@ def add_figure(doc, fig_data):
 
 
 def add_formula(doc, formula_data):
-    formula_number = str(formula_data.get("FormulaNumber", "")).strip()
-    latex = formula_data.get("latex", "E = mc^2").strip()
+    # OMML via shared utility
+    import sys
+    from pathlib import Path as _Path
+    _jdir = _Path(__file__).resolve().parent
+    if str(_jdir) not in sys.path:
+        sys.path.insert(0, str(_jdir))
+    from _formula_omml import add_omml_formula
 
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    set_paragraph_spacing(p, before=3, after=3, line=CFG["line_spacing_body"], line_rule="auto")
-
-    if not _append_inline_math(p, latex):
-        run = p.add_run(latex)
-        set_run_font(run, font_name="Cambria Math", size_pt=CFG["size_body"], italic=True)
-
-    if formula_number:
-        run = p.add_run(f"   ({formula_number})")
-        set_run_font(run, font_name=CFG["font_body"], size_pt=CFG["size_body"])
-
-
+    latex = str(formula_data.get("latex", formula_data.get("Formula", ""))).strip()
+    number = str(formula_data.get("FormulaNumber", "")).strip()
+    if not latex:
+        return
+    add_omml_formula(doc, latex, number, CFG, before_pt=4, after_pt=4,
+                     alignment="center", font_body=CFG.get("font_body", "Times New Roman"),
+                     size_body=CFG.get("size_body", 10))
 def add_table(doc, table_data):
     table_number = str(table_data.get("TableNumber", "1")).strip()
     title = table_data.get("Title", "Title of the table")
@@ -801,3 +833,7 @@ def generate():
 
 if __name__ == "__main__":
     generate()
+# --- Hermes patch: masthead no-op ---
+def _inject_masthead_content(doc, data):
+    """No-op — masthead injection not needed for this template."""
+    pass

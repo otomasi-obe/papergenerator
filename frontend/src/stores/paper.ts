@@ -711,10 +711,32 @@ export const usePaperStore = defineStore('paper', () => {
     }
 
     const current = paper.value.journal || 'IEEE'
-    if (availableJournals.value.length && !availableJournals.value.includes(current)) {
-      paper.value.journal = availableJournals.value[0]
+    if (availableJournals.value.length) {
+      // Handle MDPI sub-journals: MDPI_acoustics → check if 'MDPI' is in the main list
+      const normalized = current.startsWith('MDPI_') ? 'MDPI' : current
+      if (!availableJournals.value.includes(normalized)) {
+        paper.value.journal = availableJournals.value[0]
+      }
     }
     return availableJournals.value
+  }
+
+  // ─── MDPI sub-journals ────────────────────────────────────────────────
+  const mdpiSubJournals = ref([])
+  const mdpiSubJournalsLoading = ref(false)
+
+  async function fetchMDPISubJournals() {
+    if (mdpiSubJournals.value.length) return mdpiSubJournals.value
+    mdpiSubJournalsLoading.value = true
+    try {
+      const res = await api.get(`${API_BASE}/journals/mdpi`, { timeout: 10000 })
+      mdpiSubJournals.value = res.data?.mdpi_journals || []
+    } catch {
+      mdpiSubJournals.value = []
+    } finally {
+      mdpiSubJournalsLoading.value = false
+    }
+    return mdpiSubJournals.value
   }
 
   // ─── Auto-save paper to localStorage on every deep change ──────────────
@@ -729,6 +751,10 @@ export const usePaperStore = defineStore('paper', () => {
     },
     { deep: true }
   )
+
+  // When paperImages arrives (after loadPaperImages), auto-inject gambar items
+  // into sections if they don't already exist. This covers the case where
+  // applyPaperData is called before images are loaded.
 
   let _toastTimer: ReturnType<typeof setTimeout> | null = null
   function showToast(message, type = 'info') {
@@ -837,7 +863,9 @@ export const usePaperStore = defineStore('paper', () => {
     function walk(items) {
       for (const item of items || []) {
         if (item.id === 'gambar' && item.Path) {
-          if (!map.has(item.Path)) map.set(item.Path, item)
+          // Normalize to basename — Path may be absolute filesystem path after reconcile
+          const key = item.Path.includes('/') ? item.Path.split('/').pop() : item.Path
+          if (!map.has(key)) map.set(key, item)
         }
       }
     }
@@ -1033,6 +1061,12 @@ export const usePaperStore = defineStore('paper', () => {
     recordChange('remove figure')
     paper.value.figures.splice(idx, 1)
   }
+
+  // ─── Figure → Section gambar bridge ─────────────────────────────────────
+  // REMOVED: injecting figures into sections caused images to appear in wrong
+  // sections (e.g., Kesimpulan). Figures now only render where explicitly placed.
+  // The PreviewTab error handler shows "Gambar gagal dimuat" for broken images.
+  // function injectFigureImagesIntoSections() { /* removed */ }
 
   // ─── CRUD: Table helpers ──────────────────────────────────────────────
   function addTableRow(item) {
@@ -1245,13 +1279,13 @@ export const usePaperStore = defineStore('paper', () => {
       _loadingFromDb.value = true
       const res = await api.get(`${API_BASE}/papers/${paperId}`)
       paper.value = fromPaperJsonRaw(res.data)
-      currentPaperId.value = paperId
+      currentPaperId.value = res.data.id || paperId
       // Clear undo/redo stacks so Ctrl+Z doesn't revert to pre-reload state
       undoStack.value = []
       redoStack.value = []
-      lsSet(LS_LAST_PAPER_ID, paperId)
-      await loadPaperImages(paperId)
-      loadPaperCharts(paperId)
+      lsSet(LS_LAST_PAPER_ID, currentPaperId.value)
+      await loadPaperImages(currentPaperId.value)
+      loadPaperCharts(currentPaperId.value)
       return true
     } catch (err) {
       const status = err.response?.status
@@ -1387,6 +1421,9 @@ export const usePaperStore = defineStore('paper', () => {
     availableJournals,
     journalsLoading,
     fetchJournals,
+    mdpiSubJournals,
+    mdpiSubJournalsLoading,
+    fetchMDPISubJournals,
     pendingChanges,
     pendingCount,
     pushProposal,

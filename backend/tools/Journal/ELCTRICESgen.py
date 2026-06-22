@@ -30,6 +30,7 @@ ROOT_DIR = BASE_DIR.parent
 JSON_PATH = BASE_DIR / "_PLC-MediapipeID.json"
 TEMPLATE_PATH = BASE_DIR / "ELCTRICES.docx"
 JOURNAL_NAME = TEMPLATE_PATH.stem
+OUTPUT_DOCX = BASE_DIR / "ELCTRICES_output.docx"
 
 NS_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
@@ -56,12 +57,10 @@ XSL_CANDIDATES = [
 ]
 _XSLT = None
 
-
 @dataclass
 class RenderState:
     figure_count: int = 0
     table_count: int = 0
-
 
 def _clean_latex(text):
     """Strip inline LaTeX markers dari text."""
@@ -100,11 +99,39 @@ def _clean_latex(text):
     text = _re.sub(r'\\Delta', chr(916), text)
     text = _re.sub(r'\\partial', chr(8706), text)
     text = _re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
-    text = _re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    # Convert bare subscript/superscript to Unicode
+    text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
+    text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     text = _re.sub(r'\\[a-zA-Z]+', '', text)
-    text = _re.sub(r'[{}]', '', text)
+    text = re.sub(r'[{}]', '', text)
+    # Strip any remaining stray $ (unmatched math delimiters)
+    text = re.sub(r'\$', '', text)
     return text.strip()
-
 
 def _postprocess_clean_latex(doc):
     """Walk all paragraphs and clean LaTeX from run text in-place."""
@@ -146,23 +173,19 @@ def _set_ai_prompt_color_red(doc):
                             except Exception:
                                 pass
 
-
 def _wq(tag: str) -> str:
     return f"{{{NS_W}}}{tag}"
-
 
 def _strict_to_trans(data: bytes) -> bytes:
     for old, new in NS_MAP_STRICT.items():
         data = data.replace(old, new)
     return data
 
-
 def _clear_document_body(doc: Document) -> None:
     body = doc._element.body
     for child in list(body):
         if child.tag != qn("w:sectPr"):
             body.remove(child)
-
 
 def _set_document_final_sectpr(doc: Document, sectpr: etree._Element) -> None:
     body = doc._element.body
@@ -171,14 +194,12 @@ def _set_document_final_sectpr(doc: Document, sectpr: etree._Element) -> None:
         body.remove(current)
     body.append(deepcopy(sectpr))
 
-
 def _apply_sample_ppr(paragraph, sample_ppr: etree._Element | None) -> None:
     current = paragraph._p.find(qn("w:pPr"))
     if current is not None:
         paragraph._p.remove(current)
     if sample_ppr is not None:
         paragraph._p.insert(0, deepcopy(sample_ppr))
-
 
 def _apply_sample_rpr(run, sample_rpr: etree._Element | None) -> None:
     current = run._r.find(qn("w:rPr"))
@@ -187,13 +208,11 @@ def _apply_sample_rpr(run, sample_rpr: etree._Element | None) -> None:
     if sample_rpr is not None:
         run._r.insert(0, deepcopy(sample_rpr))
 
-
 def _new_paragraph(doc: Document, sample_ppr: etree._Element | None = None):
     paragraph = doc.add_paragraph()
     if sample_ppr is not None:
         _apply_sample_ppr(paragraph, sample_ppr)
     return paragraph
-
 
 def _add_sample_run(
     paragraph,
@@ -214,7 +233,6 @@ def _add_sample_run(
         run.underline = underline
     return run
 
-
 def _normalize_omml_math(omml: etree._Element, half_points: int = 20) -> etree._Element:
     for math_run in omml.findall(f".//{{{MATH_NS}}}r"):
         rpr = math_run.find(qn("w:rPr"))
@@ -231,7 +249,6 @@ def _normalize_omml_math(omml: etree._Element, half_points: int = 20) -> etree._
         _set_math_run_defaults(rpr, half_points=half_points)
 
     return omml
-
 
 def _set_math_run_defaults(rpr: etree._Element, half_points: int = 20) -> None:
     rfonts = rpr.find(qn("w:rFonts"))
@@ -255,7 +272,6 @@ def _set_math_run_defaults(rpr: etree._Element, half_points: int = 20) -> None:
     if lang.get(qn("w:val")) is None:
         lang.set(qn("w:val"), "en-US")
 
-
 def _get_xslt():
     global _XSLT
     if _XSLT is not None:
@@ -269,7 +285,6 @@ def _get_xslt():
             continue
     _XSLT = False
     return _XSLT
-
 
 def _latex_to_omml(latex: str):
     try:
@@ -286,7 +301,6 @@ def _latex_to_omml(latex: str):
     except Exception:
         return None
 
-
 def _append_inline_math(paragraph, latex: str) -> bool:
     omml = _latex_to_omml(latex)
     if omml is None:
@@ -301,8 +315,13 @@ def _append_inline_math(paragraph, latex: str) -> bool:
         paragraph._p.append(wrapper)
     return True
 
-
 def _normalize_text_commands(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     # Replace literal \n → newline, but ONLY when not followed by a-z
     # (LaTeX commands like \nu, \nabla, \neg, \notin must be preserved).
     text = re.sub(r'\\n(?![a-z])', '\n', text)
@@ -312,7 +331,6 @@ def _normalize_text_commands(text: str) -> str:
     text = re.sub(r'\*\*(.+?)\*\*', r'\\b\1\\b', text, flags=re.DOTALL)
     text = re.sub(r'\*([^*\n]+?)\*', r'\\i\1\\i', text)
     return text
-
 
 def _iter_rich_tokens(text: str):
     normalized = _normalize_text_commands(text)
@@ -349,16 +367,31 @@ def _iter_rich_tokens(text: str):
                 index += 2
                 continue
             if command == "b":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\b")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 bold = not bold
                 index += 2
                 continue
             if command == "i":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\i")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 italic = not italic
                 index += 2
                 continue
             if command == "u":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\\u")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 underline = not underline
                 index += 2
@@ -376,7 +409,6 @@ def _iter_rich_tokens(text: str):
         index += 1
 
     yield from flush_buffer()
-
 
 def _append_rich_text(paragraph, text: str, sample_rpr: etree._Element | None) -> None:
     for token in _iter_rich_tokens(text):
@@ -397,12 +429,10 @@ def _append_rich_text(paragraph, text: str, sample_rpr: etree._Element | None) -
             underline=token["underline"],
         )
 
-
 def _split_body_blocks(text: str) -> list[str]:
     normalized = _normalize_text_commands(text).replace("\r\n", "\n").replace("\r", "\n")
     blocks = [part for part in re.split(r"\n\s*\n", normalized) if part.strip()]
     return blocks or [normalized.strip()]
-
 
 def _resolve_path(path_text: str, json_path: Path) -> Path:
     path = Path(path_text)
@@ -413,10 +443,8 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
         return json_relative
     return BASE_DIR / path
 
-
 def _text_of_run(run_el: etree._Element) -> str:
     return "".join(t.text or "" for t in run_el.findall(_wq("t")))
-
 
 def _load_template_samples(template_path: Path) -> dict[str, etree._Element | None]:
     with zipfile.ZipFile(template_path) as archive:
@@ -539,7 +567,6 @@ def _load_template_samples(template_path: Path) -> dict[str, etree._Element | No
         "body_close_ppr": body_close_ppr,
     }
 
-
 def _pick_first(config: dict, keys: tuple[str, ...], default: str = "") -> str:
     for key in keys:
         value = config.get(key)
@@ -550,13 +577,11 @@ def _pick_first(config: dict, keys: tuple[str, ...], default: str = "") -> str:
             return text
     return default
 
-
 def _title_texts(config: dict) -> tuple[str, str]:
     base = _pick_first(config, ("title",), "Untitled Paper")
     title_id = _pick_first(config, ("title_id", "title_indonesian", "title_ina", "judul"), base)
     title_en = _pick_first(config, ("title_en", "title_english"), base)
     return title_id, title_en
-
 
 def _abstract_texts(config: dict) -> tuple[str, str]:
     block = config.get("Abstract", {}) if isinstance(config.get("Abstract"), dict) else {}
@@ -573,7 +598,6 @@ def _abstract_texts(config: dict) -> tuple[str, str]:
     )
     return abstract_id, abstract_en
 
-
 def _keyword_lists(config: dict) -> tuple[list[str], list[str]]:
     block = config.get("Abstract", {}) if isinstance(config.get("Abstract"), dict) else {}
 
@@ -589,7 +613,6 @@ def _keyword_lists(config: dict) -> tuple[list[str], list[str]]:
     keywords_id = normalize(config.get("keywords_id") or config.get("keywords_indonesian") or block.get("KeywordsIndonesian")) or base
     keywords_en = normalize(config.get("keywords_en") or config.get("keywords_english") or block.get("KeywordsEnglish")) or base
     return keywords_id, keywords_en
-
 
 def _author_entries(config: dict) -> list[dict[str, str]]:
     authors = config.get("authors", [])
@@ -612,18 +635,15 @@ def _author_entries(config: dict) -> list[dict[str, str]]:
         )
     return entries
 
-
 def _shorten_text(text: str, max_len: int) -> str:
     compact = " ".join(text.split())
     if len(compact) <= max_len:
         return compact
     return compact[: max_len - 3].rstrip() + "..."
 
-
 def _running_title(config: dict) -> str:
     _, title_en = _title_texts(config)
     return _shorten_text(title_en, 60)
-
 
 def _running_authors(config: dict) -> str:
     authors = _author_entries(config)
@@ -631,7 +651,6 @@ def _running_authors(config: dict) -> str:
         return ""
     names = ", ".join(entry["name"] for entry in authors)
     return _shorten_text(names, 80)
-
 
 def _render_title_block(doc: Document, config: dict, samples: dict[str, etree._Element | None]) -> None:
     title_id, title_en = _title_texts(config)
@@ -713,7 +732,6 @@ def _render_title_block(doc: Document, config: dict, samples: dict[str, etree._E
 
     _new_paragraph(doc, samples["section_break_ppr"])
 
-
 def _add_body_text(
     doc: Document,
     text: str,
@@ -739,17 +757,14 @@ def _add_body_text(
             )
     return True
 
-
 def _subsection_label(index: int) -> str:
     if 1 <= index <= 26:
         return chr(ord("A") + index - 1)
     return str(index)
 
-
 def _add_section_heading(doc: Document, title: str, samples: dict[str, etree._Element | None]) -> None:
     paragraph = _new_paragraph(doc, samples["section_heading_ppr"])
     _add_sample_run(paragraph, title.upper(), samples["section_heading_rpr"], bold=True)
-
 
 def _add_subsection_heading(
     doc: Document,
@@ -760,7 +775,6 @@ def _add_subsection_heading(
     paragraph = _new_paragraph(doc, samples["subsection_heading_ppr"])
     _add_sample_run(paragraph, f"{label}. ", samples["subsection_label_rpr"])
     _add_sample_run(paragraph, title, samples["subsection_title_rpr"], italic=True)
-
 
 def _set_table_width(table, total_width: float, column_count: int) -> None:
     tbl = table._tbl
@@ -821,7 +835,6 @@ def _set_table_width(table, total_width: float, column_count: int) -> None:
         grid_col.set(qn("w:w"), width_text)
         tbl_grid.append(grid_col)
 
-
 def _set_cell_format(cell, *, header: bool) -> None:
     tc_pr = cell._tc.get_or_add_tcPr()
     tc_mar = tc_pr.find(qn("w:tcMar"))
@@ -881,7 +894,6 @@ def _set_cell_format(cell, *, header: bool) -> None:
                 ppr_rpr.append(el)
             el.set(qn("w:val"), "1")
 
-
 def _add_prompt_box(doc: Document, text: str, samples: dict[str, etree._Element | None]) -> None:
     table = doc.add_table(rows=1, cols=1)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -896,7 +908,6 @@ def _add_prompt_box(doc: Document, text: str, samples: dict[str, etree._Element 
     for run in paragraph.runs:
         run.font.color.rgb = RGBColor(0xFF, 0x00, 0x00)
 
-
 def _next_figure_number(item: dict, state: RenderState) -> str:
     raw = str(item.get("ImageNumber") or item.get("number") or "").strip()
     if raw:
@@ -904,14 +915,12 @@ def _next_figure_number(item: dict, state: RenderState) -> str:
     state.figure_count += 1
     return str(state.figure_count)
 
-
 def _next_table_number(item: dict, state: RenderState) -> str:
     raw = str(item.get("TableNumber") or item.get("NumberiOrLetter") or item.get("number") or "").strip()
     if raw:
         return raw
     state.table_count += 1
     return str(state.table_count)
-
 
 def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, etree._Element | None], state: RenderState) -> None:
     title = str(item.get("Title") or item.get("title") or "").strip()
@@ -943,7 +952,6 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, e
         caption = _new_paragraph(doc, samples["figure_caption_ppr"])
         _add_sample_run(caption, f"Gambar {number}. ", samples["figure_caption_label_rpr"])
         _add_sample_run(caption, title, samples["figure_caption_text_rpr"])
-
 
 def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | None], state: RenderState) -> None:
     headers = list(item.get("Headers") or item.get("headers") or [])
@@ -985,8 +993,21 @@ def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | No
                 paragraph = cell.paragraphs[0]
                 paragraph.add_run(_clean_latex(str(row_data[column_index])))
 
-    doc.add_paragraph()
+    doc.add_paragraph(
 
+)
+    # Spacer after table
+    p_spacer = doc.add_paragraph()
+    from docx.shared import Pt
+    from docx.oxml.ns import qn
+    ppr = p_spacer._p.get_or_add_pPr()
+    spacing = ppr.find(qn("w:spacing"))
+    if spacing is None:
+        spacing = ppr.makeelement(qn("w:spacing"), {})
+        ppr.append(spacing)
+    spacing.set(qn("w:before"), "120")
+    spacing.set(qn("w:after"), "120")
+    p_spacer.add_run(" ").font.size = Pt(1)
 
 def _add_equation_group(doc: Document, item: dict, samples: dict[str, etree._Element | None]) -> None:
     formulas = [str(value).strip() for value in item.get("Lines", []) if str(value).strip()]
@@ -1011,7 +1032,6 @@ def _add_equation_group(doc: Document, item: dict, samples: dict[str, etree._Ele
             spacer.add_tab()
             _add_sample_run(paragraph, f"({number})", samples["equation_number_rpr"])
 
-
 def _iter_point_entries(item: dict):
     items = item.get("Items")
     if isinstance(items, list) and items:
@@ -1025,7 +1045,6 @@ def _iter_point_entries(item: dict):
     if text:
         yield text, str(item.get("Label") or "").strip()
 
-
 def _add_point_list(doc: Document, item: dict, samples: dict[str, etree._Element | None], *, subsection: bool) -> None:
     list_type = str(item.get("ListType") or ("number" if item.get("Numbered") else "bullet")).lower()
     for index, (text, label) in enumerate(_iter_point_entries(item), start=1):
@@ -1035,7 +1054,6 @@ def _add_point_list(doc: Document, item: dict, samples: dict[str, etree._Element
         prefix = label or (f"{index}. " if list_type in {"number", "numbering", "ordered"} else "- ")
         _add_sample_run(paragraph, prefix, samples["subsection_body_rpr"] if subsection else samples["body_rpr"])
         _append_rich_text(paragraph, text, samples["subsection_body_rpr"] if subsection else samples["body_rpr"])
-
 
 def _render_content_item(
     doc: Document,
@@ -1066,7 +1084,6 @@ def _render_content_item(
         _add_point_list(doc, item, samples, subsection=subsection)
         return False
     return False
-
 
 def _render_content_sequence(
     doc: Document,
@@ -1100,7 +1117,6 @@ def _render_content_sequence(
                 subsection=subsection,
             ):
                 first_text = False
-
 
 def _render_sections(doc: Document, config: dict, json_path: Path, samples: dict[str, etree._Element | None]) -> None:
     state = RenderState()
@@ -1141,7 +1157,6 @@ def _render_sections(doc: Document, config: dict, json_path: Path, samples: dict
                 subsection=True,
             )
 
-
 def _reference_texts(config: dict) -> tuple[str, list[str]]:
     references = config.get("references")
     if isinstance(references, dict):
@@ -1159,10 +1174,8 @@ def _reference_texts(config: dict) -> tuple[str, list[str]]:
         return title, items
     return "DAFTAR PUSTAKA", []
 
-
 def _strip_reference_label(text: str) -> str:
     return re.sub(r"^\s*\[\d+\]\s*", "", text).strip()
-
 
 def _add_references(doc: Document, config: dict, samples: dict[str, etree._Element | None]) -> None:
     title, items = _reference_texts(config)
@@ -1176,7 +1189,6 @@ def _add_references(doc: Document, config: dict, samples: dict[str, etree._Eleme
         paragraph = _new_paragraph(doc, samples["reference_item_ppr"])
         _append_rich_text(paragraph, _strip_reference_label(item), samples["reference_item_rpr"])
 
-
 def _replace_paragraph_text(paragraph, text: str) -> None:
     sample_rpr = None
     for run in paragraph.runs:
@@ -1187,7 +1199,6 @@ def _replace_paragraph_text(paragraph, text: str) -> None:
         paragraph._p.remove(run._r)
     run = paragraph.add_run(text)
     _apply_sample_rpr(run, sample_rpr)
-
 
 def _update_running_headers(doc: Document, config: dict) -> None:
     short_title = _running_title(config)
@@ -1200,7 +1211,6 @@ def _update_running_headers(doc: Document, config: dict) -> None:
             _replace_paragraph_text(section.header.paragraphs[0], short_title)
         if short_authors and section.even_page_header.paragraphs:
             _replace_paragraph_text(section.even_page_header.paragraphs[0], short_authors)
-
 
 def build_document(
     json_path: Path = JSON_PATH,
@@ -1231,9 +1241,9 @@ def build_document(
     _set_ai_prompt_color_red(doc)
     _postprocess_clean_latex(doc)
     doc.save(str(final_output))
+    doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {final_output}")
     return final_output
-
 
 def main() -> None:
     if len(sys.argv) >= 2:
@@ -1250,7 +1260,6 @@ def main() -> None:
     )
     for json_file in json_files:
         build_document(json_file)
-
 
 if __name__ == "__main__":
     main()

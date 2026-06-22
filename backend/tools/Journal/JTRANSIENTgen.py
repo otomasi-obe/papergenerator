@@ -36,7 +36,7 @@ JOURNAL_NAME = TEMPLATE_PATH.stem
 BODY_FONT_NAME = "Times New Roman"
 BODY_FONT_PT = 10.0
 TITLE_FONT_PT = 14.0
-AUTHOR_FONT_PT = 12.0
+AUTHOR_FONT_PT = 11.0
 AFFILIATION_FONT_PT = 10.0
 CAPTION_FONT_PT = 9.0
 TABLE_FONT_NAME = "Arial Narrow"
@@ -253,16 +253,31 @@ def _iter_rich_tokens(text: str):
                 index += 2
                 continue
             if command == "b":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\b")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 bold = not bold
                 index += 2
                 continue
             if command == "i":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\i")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 italic = not italic
                 index += 2
                 continue
             if command == "u":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\\u")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 underline = not underline
                 index += 2
@@ -367,6 +382,12 @@ def _append_inline_math(paragraph: Paragraph, latex: str) -> bool:
 
 
 def _append_rich_text(paragraph: Paragraph, text: str, sample_rpr: etree._Element | None) -> None:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     for token in _iter_rich_tokens(text):
         if token["kind"] == "linebreak":
             paragraph.add_run().add_break()

@@ -308,6 +308,12 @@ def _append_line_break(paragraph):
 
 
 def _normalize_text_commands(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
     text = re.sub(r"\*\*(.+?)\*\*", r"\\b\1\\b", text, flags=re.DOTALL)
@@ -350,16 +356,31 @@ def _iter_rich_tokens(text: str):
                 index += 2
                 continue
             if command == "b":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\b")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 bold = not bold
                 index += 2
                 continue
             if command == "i":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\i")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 italic = not italic
                 index += 2
                 continue
             if command == "u":
+                next_char = normalized[index + 2] if index + 2 < len(normalized) else ""
+                if next_char.islower():
+                    buffer.append("\\u")
+                    index += 2
+                    continue
                 yield from flush_buffer()
                 underline = not underline
                 index += 2

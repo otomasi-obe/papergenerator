@@ -179,7 +179,10 @@
               </div>
               <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                 <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
-                  <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="$event.target.style.display='none'" />
+                  <img v-if="item.Path && !failedImages.has(item.Path)" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="onImgError($event, item.Path)" />
+                  <div v-else-if="item.Path && failedImages.has(item.Path)" class="w-48 h-32 bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center rounded text-xs text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                    ⚠️ Gambar gagal dimuat
+                  </div>
                   <div v-else class="w-48 h-32 bg-cream-100 dark:bg-ash-800 flex items-center justify-center opacity-50 dark:opacity-40 text-xs">No image</div>
                 </div>
                 <input v-if="editMode" v-model="item.Title"
@@ -235,7 +238,10 @@
                 </div>
                 <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
                   <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
-                    <img v-if="item.Path" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="$event.target.style.display='none'" />
+                    <img v-if="item.Path && !failedImages.has(item.Path)" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="onImgError($event, item.Path)" />
+                    <div v-else-if="item.Path && failedImages.has(item.Path)" class="w-48 h-32 bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center rounded text-xs text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                      ⚠️ Gambar gagal dimuat
+                    </div>
                     <div v-else class="w-48 h-32 bg-cream-100 dark:bg-ash-800 flex items-center justify-center opacity-50 dark:opacity-40 text-xs">No image</div>
                   </div>
                   <input v-if="editMode" v-model="item.Title"
@@ -313,6 +319,15 @@ import { ref, computed, nextTick } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import DiffBlock from './DiffBlock.vue'
 import { renderLatex, renderRichText } from '../composables/useMathRender'
+
+// Track which image filenames failed to load, so we show a placeholder
+const failedImages = ref(new Set<string>())
+
+function onImgError(event: Event, filename: string) {
+  const target = event.target as HTMLImageElement
+  failedImages.value.add(filename)
+  target.style.display = 'none'
+}
 
 function renderFormula(latex: string): string {
   return renderLatex(latex, true)
@@ -401,7 +416,12 @@ function onTextareaInput(event: Event, item: any): void {
 
 function imgSrc(path: string): string {
   if (!store.currentPaperId || store.currentPaperId === 'null' || store.currentPaperId === 'undefined' || !path) return ''
-  return `/api/images/${store.currentPaperId}/${path}`
+  // Extract basename if path is absolute filesystem path
+  const filename = path.includes('/') ? path.split('/').pop() || path : path
+  const url = `/api/images/${store.currentPaperId}/${filename}`
+  // Append JWT token from cookie so <img> tags authenticate
+  const token = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1]
+  return token ? `${url}?t=${token}` : url
 }
 
 function toRoman(num: number): string { 

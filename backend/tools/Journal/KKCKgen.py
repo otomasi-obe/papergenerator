@@ -199,6 +199,12 @@ def clear_body(doc):
 
 
 def _add_text_with_inline_math(p, text, font_name, size_pt, italic=False, bold=False):
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     pos = 0
     for m in INLINE_MATH_RE.finditer(text):
         before = text[pos : m.start()]

@@ -1,0 +1,46 @@
+{
+  "profile": {
+    "name": "Ayu Asmah, M.Pd.",
+    "affiliation": "Universitas PGRI Kanjuruhan Malang",
+    "prodi": "PG-PAUD",
+    "sinta_id": "5983555",
+    "email": "ayuasmah@unikama.ac.id",
+    "jabatan": "Kepala Pusat Pengembangan Potensi Mahasiswa"
+  },
+  "research_fields": [
+    "Pendidikan Anak Usia Dini",
+    "Pengembangan Media Pembelajaran AUD",
+    "Kurikulum Merdeka & P5",
+    "Perkembangan Sosial-Emosional AUD",
+    "Perkembangan Bahasa & Literasi AUD",
+    "Perkembangan Motorik AUD",
+    "Perkembangan Kognitif & Kreativitas",
+    "Parenting & Keterlibatan Orang Tua",
+    "Metode Pembelajaran AUD",
+    "Pengabdian Masyarakat"
+  ],
+  "papers_generated": {
+    "p1": {
+      "title": "Integrasi Kecerdasan Buatan dalam Media Pembelajaran Adaptif untuk Meningkatkan Literasi Awal Anak Usia Dini: Sebuah Tinjauan Sistematis",
+      "file": "p1_ai_literasi.json",
+      "sections": 5,
+      "references": 26
+    },
+    "p2": {
+      "title": "Efektivitas Model Pembelajaran Hybrid Berbasis Project-Based Learning terhadap Perkembangan Sosial-Emosional Anak Usia Dini Pasca-Pandemi",
+      "file": "p2_hybrid_pjbl.json",
+      "sections": 5,
+      "references": 27
+    },
+    "p3": {
+      "title": "Peran Keterlibatan Orang Tua dalam Pembelajaran STEAM Berbasis Kearifan Lokal pada Anak Usia Dini: Studi Multi-Kasus di Malang Raya",
+      "file": "p3_steam_local.json",
+      "sections": 5,
+      "references": 27
+    }
+  },
+  "journal_targets": "9 jurnal (3 per paper), lihat journal_targets.json",
+  "literature": "7 paper Ayu Asmah + 18 paper terkait per paper = 25 checked references",
+  "ayu_papers_count": 20,
+  "slr_papers_checked": 18
+}

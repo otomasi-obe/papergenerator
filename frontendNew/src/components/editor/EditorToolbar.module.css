@@ -1,0 +1,169 @@
+.toolbar {
+  background-color: rgba(253, 252, 248, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
+  z-index: 30;
+  box-shadow: 0 1px 0 rgba(15, 14, 11, 0.05);
+  flex-shrink: 0;
+}
+
+.container {
+  padding: 8px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 8px 32px;
+  }
+}
+
+.leftGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 20rem;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--color-text);
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.backBtn:hover {
+  background-color: var(--color-background-alt);
+}
+
+.backBtn:active {
+  transform: scale(0.95);
+}
+
+.divider {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.titleInput {
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  outline: none;
+}
+
+.titleInput:hover {
+  border-color: var(--color-border);
+}
+
+.titleInput:focus {
+  border-color: var(--color-primary);
+  background-color: var(--color-background);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.saveStatus {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.rightGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.actionBtns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionBtn:hover {
+  background-color: var(--color-background-alt);
+}
+
+.actionBtn:active {
+  transform: scale(0.95);
+}
+
+.pendingBadge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.toggleGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.toggleBtn {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.toggleBtn:hover {
+  background-color: var(--color-background-alt);
+}
+
+.toggleBtn.active {
+  background-color: var(--color-background-alt);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.toggleBtn:active {
+  transform: scale(0.95);
+}

@@ -206,7 +206,9 @@ function displayName(img: ImageItem): string {
 function thumbUrl(img: ImageItem): string {
   const pid = store.currentPaperId
   if (!pid || !img.filename) return ''
-  return `/api/images/${pid}/${img.filename}`
+  const url = `/api/images/${pid}/${img.filename}`
+  const token = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1]
+  return token ? `${url}?t=${token}` : url
 }
 
 function imageUrl(img: ImageItem): string {

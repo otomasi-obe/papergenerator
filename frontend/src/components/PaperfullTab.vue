@@ -130,32 +130,6 @@
       </button>
     </div>
 
-    <!-- Image Generation Progress (separate box) -->
-    <div
-      v-if="imageGenProgress.total > 0"
-      class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
-    >
-      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-blue-50 to-cream-50 dark:from-blue-900/20 dark:to-ash-800">
-        <span class="w-2 h-2 rounded-full" :class="imageGenProgress.done < imageGenProgress.total ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'"></span>
-        <span class="text-xs font-semibold text-blue-800 dark:text-blue-200">
-          {{ imageGenProgress.done < imageGenProgress.total ? '🖼️ Generating Images...' : '✅ Images Complete' }}
-        </span>
-        <span class="text-[10px] text-blue-600 dark:text-blue-400 font-medium ml-auto">
-          {{ imageGenProgress.done }}/{{ imageGenProgress.total }}
-        </span>
-      </div>
-      <div class="p-4">
-        <div class="w-full bg-cream-200 dark:bg-ash-700 rounded-full h-2.5 mb-2">
-          <div 
-            class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
-            :style="{ width: `${imageGenProgress.total ? Math.floor((imageGenProgress.done / imageGenProgress.total) * 100) : 0}%` }"
-          ></div>
-        </div>
-        <p v-if="imageGenProgress.message" class="text-[11px] text-ink-600 dark:text-ink-300 mt-1.5">
-          {{ imageGenProgress.message }}
-        </p>
-      </div>
-    </div>
 
     <!-- Input file: dua bucket terpisah (Data + File) dengan inline file list -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -335,7 +309,7 @@
               <div class="flex-1 min-w-0">
                 <div class="truncate text-ink-800 dark:text-ink-100 font-medium">{{ lit.title }}</div>
                 <div class="text-[10px] text-ink-500 dark:text-ink-300 truncate">
-                  {{ lit.authors ? lit.authors.join(', ') : '--' }} &middot; {{ lit.year || '--' }}
+                  {{ Array.isArray(lit.authors) ? lit.authors.join(', ') : (lit.authors || '--') }} &middot; {{ lit.year || '--' }}
                 </div>
               </div>
             </div>
@@ -403,6 +377,33 @@
           class="content-render text-[12px] leading-relaxed text-ink-800 dark:text-ink-100 whitespace-pre-wrap break-words"
           v-html="renderedContentHtml"
         ></div>
+      </div>
+    </div>
+
+    <!-- Image Generation Progress — shown BELOW completion during image generation -->
+    <div
+      v-if="imageGenProgress.total > 0"
+      class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
+    >
+      <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-blue-50 to-cream-50 dark:from-blue-900/20 dark:to-ash-800">
+        <span class="w-2 h-2 rounded-full" :class="imageGenProgress.done < imageGenProgress.total ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'"></span>
+        <span class="text-xs font-semibold text-blue-800 dark:text-blue-200">
+          {{ imageGenProgress.done < imageGenProgress.total ? '🖼️ Generating Images...' : '✅ Images Complete' }}
+        </span>
+        <span class="text-[10px] text-blue-600 dark:text-blue-400 font-medium ml-auto tabular-nums">
+          {{ imageGenProgress.done }}/{{ imageGenProgress.total }}
+        </span>
+      </div>
+      <div class="p-4">
+        <div class="w-full bg-cream-200 dark:bg-ash-700 rounded-full h-2.5 mb-2">
+          <div 
+            class="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+            :style="{ width: `${imageGenProgress.total ? Math.floor((imageGenProgress.done / imageGenProgress.total) * 100) : 0}%` }"
+          ></div>
+        </div>
+        <p v-if="imageGenProgress.message" class="text-[11px] text-ink-600 dark:text-ink-300 mt-1.5 animate-pulse">
+          {{ imageGenProgress.message }}
+        </p>
       </div>
     </div>
 
@@ -2249,10 +2250,9 @@ async function consumeSSEStream(res) {
             contentText.value += `\n[Paper generated in ${payload.elapsed || '?'}s — ${payload.tokens || '?'} tokens]\n`
             // Backend now sends done BEFORE images, so JSON is parsed to editor first
             const imgJobCount = payload.image_jobs ? payload.image_jobs.length : 0
-            const chartJob = payload.chart_job || payload.chart_job_id || null
-            const totalImgJobs = imgJobCount + (chartJob ? 1 : 0)
+            const totalImgJobs = payload.total_jobs || imgJobCount
             if (totalImgJobs > 0) {
-              contentText.value += `\n✅ Paper content loaded! ${imgJobCount} image(s) + ${chartJob ? '1 chart' : '0 charts'} generating in background...\n`
+              contentText.value += `\n✅ Paper content loaded! ${totalImgJobs} image(s) generating in background...\n`
               // Show initial progress immediately — progress events update incrementally
               imageGenProgress.value = {
                 total: totalImgJobs,

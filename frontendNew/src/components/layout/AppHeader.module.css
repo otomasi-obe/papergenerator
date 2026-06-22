@@ -1,0 +1,254 @@
+.header {
+  background-color: rgba(253, 252, 248, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.headerInner {
+  width: 100%;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leftGroup, .rightGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logoLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.logoBox {
+  width: 28px;
+  height: 28px;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.logoText {
+  font-weight: 600;
+  font-family: serif;
+  font-size: 1.1rem;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navLink {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background-color: var(--color-background-alt);
+}
+
+.relative {
+  position: relative;
+}
+
+.quotaBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.quotaBarBg {
+  width: 96px;
+  height: 8px;
+  background-color: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.quotaBarFill {
+  height: 100%;
+  background-color: #10b981;
+  transition: width 0.3s;
+}
+
+.quotaText {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--color-text);
+}
+
+.iconBtn {
+  padding: 8px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.iconBtn:hover {
+  background-color: var(--color-background-alt);
+}
+
+.profileBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.profileBtn:hover {
+  background-color: var(--color-background-alt);
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.caret {
+  color: var(--color-text-muted);
+}
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  width: 250px;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  z-index: 50;
+  padding: 8px;
+}
+
+.dropdownTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 8px;
+  padding: 4px;
+}
+
+.dropdownGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 4px;
+}
+
+.textRight {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dropdownEmpty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.dropdownHeader {
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 4px;
+}
+
+.userNameDark {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.userEmail {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  font-size: 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+
+.dropdownItem:hover {
+  background-color: var(--color-background-alt);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background-color: var(--color-border);
+  margin: 4px 0;
+}
+
+.dropdownItemDanger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  font-size: 14px;
+  color: var(--color-danger);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dropdownItemDanger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}

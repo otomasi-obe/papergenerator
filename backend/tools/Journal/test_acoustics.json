@@ -1,0 +1,72 @@
+{
+  "journal": "MDPI_acoustics",
+  "title": "Advanced Acoustic Metamaterials for Noise Reduction in Urban Environments",
+  "authors": [
+    {
+      "name": "Wei Zhang",
+      "email": "wzhang@university.edu",
+      "affiliation": "Department of Acoustics, University of Technology",
+      "location": "Beijing, China"
+    }
+  ],
+  "abstract": "Urban noise pollution is a growing concern affecting millions worldwide. This paper explores novel acoustic metamaterial designs for broadband noise reduction in urban environments. We present a comprehensive analysis of three metamaterial configurations: labyrinthine, Helmholtz resonator arrays, and membrane-based structures. Experimental results demonstrate up to 25 dB noise reduction across 200-2000 Hz frequency range. The proposed designs are lightweight, compact, and scalable for real-world deployment.",
+  "keywords": [
+    "acoustic metamaterials",
+    "noise reduction",
+    "urban acoustics",
+    "broadband absorption"
+  ],
+  "section1": {
+    "heading": "Introduction",
+    "content": [
+      {
+        "type": "body",
+        "text": "Urban noise pollution presents significant challenges to public health and quality of life. Traditional noise barriers and absorptive materials are often bulky, heavy, and limited in their frequency range of effectiveness. Acoustic metamaterials—artificially engineered structures with properties not found in nature—offer a promising alternative for compact, efficient noise control solutions."
+      },
+      {
+        "type": "body",
+        "text": "Recent advances in additive manufacturing have enabled the fabrication of complex metamaterial geometries at millimeter and sub-millimeter scales. This opens new possibilities for designing acoustic structures with tailored frequency responses, broadband absorption, and integration into existing urban infrastructure."
+      }
+    ]
+  },
+  "section2": {
+    "heading": "Materials and Methods",
+    "content": [
+      {
+        "type": "body",
+        "text": "We designed and fabricated three types of acoustic metamaterials using high-resolution stereolithography (SLA) 3D printing with photopolymer resin. All samples were tested in an impedance tube following ISO 10534-2 standards for measuring normal incidence sound absorption coefficients across 200-2000 Hz."
+      }
+    ]
+  },
+  "section3": {
+    "heading": "Results and Discussion",
+    "content": [
+      {
+        "type": "body",
+        "text": "The labyrinthine metamaterial demonstrated the widest absorption bandwidth, achieving over 90% absorption from 400 to 1600 Hz. The Helmholtz resonator array showed sharp, tunable absorption peaks, ideal for targeting specific noise frequencies such as traffic hum (800-1000 Hz). The membrane-based structure provided the broadest low-frequency absorption below 500 Hz."
+      }
+    ]
+  },
+  "section4": {
+    "heading": "Conclusions",
+    "content": [
+      {
+        "type": "body",
+        "text": "This study demonstrates that acoustic metamaterials offer a viable, compact solution for urban noise reduction. The labyrinthine design proved most versatile for broadband applications, while Helmholtz arrays suit frequency-specific interventions. Future work will explore hybrid designs combining multiple mechanisms and field deployment testing."
+      }
+    ]
+  },
+  "references": {
+    "content": [
+      {
+        "text": "Cummer, S.A.; Christensen, J.; Alu, A. Controlling sound with acoustic metamaterials. Nat. Rev. Mater. 2016, 1, 16001."
+      },
+      {
+        "text": "Yang, Z.; Mei, J.; Yang, M.; Chan, N.H.; Sheng, P. Membrane-type acoustic metamaterial with negative dynamic mass. Phys. Rev. Lett. 2008, 101, 204301."
+      },
+      {
+        "text": "World Health Organization. Environmental Noise Guidelines for the European Region; WHO Regional Office for Europe: Copenhagen, 2018."
+      }
+    ]
+  }
+}

@@ -67,7 +67,7 @@ def set_run_font(run, font_name=None, size_pt=None, bold=None, italic=None, colo
         run.font.color.rgb = RGBColor(*color)
 
 
-def set_para_spacing(para, before_pt=None, after_pt=None, line_tw=None):
+def set_para_spacing(para, before_pt=None, after_pt=None, line_tw=240):
     pf = para.paragraph_format
     if before_pt is not None:
         pf.space_before = Pt(before_pt)
@@ -603,15 +603,130 @@ def add_formula(doc, formula_data):
     number = str(formula_data.get("FormulaNumber", "")).strip()
     if not latex:
         return
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p, before_pt=3, after_pt=3)
-    cleaned = _clean_latex(latex)
-    display = cleaned
-    if number:
-        display = f"{cleaned}    ({number})"
-    run = p.add_run(display)
-    set_run_font(run, "Cambria Math", CFG["size_body"], italic=True)
+    
+    import re
+    from lxml import etree
+    from latex2mathml.converter import convert as latex2mathml
+    from mathml2omml import convert as mathml2omml
+    from docx.oxml.ns import qn
+    
+    try:
+        # 1. Kalkulasi Lebar Kolom & Paksa Resize Skala Matriks
+        col_w_cm = 7.5 if CFG.get("columns", 2) >= 2 else 16.0
+        max_fw_cm = col_w_cm * 0.90
+        
+        cleaned = re.sub(r'\\[a-zA-Z]+|\{|\}|\[|\]|\^|\_|\$|\\', '', latex)
+        formula_size = CFG["size_body"]
+        
+        is_matrix = "matrix" in latex or "cases" in latex or "\\\\" in latex
+        if is_matrix:
+            formula_size = max(5.0, formula_size - 2.5) 
+        else:
+            est_cm = len(cleaned) * formula_size * 0.38 / 28.35
+            if est_cm > max_fw_cm:
+                scale = max_fw_cm / est_cm
+                formula_size = max(5.0, formula_size * scale)
+                
+        effective_halfpt = int(formula_size * 2)
+
+        # 2. Konversi ke OMML sebagai Inline Math (BUKAN oMathPara)
+        mathml_str = latex2mathml(latex)
+        omml_str = mathml2omml(mathml_str)
+        
+        MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+        
+        omml_inner = omml_str.replace(f'<m:oMath xmlns:m="{MATH_NS}">', '').replace('</m:oMath>', '')
+        if omml_inner.startswith('<m:oMath>'):
+            omml_inner = omml_inner.replace('<m:oMath>', '', 1)
+            
+        omml_wrapped = f'<m:oMath xmlns:m="{MATH_NS}">{omml_inner}</m:oMath>'
+        oMath = etree.fromstring(omml_wrapped)
+        
+        # 3. Injeksi Properties OpenXML Legal (Harus di insert di INDEX 0)
+        for omath_run in oMath.iter(f'{{{MATH_NS}}}r'):
+            wrPr = omath_run.find(qn('w:rPr'))
+            if wrPr is None:
+                wrPr = etree.Element(qn('w:rPr'))
+                omath_run.insert(0, wrPr)  # INI WAJIB INSERT(0), JANGAN SUBELEMENT
+            
+            rFonts = wrPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = etree.SubElement(wrPr, qn('w:rFonts'))
+            rFonts.set(qn('w:ascii'), 'Cambria Math')
+            rFonts.set(qn('w:hAnsi'), 'Cambria Math')
+            
+            sz = wrPr.find(qn('w:sz'))
+            if sz is None:
+                sz = etree.SubElement(wrPr, qn('w:sz'))
+            sz.set(qn('w:val'), str(effective_halfpt))
+            
+            szCs = wrPr.find(qn('w:szCs'))
+            if szCs is None:
+                szCs = etree.SubElement(wrPr, qn('w:szCs'))
+            szCs.set(qn('w:val'), str(effective_halfpt))
+
+        # 4. Bangun Paragraf & Setup TABS (Agar bisa sejajar)
+        body = doc._element.body
+        final_sectpr = body.find(qn("w:sectPr"))
+        
+        p_elem = etree.Element(qn("w:p"))
+        pPr = etree.SubElement(p_elem, qn("w:pPr"))
+        
+        jc = etree.SubElement(pPr, qn("w:jc"))
+        jc.set(qn("w:val"), "left")
+        
+        spacing = etree.SubElement(pPr, qn("w:spacing"))
+        spacing.set(qn("w:before"), "120")
+        spacing.set(qn("w:after"), "120")
+        spacing.set(qn("w:line"), "240")
+        spacing.set(qn("w:lineRule"), "auto")
+        
+        center_twips = int((col_w_cm * 28.346 * 20) / 2)
+        right_twips = int(col_w_cm * 28.346 * 20)
+        
+        tabs = etree.SubElement(pPr, qn("w:tabs"))
+        tab_center = etree.SubElement(tabs, qn("w:tab"))
+        tab_center.set(qn("w:val"), "center")
+        tab_center.set(qn("w:pos"), str(center_twips))
+        
+        tab_right = etree.SubElement(tabs, qn("w:tab"))
+        tab_right.set(qn("w:val"), "right")
+        tab_right.set(qn("w:pos"), str(right_twips))
+
+        # 5. Eksekusi Struktur Paragraf: [Tab Center] -> Formula -> [Tab Right] -> Number
+        run_tab1 = etree.SubElement(p_elem, qn("w:r"))
+        etree.SubElement(run_tab1, qn("w:tab"))
+        
+        p_elem.append(oMath)
+        
+        if number:
+            run_num = etree.SubElement(p_elem, qn("w:r"))
+            etree.SubElement(run_num, qn("w:tab"))
+            
+            rPr_num = etree.SubElement(run_num, qn("w:rPr"))
+            rFonts_num = etree.SubElement(rPr_num, qn("w:rFonts"))
+            rFonts_num.set(qn("w:ascii"), CFG["font_body"])
+            
+            sz_num = etree.SubElement(rPr_num, qn("w:sz"))
+            sz_num.set(qn("w:val"), str(CFG["size_body"] * 2))
+            
+            t_num = etree.SubElement(run_num, qn("w:t"))
+            t_num.text = f"({number})"
+            t_num.set(qn("xml:space"), "preserve")
+        
+        # 6. Finalisasi Paragraf
+        if final_sectpr is not None:
+            final_sectpr.addprevious(p_elem)
+        else:
+            body.append(p_elem)
+            
+    except Exception as e:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_para_spacing(p, before_pt=6, after_pt=6)
+        display = f"{latex}    ({number})" if number else latex
+        run = p.add_run(display)
+        set_run_font(run, CFG["font_body"], CFG["size_body"], bold=True, color=CFG["heading_color"])
 
 
 def add_references(doc, data):
@@ -713,24 +828,7 @@ def process_section(doc, section_data, fig_counter, tbl_counter):
     return fig_counter, tbl_counter
 
 
-def generate():
-    data = load_json()
 
-    # Copy template as base (preserves headers/footers/styles/numbering)
-    shutil.copy2(str(TEMPLATE_DOCX), str(OUTPUT_DOCX))
-    doc = Document(str(OUTPUT_DOCX))
-
-    # Clear body, count original section breaks
-    n_breaks = clear_body(doc)
-
-    # Generate content
-    add_title(doc, data)
-    add_authors(doc, data)
-    add_abstract(doc, data)
-    add_keywords(doc, data)
-
-    # Process all sections (section1, section2, ...)
-    fig_counter = 0
 def generate():
     data = load_json()
 

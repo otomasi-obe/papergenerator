@@ -1,0 +1,89 @@
+{
+  "paper1_AI_Literacy": {
+    "title": "Integrasi AI dalam Media Pembelajaran Adaptif untuk Literasi Awal AUD",
+    "targets": [
+      {
+        "name": "Jurnal Obsesi: Jurnal Pendidikan Anak Usia Dini",
+        "rank": "Sinta 2",
+        "url": "https://obsesi.or.id",
+        "focus": "Pendidikan AUD, perkembangan anak, media pembelajaran",
+        "template": "https://obsesi.or.id/index.php/obsesi/about/submissions",
+        "apc": "Free"
+      },
+      {
+        "name": "Murhum: Jurnal Pendidikan Anak Usia Dini",
+        "rank": "Sinta 3",
+        "url": "https://murhum.ppjpaud.org",
+        "focus": "PAUD, pendidikan anak, inovasi pembelajaran",
+        "template": "\u2713 Downloaded (template_murhum.docx)",
+        "apc": "Free/terjangkau"
+      },
+      {
+        "name": "Jurnal Obsesi (Special Issue Review Article)",
+        "rank": "Sinta 2",
+        "url": "https://obsesi.or.id",
+        "focus": "Review article bidang PAUD",
+        "template": "sama dengan Obsesi",
+        "apc": "Free"
+      }
+    ]
+  },
+  "paper2_Hybrid_PjBL": {
+    "title": "Efektivitas Hybrid PjBL terhadap Sosial-Emosional AUD Pasca-Pandemi",
+    "targets": [
+      {
+        "name": "Jurnal Obsesi: Jurnal Pendidikan Anak Usia Dini",
+        "rank": "Sinta 2",
+        "url": "https://obsesi.or.id",
+        "focus": "PAUD, sosial-emosional, metode pembelajaran",
+        "template": "https://obsesi.or.id/index.php/obsesi/about/submissions",
+        "apc": "Free"
+      },
+      {
+        "name": "Kumara Cendekia: Jurnal Penelitian Pendidikan Anak Usia Dini",
+        "rank": "Sinta 3",
+        "url": "https://jurnal.uns.ac.id/kumara",
+        "focus": "Penelitian PAUD, UNS",
+        "template": "https://jurnal.uns.ac.id/kumara",
+        "apc": "Free"
+      },
+      {
+        "name": "Jurnal Warna: Pendidikan dan Pembelajaran Anak Usia Dini",
+        "rank": "Sinta 4",
+        "url": "https://jurnal.fkip-uwgm.ac.id/index.php/warna",
+        "focus": "Tempat reguler Ayu Asmah publish",
+        "template": "https://jurnal.fkip-uwgm.ac.id/index.php/warna",
+        "apc": "Free"
+      }
+    ]
+  },
+  "paper3_STEAM_Local": {
+    "title": "Keterlibatan Orang Tua dalam STEAM Berbasis Kearifan Lokal AUD",
+    "targets": [
+      {
+        "name": "Jurnal Obsesi: Jurnal Pendidikan Anak Usia Dini",
+        "rank": "Sinta 2",
+        "url": "https://obsesi.or.id",
+        "focus": "PAUD, STEAM, parenting, kearifan lokal",
+        "template": "https://obsesi.or.id/index.php/obsesi/about/submissions",
+        "apc": "Free"
+      },
+      {
+        "name": "PAUDIA: Jurnal Penelitian dalam Bidang Pendidikan Anak Usia Dini",
+        "rank": "Sinta 3",
+        "url": "https://journal2.upgris.ac.id/index.php/paudia",
+        "focus": "UPGRIS, PAUD, penelitian",
+        "template": "https://journal2.upgris.ac.id/index.php/paudia",
+        "apc": "Free"
+      },
+      {
+        "name": "Murhum: Jurnal Pendidikan Anak Usia Dini",
+        "rank": "Sinta 3",
+        "url": "https://murhum.ppjpaud.org",
+        "focus": "Kearifan lokal, parental involvement, STEAM",
+        "template": "\u2713 Downloaded (template_murhum.docx)",
+        "apc": "Free"
+      }
+    ]
+  }
+}

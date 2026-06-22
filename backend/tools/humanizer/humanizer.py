@@ -45,6 +45,60 @@ log = logging.getLogger(__name__)
 # ── AI slop patterns to remove/replace ──────────────────────────────────────
 # Tier 1: Dead giveaways (3pts each) - these appear 5-25x more in AI text
 _SLOP_REPLACEMENTS = {
+    # === INDONESIAN ACADEMIC PATTERNS (50+ additions) ===
+    # Tier 1: Dead giveaways — Turnitin Indonesia
+    r'\\bperlu dicatat bahwa\\b': ['', 'Catat bahwa', ''],
+    r'\\bdalam era digital ini\\b': ['saat ini', 'sekarang', ''],
+    r'\\bdengan pesatnya perkembangan\\b': ['dengan kemajuan', 'seiring dengan', ''],
+    r'\\bdi era globalisasi\\b': ['saat ini', 'sekarang', 'dalam konteks global'],
+    r'\\bmemainkan peran penting\\b': ['berperan dalam', 'penting untuk', 'menentukan'],
+    r'\\bberkontribusi signifikan\\b': ['berkontribusi pada', 'menyumbang pada', 'memberikan'],
+    r'\\bmemberikan dampak positif\\b': ['berdampak positif', 'meningkatkan', 'memperbaiki'],
+    r'\\bsecara komprehensif\\b': ['menyeluruh', 'lengkap', 'mencakup'],
+    r'\\bpendekatan holistik\\b': ['pendekatan terpadu', 'metode lengkap', 'cara menyeluruh'],
+    r'\\bsecara menyeluruh\\b': ['keseluruhan', 'lengkap', ''],
+    r'\\bdalam penelitian ini\\b': ['kami', 'dalam studi ini', ''],
+    r'\\bberdasarkan hasil analisis\\b': ['hasil analisis menunjukkan', 'data menunjukkan', 'analisis memperlihatkan'],
+    r'\\bdapat disimpulkan bahwa\\b': ['kesimpulannya,', 'simpulannya,', 'sebagai penutup,'],
+    r'\\bsebagaimana telah dijelaskan\\b': ['seperti yang dijelaskan', 'seperti diuraikan', ''],
+    r'\\btidak dapat dipungkiri\\b': ['tak bisa dipungkiri', 'jelas bahwa', ''],
+    r'\\bperlu digarisbawahi bahwa\\b': ['perlu ditekankan', 'penting untuk dicatat', ''],
+
+    # Tier 2: High Risk — Indonesia
+    r'\\bselain itu,?\\b': ['Di samping itu,', 'Juga,', 'Lalu,', ''],
+    r'\\boleh karena itu,?\\b': ['Karena itu,', 'Maka,', 'Sehingga,', ''],
+    r'\\bnamun demikian,?\\b': ['Tapi,', 'Meski begitu,', 'Walaupun begitu,', ''],
+    r'\\bsebagai kesimpulan,?\\b': ['Kesimpulannya,', 'Simpulannya,', ''],
+    r'\\bdari hasil penelitian ini dapat diketahui\\b': ['hasilnya:', 'temuan menunjukkan', ''],
+    r'\\bmenurut para ahli\\b': ['literatur menunjukkan', 'penelitian sebelumnya menunjukkan', 'sesuai temuan'],
+    r'\\bberbagai penelitian menunjukkan\\b': ['studi menunjukkan', 'penelitian menunjukkan', 'riset memperlihatkan'],
+    r'\\bpenting untuk dipahami bahwa\\b': ['perlu dipahami:', 'perlu diketahui:', ''],
+    r'\\bdalam konteks ini\\b': ['di sini', 'dalam hal ini', ''],
+    r'\\bsecara umum dapat dikatakan\\b': ['umumnya', 'secara umum', 'pada dasarnya'],
+    r'\\bhal ini menunjukkan bahwa\\b': ['ini menunjukkan bahwa', 'artinya', ''],
+    r'\\bsejalan dengan penelitian sebelumnya\\b': ['konsisten dengan studi sebelumnya', 'sejalan dengan riset terdahulu', ''],
+    r'\\bhasil ini mengindikasikan adanya\\b': ['hasil ini menunjukkan', 'temuan ini memperlihatkan', ''],
+    r'\\blebih lanjut,?\\b': ['Selanjutnya,', 'Kemudian,', 'Lalu,', ''],
+
+    # Tier 3: Formal Indonesia phrases that scream AI
+    r'\\bmelakukan penelitian\\b': ['meneliti', 'mengkaji', 'mengeksplorasi'],
+    r'\\bmelakukan analisis\\b': ['menganalisis', 'menguji', 'mengkaji'],
+    r'\\bmelakukan evaluasi\\b': ['mengevaluasi', 'menilai', 'mengukur'],
+    r'\\bmelakukan pengumpulan data\\b': ['mengumpulkan data', 'merekam data', 'mendata'],
+    r'\\bmelakukan pengukuran\\b': ['mengukur', 'menghitung', 'mencatat'],
+    r'\\bdilakukan dengan menggunakan\\b': ['menggunakan', 'dengan', 'memakai'],
+    r'\\bdapat dilihat pada tabel\\b': ['ditampilkan di Tabel', 'tertera di Tabel', 'Tabel X menunjukkan'],
+    r'\\bdapat dilihat pada gambar\\b': ['ditampilkan di Fig.', 'terlihat di Fig.', 'Fig. X memperlihatkan'],
+    r'\\bberdasarkan gambar tersebut\\b': ['dari Fig. X terlihat', 'Fig. X menunjukkan', ''],
+    r'\\bberdasarkan tabel tersebut\\b': ['Tabel X menunjukkan', 'dari Tabel X terlihat', ''],
+    r'\\bdapat dikatakan bahwa\\b': ['singkatnya', 'pada dasarnya', ''],
+    r'\\bdapat diketahui bahwa\\b': ['terlihat bahwa', 'data menunjukkan bahwa', ''],
+    r'\\bdapat dijelaskan bahwa\\b': ['penjelasannya:', 'alasannya:', ''],
+    r'\\bdapat disimpulkan\\b': ['simpulannya', 'kesimpulannya', 'sebagai penutup'],
+    r'\\bdiperoleh hasil\\b': ['hasilnya', 'didapatkan', 'tercatat'],
+    r'\\bsebagai berikut\\b': [':', 'berikut ini', ''],
+    r'\\badapun\\b': ['', 'Sementara itu,', ''],
+
     # === ORIGINAL PATTERNS ===
     r'\bfurthermore,?\b': ['Moreover,', 'Also,', 'And', ''],
     r'\bmoreover,?\b': ['Also,', 'Plus,', 'And', ''],
@@ -272,12 +326,27 @@ _AI_TIER2_PATTERNS = [
     r'\bplays a (key|pivotal|crucial|vital) role\b']
 
 _AI_TIER3_PATTERNS = [
-    r'\bfurthermore\b', r'\bmoreover\b', r'\badditionally\b',
-    r'\bnevertheless\b', r'\bnonetheless\b', r'\bsubsequently\b',
-    r'\bspecifically\b', r'\bnotably\b', r'\bsignificantly\b',
-    r'\bit is important to note\b', r'\bit is worth noting\b',
-    r'\bit should be noted\b', r'\bin conclusion\b',
-    r'\bto summarize\b', r'\bin summary\b']
+    r'\\bfurthermore\\b', r'\\bmoreover\\b', r'\\badditionally\\b',
+    r'\\bnevertheless\\b', r'\\bnonetheless\\b', r'\\bsubsequently\\b',
+    r'\\bspecifically\\b', r'\\bnotably\\b', r'\\bsignificantly\\b',
+    r'\\bit is important to note\\b', r'\\bit is worth noting\\b',
+    r'\\bit should be noted\\b', r'\\bin conclusion\\b',
+    r'\\bto summarize\\b', r'\\bin summary\\b']
+
+# ── Indonesian AI patterns ────────────────────────────────────────────────
+_AI_TIER1_ID_PATTERNS = [
+    r'\\bperlu dicatat bahwa\\b', r'\\bdalam era digital ini\\b',
+    r'\\bdengan pesatnya perkembangan\\b', r'\\bdi era globalisasi\\b',
+    r'\\bmemainkan peran penting\\b', r'\\bberkontribusi signifikan\\b',
+    r'\\bmemberikan dampak positif\\b', r'\\bsecara komprehensif\\b',
+    r'\\bpendekatan holistik\\b', r'\\bsecara menyeluruh\\b',
+    r'\\bdapat disimpulkan bahwa\\b', r'\\btidak dapat dipungkiri\\b']
+
+_AI_TIER2_ID_PATTERNS = [
+    r'\\bselain itu\\b', r'\\boleh karena itu\\b', r'\\bnamun demikian\\b',
+    r'\\bsebagai kesimpulan\\b', r'\\bmenurut para ahli\\b',
+    r'\\bberbagai penelitian menunjukkan\\b', r'\\bdalam konteks ini\\b',
+    r'\\bhal ini menunjukkan bahwa\\b', r'\\blebih lanjut\\b']
 
 
 class TextHumanizer:
@@ -412,17 +481,23 @@ class TextHumanizer:
         if not text.strip():
             return {"overall": 0, "patterns": 0, "variance": 0, "voice": 0}
 
-        # Count AI patterns by tier
+        # Count AI patterns by tier (English)
         text_lower = text.lower()
         tier1_count = sum(1 for p in _AI_TIER1_PATTERNS if re.search(p, text_lower))
         tier2_count = sum(1 for p in _AI_TIER2_PATTERNS if re.search(p, text_lower))
         tier3_count = sum(1 for p in _AI_TIER3_PATTERNS if re.search(p, text_lower))
 
+        # Count AI patterns by tier (Indonesian)
+        tier1_id_count = sum(1 for p in _AI_TIER1_ID_PATTERNS if re.search(p, text_lower))
+        tier2_id_count = sum(1 for p in _AI_TIER2_ID_PATTERNS if re.search(p, text_lower))
+
         words = text.split()
         word_count = len(words) if words else 1
 
-        # Normalize per 1000 words
-        raw_score = (tier1_count * 3 + tier2_count * 2 + tier3_count * 1) * (1000 / word_count)
+        # Normalize per 1000 words (combined English + Indonesian)
+        raw_score = ((tier1_count + tier1_id_count) * 3 +
+                     (tier2_count + tier2_id_count) * 2 +
+                     tier3_count * 1) * (1000 / word_count)
 
         # Pattern score (lower is better, normalize to 0-10)
         pattern_score = max(0, 10 - raw_score)
@@ -465,6 +540,8 @@ class TextHumanizer:
                 "tier1_count": tier1_count,
                 "tier2_count": tier2_count,
                 "tier3_count": tier3_count,
+                "tier1_id_count": tier1_id_count,
+                "tier2_id_count": tier2_id_count,
             },
             "word_count": word_count,
             "sentence_count": len(sentences),

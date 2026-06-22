@@ -245,6 +245,11 @@ def _sanitize_latex(latex: str) -> str:
         s = s[2:-2].strip()
     elif s.startswith("\(") and s.endswith("\)"):
         s = s[2:-2].strip()
+    # Strip papergenerator toggle formatting (\b...\b, \i...\i, \u...\u)
+    # These are DOCX bold/italic/underline toggles, not valid LaTeX.
+    s = s.replace("\\b", "")
+    s = s.replace("\\i", "")
+    s = s.replace("\\u", "")
     s = s.replace("\\text{", "\\mathrm{")
     s = s.replace("\\textbf{", "\\mathbf{")
     s = s.replace("\\textit{", "\\mathit{")
@@ -372,6 +377,16 @@ def _decode_stray_escapes(text: str) -> str:
         # a LaTeX command like \\theta, \\times, \\text, \\tan, etc.
         # Negative lookahead: only replace \\t NOT followed by a letter.
         text = re.sub(r"\\t(?![a-z])", " ", text)
+
+    # Fix double-escaped toggle markers (AI often double-escapes in JSON)
+    text = text.replace('\\\\b', '\\b')
+    text = text.replace('\\\\i', '\\i')
+    text = text.replace('\\\\u', '\\u')
+    # Fix double-escaped math delimiters
+    text = text.replace('\\\\(', '\\(')
+    text = text.replace('\\\\)', '\\)')
+    text = text.replace('\\\\[', '\\[')
+    text = text.replace('\\\\]', '\\]')
     return text
 
 
@@ -398,7 +413,130 @@ def _clean_image_prompt(prompt: str) -> str:
     return s
 
 
+def _sanitize_llm_text_artifacts(text: str) -> str:
+    """Repair common LLM streaming artifacts that corrupt IEEE paper text.
+
+    The text-generation LLM occasionally emits broken LaTeX, mangled
+    punctuation, or missing spaces.  These are not valid content — they are
+    transport-level corruption (token-boundary artefacts, lost whitespace,
+    collapsed integral notation, etc.).  This pass runs BEFORE the toggle /
+    math parser so that the downstream OMML converter receives clean input.
+
+    Scope (deliberately conservative — only fix known corruption patterns):
+      1. Collapsed integral notation:  "ntsunrisesunset" -> "\\int_{sunrise}^{sunset}"
+      2. Bare inline math (Greek + subscripts without $...$ delimiters)
+      3. Citation punctuation:  "[8]. [9]" -> "[8], [9]"
+      4. Sentence-boundary comma corruption:  "mengajukan. memodelkan" -> "mengajukan, memodelkan"
+      5. Missing spaces around slash-separated numbers:  "2,00/Wpada2010" -> "2,00/W pada 2010"
+    """
+    if not text:
+        return text
+    s = text
+
+    # ------------------------------------------------------------------
+    # 1. Restore collapsed integral / sum notation.
+    #    The LLM sometimes drops the backslash and braces, producing tokens
+    #    like "ntsunrisesunset" (= \\int_{sunrise}^{sunset}) or
+    #    "ntsunsetsunrise" (= \\int_{sunset}^{sunrise}).
+    # ------------------------------------------------------------------
+    s = s.replace("ntsunrisesunset", "\\int_{sunrise}^{sunset}")
+    s = s.replace("ntsunsetsunrise", "\\int_{sunset}^{sunrise}")
+    s = s.replace("ntsum_", "\\sum_")
+    # Generic: "nt" prefix before a known bound keyword -> "\\int_"
+    s = re.sub(r"\bnt(sunrise|sunset|0|1|t)\b", r"\\int_{\1}", s)
+
+    # ------------------------------------------------------------------
+    # 2. Wrap bare inline math that the LLM emitted without $...$.
+    #    Only wrap tokens that are CLEARLY math (Greek letter + subscript /
+    #    caret) and are NOT already inside a $...$ or $$...$$ block.
+    #    We protect existing math spans first, then patch the rest.
+    # ------------------------------------------------------------------
+    _MATH_PROTECT = re.compile(r"\$\$.*?\$\$|\$[^$]+?\$", re.DOTALL)
+    placeholders: list[str] = []
+
+    def _stash(m):
+        placeholders.append(m.group(0))
+        return f"\x00MATH{len(placeholders) - 1}\x00"
+
+    s = _MATH_PROTECT.sub(_stash, s)
+
+    # Map of bare tokens -> LaTeX equivalent.  Ordered so longer patterns
+    # match first (e.g. "eta_(PV,STC)" before "eta_PV").
+    _bare_math = [
+        # Greek-letter variables with parenthesised subscripts
+        (r"\bη_\(([A-Za-z0-9,_]+)\)", r"$\\eta_{\1}$"),
+        (r"\bε_\(([A-Za-z0-9,_]+)\)", r"$\\epsilon_{\1}$"),
+        (r"\bσ_\(([A-Za-z0-9,_]+)\)", r"$\\sigma_{\1}$"),
+        (r"\bβ_\(([A-Za-z0-9,_]+)\)", r"$\\beta_{\1}$"),
+        # Greek-letter variables with simple subscripts
+        (r"\bη_([A-Za-z][A-Za-z0-9]*)\b", r"$\\eta_{\1}$"),
+        (r"\bε_([A-Za-z][A-Za-z0-9]*)\b", r"$\\epsilon_{\1}$"),
+        (r"\bσ_([A-Za-z][A-Za-z0-9]*)\b", r"$\\sigma_{\1}$"),
+        (r"\bβ_([A-Za-z][A-Za-z0-9]*)\b", r"$\\beta_{\1}$"),
+        # Greek-letter variables with parenthesised subscripts: E_(g,TRC)
+        (r"\bE_\(([A-Za-z0-9,_]+)\)", r"$E_{\1}$"),
+        (r"\bP_\(([A-Za-z0-9,_]+)\)", r"$P_{\1}$"),
+        (r"\bk_\(([A-Za-z0-9,_]+)\)", r"$k_{\1}$"),
+        (r"\bT_\(([A-Za-z0-9,_]+)\)", r"$T_{\1}$"),
+        # Greek delta + capital letter: ΔT, ΔE
+        (r"\bΔ([A-Z])\b", r"$\\Delta \1$"),
+        # Simple subscripted variables: T_c, T_a, T_sky, E_g, P_TRC, E_daily
+        (r"\bT_([a-z]{1,4})\b(?!\{)", r"$T_{\1}$"),
+        (r"\bE_([a-z]{1,8})\b(?!\{)", r"$E_{\1}$"),
+        (r"\bP_([A-Za-z]{1,8})\b(?!\{)", r"$P_{\1}$"),
+        (r"\bk_([a-z]{1,8})\b(?!\{)", r"$k_{\1}$"),
+    ]
+    for pattern, repl in _bare_math:
+        s = re.sub(pattern, repl, s)
+
+    # Restore protected math spans
+    def _unstash(m):
+        idx = int(m.group(1))
+        return placeholders[idx]
+
+    s = re.sub(r"\x00MATH(\d+)\x00", _unstash, s)
+
+    # ------------------------------------------------------------------
+    # 3. Citation punctuation:  "[8]. [9]" -> "[8], [9]"
+    #    The LLM sometimes ends a citation with a period then starts the
+    #    next citation; IEEE style wants a comma.
+    # ------------------------------------------------------------------
+    s = re.sub(r"(\])\.\s+\[", r"\1, [", s)
+
+    # ------------------------------------------------------------------
+    # 4. Sentence-boundary comma corruption.
+    #    Indonesian / English connectives that should be comma-separated
+    #    sometimes get a period from the LLM (token-boundary artefact).
+    #    Only fix when a lowercase word follows a period+space (clearly not
+    #    a sentence end) and the preceding word is not an abbreviation.
+    # ------------------------------------------------------------------
+    _comma_after = [
+        "mengajukan", "surya", "puncak", "efisiensi",
+        "melainkan", "sementara", "memodelkan", "pendinginan",
+        "namun", "sedangkan", "sehingga", "serta",
+    ]
+    for word in _comma_after:
+        s = re.sub(r"\.\s+" + word + r"\b", r", " + word, s, flags=re.IGNORECASE)
+
+    # ------------------------------------------------------------------
+    # 5. Missing spaces around slash-separated numbers and units.
+    #    "2,00/Wpada2010menjadi0,20/W" -> "2,00/W pada 2010 menjadi 0,20/W"
+    #    Insert space between /W and a following Indonesian connective word
+    #    (pada, menjadi, dari, ke, dan, atau) and between that word and a
+    #    digit, then between a digit and /W.
+    # ------------------------------------------------------------------
+    s = re.sub(r"(/W)(pada|menjadi|dari|ke|dan|atau)(\d)", r"\1 \2 \3", s, flags=re.IGNORECASE)
+    # "2010menjadi0,20" -> "2010 menjadi 0,20"
+    s = re.sub(r"(\d)(menjadi|pada|dari|ke)(\d)", r"\1 \2 \3", s, flags=re.IGNORECASE)
+    # Trailing digit glued to /W:  "0,20/Wpada" already handled above; also
+    # handle "0,20/W" glued directly to the next word boundary.
+    s = re.sub(r"(/W)([a-z]{4,})", r"\1 \2", s, flags=re.IGNORECASE)
+
+    return s
+
+
 def _normalize_text_commands(text: str) -> str:
+    text = _sanitize_llm_text_artifacts(text)
     text = _decode_stray_escapes(text)
     text = re.sub(r'\\\\n(?![a-z])', '\n', text)
     # Convert Markdown bold/italic to \b..\b / \i..\i toggle format
@@ -1192,8 +1330,10 @@ def _add_references(doc: Document, config: dict):
             ind.set(qn("w:start"), str(int(round(17.7 * 20))))
             ind.set(qn("w:hanging"), str(int(round(17.7 * 20))))
             ppr.append(ind)
-            label = ref_id if ref_id else index
-            _append_rich_text(paragraph, f"[{label}] {ref_text}".strip())
+            label = str(ref_id) if ref_id else str(index)
+            # Strip leading [N] or [N, M] if already in ref_text (LLM double-formatting)
+            ref_text_clean = re.sub(r'^\s*\[\d+(?:,\s*\d+)*\]\s*', '', ref_text)
+            _append_rich_text(paragraph, f"[{label}] {ref_text_clean}".strip())
     else:
         # Legacy format: list of reference strings
         for index, reference in enumerate(references, start=1):

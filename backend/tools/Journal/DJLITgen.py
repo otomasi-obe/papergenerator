@@ -34,8 +34,9 @@ CFG = {
     "size_caption": 8,
     "size_reference": 8,
     "columns": 2,
+    "col_width_cm": 19.0,
     "first_line_indent_tw": 0,
-    "table_borders": "full",
+    "table_borders": "three_line",
     "fig_prefix": "Fig.",
     "tbl_prefix": "Table",
     "section_heading_upper": True,
@@ -417,7 +418,7 @@ def add_abstract(doc, data):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=0, after_pt=6)
-    run = p.add_run(abstract)
+    run = p.add_run(_clean_latex(abstract))
     set_run_font(run, CFG["font_body"], CFG["size_body"])
 
 
@@ -458,6 +459,12 @@ def add_subsection_heading(doc, title):
 
 
 def _clean_latex(text):
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     """Strip inline LaTeX markers dari body text supaya tidak bocor ke output."""
     text = re.sub(r'\$([^$]+)\$', r'\1', text)
     text = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
@@ -491,9 +498,38 @@ def _clean_latex(text):
     text = re.sub(r'\\Delta', chr(916), text)
     text = re.sub(r'\\partial', chr(8706), text)
     text = re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
-    text = re.sub(r'[_^]([a-zA-Z0-9])', r'\1', text)
+    # Convert bare subscript/superscript to Unicode
+    text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
+    text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
+    # LaTeX spacing → remove or space
+    text = re.sub(r'\\;', '', text)
+    text = re.sub(r'\\,', '', text)
+    text = re.sub(r'\\:', '', text)
+    text = re.sub(r'\\!', '', text)
+    # Math function names → preserve content
+    text = re.sub(r'\\cos\^\{(-?\d+)\}', r'cos\1', text)
+    text = re.sub(r'\\cos\^(-?\d+)', r'cos\1', text)
+    text = re.sub(r'\\cos\\b', 'cos', text)
+    text = re.sub(r'\\sin\^\{(-?\d+)\}', r'sin\1', text)
+    text = re.sub(r'\\sin\^(-?\d+)', r'sin\1', text)
+    text = re.sub(r'\\sin\\b', 'sin', text)
+    text = re.sub(r'\\tan\^\{(-?\d+)\}', r'tan\1', text)
+    text = re.sub(r'\\tan\^(-?\d+)', r'tan\1', text)
+    text = re.sub(r'\\tan\\b', 'tan', text)
+    text = re.sub(r'\\log\^\{(-?\d+)\}', r'log\1', text)
+    text = re.sub(r'\\log\^(-?\d+)', r'log\1', text)
+    text = re.sub(r'\\log\\b', 'log', text)
+    text = re.sub(r'\\exp\^\{(-?\d+)\}', r'exp\1', text)
+    text = re.sub(r'\\exp\\b', 'exp', text)
+    text = re.sub(r'\\max\\b', 'max', text)
+    text = re.sub(r'\\min\\b', 'min', text)
+    text = re.sub(r'\\lim\\b', 'lim', text)
+    text = re.sub(r'\\det\\b', 'det', text)
+    text = re.sub(r'\\operatorname\{([^}]*)\}', r'\1', text)
     text = re.sub(r'\\[a-zA-Z]+', '', text)
     text = re.sub(r'[{}]', '', text)
+    # Strip any remaining stray $ (unmatched math delimiters)
+    text = re.sub(r'\$', '', text)
     return text.strip()
 
 
@@ -552,12 +588,19 @@ def add_figure(doc, fig_data, fig_counter):
     # ── Embed gambar atau fallback prompt ────────────────────────────────
     p_img = doc.add_paragraph()
     p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p_img, before_pt=3, after_pt=3)
+    set_para_spacing(p_img, before_pt=12, after_pt=8)
 
     if actual_image:
         try:
             run_img = p_img.add_run()
-            run_img.add_picture(str(actual_image), width=Inches(5.5))
+            # Dynamic image sizing based on column layout
+            columns = CFG.get("columns", 1)
+            col_w = CFG.get("col_width_cm", 16.0)
+            if columns == 2:
+                max_w_cm = (col_w / 2) * 0.7  # 2-col: 70% of each column
+            else:
+                max_w_cm = col_w * 0.5  # 1-col: 50% of text area
+            run_img.add_picture(str(actual_image), width=Inches(max_w_cm / 2.54))
         except Exception:
             actual_image = None
 
@@ -635,24 +678,144 @@ def add_table_element(doc, tbl_data, tbl_counter):
                 run = p.add_run(_clean_latex(str(val)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"])
 
+    # Spacer after table ensures text below has breathing room
+    p_spacer = doc.add_paragraph()
+    set_para_spacing(p_spacer, before_pt=6, after_pt=6)
+    run_s = p_spacer.add_run(" ")
+    set_run_font(run_s, CFG["font_body"], 1)
+
 
 
 def add_formula(doc, formula_data):
+    """OMML inline dengan tab-stop + matrix scaling (AEJ pattern)."""
     latex = str(formula_data.get("latex", formula_data.get("Formula", ""))).strip()
     number = str(formula_data.get("FormulaNumber", "")).strip()
     if not latex:
         return
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p, before_pt=3, after_pt=3)
-    cleaned = _clean_latex(latex)
-    display = cleaned
-    if number:
-        display = f"{cleaned}    ({number})"
-    run = p.add_run(display)
-    set_run_font(run, "Cambria Math", CFG["size_body"], italic=True)
 
+    import re
+    from lxml import etree
+    from latex2mathml.converter import convert as latex2mathml
+    from mathml2omml import convert as mathml2omml
 
+    try:
+        # 1. Kalkulasi lebar kolom & deteksi matrix
+        col_w_cm = CFG.get("col_width_cm", 7.5)
+        columns = CFG.get("columns", 2)
+        col_w_cm = col_w_cm if columns < 2 else (col_w_cm / 2)
+        max_fw_cm = col_w_cm * 0.90
+
+        cleaned = re.sub(r'\\[a-zA-Z]+|\\{|\\}|\\[|\\]|\\^|\\_|\\$|\\\\', '', latex)
+        formula_size = CFG["size_body"]
+
+        is_matrix = "matrix" in latex or "cases" in latex or "\\\\" in latex
+        if is_matrix:
+            formula_size = max(5.0, formula_size - 2.5)
+        else:
+            est_cm = len(cleaned) * formula_size * 0.38 / 28.35
+            if est_cm > max_fw_cm:
+                scale = max_fw_cm / est_cm
+                formula_size = max(5.0, formula_size * scale)
+
+        effective_halfpt = int(formula_size * 2)
+
+        # 2. Konversi ke OMML inline (BUKAN oMathPara)
+        mathml_str = latex2mathml(latex)
+        omml_str = mathml2omml(mathml_str)
+
+        MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+        omml_inner = omml_str.replace(f'<m:oMath xmlns:m="{MATH_NS}">', '').replace('</m:oMath>', '')
+        if omml_inner.startswith('<m:oMath>'):
+            omml_inner = omml_inner.replace('<m:oMath>', '', 1)
+
+        omml_wrapped = f'<m:oMath xmlns:m="{MATH_NS}">{omml_inner}</m:oMath>'
+        oMath = etree.fromstring(omml_wrapped)
+
+        # 3. Inject w:rPr as first child of m:r (WAJIB insert(0))
+        for omath_run in oMath.iter(f'{{{MATH_NS}}}r'):
+            wrPr = omath_run.find(qn('w:rPr'))
+            if wrPr is None:
+                wrPr = etree.Element(qn('w:rPr'))
+                omath_run.insert(0, wrPr)
+
+            rFonts = wrPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = etree.SubElement(wrPr, qn('w:rFonts'))
+            rFonts.set(qn('w:ascii'), 'Cambria Math')
+            rFonts.set(qn('w:hAnsi'), 'Cambria Math')
+
+            sz = wrPr.find(qn('w:sz'))
+            if sz is None:
+                sz = etree.SubElement(wrPr, qn('w:sz'))
+            sz.set(qn('w:val'), str(effective_halfpt))
+
+            szCs = wrPr.find(qn('w:szCs'))
+            if szCs is None:
+                szCs = etree.SubElement(wrPr, qn('w:szCs'))
+            szCs.set(qn('w:val'), str(effective_halfpt))
+
+        # 4. Bangun paragraf dengan tab stops
+        body = doc._element.body
+        final_sectpr = body.find(qn("w:sectPr"))
+
+        p_elem = etree.Element(qn("w:p"))
+        pPr = etree.SubElement(p_elem, qn("w:pPr"))
+        jc = etree.SubElement(pPr, qn("w:jc"))
+        jc.set(qn("w:val"), "left")
+        spacing = etree.SubElement(pPr, qn("w:spacing"))
+        spacing.set(qn("w:before"), "120")
+        spacing.set(qn("w:after"), "120")
+        spacing.set(qn("w:line"), "240")
+        spacing.set(qn("w:lineRule"), "auto")
+
+        center_twips = int((col_w_cm * 28.346 * 20) / 2)
+        right_twips = int(col_w_cm * 28.346 * 20)
+
+        tabs = etree.SubElement(pPr, qn("w:tabs"))
+        tab_center = etree.SubElement(tabs, qn("w:tab"))
+        tab_center.set(qn("w:val"), "center")
+        tab_center.set(qn("w:pos"), str(center_twips))
+        tab_right = etree.SubElement(tabs, qn("w:tab"))
+        tab_right.set(qn("w:val"), "right")
+        tab_right.set(qn("w:pos"), str(right_twips))
+
+        # 5. Struktur: [Tab Center] -> Formula -> [Tab Right] -> Number
+        run_tab1 = etree.SubElement(p_elem, qn("w:r"))
+        etree.SubElement(run_tab1, qn("w:tab"))
+        p_elem.append(oMath)
+
+        if number:
+            run_num = etree.SubElement(p_elem, qn("w:r"))
+            etree.SubElement(run_num, qn("w:tab"))
+            rPr_num = etree.SubElement(run_num, qn("w:rPr"))
+            rFonts_num = etree.SubElement(rPr_num, qn("w:rFonts"))
+            rFonts_num.set(qn("w:ascii"), CFG.get("font_body", "Times New Roman"))
+            sz_num = etree.SubElement(rPr_num, qn("w:sz"))
+            sz_num.set(qn("w:val"), str(CFG["size_body"] * 2))
+            t_num = etree.SubElement(run_num, qn("w:t"))
+            t_num.text = f"({number})"
+            t_num.set(qn("xml:space"), "preserve")
+
+        # 6. Insert paragraf sebelum final sectPr
+        if final_sectpr is not None:
+            final_sectpr.addprevious(p_elem)
+        else:
+            body.append(p_elem)
+
+    except Exception as e:
+        # Fallback: gunakan shared utility
+        import sys
+        from pathlib import Path as _Path
+        _jdir = _Path(__file__).resolve().parent
+        if str(_jdir) not in sys.path:
+            sys.path.insert(0, str(_jdir))
+        from _formula_omml import add_omml_formula
+        columns = CFG.get("columns", 1)
+        col_w = CFG.get("col_width_cm", 16.0)
+        max_fw = (col_w / 2) * 0.7 if columns == 2 else col_w * 0.7
+        add_omml_formula(doc, latex, number, CFG, before_pt=4, after_pt=4,
+                         alignment="center", font_body=CFG.get("font_body", "Times New Roman"),
+                         size_body=CFG.get("size_body", 10), max_width_cm=max_fw)
 def add_references(doc, data):
     refs_data = data.get("references", {})
     if isinstance(refs_data, dict):
@@ -673,6 +836,8 @@ def add_references(doc, data):
         ref_text = str(ref.get("text", ref) if isinstance(ref, dict) else ref).strip()
         if not ref_text:
             continue
+        # Strip existing bracket number prefix to avoid [1] [1] double numbering
+        ref_text = re.sub(r'^\[\d+\]\s*', '', ref_text)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_para_spacing(p, before_pt=0, after_pt=0)

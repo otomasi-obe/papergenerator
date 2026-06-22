@@ -320,7 +320,7 @@ def add_keywords(doc, data):
 def add_section_heading(doc, title: str):
     p = doc.add_paragraph()
     _set_para_style(p, STYLE_HEAD1)
-    _add_run(p, title.upper())
+    _add_run(p, title.upper(), bold=True, size_pt=9)
 
 
 def add_subsection_heading(doc, title: str):
@@ -330,9 +330,11 @@ def add_subsection_heading(doc, title: str):
 
 
 def add_body_text(doc, text: str):
+    cleaned = _strip_latex(text)
+    bold_auto = cleaned.startswith('• ') or 'Kontribusi spesifik' in cleaned
     p = doc.add_paragraph()
     _set_para_style(p, STYLE_BODY)
-    _add_run(p, _strip_latex(text))
+    _add_run(p, cleaned, bold=bold_auto)
 
 
 def _set_table_borders(table, pattern="full"):
@@ -516,8 +518,7 @@ def generate():
 
     # Section 0 (sebelum sectPr inline #0): Title, Authors, Abstract, Keywords
     # Masthead inject
-    _inject_masthead_content(doc, data)
-    # add_title(doc, data) — replaced by inject
+    add_title(doc, data)
     add_authors(doc, data)
     add_abstract(doc, data)
     add_keywords(doc, data)

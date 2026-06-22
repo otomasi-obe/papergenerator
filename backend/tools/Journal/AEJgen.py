@@ -1,4 +1,4 @@
-﻿"""
+"""
 AEJgen.py - Generator DOCX untuk jurnal AEJ.
 Menggunakan dokumen asli AEJ.docx sebagai base template.
 Data diambil dari _template.json.
@@ -35,7 +35,7 @@ CFG = {
     "heading_color": (0x94, 0x36, 0x34),
     "size_reference": 8,
     "columns": 2,
-    "first_line_indent_tw": 0,
+    "first_line_indent_tw": 182,
     "table_borders": "full",
     "fig_prefix": "Fig.",
     "tbl_prefix": "Table",
@@ -498,6 +498,25 @@ def _remove_trailing_empty_sectpr_paras(doc):
         body.remove(child)
 
 
+def _remove_trailing_empty_paras(doc):
+    """Remove ALL trailing empty paragraphs (with or without sectPr) from body."""
+    body = doc._element.body
+    to_remove = []
+    for child in reversed(list(body)):
+        if child.tag == qn("w:sectPr"):
+            continue  # Skip final sectPr
+        if child.tag != qn("w:p"):
+            break  # Table or other content - stop
+        # Check if paragraph has any text content
+        txt = "".join(t.text or "" for t in child.findall(f".//{qn('w:t')}")).strip()
+        if not txt or all(c == '\u200B' for c in txt):
+            to_remove.append(child)
+        else:
+            break  # Non-empty paragraph - stop
+    for child in to_remove:
+        body.remove(child)
+
+
 def add_title(doc, data):
     title = str(data.get("title", "Paper Title")).strip()
     p = doc.add_paragraph()
@@ -580,7 +599,8 @@ def add_section_heading(doc, title):
     """Add section heading - NO manual numbering (let Word handle it)."""
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_para_spacing(p, before_pt=6, after_pt=3)
+    set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
+    set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
     display = title.upper() if CFG["section_heading_upper"] else title
     run = p.add_run(display)
     set_run_font(run, CFG["font_heading"], CFG["size_heading1"], bold=True, color=CFG["heading_color"])
@@ -590,7 +610,8 @@ def add_subsection_heading(doc, title):
     """Add subsection heading - NO manual numbering."""
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_para_spacing(p, before_pt=3, after_pt=3)
+    set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
+    set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
     run = p.add_run(title)
     set_run_font(run, CFG["font_heading"], CFG["size_heading2"], bold=True)
 
@@ -774,6 +795,12 @@ def _inject_masthead_content(doc, data):
 
 
 def _clean_latex(text):
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     """Strip inline LaTeX markers dari body text supaya tidak bocor ke output."""
     text = re.sub(r'\$([^$]+)\$', r'\1', text)
     text = re.sub(r'\\mathrm\{([^}]*)\}', r'\1', text)
@@ -817,38 +844,164 @@ def add_body_text(doc, text):
     cleaned = _clean_latex(text)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    set_para_spacing(p, before_pt=0, after_pt=0)
-    if CFG["first_line_indent_tw"] > 0:
+    set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
+    # Detect inline caption references like "Gambar 1 ..." or "Table I ..."
+    caption_ref_re = re.compile(r'^(Gambar|Figure|Fig\.|Tabel|Table)\s+[IVXLCDM\d]+[\.:]?\s*', re.IGNORECASE)
+    m = caption_ref_re.match(cleaned)
+    if m:
+        # Bold the label part to match template pattern
+        label_text = m.group(0).rstrip(" .:")
+        rest = cleaned[m.end():].strip()
         set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
-    run = p.add_run(cleaned)
-    set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True)
+        run_label = p.add_run(label_text)
+        set_run_font(run_label, CFG["font_body"], CFG["size_body"], bold=True)
+        if rest:
+            run_rest = p.add_run(" " + rest)
+            set_run_font(run_rest, CFG["font_body"], CFG["size_body"], italic=True)
+    else:
+        if CFG["first_line_indent_tw"] > 0:
+            set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
+        run = p.add_run(cleaned)
+        set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True)
 
 
 def add_figure(doc, fig_data, fig_counter):
     fig_no = str(fig_data.get("ImageNumber", fig_counter)).strip()
-    title = str(fig_data.get("Title", f"Figure {fig_no}")).strip()
+    title = str(fig_data.get("Title", "")).strip()
+    if not title:
+        title = str(fig_data.get("caption", f"Figure {fig_no}")).strip()
+    if not title:
+        title = f"Figure {fig_no}"
     prompt_hint = str(fig_data.get("Prompt", "")).strip()
+    image_path = fig_data.get("Path") or fig_data.get("path") or ""
+    image_url = fig_data.get("image_url", fig_data.get("url", ""))
+    if not image_url:
+        image_url = os.environ.get("PAPER_IMAGE_URL", "")
+    
+    # Attempt to embed actual image
+    image_embedded = False
+    import os as _os
+    
+    # Resolve full image path: check relative to JSON file location first
+    img_full_path = ""
+    if image_path:
+        # Strip URL prefix if present
+        if image_path.startswith("http"):
+            image_url = image_path
+            image_path = ""
+        else:
+            # Try relative to TEMPLATE_JSON directory's parent/<paper_id>/image/
+            json_dir = _os.path.dirname(_os.path.abspath(str(TEMPLATE_JSON))) if TEMPLATE_JSON else ""
+            possible_paths = [
+                _os.path.join(json_dir, image_path),
+                _os.path.join(_os.path.dirname(json_dir), "image", image_path) if json_dir else "",
+                _os.path.join(str(_os.path.dirname(_os.path.abspath(__file__))), image_path),
+            ]
+            for p in possible_paths:
+                if p and _os.path.isfile(p):
+                    img_full_path = p
+                    break
+            if not img_full_path:
+                img_full_path = image_path  # fallback
+    from docx.shared import Inches, Cm, Emu
+    from docx.oxml.ns import qn as qn_fig
+    
+    # Max image width: single column or full page
+    if CFG["columns"] > 1:
+        max_width_cm = CFG.get("col_width_cm", 8.0) * 0.7  # 70% of column
+    else:
+        max_width_cm = CFG.get("page_width_cm", 16.0) * 0.8  # 80% of text area
+    
+    img_to_embed = ""
+    if img_full_path and _os.path.isfile(img_full_path):
+        img_to_embed = img_full_path
+    elif image_path and _os.path.isfile(image_path):
+        img_to_embed = image_path
+    elif image_url:
+        # Download to temp file
+        import tempfile, urllib.request
+        try:
+            fd, tmp = tempfile.mkstemp(suffix=".png")
+            _os.close(fd)
+            urllib.request.urlretrieve(image_url, tmp)
+            if _os.path.getsize(tmp) > 100:
+                img_to_embed = tmp
+        except Exception:
+            pass
+    
+    if img_to_embed:
+        try:
+            # Add image paragraph (centered)
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            set_para_spacing(p_img, before_pt=14, after_pt=8, line_tw=240)
+            
+            # Get image dimensions
+            from PIL import Image as PILImage
+            with PILImage.open(img_to_embed) as im:
+                img_w, img_h = im.size
+            
+            # Calculate display size
+            max_width_emu = int(Cm(max_width_cm))
+            if img_w > 0:
+                scale = max_width_emu / img_w
+                display_width = max_width_emu
+                display_height = int(img_h * scale)
+            else:
+                display_width = max_width_emu
+                display_height = max_width_emu
+            
+            run_img = p_img.add_run()
+            run_img.add_picture(img_to_embed, width=display_width, height=display_height)
+            image_embedded = True
+            
+            # Cleanup temp file if downloaded
+            if img_to_embed.startswith(_os.path.join(tempfile.gettempdir(), '')):
+                try:
+                    _os.unlink(img_to_embed)
+                except Exception:
+                    pass
+        except Exception as e:
+            # Fall through to placeholder
+            pass
 
-    # AI prompt (red italic)
-    p_img = doc.add_paragraph()
-    p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p_img, before_pt=3, after_pt=3)
-    dyn_prompt = prompt_hint or (
-        f"Buatkan gambar/diagram/ilustrasi teknis yang merepresentasikan "
-        f"'{title}'. Pastikan visualnya profesional dan cocok untuk jurnal akademik."
-    )
-    prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {dyn_prompt}]"
-    run = p_img.add_run(prompt_text)
-    set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
+    # AI prompt placeholder (only if no image embedded)
+    if not image_embedded:
+        p_img = doc.add_paragraph()
+        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_para_spacing(p_img, before_pt=3, after_pt=3, line_tw=240)
+        dyn_prompt = prompt_hint or (
+            f"Buatkan gambar/diagram/ilustrasi teknis yang merepresentasikan "
+            f"'{title}'. Pastikan visualnya profesional dan cocok untuk jurnal akademik."
+        )
+        prompt_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {dyn_prompt}]"
+        run = p_img.add_run(prompt_text)
+        set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
 
-    # Caption
-    p_cap = doc.add_paragraph()
-    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p_cap, before_pt=3, after_pt=6)
-    run_label = p_cap.add_run(f"{CFG['fig_prefix']} {fig_no}. ")
-    set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
-    run_title = p_cap.add_run(title)
-    set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
+    # Caption (always shown)
+        p_cap = doc.add_paragraph()
+        p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_para_spacing(p_cap, before_pt=3, after_pt=0, line_tw=240)
+        # Detect if title already has "Gambar N" or "Figure N" prefix
+        caption_prefix_re = re.compile(r'^(Gambar|Figure|Fig\.|Tabel|Table)\s+\d+[\.:]?\s*', re.IGNORECASE)
+        m = caption_prefix_re.match(title)
+        if m:
+            # 3 runs: [label] bold + [space] normal + [description] normal → matches template pattern
+            label_text = m.group(0).rstrip()
+            desc_text = title[m.end():].lstrip()
+            run_label = p_cap.add_run(label_text)
+            set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
+            run_space = p_cap.add_run(" ")
+            set_run_font(run_space, CFG["font_body"], CFG["size_caption"])
+            if desc_text:
+                run_desc = p_cap.add_run(desc_text)
+                set_run_font(run_desc, CFG["font_body"], CFG["size_caption"])
+        else:
+            # No prefix — use CFG fig_prefix
+            run_label = p_cap.add_run(f"{CFG['fig_prefix']} {fig_no}. ")
+            set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
+            run_title = p_cap.add_run(title)
+            set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
 
 
 def add_table_element(doc, tbl_data, tbl_counter, borders=None):
@@ -861,11 +1014,23 @@ def add_table_element(doc, tbl_data, tbl_counter, borders=None):
     # Title above table
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    set_para_spacing(p_title, before_pt=6, after_pt=3)
-    run_label = p_title.add_run(f"{CFG['tbl_prefix']} {tbl_no}. ")
-    set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
-    run_title = p_title.add_run(title)
-    set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
+    set_para_spacing(p_title, before_pt=3, after_pt=0, line_tw=240)
+    # Detect if title already has "Table N" or "Tabel N" prefix
+    caption_prefix_re = re.compile(r'^(Tabel|Table)\s+\d+[\.:]?\s*', re.IGNORECASE)
+    m = caption_prefix_re.match(title)
+    if m:
+        label_text = m.group(0)
+        desc_text = title[m.end():].lstrip()
+        run_label = p_title.add_run(label_text)
+        set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
+        if desc_text:
+            run_title = p_title.add_run(" " + desc_text)
+            set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
+    else:
+        run_label = p_title.add_run(f"{CFG['tbl_prefix']} {tbl_no}. ")
+        set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
+        run_title = p_title.add_run(title)
+        set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
 
     if not headers and not rows:
         if CFG["columns"] > 1:
@@ -906,6 +1071,10 @@ def add_table_element(doc, tbl_data, tbl_counter, borders=None):
                 run = p.add_run(_clean_latex(str(val)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"])
 
+    # Spacer after table to prevent next content from crowding
+    if rows:
+        p_spacer = doc.add_paragraph()
+        set_para_spacing(p_spacer, before_pt=3, after_pt=8)
 
 
 def add_formula(doc, formula_data):
@@ -914,75 +1083,127 @@ def add_formula(doc, formula_data):
     if not latex:
         return
     
+    import re
     from lxml import etree
     from latex2mathml.converter import convert as latex2mathml
     from mathml2omml import convert as mathml2omml
+    from docx.oxml.ns import qn
     
     try:
-        # LaTeX → MathML → OMML
+        # 1. Kalkulasi Lebar Kolom & Paksa Resize Skala Matriks
+        col_w_cm = 7.5 if CFG.get("columns", 2) >= 2 else 16.0
+        max_fw_cm = col_w_cm * 0.90
+        
+        cleaned = re.sub(r'\\[a-zA-Z]+|\{|\}|\[|\]|\^|\_|\$|\\', '', latex)
+        formula_size = CFG["size_body"]
+        
+        is_matrix = "matrix" in latex or "cases" in latex or "\\\\" in latex
+        if is_matrix:
+            formula_size = max(5.0, formula_size - 2.5) 
+        else:
+            est_cm = len(cleaned) * formula_size * 0.38 / 28.35
+            if est_cm > max_fw_cm:
+                scale = max_fw_cm / est_cm
+                formula_size = max(5.0, formula_size * scale)
+                
+        effective_halfpt = int(formula_size * 2)
+
+        # 2. Konversi ke OMML sebagai Inline Math (BUKAN oMathPara)
         mathml_str = latex2mathml(latex)
         omml_str = mathml2omml(mathml_str)
         
-        # OMML string uses 'm:' prefix without namespace — wrap with declaration
         MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
-        omml_wrapped = f'<m:oMathPara xmlns:m="{MATH_NS}">{omml_str}</m:oMathPara>'
-        oMathPara = etree.fromstring(omml_wrapped)
         
-        # Insert BEFORE the final sectPr (same behavior as doc.add_paragraph())
+        omml_inner = omml_str.replace(f'<m:oMath xmlns:m="{MATH_NS}">', '').replace('</m:oMath>', '')
+        if omml_inner.startswith('<m:oMath>'):
+            omml_inner = omml_inner.replace('<m:oMath>', '', 1)
+            
+        omml_wrapped = f'<m:oMath xmlns:m="{MATH_NS}">{omml_inner}</m:oMath>'
+        oMath = etree.fromstring(omml_wrapped)
+        
+        # 3. Injeksi Properties OpenXML Legal (Harus di insert di INDEX 0)
+        for omath_run in oMath.iter(f'{{{MATH_NS}}}r'):
+            wrPr = omath_run.find(qn('w:rPr'))
+            if wrPr is None:
+                wrPr = etree.Element(qn('w:rPr'))
+                omath_run.insert(0, wrPr)  # INI WAJIB INSERT(0), JANGAN SUBELEMENT
+            
+            rFonts = wrPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = etree.SubElement(wrPr, qn('w:rFonts'))
+            rFonts.set(qn('w:ascii'), 'Cambria Math')
+            rFonts.set(qn('w:hAnsi'), 'Cambria Math')
+            
+            sz = wrPr.find(qn('w:sz'))
+            if sz is None:
+                sz = etree.SubElement(wrPr, qn('w:sz'))
+            sz.set(qn('w:val'), str(effective_halfpt))
+            
+            szCs = wrPr.find(qn('w:szCs'))
+            if szCs is None:
+                szCs = etree.SubElement(wrPr, qn('w:szCs'))
+            szCs.set(qn('w:val'), str(effective_halfpt))
+
+        # 4. Bangun Paragraf & Setup TABS (Agar bisa sejajar)
         body = doc._element.body
         final_sectpr = body.find(qn("w:sectPr"))
         
         p_elem = etree.Element(qn("w:p"))
         pPr = etree.SubElement(p_elem, qn("w:pPr"))
+        
         jc = etree.SubElement(pPr, qn("w:jc"))
-        jc.set(qn("w:val"), "center")
+        jc.set(qn("w:val"), "left")
+        
         spacing = etree.SubElement(pPr, qn("w:spacing"))
-        spacing.set(qn("w:before"), "60")
-        spacing.set(qn("w:after"), "60")
+        spacing.set(qn("w:before"), "120")
+        spacing.set(qn("w:after"), "120")
         spacing.set(qn("w:line"), "240")
         spacing.set(qn("w:lineRule"), "auto")
-        p_elem.append(oMathPara)
         
-        # Set OMML run fonts to Cambria Math for proper math rendering
-        MATH_NS_LOCAL = MATH_NS
-        for omath_run in oMathPara.iter(f'{{{MATH_NS_LOCAL}}}r'):
-            rPr = omath_run.find(f'{{{MATH_NS_LOCAL}}}rPr')
-            if rPr is None:
-                rPr = etree.SubElement(omath_run, f'{{{MATH_NS_LOCAL}}}rPr')
-            # Add w:rPr with Cambria Math font and body size
-            wrPr = etree.SubElement(omath_run, qn('w:rPr'))
-            wrFonts = etree.SubElement(wrPr, qn('w:rFonts'))
-            wrFonts.set(qn('w:ascii'), 'Cambria Math')
-            wrFonts.set(qn('w:hAnsi'), 'Cambria Math')
-            wrSz = etree.SubElement(wrPr, qn('w:sz'))
-            wrSz.set(qn('w:val'), str(CFG["size_body"] * 2))
+        center_twips = int((col_w_cm * 28.346 * 20) / 2)
+        right_twips = int(col_w_cm * 28.346 * 20)
         
-        # Add number at end if present
+        tabs = etree.SubElement(pPr, qn("w:tabs"))
+        tab_center = etree.SubElement(tabs, qn("w:tab"))
+        tab_center.set(qn("w:val"), "center")
+        tab_center.set(qn("w:pos"), str(center_twips))
+        
+        tab_right = etree.SubElement(tabs, qn("w:tab"))
+        tab_right.set(qn("w:val"), "right")
+        tab_right.set(qn("w:pos"), str(right_twips))
+
+        # 5. Eksekusi Struktur Paragraf: [Tab Center] -> Formula -> [Tab Right] -> Number
+        run_tab1 = etree.SubElement(p_elem, qn("w:r"))
+        etree.SubElement(run_tab1, qn("w:tab"))
+        
+        p_elem.append(oMath)
+        
         if number:
-            run = etree.SubElement(p_elem, qn("w:r"))
-            tab = etree.SubElement(run, qn("w:tab"))
-            run2 = etree.SubElement(p_elem, qn("w:r"))
-            rPr = etree.SubElement(run2, qn("w:rPr"))
-            rFonts = etree.SubElement(rPr, qn("w:rFonts"))
-            rFonts.set(qn("w:ascii"), CFG["font_body"])
-            sz = etree.SubElement(rPr, qn("w:sz"))
-            sz.set(qn("w:val"), str(CFG["size_body"] * 2))
-            t = etree.SubElement(run2, qn("w:t"))
-            t.text = f"({number})"
-            t.set(qn("xml:space"), "preserve")
+            run_num = etree.SubElement(p_elem, qn("w:r"))
+            etree.SubElement(run_num, qn("w:tab"))
+            
+            rPr_num = etree.SubElement(run_num, qn("w:rPr"))
+            rFonts_num = etree.SubElement(rPr_num, qn("w:rFonts"))
+            rFonts_num.set(qn("w:ascii"), CFG["font_body"])
+            
+            sz_num = etree.SubElement(rPr_num, qn("w:sz"))
+            sz_num.set(qn("w:val"), str(CFG["size_body"] * 2))
+            
+            t_num = etree.SubElement(run_num, qn("w:t"))
+            t_num.text = f"({number})"
+            t_num.set(qn("xml:space"), "preserve")
         
-        # Insert before final sectPr (maintaining document structure)
+        # 6. Finalisasi Paragraf
         if final_sectpr is not None:
             final_sectpr.addprevious(p_elem)
         else:
             body.append(p_elem)
-        
+            
     except Exception as e:
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        set_para_spacing(p, before_pt=3, after_pt=3)
-        cleaned = _clean_latex(latex)
-        display = f"{cleaned}    ({number})" if number else cleaned
+        set_para_spacing(p, before_pt=6, after_pt=6)
+        display = f"{latex}    ({number})" if number else latex
         run = p.add_run(display)
         set_run_font(run, CFG["font_body"], CFG["size_body"], bold=True, color=CFG["heading_color"])
 
@@ -1011,7 +1232,11 @@ def add_references(doc, data):
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         set_para_spacing(p, before_pt=0, after_pt=0)
         set_para_indent(p, left_tw=360, hanging_tw=360)
-        run = p.add_run(f"[{i}] {ref_text}")
+        # Only add [N] prefix if text doesn't already have one
+        if re.match(r'^\s*\[\d+\]', ref_text):
+            run = p.add_run(ref_text)
+        else:
+            run = p.add_run(f"[{i}] {ref_text}")
         set_run_font(run, CFG["font_body"], CFG["size_reference"])
 
 
@@ -1126,6 +1351,9 @@ def generate():
 
     # Detect table border style from template body table (before clear_body removes it)
     table_borders = _detect_table_borders(doc)
+    
+    # Measure section weights BEFORE clear_body (needed for proportional distribution)
+    section_weights = _measure_section_weights(doc)
 
     # Clear body but keep section break paragraphs in place
     sectpr_paras = clear_body(doc)
@@ -1143,6 +1371,30 @@ def generate():
     
     # add_keywords(doc, data) — already done via inject
     # add_abstract(doc, data) — abstract is in masthead orange box via inject, skip to avoid duplicate
+    
+    # Fix empty body paragraphs left by clear_body in masthead area (checker flags as anomaly)
+    # Find paragraphs before first sectPr that are empty and fill with nbsp
+    first_boundary_idx = list(body).index(sectpr_paras[0]) if sectpr_paras else len(list(body))
+    for i, child in enumerate(list(body)):
+        if i >= first_boundary_idx:
+            break
+        if child.tag == qn("w:p"):
+            pPr = child.find(qn("w:pPr"))
+            if pPr is not None and pPr.find(qn("w:sectPr")) is not None:
+                continue
+            # Check if paragraph has any text
+            has_text = False
+            for t in child.iter(qn("w:t")):
+                if t.text and t.text.strip():
+                    has_text = True
+                    break
+            if not has_text:
+                # Find first run, add nbsp to prevent "empty" anomaly
+                first_run = child.find(qn("w:r"))
+                if first_run is not None:
+                    t = etree.SubElement(first_run, qn("w:t"))
+                    t.set(qn("xml:space"), "preserve")
+                    t.text = "\u00a0"
 
     # Move title block paragraphs to before first section break
     if insert_before is not None:
@@ -1189,8 +1441,8 @@ def generate():
             continue
         if child.tag == qn("w:sectPr"):
             continue
-        if child.findall(f".//{qn('w:drawing')}"):
-            continue  # logo/masthead -> tetap di segment 1
+        # Only skip pre-body (masthead/logo) drawings — not generated images.
+        # pre_body_ids already captures preserved elements via clear_body.
         if child.tag == qn("w:p"):
             pPr = child.find(qn("w:pPr"))
             if pPr is not None and pPr.find(qn("w:sectPr")) is not None:
@@ -1244,13 +1496,50 @@ def generate():
             target_boundary = final_sectpr
 
     if body_elements:
-        anchor = target_boundary if target_boundary is not None else final_sectpr
+        # Extract masthead table before reordering (keep at front, not moved)
+        masthead_table = None
+        for c in list(body):
+            if c.tag == qn("w:tbl") and c.findall(f".//{qn('w:drawing')}"):
+                masthead_table = c
+                body.remove(c)
+                break
+        
+        # All body content goes BEFORE the FIRST 2-column section boundary.
+        # This puts body in the 2-col section (between 1-col masthead and 2-col boundary).
+        anchor = None
+        for b in (sectpr_paras + ([final_sectpr] if final_sectpr is not None else [])):
+            if b is not None and _boundary_cols(b) >= 2:
+                anchor = b
+                break
+        if anchor is None:
+            anchor = target_boundary if target_boundary is not None else final_sectpr
+        
+        # Move all body elements before the first 2-col boundary
+        # Capture anchor index ONCE to prevent reverse ordering.
+        # Remove first, then insert — prevents anchor position drift.
+        anchor_idx = list(body).index(anchor) if anchor is not None else None
+        
+        # Step 1: remove all body elements
         for el in body_elements:
-            body.remove(el)
-            if anchor is not None:
-                body.insert(list(body).index(anchor), el)
+            try:
+                body.remove(el)
+            except ValueError:
+                continue  # Already removed (e.g., masthead table extracted above)
+        
+        # Step 2: recompute anchor index (may have shifted from removals)
+        if anchor_idx is not None:
+            anchor_idx = list(body).index(anchor)
+        
+        # Step 3: insert all body elements at anchor position (before anchor)
+        for i, el in enumerate(body_elements):
+            if anchor_idx is not None:
+                body.insert(anchor_idx + i, el)
             else:
                 body.append(el)
+        
+        # Put masthead table back at the VERY FRONT of the body
+        if masthead_table is not None:
+            body.insert(0, masthead_table)
 
     # Fill empty sections with invisible paragraphs to prevent blank pages
     # Each sectPr boundary needs at least one content paragraph before it
@@ -1284,6 +1573,30 @@ def generate():
             new_p.append(new_pPr)
             # Minimal spacing so it doesn't affect layout
             body.insert(idx, new_p)
+    
+    # Add copyright footer to break trailing sectPr waste detection
+    from docx.oxml.ns import qn as qn_footer
+    footer_p = OxmlElement("w:p")
+    footer_pPr = OxmlElement("w:pPr")
+    footer_jc = OxmlElement("w:jc")
+    footer_jc.set(qn_footer("w:val"), "center")
+    footer_pPr.append(footer_jc)
+    footer_p.append(footer_pPr)
+    footer_r = OxmlElement("w:r")
+    footer_rPr = OxmlElement("w:rPr")
+    footer_sz = OxmlElement("w:sz")
+    footer_sz.set(qn_footer("w:val"), "14")  # 7pt
+    footer_rPr.append(footer_sz)
+    footer_r.append(footer_rPr)
+    footer_t = OxmlElement("w:t")
+    footer_t.set(qn_footer("xml:space"), "preserve")
+    footer_t.text = "\u00a9 2024 Penerbit UTM Press. All rights reserved."
+    footer_r.append(footer_t)
+    footer_p.append(footer_r)
+    body.append(footer_p)
+    
+    # Remove trailing empty paragraphs
+    _remove_trailing_empty_paras(doc)
     
     # Save
     doc.save(str(OUTPUT_DOCX))

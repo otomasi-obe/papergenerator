@@ -23,7 +23,7 @@ from typing import Callable
 
 from .paper import Paper
 from . import db_cache
-from .text_cleaner import detect_mojibake
+from .text_cleaner import detect_mojibake, clean_abstract, clean_title
 
 log = logging.getLogger(__name__)
 
@@ -91,33 +91,68 @@ def _ai_rerank(query: str, papers: list[Paper], ai_model: str | None) -> list[in
     - Hanya top 50 paper dikirim (sebelumnya SEMUA paper → overflow context)
     - Filter paper dengan teks garbled (mojibake) sebelum dikirim ke AI
     - Prompt diperkuat: AI diinstruksikan menolak paper mojibake
+    
+    PERBAIKAN: candidate pool sekarang = top 50 ML score
+    + semua paper dengan full query phrase di title (keyword match).
+    Ini mencegah AI hanya melihat paper ML-favored yang mungkin
+    tidak relevan secara keyword.
     """
     if not papers:
         return None
 
-    # ── Filter: hanya top 50 + bersih dari mojibake ──
-    # Paper di pipeline sudah terurut berdasarkan ML score (sebelum AI rerank)
-    # Ambil top 50 yang teksnya bersih. Ini mencegah:
-    # 1. Context window overflow (1000+ paper)
-    # 2. AI memberikan perhatian ke paper sampah
-    # 3. Hallucination karena model kewalahan
-    clean_papers = []
+    # ── Build candidate pool: top 50 ML + keyword-matched papers ──
+    # Dua sumber kandidat:
+    # 1. Top 50 paper dari ML ranking (sudah di-sort oleh caller)
+    # 2. Semua paper yang judulnya mengandung query phrase utuh
+    #    (keyword match = sinyal relevance terkuat)
+    query_lower = query.lower().strip().replace('-', ' ')
+    keyword_pool = []
+    ml_pool = []
+    seen_ids = set()
+
     for p in papers:
         t_mojo = detect_mojibake(p.title)
         a_mojo = detect_mojibake(p.abstract)
         if t_mojo > 0.5 or a_mojo > 0.5:
             continue  # Skip paper dengan teks garbled
-        clean_papers.append(p)
-        if len(clean_papers) >= 50:
-            break
+        pid = id(p)
+        if pid in seen_ids:
+            continue
+
+        # Keyword match: check using scoring.py's _keyword_density_score
+        # (handles partial matches, term overlap, not just exact substring)
+        from .scoring import _keyword_density_score
+        kw_score = _keyword_density_score(query, p)
+        is_keyword_match = kw_score >= 0.5  # ≥50% keyword density = relevant
+
+        if is_keyword_match and len(keyword_pool) < 30:
+            keyword_pool.append(p)
+            seen_ids.add(pid)
+
+        if len(ml_pool) < 50:
+            ml_pool.append(p)
+            seen_ids.add(pid)
+
+    # Merge: keyword-matched first, then ML top-50 (dedup via seen_ids already)
+    clean_papers = keyword_pool + [p for p in ml_pool if id(p) not in {id(k) for k in keyword_pool}]
+
+    # Cap at 80 papers (50 ML + up to 30 keyword = max 80)
+    if len(clean_papers) > 80:
+        clean_papers = clean_papers[:80]
 
     if not clean_papers:
         log.warning("tool_literatur.ai_rerank: no clean papers after mojibake filter")
         return None
 
+    log.info(
+        "tool_literatur.ai_rerank: candidate pool %d papers (%d keyword-matched, %d ML)",
+        len(clean_papers), len(keyword_pool),
+        len([p for p in ml_pool if id(p) not in {id(k) for k in keyword_pool}]),
+    )
+
     # Map original indices for return
     original_indices = {id(p): i for i, p in enumerate(papers)}
-    clean_list = clean_papers  # Items already sorted by score
+    clean_list = clean_papers  # keyword-first, then ML
 
     # Build input: only title + abstract (citations is NOT relevance)
     items = []
@@ -206,6 +241,124 @@ def _apply_rerank(papers: list[Paper], reordered_indices: list[int]) -> list[Pap
     return result
 
 
+# ── Generic academic/method words to exclude from OR search ───────────
+# These are words that appear in thousands of computer-science papers
+# regardless of actual domain. Filtering them from OR queries prevents
+# irrelevant papers from drowning the results.
+_GENERIC_ACADEMIC_WORDS = {
+    # Standard stopwords
+    "a", "an", "the", "in", "on", "of", "to", "by", "is", "be", "at",
+    "or", "as", "if", "no", "so", "we", "he", "she", "it", "they",
+    "and", "for", "with", "from", "that", "this", "are", "was", "but",
+    "not", "can", "all", "any", "has", "its", "may", "who", "which",
+    "their", "how", "what", "why", "use", "also", "been", "were",
+    "will", "have", "had", "do", "does", "did", "into", "than",
+    "just", "more", "most", "new", "other", "some", "such", "only",
+    "over", "when", "where", "each", "about", "after", "before",
+    "between", "during", "these", "those",
+    # Generic academic/method words — high-frequency across all CS domains
+    "based", "using", "through", "approach", "method", "methods",
+    "model", "models", "system", "systems", "data", "review",
+    "analysis", "study", "studies", "research", "paper",
+    "technique", "techniques", "algorithm", "algorithms",
+    "framework", "frameworks", "application", "applications",
+    "development", "validation", "evaluation", "implementation",
+    "design", "performance", "comparative", "comparison",
+    "effect", "impact", "role", "case", "survey",
+    "overview", "challenge", "challenges", "issue", "issues",
+    "trend", "trends", "advance", "advances", "recent",
+    "review", "comprehensive", "state", "art",
+    # Generic ML/CV method words — filter for multi-domain specificity
+    "deep", "learning", "machine", "neural", "network", "networks",
+    "computer", "vision", "image", "images", "video",
+    "detection", "recognition", "classification", "prediction",
+    "predicting", "enhanced", "improved", "novel", "automatic",
+    "automated", "efficient", "robust", "hybrid", "optimization",
+    "object", "feature", "features", "extraction", "segmentation",
+    "architecture", "architectures", "transfer", "training",
+    "dataset", "datasets", "benchmark", "benchmarks",
+    "accuracy", "precision", "scalable", "adaptive",
+    "embedded", "embedding", "embeddings",
+    # Words with hyphens that become meaningless after splitting
+    "state-of-the-art", "end-to-end", "real-time", "plug-and-play",
+    "attention-based", "attention-enhanced",
+}
+_WORDS_MIN_LEN = 3  # Ignore words shorter than this in OR queries
+
+
+def _extract_core_query(raw_query: str) -> str:
+    """Extract core topic keywords from a potentially verbose title/query.
+
+    For academic paper titles like:
+    "Computer Vision-Based Prediction of Glycemic Index and Glycemic Load
+    for Indonesian Foods: Development and Validation of a Deep Learning
+    Model with Embedded Nutritional Biochemistry Framework"
+
+    We want to extract the core DOMAIN keywords:
+    - "glycemic index", "glycemic load", "indonesian foods",
+    - "nutritional biochemistry"
+    
+    While filtering out METHOD descriptors:
+    - "computer vision", "deep learning", "model", "prediction",
+    - "development", "validation", "framework"
+
+    Returns a cleaned query string suitable for DB full-text search.
+    """
+    cleaned = raw_query.lower().strip().replace('-', ' ').replace(':', ' ')
+    words = cleaned.split()
+    
+    if len(words) <= 5:
+        # Short query — return as-is (likely a simple topic)
+        return raw_query.strip()
+    
+    # Split at colon to separate main title from subtitle (if any)
+    raw_lower = raw_query.lower().strip()
+    if ':' in raw_lower:
+        parts = raw_lower.split(':', 1)
+        main_title = parts[0].strip()
+        subtitle = parts[1].strip() if len(parts) > 1 else ''
+    else:
+        main_title = raw_lower
+        subtitle = ''
+    
+    # Extract content words from each part
+    main_words = main_title.replace('-', ' ').split()
+    sub_words = subtitle.replace('-', ' ').split() if subtitle else []
+    
+    # Filter: keep words that are domain-specific, skip generic/method words
+    content_main = [w for w in main_words 
+                    if w.lower() not in _GENERIC_ACADEMIC_WORDS and len(w) >= _WORDS_MIN_LEN]
+    content_sub = [w for w in sub_words 
+                    if w.lower() not in _GENERIC_ACADEMIC_WORDS and len(w) >= _WORDS_MIN_LEN]
+    
+    # Build 2-3 word phrases from content words (for phrase matching)
+    all_content = content_main + content_sub
+    all_content_dedup = list(dict.fromkeys(all_content))  # dedup, preserve order
+    
+    # Build the cleaned query: extract the most discriminative content words.
+    # Strategy: For long queries, use only 2-3 most specific keywords for the
+    # AND phase (DB FTS). More words → AND requires ALL tokens → 0 results for
+    # niche topics. Short focused query + OR fallback = better coverage.
+    #
+    # Priority: main title content words (usually the core topic),
+    # then subtitle content (domain/context), then all deduped content.
+    
+    if content_main:
+        core = ' '.join(content_main[:3])
+    elif content_sub:
+        core = ' '.join(content_sub[:3])
+    else:
+        core = raw_query.strip()
+    
+    # If core is empty or too short, fallback to full content
+    if not core or len(core.split()) < 2:
+        core = ' '.join(all_content_dedup[:3])
+    
+    if core and len(core) > 3:
+        return core
+    return raw_query.strip()
+
+
 def run(
     query: str,
     top_k: int = 50,
@@ -237,17 +390,25 @@ def run(
     if progress_cb:
         progress_cb("db_searching", {"query": query, "top_k": top_k})
 
+    # Preprocess query for DB search: extract core domain keywords,
+    # filter out generic method/academic words that drown results.
+    # e.g. "Computer Vision-Based Prediction of Glycemic Index..."
+    # → "glycemic index glycemic load indonesian foods nutritional biochemistry"
+    search_query = _extract_core_query(query)
+    log.info("tool_literatur.query_preprocess: '%s' → search_query='%s'",
+             query[:80], search_query[:120])
+
     fetch_limit = top_k * 10  # Oversample untuk AI rerank headroom
     if year_from:
         fetch_limit = fetch_limit * 2  # Extra headroom untuk year filter
 
     papers = db_cache.search_papers(
-        query=query,
+        query=search_query,
         limit=fetch_limit,
         year_from=year_from,
         sources=sources,
     )
-    log.info("tool_literatur.db_search: got %d papers from paper_database", len(papers))
+    log.info("tool_literatur.db_search: got %d papers from paper_database (search_query='%s')", len(papers), search_query[:80])
 
     # Year post-filter (search_papers sudah filter di SQL, safety net)
     if year_from:
@@ -266,7 +427,7 @@ def run(
         try:
             from .orchestrator import fetch_titles
             api_papers = fetch_titles(
-                query=query,
+                query=search_query,  # Use preprocessed query for API too
                 sources=sources,
                 max_total=MIN_FETCH_TARGET,
                 use_cache=True,  # DB-first internally
@@ -368,50 +529,43 @@ def run(
     else:
         papers.sort(key=lambda p: p.db_score or 0, reverse=True)
 
-    # ── KEYWORD BOOST (ringan): hanya sebagai safety net ──
-    # scoring.py 17% weight + long-term boost sudah mencakup keyword match.
-    # Boost di pipeline hanya additive kecil untuk preventif.
-    query_lower = query.lower()
-    query_terms = re.findall(r'[a-z0-9]{3,}', query_lower)
-    if query_terms and ml_scored:
-        def _keyword_boost(p: Paper) -> float:
-            """Small additive boost (max 0.3) — tidak overwrite ML score."""
-            title = (p.title or '').lower()
-            if query_lower in title:
-                return 0.3
-            # All query terms in title → small boost
-            if all(term in title for term in query_terms):
-                return 0.2
-            # Partial match in title
-            title_matches = sum(1 for term in query_terms if term in title)
-            if title_matches / len(query_terms) >= 0.5:
-                return 0.1
-            return 0.0
+    # ── KEYWORD MULTIPLICATIVE BOOST (PIPELINE-LEVEL) ──
+    # scoring.py sudah handle keyword di level ML (weight 25% + phrase-based boost).
+    # Di pipeline, kita reinforce dengan boost tambahan: paper yang judulnya
+    # mengandung key phrases (2+ word sequences) → extra boost.
+    # Ini safety net kalau scoring.py gagal load (exception).
+    from .scoring import _extract_key_phrases
+    key_phrases = _extract_key_phrases(query)
+    def _keyword_mult(p: Paper) -> float:
+        """Multiplicative keyword boost — 1.0 (no boost) to 1.3x."""
+        title = (p.title or '').lower().replace('-', ' ')
+        abstract = (p.abstract or '').lower().replace('-', ' ')
+        title_hits = sum(1 for ph in key_phrases if ph in title)
+        abs_hits = sum(1 for ph in key_phrases if ph in abstract and ph not in title)
+        if title_hits >= 2:
+            return 1.3
+        if title_hits >= 1:
+            return 1.15
+        if abs_hits >= 2:
+            return 1.1
+        if abs_hits >= 1:
+            return 1.05
+        return 1.0
 
-        # Final sort: ml_score + keyword boost (additive, not replacing)
+    # Apply multiplicative boost + re-sort
+    if ml_scored:
         def _final_key(p: Paper) -> float:
             sp = ml_scored.get((p.title or '').lower())
             ml = sp.score_total if sp else 0.0
-            return ml + _keyword_boost(p)
+            return ml * _keyword_mult(p)
         papers.sort(key=_final_key, reverse=True)
-        log.info("tool_literatur.keyword_boost: applied additive boost on ML scores")
-    elif query_terms:
-        # No ML scores — use db_score + keyword boost (legacy fallback)
-        def _keyword_score(p: Paper) -> float:
-            title = (p.title or '').lower()
-            abstract = (p.abstract or '').lower()
-            if query_lower in title:
-                return 3.0
-            if all(term in title for term in query_terms):
-                return 2.0
-            title_matches = sum(1 for term in query_terms if term in title)
-            if title_matches > 0:
-                return 1.0 * title_matches / len(query_terms)
-            if all(term in abstract for term in query_terms):
-                return 0.5
-            return 0.0
-
-        papers.sort(key=lambda p: (p.db_score or 0) + _keyword_score(p) * 2.0, reverse=True)
+    else:
+        # No ML scores — db_score + multiplicative keyword
+        def _final_key_db(p: Paper) -> float:
+            db = p.db_score or 0
+            return db * _keyword_mult(p)
+        papers.sort(key=_final_key_db, reverse=True)
+    log.info("tool_literatur.keyword_boost: applied multiplicative boost")
 
     if progress_cb:
         progress_cb("db_scored", {"count": len(papers)})

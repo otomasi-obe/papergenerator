@@ -75,7 +75,7 @@
             </div>
 
             <!-- Filename hint after upload -->
-            <p v-if="item.Path" class="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 rounded px-2 py-1 truncate" :title="item.Path">📷 {{ item.Path }}</p>
+            <p v-if="item.Path" class="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 rounded px-2 py-1 truncate" :title="item.Path">📷 {{ basename(item.Path) }}</p>
 
             <!-- Source gallery (upload + generated images + charts). Pick one to
                  attach to this figure. A source already used by another figure
@@ -90,7 +90,7 @@
                   @click="pickSource(item, src)"
                   :disabled="store.isSourceUsedByOther(src.filename, item)"
                   :class="['group/src relative rounded border overflow-hidden text-left transition-all',
-                    item.Path === src.filename
+                    basename(item.Path) === src.filename
                       ? 'border-navy-600 dark:border-cream-300 ring-2 ring-navy-300 dark:ring-cream-500'
                       : 'border-cream-300 dark:border-anthracite-500 hover:border-navy-400',
                     store.isSourceUsedByOther(src.filename, item)
@@ -105,7 +105,7 @@
                          @error="onThumbError($event, item)" />
                   </div>
                   <span class="absolute top-1 left-1 text-[9px] px-1 rounded bg-black/55 text-white font-medium">{{ srcKindLabel(src.kind) }}</span>
-                   <span v-if="item.Path === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
+                   <span v-if="basename(item.Path) === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
                   <span v-else-if="store.isSourceUsedByOther(src.filename, item)" class="absolute top-1 right-1 text-[9px] px-1 rounded bg-amber-500 text-white font-medium">Fig {{ otherFigLabel(src.filename) }}</span>
                   <span class="block text-[10px] text-ink-700 dark:text-anthracite-100 px-1 py-0.5 truncate">{{ src.label }}</span>
                 </button>
@@ -342,7 +342,15 @@ function badgeLabel(item: ContentItem, _idx: number): string {
 function thumbUrl(filename: string): string {
   const pid = store.currentPaperId
   if (!pid || pid === 'null' || pid === 'undefined' || !filename) return ''
-  return `/api/images/${pid}/${filename}`
+  // Extract basename if path is absolute filesystem path
+  const base = filename.includes('/') ? filename.split('/').pop() || filename : filename
+  const url = `/api/images/${pid}/${base}`
+  const token = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1]
+  return token ? `${url}?t=${token}` : url
+}
+
+function basename(path: string): string {
+  return path.includes('/') ? path.split('/').pop() || path : path
 }
 
 function onThumbError(e: Event, _item: ContentItem): void {
@@ -380,7 +388,7 @@ function toggleGallery(item: ContentItem): void {
 
 function pickSource(item: ContentItem, src: { filename: string }): void {
   // If this source is already attached to this item, picking it again clears it.
-  if (item.Path === src.filename) {
+  if (basename(item.Path) === src.filename) {
     store.setFigureSource(item, '')
     return
   }

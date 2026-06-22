@@ -401,6 +401,12 @@ def _set_final_sectpr(final_sectpr, num_cols=2, sec_type="continuous"):
 # LaTeX inline cleaner
 # =============================================================================
 def clean_inline_text(text: str) -> str:
+    # Repair LLM streaming artifacts (collapsed integrals, bare math, etc.)
+    try:
+        from _math_omml import sanitize_llm_text_artifacts
+        text = sanitize_llm_text_artifacts(text)
+    except Exception:
+        pass
     if not text:
         return ""
     text = re.sub(r"\$([^$]+)\$", r"\1", text)
