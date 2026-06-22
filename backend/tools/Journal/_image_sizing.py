@@ -35,7 +35,7 @@ def get_embedded_image_max_width(template_docx: Path,
     if page_width_cm and margin_left_cm is not None and margin_right_cm is not None:
         text_w = page_width_cm - margin_left_cm - margin_right_cm
         if columns is not None and columns > 1 and col_width_cm:
-            return round(col_width_cm * 0.7, 1)
+            return round(col_width_cm * 0.5, 1)
         return round(text_w * 0.5, 1)
 
     # Auto-detect from template .docx

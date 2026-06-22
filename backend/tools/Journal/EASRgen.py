@@ -151,9 +151,11 @@ def _sanitize_inline_latex(t):
     # Bare subscript/superscript digit → Unicode
     s = _re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], s)
     s = _re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], s)
-    # Bare letter after _ or ^ → strip prefix
-    s = _re.sub(r'_([a-zA-Z])', r'\1', s)
-    s = _re.sub(r'\^([a-zA-Z])', r'\1', s)
+    # Bare letter after _ or ^ → Unicode subscript/superscript
+    _sub_l = {'i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ','r':'ᵣ','s':'ₛ','t':'ₜ','x':'ₓ','y':'ᵧ','a':'ₐ','e':'ₑ','h':'ₕ'}
+    _sup_l = {'n':'ⁿ','x':'ˣ','y':'ʸ'}
+    s = _re.sub(r'_([a-zA-Z])', lambda m: _sub_l.get(m.group(1), m.group(1)), s)
+    s = _re.sub(r'\^([a-zA-Z])', lambda m: _sup_l.get(m.group(1), m.group(1)), s)
     # Strip stray $ characters
     s = s.replace('$', '')
     while True:
@@ -263,9 +265,11 @@ def _append_inline_math(paragraph, latex):
     # Bare subscript/superscript digit → Unicode
     s = _re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], s)
     s = _re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], s)
-    # Bare letter after _ or ^ → strip prefix
-    s = _re.sub(r'_([a-zA-Z])', r'\1', s)
-    s = _re.sub(r'\^([a-zA-Z])', r'\1', s)
+    # Bare letter after _ or ^ → Unicode subscript/superscript
+    _sub_l = {'i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ','r':'ᵣ','s':'ₛ','t':'ₜ','x':'ₓ','y':'ᵧ','a':'ₐ','e':'ₑ','h':'ₕ'}
+    _sup_l = {'n':'ⁿ','x':'ˣ','y':'ʸ'}
+    s = _re.sub(r'_([a-zA-Z])', lambda m: _sub_l.get(m.group(1), m.group(1)), s)
+    s = _re.sub(r'\^([a-zA-Z])', lambda m: _sup_l.get(m.group(1), m.group(1)), s)
     # Strip stray $ characters
     s = s.replace('$', '')
     while True:

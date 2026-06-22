@@ -1159,7 +1159,7 @@ export const usePaperStore = defineStore('paper', () => {
       const res = await api.post(
         `${API_BASE}/export`,
         { journal, paper_id: currentPaperId.value, paper: toPaperJson() },
-        { responseType: 'blob' }
+        { responseType: 'blob', timeout: 300000 }  // 5 minutes for large DOCX with images
       )
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const a = document.createElement('a')
@@ -1171,7 +1171,20 @@ export const usePaperStore = defineStore('paper', () => {
       window.URL.revokeObjectURL(url)
       showToast('DOCX exported!', 'success')
     } catch (err) {
-      showToast('Export failed: ' + (err.response?.data?.error || err.message), 'error')
+      let msg = err.message
+      // When responseType is 'blob', error response body is a Blob — try to read it
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text()
+          const json = JSON.parse(text)
+          msg = json.error || msg
+        } catch {
+          // not JSON — use default message
+        }
+      } else if (err.response?.data?.error) {
+        msg = err.response.data.error
+      }
+      showToast('Export failed: ' + msg, 'error')
     } finally {
       loading.value = false
     }

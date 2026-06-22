@@ -192,13 +192,15 @@ HANYA output JSON array, tidak ada teks lain — tidak ada markdown, tidak ada b
     try:
         from utils.ai_tools.model_router import route_chat_call
         resp, model_used = route_chat_call(
-            model=ai_model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_text}
-            ],
-            temperature=0.3,
-            max_tokens=65536,  # 64K output token
+            json={
+                "model": ai_model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_text}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 65536,  # 64K output token
+            },
             timeout=120,
         )
         # route_chat_call returns (requests.Response, model_name) tuple

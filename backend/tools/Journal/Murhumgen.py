@@ -156,7 +156,43 @@ def _clean_latex(text):
     # Special: \% -> literal %
     text = re.sub(r'\\\%', '%', text)
     # Strip superscript/subscript braces, then remaining braces
-    text = re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    # Convert subscripts to Unicode subscript characters
+    _sub_map = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        'i': 'ᵢ', 'j': 'ⱼ', 'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ',
+        'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ',
+        't': 'ₜ', 'x': 'ₓ', 'y': 'ᵧ', 'z': 'z',
+        'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ',
+    }
+    _sup_map = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ',
+    }
+
+    def _sub_single(m):
+        c = m.group(1)
+        return _sub_map.get(c) or c
+
+    def _sup_single(m):
+        c = m.group(1)
+        return _sup_map.get(c) or c
+
+    def _sub_braced(m):
+        s = m.group(1)
+        return ''.join(_sub_map.get(c) or c for c in s)
+
+    def _sup_braced(m):
+        s = m.group(1)
+        return ''.join(_sup_map.get(c) or c for c in s)
+
+    # Braced sub/superscript: _{abc} → ₐᵦc
+    text = re.sub(r'_\{([^}]+)\}', _sub_braced, text)
+    text = re.sub(r'\^\{([^}]+)\}', _sup_braced, text)
+    # Single-char sub/superscript: _i → ᵢ, ^2 → ²
+    text = re.sub(r'_([a-zA-Z0-9])', _sub_single, text)
+    text = re.sub(r'\^([a-zA-Z0-9])', _sup_single, text)
     text = re.sub(r'_([0-9])', lambda m: '\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089'[int(m.group(1))], text)
     text = re.sub(r'\^([0-9])', lambda m: '\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079'[int(m.group(1))], text)
     text = re.sub(r'\\;', '', text); text = re.sub(r'\\,', '', text); text = re.sub(r'\\!', '', text)

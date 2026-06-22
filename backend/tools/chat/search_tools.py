@@ -1229,11 +1229,13 @@ def execute_searches(intents: list[str], query: str, limit: int = 5) -> dict[str
         elif intent == "slr":
             pass
 
-    if not searches and "slr" not in intents:
-        return {"context": "", "has_results": False, "needs_slr_offer": False}
+    if not searches:
+        # SLR intent intentionally adds no searches here (handled by SLR pipeline),
+        # and any other intent without a mapping should return early gracefully.
+        return {"context": "", "has_results": False, "needs_slr_offer": "slr" in intents}
 
     results: dict[str, tuple[str, dict]] = {}
-    with ThreadPoolExecutor(max_workers=min(5, len(searches))) as ex:
+    with ThreadPoolExecutor(max_workers=min(5, max(1, len(searches)))) as ex:
         futures = {}
         for key, (label, fn, q, lim) in searches.items():
             futures[ex.submit(fn, q, lim)] = (key, label)

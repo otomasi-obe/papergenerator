@@ -1186,6 +1186,7 @@ def send_message(conv_id: str):
 
             # ── Check for search tags in phase 1 response ─────────────
             search_tags = []
+            search_results_context = ""  # initialized here for fallback access
             try:
                 from tools.chat.search_tools import extract_search_tags
                 search_tags = extract_search_tags(phase1_text)
@@ -1256,21 +1257,47 @@ def send_message(conv_id: str):
                 )
 
                 all_search_results = []
-                yield _sse("search_phase_start", {"message": "Mencari referensi..."})
+                _search_total = len(search_tags)
+                _running_count = 0
+                yield _sse("search_phase_start", {
+                    "message": f"🔍 Mencari {_search_total} sumber referensi...",
+                    "total_searches": _search_total,
+                })
 
-                for tag in search_tags:
-                    # Send "searching" event to frontend
+                for _idx, tag in enumerate(search_tags, 1):
+                    _type_label = {
+                        "web": "Web Search", "scholar": "Scholar/Academic",
+                        "arxiv": "ArXiv", "crossref": "Crossref",
+                        "news": "Berita", "wiki": "Wikipedia",
+                        "github": "GitHub", "books": "Buku",
+                    }.get(tag["type"], tag["type"])
+
+                    # Send "searching" event with progress counter
                     yield _sse("search_started", {
                         "icon": "🔍",
                         "type": tag["type"],
+                        "label": _type_label,
                         "query": tag["query"],
+                        "progress": f"{_idx}/{_search_total}",
+                        "message": f"🔍 [{_idx}/{_search_total}] {_type_label}: \"{tag['query']}\"",
                     })
 
                     # Execute the search
                     result_data = execute_tag_search(tag)
 
-                    # Send results to frontend
+                    # Count results
+                    _n = len(result_data.get("results", [])) if result_data.get("success") else 0
+                    _running_count += _n
+
+                    # Send results to frontend with summary
                     frontend_event = format_search_event_for_frontend(tag, result_data)
+                    frontend_event["progress"] = f"{_idx}/{_search_total}"
+                    frontend_event["running_total"] = _running_count
+                    frontend_event["message"] = (
+                        f"✅ [{_idx}/{_search_total}] {_type_label}: "
+                        f"{_n} hasil ditemukan" +
+                        (f" — total {_running_count} hasil" if _idx == _search_total else "")
+                    )
                     yield _sse("search_complete", frontend_event)
 
                     all_search_results.append({
@@ -1281,25 +1308,65 @@ def send_message(conv_id: str):
 
                 # Format results for AI phase 2
                 search_results_context = format_search_results_for_ai(all_search_results)
-                yield _sse("search_phase_end", {"message": "Menyusun jawaban..."})
+
+                # Cap search context to prevent AI overflow (max ~15K chars)
+                _MAX_SEARCH_CTX = 15000
+                if len(search_results_context) > _MAX_SEARCH_CTX:
+                    log.warning("Search context too large (%d chars), truncating to %d",
+                                len(search_results_context), _MAX_SEARCH_CTX)
+                    search_results_context = search_results_context[:_MAX_SEARCH_CTX] + \
+                        "\n\n...(hasil dipotong karena terlalu banyak)..."
+
+                # Log search summary
+                _total_results = sum(
+                    len(r["data"].get("results", []))
+                    for r in all_search_results
+                    if r["data"].get("success")
+                )
+                log.info("Phase 1.5 done: %d searches, %d total results, context=%d chars for conv=%s",
+                         len(all_search_results), _total_results,
+                         len(search_results_context), conv_id)
+
+                yield _sse("search_phase_end", {
+                    "message": f"Menyusun jawaban dari {_total_results} hasil pencarian...",
+                    "total_results": _total_results,
+                    "search_count": len(all_search_results),
+                })
 
                 # Signal composing phase to frontend
                 yield _sse("composing_start", {})
 
+                # ── RESET for Phase 2 ──
+                # Phase 1 text was only a scaffold (search tags + intro).
+                # The REAL answer comes from Phase 2, so we start fresh.
+                assistant_content = ""
+                phase1_thinking_saved = thinking_content  # keep Phase 1 thinking for context
+                thinking_content = ""
+                _token_count = 0
+                # Clear Phase 1 text from frontend before Phase 2 streams
+                yield _sse("replace_text", {"content": ""})
+
                 # ── PHASE 2: AI synthesizes final answer with search data ──
-                phase2_system = _sys + "\n\n" + search_results_context
+                _phase2_instruction = (
+                    "\n\n## INSTRUKSI PENTING\n"
+                    "Pencarian sudah selesai dilakukan. Hasil pencarian ada di atas.\n"
+                    "Tugas Anda sekarang: susun jawaban LENGKAP dan KOMPREHENSIF "
+                    "berdasarkan hasil pencarian di atas.\n"
+                    "- JANGAN ulangi pertanyaan user atau respons sebelumnya.\n"
+                    "- JANGAN generate tag pencarian baru ([WEBSEARCH:], [SCHOLAR:], dll).\n"
+                    "- Langsung berikan jawaban final yang terstruktur.\n"
+                    "- Sertakan sitasi/referensi dari data pencarian yang REAL.\n"
+                    "- Jawab dalam bahasa yang sama dengan pertanyaan user.\n"
+                )
+                phase2_system = _sys + "\n\n" + search_results_context + _phase2_instruction
 
                 messages_phase2 = [{"role": "system", "content": phase2_system}]
                 for msg in _history:
                     role = msg.role if msg.role in ("user", "assistant") else "user"
                     messages_phase2.append({"role": role, "content": msg.content})
 
-                # Add phase 1 response as assistant context so AI knows what it "thought"
-                # (but strip search tags — user never sees them)
-                from tools.chat.search_tools import strip_search_tags
-                phase1_clean = strip_search_tags(phase1_text).strip()
-                if phase1_clean:
-                    messages_phase2.append({"role": "assistant", "content": phase1_clean})
+                # DO NOT add phase 1 text as assistant message — it causes the AI
+                # to repeat/continue from Phase 1 instead of synthesizing a fresh answer.
 
                 _phase = 2
                 response_p2, model_used = route_chat_call(
@@ -1374,25 +1441,37 @@ def send_message(conv_id: str):
                                 except Exception:
                                     pass
 
+            # Log Phase 2 completion (or Phase 1 if no search tags)
+            if _phase == 2:
+                log.info("Phase 2 done: content=%d chars, thinking=%d chars for conv=%s",
+                         len(assistant_content), len(thinking_content), conv_id)
+                log.info("Phase 2 content preview: %s", assistant_content[:200])
+
+            # Combine Phase 1 + Phase 2 thinking for persistence
+            try:
+                _combined_thinking = phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content
+            except NameError:
+                _combined_thinking = thinking_content
+
             # Save thinking to filesystem if any
-            if thinking_content and conv.paper_id:
+            if _combined_thinking and conv.paper_id:
                 try:
                     save_thinking_to_fs(
                         username=username,
                         paper_id=conv.paper_id,
                         conv_id=conv_id,
-                        thinking_text=thinking_content,
+                        thinking_text=_combined_thinking,
                         message_id="pending",
                     )
                 except Exception as e:
                     log.warning("Failed to save thinking: %s", e)
 
             # ── FALLBACK: If content empty but thinking has text, retry ──
-            if not assistant_content.strip() and thinking_content.strip():
+            if not assistant_content.strip() and _combined_thinking.strip():
                 log.warning(
                     "Chat returned empty content with %d chars thinking — "
                     "making fallback call for conv=%s",
-                    len(thinking_content), conv_id,
+                    len(_combined_thinking), conv_id,
                 )
                 yield _sse("composing_start", {})
                 try:
@@ -1403,7 +1482,7 @@ def send_message(conv_id: str):
                             "in the same language the user is using. "
                             "Output ONLY the final answer — no thinking, no tags."
                         )},
-                        {"role": "user", "content": thinking_content[-4000:]},
+                        {"role": "user", "content": _combined_thinking[-4000:]},
                     ]
                     fb_resp, _ = route_chat_call(
                         json={"messages": fallback_messages, "stream": False, "max_tokens": 65536},
@@ -1446,18 +1525,44 @@ def send_message(conv_id: str):
 
                 # Last resort: if still empty, extract last sentence of thinking
                 if not assistant_content.strip():
-                    lines = thinking_content.rstrip().split("\n")
+                    lines = _combined_thinking.rstrip().split("\n")
                     meaningful = [l for l in lines if l.strip() and not l.strip().startswith(("#", "//", "/*", "*"))][-5:]
                     if meaningful:
                         assistant_content = "\n".join(meaningful)[:2000]
                         log.info("Fallback: using last meaningful lines from thinking (%d chars)", len(assistant_content))
                         yield _sse("replace_text", {"content": assistant_content})
 
+            # ── ULTIMATE FALLBACK: If still empty and we have search results,
+            # format them directly as the response ──
+            if not assistant_content.strip() and search_tags:
+                log.warning("All fallbacks exhausted — using raw search results for conv=%s", conv_id)
+                _fallback_parts = [
+                    "## 🔍 Hasil Pencarian\n\n",
+                    "AI belum berhasil menyusun jawaban, berikut hasil pencarian langsung:\n\n",
+                ]
+                try:
+                    _fallback_parts.append(search_results_context)
+                except NameError:
+                    _fallback_parts.append("(Data pencarian tidak tersedia)")
+                assistant_content = "".join(_fallback_parts)
+                import time as _time
+                _time.sleep(0.2)
+                stream_state["content"] = ""
+                for _i in range(0, len(assistant_content), 8):
+                    yield _sse("text", {"content": assistant_content[_i:_i + 8]})
+                    _time.sleep(0.01)
+                stream_state["content"] = assistant_content
+                if _r:
+                    try:
+                        _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                    except Exception:
+                        pass
+
             # ── Finalize: parse ops, apply to paper, save to DB/FS, mark Redis.
             # Done in a NON-yielding helper so the same path runs whether the
             # client is still connected OR disconnected mid-stream (see the
             # GeneratorExit handler below). Guarded to run exactly once.
-            _fin = _persist_chat_final(assistant_content, thinking_content)
+            _fin = _persist_chat_final(assistant_content, _combined_thinking)
 
             if _fin.get("paper_applied"):
                 yield _sse("paper_applied", {

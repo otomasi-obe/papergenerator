@@ -131,6 +131,15 @@ def sanitize_llm_text_artifacts(text: str) -> str:
         (r"\bE_([a-z]{1,8})\b(?!\{)", r"$E_{\1}$"),
         (r"\bP_([A-Za-z]{1,8})\b(?!\{)", r"$P_{\1}$"),
         (r"\bk_([a-z]{1,8})\b(?!\{)", r"$k_{\1}$"),
+        # Generic bare subscripts: single-letter base + _subscript (1-8 chars)
+        # Catches A_p, R_L, C_s, m_t, f_r, V_oc, d_1, H_1 etc.
+        # Lookbehind ensures base letter is NOT preceded by another letter
+        # (avoids wrapping snake_case like variable_name)
+        (r"(?<![a-zA-Z])([A-Za-z])_([a-zA-Z0-9]{1,8})(?![a-zA-Z0-9_{])",
+         r"$\1_{\2}$"),
+        # Generic bare superscripts: single-letter base + ^exp
+        (r"(?<![a-zA-Z])([A-Za-z])\^([a-zA-Z0-9]{1,4})(?![a-zA-Z0-9^{])",
+         r"$\1^{\2}$"),
     ]
     for pattern, repl in _bare_math:
         s = re.sub(pattern, repl, s)

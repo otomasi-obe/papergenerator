@@ -115,8 +115,12 @@ def _route(
         
         for attempt in range(1, max_attempts + 1):
             try:
+                # Pop reserved keys from kwargs to avoid "multiple values" conflicts
+                # when callers accidentally pass model/base_url/api_key in kwargs.
+                _safe_kwargs = {k: v for k, v in kwargs.items()
+                                if k not in ("model", "base_url", "api_key")}
                 result = func(
-                    model=model, base_url=base_url, api_key=api_key, **kwargs
+                    model=model, base_url=base_url, api_key=api_key, **_safe_kwargs
                 )
                 cb.record_success()
                 return result, model

@@ -357,12 +357,16 @@ def get_viola_chat_llm():
         def llm_fn(prompt: str) -> str:
             messages = [{"role": "user", "content": prompt}]
             try:
-                return route_chat_call(
-                    messages,
-                    model="V-OPUS",
-                    temperature=0.1,
-                    max_tokens=300,
+                resp, _model = route_chat_call(
+                    json={
+                        "messages": messages,
+                        "model": "V-OPUS",
+                        "temperature": 0.1,
+                        "max_tokens": 300,
+                    },
                 )
+                data = resp.json() if hasattr(resp, 'json') else resp
+                return data.get("choices", [{}])[0].get("message", {}).get("content", "")
             except Exception as e:
                 log.error("VIOLA-CHAT call failed: %s", e)
                 return ""

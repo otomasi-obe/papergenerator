@@ -471,7 +471,43 @@ def _clean_latex(text):
     text = re.sub(r'\\mu', chr(956), text)
     text = re.sub(r'\\Delta', chr(916), text)
     text = re.sub(r'\\partial', chr(8706), text)
-    text = re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    # Convert subscripts to Unicode subscript characters
+    _sub_map = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        'i': 'ᵢ', 'j': 'ⱼ', 'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ',
+        'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ',
+        't': 'ₜ', 'x': 'ₓ', 'y': 'ᵧ', 'z': 'z',
+        'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ',
+    }
+    _sup_map = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ',
+    }
+
+    def _sub_single(m):
+        c = m.group(1)
+        return _sub_map.get(c) or c
+
+    def _sup_single(m):
+        c = m.group(1)
+        return _sup_map.get(c) or c
+
+    def _sub_braced(m):
+        s = m.group(1)
+        return ''.join(_sub_map.get(c) or c for c in s)
+
+    def _sup_braced(m):
+        s = m.group(1)
+        return ''.join(_sup_map.get(c) or c for c in s)
+
+    # Braced sub/superscript: _{abc} → ₐᵦc
+    text = re.sub(r'_\{([^}]+)\}', _sub_braced, text)
+    text = re.sub(r'\^\{([^}]+)\}', _sup_braced, text)
+    # Single-char sub/superscript: _i → ᵢ, ^2 → ²
+    text = re.sub(r'_([a-zA-Z0-9])', _sub_single, text)
+    text = re.sub(r'\^([a-zA-Z0-9])', _sup_single, text)
     # Bare subscript/superscript digit → Unicode
     text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
     text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
@@ -574,7 +610,7 @@ def add_figure(doc, fig_data, fig_counter):
                 img_h_in = ph / dpi
         except Exception:
             img_w_in, img_h_in = 6, 4
-        max_w_cm = CFG.get("col_width_cm", 8.0) * (0.5 if CFG.get("columns", 1) == 1 else 0.7)
+        max_w_cm = CFG.get("col_width_cm", 8.0) * 0.5
         max_w_in = max_w_cm / 2.54
         if img_w_in > max_w_in:
             scale = max_w_in / img_w_in

@@ -757,6 +757,165 @@ def _distribute_figures_to_sections(paper: dict):
         c.append(inline_item)
 
 
+def _normalize_formulas(paper: dict) -> int:
+    """Fix broken LaTeX in formula items across all sections/subsections.
+
+    AI-generated content often produces LaTeX with missing backslashes
+    (e.g. ``beginbmatrix`` instead of ``\\begin{bmatrix}``).  This
+    normalises those commands so that ``latex2mathml`` can parse them.
+
+    Also removes formula items whose ``latex`` field is empty — those
+    would be silently skipped by generators, causing "Formula Missing"
+    penalties from the checker.
+    """
+    import re as _re
+
+    # LaTeX commands that MUST start with backslash
+    _CMD_PREFIXES = (
+        "frac", "sqrt", "int", "sum", "prod",
+        "lim", "sin", "cos", "tan", "log", "ln", "exp",
+        "alpha", "beta", "gamma", "delta", "theta", "lambda",
+        "mu", "pi", "sigma", "omega", "phi", "psi", "xi",
+        "cdot", "times", "pm", "mp", "div", "partial", "infty",
+        "left", "right", "langle", "rangle",
+        "bar", "hat", "tilde", "vec", "dot", "ddot",
+        "text", "textbf", "mathrm", "mathcal",
+        "subseteq", "supseteq", "in", "notin", "forall", "exists",
+        "rightarrow", "leftarrow", "Rightarrow", "Leftarrow",
+        "leq", "geq", "neq", "approx", "equiv", "sim", "propto",
+        "begin", "end",
+    )
+    _CMD_PATTERN = _re.compile(
+        r'(?<!\\)\b(' + '|'.join(_CMD_PREFIXES) + r')\b'
+    )
+
+    # Matrix/environment variants where the AI fused the command word
+    # with the brace argument, e.g. "beginbmatrix" → "\\begin{bmatrix}"
+    _MATRIX_FUSIONS = {
+        "beginbmatrix": "\\begin{bmatrix}",
+        "endbmatrix": "\\end{bmatrix}",
+        "beginpmatrix": "\\begin{pmatrix}",
+        "endpmatrix": "\\end{pmatrix}",
+        "beginvmatrix": "\\begin{vmatrix}",
+        "endvmatrix": "\\end{vmatrix}",
+        "beginmatrix": "\\begin{matrix}",
+        "endmatrix": "\\end{matrix}",
+        "begincases": "\\begin{cases}",
+        "endcases": "\\end{cases}",
+        "beginaligned": "\\begin{aligned}",
+        "endaligned": "\\end{aligned}",
+        "begingathered": "\\begin{gathered}",
+        "endgathered": "\\end{gathered}",
+        "beginBmatrix": "\\begin{Bmatrix}",
+        "endBmatrix": "\\end{Bmatrix}",
+        "beginVmatrix": "\\begin{Vmatrix}",
+        "endVmatrix": "\\end{Vmatrix}",
+    }
+    _FUSION_PATTERN = _re.compile(
+        r'(?<!\\)(' + '|'.join(_re.escape(k) for k in _MATRIX_FUSIONS) + r')'
+    )
+
+    fixed = 0
+    removed = 0
+
+    def _walk(obj):
+        nonlocal fixed, removed
+        if isinstance(obj, dict):
+            # Formula item?
+            item_id = str(obj.get("id", "")).lower()
+            if item_id in ("rumus", "equation", "formula", "persamaan"):
+                latex = str(obj.get("latex", "")).strip()
+                # Remove empty formulas
+                if not latex:
+                    return "REMOVE"
+                # Fix matrix/environment fusions first
+                new_latex = _FUSION_PATTERN.sub(lambda m: _MATRIX_FUSIONS[m.group(1)], latex)
+                # Then fix regular missing backslashes
+                new_latex = _CMD_PATTERN.sub(r'\\\1', new_latex)
+                if new_latex != latex:
+                    obj["latex"] = new_latex
+                    fixed += 1
+                return None
+
+            # Recurse into dict values
+            for key in list(obj.keys()):
+                val = obj[key]
+                if isinstance(val, (dict, list)):
+                    result = _walk(val)
+                    if result == "REMOVE":
+                        # Remove from parent list (handled in list walk)
+                        pass
+                elif isinstance(val, list):
+                    _clean_list(val)
+
+        elif isinstance(obj, list):
+            _clean_list(obj)
+
+    def _clean_list(lst):
+        nonlocal removed
+        i = 0
+        while i < len(lst):
+            item = lst[i]
+            if isinstance(item, (dict, list)):
+                result = _walk(item)
+                if result == "REMOVE":
+                    del lst[i]
+                    removed += 1
+                    continue
+            i += 1
+
+    _walk(paper)
+    if fixed or removed:
+        import logging as _log
+        _log.info("[normalize-formulas] Fixed %d LaTeX commands, removed %d empty formulas", fixed, removed)
+    return fixed + removed
+
+
+def _strip_ref_numbering(paper: dict) -> int:
+    """Strip the ``[N]`` prefix from reference text items in-place.
+
+    AI-generated paper data often stores references with numbers baked into
+    the text field (e.g. ``"[1] Kadir, R. ..."``).  Most journal generators
+    then add their own ``[i]`` prefix at output time, producing ``[1] [1] Kadir``.
+
+    This function removes the leading ``[N] `` (or ``[N]``) so the generator's
+    own numbering is the only one that appears.
+    """
+    import re as _re
+    _REF_PREFIX = _re.compile(r'^\[\d+\][\s.]*')
+
+    fixed = 0
+    references = paper.get("references")
+    if references is None:
+        return 0
+
+    if isinstance(references, list):
+        iterable = enumerate(references)
+    elif isinstance(references, dict):
+        iterable = enumerate(references.get("content", []))
+    else:
+        return 0
+
+    for _idx, item in iterable:
+        if not isinstance(item, dict):
+            old = str(item).strip()
+            if old and _REF_PREFIX.match(old):
+                item = _REF_PREFIX.sub("", old).strip()
+                fixed += 1
+            continue
+        text_key = "text" if "text" in item else "Text"
+        old = str(item.get(text_key, "")).strip()
+        if old and _REF_PREFIX.match(old):
+            new = _REF_PREFIX.sub("", old).strip()
+            item[text_key] = new
+            fixed += 1
+
+    if fixed:
+        import logging as _log
+        _log.info("[normalize-refs] Stripped [N] prefix from %d references", fixed)
+    return fixed
+
+
 def _make_generate_adapter(mod, gen_fn):
     """Adapt a legacy ``generate()`` (no-arg, reads module-level globals) module
     into the ``build_document(json_path, output_path)`` interface used by the
@@ -2003,6 +2162,24 @@ def export_docx():
                 normalize_references(paper, style=style_for_journal(canonical_journal))
         except Exception:
             log.warning("reference normalization failed", exc_info=True)
+
+        # Normalize formula LaTeX: fix AI-generated content with missing
+        # backslashes (e.g. "beginbmatrix" → "\begin{bmatrix}") and remove
+        # empty formula items that would otherwise be silently dropped by
+        # generators (causing "Formula Missing" checker penalties).
+        try:
+            if isinstance(paper, dict):
+                _normalize_formulas(paper)
+        except Exception:
+            log.warning("formula normalization failed", exc_info=True)
+
+        # Strip [N] prefix from reference text to avoid double numbering
+        # when generators add their own [i] prefix on top.
+        try:
+            if isinstance(paper, dict):
+                _strip_ref_numbering(paper)
+        except Exception:
+            log.warning("reference numbering strip failed", exc_info=True)
 
         # Get user info for per-user export path
         user_id = get_jwt_identity()

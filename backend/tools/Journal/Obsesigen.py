@@ -90,7 +90,43 @@ def _clean_latex(text):
             '\\omega': '\u03c9','\\pi': '\u03c0','\\mu': '\u03bc','\\geq': '\u2265','\\leq': '\u2264'}
     for k, v in syms.items():
         text = text.replace(k, v)
-    text = re.sub(r'[_^]\{([^}]*)\}', r'\1', text)
+    # Convert subscripts to Unicode subscript characters
+    _sub_map = {
+        '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+        '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+        'i': 'ᵢ', 'j': 'ⱼ', 'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ',
+        'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ',
+        't': 'ₜ', 'x': 'ₓ', 'y': 'ᵧ', 'z': 'z',
+        'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ',
+    }
+    _sup_map = {
+        '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+        '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+        'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ',
+    }
+
+    def _sub_single(m):
+        c = m.group(1)
+        return _sub_map.get(c) or c
+
+    def _sup_single(m):
+        c = m.group(1)
+        return _sup_map.get(c) or c
+
+    def _sub_braced(m):
+        s = m.group(1)
+        return ''.join(_sub_map.get(c) or c for c in s)
+
+    def _sup_braced(m):
+        s = m.group(1)
+        return ''.join(_sup_map.get(c) or c for c in s)
+
+    # Braced sub/superscript: _{abc} → ₐᵦc
+    text = re.sub(r'_\{([^}]+)\}', _sub_braced, text)
+    text = re.sub(r'\^\{([^}]+)\}', _sup_braced, text)
+    # Single-char sub/superscript: _i → ᵢ, ^2 → ²
+    text = re.sub(r'_([a-zA-Z0-9])', _sub_single, text)
+    text = re.sub(r'\^([a-zA-Z0-9])', _sup_single, text)
     text = re.sub(r'_([0-9])', lambda m: '₀₁₂₃₄₅₆₇₈₉'[int(m.group(1))], text)
     text = re.sub(r'\^([0-9])', lambda m: '⁰¹²³⁴⁵⁶⁷⁸⁹'[int(m.group(1))], text)
     for c in ['\\;', '\\,', '\\!']: text = text.replace(c, '')
