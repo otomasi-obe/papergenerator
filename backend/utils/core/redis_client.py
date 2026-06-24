@@ -39,8 +39,10 @@ def get_redis() -> Redis | None:
     """
     global _redis_client, _fallback_mode  # noqa: PLW0603
 
-    if _redis_client is not None:
-        return _redis_client
+    # Capture local reference before any check (TOCTOU-safe)
+    client = _redis_client
+    if client is not None:
+        return client
     if _fallback_mode:
         return None
 

@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import re
-import threading
 import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -1835,7 +1834,7 @@ def cancel_stream(conv_id: str):
         state["status"] = "cancelled"
         state["cancelled_at"] = datetime.now(timezone.utc).isoformat()
         _r.setex(_stream_key(conv_id), 60, json.dumps(state))
-        _r.setex(_cancel_key(conv_id), 60, "1")
+        _r.setex(_cancel_key(conv_id), 60, state.get("stream_id", ""))
         
         return jsonify({"status": "cancelled", "message": "Stream cancelled successfully"})
     except Exception as e:
