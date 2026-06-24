@@ -1113,6 +1113,7 @@ def add_table_element(doc, tbl_data, tbl_counter, borders=None):
                 cell = table.rows[0].cells[j]
                 cell.text = ""
                 p = cell.paragraphs[0]
+                set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = p.add_run(_clean_latex(str(h)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"], bold=True)
@@ -1130,6 +1131,7 @@ def add_table_element(doc, tbl_data, tbl_counter, borders=None):
                 cell = table.rows[row_idx].cells[j]
                 cell.text = ""
                 p = cell.paragraphs[0]
+                set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = p.add_run(_clean_latex(str(val)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"])

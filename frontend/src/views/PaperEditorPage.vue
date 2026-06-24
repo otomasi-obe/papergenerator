@@ -111,7 +111,9 @@
         <!-- Title -->
         <div class="card border-l-4 border-l-navy-500">
           <label class="label">Title</label>
-          <input v-model="store.paper.title" class="input" placeholder="Paper title..." />
+          <textarea v-model="store.paper.title" v-autosize rows="1"
+            ref="titleRef"
+            class="input resize-none overflow-hidden" placeholder="Paper title..."></textarea>
         </div>
 
         <!-- Authors -->
@@ -150,7 +152,7 @@
         <!-- Abstract -->
         <div class="card border-l-4 border-l-navy-500">
           <label class="label">Abstract</label>
-          <textarea v-model="store.paper.abstract" rows="2" @input="autoResize"
+          <textarea v-model="store.paper.abstract" v-autosize rows="2"
             ref="abstractRef"
             class="input resize-none overflow-hidden min-h-[4.5rem]" placeholder="Paper abstract..."></textarea>
         </div>
@@ -282,55 +284,56 @@
       <!-- RIGHT: Tools menu / Paperfull / Chat / Journal / Literatur / Files / Data / Image / Tool workspace -->
       <div v-if="toolsOpen" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col border-l border-cream-300 dark:border-ash-700">
         <div class="px-4 lg:px-8 py-4 space-y-1">
-          <!-- Paperfull -->
-          <button @click="openRightPanel('paperfull')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">📝</span>
-            <span class="text-xs font-medium">Paperfull</span>
-          </button>
-          <!-- Chat -->
-          <button @click="openRightPanel('chat')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">💬</span>
-            <span class="text-xs font-medium">AI Chat</span>
-          </button>
-          <!-- Journal -->
-          <button @click="openRightPanel('journal')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">📚</span>
-            <span class="text-xs font-medium">Journal</span>
-          </button>
-          <!-- Literatur -->
-          <button @click="openRightPanel('literature')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">📖</span>
-            <span class="text-xs font-medium">Literatur</span>
-          </button>
-          <!-- Files -->
-          <button @click="openRightPanel('files')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">📂</span>
-            <span class="text-xs font-medium">Files</span>
-          </button>
-          <!-- Data -->
-          <button @click="openRightPanel('data')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">📊</span>
-            <span class="text-xs font-medium">Data</span>
-          </button>
-          <!-- Image -->
-          <button @click="openRightPanel('image')"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">🖼</span>
-            <span class="text-xs font-medium">Image</span>
-          </button>
-          <div class="h-px bg-cream-300 dark:bg-ash-600 my-3"></div>
-          <!-- Writing tools -->
-          <button v-for="tool in toolsStore.TOOLS" :key="tool.id" @click="openToolWorkspace(tool)"
-            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
-            <span class="text-base">{{ tool.icon }}</span>
-            <span class="text-xs font-medium">{{ tool.title }}</span>
-          </button>
+          <div class="grid grid-cols-2 gap-2">
+            <!-- Paperfull -->
+            <button @click="openRightPanel('paperfull')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">📝</span>
+              <span class="text-base font-medium">Paperfull</span>
+            </button>
+            <!-- Chat -->
+            <button @click="openRightPanel('chat')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">💬</span>
+              <span class="text-base font-medium">AI Chat</span>
+            </button>
+            <!-- Journal -->
+            <button @click="openRightPanel('journal')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">📚</span>
+              <span class="text-base font-medium">Journal</span>
+            </button>
+            <!-- Literatur -->
+            <button @click="openRightPanel('literature')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">📖</span>
+              <span class="text-base font-medium">Literatur</span>
+            </button>
+            <!-- Files -->
+            <button @click="openRightPanel('files')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">📂</span>
+              <span class="text-base font-medium">Files</span>
+            </button>
+            <!-- Data -->
+            <button @click="openRightPanel('data')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">📊</span>
+              <span class="text-base font-medium">Data</span>
+            </button>
+            <!-- Image -->
+            <button @click="openRightPanel('image')"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">🖼</span>
+              <span class="text-base font-medium">Image</span>
+            </button>
+            <!-- Writing tools -->
+            <button v-for="tool in toolsStore.TOOLS" :key="tool.id" @click="openToolWorkspace(tool)"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition-colors text-left active:scale-[0.98]">
+              <span class="text-xl">{{ tool.icon }}</span>
+              <span class="text-base font-medium">{{ tool.title }}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -491,6 +494,7 @@ interface DeleteTarget {
 }
 const deleteTarget = ref<DeleteTarget | null>(null)
 const newKeyword = ref('')
+const titleRef = ref<HTMLTextAreaElement | null>(null)
 const abstractRef = ref<HTMLTextAreaElement | null>(null)
 const saveStatus = ref('saved')
 const lastSavedAt = ref<number | null>(null)
@@ -776,7 +780,7 @@ watch(() => store.paper, () => {
 onUnmounted(() => {
   clearTimeout(autoSaveTimer)
   clearInterval(tickTimer)
-  window.removeEventListener('resize', resizeAbstract)
+  window.removeEventListener('resize', handleResize)
   paperJobsStore.stopPolling()
   paperJobsStore.stopGlobalPolling()
   imageGenStore.stopPoller()
@@ -786,7 +790,7 @@ onUnmounted(() => {
 
 onMounted(async () => {
   tickTimer = setInterval(() => { nowTick.value = Date.now() }, 1000)
-  window.addEventListener('resize', resizeAbstract)
+  window.addEventListener('resize', handleResize)
   imageGenStore.resume()
   // Global recent-done poller (10s); guarded so multiple mounts don't stack.
   paperJobsStore.startGlobalPolling()
@@ -839,6 +843,7 @@ onMounted(async () => {
 
   if (route.query.tab) {
     activeTab.value = String(route.query.tab)
+    editorVisible.value = true
   }
 
   if (route.query.panel) {
@@ -850,6 +855,7 @@ onMounted(async () => {
   }
 
   nextTick(() => {
+    resizeTitle()
     resizeAbstract()
   })
 })
@@ -858,8 +864,9 @@ watch(activeTab, (newTab) => {
   router.replace({ query: { ...route.query, tab: newTab || undefined } })
 }, { immediate: false })
 
+watch(() => store.paper.title, () => resizeTitle())
 watch(() => store.paper.abstract, () => resizeAbstract())
-watch(() => rightPanel.value, () => resizeAbstract())
+watch(() => rightPanel.value, () => { resizeTitle(); resizeAbstract() })
 
 watch(() => route.params.paperId, async (newId, oldId) => {
   // Guard: handle array and various nullish values.
@@ -875,6 +882,7 @@ watch(() => route.params.paperId, async (newId, oldId) => {
     // Restore right panel from per-paper state; fallback 'chat' if never set.
     const saved = store.currentPaperId ? ui.getRightPanel(store.currentPaperId) : ''
     rightPanel.value = saved || 'chat'
+    resizeTitle()
     resizeAbstract()
   }
 })
@@ -911,19 +919,33 @@ async function retrySave() {
     saveStatus.value = 'error'
   }
 }
-function autoResize(e: Event) {
-  const el = e.target as HTMLTextAreaElement
-  el.style.height = 'auto'
-  el.style.height = el.scrollHeight + 'px'
+function resizeTitle() {
+  nextTick(() => {
+    const el = titleRef.value
+    if (!el) return
+    const scrollParent = el.closest('.overflow-y-auto') as HTMLElement | null
+    const st = scrollParent?.scrollTop ?? 0
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+    if (scrollParent && scrollParent.scrollTop !== st) {
+      scrollParent.scrollTop = st
+    }
+  })
 }
 function resizeAbstract() {
   nextTick(() => {
     const el = abstractRef.value
     if (!el) return
+    const scrollParent = el.closest('.overflow-y-auto') as HTMLElement | null
+    const st = scrollParent?.scrollTop ?? 0
     el.style.height = 'auto'
     el.style.height = el.scrollHeight + 'px'
+    if (scrollParent && scrollParent.scrollTop !== st) {
+      scrollParent.scrollTop = st
+    }
   })
 }
+const handleResize = () => { resizeTitle(); resizeAbstract() }
 function addKw() {
   if (newKeyword.value.trim()) { store.addKeyword(newKeyword.value.trim()); newKeyword.value = '' }
 }

@@ -20,6 +20,49 @@
         :stream-phase="streamPhase"
       />
 
+      <!-- Search Progress Block: visible during/after websearch phase.
+           Shows each fetcher (source type + query) with its status, so the
+           user can follow the AI's reference-gathering step between the
+           reasoning (thinking) block and the final text answer. -->
+      <div
+        v-if="searchResults && searchResults.length > 0"
+        class="search-progress-block mb-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 overflow-hidden"
+      >
+        <div class="px-4 py-2.5 bg-cream-100 dark:bg-ash-700 border-b border-cream-300 dark:border-ash-600">
+          <div class="text-xs font-semibold text-ink-700 dark:text-ink-200 flex items-center gap-2">
+            <svg
+              v-if="searchRunning"
+              class="w-4 h-4 animate-spin text-[var(--accent)]"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span v-else class="text-base leading-none">🌐</span>
+            {{ searchMessage || 'Mencari referensi...' }}
+          </div>
+        </div>
+        <div class="px-4 py-2 space-y-1.5">
+          <div
+            v-for="(search, idx) in searchResults"
+            :key="idx"
+            class="flex items-center gap-2 text-xs"
+          >
+            <span class="flex-shrink-0">
+              {{ search.status === 'done' ? '✅' : '🔍' }}
+            </span>
+            <span class="text-ink-500 dark:text-ink-400 font-mono">[{{ idx + 1 }}/{{ searchResults.length }}]</span>
+            <span class="font-medium text-ink-800 dark:text-ink-100">{{ search.type }}</span>
+            <span class="text-ink-400 dark:text-ink-500 truncate flex-1">{{ search.query }}</span>
+            <span v-if="search.status === 'done'" class="text-green-600 dark:text-green-400 font-medium whitespace-nowrap">
+              {{ search.count || (search.results?.length) || 0 }} results
+            </span>
+            <span v-else class="text-[var(--accent)] animate-pulse whitespace-nowrap">searching...</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Attached Images (user messages only) -->
       <div v-if="message.images && message.images.length" class="mb-3 flex flex-wrap gap-2">
         <div
@@ -478,15 +521,29 @@ interface ChatMessage {
   metadata?: MessageMetadata
 }
 
+interface SearchItem {
+  type?: string
+  query?: string
+  icon?: string
+  status?: string
+  results?: any[]
+  count?: number
+  error?: string | null
+}
+
 interface Props {
   message: ChatMessage
   isStreaming?: boolean
   streamPhase?: string
+  searchResults?: SearchItem[]
+  searchMessage?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isStreaming: false,
-  streamPhase: 'idle'
+  streamPhase: 'idle',
+  searchResults: () => [],
+  searchMessage: ''
 })
 
 interface Emits {
@@ -649,6 +706,11 @@ function formatToolResult(result: any): string {
     return String(result)
   }
 }
+
+// Whether any search fetcher is still in progress — drives the header spinner.
+const searchRunning = computed(() =>
+  Array.isArray(props.searchResults) && props.searchResults.some(s => s?.status !== 'done')
+)
 
 const metaKind = computed(() => props.message?.metadata?.kind || null)
 const metaChips = computed(() => {

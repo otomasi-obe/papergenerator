@@ -137,6 +137,8 @@
           :message="msg"
           :is-streaming="isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant'"
           :stream-phase="(isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant') ? streamPhase : 'idle'"
+          :search-results="isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant' ? searchResults : []"
+          :search-message="isStreaming && msg === messages[messages.length - 1] && msg.role === 'assistant' ? searchMessage : ''"
           @pick-option="pickOption"
           @chip-select="onChipSelect"
           @chart-accept="onChartAccept"
@@ -626,6 +628,8 @@ const {
   currentChat,
   activeJob,
   streamPhase,
+  searchResults,
+  searchMessage,
 } = storeToRefs(chatStore)
 
 // Greeting with nickname

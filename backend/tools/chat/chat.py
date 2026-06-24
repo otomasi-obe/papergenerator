@@ -13,7 +13,6 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import redis
 from flask import Blueprint, Response, request, stream_with_context, jsonify, send_file
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -21,6 +20,7 @@ from sqlalchemy import desc
 
 from database.models import ChatMessage, Conversation, Paper, db, safe_commit
 from utils.ai_tools.model_router import route_chat_call
+from utils.core.redis_client import get_redis
 from utils.core.user_storage import get_username, save_chat_send_by_id, save_chat_recv_by_id
 from tools.chat.tools import parse_completion, apply_operations, save_thinking_to_fs
 from tools.Literatur.slr_api import get_pinned_literature
@@ -28,36 +28,6 @@ from tools.Literatur.slr_api import get_pinned_literature
 log = logging.getLogger(__name__)
 
 simple_chat = Blueprint("simple_chat", __name__)
-
-# Redis connection for streaming state
-_REDIS = None
-_REDIS_LOCK = threading.Lock()
-
-
-def get_redis():
-    global _REDIS
-    if _REDIS is None:
-        with _REDIS_LOCK:
-            if _REDIS is None:
-                try:
-                    _REDIS = redis.Redis.from_url(
-                        os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-                        decode_responses=True,
-                    )
-                except Exception:
-                    return None
-    # Health check: if connection went stale (Redis restart etc.), reconnect
-    try:
-        _REDIS.ping()
-    except Exception:
-        with _REDIS_LOCK:
-            try:
-                _REDIS.close()
-            except Exception:
-                pass
-            _REDIS = None
-        return get_redis()
-    return _REDIS
 
 
 def _stream_key(conv_id: str) -> str:
@@ -71,7 +41,7 @@ def _cancel_key(conv_id: str) -> str:
 
 
 def _gen_id():
-    return uuid.uuid4().hex[:12]
+    return uuid.uuid4().hex
 
 
 def _current_user_id() -> int | None:
@@ -740,6 +710,7 @@ def send_message(conv_id: str):
     # has real data to work with.
     search_context = ""
     slr_offer_needed = False
+    intents = []  # accessible later for Phase 1.5 fallback
     try:
         from tools.chat.search_tools import detect_intent, execute_searches
         intents = detect_intent(content)
@@ -825,12 +796,14 @@ def send_message(conv_id: str):
         _sys = system_content
 
         # Save streaming state to Redis (for reconnect after refresh)
+        my_stream_id = uuid.uuid4().hex[:8]
         stream_state = {
             "status": "streaming",
             "conv_id": conv_id,
             "content": "",
             "thinking": "",
             "started_at": datetime.now(timezone.utc).isoformat(),
+            "stream_id": my_stream_id,
         }
         try:
             if _r:
@@ -1193,13 +1166,66 @@ def send_message(conv_id: str):
             except Exception as e:
                 log.warning("Failed to extract search tags: %s", e)
 
+            # ── SMART VALIDATION: Skip search tags if user isn't actually asking for search ──
+            # Even if the AI generated tags or detect_intent flagged an intent,
+            # we double-check the user message to avoid false-positive searches.
+            if search_tags:
+                try:
+                    from tools.chat.search_tools import _has_non_search_keywords
+                    if _has_non_search_keywords(content):
+                        log.info("Phase 1.5 guard: user message contains non-search keywords — "
+                                 "discarding %d AI-generated search tags (conv=%s)",
+                                 len(search_tags), conv_id)
+                        search_tags = []
+                except Exception as e:
+                    log.warning("Phase 1.5 guard check failed: %s", e)
+
+            # ── FALLBACK: Auto-generate search tags for academic intents ──
+            # If AI didn't output search tags but user asked for academic papers,
+            # force-run Literatur fetchers so real data appears in the UI.
+            _ACADEMIC_INTENTS = {"academic_search", "research_gap", "arxiv_search"}
+            if not search_tags and any(i in _ACADEMIC_INTENTS for i in intents):
+                # Double-check: skip fallback if user message is clearly non-search
+                try:
+                    from tools.chat.search_tools import _has_non_search_keywords
+                    if _has_non_search_keywords(content):
+                        log.info("Fallback guard: non-search keywords in message — "
+                                 "skipping fallback tag generation (conv=%s)", conv_id)
+                        search_tags = []
+                    else:
+                        from tools.chat.search_tools import clean_search_query
+                        _clean_q = clean_search_query(content)
+                        if _clean_q:
+                            # Determine how many papers user wants
+                            from tools.chat.search_tools import parse_requested_count
+                            _req_n = parse_requested_count(content)
+                            _fb_limit = _req_n if _req_n > 0 else 10
+                            # Use more fetchers if user wants many papers
+                            if _req_n >= 30:
+                                search_tags = [
+                                    {"type": "openalex", "query": _clean_q, "raw": f"[OPENALEX:{_clean_q}]"},
+                                    {"type": "crossref", "query": _clean_q, "raw": f"[CROSSREF:{_clean_q}]"},
+                                    {"type": "semantic_scholar", "query": _clean_q, "raw": f"[SEMANTIC_SCHOLAR:{_clean_q}]"},
+                                    {"type": "crossref_publishers", "query": _clean_q, "raw": f"[PUBLISHERS:{_clean_q}]"},
+                                    {"type": "scopus", "query": _clean_q, "raw": f"[SCOPUS:{_clean_q}]"},
+                                ]
+                            else:
+                                search_tags = [
+                                    {"type": "openalex", "query": _clean_q, "raw": f"[OPENALEX:{_clean_q}]"},
+                                    {"type": "crossref", "query": _clean_q, "raw": f"[CROSSREF:{_clean_q}]"},
+                                    {"type": "semantic_scholar", "query": _clean_q, "raw": f"[SEMANTIC_SCHOLAR:{_clean_q}]"},
+                                    {"type": "crossref_publishers", "query": _clean_q, "raw": f"[PUBLISHERS:{_clean_q}]"},
+                                ]
+                            log.info("Fallback: auto-generated %d search tags for academic intent (conv=%s, query='%s', target=%d)",
+                                     len(search_tags), conv_id, _clean_q[:60], _req_n)
+                except Exception as e:
+                    log.warning("Fallback search tag generation failed: %s", e)
+
             # ── If no search tags → single-phase: stream phase 1 directly ─
             if not search_tags:
                 # Signal composing phase, then stream text in chunks
                 assistant_content = phase1_text
                 yield _sse("composing_start", {})
-                import time as _time
-                _time.sleep(0.3)  # Brief pause so "Menyusun jawaban..." is visible
 
                 # Stream text in small chunks (not all at once)
                 _chunk_size = 8
@@ -1212,7 +1238,6 @@ def send_message(conv_id: str):
                     _chunk = _text_to_stream[_i:_i + _chunk_size]
                     _token_count += 1
                     yield _sse("text", {"content": _chunk})
-                    _time.sleep(0.01)  # Tiny delay for smooth streaming feel
                     # Persist progressive content to Redis every ~20 chunks so a
                     # page refresh mid-replay resumes from the live position
                     # instead of showing nothing until the stream completes.
@@ -1223,10 +1248,17 @@ def send_message(conv_id: str):
                                 _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
                             except Exception:
                                 pass
-                            # Check cancel using separate key (never overwritten by generator)
+                            # Check cancel using separate key
                             try:
                                 _cancel_raw = _r.get(_cancel_key(conv_id))
-                                if _cancel_raw:
+                                if _cancel_raw == my_stream_id:
+                                    # Mark cancelled in Redis (bug 4), save partial (bug 3)
+                                    stream_state["status"] = "cancelled"
+                                    try:
+                                        _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                                    except Exception:
+                                        pass
+                                    _persist_chat_final(assistant_content, phase1_thinking)
                                     yield _sse("done", {"message_id": None, "cancelled": True})
                                     return
                             except (json.JSONDecodeError, KeyError):
@@ -1254,13 +1286,24 @@ def send_message(conv_id: str):
                     execute_tag_search,
                     format_search_event_for_frontend,
                     format_search_results_for_ai,
+                    parse_requested_count,
                 )
+
+                # Parse how many papers the user wants
+                _requested_count = parse_requested_count(content)
+                if _requested_count > 0:
+                    log.info("User requested %d papers — fetching accordingly (conv=%s)", _requested_count, conv_id)
+                _fetch_limit = _requested_count if _requested_count > 0 else 20
 
                 all_search_results = []
                 _search_total = len(search_tags)
                 _running_count = 0
+                _search_msg = f"🔍 Mencari {_search_total} sumber referensi"
+                if _requested_count > 0:
+                    _search_msg += f" (target: {_requested_count} paper)"
+                _search_msg += "..."
                 yield _sse("search_phase_start", {
-                    "message": f"🔍 Mencari {_search_total} sumber referensi...",
+                    "message": _search_msg,
                     "total_searches": _search_total,
                 })
 
@@ -1270,6 +1313,16 @@ def send_message(conv_id: str):
                         "arxiv": "ArXiv", "crossref": "Crossref",
                         "news": "Berita", "wiki": "Wikipedia",
                         "github": "GitHub", "books": "Buku",
+                        # Literatur fetcher labels
+                        "scopus": "Scopus", "ieee": "IEEE Xplore",
+                        "pubmed": "PubMed", "dblp": "DBLP",
+                        "dimensions": "Dimensions", "core": "CORE",
+                        "doaj": "DOAJ", "plos": "PLOS",
+                        "openaire": "OpenAIRE", "europepmc": "Europe PMC",
+                        "sinta": "SINTA", "zenodo": "Zenodo",
+                        "datacite": "DataCite", "sciencedirect": "ScienceDirect",
+                        "openalex": "OpenAlex", "semantic_scholar": "Semantic Scholar",
+                        "crossref_publishers": "Publishers (Springer/Wiley/Emerald/SSRN)",
                     }.get(tag["type"], tag["type"])
 
                     # Send "searching" event with progress counter
@@ -1283,7 +1336,7 @@ def send_message(conv_id: str):
                     })
 
                     # Execute the search
-                    result_data = execute_tag_search(tag)
+                    result_data = execute_tag_search(tag, limit=_fetch_limit)
 
                     # Count results
                     _n = len(result_data.get("results", [])) if result_data.get("success") else 0
@@ -1346,27 +1399,68 @@ def send_message(conv_id: str):
                 # Clear Phase 1 text from frontend before Phase 2 streams
                 yield _sse("replace_text", {"content": ""})
 
+                # Determine target reference count for Phase 2 instructions
+                _target_n = _requested_count if _requested_count > 0 else 20
+                _target_label = f"TEPAT {_target_n}" if _requested_count > 0 else "minimal 20"
+
                 # ── PHASE 2: AI synthesizes final answer with search data ──
                 _phase2_instruction = (
-                    "\n\n## INSTRUKSI PENTING\n"
-                    "Pencarian sudah selesai dilakukan. Hasil pencarian ada di atas.\n"
-                    "Tugas Anda sekarang: susun jawaban LENGKAP dan KOMPREHENSIF "
-                    "berdasarkan hasil pencarian di atas.\n"
-                    "- JANGAN ulangi pertanyaan user atau respons sebelumnya.\n"
-                    "- JANGAN generate tag pencarian baru ([WEBSEARCH:], [SCHOLAR:], dll).\n"
-                    "- Langsung berikan jawaban final yang terstruktur.\n"
-                    "- Sertakan sitasi/referensi dari data pencarian yang REAL.\n"
-                    "- Jawab dalam bahasa yang sama dengan pertanyaan user.\n"
+                    "\n\n## ⚠️ INSTRUKSI WAJIB — IKUTI ATAU GAGAL\n"
+                    "Pencarian sudah selesai. Hasil pencarian ada di atas dalam format:\n"
+                    "  N. **Title**\n     Authors: ... (Year)\n     DOI: ...\n     URL: ...\n\n"
+                    "Tugas Anda: rangkum hasil pencarian di atas menjadi jawaban final.\n\n"
+                    "ATURAN MUTLAK (jika dilanggar = jawaban ditolak):\n"
+                    "1. HANYA gunakan referensi dari hasil pencarian di atas. DILARANG mengarang.\n"
+                    "2. Setiap referensi yang Anda sebutkan WAJIB menyertakan link yang bisa diklik.\n"
+                    "   Format: [Author et al. (Year) - Title](URL atau https://doi.org/DOI)\n"
+                    "   Contoh: [Tieman (2011) - Halal Supply Chain](https://doi.org/10.1108/17590831111129721)\n"
+                    "3. JANGAN tulis referensi tanpa link. Setiap entri HARUS punya hyperlink.\n"
+                    "4. JANGAN ulangi pertanyaan user.\n"
+                    "5. JANGAN generate tag pencarian baru ([WEBSEARCH:], [SCHOLAR:], dll).\n"
+                    "6. Langsung berikan daftar referensi terstruktur dengan link.\n"
+                    "7. Jawab dalam bahasa yang sama dengan pertanyaan user.\n"
+                    f"8. USER MEMINTA {_target_n} REFERENSI. Anda WAJIB memberikan {_target_label} referensi.\n"
+                    "   Jika user minta 50, berikan 50. Jika user minta 20, berikan 20.\n"
+                    "   Jika hasil pencarian kurang dari yang diminta, tampilkan SEMUA yang ada.\n"
+                    "9. Pilih referensi yang PALING RELEVAN dengan topik user.\n"
+                    "10. Format output:\n"
+                    "   ## Hasil Pencarian\n"
+                    f"   Berikut {_target_n} referensi yang ditemukan:\n\n"
+                    "   1. [Author (Year) - Title](URL)\n"
+                    "      Ringkasan singkat...\n\n"
+                    "   2. [Author (Year) - Title](URL)\n"
+                    "      Ringkasan singkat...\n\n"
+                    "   ...(dan seterusnya untuk semua hasil yang relevan)\n"
                 )
-                phase2_system = _sys + "\n\n" + search_results_context + _phase2_instruction
+                # Phase 2 system: base system prompt ONLY (no search data here).
+                # Search data goes into a SEPARATE user message to avoid truncation.
+                phase2_system = _sys + _phase2_instruction
 
                 messages_phase2 = [{"role": "system", "content": phase2_system}]
                 for msg in _history:
                     role = msg.role if msg.role in ("user", "assistant") else "user"
                     messages_phase2.append({"role": role, "content": msg.content})
 
-                # DO NOT add phase 1 text as assistant message — it causes the AI
-                # to repeat/continue from Phase 1 instead of synthesizing a fresh answer.
+                # Add search results as a DEDICATED user message so they are never
+                # truncated by the system prompt size cap.  Then add the explicit
+                # instruction to summarise with clickable links.
+                messages_phase2.append({
+                    "role": "user",
+                    "content": (
+                        "Berikut adalah hasil pencarian REAL dari multiple fetcher:\n\n"
+                        + search_results_context
+                        + "\n\n---\n\n"
+                        f"Rangkum hasil pencarian di atas menjadi jawaban final.\n\n"
+                        "ATURAN WAJIB:\n"
+                        "1. HANYA gunakan referensi dari hasil pencarian di atas. DILARANG mengarang.\n"
+                        "2. Setiap referensi WAJIB berformat markdown link: [Author (Year) - Title](URL)\n"
+                        "3. Gunakan URL dari field URL/DOI di hasil pencarian.\n"
+                        f"4. User meminta {_target_n} referensi. Tampilkan {_target_label} referensi dengan link.\n"
+                        "5. Pilih yang PALING RELEVAN dengan topik. Jika kurang dari yang diminta, tampilkan semua yang ada.\n"
+                        "5. Berikan ringkasan singkat untuk tiap referensi.\n"
+                        "6. JANGAN tulis referensi tanpa link.\n"
+                    ),
+                })
 
                 _phase = 2
                 response_p2, model_used = route_chat_call(
@@ -1374,7 +1468,7 @@ def send_message(conv_id: str):
                         "messages": messages_phase2,
                         "stream": True,
                         "max_tokens": 65536,
-                        "reasoning": {"effort": "high"},
+                        "reasoning": {"effort": "medium"},
                     },
                     stream=True,
                     timeout=1800,
@@ -1403,21 +1497,33 @@ def send_message(conv_id: str):
                         assistant_content += text
                         _token_count += 1
                         yield _sse("text", {"content": text})
-                        # Update Redis state (batch updates, not every chunk)
-                        stream_state["content"] = assistant_content
-                        try:
+                        # Throttle: only update Redis every 20 tokens (bug 1)
+                        # Check cancel BEFORE writing stream state (bug 2)
+                        if _token_count % 20 == 0:
                             if _r:
-                                _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
-                        except Exception:
-                            pass
-                        # Check cancel every ~20 tokens using separate key
-                        if _token_count % 20 == 0 and _r:
+                                try:
+                                    _cancel_raw = _r.get(_cancel_key(conv_id))
+                                    if _cancel_raw == my_stream_id:
+                                        # Cancel detected: mark cancelled in Redis (bug 4),
+                                        # save partial message (bug 3), yield done, return
+                                        stream_state["status"] = "cancelled"
+                                        try:
+                                            _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                                        except Exception:
+                                            pass
+                                        _persist_chat_final(
+                                            assistant_content,
+                                            phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content,
+                                        )
+                                        yield _sse("done", {"message_id": None, "cancelled": True})
+                                        return
+                                except (json.JSONDecodeError, KeyError):
+                                    pass
+                            stream_state["content"] = assistant_content
                             try:
-                                _cancel_raw = _r.get(_cancel_key(conv_id))
-                                if _cancel_raw:
-                                    yield _sse("done", {"message_id": None, "cancelled": True})
-                                    return
-                            except (json.JSONDecodeError, KeyError):
+                                if _r:
+                                    _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                            except Exception:
                                 pass
                     thinking_raw = (
                         delta.get("thinking")
@@ -1434,7 +1540,8 @@ def send_message(conv_id: str):
                             # Update Redis state (throttle: every 20 chunks)
                             _token_count += 1
                             if _token_count % 20 == 0:
-                                stream_state["thinking"] = thinking_content
+                                # Combine Phase 1 + Phase 2 thinking (bug 5)
+                                stream_state["thinking"] = phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content
                                 try:
                                     if _r:
                                         _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
@@ -1497,15 +1604,12 @@ def send_message(conv_id: str):
                         ).strip()
                         if fb_content:
                             assistant_content = fb_content
-                            import time as _time
-                            _time.sleep(0.2)
                             # Mirror the normal replay: persist progressively to
                             # Redis so a refresh mid-replay resumes from the live
                             # position instead of showing nothing until completion.
                             stream_state["content"] = ""
                             for _i in range(0, len(assistant_content), 8):
                                 yield _sse("text", {"content": assistant_content[_i:_i + 8]})
-                                _time.sleep(0.01)
                                 _token_count += 1
                                 if _token_count % 20 == 0:
                                     stream_state["content"] = assistant_content[:_i + 8]
@@ -1545,12 +1649,9 @@ def send_message(conv_id: str):
                 except NameError:
                     _fallback_parts.append("(Data pencarian tidak tersedia)")
                 assistant_content = "".join(_fallback_parts)
-                import time as _time
-                _time.sleep(0.2)
                 stream_state["content"] = ""
                 for _i in range(0, len(assistant_content), 8):
                     yield _sse("text", {"content": assistant_content[_i:_i + 8]})
-                    _time.sleep(0.01)
                 stream_state["content"] = assistant_content
                 if _r:
                     try:
@@ -1613,6 +1714,12 @@ def send_message(conv_id: str):
                 db.session.rollback()
             except Exception as rb_err:
                 log.warning("Rollback failed: %s", rb_err)
+            # Save partial assistant message on error (bug 3)
+            try:
+                _combined = phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content
+            except NameError:
+                _combined = thinking_content
+            _persist_chat_final(assistant_content, _combined)
             # Mark stream as error in Redis
             stream_state["status"] = "error"
             stream_state["error"] = "Terjadi kesalahan pada server"

@@ -315,18 +315,20 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import DiffBlock from './DiffBlock.vue'
 import { renderLatex, renderRichText } from '../composables/useMathRender'
 
-// Track which image filenames failed to load, so we show a placeholder
 const failedImages = ref(new Set<string>())
 
-function onImgError(event: Event, filename: string) {
-  const target = event.target as HTMLImageElement
+function getAccessTokenCookie(): string {
+  const match = document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
+function onImgError(_event: Event, filename: string) {
   failedImages.value.add(filename)
-  target.style.display = 'none'
 }
 
 function renderFormula(latex: string): string {
@@ -353,6 +355,11 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const store = usePaperStore()
+
+watch(() => store.currentPaperId, () => {
+  failedImages.value = new Set()
+})
+
 const resolvedOpen = ref(false)
 const editMode = ref(false)
 const zoomLevel = ref(1)
@@ -416,12 +423,10 @@ function onTextareaInput(event: Event, item: any): void {
 
 function imgSrc(path: string): string {
   if (!store.currentPaperId || store.currentPaperId === 'null' || store.currentPaperId === 'undefined' || !path) return ''
-  // Extract basename if path is absolute filesystem path
   const filename = path.includes('/') ? path.split('/').pop() || path : path
-  const url = `/api/images/${store.currentPaperId}/${filename}`
-  // Append JWT token from cookie so <img> tags authenticate
-  const token = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1]
-  return token ? `${url}?t=${token}` : url
+  const token = getAccessTokenCookie()
+  const qs = token ? `?t=${encodeURIComponent(token)}` : ''
+  return `/api/images/${store.currentPaperId}/${encodeURIComponent(filename)}${qs}`
 }
 
 function toRoman(num: number): string { 

@@ -181,8 +181,142 @@ def _osint_rate_limit(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Query Cleaner — strip conversational filler before sending to search APIs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Indonesian filler words/patterns to strip from search queries
+_ID_FILLER = re.compile(
+    r'\b('
+    r'carikan|carikanlah|carilah|tolong|mohon|bisa|bisa tolong|'
+    r'saya mau|saya ingin|saya perlu|aku mau|aku ingin|'
+    r'untuk|buat|bagi|kepada|dari|dengan|oleh|'
+    r'ya|yaa|yah|dong|nih|sih|deh|kok|kan|tuh|'
+    r'tolong carikan|tolong cari|cari tahu|carikan saya|'
+    r'jurnal2nya|jurnalnya|jurnal-jurnalnya|jurnal|paper-nya|paper|'
+    r'referensi|refrensi|daftar pustaka|'
+    r'sebenarnya|sepertinya|mungkin|kayaknya|kayak|'
+    r'gimana|bagaimana|kenapa|mengapa|apa saja|'
+    r'sebenarnya|coba|bantu|bantuin|'
+    r'ini|itu|tersebut|berikut|tentang|mengenai|soal|'
+    r'dan|atau|juga|serta|'
+    r'ya jurnal|ya jurnal scopus|scopus ya|'
+    r'\d+'  # bare numbers like "20"
+    r')\b',
+    re.IGNORECASE,
+)
+
+# English filler words/patterns
+_EN_FILLER = re.compile(
+    r'\b('
+    r'please|kindly|could you|can you|would you|'
+    r'find me|find some|find any|search for|look for|look up|'
+    r'i need|i want|i\'d like|i\'m looking for|'
+    r'about|regarding|related to|'
+    r'some|any|the|a|an|in|on|of|to|for|and|or|with|'
+    r'papers|articles|journals|references|sources|'
+    r'for my|for the|for a|'
+    r'can you find|help me find|help me search|'
+    r'give me|show me|list me|'
+    r'recent|recently|latest|new|newest|'
+    r'scholar|scopus indexed|scopus journal|'
+    r'\d+'  # bare numbers
+    r')\b',
+    re.IGNORECASE,
+)
+
+# Punctuation cleanup (keep only alphanumeric, spaces, and key symbols)
+_PUNCT_CLEAN = re.compile(r'[^\w\s\-"]')
+_MULTI_SPACE = re.compile(r'\s+')
+
+
+def clean_search_query(raw_message: str) -> str:
+    """Clean conversational user message into a search-engine-friendly query.
+
+    Strips Indonesian & English filler words, numbers, punctuation, and
+    collapses whitespace. Returns a concise keyword query suitable for
+    OpenAlex, Semantic Scholar, Crossref, DuckDuckGo, etc.
+
+    Examples:
+        "Financial Management in Halal Logistics carikan jurnal2nya untuk referensi 20 ya jurnal scopus ya"
+        → "financial management halal logistics"
+
+        "tolong carikan paper tentang machine learning untuk prediksi harga saham"
+        → "machine learning prediksi harga saham"
+
+        "can you find me recent articles about blockchain in supply chain management"
+        → "blockchain supply chain management"
+    """
+    if not raw_message:
+        return ""
+
+    q = raw_message.strip()
+
+    # Remove punctuation (keep words, spaces, hyphens, quotes)
+    q = _PUNCT_CLEAN.sub(' ', q)
+
+    # Strip Indonesian filler
+    q = _ID_FILLER.sub(' ', q)
+
+    # Strip English filler
+    q = _EN_FILLER.sub(' ', q)
+
+    # Collapse whitespace & trim
+    q = _MULTI_SPACE.sub(' ', q).strip()
+
+    # If cleaning removed everything, fall back to original (stripped)
+    if not q:
+        q = _MULTI_SPACE.sub(' ', raw_message).strip()
+
+    # Cap at reasonable length (search APIs don't need more)
+    if len(q) > 200:
+        q = q[:200].rsplit(' ', 1)[0]
+
+    log.info("clean_search_query: '%s' → '%s'", raw_message[:80], q)
+    return q
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Intent detection keywords
 # ═══════════════════════════════════════════════════════════════════════════════
+
+# ── GLOBAL non-search keywords ────────────────────────────────────────────
+# If ANY of these appear in the message, ALL search intents are suppressed.
+# This is the first line of defense against false positive intent detection.
+_NON_SEARCH_KEYWORDS = {
+    # Editing / revision (Indonesian)
+    "perbaiki", "perbaikin", "perbaikiin", "betulin", "benahin",
+    "edit", "editing", "revisi", "revisian", "koreksi",
+    "ganti", "gantian", "ubah", "rubah", "modif",
+    "tulis", "nulis", "nulisin",
+    "terapkan", "terapin", "apply", "applied",
+    "simpan", "nyimpen", "save",
+    "lanjut", "lanjutkan", "lanjutin", "continue",
+    "sambung", "sambungin", "sambungkan",
+    "rapikan", "rapihin", "beresin", "neat",
+    "buatin", "bikinin", "bikin", "create",
+    "hapus", "delete", "remove", "buang",
+    "pindah", "move", "cut",
+    # Definition / clarification
+    "definisi", "definition", "pengertian", "apa itu", "apakah",
+    "jelaskan", "explain", "terangkan", "describe",
+    "contoh", "example", "misalnya",
+    # Grammar / typo
+    "grammar", "typo", "grammar", "ejaan", "spelling",
+    "tata bahasa", "kata baku", "kata tidak baku",
+    # Chat prompt / system
+    "prompt", "system prompt", "template chat", "chat prompt",
+}
+
+# Combined: if any of these words (as a whole word) appear in the message,
+# skip ALL intent detection (return empty).
+def _has_non_search_keywords(message: str) -> bool:
+    """Check if message contains ANY global non-search keyword (word boundary)."""
+    msg_lower = message.lower()
+    for kw in _NON_SEARCH_KEYWORDS:
+        if re.search(r'\b' + re.escape(kw) + r'\b', msg_lower):
+            return True
+    return False
+
 
 INTENT_KEYWORDS = {
     "web_search": {
@@ -245,12 +379,26 @@ INTENT_KEYWORDS = {
     "academic_search": {
         "keywords": [
             "cari paper", "search paper", "find paper",
-            "cari jurnal", "search journal", "literature",
-            "referensi", "citation", "sitasi",
-            "previous study", "penelitian terdahulu",
-            "related work", "karya terkait",
+            "cari jurnal", "search journal", "find journal",
+            "carikan paper", "carikan jurnal",
+            "carikan referensi", "cari referensi",
+            "tolong cari paper", "tolong carikan jurnal",
+            "cari literature", "search literature", "find literature",
+            "cari literatur", "carikan literatur",
+            "apa kata riset terbaru", "riset terbaru tentang",
+            "latest research on", "recent studies on",
+            "studi terbaru tentang", "penelitian terbaru tentang",
+            "search for papers on", "find papers about",
+            "previous study about", "penelitian sebelumnya tentang",
         ],
         "weight": 1,
+        "invalidator": [
+            "abstrak", "tulis", "perbaiki", "edit", "ganti", "revisi",
+            "apply", "terapkan", "simpan", "update", "lanjutkan",
+            "definisi", "jelaskan", "contoh", "pengertian",
+            "hapus", "prompt", "template",
+            "lanjut", "sambung", "buat section", "buat bab",
+        ],
     },
     "research_gap": {
         "keywords": [
@@ -276,11 +424,23 @@ def detect_intent(message: str) -> list[str]:
     """Detect search/research intents from user message.
 
     Returns list of intent names sorted by weight (highest first).
+    Uses invalidator keywords to suppress intents on non-search messages.
+
+    First checks global _NON_SEARCH_KEYWORDS — if ANY match, returns empty
+    (no search intents). This prevents false positives on editing,
+    revision, definition, and chat-prompt queries.
     """
+    if not message or _has_non_search_keywords(message):
+        return []
     msg = f" {message.lower().strip()} "
     detected = []
     for intent, cfg in INTENT_KEYWORDS.items():
-        if any(f" {kw} " in msg or kw in msg for kw in cfg["keywords"]):
+        keywords = cfg.get("keywords", [])
+        invalidators = cfg.get("invalidator", [])
+        # Check if message contains ANY invalidator keyword → skip this intent
+        if invalidators and any(f" {kw} " in msg or kw in msg for kw in invalidators):
+            continue
+        if any(f" {kw} " in msg or kw in msg for kw in keywords):
             detected.append((intent, cfg["weight"]))
     if not detected:
         return []
@@ -1203,29 +1363,35 @@ def execute_searches(intents: list[str], query: str, limit: int = 5) -> dict[str
     if not intents:
         return {"context": "", "has_results": False, "needs_slr_offer": False}
 
+    # Clean the raw user message into a concise search query
+    clean_query = clean_search_query(query)
+    if not clean_query:
+        clean_query = query  # fallback
+
     searches: dict[str, tuple[str, Any, str, int]] = {}
     for intent in intents:
         if intent == "news_search":
-            searches["news"] = ("Berita Terkini", combined_news_search, query, min(limit, 8))
-            searches["web"] = ("Web Search", web_search, query, min(limit, 5))
+            searches["news"] = ("Berita Terkini", combined_news_search, clean_query, min(limit, 8))
+            searches["web"] = ("Web Search", web_search, clean_query, min(limit, 5))
         elif intent == "web_search":
-            searches["web"] = ("Web Search (DuckDuckGo)", web_search, query, limit)
+            searches["web"] = ("Web Search (DuckDuckGo)", web_search, clean_query, limit)
         elif intent == "image_search":
-            searches["images"] = ("Gambar (DuckDuckGo)", ddgs_images, query, min(limit, 10))
+            searches["images"] = ("Gambar (DuckDuckGo)", ddgs_images, clean_query, min(limit, 10))
         elif intent == "video_search":
-            searches["videos"] = ("Video (DuckDuckGo)", ddgs_videos, query, min(limit, 8))
+            searches["videos"] = ("Video (DuckDuckGo)", ddgs_videos, clean_query, min(limit, 8))
         elif intent == "github_search":
-            searches["github"] = ("GitHub Repos", github_search, query, min(limit, 8))
+            searches["github"] = ("GitHub Repos", github_search, clean_query, min(limit, 8))
         elif intent == "wikipedia_search":
-            searches["wiki"] = ("Wikipedia", wikipedia_search, query, min(limit, 5))
+            searches["wiki"] = ("Wikipedia", wikipedia_search, clean_query, min(limit, 5))
         elif intent == "arxiv_search":
-            searches["arxiv"] = ("ArXiv Search", arxiv_search, query, min(limit, 10))
+            searches["arxiv"] = ("ArXiv Search", arxiv_search, clean_query, min(limit, 10))
         elif intent == "academic_search":
-            searches["academic"] = ("Academic (OpenAlex/S2)", academic_search, query, min(limit, 10))
+            # Skip pre-flight — let AI decide which Literatur fetchers to use
+            # via search tags [SCHOLAR:q], [SCOPUS:q], [CROSSREF:q], etc.
+            pass
         elif intent == "research_gap":
-            searches["academic"] = ("Academic", academic_search, query, min(limit, 10))
-            searches["crossref"] = ("Crossref", crossref_search, query, min(limit, 8))
-            searches["arxiv"] = ("ArXiv", arxiv_search, query, min(limit, 8))
+            # Skip pre-flight — let AI decide which fetchers to use
+            pass
         elif intent == "slr":
             pass
 
@@ -1270,7 +1436,10 @@ def execute_searches(intents: list[str], query: str, limit: int = 5) -> dict[str
 
 
 def _format_result_items(items: list[dict], source_type: str) -> list[str]:
-    """Format result items into markdown lines. Shared by execute_searches and format_search_results_for_ai."""
+    """Format result items into markdown lines. Shared by execute_searches and format_search_results_for_ai.
+    
+    Outputs each item as a clickable markdown link so AI naturally copies the link format.
+    """
     lines = []
     for i, item in enumerate(items, 1):
         title = item.get("title", "Untitled")
@@ -1290,7 +1459,18 @@ def _format_result_items(items: list[dict], source_type: str) -> list[str]:
         date = item.get("date", "")
         image_url = item.get("image_url", "")
 
-        line = f"{i}. **{title}**"
+        # Build markdown link — this is KEY for Phase 2 to copy links
+        link_url = ""
+        if doi:
+            link_url = f"https://doi.org/{doi}" if not doi.startswith("http") else doi
+        elif url:
+            link_url = url
+
+        if link_url:
+            line = f"{i}. [{title}]({link_url})"
+        else:
+            line = f"{i}. **{title}**"
+
         if authors:
             line += f"\n   Authors: {authors}"
         if year:
@@ -1301,9 +1481,9 @@ def _format_result_items(items: list[dict], source_type: str) -> list[str]:
             line += f"\n   Venue: {venue}"
         if citations is not None:
             line += f" | Citations: {citations}"
-        if doi:
+        if doi and not link_url.startswith("https://doi.org/"):
             line += f"\n   DOI: {doi}"
-        if url:
+        if url and link_url != url:
             line += f"\n   URL: {url}"
         if image_url:
             line += f"\n   🖼️ Image: {image_url}"
@@ -1320,7 +1500,9 @@ def _format_result_items(items: list[dict], source_type: str) -> list[str]:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 _SEARCH_TAG_RE = re.compile(
-    r"\[(WEBSEARCH|NEWS|ARXIV|SCHOLAR|IMAGE|VIDEO|BOOKS|THREADS|EXTRACT|CROSSREF|GITHUB|WIKI|WAYBACK):"
+    r"\[(WEBSEARCH|NEWS|ARXIV|SCHOLAR|IMAGE|VIDEO|BOOKS|THREADS|EXTRACT|CROSSREF|GITHUB|WIKI|WAYBACK|"
+    r"SCOPUS|IEEE|PUBMED|DBLP|DIMENSIONS|CORE|DOAJ|PLOS|OPENAIRE|EUROPEPMC|SINTA|"
+    r"ZENODO|DATACITE|SCIENCEDIRECT|OPENALEX|SEMANTIC_SCHOLAR|PUBLISHERS):"
     r"([^\]]{1,500})\]",
     re.IGNORECASE,
 )
@@ -1345,6 +1527,24 @@ def extract_search_tags(text: str) -> list[dict]:
         "GITHUB": "github",
         "WIKI": "wiki",
         "WAYBACK": "wayback",
+        # Literatur fetcher tag types (Phase 1.5 → Literatur fetchers)
+        "SCOPUS": "scopus",
+        "IEEE": "ieee",
+        "PUBMED": "pubmed",
+        "DBLP": "dblp",
+        "DIMENSIONS": "dimensions",
+        "CORE": "core",
+        "DOAJ": "doaj",
+        "PLOS": "plos",
+        "OPENAIRE": "openaire",
+        "EUROPEPMC": "europepmc",
+        "SINTA": "sinta",
+        "ZENODO": "zenodo",
+        "DATACITE": "datacite",
+        "SCIENCEDIRECT": "sciencedirect",
+        "OPENALEX": "openalex",
+        "SEMANTIC_SCHOLAR": "semantic_scholar",
+        "PUBLISHERS": "crossref_publishers",
     }
     tags = []
     for m in _SEARCH_TAG_RE.finditer(text):
@@ -1363,23 +1563,124 @@ def strip_search_tags(text: str) -> str:
     return _SEARCH_TAG_RE.sub("", text).strip()
 
 
-def execute_tag_search(tag: dict) -> dict[str, Any]:
-    """Execute a single search tag and return results."""
+def _literatur_fetch(fetcher_name: str, query: str, limit: int = 10) -> dict[str, Any]:
+    """Generic bridge to Literatur fetchers.
+
+    Calls `fetcher.search(client, query, limit)` from tools.Literatur.fetchers
+    and converts Paper objects into the dict format expected by Phase 1.5.
+
+    Each Literatur fetcher already handles its own rate limiting, retries,
+    API key checks, and error handling.
+    """
+    try:
+        from tools.Literatur.fetchers import ALL as FETCHER_REGISTRY
+        from tools.Literatur.http_client import get_client
+
+        fetcher_mod = FETCHER_REGISTRY.get(fetcher_name)
+        if not fetcher_mod:
+            return {"success": False, "results": [], "error": f"Unknown fetcher: {fetcher_name}"}
+
+        results = []
+        with get_client() as client:
+            for paper in fetcher_mod.search(client, query, limit=limit):
+                results.append({
+                    "title": paper.title or "",
+                    "authors": paper.authors[:5] if paper.authors else [],
+                    "abstract": (paper.abstract or "")[:500],
+                    "year": paper.year,
+                    "venue": paper.venue or "",
+                    "venue_type": paper.venue_type or "",
+                    "doi": paper.doi or "",
+                    "url": paper.url or "",
+                    "pdf_url": paper.pdf_url or "",
+                    "citations": paper.citations,
+                    "is_open_access": paper.is_open_access,
+                    "publisher": paper.publisher or "",
+                    "source": paper.source or fetcher_name,
+                })
+
+        log.info("literatur_fetch [%s] '%s': %d results", fetcher_name, query[:60], len(results))
+        return {"success": len(results) > 0, "results": results, "error": None if results else "No results"}
+
+    except Exception as e:
+        log.warning("literatur_fetch [%s] error: %s", fetcher_name, e)
+        return {"success": False, "results": [], "error": str(e)}
+
+
+# Literatur fetcher types that route to _literatur_fetch instead of standalone functions
+_LITERATUR_FETCHER_TYPES = {
+    "scopus", "ieee", "pubmed", "dblp", "dimensions", "core",
+    "doaj", "plos", "openaire", "europepmc", "sinta",
+    "zenodo", "datacite", "sciencedirect",
+    "openalex", "semantic_scholar", "crossref_publishers",
+}
+
+
+def parse_requested_count(text: str) -> int:
+    """Parse the number of papers requested by the user from their message.
+
+    Looks for patterns like "20 referensi", "50 jurnal", "cari 100 paper",
+    "20 ya", etc. Returns the requested count, or 0 if not found.
+    """
+    import re
+
+    # Pattern: number followed by (optional words) + referensi/jurnal/paper/references/literatur/sumber/artikel
+    # Also matches "20 ya" at end of message (Indonesian colloquial)
+    patterns = [
+        # "20 referensi" or "20 jurnal" (number BEFORE keyword)
+        r'(\d+)\s*(?:referensi|jurnal|jurnal2|paper|papers|references|literatur|sumber|artikel|ref)\b',
+        # "referensi 20" or "jurnal 50" (keyword BEFORE number — Indonesian colloquial)
+        r'(?:referensi|jurnal|jurnal2|paper|papers|references|literatur|sumber|artikel|ref)\s*(\d+)',
+        # "cari 50" or "cukup 30" or "sebanyak 100"
+        r'(?:cari|cukup|sebanyak|jumlah|min(?:imum)?|dengan|buat|bikin|siapkan|sedial[ai]n|berikan)\s*(\d+)',
+        # "20 ya" anywhere in message (Indonesian: "20 ya")
+        r'(\d+)\s*ya\b',
+        # "20 scopus" or "20 terindeks"
+        r'(\d+)\s*(?:scopus|indexed|terindeks|terindex)',
+    ]
+
+    text_lower = text.lower().strip()
+    for pat in patterns:
+        m = re.search(pat, text_lower)
+        if m:
+            count = int(m.group(1))
+            if 5 <= count <= 500:  # Reasonable bounds
+                return count
+
+    return 0
+
+
+def execute_tag_search(tag: dict, limit: int = 0) -> dict[str, Any]:
+    """Execute a single search tag and return results.
+
+    If limit > 0, use it instead of the default per-fetcher limit.
+    """
     t = tag["type"]
     q = tag["query"]
+
+    # Determine fetch limit: use provided limit, or default
+    _fetch_limit = limit if limit > 0 else 10
+    # For multi-fetcher queries, fetch more per fetcher to ensure enough results
+    # Cap at 50 per fetcher to avoid API rate limits
+    _fetch_limit = min(_fetch_limit, 50)
+
+    # Route Literatur fetcher types to generic bridge
+    if t in _LITERATUR_FETCHER_TYPES:
+        return _literatur_fetch(t, q, limit=_fetch_limit)
+
     dispatch = {
-        "web":      lambda: web_search(q, limit=8),
-        "news":     lambda: combined_news_search(q, limit=8),
-        "arxiv":    lambda: arxiv_search(q, limit=8),
-        "scholar":  lambda: academic_search(q, limit=8),
-        "image":    lambda: ddgs_images(q, limit=10),
-        "video":    lambda: ddgs_videos(q, limit=8),
-        "books":    lambda: ddgs_books(q, limit=8),
-        "threads":  lambda: ddgs_threads(q, limit=10),
+        "web":      lambda: web_search(q, limit=min(_fetch_limit, 15)),
+        "news":     lambda: combined_news_search(q, limit=min(_fetch_limit, 15)),
+        "arxiv":    lambda: _literatur_fetch("arxiv", q, limit=_fetch_limit),
+        "scholar":  lambda: academic_search(q, limit=min(_fetch_limit, 15)),
+        "image":    lambda: ddgs_images(q, limit=min(_fetch_limit, 15)),
+        "video":    lambda: ddgs_videos(q, limit=min(_fetch_limit, 15)),
+        "books":    lambda: ddgs_books(q, limit=min(_fetch_limit, 15)),
+        "threads":  lambda: ddgs_threads(q, limit=min(_fetch_limit, 15)),
         "extract":  lambda: ddgs_extract(q),
-        "crossref": lambda: crossref_search(q, limit=10),
-        "github":   lambda: github_search(q, limit=8),
-        "wiki":     lambda: wikipedia_search(q, limit=5),
+        "crossref": lambda: _literatur_fetch("crossref", q, limit=_fetch_limit),
+        "github":   lambda: github_search(q, limit=min(_fetch_limit, 15)),
+        "wiki":     lambda: wikipedia_search(q, limit=min(_fetch_limit, 10)),
         "wayback":  lambda: wayback_search(q),
     }
     fn = dispatch.get(t)
@@ -1400,6 +1701,16 @@ def format_search_results_for_ai(all_results: list[dict]) -> str:
         "threads": "Forum/Sosial Media",
         "extract": "Konten Halaman", "crossref": "Crossref",
         "github": "GitHub", "wiki": "Wikipedia", "wayback": "Wayback Machine",
+        # Literatur fetcher labels
+        "scopus": "Scopus (Elsevier)", "ieee": "IEEE Xplore",
+        "pubmed": "PubMed", "dblp": "DBLP",
+        "dimensions": "Dimensions", "core": "CORE",
+        "doaj": "DOAJ", "plos": "PLOS",
+        "openaire": "OpenAIRE", "europepmc": "Europe PMC",
+        "sinta": "SINTA (Indonesia)", "zenodo": "Zenodo",
+        "datacite": "DataCite", "sciencedirect": "ScienceDirect",
+        "openalex": "OpenAlex", "semantic_scholar": "Semantic Scholar",
+        "crossref_publishers": "Crossref Publishers (Springer/Wiley/Emerald/SSRN/dll)",
     }
 
     parts = ["## HASIL PENCARIAN REAL (gunakan sebagai referensi NYATA)\n"]
@@ -1436,6 +1747,16 @@ def format_search_event_for_frontend(tag: dict, data: dict) -> dict:
         "books": "books_search",
         "threads": "threads_search", "extract": "extract", "crossref": "crossref_search",
         "github": "github_search", "wiki": "wiki_search", "wayback": "wayback_search",
+        # Literatur fetcher labels
+        "scopus": "scopus_search", "ieee": "ieee_search",
+        "pubmed": "pubmed_search", "dblp": "dblp_search",
+        "dimensions": "dimensions_search", "core": "core_search",
+        "doaj": "doaj_search", "plos": "plos_search",
+        "openaire": "openaire_search", "europepmc": "europepmc_search",
+        "sinta": "sinta_search", "zenodo": "zenodo_search",
+        "datacite": "datacite_search", "sciencedirect": "sciencedirect_search",
+        "openalex": "openalex_search", "semantic_scholar": "semantic_scholar_search",
+        "crossref_publishers": "publishers_search",
     }
     label = label_map.get(source_type, source_type)
 

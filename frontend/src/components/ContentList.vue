@@ -1,5 +1,5 @@
 <template>
-  <draggable :list="items" :item-key="stableKey" animation="150" handle=".content-drag" class="space-y-1.5"
+  <draggable ref="listRoot" :list="items" :item-key="stableKey" animation="150" handle=".content-drag" class="space-y-1.5"
              :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
     <template #item="{ element: item, index: idx }">
     <div class="relative">
@@ -20,7 +20,7 @@
               Fig. {{ store.getItemNumber?.(item)?.label || '?' }}
             </span>
           </div>
-          <button @click="store.removeContent(items, idx)"
+          <button @click="preserveScroll(() => store.removeContent(items, idx))"
             class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-xs px-1 opacity-60 group-hover:opacity-100">✕</button>
         </div>
 
@@ -42,9 +42,12 @@
 
             <!-- Thumbnail (always rendered when there's a path or live preview from current job) -->
             <div v-if="item.Path" class="rounded border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-700 overflow-hidden flex items-center justify-center" style="max-height:280px">
-              <img :src="thumbUrl(item.Path)" :alt="item.Title || 'image'"
+              <img v-if="!failedImages.has(item.Path)" :src="thumbUrl(item.Path)" :alt="item.Title || 'image'"
                    class="max-h-[280px] max-w-full object-contain"
-                   @error="onThumbError($event, item)" />
+                   @error="onThumbError($event, item.Path)" />
+              <div v-else class="h-28 flex items-center justify-center text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 w-full">
+                ⚠️ Gambar gagal dimuat
+              </div>
             </div>
 
             <!-- Action row: Upload + Gallery + Prompt toggle. Layout is identical
@@ -100,9 +103,10 @@
                     ? `Dipakai Fig. ${otherFigLabel(src.filename)} — tidak bisa dipilih`
                     : src.label">
                   <div class="aspect-[4/3] bg-cream-100 dark:bg-anthracite-700 flex items-center justify-center">
-                    <img :src="thumbUrl(src.filename)" :alt="src.label"
+                    <img v-if="!failedImages.has(src.filename)" :src="thumbUrl(src.filename)" :alt="src.label"
                          class="max-h-full max-w-full object-contain"
-                         @error="onThumbError($event, item)" />
+                         @error="onThumbError($event, src.filename)" />
+                    <div v-else class="text-[10px] text-ink-400">⚠️</div>
                   </div>
                   <span class="absolute top-1 left-1 text-[9px] px-1 rounded bg-black/55 text-white font-medium">{{ srcKindLabel(src.kind) }}</span>
                    <span v-if="basename(item.Path) === src.filename" class="absolute top-1 right-1 text-[10px] w-4 h-4 flex items-center justify-center rounded-full bg-navy-600 dark:bg-cream-300 text-cream-50 dark:text-ash-900 font-bold">✓</span>
@@ -144,11 +148,11 @@
                       <input :value="h" @input="item.Headers[ci] = ($event.target as HTMLInputElement).value"
                         class="w-full px-2 py-1.5 text-xs font-semibold bg-transparent text-navy-900 dark:text-anthracite-50 outline-none text-center" />
                       <button v-if="item.Headers.length > 1"
-                        @click="store.removeTableCol(item, ci)"
+                        @click="preserveScroll(() => store.removeTableCol(item, ci))"
                         class="absolute -top-2 -right-2 bg-red-400 text-white rounded-full w-4 h-4 text-[10px] leading-none opacity-0 group-hover:opacity-100">✕</button>
                     </th>
                     <th class="w-8">
-                       <button @click="store.addTableCol(item)"
+                       <button @click="preserveScroll(() => store.addTableCol(item))"
                         class="text-navy-400 dark:text-anthracite-300 hover:text-navy-700 dark:hover:text-anthracite-50 text-xs focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">+</button>
                     </th>
                   </tr>
@@ -160,14 +164,14 @@
                         class="w-full px-2 py-1 text-xs bg-transparent text-navy-900 dark:text-anthracite-50 outline-none" />
                     </td>
                     <td class="w-8 text-center">
-                      <button @click="store.removeTableRow(item, ri)"
+                      <button @click="preserveScroll(() => store.removeTableRow(item, ri))"
                         class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-[10px]">✕</button>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-             <button @click="store.addTableRow(item)"
+             <button @click="preserveScroll(() => store.addTableRow(item))"
               class="text-xs text-navy-600 dark:text-anthracite-100 hover:text-navy-800 dark:hover:text-anthracite-50 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">+ Add Row</button>
           </div>
         </template>
@@ -243,14 +247,49 @@ const props = defineProps<Props>()
 const store = usePaperStore()
 const imageGenStore = useImageGenStore()
 
+const listRoot = ref<any>(null)
+
 const promptOpen: Record<string, boolean> = reactive({})
 const generating: Record<string, boolean> = reactive({})
 const galleryOpen: Record<string, boolean> = reactive({})
+const failedImages = ref(new Set<string>())
+
+function getAccessTokenCookie(): string {
+  const match = document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
+watch(() => store.currentPaperId, () => {
+  failedImages.value = new Set()
+})
 
 const insertOpen = ref(-1)
 
+let scrollRoot: HTMLElement | null = null
+
+function getScrollRoot(): HTMLElement | null {
+  if (!scrollRoot) {
+    const root = (listRoot.value as any)?.$el || listRoot.value
+    scrollRoot = root instanceof HTMLElement ? (root.closest('.overflow-y-auto') as HTMLElement) : null
+  }
+  return scrollRoot
+}
+
+function preserveScroll(fn: () => void): void {
+  const root = getScrollRoot()
+  const st = root?.scrollTop ?? 0
+  fn()
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      if (root) root.scrollTop = st
+    })
+  })
+}
+
 function toggleInsert(idx: number): void {
-  insertOpen.value = insertOpen.value === idx ? -1 : idx
+  preserveScroll(() => {
+    insertOpen.value = insertOpen.value === idx ? -1 : idx
+  })
 }
 
 function closeInsert(idx: number): void {
@@ -266,8 +305,10 @@ function insertAfter(idx: number, type: 'text' | 'gambar' | 'tabel' | 'rumus'): 
   }
   const next = items[type]
   if (!next) return
-  props.items.splice(idx + 1, 0, { ...next } as ContentItem)
-  insertOpen.value = -1
+  preserveScroll(() => {
+    props.items.splice(idx + 1, 0, { ...next } as ContentItem)
+    insertOpen.value = -1
+  })
   nextTick(resizeAllTextareas)
 }
 
@@ -291,14 +332,26 @@ const vClickOutsideContent = {
 
 function resizeAllTextareas(): void {
   nextTick(() => {
-    // Target textareas with v-autosize (content-textarea-auto class) and
-    // also any textarea inside ContentList that has resize-none (v-autosize sets it)
-    const els = document.querySelectorAll('textarea.content-textarea-auto, textarea[style*="resize: none"]')
+    // Only resize textareas inside this ContentList instance — global
+    // querySelectorAll was hitting title/abstract textareas in the parent
+    // editor page, collapsing them and resetting the scroll position.
+    const root = (listRoot.value as any)?.$el || listRoot.value
+    const scope = root instanceof HTMLElement ? root : undefined
+    const selector = 'textarea.content-textarea-auto, textarea[style*="resize: none"]'
+    const els = scope
+      ? scope.querySelectorAll(selector)
+      : document.querySelectorAll(selector)
+    // Save & restore scroll position of nearest scrollable ancestor
+    const scrollParent = scope?.closest('.overflow-y-auto') as HTMLElement | null
+    const savedScrollTop = scrollParent?.scrollTop ?? 0
     els.forEach(el => {
       const textarea = el as HTMLTextAreaElement
       textarea.style.height = 'auto'
       textarea.style.height = textarea.scrollHeight + 'px'
     })
+    if (scrollParent) {
+      scrollParent.scrollTop = savedScrollTop
+    }
   })
 }
 
@@ -342,20 +395,18 @@ function badgeLabel(item: ContentItem, _idx: number): string {
 function thumbUrl(filename: string): string {
   const pid = store.currentPaperId
   if (!pid || pid === 'null' || pid === 'undefined' || !filename) return ''
-  // Extract basename if path is absolute filesystem path
   const base = filename.includes('/') ? filename.split('/').pop() || filename : filename
-  const url = `/api/images/${pid}/${base}`
-  const token = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1]
-  return token ? `${url}?t=${token}` : url
+  const token = getAccessTokenCookie()
+  const qs = token ? `?t=${encodeURIComponent(token)}` : ''
+  return `/api/images/${pid}/${encodeURIComponent(base)}${qs}`
 }
 
 function basename(path: string): string {
   return path.includes('/') ? path.split('/').pop() || path : path
 }
 
-function onThumbError(e: Event, _item: ContentItem): void {
-  const target = e.target as HTMLImageElement
-  target.style.display = 'none'
+function onThumbError(e: Event, filename: string): void {
+  if (filename) failedImages.value.add(filename)
 }
 
 async function uploadContentImage(e: Event, item: ContentItem): Promise<void> {
@@ -368,18 +419,23 @@ async function uploadContentImage(e: Event, item: ContentItem): Promise<void> {
 }
 
 function removeImagePath(item: ContentItem): void {
-  store.setFigureSource(item, '')
+  preserveScroll(() => store.setFigureSource(item, ''))
 }
 
 function togglePrompt(item: ContentItem): void {
-  const k = stableKey(item)
-  promptOpen[k] = !promptOpen[k]
+  preserveScroll(() => {
+    const k = stableKey(item)
+    promptOpen[k] = !promptOpen[k]
+  })
 }
 
 function toggleGallery(item: ContentItem): void {
-  const k = stableKey(item)
-  galleryOpen[k] = !galleryOpen[k]
+  preserveScroll(() => {
+    const k = stableKey(item)
+    galleryOpen[k] = !galleryOpen[k]
+  })
   // Make sure the chart pool is fresh when the user opens the picker.
+  const k = stableKey(item)
   if (galleryOpen[k] && store.currentPaperId) {
     store.loadPaperImages(store.currentPaperId)
     store.loadPaperCharts(store.currentPaperId)
@@ -387,12 +443,14 @@ function toggleGallery(item: ContentItem): void {
 }
 
 function pickSource(item: ContentItem, src: { filename: string }): void {
-  // If this source is already attached to this item, picking it again clears it.
-  if (basename(item.Path) === src.filename) {
-    store.setFigureSource(item, '')
-    return
-  }
-  store.setFigureSource(item, src.filename)
+  preserveScroll(() => {
+    // If this source is already attached to this item, picking it again clears it.
+    if (basename(item.Path) === src.filename) {
+      store.setFigureSource(item, '')
+      return
+    }
+    store.setFigureSource(item, src.filename)
+  })
 }
 
 function srcKindLabel(kind: string): string {

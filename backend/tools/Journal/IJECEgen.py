@@ -220,6 +220,18 @@ def _clean_latex(text):
     text = re.sub(r'[{}]', '', text)
     # Strip any remaining stray $ (unmatched math delimiters)
     text = re.sub(r'\$', '', text)
+    # Strip stray single-char artifacts at edges (LLM data noise)
+    if text.startswith('b') and text.endswith(' b'):
+        text = text[1:].rstrip()
+        text = text[:-1].rstrip()
+    elif text.startswith('i ') and text.endswith(' i'):
+        text = text[2:]
+        text = text[:-1].rstrip()
+    _mc = set('ᵢⱼₖₗₘₙₒₚᵣₛₜₓᵧ₀₁₂₃₄₅₆₇₈₉ₐₑₕⁿˣʸ⁰¹²³⁴⁵⁶⁷⁸⁹θαπσβγδελμωφψρτηζξχν')
+    if any(c in _mc for c in text):
+        text = re.sub(r'^[ib](?=[A-Z(θαπσβγδελμω])', '', text)
+        text = re.sub(r'^[ib]\s+(?=[θαπσβγδελμω])', '', text)
+        text = re.sub(r'(?<=\))[ib]$', '', text)
     return text.strip()
 
 def _postprocess_clean_latex(doc):

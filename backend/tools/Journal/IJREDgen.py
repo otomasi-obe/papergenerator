@@ -110,6 +110,18 @@ def _clean_latex(text):
     text = _re.sub(r'\^([a-zA-Z0-9])', _sup_single, text)
     text = _re.sub(r'\\[a-zA-Z]+', '', text)
     text = _re.sub(r'[{}]', '', text)
+    # Strip stray single-char artifacts at edges (LLM data noise)
+    if text.startswith('b') and text.endswith(' b'):
+        text = text[1:].rstrip()
+        text = text[:-1].rstrip()
+    elif text.startswith('i ') and text.endswith(' i'):
+        text = text[2:]
+        text = text[:-1].rstrip()
+    _mc = set('ᵢⱼₖₗₘₙₒₚᵣₛₜₓᵧ₀₁₂₃₄₅₆₇₈₉ₐₑₕⁿˣʸ⁰¹²³⁴⁵⁶⁷⁸⁹θαπσβγδελμωφψρτηζξχν')
+    if any(c in _mc for c in text):
+        text = re.sub(r'^[ib](?=[A-Z(θαπσβγδελμω])', '', text)
+        text = re.sub(r'^[ib]\s+(?=[θαπσβγδελμω])', '', text)
+        text = re.sub(r'(?<=\))[ib]$', '', text)
     return text.strip()
 
 
@@ -242,6 +254,21 @@ def _set_para_style(paragraph, style_name: str) -> None:
     pstyle = OxmlElement("w:pStyle")
     pstyle.set(qn("w:val"), style_name)
     ppr.insert(0, pstyle)
+
+
+def _set_tight_cell_spacing(para):
+    """Set paragraph spacing to tight (0 before, 0 after, single line) for table cells."""
+    from docx.oxml.ns import qn as _qn
+    from docx.oxml import OxmlElement as _Oxml
+    ppr = para._p.get_or_add_pPr()
+    sp = ppr.find(_qn("w:spacing"))
+    if sp is None:
+        sp = _Oxml("w:spacing")
+        ppr.append(sp)
+    sp.set(_qn("w:before"), "0")
+    sp.set(_qn("w:after"), "0")
+    sp.set(_qn("w:line"), "240")
+    sp.set(_qn("w:lineRule"), "auto")
 
 
 def _add_run(
@@ -420,6 +447,7 @@ def add_table(doc, table_data: dict):
         cell.text = ""
         para = cell.paragraphs[0]
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _set_tight_cell_spacing(para)
         _add_run(para, str(header), bold=True)
 
     for row_idx, row_data in enumerate(rows, start=1):
@@ -428,6 +456,7 @@ def add_table(doc, table_data: dict):
             cell.text = ""
             para = cell.paragraphs[0]
             para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            _set_tight_cell_spacing(para)
             _add_run(para, str(value))
 
 
@@ -440,10 +469,12 @@ def add_figure(doc, fig_data: dict):
     image_path = None
     if path_text:
         cand = Path(path_text)
-        if not cand.is_absolute():
-            cand = BASE / path_text
         if cand.is_file():
             image_path = cand
+        elif not cand.is_absolute():
+            cand2 = BASE / path_text
+            if cand2.is_file():
+                image_path = cand2
 
     if image_path:
         p = doc.add_paragraph()

@@ -130,8 +130,8 @@ def generate_paper(
     Returns:
         dict: Paper data dalam format JSON standar
     """
-    from PaperRiset.eks.editor.single import generate_paper_json_single
-    from PaperRiset.eks.editor.chunked import generate_paper_json_chunked, GenerationCancelled
+    from editor.single import generate_paper_json_single
+    from editor.chunked import generate_paper_json_chunked, GenerationCancelled
 
     log.info("generate_full: mode=%s, judul=%r, topic=%s, style=%s", mode, judul[:60], topic, style)
 

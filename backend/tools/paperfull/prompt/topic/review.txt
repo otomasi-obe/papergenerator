@@ -1,162 +1,225 @@
 ================================================================================
-PAPER REVIEW / LITERATURE REVIEW / TINJAUAN PUSTAKA
+PAPER REVIEW / LITERATURE REVIEW / TINJAUAN PUSTAKA — MODE WAJIB
 ================================================================================
 
-MODE DETEKSI: Aktifkan mode ini ketika user menyebutkan "paper review",
-"literature review", "tinjauan pustaka", "systematic review", "narrative review",
-atau variasi serupa. Mode ini BERBEDA dari paper biasa.
+Aktifkan mode ini ketika user menyebut "paper review", "literature review",
+"tinjauan pustaka", "systematic review", "narrative review", "SLR", "meta-analysis",
+atau variasi serupa. Mode ini FUNDAMENTAL BERBEDA dari paper eksperimental biasa.
 
 ================================================================================
-A. SUMBER DATA
+A. SUMBER DATA & PRECISION
 ================================================================================
 
-1. DATA UTAMA = Literatur SLR (Systematic Literature Review)
-   - Gunakan SEMUA paper hasil SLR yang tercantum di ## REFERENSI / DRAFT
+1. DATA UTAMA = Literatur SLR dari ## REFERENSI / DRAFT / LITERATUR (CHECKED)
+   - Gunakan SEMUA paper hasil SLR yang tersedia
    - JANGAN mengarang referensi di luar SLR
-   - Setiap klaim WAJIB didukung minimal 1 paper SLR
-   - Paper SLR adalah BAHAN yang direview, BUKAN referensi tambahan
-   - Jika referensi mengandung data numerik (hasil, metrik, statistik) →
-     WAJIB kutip dan analisis data tersebut di narasi
-   - JANGAN abaikan data yang ada di referensi
+   - Setiap klaim WAJIB didukung minimal 1 paper SLR dengan ref_id
+   - Paper SLR = BAHAN yang direview, BUKAN referensi tambahan
+   - Jika referensi mengandung data numerik (hasil, metrik, statistik, %) →
+     WAJIB kutip dan analisis data tersebut PERSIS. JANGAN ubah angka.
+     JANGAN abaikan data yang ada di referensi.
 
-2. TIDAK PERLU data eksperimen BARU
+2. TIDAK membuat data eksperimental BARU
    - JANGAN buat data dummy/placeholder untuk hasil eksperimen
-   - JANGAN buat grafik data hasil eksperimen BARU
-   - TAPI: jika referensi mengandung data/grafik → boleh dibuat visualisasi
-     ulang berdasarkan data referensi tersebut (bukan placeholder!)
-   - Tabel yang dibuat = tabel perbandingan/sintesis dari paper SLR
-   - Jika referensi punya metrik/hasil → buat tabel perbandingan dengan
-     ANGKA PERSIS dari referensi, BUKAN placeholder (X1, a1, dst)
+   - JANGAN buat grafik data hasil eksperimen fiktif
+   - Tabel = tabel perbandingan/sintesis dari paper SLR (data nyata dari referensi)
+   - Jika referensi punya metrik → buat tabel dengan ANGKA PERSIS (94.5%, 12.3s, dll)
+     JANGAN placeholder (X1, a1) — data dari referensi adalah DATA NYATA!
 
-3. Gambar
-   - BAB 2+3: minimal 3 gambar konseptual (kerangka, diagram alur, peta tema)
-   - JANGAN buat grafik data hasil eksperimen BARU
+3. Gambar Konseptual
+   - MINIMAL 6 gambar konseptual (kerangka, diagram alur, peta tema, PRISMA diagram)
+   - Prompt ≥150 kata, deskripsi detail elemen visual
+   - JANGAN grafik data eksperimental baru
    - Prompt gambar fokus pada visualisasi konsep/tema/hubungan antar-paper
+
+4. ⚠️ PRECISION RULES — FORMULAS, TABLES, SYMBOLS
+   - Setiap rumus dalam review: simbol HARUS tepat (misal σ untuk standar deviasi,
+     μ untuk mean, β untuk koefisien, ε untuk error — JANGAN tertukar)
+   - Setiap tabel: angka dari referensi HARUS PERSIS — cek ulang sebelum output
+   - Setiap persamaan matematika dalam analisis: verifikasi left/right side konsisten
+   - Greek letters dalam teks naratif: WAJIB $...$ (misal $\chi^2$, bukan χ² raw)
 
 ================================================================================
 B. STRUKTUR PAPER REVIEW (WAJIB DIIKUTI)
 ================================================================================
 
-WAJIB minimal 5 section:
-
-section1: PENDAHULUAN (500-700 kata)
-  - Latar belakang masalah/topik yang direview
-  - Ruang lingkup review (batasan temporal, geografis, domain)
-  - Alasan review dilakukan (gap pengetahuan, kontroversi, tren baru)
-  - Tujuan review (3-5 poin spesifik)
-  - Metodologi review singkat (jika narrative: pendekatan tematik/kronologis;
-    jika systematic: PRISMA flow singkat)
+section1: INTRODUCTION (500-700 kata, 5-6 paragraf)
+  - Latar belakang masalah/topik yang direview dengan data konteks spesifik
+  - Ruang lingkup review: batasan temporal (tahun), geografis, domain
+  - Research questions (3-5 RQ spesifik, bukan generik)
+  - Motivasi review: gap pengetahuan, kontroversi, tren baru — dengan bukti
+  - Kontribusi review ini (3-5 poin)
   - Organisasi paper
 
-section2: METODOLOGI REVIEW (300-500 kata)
-  - Strategi pencarian literatur (database, kata kunci, filter)
-  - Kriteria inklusi/eksklusi
-  - Total paper yang direview (WAJIB sebutkan angka)
-  - Pendekatan analisis (tematik/kronologis/metodologis)
-  - Limitasi metodologi
+section2: REVIEW METHODOLOGY (350-500 kata, 3-4 paragraf)
+  - Strategi pencarian: database (sebutkan nama), kata kunci (sebutkan spesifik),
+    filter tahun/bahasa
+  - Kriteria inklusi/eksklusi (tabel jika perlu)
+  - PRISMA flow diagram prompt (gambar konseptual)
+  - Total paper hasil screening (WAJIB sebutkan N angka)
+  - Pendekatan analisis: thematic / chronological / methodological
+  - Quality assessment method (jika ada)
+  - Limitasi metodologi review
 
-section3: PEMBAHASAN TOPIK 1 (350-550 kata)
-  - Tema/topik pertama dari literatur
-  - Sintesis kritis dari 5-10 paper SLR terkait tema ini
-  - Pola umum, konsensus, atau kontroversi
-  - Tabel perbandingan (jika perlu)
-  - Gap atau keterbatasan di tema ini
+section3 PEMBAHASAN TOPIK 1 (400-600 kata, 4-5 paragraf):
+  - JUDUL TOPIK yang spesifik, bukan generik
+  - Paragraf pembuka: overview tema + signifikansi
+  - Sintesis kritis 8-15 paper SLR: metode + hasil + keterbatasan + hubungan
+  - Pola umum, konsensus, atau kontroversi dengan bukti spesifik
+  - PASTIKAN: setiap paragraf ≥3 sitasi paper SLR
+  - Tabel perbandingan WAJIB (minimal 1 per topik):
+    | Paper (Ref) | Metode | Dataset/Sampel | Hasil Utama | Keterbatasan |
+    |-------------|--------|---------------|-------------|-------------|
+    | [ref_id]    | ...    | ...           | ...         | ...         |
+  - Sub-section gap analysis: apa yang SUDAH dan BELUM terjawab
+  - Gambar konseptual (peta tema / framework visual)
 
-section4: PEMBAHASAN TOPIK 2 (350-550 kata)
-  - Tema/topik kedua dari literatur
-  - Sintesis kritis dari 5-10 paper SLR
-  - Hubungan dengan topik 1
-  - Gap atau keterbatasan
+section4 PEMBAHASAN TOPIK 2 (400-600 kata, 4-5 paragraf):
+  - Struktur sama seperti TOPIK 1
+  - Eksplisit hubungkan dengan TOPIK 1: persamaan, perbedaan, kontradiksi
+  - Tabel perbandingan WAJIB
+  - Gap analysis sub-section
 
-section5: PEMBAHASAN TOPIK 3 (350-550 kata)
-  - Tema/topik ketiga dari literatur
-  - Sintesis kritis dari 5-10 paper SLR
-  - Hubungan dengan topik 1 & 2
-  - Gap atau keterbatasan
+section5 PEMBAHASAN TOPIK 3 (400-600 kata, 4-5 paragraf):
+  - Struktur sama seperti TOPIK 1 & 2
+  - Eksplisit hubungkan dengan TOPIK 1 & 2
+  - Tabel perbandingan WAJIB
 
-section6+: PEMBAHASAN TOPIK 4, 5, dst (jika user minta lebih dari 3 topik)
-  - Tambah section6, section7, dst sesuai permintaan user
+section6+ PEMBAHASAN TOPIK 4, 5, dst:
+  - Jika user minta lebih dari 3 topik → tambah section6, section7, dst
   - WAJIB minimal 3 topik pembahasan
   - Setiap topik = 1 section terpisah
 
-section TERAKHIR: KESIMPULAN & ARAH PENELITIAN (200-350 kata)
-  - Sintesis temuan utama dari semua topik
-  - Gap pengetahuan kolektif (gap yang BELUM dijawab oleh SEMUA paper)
-  - Arah penelitian masa depan (3-5 poin spesifik)
-  - Rekomendasi praktis (jika ada)
+section TERAKHIR: CONCLUSION & FUTURE DIRECTIONS (300-450 kata, 3-4 paragraf)
+  - Sintesis temuan utama dari SEMUA topik (bukan ringkasan per topik)
+  - Gap pengetahuan KOLEKTIF: apa yang BELUM dijawab oleh SEMUA paper
+  - Research agenda: 3-5 arah riset KONKRET (desain studi, sampel, metode usulan)
+  - Rekomendasi praktis (jika relevan)
+  - JANGAN: "further research is needed" tanpa spesifik
 
 ================================================================================
-C. KETENTUAN PEMBAGIAN TOPIK
+C. KUALITAS ULASAN — DEEP CRITICAL REVIEW STANDARDS
 ================================================================================
 
-1. MINIMAL 3 TOPIK PEMBAHASAN (section3, section4, section5)
-   - Setiap topik = 1 section terpisah
-   - Jika user minta 5 topik → buat 7 section (pendahuluan + metode + 5 topik + kesimpulan)
+1. SINTESIS KRITIS MENDALAM (BUKAN daftar anotasi)
+   ❌ DILARANG: "Paper A meneliti X. Paper B meneliti Y. Paper C meneliti Z."
+   ✅ WAJIB: analisis tematik yang membandingkan, mengontraskan, dan mengevaluasi.
+   Contoh: "Studi tentang X didominasi pendekatan kuantitatif (Paper A, B, C, D)
+   dengan akurasi 78-94%. Namun, Paper E dan F menunjukkan bahwa pendekatan ini
+   gagal dalam kondisi Z (penurunan akurasi hingga 42%), mengindikasikan gap
+   metodologis yang signifikan."
 
-2. PEMBAGIAN TOPIK BERDASARKAN:
-   - Tema konseptual (misal: "Machine Learning untuk Kesehatan")
-     → Topik 1: Supervised Learning
-     → Topik 2: Unsupervised Learning
-     → Topik 3: Deep Learning
-   - Metodologi (misal: "Review Metode Deteksi Anomali")
-     → Topik 1: Metode Statistik
-     → Topik 2: Metode Machine Learning
-     → Topik 3: Metode Hybrid
-   - Kronologis (misal: "Evolusi Teknologi Blockchain")
-     → Topik 1: Generasi 1 (Bitcoin era)
-     → Topik 2: Generasi 2 (Smart Contracts)
-     → Topik 3: Generasi 3 (Web3 & DeFi)
-   - Aplikasi/Domain (misal: "IoT untuk Smart City")
-     → Topik 1: Smart Transportation
-     → Topik 2: Smart Energy
-     → Topik 3: Smart Governance
+2. DEPTH PER DIMENSION — setiap paper yang dikutip HARUS dibahas:
+   - Metode spesifik (nama algoritma, desain studi, teknik sampling)
+   - Hasil kuantitatif (persentase, p-value, effect size, metrics)
+   - Keterbatasan spesifik (bukan generik: "sample size kecil" → "N=23 dari
+     1 universitas, membatasi generalisasi ke populasi urban")
+   - Hubungan dengan paper lain dalam topik yang sama
 
-3. DETEKSI OTOMATIS:
-   - Jika user TIDAK menyebutkan topik spesifik → deteksi tema dari paper SLR
-     dan kelompokkan ke 3-5 topik paling signifikan
-   - Jika user menyebutkan topik spesifik (misal "bahas 4 topik: A, B, C, D")
-     → IKUTI PERMINTAAN USER, buat 4 topik + pendahuluan + metode + kesimpulan
+3. COMPARATIVE ANALYSIS TABLES
+   - Setiap topik WAJIB minimal 1 tabel perbandingan
+   - Kolom HARUS spesifik, bukan generik
+   - Data dalam tabel HARUS dari referensi (PERSIS), bukan placeholder
+   - Format yang direkomendasikan:
+     | Ref | Tahun | Metode | Dataset/Sampel | Metric 1 | Metric 2 | Keterbatasan Utama |
+     |-----|-------|--------|---------------|----------|----------|-------------------|
 
-================================================================================
-D. ATURAN PENULISAN KHUSUS PAPER REVIEW
-================================================================================
+4. GAP ANALYSIS — setiap topik WAJIB diakhiri dengan:
+   - Gap metodologis: metode apa yang belum digunakan?
+   - Gap konteks/aplikasi: konteks apa yang belum diteliti?
+   - Gap evidence: tipe bukti apa yang masih kurang (RCT? longitudinal? meta-analysis?)
+   - Gap teoretis: kerangka teori apa yang belum diintegrasikan?
+   - Setiap gap HARUS didukung bukti dari paper yang direview
 
-1. SINTESIS KRITIS (BUKAN daftar anotasi)
-   - JANGAN: "Paper A meneliti X. Paper B meneliti Y."
-   - LAKUKAN: "Studi tentang X didominasi oleh pendekatan Y (Paper A, B, C),
-     namun Paper D dan E menunjukkan keterbatasan metode ini dalam konteks Z."
+5. VISUAL SYNTHESIS
+   - MINIMAL 6 gambar konseptual TOTAL:
+     - PRISMA flow diagram (section 2)
+     - Framework konseptual gabungan (section 3-5)
+     - Peta tematik / mind map literatur (section 3-5)
+     - Timeline evolusi riset (section 3-5)
+     - Gap visualization matrix (section 3-5)
+     - Future research roadmap (section akhir)
 
-2. PERBANDINGAN TABEL
-   - WAJIB minimal 1 tabel perbandingan di setiap topik
-   - Format: [Paper | Metode | Dataset | Hasil | Keterbatasan]
-   - Atau format tematik: [Tema | Pendekatan A | Pendekatan B | Pendekatan C]
-
-3. SITASI WAJIB PADAT
-   - Setiap paragraf WAJIB minimal 3 sitasi paper SLR
-   - Sebar sitasi merata: Pendahuluan (5-7), Metodologi (3-5), tiap Topik (8-12), Kesimpulan (2-3)
+6. CITATION DENSITY
+   - Setiap paragraf WAJIB ≥3 sitasi unik dari paper SLR
+   - Target total: ≥30 sitasi di seluruh paper (semua dari SLR)
+   - Sebar merata: Intro (5-7), Metodologi (3-5), Topik 1 (8-12),
+     Topik 2 (8-12), Topik 3 (8-12), Kesimpulan (2-3)
    - JANGAN biarkan paragraf tanpa sitasi
 
-4. GAP ANALYSIS
-   - Setiap topik WAJIB akhiri dengan gap/keterbatasan spesifik
-   - Kesimpulan WAJIB sintesis gap kolektif (gap yang belum dijawab semua paper)
-
-5. GAYA PENULISAN
-   - Gunakan kalimat perbandingan: "berbeda dengan", "sementara", "namun", "di sisi lain"
+7. WRITING STYLE — ANTI-AI DETECTION
+   - Hindari: "delve", "leverage", "robust", "comprehensive", "moreover",
+     "furthermore", "it is important to note", "in recent years",
+     "dengan pesatnya perkembangan", "di era globalisasi", "perlu dicatat bahwa"
+   - Variasikan panjang kalimat (SD > 10 kata)
+   - Rotate paragraph openers (jangan semua "Penelitian oleh...")
+   - Gunakan kalimat perbandingan: "berbeda dengan", "sementara", "namun",
+     "di sisi lain", "menariknya", "yang perlu dicatat"
    - Gunakan kalimat sintesis: "Studi-studi ini secara kolektif menunjukkan..."
-   - Gunakan kalimat kritis: "meskipun menjanjikan, pendekatan ini memiliki keterbatasan..."
-   - JANGAN hanya meringkas — ANALISIS dan EVALUASI
+   - Gunakan kalimat kritis: "meskipun menjanjikan, pendekatan ini memiliki..."
+   - Akui keterbatasan dengan jujur: "Perlu diakui, review ini terbatas pada..."
 
 ================================================================================
-E. CHECKLIST KHUSUS PAPER REVIEW
+D. PEMBAGIAN TOPIK — CERDAS & KONTEKSTUAL
 ================================================================================
 
-□ Struktur: PENDAHULUAN → METODOLOGI → TOPIK 1 → TOPIK 2 → TOPIK 3+ → KESIMPULAN
-□ Minimal 3 topik pembahasan (bisa lebih sesuai request user)
-□ Setiap topik: sintesis kritis, minimal 1 tabel perbandingan, 8-12 sitasi
-□ Total sitasi ≥ 20 (semua dari paper SLR)
-□ TIDAK ada data eksperimen dummy (grafik, rumus, tabel hasil)
-□ Gambar konseptual: minimal 3 (kerangka, diagram alur, peta tema)
+DETEKSI OTOMATIS: kelompokkan paper SLR ke 3-5 topik berdasarkan:
+  - Tema konseptual: "ML untuk Kesehatan" → Supervised / Unsupervised / Deep
+  - Metodologi: "Deteksi Anomali" → Statistik / ML / Hybrid / Deep Learning
+  - Kronologis: "Evolusi Blockchain" → Gen 1 / Gen 2 / Gen 3 / Gen 4
+  - Aplikasi/Domain: "IoT Smart City" → Transport / Energy / Governance / Health
+  - Theoretical lens: "Adopsi Teknologi" → TAM / UTAUT / DOI / Combined
+
+Jika user menyebutkan topik spesifik → IKUTI PERMINTAAN USER PERSIS.
+Jika user TIDAK menyebutkan → deteksi otomatis 3-5 topik paling signifikan.
+
+================================================================================
+E. FORMULA, TABLE & SYMBOL PRECISION
+================================================================================
+
+⚠️ SETIAP OUTPUT HARUS melewati self-verification:
+
+FORMULA CHECK:
+  □ Setiap simbol LaTeX benar merepresentasikan makna yang dimaksud
+  □ Greek letters TIDAK tertukar: σ (sigma, standar deviasi) ≠ Σ (Sigma, sum)
+    ω (omega, frekuensi sudut) ≠ Ω (Omega, ohm/Ohm) ≠ w (huruf w)
+    ε (epsilon, error) ≠ e (Euler's number) ≠ E (expected value)
+    μ (mu, mean) ≠ m (mass)
+    β (beta, coefficient) ≠ B (huruf B)
+    χ (chi) ≠ X (huruf X)
+  □ Subscript/superscript: $x_{i}$ bukan $x₁$, $e^{-t}$ bukan $e⁻ᵗ$
+  □ Fraction: $\frac{a}{b}$ bukan $a/b$
+  □ Summation: $\sum_{i=1}^{N}$ bukan $\sum i=1 to N$
+  □ Operator konsisten: $\times$ bukan x, $\cdot$ bukan .
+
+TABLE CHECK:
+  □ Setiap angka dalam tabel berasal dari referensi (PERSIS)
+  □ Tidak ada placeholder (X1, a1) jika data referensi tersedia
+  □ Alignment: teks rata kiri, angka rata kanan (jika didukung parser)
+  □ Header tabel deskriptif dan spesifik
+  □ Row count HARUS sesuai dengan jumlah paper yang dibahas
+
+SYMBOL CHECK:
+  □ Semua Greek/symbols di teks WAJIB dalam $...$ (tidak raw Unicode)
+  □ Degree: $^{\circ}$ atau $^{\circ}C$, bukan ° raw (di luar $...$ sudah aman)
+  □ Persentase: "94.5%" biasa, bukan "$94.5\%$"
+
+================================================================================
+F. CHECKLIST SEBELUM OUTPUT
+================================================================================
+
+□ Struktur: INTRODUCTION → METHODOLOGY → TOPIK 1 → TOPIK 2 → TOPIK 3+ → CONCLUSION
+□ Minimal 3 topik pembahasan (tambah sesuai request user)
+□ Setiap topik: 400-600 kata, sintesis kritis, ≥1 tabel perbandingan, 8-12 sitasi
+□ Total sitasi ≥30 (semua dari paper SLR)
+□ TIDAK ada data eksperimental dummy
+□ Gambar konseptual: minimal 6 (PRISMA + framework + peta tema + timeline + gap + roadmap)
 □ Gap analysis di setiap topik + gap kolektif di kesimpulan
-□ Arah penelitian: 3-5 poin spesifik
-□ Sitasi padat: setiap paragraf ≥ 3 sitasi
-□ Sintesis kritis (BUKAN daftar anotasi)
+□ Research agenda: 3-5 arah riset KONKRET dengan desain studi
+□ Setiap paragraf ≥3 sitasi
+□ SINTESIS KRITIS (BUKAN daftar anotasi)
+□ Formula/symbols precision: semua simbol BENAR, tidak ada yang tertukar
+□ Table precision: semua angka PERSIS dari referensi
+□ Zero AI-detected phrases (English + Indonesian banned lists)
+□ Semua math/Greek dalam $...$ delimiters
+□ Image prompts ≥150 kata, deskriptif, English

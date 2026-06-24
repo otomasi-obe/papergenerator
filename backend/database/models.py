@@ -165,12 +165,13 @@ class PaperImage(db.Model):
     created_at = db.Column(db.DateTime, default=_utcnow)
 
     def to_dict(self):
+        from urllib.parse import quote
         return {
             "id": self.id,
             "paper_id": self.paper_id,
             "filename": self.filename,
             "original_name": self.original_name,
-            "url": f"/api/images/{self.paper_id}/{self.filename}",
+            "url": f"/api/images/{self.paper_id}/{quote(self.filename, safe='')}",
             "created_at": self.created_at.isoformat(),
         }
 

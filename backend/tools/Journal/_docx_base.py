@@ -552,9 +552,58 @@ def roman(number) -> str:
 
 
 def _resolve_path(path_text: str, json_path: Path) -> Path:
+    """Resolve an image path to an actual file on disk.
+
+    Tries (in order):
+      1. Absolute path as-is
+      2. Relative to json_path.parent (legacy behaviour)
+      3. Relative to an ``image/`` subfolder of json_path.parent's parent
+         (covers the user/<username>/<paper_id>/export/ → …/image/ case)
+      4. ``safe_paper_image_dir()`` lookup by paper_id (best effort)
+      5. BASE_DIR fallback
+    """
     p = Path(path_text)
     if p.is_absolute():
         return p
+
+    # 2. Relative to json_path.parent (e.g. export/_tmp.json → export/<path>)
+    candidate = json_path.parent / p
+    if candidate.is_file():
+        return candidate
+
+    # 3. Sibling image/ folder: export/ is sibling of image/ under <paper_id>/
+    #    json_path.parent = …/<paper_id>/export/_tmp.json → parent.parent = …/<paper_id>/
+    paper_root = json_path.parent.parent
+    candidate = paper_root / "image" / p
+    if candidate.is_file():
+        return candidate
+    # Also try just the basename in the image folder (Path may include "gambar/" prefix)
+    fname = p.name
+    if fname and fname != str(p):
+        candidate = paper_root / "image" / fname
+        if candidate.is_file():
+            return candidate
+
+    # 4. safe_paper_image_dir() — needs Flask app context; best-effort
+    try:
+        from tools.editor.utils import safe_paper_image_dir
+        # Derive paper_id from the path: …/user/<username>/<paper_id>/export/…
+        paper_id = json_path.parent.name if json_path.parent.name not in ("export",) else paper_root.name
+        img_dir = safe_paper_image_dir(paper_id)
+        if img_dir:
+            candidate = img_dir / p
+            if candidate.is_file():
+                return candidate
+            if fname:
+                candidate = img_dir / fname
+                if candidate.is_file():
+                    return candidate
+    except Exception:
+        pass
+
+    # 5. Final fallback: original relative path (will fail .is_file() and trigger
+    #    the prompt-box branch in the caller, which is the desired behaviour when
+    #    no image exists yet).
     return json_path.parent / p
 
 

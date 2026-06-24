@@ -65,7 +65,8 @@
             @click="selectImage(img)"
           >
             <div class="w-10 h-10 rounded border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 flex-shrink-0 overflow-hidden flex items-center justify-center">
-              <img :src="thumbUrl(img)" :alt="img.original_name || img.filename" class="max-h-full max-w-full object-contain" @error="onThumbErr" />
+              <img v-if="!failedImages.has(img.filename)" :src="imageUrl(img)" :alt="img.original_name || img.filename" class="max-h-full max-w-full object-contain" @error="(e) => onThumbErr(e, img.filename)" />
+              <div v-else class="text-[10px] text-ink-400">⚠️</div>
             </div>
             <div class="min-w-0 flex-1">
               <!-- Editable name -->
@@ -112,7 +113,7 @@
         </div>
 
         <div v-else class="flex-1 overflow-y-auto bg-cream-100/40 dark:bg-ash-850 flex items-center justify-center p-4">
-          <img :src="imageUrl(activeImage)" :alt="displayName(activeImage)" class="max-w-full max-h-[55vh] object-contain rounded-lg shadow-sm" @error="onThumbErr" />
+          <img :src="imageUrl(activeImage)" :alt="displayName(activeImage)" class="max-w-full max-h-[55vh] object-contain rounded-lg shadow-sm" @error="(e) => onThumbErr(e, activeImage.filename)" />
         </div>
       </section>
     </div>
@@ -151,6 +152,16 @@ const images = ref<ImageItem[]>([])
 const loading = ref(false)
 const generating = ref(false)
 const warning = ref('')
+const failedImages = ref(new Set<string>())
+
+function getAccessTokenCookie(): string {
+  const match = document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
+watch(() => store.currentPaperId, () => {
+  failedImages.value = new Set()
+})
 
 // Persisted state via userState store (per-paper)
 const genPrompt = computed({
@@ -203,21 +214,17 @@ function displayName(img: ImageItem): string {
   return img.original_name || img.filename || `Image #${img.id}`
 }
 
-function thumbUrl(img: ImageItem): string {
+function imageUrl(img: ImageItem): string {
+  const token = getAccessTokenCookie()
+  const qs = token ? `t=${encodeURIComponent(token)}` : ''
+  if (img.url) return img.url + (qs ? (img.url.includes('?') ? '&' : '?') + qs : '')
   const pid = store.currentPaperId
   if (!pid || !img.filename) return ''
-  const url = `/api/images/${pid}/${img.filename}`
-  const token = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1]
-  return token ? `${url}?t=${token}` : url
+  return `/api/images/${pid}/${encodeURIComponent(img.filename)}${qs ? '?' + qs : ''}`
 }
 
-function imageUrl(img: ImageItem): string {
-  return img.url || thumbUrl(img)
-}
-
-function onThumbErr(e: Event): void {
-  const target = e.target as HTMLImageElement
-  target.style.display = 'none'
+function onThumbErr(e: Event, filename: string): void {
+  if (filename) failedImages.value.add(filename)
 }
 
 async function renameImage(img: ImageItem, newName: string): Promise<void> {

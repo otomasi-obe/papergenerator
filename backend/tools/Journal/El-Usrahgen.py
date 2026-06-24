@@ -115,6 +115,18 @@ def _clean_latex(text):
     text = _re.sub(r'\^([a-zA-Z0-9])', _sup_single, text)
     text = _re.sub(r'\\[a-zA-Z]+', '', text)
     text = _re.sub(r'[{}]', '', text)
+    # Strip stray single-char artifacts at edges (LLM data noise)
+    if text.startswith('b') and text.endswith(' b'):
+        text = text[1:].rstrip()
+        text = text[:-1].rstrip()
+    elif text.startswith('i ') and text.endswith(' i'):
+        text = text[2:]
+        text = text[:-1].rstrip()
+    _mc = set('ᵢⱼₖₗₘₙₒₚᵣₛₜₓᵧ₀₁₂₃₄₅₆₇₈₉ₐₑₕⁿˣʸ⁰¹²³⁴⁵⁶⁷⁸⁹θαπσβγδελμωφψρτηζξχν')
+    if any(c in _mc for c in text):
+        text = re.sub(r'^[ib](?=[A-Z(θαπσβγδελμω])', '', text)
+        text = re.sub(r'^[ib]\s+(?=[θαπσβγδελμω])', '', text)
+        text = re.sub(r'(?<=\))[ib]$', '', text)
     return text.strip()
 
 
@@ -534,7 +546,12 @@ def _append_rich_body_text(paragraph, text):
 
 
 def add_figure(doc, fig_data, space_before=3, space_after=3):
-    img_path = BASE / fig_data.get("Path", "")
+    _path_text = fig_data.get("Path", "")
+    img_path = BASE / _path_text
+    if not img_path.exists():
+        _p = Path(_path_text)
+        if _p.exists():
+            img_path = _p
     fig_num = fig_data.get("ImageNumber", "")
     fig_title = fig_data.get("Title", "")
 

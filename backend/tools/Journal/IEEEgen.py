@@ -950,12 +950,52 @@ def _add_point_list(doc: Document, item: dict):
 
 
 def _resolve_path(path_text: str, json_path: Path) -> Path:
+    """Resolve an image path to an actual file on disk.
+
+    Tries (in order):
+      1. Absolute path as-is
+      2. Relative to json_path.parent (legacy behaviour)
+      3. Sibling image/ folder (export/ and image/ live under <paper_id>/)
+      4. safe_paper_image_dir() lookup by paper_id (best effort)
+      5. BASE_DIR fallback
+    """
     path = Path(path_text)
     if path.is_absolute():
         return path
+
+    # 2. Relative to json_path.parent
     json_relative = json_path.parent / path
     if json_relative.exists():
         return json_relative
+
+    # 3. Sibling image/ folder: …/<paper_id>/export/_tmp.json → …/<paper_id>/image/
+    paper_root = json_path.parent.parent
+    candidate = paper_root / "image" / path
+    if candidate.is_file():
+        return candidate
+    fname = path.name
+    if fname and fname != str(path):
+        candidate = paper_root / "image" / fname
+        if candidate.is_file():
+            return candidate
+
+    # 4. safe_paper_image_dir() — needs Flask app context; best-effort
+    try:
+        from tools.editor.utils import safe_paper_image_dir
+        paper_id = paper_root.name
+        img_dir = safe_paper_image_dir(paper_id)
+        if img_dir:
+            candidate = img_dir / path
+            if candidate.is_file():
+                return candidate
+            if fname:
+                candidate = img_dir / fname
+                if candidate.is_file():
+                    return candidate
+    except Exception:
+        pass
+
+    # 5. Final fallback
     return BASE_DIR / path
 
 

@@ -138,7 +138,12 @@ function onSelectPaper() {
 }
 
 function resolveUrl(url) {
-  return url?.startsWith('http') ? url : `${BASE}${url}`
+  if (!url) return ''
+  const baseUrl = url.startsWith('http') ? url : `${BASE}${url}`
+  const sep = baseUrl.includes('?') ? '&' : '?'
+  const match = document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/)
+  if (match && match[1]) return `${baseUrl}${sep}t=${encodeURIComponent(decodeURIComponent(match[1]))}`
+  return baseUrl
 }
 
 function showToast(msg) {

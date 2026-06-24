@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import os
 import queue
+import re
 import threading
 import time
 import uuid
@@ -238,8 +239,11 @@ class _Worker(threading.Thread):
                 if target_filename:
                     # Sanitize: strip any path traversal
                     safe_name = os.path.basename(target_filename)
-                    # Ensure .jpg extension
+                    # Replace spaces and other unsafe chars with underscores
                     base, fext = os.path.splitext(safe_name)
+                    base = re.sub(r'[^A-Za-z0-9_.-]', '_', base)
+                    safe_name = base + fext
+                    # Ensure .jpg extension
                     if fext.lower() not in ('.jpg', '.jpeg', '.png'):
                         safe_name = base + '.jpg'
                     # Avoid collision if file already exists

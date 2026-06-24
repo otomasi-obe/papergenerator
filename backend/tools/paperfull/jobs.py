@@ -461,15 +461,26 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
         if orig_path:
             import os as _os
             orig_base = _os.path.splitext(_os.path.basename(orig_path))[0].lower()
+            # Normalise: remove stray spaces that AI models insert mid-token
+            # (e.g. "system_a rchitecture" → "system_architecture")
+            orig_base_norm = orig_base.replace(" ", "") if orig_base else ""
             if orig_base and orig_base != "image":
                 # Check exact stem match
                 if orig_base in stem_index:
                     candidate = stem_index[orig_base]
                     if candidate.name not in used_images:
                         return candidate
+                # Check normalised stem match (spaces removed from both sides)
+                if orig_base_norm and orig_base_norm != orig_base:
+                    for stem, img_file in stem_index.items():
+                        if stem.replace(" ", "") == orig_base_norm and img_file.name not in used_images:
+                            return img_file
                 # Check prefix match (e.g., "fig1" matches "fig1_architecture")
                 for stem, img_file in stem_index.items():
                     if stem.startswith(orig_base) and img_file.name not in used_images:
+                        return img_file
+                    # Also try normalised prefix match
+                    if orig_base_norm and stem.replace(" ", "").startswith(orig_base_norm) and img_file.name not in used_images:
                         return img_file
 
         # Strategy 3: Match by ImageNumber position (legacy fallback)
@@ -2922,7 +2933,7 @@ def generate_stream(paper_id: str):
                             except Exception:
                                 raw2 = None
                         if raw2 and isinstance(raw2, dict):
-                            from PaperRiset.eks.editor.single import _normalize_paper_shape as _nps
+                            from editor.single import _normalize_paper_shape as _nps
                             pd2 = _nps(raw2)
                             ok_bg, err_bg = _persist_paper_data(paper_id, user_id, pd2)
                             if ok_bg:
@@ -3014,7 +3025,7 @@ def generate_stream(paper_id: str):
                     return
 
             # ── Normalize paper shape ───────────────────────────────
-            from PaperRiset.eks.editor.single import _normalize_paper_shape
+            from editor.single import _normalize_paper_shape
             paper_data = _normalize_paper_shape(raw_paper)
 
             # ── Post-process: fix mojibake + clean LaTeX artifacts ────
@@ -3123,8 +3134,9 @@ def generate_stream(paper_id: str):
                                 section = item.get("_section", "")
                                 # Try to extract filename from original path (e.g., "gambar/fig1.png" → "fig1")
                                 if orig_path:
-                                    import os
+                                    import os, re as _re
                                     base = os.path.splitext(os.path.basename(orig_path))[0]
+                                    base = _re.sub(r'[^A-Za-z0-9_.-]', '_', base)
                                     if base and base != "image":
                                         target_path = base + ".jpg"
                                 if not target_path and img_num:

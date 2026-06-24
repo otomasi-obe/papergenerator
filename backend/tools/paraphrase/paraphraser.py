@@ -26,7 +26,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from shared_ai_client import ai_generate, load_env
 
 from . import PROMPT, STYLE_CONFIGS, CITATION_PATTERNS, PRESERVE_TERMS

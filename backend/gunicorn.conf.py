@@ -10,11 +10,11 @@ bind = "0.0.0.0:8001"
 backlog = 4096  # Doubled for 1000+ concurrent users; nginx queues overflow
 
 # === Worker Processes ===
-# 4 workers × 4 threads = 16 concurrent request slots.
-# REDUCED from 16 to 4 (2026-06-18): 16 workers + 4 image workers (Playwright/Chrome)
-# = 4-7 GB RAM → OOM kill → orphan port 8001 → 100K+ restart loop.
-# With 4 workers: ~1.2 GB base + ~2 GB image pool = ~3.2 GB total, safe for 23 GB.
-workers = 4
+# 12 workers × 4 threads = 48 concurrent request slots.
+# Increased from 4 to 12 for better throughput under 1000+ concurrent users.
+# Image workers use separate pool (~2 GB). 12×~150MB = ~1.8 GB + 2 GB image = ~3.8 GB,
+# well within 23 GB RAM. Previous OOM was from 16 sync workers (no threads) + Chrome.
+workers = 12
 worker_class = "gthread"
 threads = 4  # Reduced from 8 to 4 — still enough for I/O-bound AI API calls
 worker_connections = 1000  # Used by gevent/eventlet; no-op for gthread but harmless

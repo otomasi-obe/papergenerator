@@ -37,7 +37,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple, Set, Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from shared_ai_client import ai_generate
 
 

@@ -204,6 +204,8 @@ export const useChatStore = defineStore('chat', () => {
               tool_calls: s.streamingMessage.tool_calls || [],
               created_at: s.streamingMessage.created_at || new Date().toISOString(),
             },
+            searchResults: s.searchResults || [],
+            searchMessage: s.searchMessage || '',
             savedAt: Date.now(),
           }
         }
@@ -237,6 +239,8 @@ export const useChatStore = defineStore('chat', () => {
             tool_calls: data.streamingMessage?.tool_calls || [],
             created_at: data.streamingMessage?.created_at || new Date().toISOString(),
           }
+          stream.searchResults = data.searchResults || []
+          stream.searchMessage = data.searchMessage || ''
           stream.messages = [...stream.messages, stream.streamingMessage]
           restoredConvIds.push(convId)
         }
@@ -278,6 +282,8 @@ export const useChatStore = defineStore('chat', () => {
   const streamingMessage = ref(null)
   const connectionState = ref('idle') // 'idle' | 'connecting' | 'connected' | 'disconnected' | 'retrying'
   const streamPhase = ref('idle') // 'idle' | 'sending' | 'thinking' | 'composing' | 'streaming' | 'done'
+  const searchResults = ref<any[]>([])
+  const searchMessage = ref('')
   const error = ref(null)
 
   // Active background job (full-paper generation) belonging to the current
@@ -322,6 +328,8 @@ export const useChatStore = defineStore('chat', () => {
     streamingMessage.value = s.streamingMessage
     connectionState.value = s.connectionState
     streamPhase.value = s.streamPhase || 'idle'
+    searchResults.value = s.searchResults || []
+    searchMessage.value = s.searchMessage || ''
   }
 
   async function _syncFromStream(convId) {
@@ -333,6 +341,8 @@ export const useChatStore = defineStore('chat', () => {
       streamingMessage.value = s.streamingMessage
       connectionState.value = s.connectionState
       streamPhase.value = s.streamPhase || 'idle'
+      searchResults.value = s.searchResults || []
+      searchMessage.value = s.searchMessage || ''
     }
     // Persist streaming state to userState (DB) for cross-device/refresh survival
     // Throttle: max once per 5 seconds to avoid DB write flood (BUG 4)
@@ -361,18 +371,126 @@ export const useChatStore = defineStore('chat', () => {
       if (typeof result !== 'string' || !result.startsWith(PROPOSAL_PREFIX)) continue
       try {
         const proposal = JSON.parse(result.slice(PROPOSAL_PREFIX.length))
-        if (proposal.kind === 'multi_question') {
-          return {
-            ...message,
-            metadata: {
-              ...(message.metadata || {}),
-              kind: 'multi_question',
-              questions: Array.isArray(proposal.questions) ? proposal.questions : [],
-              phase: proposal.phase,
-              phase_name: proposal.phase_name,
-              description: proposal.description,
-            },
-          }
+        // Reconstruct metadata for ALL proposal kinds from tool_calls
+        switch (proposal.kind) {
+          case 'multi_question':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'multi_question',
+                questions: Array.isArray(proposal.questions) ? proposal.questions : [],
+                phase: proposal.phase,
+                phase_name: proposal.phase_name,
+                description: proposal.description,
+              },
+            }
+          case 'ask_user':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'ask_user',
+                question: proposal.question || '',
+                options: Array.isArray(proposal.options) ? proposal.options : [],
+              },
+            }
+          case 'chips':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'chips',
+                chips: Array.isArray(proposal.chips) ? proposal.chips : [],
+                context_hint: proposal.context_hint || '',
+              },
+            }
+          case 'chart_proposal':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'chart_proposal',
+                url: proposal.url || proposal.image_url || '',
+                image_id: proposal.image_id ?? null,
+                spec: proposal.spec || null,
+                title: proposal.title || '',
+                section_index: proposal.section_index,
+                content_index: proposal.content_index,
+              },
+            }
+          case 'revise_data':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'revise_data',
+                directive: proposal.directive || '',
+              },
+            }
+          case 'propose_revisi':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'propose_revisi',
+                tool: proposal.tool,
+                scope: proposal.scope,
+                section_index: proposal.section_index,
+                content_index: proposal.content_index,
+                text: proposal.text,
+                rewrite: proposal.rewrite,
+                target_language: proposal.target_language,
+              },
+            }
+          case 'file_review':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'file_review',
+                file_id: proposal.file_id ?? null,
+                filename: proposal.filename || '',
+                word_count: proposal.word_count || 0,
+                head: proposal.head || '',
+                tail: proposal.tail || '',
+                suggested_kinds: Array.isArray(proposal.suggested_kinds) ? proposal.suggested_kinds : [],
+              },
+            }
+          case 'review_plan':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'review_plan',
+                directive: proposal.directive || '',
+                scope: proposal.scope || 'whole',
+              },
+            }
+          case 'image_prompt_review':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'image_prompt_review',
+                images: Array.isArray(proposal.images) ? proposal.images : [],
+                paper_id: proposal.paper_id ?? null,
+              },
+            }
+          case 'validation_error':
+            return {
+              ...message,
+              metadata: {
+                ...(message.metadata || {}),
+                kind: 'validation_error',
+                error_code: proposal.error_code || '',
+                message: proposal.message || '',
+                hint: proposal.hint || '',
+                retry_prompt: proposal.retry_prompt || '',
+              },
+            }
+          default:
+            break
         }
       } catch { /* ignore malformed persisted proposal */ }
     }
@@ -459,8 +577,7 @@ export const useChatStore = defineStore('chat', () => {
     // Immediately wipe all paper-scoped state BEFORE any async work so the
     // UI never shows conversations/messages from the previous paper.
     currentPaperId.value = paperId
-    messages.value = []
-    currentConversationId.value = null
+    closeConversation()
     conversations.value = []
     // streams.value preserved for non-old-paper conversations (BUG 13)
 
@@ -469,7 +586,17 @@ export const useChatStore = defineStore('chat', () => {
 
     startActiveJobPolling(paperId)
 
-    let target = conversations.value[0]
+    let target = null
+    // Restore last active conversation ID from localStorage
+    try {
+      const savedConvId = localStorage.getItem('chat_last_conv_id')
+      if (savedConvId) {
+        target = conversations.value.find(c => c.id === savedConvId) || null
+      }
+    } catch { /* ignore */ }
+    if (!target) {
+      target = conversations.value[0]
+    }
     if (!target) {
       target = await createConversation(paperId)
     }
@@ -573,13 +700,18 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const res = await api.get(`/api/chat/conversations/${convId}`)
       currentConversationId.value = res.data.id
+      // Persist last active conv ID to localStorage so openPaper restores it
+      try { localStorage.setItem('chat_last_conv_id', convId) } catch { /* ignore */ }
       const s = _ensureStream(convId)
       // If a stream is already running for this conv, keep its in-memory
       // messages (which include the partial assistant bubble). Otherwise,
       // hydrate from the server-saved transcript.
-      if (!s.isStreaming) {
+      // BUG FIX: When isStreaming=true AND connectionState='reconnecting' (restored from sessionStorage),
+      // still fetch messages from API and replace the streaming bubble instead of skipping.
+      const _isReconnectingStream = s.isStreaming && s.connectionState === 'reconnecting'
+      if (!s.isStreaming || _isReconnectingStream) {
         s.messages = (res.data.messages || []).map(_hydrateMessageMetadata)
-        s.streamingMessage = null
+        if (!s.isStreaming) s.streamingMessage = null
         
         // Check if there's a saved streaming state in sessionStorage
         try {
@@ -619,7 +751,11 @@ export const useChatStore = defineStore('chat', () => {
                   s.streamPhase = _restoredContent ? 'streaming' : (_restoredThinking ? 'thinking' : 'composing')
                   // Replace the LAST assistant message from server (if any) instead of appending
                   // This prevents duplicate reasoning blocks
-                  const lastAssistantIdx = s.messages.findLastIndex(m => m.role === 'assistant')
+                  // Manual reverse loop — findLastIndex is ES2023 and crashes older browsers
+                  let lastAssistantIdx = -1
+                  for (let _i = s.messages.length - 1; _i >= 0; _i--) {
+                    if (s.messages[_i].role === 'assistant') { lastAssistantIdx = _i; break }
+                  }
                   if (lastAssistantIdx >= 0) {
                     s.messages[lastAssistantIdx] = s.streamingMessage
                   } else {
@@ -717,8 +853,7 @@ export const useChatStore = defineStore('chat', () => {
       _stopResumePoll(convId)
       delete streams.value[convId]
       if (currentConversationId.value === convId) {
-        currentConversationId.value = null
-        messages.value = []
+        closeConversation()
         // open another chat if any, else auto-create
         if (conversations.value[0]) {
           await openConversation(conversations.value[0].id)
@@ -744,8 +879,7 @@ export const useChatStore = defineStore('chat', () => {
       conversations.value = conversations.value.filter(c => c.id !== convId)
       _stopResumePoll(convId)
       delete streams.value[convId]
-      currentConversationId.value = null
-      messages.value = []
+      closeConversation()
       // create a fresh empty chat in the same paper
       if (paperId) {
         const conv = await createConversation(paperId)
@@ -772,19 +906,13 @@ export const useChatStore = defineStore('chat', () => {
       // Show an inline assistant warning instead of a silent no-op so the user
       // understands why their message did not go through.
       if (activeJob.value && activeJob.value.active) {
-        stream.messages.push({
-          id: _nextMsgId(),
-          role: 'user',
-          content,
-          created_at: new Date().toISOString(),
-        })
-        stream.messages.push({
-          id: _nextMsgId(),
-          role: 'assistant',
-          content: '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.',
-          created_at: new Date().toISOString(),
-        })
-        _syncFromStream(convId)
+        // Show warning as toast instead of pushing ghost user + assistant messages
+        window.dispatchEvent(new CustomEvent('papergenerator-toast', {
+          detail: {
+            message: '⚠️ Chat lain di paper ini masih generate paper. Tunggu selesai dulu, atau lakukan hal lain (edit Section, Figures, dll) sambil menunggu.',
+            type: 'warning',
+          },
+        }))
         return
       }
 
@@ -963,6 +1091,10 @@ export const useChatStore = defineStore('chat', () => {
                 const idx = stream.messages.findIndex(m => m === stream.streamingMessage)
                 if (idx >= 0) {
                   stream.messages.splice(idx, 1)
+                  // Also remove the preceding user message to avoid ghost user msg
+                  if (idx > 0 && stream.messages[idx - 1]?.role === 'user') {
+                    stream.messages.splice(idx - 1, 1)
+                  }
                 }
               } else {
                 stream.streamingMessage.content += `\n\n_${friendly}_`
@@ -1005,6 +1137,11 @@ export const useChatStore = defineStore('chat', () => {
       // Clear saved streaming state from sessionStorage
       _clearSessionStream(convId)
       _syncFromStream(convId)
+      // Clean userState.chat.streaming so cross-device restore doesn't show stale bubble
+      try {
+        const { useUserStateStore } = await import('./userState')
+        useUserStateStore().deleteKey('chat.streaming')
+      } catch { /* ignore */ }
       // Refresh quota after every chat message (token usage changes)
       try {
         const { useQuotaStore } = await import('./quota')
@@ -1441,18 +1578,51 @@ export const useChatStore = defineStore('chat', () => {
   function reset() {
     stopActiveJobPolling()
     for (const convId in _resumePollers) _stopResumePoll(convId)
+    // Clear all persisted stream state from sessionStorage
+    for (const convId of Object.keys(streams.value)) {
+      _clearSessionStream(convId)
+    }
+    try { sessionStorage.removeItem(SESSION_KEY) } catch { /* ignore */ }
+    // Clear userState streaming reference
+    try {
+      import('./userState').then(({ useUserStateStore }) => {
+        useUserStateStore().deleteKey('chat.streaming')
+      }).catch(() => {})
+    } catch { /* ignore */ }
     activeJob.value = null
     currentPaperId.value = null
     currentConversationId.value = null
     conversations.value = []
     messages.value = []
     streamingMessage.value = null
+    isStreaming.value = false
+    connectionState.value = 'idle'
+    streamPhase.value = 'idle'
+    searchResults.value = []
+    searchMessage.value = ''
     streams.value = {}
     error.value = null
+    try { localStorage.removeItem('chat_last_conv_id') } catch { /* ignore */ }
   }
 
   // Restore any in-flight streams from sessionStorage on store init
   _restoreStreamsFromSession()
+
+  /**
+   * Close the current conversation: null currentConversationId AND reset all
+   * message/stream state to prevent stale references.
+   */
+  function closeConversation() {
+    currentConversationId.value = null
+    messages.value = []
+    isStreaming.value = false
+    streamingMessage.value = null
+    connectionState.value = 'idle'
+    streamPhase.value = 'idle'
+    searchResults.value = []
+    searchMessage.value = ''
+    try { localStorage.removeItem('chat_last_conv_id') } catch { /* ignore */ }
+  }
 
   return {
     paperChats,
@@ -1466,6 +1636,8 @@ export const useChatStore = defineStore('chat', () => {
     streamingMessage,
     connectionState,
     streamPhase,
+    searchResults,
+    searchMessage,
     error,
     activeJob,
     selectedModel,
@@ -1474,6 +1646,7 @@ export const useChatStore = defineStore('chat', () => {
     loadConversations,
     openPaper,
     openConversation,
+    closeConversation,
     createConversation,
     newChatForCurrentPaper,
     renameConversation,

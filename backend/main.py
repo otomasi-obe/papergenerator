@@ -17,8 +17,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Add project root to sys.path so PaperRiset.eks.editor.* is importable
-_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+# Add project root to sys.path so backend.editor.* is importable
+_PROJECT_ROOT = str(Path(__file__).resolve().parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -84,8 +84,8 @@ try:
         )
 except Exception as e:
     logging.getLogger(__name__).warning(f"Failed to initialize Sentry: {e}")
-from PaperRiset.eks.editor.chunked import GenerationCancelled
-from PaperRiset.eks.editor.single import generate_paper_json_single
+from editor.chunked import GenerationCancelled
+from editor.single import generate_paper_json_single
 from utils.ai_tools.model_config import get_primary_generate_model
 
 # Load environment variables.
@@ -266,7 +266,9 @@ cors_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:8
 if app.config.get("ENV") != "production" and not app.config.get("PRODUCTION"):
     cors_origins.extend(["http://localhost:8000", "http://localhost:1000", "http://localhost:5173"])
     cors_origins = list(set(cors_origins))
-CORS(app, supports_credentials=True, origins=cors_origins if cors_origins else "*")
+if not cors_origins:
+    raise RuntimeError("CORS_ORIGINS must be set to at least one origin in .env")
+CORS(app, supports_credentials=True, origins=cors_origins)
 db.init_app(app)
 jwt = JWTManager(app)
 
@@ -479,6 +481,7 @@ _OPENAPI_PATH = Path(__file__).parent / "openapi.yaml"
 
 
 @app.route("/api/openapi.yaml", methods=["GET"])
+@jwt_required()
 def openapi_yaml():
     """Serve the OpenAPI 3.1 spec as YAML."""
     if not _OPENAPI_PATH.is_file():
@@ -520,6 +523,7 @@ _SWAGGER_HTML = """<!DOCTYPE html>
 
 
 @app.route("/api/docs", methods=["GET"])
+@jwt_required()
 def api_docs():
     """Serve Swagger UI from CDN, pointed at /api/openapi.yaml."""
     return Response(_SWAGGER_HTML, mimetype="text/html")
@@ -1187,7 +1191,7 @@ def generate():
             )
         messages.append({"role": "user", "content": prompt})
 
-        from PaperRiset.eks.editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
+        from editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
 
         result, model_used = _call_aiotomasi_with_fallback(
             messages,
@@ -1488,7 +1492,7 @@ def _run_generate_full_job(
         # Without this, an upstream truncation (e.g. the model stopped at
         # section1 because of `max_tokens`) silently produces a stub paper that
         # only the user discovers after waiting 5–10 minutes.
-        from PaperRiset.eks.editor.single import _validate_paper_shape as _vps
+        from editor.single import _validate_paper_shape as _vps
 
         validation = _vps(paper_data)
         if not validation["ok"]:
@@ -2105,6 +2109,7 @@ def upload_image_legacy():
 
 
 @app.route("/api/export", methods=["POST"])
+@limiter.limit("20 per minute")
 @jwt_required()
 def export_docx():
     try:
@@ -2141,7 +2146,22 @@ def export_docx():
                 _pid = str(paper.get("id") or data.get("paper_id") or "").strip()
                 if _pid:
                     from tools.image_generation.reconcile import reconcile_figure_images
+                    from sqlalchemy.orm.attributes import flag_modified
                     reconcile_figure_images(_pid, paper, UPLOAD_FOLDER)
+                    
+                    # Also reconcile section images (handles inline gambar items)
+                    from tools.paperfull.jobs import _reconcile_section_images
+                    _reconcile_section_images(paper, _pid, UPLOAD_FOLDER)
+                    
+                    # Persist the reconciled paths back to the database
+                    try:
+                        db_paper = Paper.query.filter_by(id=_pid).first()
+                        if db_paper:
+                            db_paper.data = paper
+                            flag_modified(db_paper, "data")
+                            db.session.commit()
+                    except Exception as persist_err:
+                        log.warning("[export] Failed to persist reconciled paths to DB: %s", persist_err)
         except Exception:
             log.warning("figure image reconciliation failed", exc_info=True)
 
@@ -2336,7 +2356,7 @@ def word_addon_static(filepath):
 
 
 @app.route("/api/word-addon/extract", methods=["POST", "OPTIONS"])
-@limiter.limit("10 per minute")  # prevent resource exhaustion from unauthenticated uploads
+@limiter.limit("100 per minute")  # prevent resource exhaustion from unauthenticated uploads
 @jwt_required(optional=True)
 def word_addon_extract():
     """Extract text from uploaded PDF, DOCX, or TXT file."""
@@ -2550,7 +2570,7 @@ def word_addon_content():
 
 if __name__ == "__main__":
     port = int(os.getenv("BACKEND_PORT", 8001))
-    debug = os.getenv("FLASK_DEBUG", "true").lower() == "true"
+    debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     log.info("=" * 60)
     log.info("PaperFull API starting on port %d", port)
     log.info("🚀 PaperFull API running on http://localhost:%d", port)

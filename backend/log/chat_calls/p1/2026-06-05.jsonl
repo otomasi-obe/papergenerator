@@ -1,2 +1,0 @@
-{"ts": "2026-06-05T18:09:38.513279Z", "conv_id": "c1", "role": "tool_call", "payload": {"tool": "RouteIntent", "arguments": {"mode": "edit"}, "model": null}}
-{"ts": "2026-06-05T18:09:38.513654Z", "conv_id": "c1", "role": "tool_result", "payload": {"tool": "RouteIntent", "result_preview": "{'kind': 'route', 'mode': 'edit', 'reasoning': ''}"}}

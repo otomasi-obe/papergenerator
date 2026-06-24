@@ -89,6 +89,51 @@ def reconcile_figure_images(paper_id: str, paper_data: dict, upload_base: Path) 
     )
 
 
+def _normalise_filename(fname: str) -> str:
+    """Remove stray spaces inside a filename.
+
+    AI models sometimes emit paths like ``system_a rchitecture.png`` or
+    ``error_v s_f req.png`` — spaces inserted mid-token (likely a tokeniser
+    artifact). Disk files are ``system_architecture.jpg`` etc.
+    Stripping all spaces makes matching robust.
+    """
+    if not fname:
+        return fname
+    return fname.replace(" ", "")
+
+
+def _normalised_stem_match(
+    stem: str,
+    file_map: dict[str, Path],
+    used_images: set[str],
+) -> Optional[Path]:
+    """Match a stem against file_map keys, ignoring spaces and extension.
+
+    Tries (in order):
+      1. Exact stem match (extension-agnostic)
+      2. Stem match with spaces removed from BOTH sides
+      3. Stem match ignoring underscores vs hyphens
+    """
+    if not stem:
+        return None
+    stem_norm = _normalise_filename(stem).lower()
+    # Build a normalised stem → Path index once
+    for fkey, fpath in file_map.items():
+        if fpath.name in used_images:
+            continue
+        fkey_stem = os.path.splitext(fkey)[0]
+        if fkey_stem == stem:
+            return fpath
+        if _normalise_filename(fkey_stem).lower() == stem_norm:
+            return fpath
+        # Also try underscore/hyphen equivalence
+        fkey_stem_norm = fkey_stem.replace("-", "_").lower()
+        stem_norm_uh = stem_norm.replace("-", "_")
+        if fkey_stem_norm == stem_norm_uh:
+            return fpath
+    return None
+
+
 def _match_image(
     current_path: str,
     title: str,
@@ -103,13 +148,18 @@ def _match_image(
     if fname and fname in file_map and fname not in used_images:
         return file_map[fname]
 
+    # Strategy 0a: normalised filename match (strip stray spaces)
+    if fname:
+        fname_norm = _normalise_filename(fname)
+        if fname_norm != fname and fname_norm in file_map and fname_norm not in used_images:
+            return file_map[fname_norm]
+
     # Strategy 0b: extension-agnostic stem match (JSON says .png, Gemini saved .jpg)
     if fname:
         stem = os.path.splitext(fname)[0]
-        if stem:
-            for fkey, fpath in file_map.items():
-                if os.path.splitext(fkey)[0] == stem and fkey not in used_images:
-                    return fpath
+        matched = _normalised_stem_match(stem, file_map, used_images)
+        if matched:
+            return matched
 
     # Strategy 1: match by figure number
     fig_num = _extract_figure_number(current_path, title)
@@ -222,7 +272,10 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
                         break
                 continue
 
-        # Try to resolve the bare filename against the upload folder
+        # Try to resolve the bare filename against the upload folder.
+        # AI models sometimes insert stray spaces inside filenames
+        # (e.g. "system_a rchitecture.png" instead of "system_architecture.png");
+        # normalise them before matching.
         fname = os.path.basename(path_text)
         if fname:
             # Extension-aware lookup: JSON may say .png but actual file is .jpg (Gemini output)
@@ -231,11 +284,9 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
             if fname in file_map:
                 matched_path = file_map[fname]
             elif stem:
-                # Try stem match with any extension (e.g. fig1.png → fig1.jpg)
-                for fkey, fpath in file_map.items():
-                    if os.path.splitext(fkey)[0] == stem:
-                        matched_path = fpath
-                        break
+                # Try stem match with any extension (e.g. fig1.png → fig1.jpg),
+                # including normalised (spaces removed) stem match.
+                matched_path = _normalised_stem_match(stem, file_map, set())
             if matched_path:
                 item["Path"] = str(matched_path)
                 patched += 1

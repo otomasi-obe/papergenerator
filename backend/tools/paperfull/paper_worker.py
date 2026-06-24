@@ -123,7 +123,7 @@ def run_generate_paper(
     # Build a Flask app context inside the worker so SQLAlchemy can talk to the DB.
     from main import app  # noqa: F401  (boots the global Flask app + DB binding)
     from database.models import AiJob, Paper, db, safe_commit
-    from PaperRiset.eks.editor.chunked import (
+    from editor.chunked import (
         GenerationCancelled,
         generate_paper_json_chunked,
     )
@@ -338,8 +338,9 @@ def _auto_enqueue_figure_images(
         target_path = None
         orig_path = str(fig.get("Path") or fig.get("path") or "")
         if orig_path:
-            import os
+            import os, re as _re
             base = os.path.splitext(os.path.basename(orig_path))[0]
+            base = _re.sub(r'[^A-Za-z0-9_.-]', '_', base)
             if base and base != "image":
                 target_path = base + ".jpg"
         if not target_path:

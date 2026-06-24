@@ -711,7 +711,7 @@ class TextHumanizer:
         """Detect AI score, humanize if above threshold, return comparison."""
         # Import detector from sibling package
         import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ai-detectors"))
+        sys.path.append(str(Path(__file__).resolve().parents[1] / "ai-detectors"))
         from detector import AIDetector
 
         detector = AIDetector()

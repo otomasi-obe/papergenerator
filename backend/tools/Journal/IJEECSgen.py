@@ -484,6 +484,20 @@ def _clean_latex(text):
     text = re.sub(r'\^([a-zA-Z0-9])', _sup_single, text)
     text = re.sub(r'\\[a-zA-Z]+', '', text)
     text = re.sub(r'[{}]', '', text)
+    # Strip stray single-char artifacts at edges (LLM data noise)
+    # Pattern: paired b/i at both edges (LaTeX \b or \i artifact)
+    if text.startswith('b') and text.endswith(' b'):
+        text = text[1:].rstrip()
+        text = text[:-1].rstrip()
+    elif text.startswith('i ') and text.endswith(' i'):
+        text = text[2:]
+        text = text[:-1].rstrip()
+    # Math content: strip stray i/b at edges
+    _math_chars = set('ᵢⱼₖₗₘₙₒₚᵣₛₜₓᵧ₀₁₂₃₄₅₆₇₈₉ₐₑₕⁿˣʸ⁰¹²³⁴⁵⁶⁷⁸⁹θαπσβγδελμωφψρτηζξχν')
+    if any(c in _math_chars for c in text):
+        text = re.sub(r'^[ib](?=[A-Z(θαπσβγδελμω])', '', text)
+        text = re.sub(r'^[ib]\s+(?=[θαπσβγδελμω])', '', text)
+        text = re.sub(r'(?<=\))[ib]$', '', text)
     return text.strip()
 
 
@@ -604,6 +618,7 @@ def add_table_element(doc, tbl_data, tbl_counter):
                 cell = table.rows[0].cells[j]
                 cell.text = ""
                 p = cell.paragraphs[0]
+                set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = p.add_run(_clean_latex(str(h)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"], bold=True)
@@ -621,6 +636,7 @@ def add_table_element(doc, tbl_data, tbl_counter):
                 cell = table.rows[row_idx].cells[j]
                 cell.text = ""
                 p = cell.paragraphs[0]
+                set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = p.add_run(_clean_latex(str(val)))
                 set_run_font(run, CFG["font_body"], CFG["size_caption"])

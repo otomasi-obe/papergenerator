@@ -270,7 +270,7 @@ def run_translator(data: dict) -> Generator[dict, None, None]:
             if detected_code and detected_code != "auto":
                 source_detected = resolve_lang_name(detected_code)
             else:
-                sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+                sys.path.append(str(Path(__file__).resolve().parent.parent))
                 from shared_ai_client import ai_generate
                 detect_system = (
                     "You are a language detection expert. Respond with ONLY the full "

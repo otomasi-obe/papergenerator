@@ -36,7 +36,7 @@ from pathlib import Path
 from datetime import datetime
 
 # ── shared AI client ──────────────────────────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from shared_ai_client import ai_generate
 
 # ── Constants ──────────────────────────────────────────────────────────────────

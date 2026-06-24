@@ -11,6 +11,7 @@ Image serving accepts (priority order):
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from pathlib import Path
 
@@ -311,7 +312,10 @@ def sign_paper_resource(paper_id: str):
 @image_serve.route("/<paper_id>/<filename>", methods=["GET"])
 def get_paper_image(paper_id: str, filename: str):
     """Serve a paper image. Cookie/Bearer JWT preferred; signed token for img tags."""
-    if not FILENAME_RE.match(filename):
+    # Sanitize filename: replace spaces and other unsafe chars (backward compat
+    # with old files saved before worker sanitization was added).
+    sanitized = re.sub(r'[^A-Za-z0-9_.-]', '_', filename)
+    if not FILENAME_RE.match(sanitized):
         return jsonify({"error": "Invalid filename"}), 400
     if not PAPER_ID_RE.match(paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
@@ -323,17 +327,17 @@ def get_paper_image(paper_id: str, filename: str):
             return jsonify({"error": "Unauthorized"}), 401
         user_id = uid
     else:
+        user_id = None
+        # Try query-string JWT first, fall back to cookie/Bearer
         token_qs = request.args.get("t")
         if token_qs and "Authorization" not in request.headers:
-            # Extract identity directly from the query-string token
-            # instead of mutating request.headers.environ (unsafe side effect)
             try:
                 from flask_jwt_extended import decode_token
                 decoded = decode_token(token_qs)
                 user_id = int(decoded.get("sub"))
             except Exception:
-                return jsonify({"error": "Unauthorized"}), 401
-        else:
+                pass
+        if user_id is None:
             try:
                 verify_jwt_in_request()
             except Exception:
@@ -344,7 +348,10 @@ def get_paper_image(paper_id: str, filename: str):
                 return jsonify({"error": "Invalid user identity"}), 401
 
     # Verify both paper ownership AND image belongs to that paper (security fix)
-    img = PaperImage.query.filter_by(paper_id=paper_id, filename=filename).first()
+    # Try sanitized filename first, fall back to original for backwards compat
+    img = PaperImage.query.filter_by(paper_id=paper_id, filename=sanitized).first()
+    if not img and sanitized != filename:
+        img = PaperImage.query.filter_by(paper_id=paper_id, filename=filename).first()
     if not img:
         return jsonify({"error": "Image not found"}), 404
     if img.user_id != user_id:
@@ -354,7 +361,10 @@ def get_paper_image(paper_id: str, filename: str):
     if not paper_dir:
         return jsonify({"error": "Invalid path"}), 400
 
-    filepath = (paper_dir / filename).resolve()
+    # Try sanitized filename on disk first, fall back to original
+    filepath = (paper_dir / sanitized).resolve()
+    if not filepath.is_file() and sanitized != filename:
+        filepath = (paper_dir / filename).resolve()
     try:
         filepath.relative_to(paper_dir)
     except ValueError:

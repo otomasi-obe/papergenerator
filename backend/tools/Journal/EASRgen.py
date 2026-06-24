@@ -683,6 +683,9 @@ def _resolve_image_path(path_text: str) -> Path | None:
     cand3 = BASE.parent / "template" / p
     if cand3.exists():
         return cand3
+    # cwd-relative fallback (batch test / web pipeline)
+    if p.exists():
+        return p
     return None
 
 def add_figure(doc, fig_data):
