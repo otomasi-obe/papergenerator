@@ -1,2 +1,0 @@
-Test DOCX content with tables
-Cell 1 | Cell 2
