@@ -31,7 +31,7 @@ from tools.data.chart_generator import (
     ChartSpec, generate_chart, render_chart_base64,
     parse_data_file, CHART_KINDS, COLOR_PALETTES,
 )
-from database.models import Paper, PaperImage, db, safe_commit
+from utils.database.models import Paper, PaperImage, db, safe_commit
 from tools.editor.utils import safe_paper_image_dir, safe_paper_dir, PAPER_ID_RE
 
 log = logging.getLogger(__name__)

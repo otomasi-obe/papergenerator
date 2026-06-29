@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
 
-from database.models import ChatDraft, ChatMessage, Conversation, Paper, PaperFile, db, safe_commit
+from utils.database.models import ChatDraft, ChatMessage, Conversation, Paper, PaperFile, db, safe_commit
 from utils.core.user_storage import get_username
 import uuid
 log = logging.getLogger(__name__)

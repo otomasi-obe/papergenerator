@@ -30,7 +30,7 @@ from flask import Blueprint, Response, current_app, jsonify, request, stream_wit
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from werkzeug.utils import secure_filename
 
-from database.models import AiJob, Paper, PaperImage, db, safe_commit
+from utils.database.models import AiJob, Paper, PaperImage, db, safe_commit
 
 log = logging.getLogger(__name__)
 
@@ -204,6 +204,19 @@ def create_data_job(paper_id: str):
                 return jsonify({"error": f"Format tidak didukung: {ext}"}), 400
             dest = os.path.join(temp_dir, fname)
             f.save(dest)
+            # Magic bytes validation — reject files with mismatched content
+            try:
+                from tools.File.file_extractor import FILE_SIGNATURES, detect_file_type  # noqa: PLC0415
+                with open(dest, "rb") as _mf:
+                    _header = _mf.read(16)
+                _detected = detect_file_type(_header, fname)
+            except ImportError:
+                _detected = ext  # fallback: trust extension if module unavailable
+            if _detected is None:
+                # No known signature matched — likely a spoofed extension
+                if temp_dir:
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                return jsonify({"error": f"File content does not match expected format: {fname}"}), 400
             file_paths.append(dest)
             file_names.append(f.filename or fname)
 

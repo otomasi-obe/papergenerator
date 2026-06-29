@@ -101,21 +101,3 @@ def validate_query(schema: Dict[str, Any]):
         return wrapper
     return decorator
 
-
-def validate_data(data: Any, schema: Dict[str, Any]) -> tuple[bool, Optional[list]]:
-    """
-    Validate data against schema without decorator.
-
-    Args:
-        data: Data to validate
-        schema: JSONSchema definition
-
-    Returns:
-        Tuple of (is_valid, errors_list)
-    """
-    validator = Draft7Validator(schema)
-    errors = list(validator.iter_errors(data))
-
-    if errors:
-        return False, errors
-    return True, None

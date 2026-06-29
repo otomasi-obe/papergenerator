@@ -7,31 +7,21 @@ Endpoint: https://doaj.org/api/search/articles/{query}?page=N&pageSize=M
 All DOAJ articles are open access by definition.
 """
 
-import html
 import logging
-import re
 from typing import Iterable
 from urllib.parse import quote
 
-from ..http_client import RateLimiter, fetch_json
+from ..http_client import RateLimiter, fetch_json, strip_html
 from ..paper import Paper
 
 log = logging.getLogger(__name__)
 
 BASE = "https://doaj.org/api/search/articles"
-_TAG_RE = re.compile(r"<[^>]+>")
-
-
-def _clean(text: str | None) -> str | None:
-    if not text:
-        return None
-    text = _TAG_RE.sub("", text)
-    return html.unescape(text).strip() or None
 
 
 def _parse(result: dict) -> Paper | None:
     bib = result.get("bibjson") or {}
-    title = _clean(bib.get("title"))
+    title = strip_html(bib.get("title"))
     if not title:
         return None
 
@@ -80,7 +70,7 @@ def _parse(result: dict) -> Paper | None:
         source_id=str(result.get("id", "")),
         title=title,
         authors=authors,
-        abstract=_clean(bib.get("abstract")),
+        abstract=strip_html(bib.get("abstract")),
         year=year,
         venue=venue,
         venue_type="journal",

@@ -6,6 +6,12 @@ import os
 # Add backend directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Load .env files (mirrors main.py so REDIS_URL picks up the password)
+from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=True)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
+
 from redis import Redis
 from rq import Worker, Queue
 

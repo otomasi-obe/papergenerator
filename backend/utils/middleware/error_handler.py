@@ -21,18 +21,6 @@ class ValidationError(Exception):
         super().__init__(self.message)
 
 
-def error_response(message: str, code: str, category: str = "CLIENT", status_code: int = 400, extra: dict | None = None):
-    """Standardized error response builder.
-
-    All API errors should use this function to ensure consistent format:
-        {"error": "message", "code": "ERROR_CODE", "category": "category"}
-    """
-    body = {"error": message, "code": code, "category": category}
-    if extra:
-        body.update(extra)
-    return jsonify(body), status_code
-
-
 def format_validation_error(errors: List[JSONSchemaValidationError]) -> tuple:
     """
     Format JSONSchema validation errors into consistent API response.

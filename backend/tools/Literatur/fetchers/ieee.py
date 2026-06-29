@@ -11,11 +11,11 @@ url html_url tetap valid. Cek juga via Unpaywall (DOI-based) untuk OA mirror.
 
 import logging
 import os
-import re
 import time
 from typing import Iterable
+from urllib.parse import quote_plus
 
-from ..http_client import RateLimiter
+from ..http_client import RateLimiter, strip_html
 from ..paper import Paper
 
 log = logging.getLogger(__name__)
@@ -36,15 +36,6 @@ HEADERS = {
     "Accept": "application/json, text/plain, */*",
     "Origin": IEEE_BASE,
 }
-
-_TAG_RE = re.compile(r"<[^>]+>")
-
-
-def _strip_html(text: str | None) -> str | None:
-    if not text:
-        return None
-    text = _TAG_RE.sub(" ", text)
-    return " ".join(text.split()).strip() or None
 
 
 def _bootstrap_session(client, query: str) -> bool:
@@ -71,7 +62,6 @@ def _post_search(client, query: str, page_number: int) -> dict | None:
         "sortType": "most-relevant",
     }
     headers = dict(HEADERS)
-    from urllib.parse import quote_plus
     headers["Referer"] = (
         f"{IEEE_BASE}/search/searchresult.jsp?newsearch=true&queryText={quote_plus(query)}"
     )
@@ -96,7 +86,7 @@ def _parse_record(r: dict) -> Paper | None:
     title = (r.get("articleTitle") or "").strip()
     if not title:
         return None
-    title = _strip_html(title) or title
+    title = strip_html(title) or title
 
     aid = str(r.get("articleNumber", "")).strip()
 
@@ -131,12 +121,28 @@ def _parse_record(r: dict) -> Paper | None:
     landing_url = aid and f"{IEEE_BASE}/document/{aid}"
     pdf_url = aid and f"{IEEE_BASE}/stamp/stamp.jsp?tp=&arnumber={aid}"
 
+    # Check is_open_access: IEEE uses boolean or string "true"/"1"
+    oa_flag = r.get("openAccessFlag") or r.get("isOpenAccess")
+    if isinstance(oa_flag, str):
+        is_oa = oa_flag.lower() in ("true", "1", "yes")
+    else:
+        is_oa = bool(oa_flag)
+
+    # Normalize type
+    _ieee_type_map = {
+        "conferences": "conference-paper",
+        "journals": "journal-article",
+        "magazines": "journal-article",
+        "early access articles": "preprint",
+    }
+    normalized_type = _ieee_type_map.get(pub_type, pub_type or None)
+
     return Paper(
         source="ieee",
         source_id=aid or (r.get("doi") or ""),
         title=title,
         authors=authors,
-        abstract=_strip_html(r.get("abstract")),
+        abstract=strip_html(r.get("abstract")),
         year=year,
         venue=venue,
         venue_type=venue_type,
@@ -144,8 +150,8 @@ def _parse_record(r: dict) -> Paper | None:
         url=landing_url or None,
         pdf_url=pdf_url or None,
         citations=r.get("citationCount"),
-        is_open_access=bool(r.get("openAccessFlag") or r.get("isOpenAccess")),
-        type=pub_type or None,
+        is_open_access=is_oa,
+        type=normalized_type,
         publisher="IEEE",
     )
 

@@ -112,11 +112,14 @@ def _parse(result_item: dict) -> Paper | None:
     if not landing_url and doi:
         landing_url = f"https://doi.org/{doi}"
 
-    # Open access flag
+    # Open access flag — check for actual OA indicators
     is_oa = None
-    licenses = r.get("license", []) or []
-    if licenses:
-        is_oa = True  # Presence of license info suggests OA
+    # OpenAIRE has openaccess flag in the metadata
+    oa_str = _text(r.get("openaccess") or {})
+    if oa_str and oa_str.lower() in ("true", "yes", "1"):
+        is_oa = True
+    elif oa_str and oa_str.lower() in ("false", "no", "0"):
+        is_oa = False
 
     return Paper(
         source="openaire",
@@ -126,7 +129,7 @@ def _parse(result_item: dict) -> Paper | None:
         abstract=abstract or None,
         year=year,
         venue=venue,
-        venue_type="journal" if venue else None,
+        venue_type="journal" if venue else "repository",
         doi=doi,
         url=landing_url,
         pdf_url=pdf_url,

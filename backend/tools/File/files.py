@@ -8,6 +8,7 @@ includes both cookies and headers.
 from __future__ import annotations
 
 import logging
+import re
 import tempfile
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -21,7 +22,7 @@ from flask_jwt_extended import (
 )
 
 from utils.core import s3_storage
-from database.models import Paper, PaperFile, db, safe_commit
+from utils.database.models import Paper, PaperFile, db, safe_commit
 from tools.editor.utils import (
     PAPER_ID_RE,
     safe_paper_dir,
@@ -34,10 +35,10 @@ log = logging.getLogger(__name__)
 files = Blueprint("files", __name__, url_prefix="/api/papers")
 
 ALLOWED_FILE_EXTS = {".pdf", ".docx", ".doc", ".txt", ".md", ".xlsx", ".xls", ".csv", ".pptx", ".ppt"}
-# 50MB per file — sufficient for large PDFs and scanned documents,
+# 100MB per file — sufficient for large PDFs and scanned documents,
 # prevents DoS via memory/disk exhaustion from giant files.
-MAX_FILE_BYTES = 50 * 1024 * 1024  # 50MB
-MAX_PREVIEW_CHARS = 20_000
+MAX_FILE_BYTES = 100 * 1024 * 1024  # 100MB
+MAX_PREVIEW_CHARS = 10_000_000  # No truncation — full PDF text extraction
 
 # Magic bytes for file type validation (first few bytes of file)
 FILE_SIGNATURES = {
@@ -58,6 +59,18 @@ FILE_SIGNATURES = {
 # more than 20 simultaneous extractions across the whole process.
 _EXTRACT_POOL = ThreadPoolExecutor(max_workers=20, thread_name_prefix="pdf-extract")
 import atexit; atexit.register(lambda: _EXTRACT_POOL.shutdown(wait=True))
+
+
+def _sanitize_text(text: str) -> str:
+    """Strip NUL (0x00) and other PostgreSQL-banned control characters
+    from extracted text to prevent 'A string literal cannot contain NUL'
+    errors on commit."""
+    if not text:
+        return text
+    # NUL (0x00), SOH (0x01), STX (0x02), ETX (0x03), EOT (0x04),
+    # ENQ (0x05), ACK (0x06), BEL (0x07), BS (0x08)
+    banned = "".join(chr(c) for c in range(0x09))
+    return text.translate(str.maketrans("", "", banned))
 
 
 def _validate_file_content(data: bytes, ext: str) -> bool:
@@ -109,7 +122,7 @@ def _extract_text_for_preview(filepath: Path, ext: str) -> str:
     try:
         from tools.File.file_extractor import extract_to_markdown, MAX_EXTRACT_CHARS
         text = extract_to_markdown(filepath, max_chars=MAX_PREVIEW_CHARS)
-        return text[:MAX_EXTRACT_CHARS] if text else ""
+        return text or ""
     except Exception as e:
         log.warning("extract_failed", extra={"file": str(filepath), "err": str(e)})
         return ""
@@ -121,7 +134,7 @@ def _extract_pdf_metadata(filepath: Path) -> dict:
     Returns dict with title, authors, doi, year, abstract, venue, publisher.
     """
     try:
-        from tools.Literatur.pdf_metadata_extractor import extract_metadata_from_pdf
+        from PaperRiset.eks.literatur.pdf_metadata_extractor import extract_metadata_from_pdf
         return extract_metadata_from_pdf(filepath)
     except Exception as e:
         log.warning("metadata_extract_failed", extra={"file": str(filepath), "err": str(e)})
@@ -142,7 +155,10 @@ def list_paper_files(paper_id: str):
         return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
-        return jsonify({"error": "Paper not found"}), 404
+        # Create minimal record so file listing doesn't 404
+        paper = Paper(id=paper_id, user_id=user_id, title="Untitled", data={"language": "id"})
+        db.session.add(paper)
+        db.session.commit()
     files = PaperFile.query.filter_by(paper_id=paper_id).order_by(PaperFile.created_at.desc()).all()
     return jsonify({"files": [f.to_dict() for f in files]})
 
@@ -161,7 +177,10 @@ def upload_paper_files(paper_id: str):
         return jsonify({"error": "Invalid user identity"}), 401
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
-        return jsonify({"error": "Paper not found"}), 404
+        # Auto-create paper so upload always works even if paper wasn't saved to DB yet
+        paper = Paper(id=paper_id, user_id=user_id, title="Untitled", data={"language": "id"})
+        db.session.add(paper)
+        db.session.commit()
 
     files = request.files.getlist("files")
     if not files:
@@ -171,17 +190,6 @@ def upload_paper_files(paper_id: str):
     accepted: list[dict] = []
     warnings: list[str] = []
     temp_files: list[Path] = []  # Track temp files for cleanup
-
-    # Pre-compute user storage context (used in both Phase 1 and Phase 2)
-    try:
-        from utils.core.user_storage import get_username as _get_username
-        _ustor_username = _get_username(user_id=user_id)
-        _ustor_judul = paper.title if paper else "untitled"
-        _ustor_ok = True
-    except Exception:
-        _ustor_username = None
-        _ustor_judul = None
-        _ustor_ok = False
 
     for f in files:
         ext = Path(f.filename or "").suffix.lower()
@@ -224,28 +232,19 @@ def upload_paper_files(paper_id: str):
         }
         content_type = mime_map.get(ext, "application/octet-stream")
 
-        # Upload to S3 or save locally
+        # Upload to S3 or use temp file for extraction
         if s3_storage.is_s3_enabled():
             # Upload to S3
             if not s3_storage.upload_file(data, s3_key, content_type):
                 warnings.append(f"{f.filename}: gagal upload ke S3")
                 continue
 
-            # Create temp file for text extraction
-            temp_file = Path(tempfile.mktemp(suffix=ext))
-            temp_file.write_bytes(data)
-            temp_files.append(temp_file)
-            filepath = temp_file
-        else:
-            # Save to local filesystem (original behavior)
-            paper_dir = safe_paper_dir(paper_id)
-            if not paper_dir:
-                warnings.append(f"{f.filename}: Invalid paper id")
-                continue
-            files_dir = paper_dir / "files"
-            files_dir.mkdir(parents=True, exist_ok=True)
-            filepath = files_dir / name
-            filepath.write_bytes(data)
+        # Always use temp file — raw binary is NOT persisted to disk.
+        # Only extracted .txt text is saved permanently.
+        temp_file = Path(tempfile.mktemp(suffix=ext))
+        temp_file.write_bytes(data)
+        temp_files.append(temp_file)
+        filepath = temp_file
 
         # Raw binary tidak disimpan ke user storage — hanya txt-nya nanti
         # (user_storage save dihapus, hanya save txt setelah extract)
@@ -290,6 +289,9 @@ def upload_paper_files(paper_id: str):
             except Exception as e:
                 log.info("extract_failed", extra={"file": item["name"], "err": str(e)})
                 extracted = ""
+            # Sanitize to prevent NUL bytes from causing PostgreSQL commit failures
+            if extracted:
+                extracted = _sanitize_text(extracted)
 
             # Extract metadata result
             meta = {}
@@ -299,13 +301,20 @@ def upload_paper_files(paper_id: str):
                 except Exception as e:
                     log.info("meta_extract_failed", extra={"file": item["name"], "err": str(e)})
 
-            # Save extracted text as .txt to user storage
-            if _ustor_ok and extracted:
+            # Save extracted text as .txt to paper dir: user/<username>/<paper_id>/files/
+            if extracted:
                 try:
-                    from utils.core.user_storage import save_file_as_txt
-                    save_file_as_txt(_ustor_username, _ustor_judul, extracted, item["original_name"])
+                    _pd = safe_paper_dir(paper_id, user_id=user_id)
+                    if _pd:
+                        files_dir = _pd / "files"
+                        files_dir.mkdir(parents=True, exist_ok=True)
+                        txt_name = Path(item["original_name"]).stem + ".txt"
+                        safe_name = re.sub(r'[^A-Za-z0-9._-]+', '_', txt_name).strip(" ._-") or "extracted"
+                        txt_path = files_dir / safe_name
+                        with open(txt_path, "w", encoding="utf-8") as fh:
+                            fh.write(extracted)
                 except Exception as _e:
-                    log.warning("upload_paper_files: save_file_as_txt failed for %s: %s", item["original_name"], _e)
+                    log.warning("upload_paper_files: save extracted txt failed for %s: %s", item["original_name"], _e)
 
             # Store S3 key or local path depending on storage mode
             # file_path is empty because raw binary is deleted after extraction.
@@ -361,20 +370,6 @@ def upload_paper_files(paper_id: str):
                 db.session.add(entry)
             db.session.flush()
             
-            # Add to status.json so PaperfullTab can see it
-            if _ustor_ok:
-                try:
-                    from utils.core.user_storage import add_status_file
-                    txt_filename = Path(item["original_name"]).stem + ".txt"
-                    add_status_file(
-                        _ustor_username, 
-                        paper_id, 
-                        txt_filename, 
-                        f"user/{_ustor_username}/{paper_id}/file/{txt_filename}",
-                        metadata={"original_name": item["original_name"], "file_id": entry.id}
-                    )
-                except Exception:
-                    pass
             # Include extracted text so the chat upload path can inline it
             # into the user's message in one round trip. The Files-tab UI
             # ignores this field — it calls /preview on demand.
@@ -382,23 +377,56 @@ def upload_paper_files(paper_id: str):
 
         safe_commit()
 
-        # Delete raw binary files — only extracted text is persisted.
-        # S3 uploads and local files are removed after successful extraction.
+        # Delete raw binary temp files — only extracted text is persisted.
         for item in accepted:
             try:
                 if s3_storage.is_s3_enabled():
                     s3_storage.delete_file(item["s3_key"])
-                elif item["filepath"].exists():
+                if item["filepath"].exists():
                     item["filepath"].unlink()
             except Exception:
                 log.warning("upload_paper_files: could not clean raw %s", item["filepath"])
-        # Clean up temp files
+        # Clean up remaining temp files
         for temp_file in temp_files:
             try:
                 if temp_file.exists():
                     temp_file.unlink()
             except Exception:
                 log.warning("upload_paper_files: could not clean up temp file %s", temp_file)
+
+        # Update status.json AFTER successful commit (prevents NameError on entry.id)
+        _pd = safe_paper_dir(paper_id, user_id=user_id)
+        if _pd:
+            try:
+                import json as _json2
+                status_path = _pd / "status.json"
+                status = {}
+                if status_path.exists():
+                    try:
+                        status = _json2.loads(status_path.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+                if "files" not in status:
+                    status["files"] = []
+                files_dir = _pd / "files"
+                existing_names = {fe.get("filename") for fe in status["files"]}
+                for s in saved:
+                    orig = s.get("original_name", "")
+                    txt_name = Path(orig).stem + ".txt"
+                    safe_name = re.sub(r'[^A-Za-z0-9._-]+', '_', txt_name).strip(" ._-") or "extracted"
+                    txt_path = files_dir / safe_name
+                    if safe_name not in existing_names and txt_path.exists():
+                        status["files"].append({
+                            "filename": safe_name,
+                            "path": str(txt_path),
+                            "original_name": orig,
+                            "file_id": s.get("id"),
+                            "uploaded_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
+                        })
+                        existing_names.add(safe_name)
+                status_path.write_text(_json2.dumps(status, indent=2, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                log.warning("upload_paper_files: status.json update failed", extra={"paper_id": paper_id})
 
         return jsonify({"success": True, "files": saved, "warnings": warnings})
     except Exception:
@@ -409,8 +437,8 @@ def upload_paper_files(paper_id: str):
                 # Delete from S3 if uploaded
                 if s3_storage.is_s3_enabled():
                     s3_storage.delete_file(item["s3_key"])
-                # Delete local file if exists
-                elif item["filepath"].exists():
+                # Delete temp file if exists
+                if item["filepath"].exists():
                     item["filepath"].unlink()
             except Exception:
                 log.warning("upload_paper_files: could not clean up %s", item["filepath"])
@@ -424,7 +452,7 @@ def upload_paper_files(paper_id: str):
                 log.warning("upload_paper_files: could not clean up temp %s: %s", temp_file, _e)
 
         log.exception("upload_paper_files failed (rolled back)", extra={"paper_id": paper_id})
-        return jsonify({"error": "Upload failed"}), 500
+        return jsonify({"error": "Upload failed", "hint": "Internal server error — the file may still be processed on our end"}), 500
 
 
 @files.route("/<paper_id>/files/<int:file_id>", methods=["DELETE"])
@@ -443,13 +471,18 @@ def delete_paper_file(paper_id: str, file_id: int):
     if not entry:
         return jsonify({"error": "File not found"}), 404
 
-    filepath = upload_folder() / entry.file_path
+    uploads = upload_folder(user_id=user_id)
+    filepath = uploads / entry.file_path
     try:
         resolved = filepath.resolve()
-        uploads = upload_folder().resolve()
-        if not str(resolved).startswith(str(uploads)):
-            return jsonify({'error': 'invalid path'}), 400
-        if filepath.exists() and filepath.is_file():
+        uploads_resolved = uploads.resolve()
+        if not str(resolved).startswith(str(uploads_resolved)):
+            # Fallback to legacy uploads path
+            legacy_uploads = upload_folder().resolve()
+            legacy_filepath = legacy_uploads / entry.file_path
+            if legacy_filepath.exists() and legacy_filepath.is_file():
+                legacy_filepath.unlink()
+        elif filepath.exists() and filepath.is_file():
             filepath.unlink()
     except Exception:
         log.warning("delete_paper_file: could not unlink %s", filepath)

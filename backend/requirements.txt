@@ -11,6 +11,7 @@ python-docx==1.1.2
 Pillow==11.1.0
 python-dotenv==1.0.1
 gunicorn==23.0.0
+gevent>=24.2.0
 json-repair
 lxml
 latex2mathml

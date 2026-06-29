@@ -15,14 +15,14 @@
       <span class="font-medium">
         <!-- Phase: actively thinking -->
         <span v-if="isThinking" class="inline-flex items-center gap-1.5 thinking-label">
-          <span class="thinking-flash-text">Masih berpikir</span>
+          <span class="thinking-flash-text">{{ thinkingLabel }}</span>
           <span class="thinking-dots">
             <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
           </span>
         </span>
         <!-- Phase: thinking has content and still streaming -->
         <span v-else-if="isStreaming && content && !isThinkingDone">
-          Masih berpikir... <span class="inline-flex items-center gap-1 ml-1">
+          {{ thinkingLabelElipsis }} <span class="inline-flex items-center gap-1 ml-1">
             <span class="inline-block w-1 h-1 bg-[var(--accent)]/70 rounded-full animate-bounce"></span>
             <span class="inline-block w-1 h-1 bg-[var(--accent)]/70 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
             <span class="inline-block w-1 h-1 bg-[var(--accent)]/70 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
@@ -50,6 +50,9 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { usePaperStore } from '../stores/paper'
+
+const paperStore = usePaperStore()
 
 const props = defineProps<{
   content: string
@@ -58,6 +61,14 @@ const props = defineProps<{
 }>()
 
 const isOpen = ref<boolean>(false)
+
+// Language-aware labels
+const thinkingLabel = computed(() =>
+  paperStore.paper.language === 'en' ? 'Thinking' : 'Masih berpikir'
+)
+const thinkingLabelElipsis = computed(() =>
+  paperStore.paper.language === 'en' ? 'Thinking...' : 'Masih berpikir...'
+)
 
 let _openTimer: ReturnType<typeof setTimeout> | null = null
 let _closeTimer: ReturnType<typeof setTimeout> | null = null

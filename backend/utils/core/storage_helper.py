@@ -51,7 +51,7 @@ def _safe_path_seg(value: object, fallback: str = "unknown", max_len: int = _MAX
 def _get_username_from_user_id(user_id) -> str:
     """Map user_id to username. Falls back to user_id if User model not available."""
     try:
-        from database.models import User
+        from utils.database.models import User
 
         uid = int(user_id)
         user = User.query.get(uid)
@@ -214,6 +214,21 @@ def get_generation_log_path(username: str, paper_id: str, job_id: str) -> Path:
     gen_dir = base_path / "generation" / _safe_path_seg(job_id, "no_job")
     gen_dir.mkdir(parents=True, exist_ok=True)
     return gen_dir
+
+
+def get_user_dir(user_id: int, subdir: str) -> Path:
+    """Return path to user/<user_id>/<subdir>/, auto-creating if needed.
+
+    Args:
+        user_id: Numeric user ID.
+        subdir: Subdirectory name (e.g. ``charts``, ``exports``, ``uploads``).
+
+    Returns:
+        Path: backend/user/<user_id>/<subdir>/
+    """
+    path = DATA_ROOT / str(user_id) / subdir
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def get_legacy_paper_dir(paper_id: str) -> Path:

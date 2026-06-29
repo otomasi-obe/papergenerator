@@ -38,18 +38,43 @@ def _parse(p: dict) -> Paper | None:
 
     venue_type = None
     pub_types = p.get("publicationTypes") or []
+    _vt_map = {
+        "JournalArticle": "journal",
+        "Conference": "conference",
+        "Book": "book",
+        "Review": "journal",
+        "Editorial": "journal",
+        "Letter": "journal",
+        "CaseReport": "journal",
+        "ClinicalTrial": "journal",
+    }
     if pub_types:
-        venue_type = pub_types[0]
+        venue_type = _vt_map.get(pub_types[0], pub_types[0].lower() if isinstance(pub_types[0], str) else None)
+    # Also check publicationVenue type
+    if pub_venue.get("type"):
+        venue_type = _vt_map.get(pub_venue["type"], pub_venue["type"].lower())
 
-    # Prioritize PDF link if available
+    # Normalize type
+    _type_map = {
+        "JournalArticle": "journal-article",
+        "Conference": "conference-paper",
+        "Book": "book",
+        "Review": "journal-article",
+        "Editorial": "journal-article",
+        "Letter": "journal-article",
+        "CaseReport": "journal-article",
+        "ClinicalTrial": "journal-article",
+    }
+    normalized_type = None
+    if pub_types:
+        normalized_type = _type_map.get(pub_types[0], "unknown")
+
+    # Landing page URL
+    landing_url = f"https://www.semanticscholar.org/paper/{p.get('paperId')}" if p.get("paperId") else None
+
+    # PDF link if available
     pdf_info = p.get("openAccessPdf") or {}
     pdf_url = pdf_info.get("url")
-    
-    # Fallback to DOI or landing page
-    if not pdf_url and doi:
-        pdf_url = f"https://doi.org/{doi}"
-    if not pdf_url and p.get("paperId"):
-        pdf_url = f"https://www.semanticscholar.org/paper/{p.get('paperId')}"
 
     oa = bool(p.get("openAccessPdf"))
     return Paper(
@@ -60,13 +85,13 @@ def _parse(p: dict) -> Paper | None:
         abstract=p.get("abstract"),
         year=p.get("year"),
         venue=p.get("venue") or pub_venue.get("name"),
-        venue_type=pub_venue.get("type") or venue_type,
+        venue_type=venue_type,
         doi=doi,
-        url=pdf_url,
+        url=landing_url,
         pdf_url=pdf_url if oa else None,
         citations=p.get("citationCount"),
         is_open_access=oa,
-        type=venue_type,
+        type=normalized_type,
         publisher=pub_venue.get("publisher"),
     )
 

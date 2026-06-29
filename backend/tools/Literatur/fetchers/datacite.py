@@ -71,6 +71,55 @@ def _parse(item: dict) -> Paper | None:
         if isinstance(first, str) and first.lower().endswith(".pdf"):
             pdf_url = first
 
+    # Normalize venue_type from resourceTypeGeneral
+    _dc_vt_map = {
+        "Journal": "journal",
+        "JournalArticle": "journal",
+        "ConferencePaper": "conference",
+        "Conference": "conference",
+        "Book": "book",
+        "BookChapter": "book",
+        "Dataset": "repository",
+        "Software": "repository",
+        "Preprint": "repository",
+        "Report": "repository",
+        "Thesis": "book",
+        "Other": "unknown",
+        "OutputManagementPlan": "dataset",
+        "Workflow": "dataset",
+        "Text": "unknown",
+        "InteractiveResource": "unknown",
+        "Sound": "unknown",
+        "Image": "unknown",
+        "DataPaper": "dataset",
+        "Model": "dataset",
+    }
+    raw_rtype = attr.get("types", {}).get("resourceTypeGeneral") if isinstance(attr.get("types"), dict) else None
+    venue_type = _dc_vt_map.get(raw_rtype, "unknown") if raw_rtype else None
+
+    # Normalize type
+    _dc_type_map = {
+        "Journal": "journal-article",
+        "JournalArticle": "journal-article",
+        "ConferencePaper": "conference-paper",
+        "Conference": "conference-paper",
+        "Book": "book",
+        "BookChapter": "book",
+        "Dataset": "dataset",
+        "Software": "dataset",
+        "Preprint": "preprint",
+        "Report": "journal-article",
+        "Thesis": "book",
+        "Text": None,
+        "Other": None,
+        "DataPaper": "dataset",
+        "OutputManagementPlan": "dataset",
+        "Workflow": "dataset",
+        "Model": "dataset",
+    }
+    raw_type_val = attr.get("types", {}).get("resourceType") if isinstance(attr.get("types"), dict) else None
+    normalized_type = _dc_type_map.get(raw_rtype, None) if raw_rtype else (raw_type_val or None)
+
     return Paper(
         source="datacite",
         source_id=str(item.get("id", doi or "")),
@@ -79,12 +128,12 @@ def _parse(item: dict) -> Paper | None:
         abstract=abstract or None,
         year=year,
         venue=attr.get("container", {}).get("title") if isinstance(attr.get("container"), dict) else None,
-        venue_type=attr.get("types", {}).get("resourceTypeGeneral") if isinstance(attr.get("types"), dict) else None,
+        venue_type=venue_type,
         doi=doi,
         url=landing_url,
         pdf_url=pdf_url,
         is_open_access=None,  # DataCite doesn't flag OA consistently
-        type=attr.get("types", {}).get("resourceType") if isinstance(attr.get("types"), dict) else None,
+        type=normalized_type,
         publisher=publisher,
     )
 

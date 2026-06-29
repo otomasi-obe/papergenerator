@@ -1,7 +1,4 @@
 // PM2 ecosystem config untuk PaperGenerator.
-// DATABASE_URL menggunakan PostgreSQL peer auth (Unix socket) —
-// PM2 process berjalan sebagai user sistem, bukan via TCP/password.
-// Kalau butuh TCP: ganti ke postgresql://user:pass@localhost:5432/papergenerator
 module.exports = {
   apps: [
     {
@@ -15,24 +12,26 @@ module.exports = {
       min_uptime: '30s',
       restart_delay: 5000,
       env: {
-        // PostgreSQL peer auth via Unix socket (bukan TCP+password)
         DATABASE_URL: 'postgresql://papergenerator@/papergenerator',
-        // Redis local untuk session, rate limit, job queue
-        REDIS_URL: 'redis://localhost:6379/0'
+        REDIS_URL: 'redis://:5b393a50e4a92d7d2713967c5d4fa38a458994980a0e4572582809f7479c18e3@localhost:6379/0',
+        RATELIMIT_STORAGE_URI: 'redis://:5b393a50e4a92d7d2713967c5d4fa38a458994980a0e4572582809f7479c18e3@localhost:6379/1',
+        CORS_ORIGINS: 'https://paperfull.app',
+        DOMAIN: 'paperfull.app',
+        FRONTEND_URL: 'https://paperfull.app'
       }
     },
     {
-      name: 'paper-worker',
-      cwd: '/home/sirobo/papergenerator/backend',
-      script: '/home/sirobo/papergenerator/backend/.venv/bin/python',
-      args: '/home/sirobo/papergenerator/backend/worker.py',
-      interpreter: 'none',
+      name: 'paper-proxy-server',
+      cwd: '/home/sirobo/papergenerator/frontend',
+      script: 'proxy-server.cjs',
+      interpreter: 'node',
       exec_mode: 'fork',
+      max_restarts: 10,
+      min_uptime: '30s',
+      restart_delay: 5000,
       env: {
-        // PostgreSQL peer auth via Unix socket
-        DATABASE_URL: 'postgresql://papergenerator@/papergenerator',
-        // Redis untuk RQ job queue (wajib, worker tidak bisa konek tanpanya)
-        REDIS_URL: 'redis://localhost:6379/0'
+        FRONTEND_PORT: '8000',
+        BACKEND_PORT: '8001',
       }
     }
   ]

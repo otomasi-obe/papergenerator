@@ -139,25 +139,36 @@
         <div v-if="activeJobs.length" class="mt-3 space-y-2">
           <div v-for="job in activeJobs" :key="job.id"
                class="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs">
+            <!-- Header: icon + query + cancel -->
             <div class="flex items-center justify-between gap-2">
-              <span class="font-medium text-amber-900 dark:text-amber-100 truncate">
-                {{ job.status === 'running' ? '⏳' : '⏸' }}
+              <span class="font-medium text-amber-900 dark:text-amber-100 truncate flex items-center gap-1">
+                <span :class="{ 'animate-spin': job.stage === 'fetching' || job.stage === 'analyzing' || job.stage === 'summarizing' || job.stage === 'ranking' }"
+                      class="inline-block">{{ stageIcon(job) }}</span>
                 {{ job.query }}
               </span>
               <button @click="cancelJob(job.id)"
-                      class="text-amber-700 dark:text-amber-300 hover:underline shrink-0">cancel</button>
+                      class="text-amber-700 dark:text-amber-300 hover:underline shrink-0 text-[10px]">✕ hentikan</button>
             </div>
-            <div class="mt-1 flex items-center gap-2">
+            <!-- Stage badge + progress bar + percentage -->
+            <div class="mt-1.5 flex items-center gap-2">
               <span
                 class="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
                 :class="stageBadgeClass(job)"
               >{{ stageLabel(job.stage) || stageLabel(job.status) || '—' }}</span>
-              <div class="flex-1 h-1.5 rounded-full bg-amber-200 dark:bg-amber-900/50 overflow-hidden">
-                <div class="h-full bg-amber-500 transition-all" :style="{ width: `${job.progress || 0}%` }"></div>
+              <div class="flex-1 h-2.5 rounded-full bg-amber-200 dark:bg-amber-900/50 overflow-hidden">
+                <div class="h-full bg-amber-500 transition-all duration-500"
+                     :style="{ width: `${job.progress || 0}%` }"></div>
               </div>
+              <span class="text-[10px] font-mono text-amber-700 dark:text-amber-300 shrink-0 w-8 text-right">{{ job.progress || 0 }}%</span>
             </div>
-            <div class="mt-1 text-amber-800 dark:text-amber-200 text-[11px] truncate">
-              {{ job.progress_message || stageLabel(job.stage) || 'Menunggu worker…' }}
+            <!-- Progress message -->
+            <div class="mt-1 text-amber-800 dark:text-amber-200 text-[11px] line-clamp-2">
+              {{ job.progress_message || stageLabel(job.stage) || 'Menunggu…' }}
+            </div>
+            <!-- Sources progress (only during fetching) -->
+            <div v-if="job.stage === 'fetching' && (job.sources_total || 0) > 0"
+                 class="mt-1 text-[10px] text-amber-700 dark:text-amber-300">
+              📡 {{ (job.sources_completed || []).length }}/{{ job.sources_total }} sumber · {{ job.papers_fetched || 0 }} paper ditemukan
             </div>
           </div>
         </div>
@@ -432,7 +443,7 @@
             :disabled="currentPage <= 1"
             class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
           >« Prev</button>
-          <template v-for="p in visiblePageNumbers" :key="'top-' + p">
+          <template v-for="p in visiblePageNumbers" :key="'bottom-' + p">
             <button
               v-if="p !== '...'"
               @click="currentPage = p as number"
@@ -464,7 +475,7 @@
   <AppDialog v-if="dg.open" :open="dg.open" :title="dg.title" @close="dg.open = false">
     <p class="text-ink-700 dark:text-ink-200 text-sm whitespace-pre-wrap">{{ dg.message }}</p>
     <template #actions>
-      <button @click="dg.open = false" class="px-4 py-2.5 min-h-[44px] border border-cream-400 dark:border-ash-500 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">Batal</button>
+      <button @click="dg.onCancel?.(); dg.open = false" class="px-4 py-2.5 min-h-[44px] border border-cream-400 dark:border-ash-500 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 rounded-xl text-sm font-medium transition-colors">Batal</button>
       <button @click="dg.onConfirm(); dg.open = false" class="px-4 py-2.5 min-h-[44px] bg-[#c43655] hover:bg-[#c43655]/90 text-white rounded-xl text-sm font-medium transition-colors">{{ dg.actionLabel || 'OK' }}</button>
     </template>
   </AppDialog>
@@ -481,13 +492,14 @@ import api from '../api/index'
 import AppDialog from './AppDialog.vue'
 
 // Centered confirmation dialog state
-const dg = reactive({ open: false, title: '', message: '', actionLabel: '', onConfirm: () => {} })
+const dg = reactive({ open: false, title: '', message: '', actionLabel: '', onConfirm: () => {}, onCancel: (() => {}) as (() => void) | undefined })
 
-function askConfirm(title: string, message: string, actionLabel: string, onConfirm: () => void): void {
+function askConfirm(title: string, message: string, actionLabel: string, onConfirm: () => void, onCancel?: () => void): void {
   dg.title = title
   dg.message = message
   dg.actionLabel = actionLabel
   dg.onConfirm = onConfirm
+  dg.onCancel = onCancel
   dg.open = true
 }
 
@@ -515,14 +527,19 @@ interface LiteratureItem {
 }
 
 interface SLRJob {
-  id: number
+  id: string
   query: string
-  status: 'queued' | 'running' | 'done' | 'error'
+  status: 'queued' | 'running' | 'done' | 'error' | 'pending' | 'cancelled' | 'analyzing' | 'fetching' | 'ranking' | 'summarizing'
   stage?: string
   progress?: number
   progress_message?: string
   queued_at?: string
   finished_at?: string
+  sources_completed?: string[]
+  sources_running?: string[]
+  sources_pending?: string[]
+  sources_total?: number
+  papers_fetched?: number
   stats?: {
     ai_summary_used?: boolean
     [key: string]: any
@@ -686,7 +703,7 @@ const filteredItems = computed<LiteratureItem[]>(() => {
     : null
   const dupFilters = duplicateMode.value !== 'off'
   return items.value.filter(it => {
-    if (filterSource.value && (it.source || it.source_kind) !== filterSource.value) return false
+    if (filterSource.value && it.source !== filterSource.value && it.source_kind !== filterSource.value) return false
     if (onlyPinned.value && !it.pinned) return false
     if (minY != null && (it.year == null || Number(it.year) < minY)) return false
     // duplicate filter
@@ -810,15 +827,20 @@ function safeUrl(u: string | undefined): string {
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  queued: 'Antri',
+  // New system stages
+  pending: 'Memulai',
+  analyzing: 'Menganalisis keyword',
   fetching: 'Mencari sumber',
+  ranking: 'Mengurutkan relevansi',
+  summarizing: 'Merangkum hasil',
+  // Legacy stages (backward compat)
+  queued: 'Antri',
   source_done: 'Mengambil hasil',
   dedup_done: 'Dedup selesai',
   scoring: 'Ranking',
   scored: 'Ranking selesai',
   reranking: 'AI Re-ranking',
   reranked: 'AI Re-ranked',
-  summarizing: 'Scoring programmatik',
   summarized: 'Scoring selesai',
   complete: 'Selesai',
   running: 'Berjalan',
@@ -829,6 +851,19 @@ const STAGE_LABELS: Record<string, string> = {
 function stageLabel(stage: string | undefined): string {
   if (!stage) return ''
   return STAGE_LABELS[stage] || stage
+}
+
+function stageIcon(job: SLRJob): string {
+  const s = job.stage || job.status
+  if (s === 'analyzing') return '🔍'
+  if (s === 'fetching') return '📡'
+  if (s === 'summarizing') return '📊'
+  if (s === 'ranking') return '📈'
+  if (s === 'done' || s === 'complete') return '✅'
+  if (s === 'error') return '❌'
+  if (s === 'cancelled') return '🚫'
+  if (s === 'pending' || s === 'queued') return '⏳'
+  return '⚙️'
 }
 
 function stageBadgeClass(job: SLRJob | null): string {
@@ -935,7 +970,8 @@ async function loadItems(): Promise<void> {
     }
     // Only update if different
     const needsUpdate = nextChecked.size !== checkedIds.value.size ||
-      Array.from(checkedIds.value).some(id => !nextChecked.has(id))
+      Array.from(checkedIds.value).some(id => !nextChecked.has(id)) ||
+      Array.from(nextChecked).some(id => !checkedIds.value.has(id))
     if (needsUpdate) checkedIds.value = nextChecked
 
     if (slrRunning.value) {
@@ -969,6 +1005,7 @@ let _lastJobStatus: Record<number, string> = {}
 let _consecutiveFailures = 0
 let _waitCursor = 0
 const _TRANSIENT_STATUSES = new Set([0, 408, 429, 502, 503, 504, 520, 521, 522, 523, 524])
+let _slrGraceUntil = 0
 
 async function loadJobs(): Promise<void> {
   if (!currentPaperId.value) return
@@ -995,7 +1032,10 @@ async function loadJobs(): Promise<void> {
       const res = await api.get(`/api/papers/${currentPaperId.value}/slr/jobs`)
       jobs = Array.isArray(res.data) ? res.data : []
     }
-    const active = jobs.filter(j => j.status === 'queued' || j.status === 'running')
+    const active = jobs.filter(j => 
+      j.status === 'queued' || j.status === 'running' || j.status === 'pending' ||
+      j.status === 'analyzing' || j.status === 'fetching' || j.status === 'ranking' || j.status === 'summarizing'
+    )
     activeJobs.value = active
     const finished = jobs
       .filter(j => j.status === 'done' || j.status === 'error')
@@ -1045,7 +1085,9 @@ async function loadJobs(): Promise<void> {
       }
     }
     const wasRunning = slrRunning.value
-    slrRunning.value = active.length > 0
+    const hasActive = active.length > 0
+    const inGrace = Date.now() < _slrGraceUntil
+    slrRunning.value = hasActive || (wasRunning && inGrace)
     if (!wasRunning && slrRunning.value) {
       _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
     }
@@ -1109,6 +1151,7 @@ async function runSLR(): Promise<void> {
   const q = slrQuery.value.trim()
   if (!q || !currentPaperId.value) return
   slrRunning.value = true
+  _slrGraceUntil = Date.now() + 5000
   _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
   slrStreamItems.value = []
   try {
@@ -1124,10 +1167,11 @@ async function runSLR(): Promise<void> {
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.message || 'SLR failed'
     toast('SLR error: ' + msg, 'error')
+    slrRunning.value = false
   }
 }
 
-async function cancelJob(jobId: number): Promise<void> {
+async function cancelJob(jobId: string): Promise<void> {
   askConfirm('Hentikan SLR?', 'Job akan dihentikan. Hasil parsial akan dihilangkan.', 'Hentikan', async () => {
     try {
       await api.delete(`/api/slr/jobs/${jobId}`)
@@ -1438,6 +1482,7 @@ async function reviewAllChecked(): Promise<void> {
       `${checkedDuplicates.length} paper duplikat terdeteksi!\nIni dapat mempengaruhi kualitas analisis.\n\nTetap lanjutkan review?`,
       'Lanjutkan',
       () => { doReview(); reviewBusy.value = false },
+      () => { reviewBusy.value = false },
     )
   } else {
     doReview()
@@ -1504,6 +1549,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (_pollTimer) clearTimeout(_pollTimer)
+  if (_filterSaveTimer) clearTimeout(_filterSaveTimer)
   if (typeof document !== 'undefined') {
     document.removeEventListener('visibilitychange', _onVisibilityChange)
   }

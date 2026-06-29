@@ -605,11 +605,6 @@ const allToolCalls = computed(() => {
   return calls.filter(tc => tc && tc.name)
 })
 
-const errorToolCalls = computed(() => {
-  const calls = props.message.tool_calls || []
-  return calls.filter(tc => tc.status === 'error' || tc.error)
-})
-
 function toggleToolDetail(idx: number): void {
   toolDetailsOpen.value[idx] = !toolDetailsOpen.value[idx]
 }

@@ -72,7 +72,40 @@ def open_template(template_path: Path) -> Document:
 
 
 def finalize_doc(doc: Document) -> None:
-    pass
+    """Apply default styles, page numbering, and consistent headers/footers."""
+    from docx.oxml import OxmlElement, qn  # noqa: PLC0415
+    from docx.shared import Pt, Inches  # noqa: PLC0415
+    _log = logging.getLogger(__name__)
+    try:
+        # (a) Set default paragraph style
+        style = doc.styles["Normal"]
+        style.font.size = Pt(10)
+        style.paragraph_format.space_after = Pt(6)
+        style.paragraph_format.line_spacing = 1.15
+        # (b) Add page numbering to first sectPr found
+        for sect in doc.sections:
+            footer = sect.footer
+            if not footer.paragraphs or not footer.paragraphs[0].text.strip():
+                # Add page number if footer is empty
+                p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+                run = p.add_run()
+                fld_char_begin = OxmlElement("w:fldChar")
+                fld_char_begin.set(qn("w:fldCharType"), "begin")
+                run._r.append(fld_char_begin)
+                instr = OxmlElement("w:instrText")
+                instr.set(qn("xml:space"), "preserve")
+                instr.text = " PAGE "
+                run._r.append(instr)
+                fld_char_end = OxmlElement("w:fldChar")
+                fld_char_end.set(qn("w:fldCharType"), "end")
+                run._r.append(fld_char_end)
+            # (c) Ensure header has at least empty paragraph
+            header = sect.header
+            if not header.paragraphs:
+                header.add_paragraph()
+        _log.debug("finalize_doc: applied defaults + page numbering")
+    except Exception as exc:
+        _log.warning("finalize_doc failed (non-fatal): %s", exc)
 
 
 def set_para_style(paragraph, style_name: str) -> None:

@@ -1793,7 +1793,7 @@ def format_search_event_for_frontend(tag: dict, data: dict) -> dict:
 def trigger_slr_job(paper_id: str, user_id: int, query: str, conversation_id: str | None = None) -> dict:
     """Trigger an SLR job via the worker system."""
     try:
-        from tools.Literatur.worker import enqueue_slr_job
+        from PaperRiset.eks.literatur.worker import enqueue_slr_job
 
         job = enqueue_slr_job(
             paper_id=paper_id,

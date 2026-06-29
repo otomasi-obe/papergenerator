@@ -48,8 +48,9 @@ export const useQuotaStore = defineStore('quota', () => {
         Object.assign(quota.value, res.data)
         lastFetchTime.value = now
       }
-    } catch {
+    } catch (e) {
       // Not signed in or backend cold - keep existing quota state
+      console.warn('[quota] fetchQuota failed:', e instanceof Error ? e.message : String(e))
     } finally {
       isLoading.value = false
     }

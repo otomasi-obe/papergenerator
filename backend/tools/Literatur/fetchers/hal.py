@@ -54,6 +54,62 @@ def _parse(doc: dict) -> Paper | None:
     if pdf_url and not pdf_url.startswith("http"):
         pdf_url = f"https://hal.science/{pdf_url}"
 
+    # Normalize venue_type from docType_s
+    doc_type_raw = doc.get("docType_s")
+    _hal_vt_map = {
+        "ART": "journal",
+        "COMM": "conference",
+        "COUV": "book",
+        "BOOK": "book",
+        "THESE": "book",
+        "HDR": "book",
+        "LECT": "unknown",
+        "UNDEFINED": "unknown",
+        "OTHER": "unknown",
+        "REPORT": "repository",
+        "PREPR": "repository",
+        "WORKING": "repository",
+        "PATENT": "unknown",
+        "IMG": "unknown",
+        "VIDEO": "unknown",
+        "SON": "unknown",
+        "MAP": "unknown",
+        "SOFTWARE": "repository",
+        "CREATION": "unknown",
+        "NOTE": "journal",
+        "BLOG": "unknown",
+        "MEML": "book",
+    }
+    venue_type = _hal_vt_map.get(doc_type_raw, "unknown") if doc_type_raw else None
+
+    # Normalize type from docType_s
+    _hal_type_map = {
+        "ART": "journal-article",
+        "COMM": "conference-paper",
+        "COUV": "book",
+        "BOOK": "book",
+        "THESE": "book",
+        "HDR": "book",
+        "LECT": None,
+        "UNDEFINED": None,
+        "OTHER": None,
+        "REPORT": "preprint",
+        "PREPR": "preprint",
+        "WORKING": "preprint",
+        "PATENT": None,
+        "NOTE": "journal-article",
+        "MEML": "book",
+        "SOFTWARE": "dataset",
+    }
+    normalized_type = _hal_type_map.get(doc_type_raw) if doc_type_raw else None
+
+    # is_open_access: HAL is predominantly open access
+    oa_raw = doc.get("openAccess_s")
+    if oa_raw:
+        is_oa = oa_raw in ("true", "TRUE", "1", True) if isinstance(oa_raw, str) else bool(oa_raw)
+    else:
+        is_oa = True  # HAL is an open archive; default to True
+
     return Paper(
         source="hal",
         source_id=str(doc.get("docid", "")),
@@ -62,12 +118,12 @@ def _parse(doc: dict) -> Paper | None:
         abstract=abstract or None,
         year=year,
         venue=doc.get("journalTitle_s"),
-        venue_type="journal" if doc.get("journalTitle_s") else None,
+        venue_type=venue_type,
         doi=doi,
         url=landing or pdf_url,
         pdf_url=pdf_url,
-        is_open_access=True,  # HAL is a preprint/repository
-        type=doc.get("docType_s"),
+        is_open_access=is_oa,
+        type=normalized_type,
         publisher=doc.get("publisher_s"),
     )
 

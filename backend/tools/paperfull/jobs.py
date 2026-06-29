@@ -52,7 +52,7 @@ import redis
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
 
-from database.models import AiJob, Paper, ImageGenJob, db, safe_commit
+from utils.database.models import AiJob, Paper, ImageGenJob, db, safe_commit
 
 jobs = Blueprint("jobs", __name__)
 
@@ -530,7 +530,7 @@ def _auto_generate_data_charts(paper_id: str, user_id: int, data_texts: list[str
     Returns the job_id if successful, None otherwise.
     """
     import uuid
-    from database.models import AiJob, db, safe_commit
+    from utils.database.models import AiJob, db, safe_commit
 
     # Combine data texts — do NOT truncate here. Truncation happens per-file
     # inside _run_data_chart_render AFTER splitting by file markers. Truncating
@@ -551,7 +551,7 @@ def _auto_generate_data_charts(paper_id: str, user_id: int, data_texts: list[str
         progress=0,
     )
     db.session.add(job)
-    if not safe_commit():
+    if not safe_commit(reraise=False):
         log.warning("[paperfull] Chart job creation failed: safe_commit returned False for job %s", job_id)
         return None
 
@@ -596,7 +596,7 @@ def _auto_generate_section4_charts(
     Returns the job_id if successful, None otherwise.
     """
     import uuid
-    from database.models import AiJob, db, safe_commit
+    from utils.database.models import AiJob, db, safe_commit
 
     # Filter specs that have actual chart specs in Prompt
     valid_specs = [s for s in chart_specs if s.get("Prompt") and s["Prompt"].strip()]
@@ -616,7 +616,7 @@ def _auto_generate_section4_charts(
         progress=0,
     )
     db.session.add(job)
-    if not safe_commit():
+    if not safe_commit(reraise=False):
         log.warning("[paperfull] Chart job creation failed: safe_commit returned False for job %s", job_id)
         return None
 
@@ -664,7 +664,7 @@ def _run_section4_chart_render(
     logger = logging.getLogger(__name__)
 
     with app.app_context():
-        from database.models import AiJob, PaperImage, Paper, db, safe_commit
+        from utils.database.models import AiJob, PaperImage, Paper, db, safe_commit
         from tools.editor.utils import safe_paper_image_dir
         from pathlib import Path
         import re
@@ -1201,7 +1201,7 @@ def _run_data_chart_render(app, job_id: str, paper_id: str, user_id: int, combin
     logger = logging.getLogger(__name__)
 
     with app.app_context():
-        from database.models import AiJob, PaperImage, Paper, db, safe_commit
+        from utils.database.models import AiJob, PaperImage, Paper, db, safe_commit
         from tools.editor.utils import safe_paper_image_dir
         from pathlib import Path
 
@@ -1728,7 +1728,7 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
     # 2. Try user's preferred_language.
     if not _resume_lang:
         try:
-            from database.models import User as _UserModel
+            from utils.database.models import User as _UserModel
             _u = _UserModel.query.get(job.user_id)
             if _u and _u.preferred_language:
                 _resume_lang = _u.preferred_language
@@ -2125,9 +2125,14 @@ def _persist_paper_data(paper_id: str, user_id: int, paper_data: dict, max_retri
                 except Exception:
                     existing_data = {}
             
-            # Merge: new data overwrites, but preserve _data_texts if not in new data.
-            # Copy to avoid mutating the caller's dict (which is used downstream).
+            # Merge: new data overwrites, but preserve metadata + _data_texts from
+            # existing paper. _normalize_paper_shape only returns content fields
+            # (title/abstract/sections/...), so user-set metadata like language,
+            # journal, citation_style would be LOST on regeneration without this.
             paper_data = {**paper_data}
+            for _meta_key in ('language', 'journal', 'citation_style'):
+                if _meta_key not in paper_data and _meta_key in existing_data:
+                    paper_data[_meta_key] = existing_data[_meta_key]
             if '_data_texts' not in paper_data and '_data_texts' in existing_data:
                 paper_data['_data_texts'] = existing_data['_data_texts']
                 paper_data['_data_files_count'] = existing_data.get('_data_files_count', 0)
@@ -2135,7 +2140,7 @@ def _persist_paper_data(paper_id: str, user_id: int, paper_data: dict, max_retri
             p.data = paper_data
             p.title = (paper_data.get("title") or "").strip() or p.title or "Untitled"
             p.updated_at = datetime.now(timezone.utc)
-            db.session.commit()
+            safe_commit()
             return True, None
         except (OperationalError, DBAPIError) as e:
             last_err = e
@@ -2268,6 +2273,8 @@ def generate_stream(paper_id: str):
         #                      referensi/konteks penulisan.
         # Backward-compat: field lama "files" diperlakukan sebagai referensi.
         from main import _extract_texts_from_files
+        data_uploads = []
+        ref_uploads = []
         try:
             data_uploads = request.files.getlist("data_files")
             ref_uploads = request.files.getlist("reference_files")
@@ -2312,7 +2319,7 @@ def generate_stream(paper_id: str):
         # Files uploaded during paperfull generate were only extracted for text
         # but never saved. Now we save them so they appear in the file list.
         try:
-            from database.models import PaperFile
+            from utils.database.models import PaperFile
             from utils.core.user_storage import save_file_as_txt, get_username as _pf_get_username
             _pf_username = _pf_get_username(user_id=user_id)
             _pf_judul = paper.title if paper else "untitled"
@@ -2398,7 +2405,7 @@ def generate_stream(paper_id: str):
             existing_data["_data_texts"] = data_texts
             existing_data["_data_files_count"] = len([t for t in data_texts if t and t.strip()])
             paper.data = existing_data
-            db.session.commit()
+            safe_commit()
             log.info("[paperfull] Pre-stored %d data_texts to paper.data for paper %s",
                      len(data_texts), paper_id)
             _prestore_log.getLogger(__name__).warning(f"=== PRE-STORE SUCCESS: saved {len(data_texts)} items")
@@ -2462,7 +2469,7 @@ def generate_stream(paper_id: str):
                 if error:
                     j.error = error[:2000]
                 j.updated_at = datetime.now(timezone.utc)
-                db.session.commit()
+                safe_commit()
                 return
             except (OperationalError, DBAPIError) as _e:
                 try:
@@ -2494,8 +2501,10 @@ def generate_stream(paper_id: str):
             # ── Load prompt files (language-aware) ─────────────────────
             prompt_dir = _Path(__file__).resolve().parent / "prompt"
 
-            # Determine language: request param > paper data > user DB > default "id"
+            # Determine language: request param > paper data > journal template > user DB > default "id"
             _lang = language
+            _from_paper = False
+            _from_user_db = False
             if not _lang and paper_id:
                 try:
                     _paper = Paper.query.get(paper_id)
@@ -2503,14 +2512,30 @@ def generate_stream(paper_id: str):
                         pl = _paper.data.get("language")
                         if pl in ("en", "id"):
                             _lang = pl
+                            _from_paper = True
+                        # Step 3: Fall back to journal template (only if paper has no language set)
+                        if not _lang and _paper.data.get("journal"):
+                            try:
+                                from tools.Journal.template_registry import get_template as _get_tmpl
+                                _tmpl = _get_tmpl(_paper.data["journal"])
+                                if _tmpl:
+                                    _tl = _tmpl.language.lower()
+                                    if _tl.startswith("english"):
+                                        _lang = "en"
+                                    elif _tl.startswith("indonesian"):
+                                        _lang = "id"
+                            except Exception:
+                                pass
                 except Exception:
                     pass
-            if not _lang:
+            # User DB: only as fallback if paper/journal didn't set language
+            if not _lang and not _from_paper:
                 try:
-                    from database.models import User as _UserModel
+                    from utils.database.models import User as _UserModel
                     _lu = _UserModel.query.get(user_id)
                     if _lu and _lu.preferred_language:
                         _lang = _lu.preferred_language
+                        _from_user_db = True
                 except Exception:
                     pass
             _lang = _lang or "id"
@@ -2552,7 +2577,7 @@ def generate_stream(paper_id: str):
 
             # Inject user preferences (name, full name, institution, language)
             try:
-                from database.models import User as UserModel
+                from utils.database.models import User as UserModel
                 current_user = UserModel.query.get(user_id)
                 if current_user:
                     prefs = []
@@ -2648,7 +2673,7 @@ def generate_stream(paper_id: str):
             # Auto-inject CHECKED LITERATURE (dari tab Literatur).
             # User hanya perlu check di tab Literatur — otomatis masuk prompt.
             try:
-                from database.models import LiteratureItem as LitItem
+                from utils.database.models import LiteratureItem as LitItem
                 _checked_lit = LitItem.query.filter_by(
                     paper_id=paper_id,
                     user_id=user_id,
@@ -2933,7 +2958,7 @@ def generate_stream(paper_id: str):
                             except Exception:
                                 raw2 = None
                         if raw2 and isinstance(raw2, dict):
-                            from editor.single import _normalize_paper_shape as _nps
+                            from tools.editor.single import _normalize_paper_shape as _nps
                             pd2 = _nps(raw2)
                             ok_bg, err_bg = _persist_paper_data(paper_id, user_id, pd2)
                             if ok_bg:
@@ -3025,8 +3050,14 @@ def generate_stream(paper_id: str):
                     return
 
             # ── Normalize paper shape ───────────────────────────────
-            from editor.single import _normalize_paper_shape
+            from tools.editor.single import _normalize_paper_shape
             paper_data = _normalize_paper_shape(raw_paper)
+
+            # Inject resolved language so it persists in paper.data after save.
+            # _normalize_paper_shape doesn't include language in its output,
+            # so without this the chat backend can't read the paper's language.
+            if _lang:
+                paper_data["language"] = _lang
 
             # ── Post-process: fix mojibake + clean LaTeX artifacts ────
             from tools.paperfull.text_cleaner import clean_paper_data
@@ -3243,7 +3274,8 @@ def generate_stream(paper_id: str):
             # so DOCX export embeds them immediately.
             try:
                 from tools.image_generation.reconcile import reconcile_figure_images
-                _upload_base = Path(__file__).resolve().parent.parent.parent / "data" / "uploads"
+                from utils.core.storage_helper import get_user_dir
+                _upload_base = get_user_dir(int(user_id), "uploads")
                 reconcile_figure_images(paper_id, paper_data, _upload_base)
                 # Collect resolved paths from figures to prevent double-assignment
                 _used_by_figures: set[str] = set()
@@ -3255,7 +3287,10 @@ def generate_stream(paper_id: str):
                 # Also walk sections for gambar items (not just top-level figures)
                 _reconcile_section_images(paper_data, paper_id, _upload_base)
                 # Re-save updated paper_data with resolved image paths
-                _persist_paper_data(paper_id, user_id, paper_data)
+                ok_rec, rec_err = _persist_paper_data(paper_id, user_id, paper_data)
+                if not ok_rec:
+                    log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
+                    yield f"event: error\ndata: {_json.dumps({'error': f'Image re-save failed: {rec_err}'})}\n\n"
                 log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
             except Exception as _rec_e:
                 log.warning("[paperfull] Image reconciliation failed for paper %s: %s", paper_id, _rec_e)

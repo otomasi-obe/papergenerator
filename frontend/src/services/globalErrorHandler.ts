@@ -1,5 +1,5 @@
 import type { App, ComponentPublicInstance } from 'vue'
-import { useUiStore } from '../stores/ui'
+import { usePaperStore } from '../stores/paper'
 
 export function setupErrorHandler(app: App): void {
   app.config.errorHandler = (err: unknown, instance: ComponentPublicInstance | null, info: string) => {
@@ -15,15 +15,11 @@ export function setupErrorHandler(app: App): void {
     }
 
     try {
-      const uiStore = useUiStore() as any
-      if (uiStore?.showToast) {
-        uiStore.showToast({
-          type: 'error',
-          message: 'Terjadi kesalahan. Silakan refresh halaman.',
-          duration: 5000
-        })
+      const paperStore = usePaperStore()
+      if (paperStore?.showToast) {
+        paperStore.showToast('Terjadi kesalahan. Silakan refresh halaman.', 'error')
       }
-    } catch { /* ui store not available */ }
+    } catch { /* paper store not available */ }
   }
 
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {

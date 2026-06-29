@@ -1,7 +1,8 @@
 """Fetcher untuk arXiv - http://export.arxiv.org/api/query"""
 
 import re
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as _ET  # type hints only
+from defusedxml.ElementTree import fromstring
 from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_text
@@ -14,7 +15,7 @@ NS = {
 }
 
 
-def _parse_entry(entry: ET.Element) -> Paper | None:
+def _parse_entry(entry: _ET.Element) -> Paper | None:
     title_el = entry.find("atom:title", NS)
     title = (title_el.text or "").strip() if title_el is not None else None
     if not title:
@@ -55,9 +56,10 @@ def _parse_entry(entry: ET.Element) -> Paper | None:
     if jr_el is not None:
         venue = (jr_el.text or "").strip() or None
 
-    # PDF download link
+    # Landing page and PDF download link
+    landing_url = f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else None
     pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None
-    
+
     return Paper(
         source="arxiv",
         source_id=arxiv_id or "",
@@ -66,9 +68,10 @@ def _parse_entry(entry: ET.Element) -> Paper | None:
         abstract=abstract,
         year=year,
         venue=venue,
-        venue_type="journal" if venue else "preprint",
+        venue_type="repository",
         doi=doi,
-        url=pdf_url,  # Direct PDF link
+        url=landing_url,
+        pdf_url=pdf_url,
         is_open_access=True,
         type="preprint",
     )
@@ -98,8 +101,8 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         if not text:
             return
         try:
-            root = ET.fromstring(text)
-        except ET.ParseError as e:
+            root = fromstring(text)
+        except _ET.ParseError as e:
             import logging
 
             logging.getLogger(__name__).warning("arxiv parse error at start=%d: %s", start, e)

@@ -6,7 +6,11 @@ import { applyInitialTheme } from './stores/theme'
 import { vAutosize } from './directives/autosize'
 import { setupErrorHandler } from './services/globalErrorHandler'
 import { logger } from './utils/logger'
+import api from './api/index'
 import './style.css'
+
+// Wire logger to axios so frontend logs actually reach the backend
+logger.setApi(api)
 
 applyInitialTheme()
 

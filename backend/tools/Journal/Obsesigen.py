@@ -71,7 +71,7 @@ def _clean_latex(text):
         try:
             ch = chr(int(m.group(1), 16))
             return ' ' if ord(ch) < 0x20 else ch
-        except: return m.group(0)
+        except Exception: return m.group(0)
     text = re.sub(r'\\u([0-9a-fA-F]{4})', _u, text)
     text = re.sub(r'\\t(?![a-z])', ' ', text)
     text = re.sub(r'\\b([^\\]*?)\\b', r'\1', text)
@@ -257,7 +257,7 @@ def _make_inline_image(image_path, width_cm=8.0):
             from PIL import Image
             with Image.open(path) as img:
                 px_width = img.width
-    except: pass
+    except Exception: pass
     
     emu_per_cm = 360000
     img_w_emu = int(width_cm * emu_per_cm)
@@ -382,7 +382,7 @@ def _render_figure(doc, body, fig, fig_no):
             r = OxmlElement("w:r")
             r.append(drawing)
             p_img.insert(2, r)
-        except: pass
+        except Exception: pass
     
     _add_element_before_sectpr(body, p_img)
     
@@ -568,7 +568,7 @@ def generate(template_docx=None, template_json=None, output_path=None):
                         _set_para_text(p, title, size=9, bold=False)
                     elif "DOI" in txt:
                         _set_para_text(p, f"DOI: {first_email}" if first_email else "", size=8)
-        except: pass
+        except Exception: pass
     
     # ── INJECT-IN-PLACE HEADER SECTION ──
     paras = doc.paragraphs
@@ -733,7 +733,7 @@ def generate(template_docx=None, template_json=None, output_path=None):
     for pos in range(28 + len(content_paras), 91):
         try:
             _set_para_text(paras[pos], "")
-        except:
+        except Exception:
             pass
     
     doc.save(str(out))

@@ -254,11 +254,6 @@ const generating: Record<string, boolean> = reactive({})
 const galleryOpen: Record<string, boolean> = reactive({})
 const failedImages = ref(new Set<string>())
 
-function getAccessTokenCookie(): string {
-  const match = document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/)
-  return match ? decodeURIComponent(match[1]) : ''
-}
-
 watch(() => store.currentPaperId, () => {
   failedImages.value = new Set()
 })
@@ -396,9 +391,7 @@ function thumbUrl(filename: string): string {
   const pid = store.currentPaperId
   if (!pid || pid === 'null' || pid === 'undefined' || !filename) return ''
   const base = filename.includes('/') ? filename.split('/').pop() || filename : filename
-  const token = getAccessTokenCookie()
-  const qs = token ? `?t=${encodeURIComponent(token)}` : ''
-  return `/api/images/${pid}/${encodeURIComponent(base)}${qs}`
+  return `/api/images/${pid}/${encodeURIComponent(base)}`
 }
 
 function basename(path: string): string {

@@ -74,6 +74,10 @@ export const useAuthStore = defineStore('auth', () => {
       // Even if the call fails (cookie expired etc.), clear local state.
     }
     setUser(null)
+    try {
+      const keys = ['pg_paper', 'pg_job', 'pg_last_paper_id', 'pg_ui_state_v2', 'pg_state_cache', 'pg_image_gen_jobs', 'pf_tool_state', 'pg_bell_clicked_ids', 'pg_stream_state', 'chat_streams_state']
+      keys.forEach(k => { try { localStorage.removeItem(k) } catch {} })
+    } catch {}
     window.location.href = '/'
   }
 

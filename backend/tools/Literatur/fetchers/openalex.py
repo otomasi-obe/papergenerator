@@ -1,11 +1,13 @@
 """Fetcher untuk OpenAlex - https://api.openalex.org"""
 
+import logging
 import os
 from typing import Iterable
 
-from ..http_client import RateLimiter, fetch_json
+from ..http_client import RateLimiter, fetch_json, strip_html, normalize_doi
 from ..paper import Paper
 
+log = logging.getLogger(__name__)
 BASE = "https://api.openalex.org/works"
 
 
@@ -20,6 +22,38 @@ def _reconstruct_abstract(inv_index: dict | None) -> str | None:
         return None
     max_pos = max(pos_map.keys())
     return " ".join(pos_map.get(i, "") for i in range(max_pos + 1)).strip()
+
+
+def enrich_abstract_via_doi(doi: str, client) -> str | None:
+    doi_clean = normalize_doi(doi)
+    if not doi_clean:
+        return None
+
+    url = f"{BASE.replace('works', '')}doi:{doi_clean}"
+    try:
+        data = fetch_json(client, url)
+        if not data:
+            return None
+        inv = data.get("abstract_inverted_index")
+        abstract = _reconstruct_abstract(inv)
+        if abstract:
+            abstract = strip_html(abstract)
+            abstract = " ".join(abstract.split()).strip()
+        return abstract or None
+    except Exception as e:
+        log.debug("Abstract enrichment failed for DOI %s: %s", doi_clean, e)
+        return None
+
+
+def enrich_abstracts(papers: Iterable[Paper], client) -> int:
+    count = 0
+    for paper in papers:
+        if not paper.abstract and paper.doi:
+            abstract = enrich_abstract_via_doi(paper.doi, client)
+            if abstract:
+                paper.abstract = abstract
+                count += 1
+    return count
 
 
 def _parse_work(w: dict) -> Paper | None:
@@ -44,9 +78,10 @@ def _parse_work(w: dict) -> Paper | None:
         venue_type = src.get("type")
         publisher = src.get("host_organization_name")
 
-    doi = w.get("doi")
-    if doi and doi.startswith("https://doi.org/"):
-        doi = doi[len("https://doi.org/") :]
+    doi = normalize_doi(w.get("doi"))
+
+    # Landing page URL (DOI or OpenAlex ID)
+    landing_url = f"https://doi.org/{doi}" if doi else (primary_loc.get("landing_page_url") or w.get("id"))
 
     # Get PDF URL from open_access field or primary_location
     oa_info = w.get("open_access") or {}
@@ -55,12 +90,38 @@ def _parse_work(w: dict) -> Paper | None:
     # Try primary location PDF
     if not pdf_url:
         pdf_url = primary_loc.get("pdf_url")
-    
-    # Fallback to DOI or landing page
-    if not pdf_url and doi:
-        pdf_url = f"https://doi.org/{doi}"
-    if not pdf_url:
-        pdf_url = primary_loc.get("landing_page_url") or w.get("id")
+
+    # Normalize venue_type to standard values
+    _venue_type_map = {
+        "journal": "journal",
+        "book series": "book",
+        "book": "book",
+        "publisher": "book",
+        "conference": "conference",
+        "proceedings": "conference",
+    }
+    normalized_venue_type = None
+    if venue_type:
+        normalized_venue_type = _venue_type_map.get(venue_type.lower(), "unknown")
+
+    # Normalize type to standard values
+    _type_map = {
+        "article": "journal-article",
+        "journal-article": "journal-article",
+        "proceedings-article": "conference-paper",
+        "conference-paper": "conference-paper",
+        "book": "book",
+        "book-chapter": "book",
+        "monograph": "book",
+        "report": "journal-article",
+        "dataset": "dataset",
+        "letter": "journal-article",
+        "review": "journal-article",
+        "preprint": "preprint",
+    }
+    normalized_type = None
+    if w.get("type"):
+        normalized_type = _type_map.get(w["type"].lower(), w.get("type"))
 
     return Paper(
         source="openalex",
@@ -70,13 +131,13 @@ def _parse_work(w: dict) -> Paper | None:
         abstract=_reconstruct_abstract(w.get("abstract_inverted_index")),
         year=w.get("publication_year"),
         venue=venue,
-        venue_type=venue_type,
+        venue_type=normalized_venue_type,
         doi=doi,
-        url=pdf_url,
-        pdf_url=pdf_url if oa_info.get("is_oa") else None,
+        url=landing_url,
+        pdf_url=pdf_url,
         citations=w.get("cited_by_count"),
         is_open_access=oa_info.get("is_oa"),
-        type=w.get("type"),
+        type=normalized_type,
         publisher=publisher,
     )
 

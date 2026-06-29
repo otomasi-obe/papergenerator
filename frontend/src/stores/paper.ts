@@ -164,6 +164,7 @@ function fromPaperJsonRaw(json) {
   const p = createEmptyPaper()
   p.journal = json.journal || json.template || 'IEEE'
   p.citation_style = json.citation_style || 'ieee'
+  p.language = json.language || 'id'
   p.title = json.title || ''
   p.authors = (json.authors || []).length
     ? json.authors
@@ -210,7 +211,7 @@ function fromPaperJsonRaw(json) {
       p.references = json.references.content || json.references.items || []
     } else if (Array.isArray(json.references)) {
       // Keep structured objects as-is for downstream style formatting.
-      // Display components (ReferencesTab, PreviewTab) format them via _formatStructuredRef.
+      // Display components format them via _formatStructuredRef.
       p.references = json.references.map((r) => {
         if (typeof r === 'string') return r
         if (r.text) return r.text
@@ -903,6 +904,8 @@ export const usePaperStore = defineStore('paper', () => {
     const p = paper.value
     const json = {
       journal: p.journal || 'IEEE',
+      citation_style: p.citation_style || 'ieee',
+      language: p.language || 'id',
       title: p.title,
       authors: p.authors,
       abstract: p.abstract,

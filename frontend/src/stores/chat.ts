@@ -94,6 +94,18 @@ function _safeErrorMessage(raw) {
 }
 
 /**
+ * Language-aware UI string helper.
+ * Returns English or Indonesian text based on the current paper language.
+ */
+function _uiStr(id: string, en: string): string {
+  try {
+    const paperStore = usePaperStore()
+    if (paperStore.paper.language === 'en') return en
+  } catch { /* ignore */ }
+  return id
+}
+
+/**
  * Convert a PROPOSAL payload into a user-friendly message for display in the
  * chat. The structured data is already handled (stored in msg.metadata or
  * routed to the paper store), so this is just a confirmation message.
@@ -291,13 +303,6 @@ export const useChatStore = defineStore('chat', () => {
   // input in the current chat is locked and a banner explains why.
   const activeJob = ref(null)  // { active, job_id, prompt, elapsed_seconds } | null
   let _activeJobTimer = null
-
-  // Backwards-compat shims for ChatTab.vue (read-only at this scope). The
-  // model picker is no longer wired to the request body; these exist only so
-  // existing template/script references keep building. Removing them entirely
-  // requires touching ChatTab, which is out of scope for this agent.
-  const selectedModel = ref(null)
-  function setModel(_value) { /* no-op: model picker disabled */ }
 
   const currentChat = computed(() =>
     conversations.value.find(c => c.id === currentConversationId.value)
@@ -672,7 +677,7 @@ export const useChatStore = defineStore('chat', () => {
           await _finalizeResumedStream(convId)
         } else if (status.status === 'error') {
           if (s.streamingMessage && status.error) {
-            s.streamingMessage.content += `\n\n_${_safeErrorMessage(status.error)}_`
+            s.streamingMessage.content = (s.streamingMessage.content || '') + `\n\n_${_safeErrorMessage(status.error)}_`
           }
           await _finalizeResumedStream(convId)
         } else if (status.status === 'not_found') {
@@ -1033,7 +1038,7 @@ export const useChatStore = defineStore('chat', () => {
                   try {
                     const data = JSON.parse(line.slice(6))
                     _handleSSEEvent(convId, currentEvent, data)
-                  } catch { /* skip malformed */ }
+                  } catch (parseErr) { console.warn('[SSE] Malformed chunk skipped:', line, parseErr) }
                 }
               }
             }
@@ -1069,12 +1074,12 @@ export const useChatStore = defineStore('chat', () => {
           }
         } catch (e) {
           const isLastAttempt = attempt === MAX_RETRIES - 1
-          const isUserAbort = e.name === 'AbortError' && e.message !== 'Connection timeout'
+          const isUserAbort = e instanceof Error && e.name === 'AbortError' && e.message !== 'Connection timeout'
 
           if (isUserAbort) {
             // User manually stopped - don't retry
             if (stream.streamingMessage) {
-              stream.streamingMessage.content += '\n\n_(dihentikan oleh pengguna)_'
+              stream.streamingMessage.content = (stream.streamingMessage.content || '') + '\n\n_(' + _uiStr('dihentikan oleh pengguna', 'stopped by user') + ')_'
             }
             stream.connectionState = 'idle'
             break
@@ -1097,7 +1102,7 @@ export const useChatStore = defineStore('chat', () => {
                   }
                 }
               } else {
-                stream.streamingMessage.content += `\n\n_${friendly}_`
+                stream.streamingMessage.content = (stream.streamingMessage.content || '') + `\n\n_${friendly}_`
               }
             }
             stream.connectionState = 'disconnected'
@@ -1174,7 +1179,7 @@ export const useChatStore = defineStore('chat', () => {
         s.isStreaming = false
         s.connectionState = 'idle'
         if (s.streamingMessage) {
-          s.streamingMessage.content += '\n\n_(dihentikan oleh pengguna)_\n\n'
+          s.streamingMessage.content = (s.streamingMessage.content || '') + '\n\n_(' + _uiStr('dihentikan oleh pengguna', 'stopped by user') + ')_\n\n'
         }
         _syncFromStream(convId)
       } catch {
@@ -1640,8 +1645,6 @@ export const useChatStore = defineStore('chat', () => {
     searchMessage,
     error,
     activeJob,
-    selectedModel,
-    setModel,
     loadPaperChats,
     loadConversations,
     openPaper,
@@ -1664,7 +1667,6 @@ export const useChatStore = defineStore('chat', () => {
     startActiveJobPolling,
     stopActiveJobPolling,
     reset,
-    // Backwards-compat aliases (in case other components still call them)
-    openPaperChat: openPaper,
+
   }
 })

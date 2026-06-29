@@ -9,7 +9,7 @@ import os
 import re
 from datetime import datetime, timezone
 
-from database.models import Paper, db, safe_commit
+from utils.database.models import Paper, db, safe_commit
 
 log = logging.getLogger(__name__)
 
@@ -537,6 +537,114 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                 }
                 data["sections"].append(new_sec)
                 results.append(f"✓ Section '{target}' added")
+
+            elif action == "append_section":
+                sec = _find_section(data.get("sections", []), target)
+                if sec is not None:
+                    if isinstance(content, str):
+                        blocks = sec.get("content", [])
+                        if not isinstance(blocks, list):
+                            blocks = []
+                        blocks.append({"id": "text", "text": content})
+                        sec["content"] = blocks
+                    elif isinstance(content, list):
+                        blocks = sec.get("content", [])
+                        if not isinstance(blocks, list):
+                            blocks = []
+                        blocks.extend(content)
+                        sec["content"] = blocks
+                    results.append(f"✓ Section '{target}' appended")
+                else:
+                    errors.append(f"✗ Section '{target}' not found")
+
+            elif action == "prepend_section":
+                sec = _find_section(data.get("sections", []), target)
+                if sec is not None:
+                    if isinstance(content, str):
+                        blocks = sec.get("content", [])
+                        if not isinstance(blocks, list):
+                            blocks = []
+                        blocks.insert(0, {"id": "text", "text": content})
+                        sec["content"] = blocks
+                    elif isinstance(content, list):
+                        blocks = sec.get("content", [])
+                        if not isinstance(blocks, list):
+                            blocks = []
+                        sec["content"] = content + blocks
+                    results.append(f"✓ Section '{target}' prepended")
+                else:
+                    errors.append(f"✗ Section '{target}' not found")
+
+            elif action == "insert_section_after":
+                sections = data.get("sections", [])
+                after_sec = _find_section(sections, target)
+                if after_sec is not None:
+                    new_content = (
+                        [{"id": "text", "text": content}]
+                        if isinstance(content, str)
+                        else content
+                    )
+                    new_sec = {
+                        "title": op.get("new_title", target + " (continued)"),
+                        "content": new_content,
+                    }
+                    idx = sections.index(after_sec)
+                    sections.insert(idx + 1, new_sec)
+                    results.append(f"✓ Section inserted after '{target}'")
+                else:
+                    errors.append(f"✗ Section '{target}' not found")
+
+            elif action == "replace_text":
+                sec = _find_section(data.get("sections", []), target)
+                if sec is not None and isinstance(content, dict):
+                    find_text = content.get("find", "")
+                    replace_text = content.get("replace", "")
+                    if find_text:
+                        blocks = sec.get("content", [])
+                        replaced_count = 0
+                        for block in blocks:
+                            if isinstance(block, dict) and block.get("id") == "text":
+                                if find_text in block.get("text", ""):
+                                    block["text"] = block["text"].replace(find_text, replace_text)
+                                    replaced_count += 1
+                        if replaced_count > 0:
+                            results.append(f"✓ Text replaced in section '{target}' ({replaced_count} occurrences)")
+                        else:
+                            errors.append(f"✗ Text not found in section '{target}'")
+                    else:
+                        errors.append(f"✗ replace_text requires 'find' field")
+                else:
+                    if sec is None:
+                        errors.append(f"✗ Section '{target}' not found")
+                    else:
+                        errors.append(f"✗ replace_text requires object content with 'find' and 'replace' fields")
+
+            elif action == "reorder_sections":
+                sections = data.get("sections", [])
+                if isinstance(content, list) and content:
+                    # content = ordered list of section titles
+                    title_to_sec = {}
+                    for s in sections:
+                        if isinstance(s, dict):
+                            for t in _section_titles(s):
+                                title_to_sec[t] = s
+                    new_order = []
+                    missing = []
+                    for title in content:
+                        sec = title_to_sec.get(title)
+                        if sec:
+                            new_order.append(sec)
+                        else:
+                            missing.append(title)
+                    if missing:
+                        errors.append(f"✗ Sections not found: {', '.join(missing)}")
+                    else:
+                        # Keep any sections not in the new order at the end
+                        remaining = [s for s in sections if s not in new_order]
+                        data["sections"] = new_order + remaining
+                        results.append(f"✓ Sections reordered")
+                else:
+                    errors.append(f"✗ reorder_sections requires array of section titles")
 
             elif action == "delete_section":
                 sections = data.get("sections", [])

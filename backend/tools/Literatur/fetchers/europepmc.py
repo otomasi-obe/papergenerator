@@ -31,7 +31,14 @@ def _parse(item: dict) -> Paper | None:
     doi = item.get("doi")
     pmcid = item.get("pmcid")
     pmid = item.get("pmid")
-    
+    landing_url = None
+
+    # Landing page
+    if pmid:
+        landing_url = f"https://europepmc.org/article/{item.get('source', '')}/{item.get('id', '')}"
+    elif doi:
+        landing_url = f"https://doi.org/{doi}"
+
     # Check for full text links
     full_text_urls = item.get("fullTextUrlList", {}).get("fullTextUrl", [])
     for ft in full_text_urls:
@@ -46,10 +53,10 @@ def _parse(item: dict) -> Paper | None:
     # Fallback: DOI
     if not pdf_url and doi:
         pdf_url = f"https://doi.org/{doi}"
-    
-    # Last resort: landing page
-    if not pdf_url and item.get("id"):
-        pdf_url = f"https://europepmc.org/article/{item.get('source')}/{item.get('id')}"
+
+    # Fallback: use landing_url as pdf_url if nothing else available
+    if not pdf_url:
+        pdf_url = landing_url
 
     return Paper(
         source="europepmc",
@@ -61,7 +68,8 @@ def _parse(item: dict) -> Paper | None:
         venue=item.get("journalTitle"),
         venue_type="journal" if item.get("journalTitle") else None,
         doi=doi,
-        url=pdf_url,
+        url=landing_url,
+        pdf_url=pdf_url,
         citations=item.get("citedByCount"),
         is_open_access=item.get("isOpenAccess") == "Y",
         type=item.get("pubType"),

@@ -311,10 +311,12 @@ def _find_paper_image_dir(paper_id: str, upload_base: Path) -> Optional[Path]:
     """
     Locate the image directory for a paper.
     Returns the first existing path:
-      1. user/<username>/<paper_id>/image/   (via safe_paper_dir)
-      2. data/uploads/<paper_id>/            (legacy)
+      1. user/<user_id>/uploads/<paper_id>/image/  (new per-user via safe_paper_dir)
+      2. user/<username>/<paper_id>/image/          (existing username-based)
+      3. upload_base/<paper_id>/                    (passed fallback, e.g. per-user uploads dir)
+      4. legacy data/uploads/<paper_id>/            (old centralized)
     """
-    # Primary: safe_paper_image_dir (user/<username>/<paper_id>/image/)
+    # Primary: safe_paper_image_dir (tries new per-user first, then username-based)
     try:
         from tools.editor.utils import safe_paper_image_dir
         image_dir = safe_paper_image_dir(paper_id)
@@ -323,7 +325,7 @@ def _find_paper_image_dir(paper_id: str, upload_base: Path) -> Optional[Path]:
     except Exception:
         log.debug("[reconcile] safe_paper_image_dir lookup failed", exc_info=True)
 
-    # Fallback: legacy data/uploads/<paper_id>/
+    # Fallback: upload_base/<paper_id>/ (per-user or legacy)
     legacy_dir = upload_base / paper_id
     if legacy_dir.exists():
         return legacy_dir

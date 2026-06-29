@@ -1,0 +1,206 @@
+{
+  "query": "robot agv",
+  "total": 10,
+  "papers": [
+    {
+      "source": "scopus",
+      "source_id": "85171678147",
+      "title": "AGV robot for laser-SLAM based method testing in automated container terminal",
+      "authors": [
+        "Yang A."
+      ],
+      "abstract": null,
+      "year": 2023,
+      "venue": "Industrial Robot",
+      "venue_type": "journal",
+      "doi": "10.1108/IR-04-2023-0063",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85171678147",
+      "pdf_url": null,
+      "citations": 7,
+      "is_open_access": false,
+      "type": "Journal",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "43549122336",
+      "title": "Research on the AGV based robot system used in substation inspection",
+      "authors": [
+        "Li S."
+      ],
+      "abstract": null,
+      "year": 2007,
+      "venue": "2006 International Conference on Power System Technology Powercon2006",
+      "venue_type": "conference",
+      "doi": "10.1109/ICPST.2006.321495",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/43549122336",
+      "pdf_url": null,
+      "citations": 29,
+      "is_open_access": false,
+      "type": "Conference Proceeding",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85107457890",
+      "title": "Research on the development status of AGV parking robot based on patent analysis",
+      "authors": [
+        "Shen K."
+      ],
+      "abstract": null,
+      "year": 2021,
+      "venue": "Journal of Physics Conference Series",
+      "venue_type": "conference",
+      "doi": "10.1088/1742-6596/1905/1/012018",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85107457890",
+      "pdf_url": null,
+      "citations": 4,
+      "is_open_access": true,
+      "type": "Conference Proceeding",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85096748774",
+      "title": "Determination of Kinematic Control Parameters of Omnidirectional AGV Robot with Mecanum Wheels Track the Reference Trajectory and Velocity",
+      "authors": [
+        "Ly T.T.K."
+      ],
+      "abstract": null,
+      "year": 2021,
+      "venue": "Lecture Notes in Networks and Systems",
+      "venue_type": "book",
+      "doi": "10.1007/978-3-030-64719-3_36",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85096748774",
+      "pdf_url": null,
+      "citations": 7,
+      "is_open_access": false,
+      "type": "Book Series",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85072114668",
+      "title": "AGV Robot Based on Computer Vision and Deep Learning",
+      "authors": [
+        "Chuixin C."
+      ],
+      "abstract": null,
+      "year": 2019,
+      "venue": "Proceedings of 2019 3rd IEEE International Conference on Robotics and Automation Sciences Icras 2019",
+      "venue_type": "conference",
+      "doi": "10.1109/ICRAS.2019.8808970",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85072114668",
+      "pdf_url": null,
+      "citations": 14,
+      "is_open_access": false,
+      "type": "Conference Proceeding",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85181064203",
+      "title": "Navigation Guidance System of AGV Robot Using Image Processing With HSV Filter",
+      "authors": [
+        "Agafta I."
+      ],
+      "abstract": null,
+      "year": 2023,
+      "venue": "Proceedings Ieit 2023 2023 International Conference on Electrical and Information Technology",
+      "venue_type": "conference",
+      "doi": "10.1109/IEIT59852.2023.10335571",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85181064203",
+      "pdf_url": null,
+      "citations": 1,
+      "is_open_access": false,
+      "type": "Conference Proceeding",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "0033706703",
+      "title": "Guided and detecting technology of intelligent robot AGV and new-style AGV",
+      "authors": [
+        "Zhan Y.d."
+      ],
+      "abstract": null,
+      "year": 2000,
+      "venue": "Proceedings of SPIE the International Society for Optical Engineering",
+      "venue_type": "conference",
+      "doi": null,
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/0033706703",
+      "pdf_url": null,
+      "citations": 5,
+      "is_open_access": false,
+      "type": "Conference Proceeding",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85060080835",
+      "title": "Design of knapsack AGV robot based magnetic navigation deviation control system",
+      "authors": [
+        "Liu S."
+      ],
+      "abstract": null,
+      "year": 2018,
+      "venue": "Gaojishu Tongxin Chinese High Technology Letters",
+      "venue_type": "journal",
+      "doi": "10.3772/j.issn.1002-0470.2018.07.007",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85060080835",
+      "pdf_url": null,
+      "citations": 1,
+      "is_open_access": false,
+      "type": "Journal",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85185828982",
+      "title": "Application of Intelligent Logistics System Based on AGV Robot in Medical Consumables Management",
+      "authors": [
+        "Guo X."
+      ],
+      "abstract": null,
+      "year": 2024,
+      "venue": "Zhongguo Yi Liao Qi Xie Za Zhi Chinese Journal of Medical Instrumentation",
+      "venue_type": "journal",
+      "doi": "10.3969/j.issn.1671-7104.230206",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85185828982",
+      "pdf_url": null,
+      "citations": 5,
+      "is_open_access": false,
+      "type": "Journal",
+      "publisher": null,
+      "db_score": null
+    },
+    {
+      "source": "scopus",
+      "source_id": "85171999730",
+      "title": "Deep Learning-Based Object Tracking and Following for AGV Robot",
+      "authors": [
+        "Binh N.T."
+      ],
+      "abstract": null,
+      "year": 2023,
+      "venue": "Lecture Notes in Networks and Systems",
+      "venue_type": "book",
+      "doi": "10.1007/978-981-99-4725-6_26",
+      "url": "https://api.elsevier.com/content/abstract/scopus_id/85171999730",
+      "pdf_url": null,
+      "citations": 6,
+      "is_open_access": false,
+      "type": "Book Series",
+      "publisher": null,
+      "db_score": null
+    }
+  ]
+}

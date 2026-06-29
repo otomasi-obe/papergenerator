@@ -11,7 +11,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required
 from sqlalchemy import desc, func
 
-from database.models import ApiUsageLog, Paper, PaperImage, User, db, safe_commit
+from utils.database.models import ApiUsageLog, Paper, PaperImage, User, db, safe_commit
 
 log = logging.getLogger(__name__)
 

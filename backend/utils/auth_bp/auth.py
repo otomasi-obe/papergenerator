@@ -30,7 +30,15 @@ from flask_jwt_extended import (
     unset_jwt_cookies,
 )
 
-from database.models import User, db, safe_commit
+from utils.database.models import User, db, safe_commit
+from .captcha import (
+    captcha_enabled,
+    captcha_required_for_login,
+    generate_captcha,
+    increment_failed_attempts,
+    reset_failed_attempts,
+    verify_captcha,
+)
 
 log = logging.getLogger(__name__)
 
@@ -277,14 +285,43 @@ def _issue_tokens_for(user: "User"):
 def _login_response(user: "User", status: int = 200):
     access, refresh = _issue_tokens_for(user)
     resp = jsonify({
-        "user": user.to_dict(),
-        "access_token": access,
-        "refresh_token": refresh
+        "user": user.to_dict()
     })
     resp.status_code = status
     set_access_cookies(resp, access)
     set_refresh_cookies(resp, refresh)
     return resp
+
+
+# ─── CAPTCHA Endpoints ──────────────────────────────────────────────────────
+@auth.route("/captcha/generate", methods=["GET"])
+def captcha_generate():
+    """Generate a math CAPTCHA challenge. Returns captcha_id + question."""
+    if not captcha_enabled():
+        return jsonify({"captcha_required": False}), 200
+    result = generate_captcha()
+    if result is None:
+        return jsonify({"error": "CAPTCHA service unavailable"}), 503
+    return jsonify({"captcha_required": True, **result}), 200
+
+
+@auth.route("/captcha/verify", methods=["POST"])
+def captcha_verify():
+    """Verify a CAPTCHA answer. Returns {valid: true/false}."""
+    data = request.get_json(silent=True) or {}
+    captcha_id = (data.get("captcha_id") or "").strip()
+    answer = (data.get("answer") or "").strip()
+    if not captcha_id or not answer:
+        return jsonify({"valid": False, "error": "captcha_id and answer required"}), 400
+    valid = verify_captcha(captcha_id, answer)
+    return jsonify({"valid": valid}), 200
+
+
+@auth.route("/captcha/status", methods=["GET"])
+def captcha_status():
+    """Check if CAPTCHA is required for login from current IP."""
+    required = captcha_required_for_login()
+    return jsonify({"captcha_required": required, "captcha_enabled": captcha_enabled()}), 200
 
 
 @auth.route("/register", methods=["POST"])
@@ -326,6 +363,15 @@ def register():
             except Exception as e:
                 log.warning("turnstile_unreachable: %s", e)
                 return jsonify({"error": "CAPTCHA service unreachable, please retry"}), 503
+
+    # Math CAPTCHA check (CAPTCHA_ENABLED env var)
+    if captcha_enabled():
+        mc_id = (data.get("math_captcha_id") or "").strip()
+        mc_answer = (data.get("math_captcha_answer") or "").strip()
+        if not mc_id or not mc_answer:
+            return jsonify({"error": "CAPTCHA required", "captcha_required": True}), 400
+        if not verify_captcha(mc_id, mc_answer):
+            return jsonify({"error": "CAPTCHA answer incorrect", "captcha_required": True}), 400
 
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
@@ -376,6 +422,15 @@ def login_email():
     if len(email) > MAX_EMAIL_LEN or len(password) > MAX_PASSWORD_LEN:
         return jsonify({"error": "Invalid email or password"}), 401
 
+    # Require math CAPTCHA after MAX_FAILED_ATTEMPTS failed logins from same IP
+    if captcha_required_for_login():
+        mc_id = (data.get("math_captcha_id") or "").strip()
+        mc_answer = (data.get("math_captcha_answer") or "").strip()
+        if not mc_id or not mc_answer:
+            return jsonify({"error": "Too many failed attempts. CAPTCHA required.", "captcha_required": True}), 400
+        if not verify_captcha(mc_id, mc_answer):
+            return jsonify({"error": "CAPTCHA answer incorrect", "captcha_required": True}), 400
+
     user = User.query.filter_by(email=email).first()
     if not user:
         from werkzeug.security import check_password_hash
@@ -384,10 +439,14 @@ def login_email():
             "pbkdf2:sha256:600000$dummy$" + "a" * 64,
             password,
         )
+        increment_failed_attempts()
         return jsonify({"error": "Invalid email or password"}), 401
     if not user.check_password(password):
+        increment_failed_attempts()
         return jsonify({"error": "Invalid email or password"}), 401
 
+    # Successful login — reset failed attempt counter
+    reset_failed_attempts()
     user.last_login = datetime.now(timezone.utc)
     safe_commit()
 
@@ -472,6 +531,17 @@ def google_callback():
 
         google_id = userinfo["sub"]
         email = userinfo["email"]
+
+        # ── Security: don't blindly trust email_verified ──────────────────────
+        # Google is reliable for email_verified=true, but we still guard against
+        # account takeover: if a password-registered account exists for this
+        # email, we do NOT auto-link. The user must verify their password first
+        # via /api/auth/link-google before we merge.
+        email_verified = userinfo.get("email_verified", False)
+        if not email_verified:
+            log.warning("OAuth callback - email_verified=false for %s, rejecting", email)
+            return redirect(f"{frontend_url}/login?error=email_not_verified")
+
         if not _google_email_allowed(email):
             log.warning("OAuth callback - Google email not allowed: %s", email)
             return redirect(f"{frontend_url}/login?error=email_not_allowed")
@@ -479,24 +549,58 @@ def google_callback():
         name = userinfo.get("name", email.split("@")[0])
         avatar_url = userinfo.get("picture", "")
 
+        # ── Lookup: first by google_id (existing OAuth user), then by email ──
         user = User.query.filter_by(google_id=google_id).first()
+
         if not user:
-            user = User(
-                google_id=google_id,
-                email=email,
-                name=name,
-                avatar_url=avatar_url,
-                role="user",
-            )
-            _claim_admin_atomically(user)
-            db.session.add(user)
-            log.info("New user registered: %s (role=%s)", email, user.role)
+            # No existing google_id match — check for email collision
+            existing_user = User.query.filter_by(email=email).first()
+
+            if existing_user and existing_user.password_hash:
+                # Account exists with password but no Google link.
+                # Prevent account takeover: require explicit password verification.
+                log.warning(
+                    "OAuth callback - email %s has password account without Google link; "
+                    "redirecting to link flow", email
+                )
+                return redirect(
+                    f"{frontend_url}/login?error=account_linking_required"
+                    f"&email={email}"
+                )
+
+            if existing_user and not existing_user.password_hash:
+                # Existing OAuth-only user (no password) — link this google_id
+                user = existing_user
+                user.google_id = google_id
+                user.oauth_provider = user.oauth_provider or "google"
+                user.email = email
+                user.name = name
+                user.avatar_url = avatar_url
+                user.last_login = datetime.now(timezone.utc)
+                log.info("OAuth callback - linked google_id to existing OAuth-only user %s", email)
+            else:
+                # Completely new user — create with oauth_provider='google'
+                user = User(
+                    google_id=google_id,
+                    email=email,
+                    name=name,
+                    avatar_url=avatar_url,
+                    role="user",
+                    oauth_provider="google",
+                )
+                _claim_admin_atomically(user)
+                db.session.add(user)
+                log.info("New user registered via Google OAuth: %s (role=%s)", email, user.role)
         else:
+            # Existing google_id user — update profile
             user.email = email
             user.name = name
             user.avatar_url = avatar_url
             user.last_login = datetime.now(timezone.utc)
-            log.info("User logged in: %s", email)
+            # Backfill oauth_provider for pre-migration rows
+            if not user.oauth_provider:
+                user.oauth_provider = "google"
+            log.info("User logged in via Google: %s", email)
 
         safe_commit()
 
@@ -516,6 +620,77 @@ def google_callback():
         elif "mismatch" in error_lower or "state" in error_lower:
             error_code = "csrf_detected"
         return redirect(f"{frontend_url}/login?error={error_code}")
+
+
+@auth.route("/link-google", methods=["POST"])
+def link_google_account():
+    """Link a Google OAuth account to an existing password-based account.
+
+    Flow: user proves ownership of the password account by providing their
+    current password, then we exchange the Google auth code and merge.
+
+    Body JSON:
+        email: str          — existing account email
+        password: str       — existing account password (proof of ownership)
+        google_code: str    — authorization code from Google OAuth popup
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    google_code = data.get("google_code") or ""
+
+    if not email or not password or not google_code:
+        return jsonify({"error": "email, password, and google_code are required"}), 400
+
+    # 1. Verify password ownership of the existing account
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "Invalid email or password"}), 401
+    if not user.check_password(password):
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    # 2. Exchange Google code for userinfo
+    try:
+        userinfo = _exchange_google_code(google_code, _google_callback_url())
+    except Exception as e:
+        log.warning("link-google: Google code exchange failed: %s", e)
+        return jsonify({"error": "Google authorization failed"}), 400
+
+    google_email = userinfo.get("email", "").strip().lower()
+    google_id = userinfo.get("sub")
+    email_verified = userinfo.get("email_verified", False)
+
+    if not email_verified:
+        return jsonify({"error": "Google email is not verified"}), 400
+
+    if not google_id:
+        return jsonify({"error": "Missing Google user ID"}), 400
+
+    # 3. Verify the Google email matches the account email (prevents linking
+    #    someone else's Google account to yours)
+    if google_email != email:
+        return jsonify({
+            "error": "Google account email does not match your account",
+            "google_email": google_email,
+        }), 400
+
+    # 4. Check if this google_id is already linked to another account
+    existing_google = User.query.filter_by(google_id=google_id).first()
+    if existing_google and existing_google.id != user.id:
+        return jsonify({"error": "This Google account is already linked to another user"}), 409
+
+    # 5. Link!
+    user.google_id = google_id
+    user.oauth_provider = user.oauth_provider or "google"
+    user.avatar_url = user.avatar_url or userinfo.get("picture", "")
+    user.last_login = datetime.now(timezone.utc)
+    safe_commit()
+
+    log.info("Account linked: %s -> Google %s", email, google_id)
+    return _login_response(user)
 
 
 @auth.route("/refresh", methods=["POST"])

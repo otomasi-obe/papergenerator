@@ -384,7 +384,8 @@ async function loadAll() {
 
 onMounted(() => {
   loadAll()
-  // rofiq.txt: auto-refresh tiap 30 detik agar admin pantau usage real-time.
+  // auto-refresh tiap 30 detik agar admin pantau usage real-time.
+  if (_refreshTimer) clearInterval(_refreshTimer)
   _refreshTimer = setInterval(loadAll, 30_000)
 })
 

@@ -49,12 +49,8 @@ export const useUiStore = defineStore('ui', () => {
 
   // Watch for changes and sync to userState (debounced via userState store).
   // Only set keys that actually changed to avoid unnecessary DB writes.
-  let _lastPerPaper = JSON.stringify(perPaper.value)
   watch(perPaper, (s) => {
     save({ perPaper: s })
-    const snap = JSON.stringify(s)
-    _lastPerPaper = snap
-    void _lastPerPaper
   }, { deep: true })
 
   function _entry(paperId: string | null | undefined): PaperUiState | null {

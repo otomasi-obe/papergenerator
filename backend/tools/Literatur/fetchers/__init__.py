@@ -8,35 +8,60 @@ CS query → arxiv/dblp/ieee). When a query topic is unknown we fall back to the
 broad sources (openalex/crossref/semantic_scholar).
 
 Consolidated 2026-06: 9 publisher wrappers (springer, wiley, spie, ssrn,
-emerald, oxford, asce, igi_global, jstor) merged into crossref_publishers
-(2 HTTP calls instead of 9). 7 dead stubs removed (taylor_francis, proquest,
-ebscohost, mcgrawhill, embase, clinicalkey, westlaw).
+emerald, oxford, asce, igi_global, jstor) merged into crossref.search_publishers
+(2 HTTP calls instead of 9). 5 dead stubs removed (taylor_francis, proquest,
+ebscohost, mcgrawhill, westlaw). 2 revived 2026-06: embase + clinicalkey via
+Elsevier API.
+
+2026-06 expansion: 10 new fetchers added:
+  Paper: unpaywall (OA PDF resolver), opencitations (citation data),
+         biorxiv (preprint bio/med), pmc (PubMed Central full-text),
+         orcid (author identity/works)
+  Books: google_books, open_library, doab (OA books), oapen (OA monographs),
+         gutendex (Project Gutenberg)
 """
 
 from . import (
     arxiv,
+    biorxiv,
     cambridge,
+    clinicalkey,
     core,
     crossref,
-    crossref_publishers,
     datacite,
     dblp,
     dimensions,
     doaj,
+    embase,
     europepmc,
+    google_books,
+    gutendex,
     hal,
     ieee,
     lens,
+    open_library,
     openaire,
     openalex,
+    opencitations,
+    orcid,
     plos,
+    pmc,
     pubmed,
     sciencedirect,
     scopus,
     semantic_scholar,
     sinta,
+    unpaywall,
     zenodo,
 )
+from .oai_pmh import search_doab, search_oapen
+from types import SimpleNamespace
+
+doab = SimpleNamespace(search=search_doab)
+oapen = SimpleNamespace(search=search_oapen)
+
+# crossref_publishers alias — delegates to crossref.search_publishers
+crossref_publishers = SimpleNamespace(search=crossref.search_publishers)
 
 ALL = {
     # Free/open sources (no API key required)
@@ -53,6 +78,18 @@ ALL = {
     "hal": hal,
     "zenodo": zenodo,
     "datacite": datacite,
+    # New paper fetchers (no API key required)
+    "unpaywall": unpaywall,
+    "opencitations": opencitations,
+    "biorxiv": biorxiv,
+    "pmc": pmc,
+    "orcid": orcid,
+    # New book fetchers (no API key required, or free tier keys)
+    "google_books": google_books,
+    "open_library": open_library,
+    "doab": doab,
+    "oapen": oapen,
+    "gutendex": gutendex,
     # Free with optional API key (higher rate limits)
     "pubmed": pubmed,
     # Requires API key (active when key present)
@@ -63,14 +100,17 @@ ALL = {
     "sciencedirect": sciencedirect,
     # IEEE — keyless internal API
     "ieee": ieee,
-    # Crossref publisher batch (8 publishers + SSRN in 2 calls)
+    # Crossref publisher batch (8 publishers + SSRN in 2 calls → crossref.search_publishers)
     "crossref_publishers": crossref_publishers,
     # Cambridge — HTML scrape
     "cambridge": cambridge,
+    # Elsevier clinical/medical (requires ELSEVIER_API_KEY)
+    "embase": embase,
+    "clinicalkey": clinicalkey,
 }
 
 # Each source's strength. Used by orchestrator.pick_sources_for_topic.
-# crossref_publishers covers ALL topics since it aggregates 9 publishers.
+# crossref_publishers (→ crossref.search_publishers) covers ALL topics since it aggregates 9 publishers.
 SOURCE_TOPICS: dict[str, set[str]] = {
     # Broad coverage
     "openalex": {"general", "any"},
@@ -85,6 +125,8 @@ SOURCE_TOPICS: dict[str, set[str]] = {
     # Medical & Life Sciences
     "europepmc": {"medical", "biology", "health"},
     "pubmed": {"medical", "biology", "health"},
+    "pmc": {"medical", "biology", "health"},
+    "biorxiv": {"medical", "biology", "health", "neuroscience"},
     # Publisher-specific
     "core": {"general", "any"},
     "scopus": {"general", "any"},
@@ -98,11 +140,25 @@ SOURCE_TOPICS: dict[str, set[str]] = {
     "hal": {"general", "any", "physics", "cs"},
     "zenodo": {"general", "any"},
     "datacite": {"general", "any"},
-    # Crossref publisher batch — covers all topics (springer+wiley+spie+
-    # emerald+oxford+asce+igi+jstor+ssrn)
+    # OA PDF resolvers & citation data
+    "unpaywall": {"general", "any"},
+    "opencitations": {"general", "any"},
+    # Author identity
+    "orcid": {"general", "any"},
+    # Books (academic + general)
+    "google_books": {"general", "any", "humanities", "social"},
+    "open_library": {"general", "humanities", "literature"},
+    "doab": {"general", "humanities", "social", "economics"},
+    "oapen": {"humanities", "social", "economics", "law"},
+    "gutendex": {"literature", "humanities", "philosophy"},
+    # Crossref publisher batch — covers all topics (→ crossref.search_publishers)
+    # springer+wiley+spie+emerald+oxford+asce+igi+jstor+ssrn
     "crossref_publishers": {"general", "any", "cs", "ai", "engineering", "medical",
                             "economics", "law", "business", "social", "physics",
                             "education", "biology"},
     # Scrape
     "cambridge": {"general"},
+    # Elsevier clinical/medical
+    "embase": {"medical", "biology", "health", "pharmacology"},
+    "clinicalkey": {"medical", "health", "clinical", "pharmacology"},
 }

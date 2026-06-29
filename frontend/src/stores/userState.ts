@@ -211,10 +211,16 @@ export const useUserStateStore = defineStore('userState', () => {
             items.push({ key, paper_id: paperId, value: _map[ck] ?? null })
           }
           // fetch + keepalive ensures cookies are sent (sendBeacon has no credentials)
+          // Add CSRF token — same pattern as axios interceptor in api/index.ts
+          const csrfMatch = document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/)
+          const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : null
           fetch('/api/me/state', {
             method: 'PUT',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
             body: JSON.stringify({ items }),
             keepalive: true,
           })

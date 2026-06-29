@@ -6,18 +6,16 @@ import multiprocessing
 import os
 
 # === Server Socket ===
-bind = "0.0.0.0:8001"
+bind = "127.0.0.1:8001"
 backlog = 4096  # Doubled for 1000+ concurrent users; nginx queues overflow
 
 # === Worker Processes ===
-# 12 workers × 4 threads = 48 concurrent request slots.
-# Increased from 4 to 12 for better throughput under 1000+ concurrent users.
-# Image workers use separate pool (~2 GB). 12×~150MB = ~1.8 GB + 2 GB image = ~3.8 GB,
-# well within 23 GB RAM. Previous OOM was from 16 sync workers (no threads) + Chrome.
-workers = 12
-worker_class = "gthread"
-threads = 4  # Reduced from 8 to 4 — still enough for I/O-bound AI API calls
-worker_connections = 1000  # Used by gevent/eventlet; no-op for gthread but harmless
+# 24 gevent workers = scalable to 1000+ concurrent users.
+# gevent async workers handle many concurrent connections without threads.
+# worker_connections=100: max concurrent connections per gevent worker.
+workers = 24
+worker_class = "gevent"
+worker_connections = 100
 # SO_REUSEPORT: prevent orphan workers from blocking new gunicorn on port 8001
 reuse_port = True
 
@@ -27,8 +25,8 @@ graceful_timeout = 30
 keepalive = 5
 
 # === Logging ===
-accesslog = "/home/sirobo/papergenerator/backend/logs/gunicorn-access.log"
-errorlog = "/home/sirobo/papergenerator/backend/logs/gunicorn-error.log"
+accesslog = "/home/sirobo/papergenerator/backend/log/gunicorn-access.log"
+errorlog = "/home/sirobo/papergenerator/backend/log/gunicorn-error.log"
 loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
@@ -39,7 +37,7 @@ preload_app = False          # DO NOT enable: with preload_app=True gunicorn pre
                              # the master to crash silently during fork → PM2 loses PID
                              # tracking → restart loop → orphan workers on port 8001.
                              # Without preload, each worker loads the app independently
-                             # (~150MB × 16 = 2.4GB, system has 23GB — ample headroom).
+                             # (~150MB × 24 = 3.6GB, system has 23GB — ample headroom).
 max_requests = 2000         # Recycle workers after N requests (prevent leaks)
 max_requests_jitter = 200   # Randomize to avoid thundering herd
 
@@ -47,8 +45,8 @@ max_requests_jitter = 200   # Randomize to avoid thundering herd
 # Built-in log rotation via USR1 signal: kill -USR1 <master_pid>
 # Also add to cron: 0 3 * * * kill -USR1 $(cat /tmp/gunicorn.pid 2>/dev/null || echo 0) 2>/dev/null
 # Manual truncation if logs grow beyond 10MB:
-#   truncate -s 0 /home/sirobo/papergenerator/backend/logs/gunicorn-error.log
-#   truncate -s 0 /home/sirobo/papergenerator/backend/logs/gunicorn-access.log
+#   truncate -s 0 /home/sirobo/papergenerator/backend/log/gunicorn-error.log
+#   truncate -s 0 /home/sirobo/papergenerator/backend/log/gunicorn-access.log
 
 # === Security ===
 limit_request_line = 8190
@@ -71,7 +69,7 @@ worker_tmp_dir = "/dev/shm"  # RAM-based tmp for heartbeat (faster)
 def on_starting(server):
     """Create log directory if needed."""
     import os
-    os.makedirs("/home/sirobo/papergenerator/backend/logs", exist_ok=True)
+    os.makedirs("/home/sirobo/papergenerator/backend/log", exist_ok=True)
 
 
 def post_fork(server, worker):
@@ -84,6 +82,7 @@ def post_fork(server, worker):
     # across processes. Jobs are DB-persisted so the dispatcher in one worker
     # can serve requests received by any gunicorn worker.
     _img_marker = "/tmp/papergenerator-img-workers.lock"
+    _lock_fd = None
     try:
         import fcntl as _fcntl
         _lock_fd = open(_img_marker, "w")
@@ -103,12 +102,19 @@ def post_fork(server, worker):
         except (IOError, OSError):
             # Another worker already has the lock — skip
             _lock_fd.close()
+            _lock_fd = None
             server.log.info("Image worker pool already started by another worker, skipping")
         except Exception as e:
             server.log.exception("Exception in start_image_workers: %s", e)
             _lock_fd.close()
+            _lock_fd = None
     except Exception:
         server.log.exception("Failed to start image worker pool in worker pid=%s", worker.pid)
+        if _lock_fd is not None:
+            try:
+                _lock_fd.close()
+            except Exception:
+                pass
 
 
 def pre_exec(server):
@@ -116,5 +122,5 @@ def pre_exec(server):
 
 
 def when_ready(server):
-    server.log.info("Server is ready. Spawning workers: %d × %d threads",
-                    server.cfg.workers, server.cfg.threads)
+    server.log.info("Server is ready. Spawning workers: %d (gevent, conn=%d)",
+                    server.cfg.workers, server.cfg.worker_connections)

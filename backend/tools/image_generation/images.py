@@ -22,7 +22,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
 )
 
-from database.models import Paper, PaperImage, db, safe_commit
+from utils.database.models import Paper, PaperImage, db, safe_commit
 from tools.editor.utils import (
     FILENAME_RE,
     PAPER_ID_RE,

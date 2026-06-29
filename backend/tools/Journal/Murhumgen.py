@@ -40,7 +40,7 @@ def _decode_stray_escapes(text: str) -> str:
             try:
                 ch = chr(int(m.group(1), 16))
                 return " " if ord(ch) < 0x20 else ch
-            except:
+            except Exception:
                 return m.group(0)
         text = re.sub(r"\\u([0-9a-fA-F]{4})", _u, text)
     text = text.replace('\\\\b', '\\b')
@@ -318,7 +318,7 @@ def _add_fig(doc, fig, cnt):
     if actual:
         try:
             r = p.add_run(); r.add_picture(str(actual), width=Inches(3.2))
-        except:
+        except Exception:
             actual = None
     if not actual:
         r = p.add_run(f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt}]")

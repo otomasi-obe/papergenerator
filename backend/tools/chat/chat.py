@@ -17,12 +17,14 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from sqlalchemy import desc
 
-from database.models import ChatMessage, Conversation, Paper, db, safe_commit
+from utils.database.models import ChatMessage, Conversation, Paper, db, safe_commit
+import requests as _requests
+import urllib3 as _urllib3
 from utils.ai_tools.model_router import route_chat_call
 from utils.core.redis_client import get_redis
 from utils.core.user_storage import get_username, save_chat_send_by_id, save_chat_recv_by_id
 from tools.chat.tools import parse_completion, apply_operations, save_thinking_to_fs
-from tools.Literatur.slr_api import get_pinned_literature
+from tools.Literatur.literature_helpers import get_pinned_literature
 
 log = logging.getLogger(__name__)
 
@@ -226,7 +228,18 @@ def list_paper_conversations(paper_id):
         .order_by(Conversation.updated_at.desc())
         .all()
     )
-    return jsonify([c.to_dict() for c in convs])
+    # Pre-load message counts in a single GROUP BY query to avoid N+1
+    conv_ids = [c.id for c in convs]
+    msg_counts = {}
+    if conv_ids:
+        rows = (
+            db.session.query(ChatMessage.conversation_id, db.func.count(ChatMessage.id))
+            .filter(ChatMessage.conversation_id.in_(conv_ids))
+            .group_by(ChatMessage.conversation_id)
+            .all()
+        )
+        msg_counts = dict(rows)
+    return jsonify([c.to_dict(message_count=msg_counts.get(c.id, 0)) for c in convs])
 
 
 @simple_chat.route("/api/papers/<paper_id>/conversations", methods=["POST"])
@@ -362,8 +375,8 @@ def send_message(conv_id: str):
 
     if not content:
         return jsonify({"error": "Message content is required"}), 400
-    if len(content) > 100000:
-        return jsonify({"error": "Message is too long (max 100000 chars)"}), 400
+    if len(content) > 2000000:
+        return jsonify({"error": "Pesan terlalu panjang (maks 2 juta karakter, termasuk isi file lampiran). Kurangi jumlah file atau coba @slr untuk analisis literatur otomatis."}), 400
     if len(images) > 5:
         return jsonify({"error": "Maksimal 5 gambar per pesan"}), 400
 
@@ -425,7 +438,7 @@ def send_message(conv_id: str):
 
     # Inject user settings (language preference, nickname, institution)
     try:
-        from database.models import User as UserModel
+        from utils.database.models import User as UserModel
         current_user = UserModel.query.get(user_id)
         if current_user:
             user_prefs = []
@@ -450,31 +463,80 @@ def send_message(conv_id: str):
         except Exception as e:
             log.warning("Failed to build paper context for %s: %s", conv.paper_id, e)
 
-    # Resolve language: paper data > user DB > default "id"
+    # Resolve language: paper data > user pref > journal template > default "id"
+    # Paper language (set by user in JournalTab) takes highest priority,
+    # so each paper can have its own language regardless of user's default.
     resolved_lang = "id"
+    paper_obj = None  # guard against NameError on exception path
+    _from_paper = False
+    _from_user = False
     try:
+        # Step 1: Paper language (highest priority — per-paper setting)
         if conv.paper_id:
             paper_obj = Paper.query.get(conv.paper_id)
             if paper_obj and isinstance(paper_obj.data, dict):
                 paper_lang = paper_obj.data.get("language")
                 if paper_lang in ("en", "id"):
                     resolved_lang = paper_lang
-        if resolved_lang == "id":
+                    _from_paper = True
+                    log.info("Language resolved from paper data: %s", resolved_lang)
+        # Step 2: Fall back to user's preferred language
+        if not _from_paper:
             try:
-                from database.models import User as _UM
+                from utils.database.models import User as _UM
                 _u = _UM.query.get(user_id)
                 if _u and _u.preferred_language in ("en", "id"):
                     resolved_lang = _u.preferred_language
+                    _from_user = True
+                    log.info("Language resolved from user pref: %s", resolved_lang)
+            except Exception:
+                pass
+        # Step 3: Fall back to journal template (only if NO explicit setting anywhere)
+        if not _from_paper and not _from_user and paper_obj and paper_obj.data.get("journal"):
+            try:
+                from tools.Journal.template_registry import get_template as _get_tmpl
+                _tmpl = _get_tmpl(paper_obj.data["journal"])
+                if _tmpl:
+                    _tl = _tmpl.language.lower()
+                    if _tl.startswith("english"):
+                        resolved_lang = "en"
+                        log.info("Language resolved from journal template (%s): en", _tmpl.code)
+                    elif _tl.startswith("indonesian"):
+                        resolved_lang = "id"
+                        log.info("Language resolved from journal template (%s): id", _tmpl.code)
             except Exception:
                 pass
     except Exception as e:
         log.warning("Failed to resolve language: %s", e)
 
-    # Inject language directive
+    # Inject language directive — strong, explicit, with examples
     if resolved_lang == "en":
-        lang_instruction = "## ⚠️ LANGUAGE\nSELALU gunakan Bahasa Inggris (English) untuk respons dan penulisan paper. Jika user menulis dalam bahasa Indonesia, tetap jawab dengan English. Editor output WAJIB English.\n\n"
+        lang_instruction = (
+            "## ⚠️ LANGUAGE — MANDATORY, DO NOT IGNORE\n"
+            "You MUST respond in **English** for ALL output, including:\n"
+            "- Chat responses, explanations, suggestions, questions\n"
+            "- Paper/editor text (abstract, introduction, conclusion, etc.)\n"
+            "- Tool outputs, proposals, summaries, error messages\n\n"
+            "Even if the user writes in Indonesian, you MUST reply in English.\n"
+            "Example: user asks 'apa itu IoT?' → you reply 'IoT (Internet of Things) is...'\n"
+            "Example: user says 'tolong buat abstract' → you write an English abstract.\n\n"
+            "The ONLY exception: if the user explicitly asks you to switch languages,\n"
+            "e.g. 'now speak Indonesian' or 'jawab dalam bahasa Indonesia'.\n\n"
+        )
     else:
-        lang_instruction = "## ⚠️ BAHASA\nGunakan Bahasa Indonesia sebagai bahasa utama untuk respons dan penulisan paper. Jika user menulis dalam English, tetap jawab dengan Bahasa Indonesia. Editor output WAJIB Bahasa Indonesia.\n\n"
+        lang_instruction = (
+            "## ⚠️ BAHASA — WAJIB, JANGAN ABAIKAN\n"
+            "Anda WAJIB merespons dalam **Bahasa Indonesia** untuk SEMUA output, termasuk:\n"
+            "- Respons chat, penjelasan, saran, pertanyaan\n"
+            "- Teks paper/editor (abstrak, pendahuluan, kesimpulan, dll.)\n"
+            "- Output tool, proposal, ringkasan, pesan error\n\n"
+            "Meskipun user menulis dalam English, Anda WAJIB membalas dalam Bahasa Indonesia.\n"
+            "Meskipun FILE LAMPIRAN berbahasa Inggris, Anda TETAP WAJIB merespons dalam Bahasa Indonesia.\n"
+            "Contoh: user asks 'what is IoT?' → Anda menjawab 'IoT (Internet of Things) adalah...'\n"
+            "Contoh: user says 'make an abstract' → Anda menulis abstrak dalam Bahasa Indonesia.\n\n"
+            "SATU-SATUNYA pengecualian: jika user secara eksplisit meminta bahasa lain,\n"
+            "misalnya 'now speak English' atau 'jawab dalam bahasa Inggris'.\n\n"
+        )
     system_content += lang_instruction
 
     # Inject citation style guide from paper data
@@ -497,30 +559,85 @@ def send_message(conv_id: str):
     except Exception as e:
         log.warning("Failed to inject citation style into chat: %s", e)
 
-    # ── @slr tag: inject pinned literature into system prompt ────────────
-    # User ketik @slr di pesan → ambil literatur yang di-pin dan injeksi
-    # sebagai reference context. Tag @slr dihapus dari pesan sebelum ke AI
-    # HANYA jika literatur berhasil diinjeksi.
+    # ── Auto-inject attached files into context ──────────────────────
+    # Semua file PDF/TXT/MD yang di-upload ke paper otomatis masuk sebagai
+    # konteks referensi. Tidak ada batasan jumlah (semua file diambil).
+    # Konten file hanya dibatasi panjang per file (5000 chars) untuk menjaga
+    # budget konteks, bukan jumlah file.
+    if conv.paper_id:
+        try:
+            from utils.database.models import PaperFile, db as _filedb
+            _all_files = (
+                _filedb.session.query(PaperFile)
+                .filter_by(paper_id=conv.paper_id)
+                .order_by(PaperFile.created_at.desc())
+                .limit(50)  # max 50 files
+                .all()
+            )
+            if _all_files:
+                _file_blocks = []
+                _total_file_chars = 0
+                _MAX_FILE_CHARS = 200000  # max chars per file (~50K tokens, raised for full content)
+                _MAX_TOTAL_FILE_CHARS = 2000000  # max total chars for all files (~500K tokens, raised for full content)
+                for _f in _all_files:
+                    _text = (_f.extracted_text or "")[:_MAX_FILE_CHARS]
+                    if _text:
+                        _file_blocks.append(f"**📄 {_f.original_name}** ({_f.ext}):\n{_text}")
+                        _total_file_chars += len(_text)
+                        if _total_file_chars > _MAX_TOTAL_FILE_CHARS:
+                            _file_blocks.append(f"\n... dan {len(_all_files) - (_f.id if hasattr(_f, 'id') else 0)} file lainnya (total {len(_all_files)} file terattach)")
+                            break
+                if _file_blocks:
+                    system_content += "## 📎 Attached Files (reference materials — ALL files from this paper)\n" + "\n\n---\n\n".join(_file_blocks) + "\n\n"
+                    log.info("Injected %d attached files (%d chars) into chat for paper=%s", len(_all_files), _total_file_chars, conv.paper_id)
+        except Exception as e:
+            log.warning("Failed to inject attached files into chat: %s", e)
+
+    # ── @slr tag: inject pinned literature + SLR analysis template ─────────
+    # User ketik @slr → ambil literatur pinned + inject SLR analysis template
+    # (template moved out of base chatPrompt.txt to save ~140 lines per msg)
+    # Tag @slr dihapus dari pesan sebelum ke AI HANYA jika literatur berhasil.
     slr_tag_detected = False
+    _needs_slr_template = False  # whether to inject SLR analysis instructions
     if "@slr" in content.lower():
         slr_tag_detected = True
+        _needs_slr_template = True
         if conv.paper_id:
             try:
                 pinned_text = get_pinned_literature(conv.paper_id, user_id, max_items=10)
                 if pinned_text:
                     system_content += f"## SLR References (Pinned)\n{pinned_text}\n\n"
-                    # Only strip @slr if literature was actually injected
                     content = re.sub(r"@slr\b", "", content, flags=re.IGNORECASE).strip()
                     log.info("@slr tag: injected %d pinned literature items for paper=%s", pinned_text.count("\n[") + 1, conv.paper_id)
                 else:
-                    # No pinned literature — keep @slr so AI sees it, add a note
                     system_content += "## SLR Note\nUser used @slr but no pinned literature found for this paper. Suggest running an SLR search.\n\n"
                     log.info("@slr tag: no pinned literature for paper=%s, keeping tag in message", conv.paper_id)
             except Exception as e:
                 log.warning("@slr tag: failed to load pinned literature: %s", e)
         else:
-            # No paper_id — strip @slr to avoid confusion
             content = re.sub(r"@slr\b", "", content, flags=re.IGNORECASE).strip()
+
+    # ── Detect research gap/SLR intent for conditional template injection ──
+    # Keywords in user message that need SLR analysis template
+    _SLR_KEYWORDS = ["riset gap", "research gap", "review literatur", "literature review",
+                     "slr analysis", "systematic review", "gap analysis",
+                     "celah riset", "analisis gap"]
+    _content_lower = content.lower()
+    if not _needs_slr_template:
+        for kw in _SLR_KEYWORDS:
+            if kw in _content_lower:
+                _needs_slr_template = True
+                break
+
+    # Inject SLR analysis template (only when needed — saves ~140 lines of tokens)
+    if _needs_slr_template:
+        try:
+            _slr_prompt_path = os.path.join(os.path.dirname(__file__), "slrAnalysisPrompt.txt")
+            with open(_slr_prompt_path, "r", encoding="utf-8") as _f:
+                system_content += _f.read() + "\n\n"
+            log.info("SLR analysis template injected for conv=%s (keyword/slr tag)", conv_id)
+        except Exception as e:
+            log.warning("Failed to load SLR analysis template: %s", e)
 
     # ── @draft tag: inject named chat drafts into system prompt ───────────
     # User writes "@draft <name>" or "@draft name1,name2" → fetch those drafts
@@ -726,6 +843,16 @@ def send_message(conv_id: str):
         system_content += search_context
 
     if slr_offer_needed:
+        if not _needs_slr_template:
+            _needs_slr_template = True
+            # Inject SLR analysis template for research gap intents
+            try:
+                _slr_prompt_path = os.path.join(os.path.dirname(__file__), "slrAnalysisPrompt.txt")
+                with open(_slr_prompt_path, "r", encoding="utf-8") as _f:
+                    system_content += _f.read() + "\n\n"
+                log.info("SLR analysis template injected for conv=%s (search intent)", conv_id)
+            except Exception as e:
+                log.warning("Failed to load SLR analysis template: %s", e)
         system_content += (
             "## INSTRUKSI SLR\n"
             "User meminta analisis research gap atau systematic literature review.\n"
@@ -1048,7 +1175,7 @@ def send_message(conv_id: str):
             # Prevent context overflow when user sends large input (e.g. 70+ papers).
             # Cap system_content at ~80K chars; if exceeded, truncate the paper
             # context block first (least critical), then trim evenly.
-            MAX_SYSTEM_CHARS = 80000
+            MAX_SYSTEM_CHARS = 2000000
             if len(_sys) > MAX_SYSTEM_CHARS:
                 log.warning("System content %d chars exceeds max %d — truncating",
                            len(_sys), MAX_SYSTEM_CHARS)
@@ -1108,48 +1235,56 @@ def send_message(conv_id: str):
                 timeout=1800,
             )
 
-            for line in response_p1.iter_lines():
-                if not line:
-                    continue
-                if isinstance(line, bytes):
-                    line = line.decode("utf-8")
-                if not line.startswith("data: "):
-                    continue
-                data_str = line[6:]
-                if data_str == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data_str)
-                except json.JSONDecodeError:
-                    continue
-                choices = chunk.get("choices", [])
-                if not choices:
-                    continue
-                delta = choices[0].get("delta", {})
-                if "content" in delta and delta["content"]:
-                    phase1_text += delta["content"]
-                thinking_raw = (
-                    delta.get("thinking")
-                    or delta.get("reasoning_content")
-                    or delta.get("reasoning")
-                    or delta.get("thinking_content")
-                )
-                if thinking_raw:
-                    if isinstance(thinking_raw, dict):
-                        thinking_raw = thinking_raw.get("content", "")
+            _phase1_stream_ok = True
+            try:
+                for line in response_p1.iter_lines():
+                    if not line:
+                        continue
+                    if isinstance(line, bytes):
+                        line = line.decode("utf-8")
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = chunk.get("choices", [])
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta", {})
+                    if "content" in delta and delta["content"]:
+                        phase1_text += delta["content"]
+                    thinking_raw = (
+                        delta.get("thinking")
+                        or delta.get("reasoning_content")
+                        or delta.get("reasoning")
+                        or delta.get("thinking_content")
+                    )
                     if thinking_raw:
-                        phase1_thinking += thinking_raw
-                        # Stream thinking character-by-character
-                        yield _sse("thinking", {"content": thinking_raw})
-                        # Update Redis state (throttle: every 20 chunks or ~160 chars)
-                        _token_count += 1
-                        if _token_count % 20 == 0:
-                            stream_state["thinking"] = phase1_thinking
-                            try:
-                                if _r:
-                                    _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
-                            except Exception as _e:
-                                log.warning("Redis setex (thinking) failed conv=%s: %s", conv_id, _e)
+                        if isinstance(thinking_raw, dict):
+                            thinking_raw = thinking_raw.get("content", "")
+                        if thinking_raw:
+                            phase1_thinking += thinking_raw
+                            # Stream thinking character-by-character
+                            yield _sse("thinking", {"content": thinking_raw})
+                            # Update Redis state (throttle: every 20 chunks or ~160 chars)
+                            _token_count += 1
+                            if _token_count % 20 == 0:
+                                stream_state["thinking"] = phase1_thinking
+                                try:
+                                    if _r:
+                                        _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                                except Exception as _e:
+                                    log.warning("Redis setex (thinking) failed conv=%s: %s", conv_id, _e)
+            except (_requests.exceptions.ChunkedEncodingError, _urllib3.exceptions.ProtocolError) as _stream_err:
+                _phase1_stream_ok = False
+                log.warning("Phase 1 stream ended prematurely conv=%s: %s — using partial content (%d chars)",
+                           conv_id, _stream_err, len(phase1_text))
+                if phase1_text:
+                    yield _sse("text", {"content": phase1_text})
 
             # Signal end of thinking phase (before content starts)
             if phase1_thinking:
@@ -1403,6 +1538,15 @@ def send_message(conv_id: str):
                 _target_label = f"TEPAT {_target_n}" if _requested_count > 0 else "minimal 20"
 
                 # ── PHASE 2: AI synthesizes final answer with search data ──
+                # Language-aware instruction for Phase 2
+                _p2_lang_text = (
+                    "Respond in English." if resolved_lang == "en"
+                    else "Jawab dalam Bahasa Indonesia."
+                )
+                _p2_lang_rule = (
+                    "Respond in English regardless of the user's message language." if resolved_lang == "en"
+                    else "Jawab dalam Bahasa Indonesia apapun bahasa pesan user."
+                )
                 _phase2_instruction = (
                     "\n\n## ⚠️ INSTRUKSI WAJIB — IKUTI ATAU GAGAL\n"
                     "Pencarian sudah selesai. Hasil pencarian ada di atas dalam format:\n"
@@ -1417,7 +1561,7 @@ def send_message(conv_id: str):
                     "4. JANGAN ulangi pertanyaan user.\n"
                     "5. JANGAN generate tag pencarian baru ([WEBSEARCH:], [SCHOLAR:], dll).\n"
                     "6. Langsung berikan daftar referensi terstruktur dengan link.\n"
-                    "7. Jawab dalam bahasa yang sama dengan pertanyaan user.\n"
+                    f"7. BAHASA: {_p2_lang_rule}\n"
                     f"8. USER MEMINTA {_target_n} REFERENSI. Anda WAJIB memberikan {_target_label} referensi.\n"
                     "   Jika user minta 50, berikan 50. Jika user minta 20, berikan 20.\n"
                     "   Jika hasil pencarian kurang dari yang diminta, tampilkan SEMUA yang ada.\n"
@@ -1473,79 +1617,86 @@ def send_message(conv_id: str):
                     timeout=1800,
                 )
 
-                for line in response_p2.iter_lines():
-                    if not line:
-                        continue
-                    if isinstance(line, bytes):
-                        line = line.decode("utf-8")
-                    if not line.startswith("data: "):
-                        continue
-                    data_str = line[6:]
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        chunk = json.loads(data_str)
-                    except json.JSONDecodeError:
-                        continue
-                    choices = chunk.get("choices", [])
-                    if not choices:
-                        continue
-                    delta = choices[0].get("delta", {})
-                    if "content" in delta and delta["content"]:
-                        text = delta["content"]
-                        assistant_content += text
-                        _token_count += 1
-                        yield _sse("text", {"content": text})
-                        # Throttle: only update Redis every 20 tokens (bug 1)
-                        # Check cancel BEFORE writing stream state (bug 2)
-                        if _token_count % 20 == 0:
-                            if _r:
-                                try:
-                                    _cancel_raw = _r.get(_cancel_key(conv_id))
-                                    if _cancel_raw == my_stream_id:
-                                        # Cancel detected: mark cancelled in Redis (bug 4),
-                                        # save partial message (bug 3), yield done, return
-                                        stream_state["status"] = "cancelled"
-                                        try:
-                                            _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
-                                        except Exception:
-                                            pass
-                                        _persist_chat_final(
-                                            assistant_content,
-                                            phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content,
-                                        )
-                                        yield _sse("done", {"message_id": None, "cancelled": True})
-                                        return
-                                except (json.JSONDecodeError, KeyError):
-                                    pass
-                            stream_state["content"] = assistant_content
-                            try:
-                                if _r:
-                                    _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
-                            except Exception:
-                                pass
-                    thinking_raw = (
-                        delta.get("thinking")
-                        or delta.get("reasoning_content")
-                        or delta.get("reasoning")
-                        or delta.get("thinking_content")
-                    )
-                    if thinking_raw:
-                        if isinstance(thinking_raw, dict):
-                            thinking_raw = thinking_raw.get("content", "")
-                        if thinking_raw:
-                            thinking_content += thinking_raw
-                            yield _sse("thinking", {"content": thinking_raw})
-                            # Update Redis state (throttle: every 20 chunks)
+                _phase2_stream_ok = True
+                try:
+                    for line in response_p2.iter_lines():
+                        if not line:
+                            continue
+                        if isinstance(line, bytes):
+                            line = line.decode("utf-8")
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:]
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+                        if "content" in delta and delta["content"]:
+                            text = delta["content"]
+                            assistant_content += text
                             _token_count += 1
+                            yield _sse("text", {"content": text})
+                            # Throttle: only update Redis every 20 tokens (bug 1)
+                            # Check cancel BEFORE writing stream state (bug 2)
                             if _token_count % 20 == 0:
-                                # Combine Phase 1 + Phase 2 thinking (bug 5)
-                                stream_state["thinking"] = phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content
+                                if _r:
+                                    try:
+                                        _cancel_raw = _r.get(_cancel_key(conv_id))
+                                        if _cancel_raw == my_stream_id:
+                                            # Cancel detected: mark cancelled in Redis (bug 4),
+                                            # save partial message (bug 3), yield done, return
+                                            stream_state["status"] = "cancelled"
+                                            try:
+                                                _r.setex(_stream_key(conv_id), 60, json.dumps(stream_state))
+                                            except Exception:
+                                                pass
+                                            _persist_chat_final(
+                                                assistant_content,
+                                                phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content,
+                                            )
+                                            yield _sse("done", {"message_id": None, "cancelled": True})
+                                            return
+                                    except (json.JSONDecodeError, KeyError):
+                                        pass
+                                stream_state["content"] = assistant_content
                                 try:
                                     if _r:
                                         _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
                                 except Exception:
                                     pass
+                        thinking_raw = (
+                            delta.get("thinking")
+                            or delta.get("reasoning_content")
+                            or delta.get("reasoning")
+                            or delta.get("thinking_content")
+                        )
+                        if thinking_raw:
+                            if isinstance(thinking_raw, dict):
+                                thinking_raw = thinking_raw.get("content", "")
+                            if thinking_raw:
+                                thinking_content += thinking_raw
+                                yield _sse("thinking", {"content": thinking_raw})
+                                # Update Redis state (throttle: every 20 chunks)
+                                _token_count += 1
+                                if _token_count % 20 == 0:
+                                    # Combine Phase 1 + Phase 2 thinking (bug 5)
+                                    stream_state["thinking"] = phase1_thinking_saved + "\n\n--- Phase 2 ---\n\n" + thinking_content
+                                    try:
+                                        if _r:
+                                            _r.setex(_stream_key(conv_id), 1800, json.dumps(stream_state))
+                                    except Exception:
+                                        pass
+                except (_requests.exceptions.ChunkedEncodingError, _urllib3.exceptions.ProtocolError) as _stream_err:
+                    _phase2_stream_ok = False
+                    log.warning("Phase 2 stream ended prematurely conv=%s: %s — using partial content (%d chars)",
+                               conv_id, _stream_err, len(assistant_content))
+                    # No re-yield needed — Phase 2 already streamed tokens to user progressively
 
             # Log Phase 2 completion (or Phase 1 if no search tags)
             if _phase == 2:
@@ -1581,11 +1732,12 @@ def send_message(conv_id: str):
                 )
                 yield _sse("composing_start", {})
                 try:
+                    _fb_lang = "English" if resolved_lang == "en" else "Bahasa Indonesia"
                     fallback_messages = [
                         {"role": "system", "content": (
                             "You are a concise academic writing assistant. "
-                            "Based on the reasoning below, produce a direct, helpful response "
-                            "in the same language the user is using. "
+                            f"Based on the reasoning below, produce a direct, helpful response "
+                            f"in {_fb_lang}. "
                             "Output ONLY the final answer — no thinking, no tags."
                         )},
                         {"role": "user", "content": _combined_thinking[-4000:]},

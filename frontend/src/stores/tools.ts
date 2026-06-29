@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import api from '../api/index.js'
 
 const API_BASE = '/api'
@@ -279,7 +279,7 @@ export const useToolsStore = defineStore('tools', () => {
         }
       }
     } catch (e) {
-      error.value = e.message || 'Terjadi kesalahan saat memproses'
+      error.value = (e instanceof Error ? e.message : String(e)) || 'Terjadi kesalahan saat memproses'
     } finally {
       _activeAbortCtrl = null
       isProcessing.value = false

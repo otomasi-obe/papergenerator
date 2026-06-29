@@ -57,7 +57,7 @@ def _job_create(job_id: str, user_id: int, prompt: str, paper_id: str | None = N
     Older callers that pass only 3 positional args still work because paper_id
     has a default of None.
     """
-    from database.models import AiJob, db, safe_commit
+    from utils.database.models import AiJob, db, safe_commit
 
     job = AiJob(
         id=job_id,
@@ -73,13 +73,13 @@ def _job_create(job_id: str, user_id: int, prompt: str, paper_id: str | None = N
 
 
 def _job_get(job_id: str, user_id: int):
-    from database.models import AiJob
+    from utils.database.models import AiJob
 
     return AiJob.query.filter_by(id=job_id, user_id=user_id).first()
 
 
 def _job_set_done(job_id: str, user_id: int, paper_data: dict, elapsed_s: int):
-    from database.models import db, safe_commit
+    from utils.database.models import db, safe_commit
 
     job = _job_get(job_id, user_id)
     if not job:
@@ -107,7 +107,7 @@ def _job_set_done(job_id: str, user_id: int, paper_data: dict, elapsed_s: int):
 
 
 def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool = False):
-    from database.models import db, safe_commit
+    from utils.database.models import db, safe_commit
 
     job = _job_get(job_id, user_id)
     if not job:
@@ -145,7 +145,7 @@ def _log_api_usage(endpoint: str, usage: dict, user_id=None):
     Called from a daemon thread, so it owns its own app context via
     ``get_core_app()``.
     """
-    from database.models import ApiUsageLog, db, safe_commit
+    from utils.database.models import ApiUsageLog, db, safe_commit
 
     app = get_core_app()
     try:
@@ -161,7 +161,7 @@ def _log_api_usage(endpoint: str, usage: dict, user_id=None):
             db.session.add(log_entry)
 
             if user_id is not None:
-                from database.models import User
+                from utils.database.models import User
 
                 now = datetime.now(timezone.utc)
                 month_key = now.strftime("%Y-%m")
@@ -183,7 +183,7 @@ def _log_api_usage(endpoint: str, usage: dict, user_id=None):
                     # Atomic increment to prevent race condition across workers
                     db.session.query(User).filter(User.id == int(user_id)).update(
                         {User.token_used_month: User.token_used_month + tokens},
-                        synchronize_session=False,
+                        synchronize_session='evaluate',
                     )
                     for _attempt in range(3):
                         try:

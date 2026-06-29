@@ -201,21 +201,3 @@ def retry_with_backoff(
     return wrapper
 
 
-def call_with_retry(
-    func: Callable[..., T],
-    *args,
-    max_retries: int | None = None,
-    circuit_breaker_key: str | None = None,
-    **kwargs
-) -> T:
-    """Call a function with retry logic and optional circuit breaker.
-    
-    Usage:
-        result = call_with_retry(api_call, messages, timeout=900)
-        result = call_with_retry(api_call, messages, timeout=900,
-                                 circuit_breaker_key="generate_model_1")
-    """
-    wrapped = retry_with_backoff(
-        func, max_retries=max_retries, circuit_breaker_key=circuit_breaker_key
-    )
-    return wrapped(*args, **kwargs)

@@ -14,7 +14,7 @@
     <input
       ref="dataInputRef"
       type="file"
-      accept=".pdf,.docx,.doc,.xlsx,.xls,.csv"
+      accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md"
       multiple
       class="hidden"
       @change="onDataFileChange"
@@ -22,7 +22,7 @@
     <input
       ref="refInputRef"
       type="file"
-      accept=".pdf,.docx,.doc,.xlsx,.xls,.csv"
+      accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md"
       multiple
       class="hidden"
       @change="onRefFileChange"
@@ -542,14 +542,17 @@ const contentRenderEl = ref<HTMLElement | null>(null)
 
 // Render contentText with LaTeX support — uses bundled KaTeX via composable
 import { renderRichText } from '../composables/useMathRender'
+import { useSanitize } from '../composables/useSanitize'
+
+const { sanitizeHtml } = useSanitize()
 
 const renderedContentHtml = computed(() => {
   if (!contentText.value) return ''
   // During streaming, render raw text (no KaTeX) to avoid O(n²) re-render per token
   // KaTeX applied on completion via finishGeneration()
   let text = contentText.value
-  // Always use rich text render (handles LaTeX, escapes HTML)
-  return renderRichText(text)
+  // Always use rich text render (handles LaTeX, escapes HTML), then sanitize via DOMPurify
+  return sanitizeHtml(renderRichText(text))
 })
 
 // Call checkActiveJob on mount
@@ -606,6 +609,7 @@ onMounted(async () => {
     restoreState()
   }
   checkActiveJob()
+  if (_pollTimer) clearInterval(_pollTimer)
   _pollTimer = setInterval(checkActiveJob, 4000)
   // Save state before page unload (F5 / close tab)
   window.addEventListener('beforeunload', _handleBeforeUnload)
@@ -1078,13 +1082,13 @@ function triggerRefInput() {
   if (refInputRef.value) refInputRef.value.click()
 }
 
-const _ACCEPT_RE = /\.(pdf|docx?|xlsx?|csv)$/i
+const _ACCEPT_RE = /\.(pdf|docx?|xlsx?|csv|txt|md)$/i
 function _pushFiles(bucket, fileList) {
   if (!fileList || !fileList.length) return
   const target = bucket === 'data' ? dataFiles : referenceFiles
   for (const file of fileList) {
     if (!_ACCEPT_RE.test(file.name)) {
-      store.showToast(`File "${file.name}" dilewati — format tidak didukung (pdf/docx/xlsx/csv).`, 'warning')
+      store.showToast(`File "${file.name}" dilewati — format tidak didukung (pdf/docx/xlsx/csv/txt/md).`, 'warning')
       continue
     }
     // Dedupe by name: replace stale entries (file:null), skip if fresh already exists

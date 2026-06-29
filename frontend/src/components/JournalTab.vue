@@ -263,6 +263,16 @@ watch(isMDPI, (val) => {
   }
 })
 
+// Persist language change to DB immediately so chat backend sees the new value
+watch(
+  () => store.paper.language,
+  async (newLang) => {
+    if (newLang && (newLang === 'en' || newLang === 'id')) {
+      await store.savePaperToDb(true) // silent save
+    }
+  }
+)
+
 onMounted(() => {
   store.fetchJournals()
   document.addEventListener('click', handleClickOutside)

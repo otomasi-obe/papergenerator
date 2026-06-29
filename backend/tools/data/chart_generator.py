@@ -25,12 +25,10 @@ import logging
 import os
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal, Optional
 
 log = logging.getLogger(__name__)
-
-CHARTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "charts")
-os.makedirs(CHARTS_DIR, exist_ok=True)
 
 # ─── Chart type registry ──────────────────────────────────────────────
 CHART_KINDS = {
@@ -505,7 +503,17 @@ def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=Non
         raise ValueError("spec.data is required and must be non-empty")
 
     safe_paper_id = str(paper_id) if paper_id else "default"
-    out_dir = os.path.join(CHARTS_DIR, safe_paper_id)
+    # Use per-user chart dir: user/<user_id>/charts/<paper_id>/
+    # Falls back to data/charts/<paper_id>/ when user_id unavailable.
+    if user_id:
+        try:
+            from utils.core.storage_helper import get_user_dir
+            charts_base = get_user_dir(int(user_id), "charts")
+        except Exception:
+            charts_base = Path(os.path.join(os.path.dirname(__file__), "..", "..", "data", "charts"))
+    else:
+        charts_base = Path(os.path.join(os.path.dirname(__file__), "..", "..", "data", "charts"))
+    out_dir = charts_base / safe_paper_id
     os.makedirs(out_dir, exist_ok=True)
 
     # Determine filename: use target_path if provided, else UUID

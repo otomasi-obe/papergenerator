@@ -12,7 +12,7 @@ from flask import Blueprint, jsonify, has_app_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import func
 
-from database.models import ApiUsageLog, User, db, safe_commit
+from utils.database.models import ApiUsageLog, User, db, safe_commit
 
 quota = Blueprint("quota", __name__, url_prefix="/api/me")
 

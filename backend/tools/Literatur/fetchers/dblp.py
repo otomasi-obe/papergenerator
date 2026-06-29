@@ -4,7 +4,7 @@ from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
-from ._abstract_enrich import enrich_abstract_via_doi
+from .openalex import enrich_abstract_via_doi
 
 BASE = "https://dblp.org/search/publ/api"
 
@@ -48,26 +48,21 @@ def _parse_hit(hit: dict) -> Paper | None:
     abstract = None
     # DBLP doesn't provide abstracts, but DOIs can be cross-referenced
 
-    # Build PDF URL: prioritize DOI, then ee (electronic edition) link
+    # Build URL and PDF URL: DBLP record landing page, ee link as PDF if available
     doi = info.get("doi")
+    url = f"https://dblp.org/rec/{info.get('key', '')}" if info.get("key") else None
     pdf_url = None
     
     if doi:
-        # DOI resolver - may redirect to publisher PDF
         pdf_url = f"https://doi.org/{doi}"
     else:
-        # DBLP's "ee" field often points to publisher page or PDF
         ee = info.get("ee")
         if ee:
-            # If it's arxiv, convert to PDF link
             if "arxiv.org/abs/" in ee:
                 arxiv_id = ee.split("/abs/")[-1]
                 pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
             else:
                 pdf_url = ee
-        else:
-            # Fallback to DBLP record page
-            pdf_url = info.get("url")
 
     return Paper(
         source="dblp",
@@ -79,8 +74,9 @@ def _parse_hit(hit: dict) -> Paper | None:
         venue=venue,
         venue_type=venue_type,
         doi=doi,
-        url=pdf_url,
+        url=url,
         type=pub_type,
+        pdf_url=pdf_url,
     )
 
 

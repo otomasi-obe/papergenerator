@@ -394,12 +394,12 @@ def _extract_metadata(pdf_path: str) -> str:
 def extract_text_from_pdf(stream) -> str:
     """Extract plain text from a PDF file-like stream (for API use)."""
     # BUG FIX: Add size validation to prevent memory exhaustion
-    MAX_PDF_SIZE = 50 * 1024 * 1024  # 50MB limit for PDF extraction
+    MAX_PDF_SIZE = 100 * 1024 * 1024  # 100MB limit for PDF extraction
 
     data = stream.read() if hasattr(stream, "read") else stream
 
     if len(data) > MAX_PDF_SIZE:
-        return f"[PDF too large for extraction: {len(data) // (1024*1024)}MB, limit is 50MB]"
+        return f"[PDF too large for extraction: {len(data) // (1024*1024)}MB, limit is 100MB]"
 
     if len(data) == 0:
         return "[Empty PDF file]"
@@ -410,7 +410,10 @@ def extract_text_from_pdf(stream) -> str:
         for page in doc:
             texts.append(page.get_text("text"))
         doc.close()
-        return "\n".join(texts)
+        result = "\n".join(texts)
+        # Strip NUL and other PostgreSQL-banned control characters
+        banned = "".join(chr(c) for c in range(0x09))
+        return result.translate(str.maketrans("", "", banned))
     except Exception as e:
         return f"[PDF extraction error: {str(e)[:100]}]"
 

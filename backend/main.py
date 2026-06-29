@@ -17,8 +17,13 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Add project root to sys.path so backend.editor.* is importable
-_PROJECT_ROOT = str(Path(__file__).resolve().parent)
+# Add backend/ to sys.path so tools.*, utils.* are importable
+_BACKEND_DIR = str(Path(__file__).resolve().parent)
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+# Add repo root (parent of backend/) to sys.path so the top-level
+# `PaperRiset` package (PaperRiset.eks.*) is importable.
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
@@ -48,14 +53,14 @@ from tools.image_generation.image_jobs import image_jobs
 from tools.image_generation.images import paper_images, image_serve
 from tools.paperfull.jobs import jobs
 from tools.editor.papers import papers
-from utils.quota import quota, quota_exceeded
-from tools.Literatur.slr_api import slr_api
-from tools.Literatur.slr_api_v2 import register_slr_v2
-# from tools.chat.workflow_api import workflow_api
+from utils.quota import quota
+# Legacy imports moved to eks/:
+from PaperRiset.eks.literatur.slr_api import slr_api
+from tools.Literatur.slr import slr_new_bp
 from utils.ai_tools.tools_api import tools_api
 from utils.logging import logging_api
 from utils.state_bp.state import state_bp
-from database.models import AiJob, ApiUsageLog, Paper, SlrJob, ImageGenJob, db, safe_commit
+from utils.database.models import AiJob, Paper, db, safe_commit
 from utils.job_core import (
     init_job_core as _init_job_core,
     _job_create,
@@ -84,8 +89,8 @@ try:
         )
 except Exception as e:
     logging.getLogger(__name__).warning(f"Failed to initialize Sentry: {e}")
-from editor.chunked import GenerationCancelled
-from editor.single import generate_paper_json_single
+from tools.editor.chunked import GenerationCancelled
+from tools.editor.single import generate_paper_json_single
 from utils.ai_tools.model_config import get_primary_generate_model
 
 # Load environment variables.
@@ -124,23 +129,54 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 _db_url = os.getenv("DATABASE_URL")
 if not _db_url:
     raise RuntimeError("DATABASE_URL environment variable is required. Set it in .env")
+
+# ── PgBouncer integration ─────────────────────────────────────────────────
+# When PGBOUNCER_ENABLED=true, rewrite the DATABASE_URL to route through
+# pgbouncer on port 6543.  PgBouncer handles connection pooling at the
+# transaction level so SQLAlchemy's own pool is reduced to bare minimum
+# (pool_size=1, max_overflow=0).
+_pg_enabled = os.getenv("PGBOUNCER_ENABLED", "false").lower() in ("true", "1", "yes")
+if _pg_enabled and not _db_url.startswith("sqlite:"):
+    # Parse the DSN, replace host/port with pgbouncer, drop the password
+    # (pgbouncer uses trust auth on localhost).  We reconstruct the netloc
+    # manually because urlparse._replace doesn't have hostname/port fields.
+    from urllib.parse import urlparse, urlunparse
+    _parsed = urlparse(_db_url)
+    _username = _parsed.username
+    _netloc = f"{_username}@localhost:6543" if _username else "localhost:6543"
+    _pg_url = _parsed._replace(netloc=_netloc)
+    _db_url = urlunparse(_pg_url).rstrip("?")
+    logging.getLogger(__name__).info("PgBouncer enabled — routing DB through %s", _db_url)
+else:
+    _pg_enabled = False
+
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Pooling options only make sense for server-grade DBs (Postgres/MySQL).
 # Under sqlite (used by tests) SQLAlchemy uses StaticPool which rejects
 # pool_size/max_overflow/pool_timeout. Skip those keys when on sqlite.
 if not _db_url.startswith("sqlite:"):
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        # PostgreSQL max_connections=100. With 16 gunicorn workers, each worker
-        # gets a small pool. Total = 16×3 base + 16×4 overflow = 112 worst case.
-        # Overflow rarely hits simultaneously. pgbouncer recommended for
-        # production at scale (transaction-level pooling).
-        "pool_size": 3,
-        "max_overflow": 4,
-        "pool_timeout": 10,       # Fail fast if pool exhausted (don't block 30s)
-        "pool_recycle": 1800,     # Recycle connections every 30 min
-        "pool_pre_ping": True,    # Detect stale connections before use
-    }
+    if _pg_enabled:
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            # PgBouncer manages pooling — SQLAlchemy keeps 5 persistent conns
+            # per worker to avoid deadlock during concurrent sweeps.
+            # With 24 workers: 24×5 = 120 conns << pgbouncer default 600.
+            "pool_size": 5,
+            "max_overflow": 0,
+            "pool_pre_ping": True,
+        }
+    else:
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            # PostgreSQL max_connections=300. With 24 gunicorn workers, each worker
+            # gets a small pool. Total = 24×3 base + 24×4 overflow = 168 worst case.
+            # Well under 300. PgBouncer recommended for production at scale
+            # (transaction-level pooling) — set PGBOUNCER_ENABLED=true.
+            "pool_size": 3,
+            "max_overflow": 4,
+            "pool_timeout": 10,       # Fail fast if pool exhausted (don't block 30s)
+            "pool_recycle": 1800,     # Recycle connections every 30 min
+            "pool_pre_ping": True,    # Detect stale connections before use
+        }
 else:
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "pool_pre_ping": True,
@@ -191,9 +227,19 @@ if _domain:
 # recommended to set a dedicated rotating value.
 app.config["SIGNED_URL_SECRET"] = os.getenv("SIGNED_URL_SECRET") or _secret_key
 
+# Canonical app base URL — used for generating absolute URLs in the Word
+# add-in manifest. Must be set to the public-facing domain to prevent
+# Host Header Injection attacks via request.host.
+_APP_BASE_URL = os.getenv("APP_BASE_URL", "").rstrip("/")
+if not _APP_BASE_URL:
+    raise RuntimeError(
+        "APP_BASE_URL must be set in .env (e.g. https://app.example.com). "
+        "This is required for Word add-in manifest generation."
+    )
+
 # Per-request body cap. 100MB — prevents DoS via memory exhaustion while still
 # allowing multi-file uploads of large PDFs (~10MB each × multiple files).
-app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB
+app.config["MAX_CONTENT_LENGTH"] = 1100 * 1024 * 1024  # 1.1GB — supports large file uploads (100MB/file × 11 files)
 
 
 # Friendlier 413 — Werkzeug's default returns an HTML page that the chat
@@ -271,6 +317,47 @@ if not cors_origins:
 CORS(app, supports_credentials=True, origins=cors_origins)
 db.init_app(app)
 jwt = JWTManager(app)
+
+# ─── Production-safe startup checks ───────────────────────────────────────────
+_flask_env = os.getenv("FLASK_ENV", "production").lower()
+_is_prod = _flask_env == "production"
+if _is_prod and app.debug:
+    _msg = (
+        "SECURITY ERROR: FLASK_DEBUG=true in production (FLASK_ENV=%s). "
+        "The interactive debugger is a full RCE vector and will leak secrets. "
+        "Refusing to start. Set FLASK_DEBUG=false immediately." % _flask_env
+    )
+    logging.getLogger(__name__).critical(_msg)
+    raise RuntimeError(_msg)
+elif _is_prod:
+    app.debug = False
+
+# ─── Schema migration helper (non-destructive, idempotent) ────────────────────
+def _run_schema_migrations():
+    """Add columns/tables that don't exist yet without ALTER-method thrashing."""
+    from sqlalchemy import text, inspect
+    from sqlalchemy.exc import ProgrammingError, OperationalError
+
+    with app.app_context():
+        inspector = inspect(db.engine)
+        try:
+            existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        except (ProgrammingError, OperationalError):
+            # Table doesn't exist yet (fresh DB) — no migration needed
+            return
+
+        if "oauth_provider" not in existing_cols:
+            log = logging.getLogger(__name__)
+            log.info("Migration: adding oauth_provider column to users table")
+            try:
+                with db.engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN oauth_provider VARCHAR(20)"))
+                    conn.commit()
+                log.info("Migration: oauth_provider column added successfully")
+            except (ProgrammingError, OperationalError) as e:
+                log.warning("Migration: oauth_provider ALTER failed (may already exist): %s", e)
+
+_run_schema_migrations()
 
 
 # ─── JWT Error Handlers ───────────────────────────────────────────────────────
@@ -404,6 +491,7 @@ limiter = Limiter(
     storage_uri=ratelimit_storage,
     strategy="fixed-window",
     on_breach=rate_limit_handler,
+    swallow_errors=True,  # If Redis unavailable, allow request (don't block with error)
 )
 
 
@@ -446,8 +534,8 @@ app.register_blueprint(chart_api)
 app.register_blueprint(data_jobs)
 app.register_blueprint(jobs)
 app.register_blueprint(image_jobs)
-app.register_blueprint(slr_api)
-app.register_blueprint(register_slr_v2())
+app.register_blueprint(slr_api)  # literature endpoints
+app.register_blueprint(slr_new_bp)
 app.register_blueprint(quota)
 app.register_blueprint(health)
 app.register_blueprint(tools_api)
@@ -608,12 +696,17 @@ limiter.limit("10 per minute")(image_jobs)
 limiter.limit("30 per minute")(tools_api)
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
-from utils.core.global_logger import init_global_logging, log_access, log_activity
+from utils.core.global_logger import init_global_logging, log_access
 _global_log = init_global_logging()
 log = logging.getLogger(__name__)
 
+# ─── Per-user data dirs ────────────────────────────────────────────────────
+# Legacy UPLOAD_FOLDER/EXPORT_FOLDER retained only for backward-compat fallbacks.
+# New uploads, charts, and exports use per-user paths via get_user_dir().
+from utils.core.storage_helper import get_user_dir as _get_user_dir
+
 UPLOAD_FOLDER = Path(__file__).parent / "data/uploads"
-UPLOAD_FOLDER.mkdir(exist_ok=True)
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 USER_BASE = Path(__file__).parent / "user"
 USER_BASE.mkdir(exist_ok=True)
 
@@ -963,7 +1056,7 @@ def _make_generate_adapter(mod, gen_fn):
             with open(str(_json_path), "w", encoding="utf-8") as _f:
                 json.dump(_to_save, _f, ensure_ascii=False, indent=2)
         except Exception:
-            pass  # best-effort; skip on any error
+            log.warning("JSON normalization failed for %s: could not save modified paper", _json_path)
         with _ADAPTER_LOCK:
             in_name = next((n for n in INPUT_NAMES if hasattr(mod, n)), None)
             out_name = next((n for n in OUTPUT_NAMES if hasattr(mod, n)), None)
@@ -1004,8 +1097,9 @@ def _get_builder_for_journal(journal_code: str):
     canonical = m.get(journal_code.lower())
     if not canonical:
         raise ValueError(f"Unknown journal template: {journal_code}")
-    mod = importlib.import_module(f"tools.Journal.{canonical}gen")
-    mod = importlib.reload(mod)  # always use latest on-disk version
+    with _ADAPTER_LOCK:
+        mod = importlib.import_module(f"tools.Journal.{canonical}gen")
+        mod = importlib.reload(mod)  # always use latest on-disk version
     builder = getattr(mod, "build_document", None)
     if callable(builder):
         return canonical, builder
@@ -1047,49 +1141,61 @@ def _sweep_stuck_jobs():
             # Distributed lock: only one worker runs each sweep iteration
             from utils.core.redis_client import get_redis
             rc = get_redis()
+            lock_acquired = False
+            lock_token = None
             if rc is not None:
                 import uuid as _uuid
                 lock_token = str(_uuid.uuid4())
                 acquired = rc.set(_SWEEP_LOCK_KEY, lock_token, nx=True, ex=_SWEEP_LOCK_TTL)
                 if not acquired:
                     continue  # another worker holds the lock, skip this iteration
+                lock_acquired = True
             # If Redis unavailable (fallback), fall through — original behavior
 
-            with app.app_context():
-                # Pending jobs stuck > 15 min
-                cutoff = datetime.now(timezone.utc) - _td(
-                    seconds=AIJOB_PENDING_TIMEOUT_SECONDS
-                )
-                stuck = AiJob.query.filter(
-                    AiJob.status == "pending",
-                    AiJob.started_at < cutoff,
-                ).all()
-                # Running jobs stuck > 30 min (covers post-restart recovery)
-                running_cutoff = datetime.now(timezone.utc) - _td(seconds=30 * 60)
-                stuck_running = AiJob.query.filter(
-                    AiJob.status == "running",
-                    AiJob.started_at < running_cutoff,
-                ).all()
-                all_stuck = stuck + stuck_running
-                if not all_stuck:
-                    continue
-                stuck_ids = [j.id for j in all_stuck]
-                AiJob.query.filter(
-                    AiJob.id.in_(stuck_ids),
-                    AiJob.status.in_(["pending", "running"]),
-                ).update(
-                    {
-                        "status": "error",
-                        "error": "Job stuck — worker likely crashed or server restarted",
-                        "timeout": True,
-                    },
-                    synchronize_session=False,
-                )
-                safe_commit()
-                log.warning(
-                    "Swept %d stuck AI jobs (%d pending, %d running)",
-                    len(all_stuck), len(stuck), len(stuck_running),
-                )
+            try:
+                with app.app_context():
+                    # Pending jobs stuck > 15 min
+                    cutoff = datetime.now(timezone.utc) - _td(
+                        seconds=AIJOB_PENDING_TIMEOUT_SECONDS
+                    )
+                    stuck = AiJob.query.filter(
+                        AiJob.status == "pending",
+                        AiJob.started_at < cutoff,
+                    ).all()
+                    # Running jobs stuck > 30 min (covers post-restart recovery)
+                    running_cutoff = datetime.now(timezone.utc) - _td(seconds=30 * 60)
+                    stuck_running = AiJob.query.filter(
+                        AiJob.status == "running",
+                        AiJob.started_at < running_cutoff,
+                    ).all()
+                    all_stuck = stuck + stuck_running
+                    if not all_stuck:
+                        continue
+                    stuck_ids = [j.id for j in all_stuck]
+                    AiJob.query.filter(
+                        AiJob.id.in_(stuck_ids),
+                        AiJob.status.in_(["pending", "running"]),
+                    ).update(
+                        {
+                            "status": "error",
+                            "error": "Job stuck — worker likely crashed or server restarted",
+                            "timeout": True,
+                        },
+                        synchronize_session=False,
+                    )
+                    safe_commit()
+                    log.warning(
+                        "Swept %d stuck AI jobs (%d pending, %d running)",
+                        len(all_stuck), len(stuck), len(stuck_running),
+                    )
+            finally:
+                # Explicitly release the Redis lock (safe: only delete if token matches)
+                if lock_acquired and rc is not None and lock_token:
+                    try:
+                        _release_lua = "if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end"
+                        rc.eval(_release_lua, 1, _SWEEP_LOCK_KEY, lock_token)
+                    except Exception:
+                        pass  # TTL will expire anyway; best-effort release
         except Exception:
             log.exception("AiJob sweeper iteration failed")
 
@@ -1101,19 +1207,10 @@ threading.Thread(target=_sweep_stuck_jobs, daemon=True, name="aijob-sweeper").st
 # with preload_app=True causes 'Event' object is not callable errors after
 # gunicorn forks workers. The post_fork hook starts workers cleanly.
 
-# ─── SLR worker pool (max 10 workers, FIFO DB-backed queue) ─────────────
-# Pulls SlrJob rows and runs the multi-source academic search + AI
-# summarization pipeline. Idempotent across gunicorn worker processes.
-# Skipped under TESTING so unit tests don't spin up the executor / pump.
-if not app.config.get("TESTING"):
-    try:
-        from tools.Literatur.worker import start_slr_workers as _start_slr_workers  # noqa: PLC0415
-
-        _start_slr_workers(app)
-    except Exception:
-        log.exception(
-            "Failed to start SLR worker pool — Literature/SLR jobs will queue but not run"
-        )
+# ─── SLR orchestrator — lightweight in-memory, no DB-polling worker ──────
+# The new slr.py uses ThreadPoolExecutor directly on each POST request.
+# No background worker pool needed. Legacy worker.py moved to eks/.
+log.info("SLR orchestrator active (in-memory, no DB-polling worker)")
 
 # ─── Health Check ────────────────────────────────────────────────────────────
 # NOTE: The /api/health endpoint is served by the `health` Blueprint
@@ -1191,7 +1288,7 @@ def generate():
             )
         messages.append({"role": "user", "content": prompt})
 
-        from editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
+        from tools.editor.api_client import _call_aiotomasi_with_fallback  # noqa: PLC0415
 
         result, model_used = _call_aiotomasi_with_fallback(
             messages,
@@ -1462,6 +1559,11 @@ def _run_generate_full_job(
             user_id=user_id,
         )
 
+        # Inject resolved language so it persists in paper.data after save.
+        # _normalize_paper_shape doesn't include language in its output.
+        if language:
+            paper_data["language"] = language
+
         # ── PARTIAL SAVE: persist raw paper_data to Paper.data immediately ──
         # If the worker crashes, gets killed, or hits any error after this point
         # the user at least keeps the content the model already returned.
@@ -1472,6 +1574,11 @@ def _run_generate_full_job(
                     if paper:
                         partial = dict(paper_data)
                         partial["_partial"] = True
+                        # Preserve metadata that generation output doesn't include
+                        _ex = paper.data if isinstance(paper.data, dict) else {}
+                        for _mk in ('language', 'journal', 'citation_style'):
+                            if _mk not in partial and _mk in _ex:
+                                partial[_mk] = _ex[_mk]
                         paper.data = partial
                         paper.title = (
                             (paper_data.get("title") or "").strip()
@@ -1492,7 +1599,7 @@ def _run_generate_full_job(
         # Without this, an upstream truncation (e.g. the model stopped at
         # section1 because of `max_tokens`) silently produces a stub paper that
         # only the user discovers after waiting 5–10 minutes.
-        from editor.single import _validate_paper_shape as _vps
+        from tools.editor.single import _validate_paper_shape as _vps
 
         validation = _vps(paper_data)
         if not validation["ok"]:
@@ -1512,8 +1619,8 @@ def _run_generate_full_job(
                         warn = "Generated paper incomplete: " + ", ".join(validation["issues"])
                         j.error = (existing + "\n" if existing else "") + warn
                         safe_commit()
-            except Exception:
-                pass
+            except Exception as _ve:
+                log.warning("Failed to save validation warning for paper %s: %s", paper_id, _ve)
 
         paper_data.setdefault(
             "authors",
@@ -1633,6 +1740,11 @@ def _run_generate_full_job(
                     if paper:
                         # Remove _partial flag — this is the final, complete paper
                         paper_data.pop("_partial", None)
+                        # Preserve metadata that generation output doesn't include
+                        _ex = paper.data if isinstance(paper.data, dict) else {}
+                        for _mk in ('language', 'journal', 'citation_style'):
+                            if _mk not in paper_data and _mk in _ex:
+                                paper_data[_mk] = _ex[_mk]
                         paper.data = paper_data
                         paper.title = (
                             (paper_data.get("title") or "").strip()
@@ -1886,8 +1998,8 @@ def list_styles():
     return jsonify({"styles": styles})
 
 
-MAX_PDF_FILES = 10
-MAX_WORDS_PER_FILE = 5000
+MAX_PDF_FILES = 50
+MAX_WORDS_PER_FILE = 0  # No limit — all text is included (was 5000)
 
 
 @app.route("/api/upload-pdfs", methods=["POST"])
@@ -1915,7 +2027,7 @@ def upload_pdfs():
     # Read bytes synchronously (cheap), then extract in parallel.
     payloads = []
     warnings = []
-    MAX_PDF_SIZE = 30 * 1024 * 1024  # 30MB per file
+    MAX_PDF_SIZE = 100 * 1024 * 1024  # 100MB per file — user requested
     for f in files:
         filename = (f.filename or "").lower()
         try:
@@ -1924,7 +2036,7 @@ def upload_pdfs():
             size = f.stream.tell()
             f.stream.seek(0)
             if size > MAX_PDF_SIZE:
-                warnings.append(f"{f.filename}: file terlalu besar (max 30MB)")
+                warnings.append(f"{f.filename}: file terlalu besar (max 100MB)")
                 continue
             if size == 0:
                 warnings.append(f"{f.filename}: file kosong")
@@ -1939,13 +2051,22 @@ def upload_pdfs():
             payloads.append(("docx", f.filename, data))
         elif filename.endswith(".doc"):
             payloads.append(("doc_legacy", f.filename, data))
+        elif filename.endswith(".txt"):
+            payloads.append(("txt", f.filename, data))
+        elif filename.endswith(".md"):
+            payloads.append(("md", f.filename, data))
         else:
-            warnings.append(f"{f.filename}: format tidak didukung (hanya PDF dan DOCX)")
+            warnings.append(f"{f.filename}: format tidak didukung (PDF, DOCX, TXT, MD saja)")
 
     def _extract(kind, name, blob):
         try:
             if kind == "pdf":
                 return extract_text_from_pdf(io.BytesIO(blob))
+            if kind == "txt" or kind == "md":
+                try:
+                    return blob.decode("utf-8")
+                except UnicodeDecodeError:
+                    return blob.decode("latin-1", errors="replace")
             if kind == "doc_legacy":
                 # Convert .doc → .docx via LibreOffice, then extract text
                 import tempfile, subprocess  # noqa: PLC0415
@@ -1981,10 +2102,11 @@ def upload_pdfs():
         except Exception as e:
             warnings.append(f"{name}: gagal mengekstrak ({e})")
             continue
-        words = text.split()
-        if len(words) > MAX_WORDS_PER_FILE:
-            warnings.append(f"{name}: file terlalu besar, dibatasi ke {MAX_WORDS_PER_FILE} kata")
-            text = " ".join(words[:MAX_WORDS_PER_FILE])
+        if MAX_WORDS_PER_FILE > 0:
+            words = text.split()
+            if len(words) > MAX_WORDS_PER_FILE:
+                warnings.append(f"{name}: file terlalu besar, dibatasi ke {MAX_WORDS_PER_FILE} kata")
+                text = " ".join(words[:MAX_WORDS_PER_FILE])
         results.append(text)
 
     return jsonify({"pdf_texts": results, "warnings": warnings})
@@ -2087,10 +2209,12 @@ def upload_image_legacy():
         file.stream.seek(0)
         if not _is_image_bytes(head, ext):
             return jsonify({"error": "Invalid image file"}), 400
-        legacy_dir = UPLOAD_FOLDER / "legacy"
-        legacy_dir.mkdir(exist_ok=True)
+        # Per-user uploads dir for legacy endpoint
+        user_id = int(get_jwt_identity())
+        user_upload_dir = _get_user_dir(user_id, "uploads") / "legacy"
+        user_upload_dir.mkdir(parents=True, exist_ok=True)
         filename = f"{uuid.uuid4().hex}{ext}"
-        filepath = legacy_dir / filename
+        filepath = user_upload_dir / filename
         file.save(str(filepath))
         return jsonify(
             {
@@ -2121,7 +2245,7 @@ def export_docx():
         # If paper_id provided but no paper data, fetch from DB
         paper_id = data.get("paper_id") or (paper.get("id") if isinstance(paper, dict) else None)
         if paper_id and (not isinstance(paper, dict) or "figures" not in paper):
-            from database.models import Paper
+            from utils.database.models import Paper
             user_id = int(get_jwt_identity())
             db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
             if db_paper and db_paper.data:
@@ -2147,19 +2271,20 @@ def export_docx():
                 if _pid:
                     from tools.image_generation.reconcile import reconcile_figure_images
                     from sqlalchemy.orm.attributes import flag_modified
-                    reconcile_figure_images(_pid, paper, UPLOAD_FOLDER)
-                    
+                    _user_upload_dir = _get_user_dir(int(get_jwt_identity()), "uploads")
+                    reconcile_figure_images(_pid, paper, _user_upload_dir)
+
                     # Also reconcile section images (handles inline gambar items)
                     from tools.paperfull.jobs import _reconcile_section_images
-                    _reconcile_section_images(paper, _pid, UPLOAD_FOLDER)
-                    
+                    _reconcile_section_images(paper, _pid, _user_upload_dir)
+
                     # Persist the reconciled paths back to the database
                     try:
-                        db_paper = Paper.query.filter_by(id=_pid).first()
+                        db_paper = Paper.query.filter_by(id=_pid, user_id=int(get_jwt_identity())).first()
                         if db_paper:
                             db_paper.data = paper
                             flag_modified(db_paper, "data")
-                            db.session.commit()
+                            safe_commit()
                     except Exception as persist_err:
                         log.warning("[export] Failed to persist reconciled paths to DB: %s", persist_err)
         except Exception:
@@ -2208,10 +2333,10 @@ def export_docx():
             username = get_username(user_id=user_id)
         except Exception:
             username = f"user_{user_id}"
-        
-        # Use per-user export path: user/<username>/<paper_id>/export/
+
+        # Use per-user export path: user/<user_id>/exports/
         paper_id = str(paper.get("id") or data.get("paper_id") or "unknown")
-        user_export_dir = USER_BASE / username / paper_id / "export"
+        user_export_dir = _get_user_dir(int(user_id), "exports")
         user_export_dir.mkdir(parents=True, exist_ok=True)
         
         json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
@@ -2245,14 +2370,6 @@ def export_docx():
                 mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
 
-            @response.call_on_close
-            def _cleanup():
-                try:
-                    # Don't delete - keep for user history
-                    pass
-                except Exception as _e:
-                    log.warning("Cleanup failed: %s", _e)
-
             _export_ok = True
             return response
         finally:
@@ -2265,8 +2382,8 @@ def export_docx():
                     log.warning("Partial cleanup unlink failed for %s: %s", output_path, _e)
             json_filepath.unlink(missing_ok=True)
     except Exception as e:
-        log.exception("unhandled error")
-        return jsonify({"error": "Internal server error"}), 500
+        log.exception("unhandled error: %s", e)
+        return jsonify({"error": "Internal server error", "detail": str(e)}), 500
 
 
 # ─── Paper CRUD ───────────────────────────────────────────────────────────────
@@ -2274,7 +2391,7 @@ def export_docx():
 
 # ─── Word Add-on ─────────────────────────────────────────────────────────────
 
-WORD_ADDON_DIR = Path(__file__).parent / "word_addon"
+WORD_ADDON_DIR = Path(__file__).parent / "tools" / "word_addon"
 
 
 _WORD_ADDON_ORIGINS_RAW = os.getenv("WORD_ADDON_CORS_ORIGINS", "http://localhost:1000,http://localhost:5173,http://localhost:3001,http://localhost:8000")
@@ -2302,8 +2419,7 @@ def word_addon_manifest():
     manifest_path = WORD_ADDON_DIR / "manifest.xml"
     if not manifest_path.is_file():
         return jsonify({"error": "Manifest not found"}), 404
-    base_url = f"{request.scheme}://{request.host}"
-    manifest_content = manifest_path.read_text(encoding="utf-8").replace("{BASE_URL}", base_url)
+    manifest_content = manifest_path.read_text(encoding="utf-8").replace("{BASE_URL}", _APP_BASE_URL)
     return _office_cors(Response(manifest_content, mimetype="application/xml"))
 
 
@@ -2316,8 +2432,7 @@ def word_addon_download_manifest():
     manifest_path = WORD_ADDON_DIR / "manifest.xml"
     if not manifest_path.is_file():
         return jsonify({"error": "Manifest not found"}), 404
-    base_url = f"{request.scheme}://{request.host}"
-    manifest_content = manifest_path.read_text(encoding="utf-8").replace("{BASE_URL}", base_url)
+    manifest_content = manifest_path.read_text(encoding="utf-8").replace("{BASE_URL}", _APP_BASE_URL)
     resp = Response(manifest_content, mimetype="application/xml")
     resp.headers["Content-Disposition"] = 'attachment; filename="VIOLA-AI-Assistant.xml"'
     return _office_cors(resp)
@@ -2356,8 +2471,8 @@ def word_addon_static(filepath):
 
 
 @app.route("/api/word-addon/extract", methods=["POST", "OPTIONS"])
-@limiter.limit("100 per minute")  # prevent resource exhaustion from unauthenticated uploads
-@jwt_required(optional=True)
+@limiter.limit("100 per minute")  # rate limit for this endpoint
+@jwt_required()
 def word_addon_extract():
     """Extract text from uploaded PDF, DOCX, or TXT file."""
     if request.method == "OPTIONS":
@@ -2377,11 +2492,11 @@ def word_addon_extract():
         file.stream.seek(0, 2)  # Seek to end
         file_size = file.stream.tell()
         file.stream.seek(0)  # Reset to beginning
-        if file_size > 30 * 1024 * 1024:
-            return _office_cors(jsonify({"error": "File too large (max 30MB)"})), 413
+        if file_size > 100 * 1024 * 1024:
+            return _office_cors(jsonify({"error": "File too large (max 100MB)"})), 413
         data = file.read()
-        if len(data) > 30 * 1024 * 1024:
-            return _office_cors(jsonify({"error": "File too large (max 30MB)"})), 413
+        if len(data) > 100 * 1024 * 1024:
+            return _office_cors(jsonify({"error": "File too large (max 100MB)"})), 413
         if filename.endswith(".pdf"):
             text = extract_text_from_pdf(io.BytesIO(data))
         elif filename.endswith(".docx"):
@@ -2574,4 +2689,4 @@ if __name__ == "__main__":
     log.info("=" * 60)
     log.info("PaperFull API starting on port %d", port)
     log.info("🚀 PaperFull API running on http://localhost:%d", port)
-    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False, threaded=True)
+    app.run(host="127.0.0.1", port=port, debug=debug, use_reloader=False, threaded=True)

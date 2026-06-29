@@ -86,17 +86,6 @@ def log_access(method, path, status, duration_ms, user_id=None, ip=None, extra=N
     logger.handle(record)
 
 
-def log_activity(activity_type, description, user_id=None, paper_id=None, **kwargs):
-    """Catat aktivitas backend (generate, export, upload, dll)."""
-    logger = logging.getLogger("papergenerator.activity")
-    extra = {"activity": activity_type, **kwargs}
-    if user_id:
-        extra["user_id"] = user_id
-    if paper_id:
-        extra["paper_id"] = paper_id
-    logger.info(description, extra=extra)
-
-
 def cleanup_old_logs(max_age_days=7):
     """Hapus folder log yang lebih tua dari max_age_days."""
     try:

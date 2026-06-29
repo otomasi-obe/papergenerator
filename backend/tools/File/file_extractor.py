@@ -49,7 +49,7 @@ MIME_TO_EXT = {
 }
 
 # Maximum characters to extract per file
-MAX_EXTRACT_CHARS = 50_000
+MAX_EXTRACT_CHARS = 10_000_000  # No truncation — full file text extraction
 
 
 def detect_file_type(data: bytes, filename: str | None = None) -> str | None:
@@ -184,7 +184,7 @@ def extract_to_markdown(
     
     try:
         text = extractor(filepath, file_data)
-        return text[:max_chars] if text else ""
+        return text if text else ""
     except Exception as e:
         log.error(f"Extraction failed for {filepath}: {e}")
         return ""
@@ -201,8 +201,7 @@ def _extract_pdf(filepath: Path, file_data: bytes) -> str:
                 text = page.get_text("text")
                 if text.strip():
                     parts.append(f"<!-- Page {i+1} -->\n{text}")
-                if sum(len(p) for p in parts) >= MAX_EXTRACT_CHARS:
-                    break
+                # No truncation — full extraction
         return "\n\n".join(parts)
     except Exception as e:
         log.warning(f"PyMuPDF failed: {e}")
@@ -318,8 +317,7 @@ def _extract_xlsx(filepath: Path, file_data: bytes) -> str:
             
             out.append("")
             
-            if sum(len(s) for s in out) >= MAX_EXTRACT_CHARS:
-                break
+            # No truncation — full extraction
         
         return "\n".join(out)
     except Exception as e:
@@ -351,8 +349,7 @@ def _extract_xls(filepath: Path, file_data: bytes) -> str:
             
             out.append("")
             
-            if sum(len(s) for s in out) >= MAX_EXTRACT_CHARS:
-                break
+            # No truncation — full extraction
         
         return "\n".join(out)
     except Exception as e:
@@ -397,8 +394,7 @@ def _extract_pptx(filepath: Path, file_data: bytes) -> str:
             
             out.append("")
             
-            if sum(len(s) for s in out) >= MAX_EXTRACT_CHARS:
-                break
+            # No truncation — full extraction
         
         return "\n".join(out)
     except Exception as e:

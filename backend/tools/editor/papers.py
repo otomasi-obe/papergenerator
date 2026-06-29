@@ -18,7 +18,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy.exc import IntegrityError
 
-from database.models import (
+from utils.database.models import (
     AiJob,
     ChatDraft,
     ChatMessage,
@@ -77,7 +77,7 @@ def list_papers():
     paper_ids = [p.id for p in papers]
     image_counts = {}
     if paper_ids:
-        from database.models import PaperImage
+        from utils.database.models import PaperImage
         rows = (
             db.session.query(PaperImage.paper_id, db.func.count(PaperImage.id))
             .filter(PaperImage.paper_id.in_(paper_ids))
@@ -142,7 +142,7 @@ def save_paper():
         _username = get_username(user_id=user_id)
         save_paper_json_by_id(_username, paper_id, data)
     except Exception:
-        pass
+        log.exception("save_paper_json_by_id failed", extra={"paper_id": paper_id, "user_id": user_id})
     return jsonify({"success": True, "id": paper_id, "paper": paper.to_dict()})
 
 
@@ -212,7 +212,7 @@ def update_paper(paper_id: str):
         _username = get_username(user_id=user_id)
         save_paper_json_by_id(_username, paper_id, data)
     except Exception:
-        pass
+        log.exception("save_paper_json_by_id failed on update", extra={"paper_id": paper_id, "user_id": user_id})
     try:
         safe_commit()
     except Exception:
@@ -377,7 +377,7 @@ def patch_paper(paper_id: str):
         _username = get_username(user_id=user_id)
         save_paper_json_by_id(_username, paper_id, patched)
     except Exception:
-        pass
+        log.exception("save_paper_json_by_id failed on patch", extra={"paper_id": paper_id, "user_id": user_id})
     safe_commit()
 
     return jsonify(

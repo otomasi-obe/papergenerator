@@ -9,24 +9,15 @@ Endpoint: https://zenodo.org/api/records?q=...&size=N
 """
 
 import logging
-import re
 from typing import Iterable
 from urllib.parse import quote
 
-from ..http_client import RateLimiter, fetch_json
+from ..http_client import RateLimiter, fetch_json, strip_html
 from ..paper import Paper
 
 log = logging.getLogger(__name__)
 
 BASE = "https://zenodo.org/api/records"
-_TAG_RE = re.compile(r"<[^>]+>")
-
-
-def _strip_html(text: str | None) -> str | None:
-    if not text:
-        return None
-    text = _TAG_RE.sub(" ", text)
-    return " ".join(text.split()).strip() or None
 
 
 def _parse(hit: dict) -> Paper | None:
@@ -64,20 +55,54 @@ def _parse(hit: dict) -> Paper | None:
             # First file as fallback (often dataset, but could be paper)
             pdf_url = url
 
+    # Normalize venue_type from resource_type
+    rt = metadata.get("resource_type", {}) if isinstance(metadata.get("resource_type"), dict) else {}
+    raw_vt = rt.get("type", "")
+    _zenodo_vt_map = {
+        "publication": "journal",
+        "article": "journal",
+        "conferencepaper": "conference",
+        "preprint": "repository",
+        "workingpaper": "repository",
+        "report": "repository",
+        "book": "book",
+        "booksection": "book",
+        "dataset": "repository",
+        "software": "repository",
+        "other": "unknown",
+    }
+    venue_type = _zenodo_vt_map.get(raw_vt.lower(), "unknown")
+
+    # Normalize type
+    _zenodo_type_map = {
+        "publication": "journal-article",
+        "article": "journal-article",
+        "conferencepaper": "conference-paper",
+        "preprint": "preprint",
+        "workingpaper": "preprint",
+        "report": "journal-article",
+        "book": "book",
+        "booksection": "book",
+        "dataset": "dataset",
+        "software": "dataset",
+        "other": None,
+    }
+    normalized_type = _zenodo_type_map.get(raw_vt.lower(), raw_vt or None)
+
     return Paper(
         source="zenodo",
         source_id=str(hit.get("id", "")),
         title=title,
         authors=authors,
-        abstract=_strip_html(metadata.get("description")),
+        abstract=strip_html(metadata.get("description")),
         year=year,
         venue=metadata.get("journal", {}).get("title") if isinstance(metadata.get("journal"), dict) else None,
-        venue_type=metadata.get("resource_type", {}).get("type") if isinstance(metadata.get("resource_type"), dict) else None,
+        venue_type=venue_type,
         doi=doi,
         url=landing_url,
         pdf_url=pdf_url,
         is_open_access=True,  # Zenodo is open access
-        type=metadata.get("resource_type", {}).get("type") if isinstance(metadata.get("resource_type"), dict) else None,
+        type=normalized_type,
         publisher=metadata.get("publisher"),
     )
 

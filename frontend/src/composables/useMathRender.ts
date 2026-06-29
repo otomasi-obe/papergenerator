@@ -1,17 +1,19 @@
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import DOMPurify from 'dompurify'
 
 /**
  * Render LaTeX string ke HTML via KaTeX.
  * @param latex - raw LaTeX (tanpa $ atau $$)
  * @param displayMode - true = display (centered), false = inline
  */
+
 function sanitizeHtml(html: string): string {
-  // Strip dangerous event handlers and javascript: URIs from KaTeX output
-  return html
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\bon\w+\s*=\s*[^\s>]+/gi, '')
-    .replace(/javascript\s*:/gi, '')
+  // Use DOMPurify for robust XSS protection (replaces regex sanitizer)
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['span', 'math', 'semantics', 'annotation', 'mrow', 'mi', 'mo', 'mn', 'msub', 'msup', 'mfrac', 'msubsup', 'msqrt', 'mtext', 'annotation-xml', 'svg', 'path'],
+    ALLOWED_ATTR: ['class', 'aria-hidden', 'style', 'width', 'height', 'viewBox', 'd', 'xmlns', 'encoding'],
+  })
 }
 
 export function renderLatex(latex: string, displayMode = false): string {
@@ -32,7 +34,7 @@ export function renderLatex(latex: string, displayMode = false): string {
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
 }
 
 /**

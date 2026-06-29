@@ -15,15 +15,6 @@ export interface ThinkingBlockProps {
   isStreaming?: boolean
 }
 
-export interface AiButtonProps {
-  label?: string
-  loading?: boolean
-}
-
-export interface AiButtonEmits {
-  (e: 'click'): void
-}
-
 export interface ActionChip {
   label: string
   value?: string
@@ -72,15 +63,6 @@ export interface DiffBlockProps {
   change: DiffBlockChange
   store: DiffBlockStore
   align?: string
-}
-
-export interface AiPromptBoxProps {
-  section: string
-  lastText?: string
-}
-
-export interface AiPromptBoxEmits {
-  (e: 'generated', result: string): void
 }
 
 export interface FileReviewCardProps {

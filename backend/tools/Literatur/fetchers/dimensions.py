@@ -4,12 +4,10 @@ import logging
 import os
 from typing import Iterable
 
-from ..http_client import RateLimiter, fetch_post_json
+from ..http_client import RateLimiter, fetch_post_json, env_required
 from ..paper import Paper
 
 BASE = "https://app.dimensions.ai/api/dsl/v2"
-
-_warned = False
 
 
 def _parse(item: dict) -> Paper | None:
@@ -75,14 +73,9 @@ def _parse(item: dict) -> Paper | None:
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    """Search Dimensions. Requires DIMENSIONS_API_KEY environment variable."""
-    global _warned
-    api_key = os.getenv("DIMENSIONS_API_KEY")
-    if not api_key:
-        if not _warned:
-            logging.getLogger(__name__).info("dimensions fetcher skipped: DIMENSIONS_API_KEY not set")
-            _warned = True
+    if not env_required(log, "DIMENSIONS_API_KEY", "dimensions"):
         return
+    api_key = os.getenv("DIMENSIONS_API_KEY")
     
     rl = RateLimiter(1.0)  # Conservative rate limiting
     fetched = 0

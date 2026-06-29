@@ -17,36 +17,59 @@ PAPER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 FILENAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 
 
-def upload_folder() -> Path:
+def upload_folder(user_id: int | None = None) -> Path:
+    """Return the upload directory for the given user.
+
+    If user_id is provided, returns user/<user_id>/uploads/ (auto-created).
+    Falls back to legacy data/uploads/ when user_id is not available.
+    """
+    if user_id:
+        try:
+            from utils.core.storage_helper import get_user_dir
+            return get_user_dir(int(user_id), "uploads")
+        except Exception:
+            pass
     return Path(current_app.root_path) / "data/uploads"
 
 
-def safe_paper_dir(paper_id: str) -> Path | None:
-    """Return paper directory under user storage: user/<username>/<paper_id>/.
+def safe_paper_dir(paper_id: str, user_id: int | None = None) -> Path | None:
+    """Return paper directory: user/<username>/<paper_id>/.
 
-    Falls back to legacy data/uploads/<paper_id>/ if paper/user not found.
+    Priority:
+    1. user/<username>/<paper_id>/ (preferred — username-based, matches existing user dirs)
+    2. legacy data/uploads/<paper_id>/ (backward compat fallback)
     """
     if not paper_id or not PAPER_ID_RE.match(paper_id):
         return None
 
-    # Primary: user/<username>/<paper_id>/
-    try:
-        from database.models import Paper, User
-        paper = Paper.query.filter_by(id=paper_id).first()
-        if paper:
-            user = User.query.get(paper.user_id)
-            if user and user.email:
-                import re as _re
-                username = _re.sub(r'[^A-Za-z0-9._-]+', '_', user.email.split("@")[0]).strip("._-") or "unknown"
+    # Resolve paper → user if user_id not provided
+    _uid = user_id
+    if not _uid:
+        try:
+            from utils.database.models import Paper as _Paper
+            _p = _Paper.query.filter_by(id=paper_id).first()
+            if _p:
+                _uid = _p.user_id
+        except Exception:
+            pass
+
+    # Primary: user/<username>/<paper_id>/ (matches existing user directories)
+    if _uid:
+        try:
+            from utils.database.models import User as _User
+            _u = _User.query.get(int(_uid))
+            if _u and _u.email:
+                username = re.sub(r'[^A-Za-z0-9._-]+', '_', _u.email.split("@")[0]).strip("._-") or "unknown"
                 user_dir = (Path(current_app.root_path) / "user" / username / paper_id).resolve()
                 base = (Path(current_app.root_path) / "user").resolve()
                 try:
                     user_dir.relative_to(base)
                 except ValueError:
                     return None
+                user_dir.mkdir(parents=True, exist_ok=True)
                 return user_dir
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     # Fallback: legacy data/uploads/<paper_id>/
     base = upload_folder().resolve()

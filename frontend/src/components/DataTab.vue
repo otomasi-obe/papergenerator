@@ -1011,9 +1011,12 @@ async function startExtraction() {
     if (paperId.value) localStorage.setItem(LS_DATA_JOB_KEY(paperId.value), currentJobId)
 
     // Start SSE stream for progress
+    // Close any existing EventSource first to prevent connection leaks
+    closeEventSource()
     // Get access token from cookie (access_token_cookie is the JWT, csrf_access_token is CSRF protection)
-    const accessToken = (document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/) || [])[1] || ''
-    eventSource = new EventSource(`/api/data-jobs/${currentJobId}/stream?token=${encodeURIComponent(accessToken)}`)
+    // Cookie-based auth: backend falls through to access_token_cookie when no query token
+    // (No JWT in URL — avoids leaking tokens in logs/history)
+    eventSource = new EventSource(`/api/data-jobs/${currentJobId}/stream`)
 
     eventSource.onmessage = (event) => {
       try {
@@ -1154,8 +1157,12 @@ async function startTextExtraction() {
 
     if (paperId.value) localStorage.setItem(LS_DATA_JOB_KEY(paperId.value), currentJobId)
 
-    const accessToken = (document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/) || [])[1] || ''
-    eventSource = new EventSource(`/api/data-jobs/${currentJobId}/stream?token=${encodeURIComponent(accessToken)}`)
+    // Close any existing EventSource first to prevent connection leaks
+    closeEventSource()
+
+    // Cookie-based auth: backend falls through to access_token_cookie when no query token
+    // (No JWT in URL — avoids leaking tokens in logs/history)
+    eventSource = new EventSource(`/api/data-jobs/${currentJobId}/stream`)
 
     // Reuse the same SSE handler as startExtraction
     eventSource.onmessage = (event) => {
@@ -1774,8 +1781,11 @@ async function resumeExtractionJob() {
     extractProgress.value = { progress: job.progress || 0, message: 'Melanjutkan...', stage: job.stage || '' }
 
     // Reconnect SSE
-    const accessToken = (document.cookie.match(/(?:^|;\s*)access_token_cookie=([^;]+)/) || [])[1] || ''
-    eventSource = new EventSource(`/api/data-jobs/${currentJobId}/stream?token=${encodeURIComponent(accessToken)}`)
+    // Close any existing EventSource first to prevent connection leaks
+    closeEventSource()
+    // Cookie-based auth: backend falls through to access_token_cookie when no query token
+    // (No JWT in URL — avoids leaking tokens in logs/history)
+    eventSource = new EventSource(`/api/data-jobs/${currentJobId}/stream`)
 
     eventSource.onmessage = (event) => {
       try {

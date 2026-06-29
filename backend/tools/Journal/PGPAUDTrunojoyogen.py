@@ -188,7 +188,7 @@ def _add_fig(doc, fig, cnt):
     if actual:
         try:
             r = p.add_run(); r.add_picture(str(actual), width=Inches(3.2))
-        except:
+        except Exception:
             actual = None
     if not actual:
         r = p.add_run(f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt}]")

@@ -94,53 +94,45 @@ export interface AIFormatResult {
 
 export const chartsApi = {
   async list(paperId: string): Promise<{ charts: Chart[] }> {
-    const response = await api.get(`/api/papers/${paperId}/charts`)
-    return response.data
+    try { return await (await api.get(`/api/papers/${paperId}/charts`)).data } catch (e) { console.error('[charts] list', e); throw e }
   },
 
   async get(paperId: string, chartId: number): Promise<Chart> {
-    const response = await api.get(`/api/papers/${paperId}/charts/${chartId}`)
-    return response.data
+    try { return await (await api.get(`/api/papers/${paperId}/charts/${chartId}`)).data } catch (e) { console.error('[charts] get', e); throw e }
   },
 
   async create(paperId: string, spec: ChartSpec): Promise<Chart> {
-    const response = await api.post(`/api/papers/${paperId}/charts`, spec)
-    return response.data
+    try { return await (await api.post(`/api/papers/${paperId}/charts`, spec)).data } catch (e) { console.error('[charts] create', e); throw e }
   },
 
   async update(paperId: string, chartId: number, spec: ChartSpec): Promise<Chart> {
-    const response = await api.put(`/api/papers/${paperId}/charts/${chartId}`, spec)
-    return response.data
+    try { return await (await api.put(`/api/papers/${paperId}/charts/${chartId}`, spec)).data } catch (e) { console.error('[charts] update', e); throw e }
   },
 
   async delete(paperId: string, chartId: number): Promise<void> {
-    await api.delete(`/api/papers/${paperId}/charts/${chartId}`)
+    try { await api.delete(`/api/papers/${paperId}/charts/${chartId}`) } catch (e) { console.error('[charts] delete', e); throw e }
   },
 
   async preview(paperId: string, spec: ChartSpec): Promise<PreviewResponse> {
-    const response = await api.post(`/api/papers/${paperId}/charts/preview`, spec)
-    return response.data
+    try { return await (await api.post(`/api/papers/${paperId}/charts/preview`, spec)).data } catch (e) { console.error('[charts] preview', e); throw e }
   },
 
   async getKinds(paperId: string): Promise<{ kinds: Record<string, ChartKindInfo> }> {
-    const response = await api.get(`/api/papers/${paperId}/charts/kinds`)
-    return response.data
+    try { return await (await api.get(`/api/papers/${paperId}/charts/kinds`)).data } catch (e) { console.error('[charts] getKinds', e); throw e }
   },
 
   async getPalettes(paperId: string): Promise<{ palettes: Record<string, string[]> }> {
-    const response = await api.get(`/api/papers/${paperId}/charts/palettes`)
-    return response.data
+    try { return await (await api.get(`/api/papers/${paperId}/charts/palettes`)).data } catch (e) { console.error('[charts] getPalettes', e); throw e }
   },
 
   async uploadData(paperId: string, file: File): Promise<ParsedData> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await api.post(`/api/papers/${paperId}/charts/upload-data`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-    return response.data
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      return await (await api.post(`/api/papers/${paperId}/charts/upload-data`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })).data
+    } catch (e) { console.error('[charts] uploadData', e); throw e }
   },
 
   /**
@@ -148,22 +140,22 @@ export const chartsApi = {
    * Bisa file upload atau text langsung.
    */
   async aiFormat(paperId: string, fileOrText: File | string): Promise<AIFormatResult> {
-    if (fileOrText instanceof File) {
-      const formData = new FormData()
-      formData.append('file', fileOrText)
-      const response = await api.post(`/api/papers/${paperId}/charts/ai-format`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000 // 2 menit timeout untuk AI processing
-      })
-      return response.data
-    } else {
-      const response = await api.post(`/api/papers/${paperId}/charts/ai-format`, {
-        text: fileOrText
-      }, {
-        timeout: 120000
-      })
-      return response.data
-    }
+    try {
+      if (fileOrText instanceof File) {
+        const formData = new FormData()
+        formData.append('file', fileOrText)
+        return await (await api.post(`/api/papers/${paperId}/charts/ai-format`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 120000 // 2 menit timeout untuk AI processing
+        })).data
+      } else {
+        return await (await api.post(`/api/papers/${paperId}/charts/ai-format`, {
+          text: fileOrText
+        }, {
+          timeout: 120000
+        })).data
+      }
+    } catch (e) { console.error('[charts] aiFormat', e); throw e }
   }
 }
 

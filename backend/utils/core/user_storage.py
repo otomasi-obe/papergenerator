@@ -57,7 +57,7 @@ def get_username(user_id=None, email=None):
         return _safe(email.split("@")[0])
     if user_id:
         try:
-            from database.models import User
+            from utils.database.models import User
             user = User.query.get(int(user_id))
             if user and user.email:
                 return _safe(user.email.split("@")[0])
@@ -344,8 +344,124 @@ def get_status_json_path(username, paper_id):
     return base / "status.json"
 
 
+def _reconcile_status_json(status_data, paper_id):
+    """Auto-heal status.json: fix filenames, add missing disk files.
+    
+    Handles:
+    - Filenames with spaces (old code) → sanitize to match disk files
+    - Files on disk missing from status.json → add them
+    - Entries whose disk file doesn't exist → mark as missing
+    """
+    import re
+    if not status_data or not isinstance(status_data, dict):
+        return status_data
+    
+    files = status_data.get("files", [])
+    if not files:
+        return status_data
+    
+    # Derive paper dir from first file's path
+    paper_dir = None
+    for fe in files:
+        p = fe.get("path", "")
+        if p:
+            paper_dir = Path(p).parent.parent
+            break
+    
+    if not paper_dir or not paper_dir.exists():
+        return status_data
+    
+    files_dir = paper_dir / "files"
+    if not files_dir.exists():
+        return status_data
+    
+    disk_files = {f.name for f in files_dir.iterdir() if f.suffix == ".txt"}
+    if not disk_files:
+        return status_data
+    
+    changed = False
+    fixed_files = []
+    seen_safe = set()
+    
+    for fe in files:
+        fn = fe.get("filename", "")
+        fp = fe.get("path", "")
+        
+        # Derive sanitized name from the filename
+        txt_name = Path(fn).stem + ".txt"
+        safe = re.sub(r'[^A-Za-z0-9._-]+', '_', txt_name).strip(" ._-") or "extracted"
+        disk_path = files_dir / safe
+        
+        # If path is wrong or points to non-existent file, fix it
+        if not fp or not Path(fp).exists():
+            if disk_path.exists():
+                fe["path"] = str(disk_path)
+                if fe.get("filename") != safe:
+                    fe["filename"] = safe
+                changed = True
+            else:
+                # Try to find by original_name
+                orig = fe.get("original_name", "")
+                if orig:
+                    txt = Path(orig).stem + ".txt"
+                    safe_orig = re.sub(r'[^A-Za-z0-9._-]+', '_', txt).strip(" ._-") or "extracted"
+                    alt_path = files_dir / safe_orig
+                    if alt_path.exists():
+                        fe["path"] = str(alt_path)
+                        fe["filename"] = safe_orig
+                        changed = True
+        
+        # Ensure filename matches sanitized version of path basename
+        current_path = fe.get("path", "")
+        if current_path:
+            actual_name = Path(current_path).name
+            if actual_name and actual_name != fe.get("filename"):
+                fe["filename"] = actual_name
+                changed = True
+        
+        # Deduplicate by sanitized filename
+        safe_key = fe.get("filename", "")
+        if safe_key not in seen_safe:
+            seen_safe.add(safe_key)
+            fixed_files.append(fe)
+        else:
+            changed = True
+    
+    # Add missing disk files not in status.json
+    existing_safe = {fe.get("filename", "") for fe in fixed_files}
+    for fname in sorted(disk_files):
+        if fname not in existing_safe:
+            txt_path = files_dir / fname
+            fixed_files.append({
+                "filename": fname,
+                "path": str(txt_path),
+                "original_name": fname.replace(".txt", ".pdf").replace("_", " "),
+                "file_id": None,
+                "uploaded_at": datetime.now(timezone.utc).isoformat()
+            })
+            changed = True
+    
+    if changed:
+        status_data["files"] = fixed_files
+        # Persist the fix
+        try:
+            paper_id_from_path = paper_dir.name if paper_dir else paper_id
+            # Try to find username from path
+            if paper_dir and "user" in paper_dir.parts:
+                user_idx = paper_dir.parts.index("user") + 1
+                if user_idx < len(paper_dir.parts):
+                    username = paper_dir.parts[user_idx]
+                    save_status_json(username, paper_id_from_path, status_data)
+        except Exception:
+            pass  # Non-critical: just return fixed data
+    
+    return status_data
+
+
 def get_status_json(username, paper_id):
-    """Read status.json for a paper. Returns empty structure if not exists."""
+    """Read status.json for a paper. Returns empty structure if not exists.
+    Also auto-heals filenames and missing files on read.
+    """
     filepath = get_status_json_path(username, paper_id)
     if not filepath.exists():
         return {
@@ -358,7 +474,9 @@ def get_status_json(username, paper_id):
         }
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
+            status = json.load(f)
+        # Auto-heal on read
+        return _reconcile_status_json(status, paper_id)
     except Exception as e:
         log.warning(f"Failed to read status.json for {paper_id}: {e}")
         return {
@@ -405,21 +523,24 @@ def update_status_fact(username, paper_id, key, value, source="regex"):
 
 
 def add_status_file(username, paper_id, filename, filepath, metadata=None):
-    """Add file entry to status.json."""
+    """Add file entry to status.json (sanitizes filename for consistency)."""
+    import re
+    safe_name = re.sub(r'[^A-Za-z0-9._-]+', '_', str(filename or "")).strip(" ._-") or "untitled"
     status = get_status_json(username, paper_id)
     if "files" not in status:
         status["files"] = []
     
     file_entry = {
-        "filename": filename,
+        "filename": safe_name,
         "path": str(filepath),
         "uploaded_at": datetime.now(timezone.utc).isoformat()
     }
     if metadata:
         file_entry["metadata"] = metadata
     
-    # Remove duplicate if exists
-    status["files"] = [f for f in status["files"] if f["filename"] != filename]
+    # Remove duplicate if exists (match by filename or path)
+    status["files"] = [f for f in status["files"]
+                       if f["filename"] != safe_name and f.get("path") != str(filepath)]
     status["files"].append(file_entry)
     
     return save_status_json(username, paper_id, status)
@@ -528,10 +649,30 @@ def build_status_context(username, paper_id, selected_facts=None, selected_files
     # Files section
     files = status.get("files", [])
     if files:
-        if selected_files is None:
-            included_files = files
+        if selected_files is not None:
+            # Flexible matching: try exact, sanitized, and path basename
+            selected_set = set(selected_files)
+            # Also add sanitized versions of selected filenames
+            for sf in selected_files:
+                txt_name = Path(sf).stem + ".txt"
+                safe = re.sub(r'[^A-Za-z0-9._-]+', '_', txt_name).strip(" ._-") or "extracted"
+                selected_set.add(safe)
+            matched = []
+            for f in files:
+                fn = f.get("filename", "")
+                # Derive sanitized name from original_name
+                orig = f.get("original_name", "")
+                txt_name = Path(orig).stem + ".txt"
+                safe_from_orig = re.sub(r'[^A-Za-z0-9._-]+', '_', txt_name).strip(" ._-") or "extracted"
+                # Get path basename
+                p = f.get("path", "")
+                path_basename = Path(p).name if p else ""
+                
+                if fn in selected_set or safe_from_orig in selected_set or path_basename in selected_set:
+                    matched.append(f)
+            included_files = matched
         else:
-            included_files = [f for f in files if f.get("filename") in selected_files]
+            included_files = files
         
         if included_files:
             context_parts.append("## Attached Files\n")
@@ -550,10 +691,7 @@ def build_status_context(username, paper_id, selected_facts=None, selected_files
                         file_path = Path(filepath)
                         if file_path.exists() and file_path.suffix.lower() in ['.txt', '.md', '.csv', '.json']:
                             content = file_path.read_text(encoding='utf-8')
-                            # Limit content to avoid huge prompts
-                            if len(content) > 2000:
-                                content = content[:2000] + "\n... (truncated)"
-                            context_parts.append(f"  Content preview:\n```\n{content}\n```")
+                            context_parts.append(f"  Content:\n```\n{content}\n```")
                     except Exception as e:
                         log.warning(f"Could not read file {filepath}: {e}")
             context_parts.append("")

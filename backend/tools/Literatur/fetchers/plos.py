@@ -9,16 +9,14 @@ All PLOS articles are open access (CC-BY).
 """
 
 import logging
-import re
 from typing import Iterable
 
-from ..http_client import RateLimiter, fetch_json
+from ..http_client import RateLimiter, fetch_json, strip_html
 from ..paper import Paper
 
 log = logging.getLogger(__name__)
 
 BASE = "https://api.plos.org/search"
-_WS_RE = re.compile(r"\s+")
 
 FL = "id,title,author,abstract,publication_date,journal,article_type"
 
@@ -28,7 +26,7 @@ def _clean(text) -> str | None:
         text = " ".join(t for t in text if t)
     if not text:
         return None
-    return _WS_RE.sub(" ", str(text)).strip() or None
+    return strip_html(str(text)) or None
 
 
 def _parse(doc: dict) -> Paper | None:

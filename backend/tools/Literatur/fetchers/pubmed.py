@@ -8,7 +8,7 @@ import logging
 import os
 import time
 from typing import Iterable
-from xml.etree import ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
@@ -82,17 +82,15 @@ def _parse_article(article) -> Paper | None:
             elif aid.get("IdType") == "pmc":
                 pmc_id = aid.text
 
-    # Build PDF URL: prioritize PMC free full text, then DOI, then landing page
+    # Build landing page URL
+    landing_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None
+
+    # Build PDF URL: prioritize PMC free full text, then DOI
     pdf_url = None
     if pmc_id:
-        # PMC articles have free full text PDFs
         pdf_url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{pmc_id}/pdf/"
     elif doi:
-        # Try DOI resolver (may redirect to publisher)
         pdf_url = f"https://doi.org/{doi}"
-    else:
-        # Fallback to PubMed landing page
-        pdf_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None
 
     return Paper(
         source="pubmed",
@@ -104,7 +102,8 @@ def _parse_article(article) -> Paper | None:
         venue=venue,
         venue_type="journal",
         doi=doi,
-        url=pdf_url,
+        url=landing_url,
+        pdf_url=pdf_url,
         is_open_access=bool(pmc_id),  # PMC articles are open access
         type="journal-article",
         publisher="NLM",

@@ -44,7 +44,7 @@ def _checkpoint(
     can re-feed it to generate_paper_json_chunked(resume_state=...).
     """
     from tools.paperfull.jobs import publish_progress
-    from database.models import AiJob, db, safe_commit
+    from utils.database.models import AiJob, db, safe_commit
 
     payload = {"stage": stage, "percent": percent, **extra}
     if status:
@@ -87,7 +87,7 @@ def _is_cancelled(job_id: str) -> bool:
     Either signal aborts the run.
     """
     from tools.paperfull.jobs import _REDIS, cancel_key
-    from database.models import AiJob
+    from utils.database.models import AiJob
 
     try:
         if _REDIS.exists(cancel_key(job_id)):
@@ -122,8 +122,8 @@ def run_generate_paper(
     """
     # Build a Flask app context inside the worker so SQLAlchemy can talk to the DB.
     from main import app  # noqa: F401  (boots the global Flask app + DB binding)
-    from database.models import AiJob, Paper, db, safe_commit
-    from editor.chunked import (
+    from utils.database.models import AiJob, Paper, db, safe_commit
+    from tools.editor.chunked import (
         GenerationCancelled,
         generate_paper_json_chunked,
     )
@@ -142,6 +142,11 @@ def run_generate_paper(
                         if paper:
                             partial_data = dict(partial)
                             partial_data["_partial"] = True
+                            # Preserve metadata that partial output doesn't include
+                            _ex = paper.data if isinstance(paper.data, dict) else {}
+                            for _mk in ('language', 'journal', 'citation_style'):
+                                if _mk not in partial_data and _mk in _ex:
+                                    partial_data[_mk] = _ex[_mk]
                             paper.data = partial_data
                             paper.title = (
                                 (partial.get("title") or "").strip()
@@ -170,6 +175,12 @@ def run_generate_paper(
                 user_id=user_id,
             )
 
+            # Inject resolved language so it persists in paper.data after save.
+            # _normalize_paper_shape / chunked output don't include language,
+            # so without this the chat backend can't read the paper's language.
+            if language:
+                paper_data["language"] = language
+
             # Defensive defaults (mirror app.py post-processing).
             paper_data.setdefault(
                 "authors",
@@ -194,6 +205,13 @@ def run_generate_paper(
             if paper_id:
                 paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
                 if paper:
+                    # Preserve user-set metadata that generation output doesn't
+                    # include (journal, citation_style). language is injected
+                    # above from the resolved param, but keep existing as fallback.
+                    _existing = paper.data if isinstance(paper.data, dict) else {}
+                    for _meta_key in ('journal', 'citation_style'):
+                        if _meta_key not in paper_data and _meta_key in _existing:
+                            paper_data[_meta_key] = _existing[_meta_key]
                     paper.data = paper_data
                     paper.title = (
                         (paper_data.get("title") or "").strip()
@@ -304,7 +322,7 @@ def _auto_enqueue_figure_images(
     import logging
     import uuid
 
-    from database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+    from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
     logger = logging.getLogger(__name__)
 
@@ -453,9 +471,14 @@ def _generate_images_background(
                     paper_id,
                 )
                 # Update paper_data with generated chart paths
-                from database.models import Paper, db, safe_commit
+                from utils.database.models import Paper, db, safe_commit
                 paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
                 if paper:
+                    # Preserve metadata that might not be in paper_data
+                    _ex = paper.data if isinstance(paper.data, dict) else {}
+                    for _mk in ('language', 'journal', 'citation_style'):
+                        if _mk not in paper_data and _mk in _ex:
+                            paper_data[_mk] = _ex[_mk]
                     paper.data = paper_data
                     safe_commit()
 
@@ -469,7 +492,7 @@ def _generate_images_background(
             )
             # BUG-6.3: update DB so error is visible instead of silent death
             try:
-                from database.models import Paper, db, safe_commit  # noqa: PLC0415
+                from utils.database.models import Paper, db, safe_commit  # noqa: PLC0415
                 paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
                 if paper and paper.data:
                     paper.data["image_gen_error"] = "Image generation failed — see server logs"

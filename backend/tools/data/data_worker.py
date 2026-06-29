@@ -103,7 +103,7 @@ def _cleanup_stale_worker_state(job_id: str):
     If job is already in terminal state (done/error/cancelled), skip.
     """
     try:
-        from database.models import AiJob, db, safe_commit
+        from utils.database.models import AiJob, db, safe_commit
         j = AiJob.query.get(job_id)
     except Exception:
         return
@@ -154,7 +154,7 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
     log.debug("DATA_WORKER_DEBUG: After initial _publish — job_id=%s", job_id)
     with app.app_context():
         try:
-            from database.models import AiJob, Paper, PaperImage, db, safe_commit
+            from utils.database.models import AiJob, Paper, PaperImage, db, safe_commit
 
             job = AiJob.query.get(job_id)
             if not job:
@@ -437,7 +437,7 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
         except Exception as e:
             log.exception("DataJob %s failed: %s", job_id, e)
             try:
-                from database.models import AiJob, db, safe_commit
+                from utils.database.models import AiJob, db, safe_commit
                 j = AiJob.query.get(job_id)
                 if j:
                     _finish_error(j, "Internal processing error. Please try again.")
@@ -454,7 +454,7 @@ def run_data_job(app, job_id, file_paths, file_names, paper_id, user_id, user_pr
 
 
 def _finish_cancelled(job):
-    from database.models import db, safe_commit
+    from utils.database.models import db, safe_commit
     job.status = "cancelled"
     job.stage = "cancelled"
     job.finished_at = datetime.now(timezone.utc)
@@ -467,7 +467,7 @@ def _finish_cancelled(job):
 
 
 def _finish_error(job, error_msg, result=None):
-    from database.models import db, safe_commit
+    from utils.database.models import db, safe_commit
     job.status = "error"
     job.stage = "error"
     job.error = error_msg
@@ -617,7 +617,7 @@ def _extract_pptx(filepath):
 def _generate_chart_from_rec(rec, tables, paper_id, user_id, paper, paper_dir):
     """Generate a chart from an AI recommendation and save to DB."""
     from tools.data.chart_generator import ChartSpec, generate_chart
-    from database.models import PaperImage, db, safe_commit
+    from utils.database.models import PaperImage, db, safe_commit
 
     table_idx = rec.get("table_index", 0)
     if not isinstance(table_idx, int) or table_idx < 0 or table_idx >= len(tables):

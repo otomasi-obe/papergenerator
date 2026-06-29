@@ -23,7 +23,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-from ..http_client import RateLimiter, fetch_text
+from ..http_client import RateLimiter, fetch_text, strip_html
 from ..paper import Paper
 
 log = logging.getLogger(__name__)
@@ -35,12 +35,6 @@ _DETAIL_RE = re.compile(
     r'<a[^>]+class="[^"]*title-article[^"]*"[^>]+href="(/documents/detail/(\d+))"[^>]*>(.*?)</a>',
     re.IGNORECASE | re.DOTALL,
 )
-_TAG_RE = re.compile(r"<[^>]+>")
-_WS_RE = re.compile(r"\s+")
-
-
-def _strip_html(s: str) -> str:
-    return _WS_RE.sub(" ", _TAG_RE.sub(" ", s or "")).strip()
 
 
 def _parse_search_html(html: str) -> list[tuple[str, str]]:
@@ -48,7 +42,7 @@ def _parse_search_html(html: str) -> list[tuple[str, str]]:
     out = []
     for m in _DETAIL_RE.finditer(html):
         doc_id = m.group(2)
-        title = _strip_html(m.group(3))
+        title = strip_html(m.group(3))
         if title:
             out.append((doc_id, title))
     if not out and html and len(html) > 1024:
@@ -71,12 +65,12 @@ def _parse_detail_html(html: str) -> dict:
         re.IGNORECASE | re.DOTALL,
     )
     if m:
-        abstract = _strip_html(m.group(1))
+        abstract = strip_html(m.group(1))
 
     title = ""
     m = re.search(r"<h3[^>]*>\s*<xmp[^>]*>(.*?)</xmp>", html, re.IGNORECASE | re.DOTALL)
     if m:
-        title = _strip_html(m.group(1))
+        title = strip_html(m.group(1))
 
     year = None
     m = re.search(r"\((\d{4})\)", html)
@@ -89,7 +83,7 @@ def _parse_detail_html(html: str) -> dict:
     venue = ""
     m = re.search(r'class="j-title"[^>]*>\s*<a[^>]*>(.*?)</a>', html, re.IGNORECASE | re.DOTALL)
     if m:
-        venue = _strip_html(m.group(1))
+        venue = strip_html(m.group(1))
 
     publisher = ""
     m = re.search(
@@ -98,7 +92,7 @@ def _parse_detail_html(html: str) -> dict:
         re.IGNORECASE | re.DOTALL,
     )
     if m:
-        publisher = _strip_html(m.group(1))
+        publisher = strip_html(m.group(1))
 
     authors: list[str] = []
     for a in re.finditer(
@@ -106,7 +100,7 @@ def _parse_detail_html(html: str) -> dict:
         html,
         re.IGNORECASE | re.DOTALL,
     ):
-        nm = _strip_html(a.group(1))
+        nm = strip_html(a.group(1))
         if nm and nm not in authors and len(authors) < 10:
             authors.append(nm)
 
@@ -205,6 +199,7 @@ def _from_offline(query: str, limit: int) -> Iterable[Paper]:
             venue_type="journal",
             doi=(rec.get("doi") or None),
             url=rec.get("garuda_doc_url") or rec.get("view_url") or rec.get("source_url") or None,
+            pdf_url=rec.get("source_url") or None,
             citations=None,
             is_open_access=True,
             type="journal-article",
@@ -262,12 +257,11 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
                 continue
             seen_ids.add(doc_id)
             
-            # Build PDF URL: prioritize extracted PDF, then DOI, then landing page
-            pdf_url = meta.get("pdf_url")
+            # Build landing page and PDF URL separately
+            landing = f"{BASE}/documents/detail/{doc_id}"
+            pdf_url = meta.get("pdf_url") or None
             if not pdf_url and meta.get("doi"):
                 pdf_url = f"https://doi.org/{meta.get('doi')}"
-            if not pdf_url:
-                pdf_url = f"{BASE}/documents/detail/{doc_id}"
             
             yield Paper(
                 source="sinta",
@@ -279,7 +273,8 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
                 venue=meta.get("venue") or None,
                 venue_type="journal",
                 doi=meta.get("doi"),
-                url=pdf_url,
+                url=landing,
+                pdf_url=pdf_url,
                 citations=None,
                 is_open_access=True,
                 type="journal-article",

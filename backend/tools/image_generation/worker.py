@@ -36,7 +36,8 @@ from typing import Optional
 log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent
-UPLOADS_DIR = REPO_ROOT / "data/uploads"
+# Legacy: UPLOADS_DIR was data/uploads. Now uses per-user paths via get_user_dir().
+# Kept as reference for backward-compat migration scripts.
 
 
 class _Worker(threading.Thread):
@@ -123,7 +124,7 @@ class _Worker(threading.Thread):
                     orphan_job_id = self.q.get_nowait()
                     try:
                         with self.app.app_context():
-                            from database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+                            from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
                             orphan = db.session.get(ImageGenJob, orphan_job_id)
                             if orphan and orphan.status == "running":
                                 orphan.status = "error"
@@ -178,7 +179,7 @@ class _Worker(threading.Thread):
         try:
             from sqlalchemy import update  # noqa: PLC0415
 
-            from database.models import ImageGenJob, PaperImage, db, safe_commit  # noqa: PLC0415
+            from utils.database.models import ImageGenJob, PaperImage, db, safe_commit  # noqa: PLC0415
             from tools.editor.utils import safe_paper_image_dir  # noqa: PLC0415
 
             with self.app.app_context():
@@ -212,7 +213,7 @@ class _Worker(threading.Thread):
 
             if paper_dir is None:
                 with self.app.app_context():
-                    from database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+                    from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
                     job2 = db.session.get(ImageGenJob, job_id)
                     if job2:
@@ -420,7 +421,7 @@ class _Worker(threading.Thread):
                 
                 # Job-level retry: re-queue if under max retries
                 with self.app.app_context():
-                    from database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+                    from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
                     job2 = db.session.get(ImageGenJob, job_id)
                     if job2 and job2.status != "cancelled":
@@ -488,7 +489,7 @@ class _Worker(threading.Thread):
                 # ─── Update job status ke error ───
                 try:
                     with self.app.app_context():
-                        from database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+                        from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
                         job2 = db.session.get(ImageGenJob, job_id)
                         if job2 is not None and job2.status == "running":
@@ -534,7 +535,7 @@ class _Dispatcher(threading.Thread):
         return min(self.workers, key=lambda w: w.qsize())
 
     def run(self):
-        from database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+        from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
         # On startup: requeue any queued/running jobs that were left behind by a
         # previous process. Running ones are demoted because their browser
@@ -626,7 +627,7 @@ def submit_now(job_id: str):
         # Periodic cleanup: if _dispatched grows too large, prune completed jobs
         if len(_dispatcher._dispatched) > 100:
             try:
-                from database.models import ImageGenJob, db
+                from utils.database.models import ImageGenJob, db
                 # DB access requires a Flask app_context. submit_now() may be
                 # called from a worker thread (e.g. paper_worker._auto_enqueue_figure_images)
                 # that has no active app_context, so push one explicitly.

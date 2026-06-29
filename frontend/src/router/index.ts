@@ -87,7 +87,7 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
     return next('/dashboard')
   }
-  if (to.meta.public && auth.isLoggedIn && (to.name === 'login' || to.name === 'landing')) {
+  if (to.meta.public && auth.isLoggedIn && to.name === 'login') {
     return next('/dashboard')
   }
 

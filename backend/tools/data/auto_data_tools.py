@@ -131,7 +131,7 @@ def _generate_chart_from_spec(spec_dict: dict, user_id: int, paper_id: str, judu
         shutil.move(str(out_path), str(dest))
 
         # Save to database as PaperImage with chart- prefix
-        from database.models import PaperImage, db, safe_commit
+        from utils.database.models import PaperImage, db, safe_commit
 
         img = PaperImage(
             paper_id=paper_id,

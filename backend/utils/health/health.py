@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify
 
-from database.models import db, safe_commit
+from utils.database.models import db, safe_commit
 
 health = Blueprint('health', __name__, url_prefix='/api/health')
 

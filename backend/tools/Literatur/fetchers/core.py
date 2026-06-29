@@ -2,14 +2,19 @@
 
 import logging
 import os
+from pathlib import Path
 from typing import Iterable
 
-from ..http_client import RateLimiter, fetch_post_json
+from dotenv import load_dotenv
+
+from ..http_client import RateLimiter, fetch_post_json, env_required
 from ..paper import Paper
 
-BASE = "https://api.core.ac.uk/v3/search/works"
+_ENV_PATH = Path(__file__).resolve().parent.parent.parent.parent / ".env.literature"
+load_dotenv(_ENV_PATH, override=False)
 
-_warned = False
+BASE = "https://api.core.ac.uk/v3/search/works"
+CORE_API_KEY = "m0BnoSbYf6sQWgAOU8F1hR7auEycCTtM"
 
 
 def _parse(item: dict) -> Paper | None:
@@ -52,7 +57,26 @@ def _parse(item: dict) -> Paper | None:
     url = item.get("urls", [None])[0] if item.get("urls") else None
     if not url and doi:
         url = f"https://doi.org/{doi}"
-    
+
+    # CORE venue: use document source if available, not publisher
+    raw_source = item.get("source", {}).get("identifier") if isinstance(item.get("source"), dict) else None
+    venue = raw_source or item.get("documentType")
+
+    # Normalize venue_type and type
+    _core_type_map = {
+        "journal article": "journal-article",
+        "conference paper": "conference-paper",
+        "book chapter": "book",
+        "book": "book",
+        "thesis": "book",
+        "dataset": "dataset",
+        "preprint": "preprint",
+        "report": "journal-article",
+    }
+    doc_type = item.get("documentType", "").lower() if item.get("documentType") else None
+    normalized_type = _core_type_map.get(doc_type, doc_type) if doc_type else None
+    venue_type = "repository"  # CORE is a repository aggregator
+
     return Paper(
         source="core",
         source_id=str(item.get("id", "")),
@@ -60,26 +84,22 @@ def _parse(item: dict) -> Paper | None:
         authors=authors,
         abstract=item.get("abstract"),
         year=year,
-        venue=item.get("publisher"),
-        venue_type=None,
+        venue=venue,
+        venue_type=venue_type,
         doi=doi,
         url=url,
         pdf_url=pdf_url,
         citations=None,  # CORE doesn't provide citation counts
         is_open_access=True,  # CORE only indexes OA content
-        type=None,
+        type=normalized_type,
         publisher=item.get("publisher"),
     )
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    """Search CORE. Requires CORE_API_KEY environment variable."""
-    global _warned
-    api_key = os.getenv("CORE_API_KEY")
+    api_key = os.getenv("CORE_API_KEY") or CORE_API_KEY
     if not api_key:
-        if not _warned:
-            logging.getLogger(__name__).info("core fetcher skipped: CORE_API_KEY not set (free at core.ac.uk/services/api)")
-            _warned = True
+        env_required(log, "CORE_API_KEY", "core")
         return
     
     rl = RateLimiter(1.0)  # Conservative rate limiting

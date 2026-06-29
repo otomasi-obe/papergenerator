@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 import logging
 
-from database.models import Paper, UserState, db, safe_commit
+from utils.database.models import Paper, UserState, db, safe_commit
 
 log = logging.getLogger(__name__)
 

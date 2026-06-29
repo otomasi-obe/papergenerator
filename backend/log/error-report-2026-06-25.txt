@@ -1,0 +1,149 @@
+================================================================================
+PAPERGENERATOR BACKEND - ERROR LOG REPORT
+Period: 2026-06-24T00:00 to 2026-06-25T07:00 (32 hourly dirs)
+Generated: 2026-06-25
+================================================================================
+
+SUMMARY
+-------
+Total ERROR-level entries:          69
+Total HTTP 4xx/5xx responses:      1,086
+Total proxy-server errors:         5,687 (2,638 ECONNREFUSED, 153 ECONNRESET)
+Stack traces:                      69 (100%% of errors have stack traces)
+
+
+1. ERROR CATEGORIES (error.log)
+================================================================================
+
+Category                          Count    %%      Severity
+---------------------------------------------------------------
+REDIS OOM (rate limiter)            41    59.4%%   CRITICAL
+REDIS OOM (sweeper)                 11    15.9%%   CRITICAL
+OpenRouter 400 Bad Request           8    11.6%%   HIGH
+AI Stream Interrupted                3     4.3%%   MEDIUM
+DB Connection Pool Exhausted         2     2.9%%   HIGH
+Image Generation Timeout             1     1.4%%   MEDIUM
+Local AI Endpoint 401                1     1.4%%   MEDIUM
+DB Connection Dropped                1     1.4%%   HIGH
+Invalid Input (NUL byte)             1     1.4%%   LOW
+---------------------------------------------------------------
+TOTAL                               69   100%%
+
+REDIS OOM COMBINED:                 52    75.4%%  <-- DOMINANT ISSUE
+
+
+2. HTTP STATUS CODES (backend.log access entries)
+================================================================================
+
+Code    Count    Type      Interpretation
+-------------------------------------------
+401       468    Client    Auth failures - expired/missing JWT tokens
+404       317    Client    Not Found - image files missing (path encoding)
+429       136    Client    Rate Limited - clients hitting rate limits
+400       120    Client    Bad Request - chat message submission failures
+500        44    Server    Internal Server Error
+405         1    Client    Method Not Allowed
+-------------------------------------------
+TOTAL   1,086
+
+Most errored endpoints:
+  /api/me/quota                              93x
+  /api/me/ai-jobs/recent                     72x
+  /api/image-jobs/098103db...                46x
+  /api/auth/me                               44x
+  /api/papers/f6b3b0e5fd61/ai-jobs/active    39x
+
+
+3. RECURRING PATTERNS
+================================================================================
+
+a) Redis OOM cascade (41 rate-limiter + 11 sweeper = 52 occurrences)
+   Root cause: redis.exceptions.ResponseError:
+     "-OOM command not allowed when used memory > maxmemory"
+   Triggered via: flask_limiter -> limits/storage/redis.py -> Redis EVALSHA
+   Impact: All API requests through rate limiter fail with 500
+   Time window: 2026-06-24T05:24 through 2026-06-24T07:36 (2hr burst)
+   + Additional DB pool errors at 2026-06-25T02:47
+
+b) OpenRouter 400 errors (8 occurrences)
+   URL: https://openrouter.ai/api/v1/chat/completions
+   Time: 2026-06-24T09:06-09:09 (rapid succession)
+
+c) Image 404 path encoding issue (317 occurrences)
+   Paths with spaces: "system_a rchitecture.png" etc.
+
+d) Chat POST 400 errors (multiple occurrences)
+   /api/chat/conversations/*/messages returning 400
+
+e) Rate-limited image job polling (136 429 responses)
+   /api/image-jobs/* - clients polling too frequently
+
+
+4. STACK TRACES (69 total)
+================================================================================
+
+(a) Redis OOM (52 instances):
+    redis.exceptions.ResponseError -> flask_limiter/limits
+
+(b) OpenRouter 400 (8 instances):
+    requests.exceptions.HTTPError: 400 Client Error
+    tools/chat/chat.py:1129 -> model_router.py:165
+
+(c) AI Stream Interrupted (3 instances):
+    urllib3.exceptions.ProtocolError: Response ended prematurely
+    requests.exceptions.ChunkedEncodingError
+
+(d) DB Connection Pool Exhausted (2 instances):
+    sqlalchemy.exc.TimeoutError: QueuePool limit of size 1 overflow 0
+
+(e) PostgreSQL Connection Lost (1 instance):
+    psycopg2.OperationalError: server closed the connection unexpectedly
+
+(f) NUL Byte in Input (1 instance):
+    ValueError: A string literal cannot contain NUL (0x00) characters
+
+(g) Image Generation Timeout (1 instance):
+    RuntimeError: "Tombol download tidak muncul dalam batas waktu"
+
+
+5. FRONTEND PROXY-SERVER ERRORS
+================================================================================
+
+Source: /home/sirobo/papergenerator/frontend/log/frontend-error.log
+Total lines:                                5,687
+
+  ECONNREFUSED (503):                     2,591
+  ECONNRESET  (502):                        132
+
+Backend was unreachable for extended periods.
+3 proxy restarts detected.
+
+
+6. SEVERITY ASSESSMENT AND RECOMMENDED ACTIONS
+================================================================================
+
+CRITICAL - Redis OOM (52 errors, 75.4%%)
+  FIX: Increase Redis maxmemory or add eviction policy (allkeys-lru).
+        Flush unused keys. Monitor Redis memory usage.
+
+HIGH - DB Connection Pool Exhausted (2 errors)
+  SQLAlchemy QueuePool size=1 is dangerously low for production.
+  FIX: Increase pool_size (recommend >=5). Add pool_pre_ping=true.
+
+HIGH - PostgreSQL Connection Dropped (1 error)
+  FIX: Implement connection pool health checks + retry logic.
+
+HIGH - OpenRouter 400 Errors (8 errors)
+  FIX: Log request payload to diagnose. Add retry with different model.
+
+MEDIUM - Image 404/400 from path encoding (317 HTTP 4xx)
+  FIX: URL-encode image paths on frontend.
+
+MEDIUM - Auth token expiry cascade (468 401s) - Normal behavior.
+
+LOW - NUL byte in uploaded data (1 error)
+  FIX: Strip NUL bytes before DB insert.
+
+================================================================================
+END OF REPORT
+================================================================================
