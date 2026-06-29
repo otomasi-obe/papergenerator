@@ -144,6 +144,9 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     Since Unpaywall is a DOI resolver (not a search engine), we use Crossref
     to get candidate DOIs and then enrich each with Unpaywall OA data.
     This gives us papers with guaranteed OA PDF links.
+    
+    Note: Unpaywall returns 422 for book chapter DOIs and some edge cases.
+    We skip those silently.
     """
     from .crossref import search as crossref_search
 
@@ -154,6 +157,10 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     # Get DOIs from Crossref first
     for paper in crossref_search(client, query, limit * 2, filters):
         if not paper.doi:
+            continue
+
+        # Skip book chapters and other known problematic types (422 errors)
+        if paper.doi and any(x in paper.doi.lower() for x in ['/oso/', '/cbo/', '/9780', '/978-', 'fmatter']):
             continue
 
         rl.wait()

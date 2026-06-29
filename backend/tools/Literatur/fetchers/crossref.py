@@ -190,8 +190,10 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         for item in items:
             paper = _parse_item_general(item)
             if paper:
-                if not paper.abstract and paper.doi:
-                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
+                # NOTE: OpenAlex enrichment disabled to avoid 429 rate limits
+                # Enable only when OPENALEX_API_KEY is set or proxy rotation is active
+                # if not paper.abstract and paper.doi:
+                #     paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:
@@ -295,8 +297,9 @@ def _fetch_members(
                             paper.is_open_access = True
                     except Exception:
                         pass
-                if not paper.abstract and paper.doi:
-                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
+                # NOTE: OpenAlex enrichment disabled to avoid 429 rate limits
+                # if not paper.abstract and paper.doi:
+                #     paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:

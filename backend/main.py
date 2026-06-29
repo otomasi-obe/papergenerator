@@ -22,7 +22,7 @@ _BACKEND_DIR = str(Path(__file__).resolve().parent)
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 # Add repo root (parent of backend/) to sys.path so the top-level
-# `PaperRiset` package (PaperRiset.eks.*) is importable.
+# SLR modules are now in tools.Literatur/
 _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
@@ -54,8 +54,8 @@ from tools.image_generation.images import paper_images, image_serve
 from tools.paperfull.jobs import jobs
 from tools.editor.papers import papers
 from utils.quota import quota
-# Legacy imports moved to eks/:
-from PaperRiset.eks.literatur.slr_api import slr_api
+# SLR / Literature blueprints
+from tools.Literatur.slr_api import slr_api
 from tools.Literatur.slr import slr_new_bp
 from utils.ai_tools.tools_api import tools_api
 from utils.logging import logging_api

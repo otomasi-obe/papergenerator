@@ -134,7 +134,7 @@ def _extract_pdf_metadata(filepath: Path) -> dict:
     Returns dict with title, authors, doi, year, abstract, venue, publisher.
     """
     try:
-        from PaperRiset.eks.literatur.pdf_metadata_extractor import extract_metadata_from_pdf
+        from tools.Literatur.pdf_metadata_extractor import extract_metadata_from_pdf
         return extract_metadata_from_pdf(filepath)
     except Exception as e:
         log.warning("metadata_extract_failed", extra={"file": str(filepath), "err": str(e)})

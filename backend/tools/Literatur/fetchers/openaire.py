@@ -140,53 +140,15 @@ def _parse(result_item: dict) -> Paper | None:
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    """Search OpenAIRE publications. No API key required."""
-    rl = RateLimiter(0.6)
-    per_page = min(limit, 50)
-    fetched = 0
-    page = 1
-
-    while fetched < limit:
-        rl.wait()
-        params = {
-            "keywords": query,
-            "size": min(per_page, limit - fetched),
-            "page": page,
-            "format": "json",
-            "sortBy": "relevance",
-            "sortOrder": "descending",
-        }
-        if filters:
-            if filters.get("open_access"):
-                params["openAccess"] = "true"
-            if filters.get("year_from"):
-                params["fromPublicationDate"] = filters["year_from"]
-
-        data = fetch_json(client, BASE, params=params)
-        if not data:
-            return
-
-        resp = data.get("response") or {}
-        results_block = resp.get("results") or {}
-        items = results_block.get("result") or []
-
-        if not items:
-            return
-
-        for item in items:
-            paper = _parse(item)
-            if paper:
-                yield paper
-                fetched += 1
-                if fetched >= limit:
-                    return
-
-        header = resp.get("header") or {}
-        total = header.get("total") or 0
-        try:
-            total = int(total)
-        except (ValueError, TypeError):
-            total = 0
-        if page * per_page >= total:
-            return
-        page += 1
+    """Search OpenAIRE publications. No API key required.
+    
+    Note: OpenAIRE API endpoint changed. Returning empty for now until
+    new Graph API v2 is integrated.
+    """
+    log.warning("OpenAIRE fetcher temporarily disabled (API endpoint changed)")
+    return
+    # Old API (deprecated):
+    # https://api.openaire.eu/search/publications
+    # New API (Graph v2):
+    # https://graph.openaire.eu/develop/api/
+    # TODO: Integrate new Graph API v2

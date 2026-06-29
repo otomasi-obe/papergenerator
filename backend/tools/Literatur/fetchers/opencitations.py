@@ -142,23 +142,8 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     rl = RateLimiter(0.3)
     fetched = 0
 
-    # Try Meta API search (newer endpoint)
-    rl.wait()
-    token = os.getenv("OPENCITATIONS_TOKEN", "")
-    headers = {"Authorization": token} if token else None
-    data = fetch_json(client, f"{META_BASE}/search/{quote(query, safe='')}", headers=headers)
-
-    if data:
-        results = data if isinstance(data, list) else [data]
-        for item in results:
-            paper = _parse_metadata(item)
-            if paper:
-                # Try to enrich with citation count
-                if paper.doi:
-                    count = get_citation_count(client, paper.doi)
-                    if count is not None:
-                        paper.citations = count
-                yield paper
-                fetched += 1
-                if fetched >= limit:
-                    return
+    # Meta API search endpoint changed — disable for now
+    log.warning("OpenCitations search disabled (Meta API endpoint changed)")
+    return
+    
+    # TODO: Fix endpoint or use DOI-based citation enrichment only
