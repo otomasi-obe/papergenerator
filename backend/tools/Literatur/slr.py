@@ -50,20 +50,18 @@ REDIS_PROGRESS_TTL = 600  # 10 min
 _redis: Any = None
 try:
     import redis as _redis_mod
-
-    _r = _redis_mod.Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        db=0,
+    # Use REDIS_URL if available for consistency with slr_api.py
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    _redis = _redis_mod.from_url(
+        redis_url,
         decode_responses=True,
-        socket_connect_timeout=1.0,
-        socket_timeout=1.0,
-        password=os.getenv("REDIS_PASSWORD") or None,
+        socket_connect_timeout=2.0,
+        socket_timeout=2.0,
     )
-    _r.ping()
-    _redis = _r
-except Exception:
-    log.warning("Redis unavailable for SLR orchestrator; using in-memory progress")
+    _redis.ping()
+    log.info("Redis connected for SLR orchestrator")
+except Exception as e:
+    log.warning("Redis unavailable for SLR orchestrator; using in-memory progress: %s", e)
     _redis = None
 
 # ── In-memory job store ──────────────────────────────────────────────────
