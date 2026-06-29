@@ -659,91 +659,115 @@ class SLROrchestrator:
     @staticmethod
     def _save_to_db(job: SLRJob, papers: list[dict]):
         """Save SLR results as LiteratureItem records (best-effort, non-blocking)."""
+        log.debug("_save_to_db called: job_id=%s, papers=%d", job.job_id, len(papers))
+        
         try:
             from sqlalchemy.exc import IntegrityError
         except ImportError:
             log.debug("SQLAlchemy not available, skipping DB save")
             return
 
+        ctx = None
         try:
-            from main import app as _flask_app
+            # Import Flask app and establish context
+            try:
+                from main import app as _flask_app
+            except ImportError as e:
+                log.error("Failed to import Flask app: %s", e)
+                return
+            
             ctx = _flask_app.app_context()
             ctx.push()
-        except Exception:
-            ctx = None
+            log.debug("Flask app context pushed for _save_to_db")
+        except Exception as e:
+            log.error("Failed to push Flask app context: %s", e)
+            return
 
         try:
             from utils.database.models import LiteratureItem, db, safe_commit
 
             saved = 0
+            skipped = 0
+            
             for p in papers:
-                doi = (p.get("doi") or "").strip() or None
-                # Skip if DOI already exists for this paper_id
-                if doi:
-                    existing = LiteratureItem.query.filter_by(
-                        paper_id=job.paper_id, doi=doi
-                    ).first()
-                    if existing:
-                        continue
-                else:
-                    # For papers without DOI, skip if same title already exists
-                    title_norm = (p.get("title") or "").strip().lower()
-                    if title_norm:
-                        existing = LiteratureItem.query.filter_by(
-                            paper_id=job.paper_id, title_norm=title_norm
+                try:
+                    doi = (p.get("doi") or "").strip() or None
+                    # Skip if DOI already exists for this paper_id
+                    if doi:
+                        existing = db.session.query(LiteratureItem).filter_by(
+                            paper_id=job.paper_id, doi=doi
                         ).first()
                         if existing:
+                            skipped += 1
                             continue
+                    else:
+                        # For papers without DOI, skip if same title already exists
+                        title_norm = (p.get("title") or "").strip().lower()
+                        if title_norm:
+                            existing = db.session.query(LiteratureItem).filter_by(
+                                paper_id=job.paper_id, title_norm=title_norm
+                            ).first()
+                            if existing:
+                                skipped += 1
+                                continue
 
-                item = LiteratureItem(
-                    paper_id=job.paper_id,
-                    user_id=job.user_id,
-                    source_kind="slr",
-                    source=(p.get("source") or "slr")[:40],
-                    title=(p.get("title") or "").strip(),
-                    title_norm=(p.get("title") or "").strip().lower() or None,
-                    authors=p.get("authors") or [],
-                    year=p.get("year"),
-                    doi=doi,
-                    url=(p.get("url") or p.get("pdf_url") or "").strip(),
-                    pdf_url=p.get("pdf_url") or None,
-                    abstract=(p.get("abstract") or "").strip(),
-                    citations=p.get("citations"),
-                    score_total=p.get("relevance_score"),
-                    score_breakdown=p.get("score_breakdown", {}),
-                    notes=(p.get("summary") or "")[:1000],
-                    is_checked=True,
-                    slr_job_id=None,
-                    created_at=datetime.now(timezone.utc),
-                )
-                db.session.add(item)
-                saved += 1
-                if saved >= 100:
-                    break
+                    item = LiteratureItem(
+                        paper_id=job.paper_id,
+                        user_id=job.user_id,
+                        source_kind="slr",
+                        source=(p.get("source") or "slr")[:40],
+                        title=(p.get("title") or "").strip(),
+                        title_norm=(p.get("title") or "").strip().lower() or None,
+                        authors=p.get("authors") or [],
+                        year=p.get("year"),
+                        doi=doi,
+                        url=(p.get("url") or p.get("pdf_url") or "").strip(),
+                        pdf_url=p.get("pdf_url") or None,
+                        abstract=(p.get("abstract") or "").strip(),
+                        citations=p.get("citations"),
+                        score_total=p.get("relevance_score"),
+                        score_breakdown=p.get("score_breakdown", {}),
+                        notes=(p.get("summary") or "")[:1000],
+                        is_checked=True,
+                        slr_job_id=None,
+                        created_at=datetime.now(timezone.utc),
+                    )
+                    db.session.add(item)
+                    saved += 1
+                    if saved >= 100:
+                        break
+                except Exception as e:
+                    log.warning("Error creating LiteratureItem for paper %s: %s", p.get("title", "?")[:30], e)
+                    continue
 
-            try:
-                safe_commit()
-                log.info(
-                    "SLR saved %d LiteratureItems for paper %s job %s",
-                    saved, job.paper_id, job.job_id,
-                )
-            except IntegrityError:
-                db.session.rollback()
-                log.warning(
-                    "IntegrityError saving LiteratureItems for job %s (likely duplicate DOI)",
-                    job.job_id,
-                )
-            except Exception:
-                db.session.rollback()
-                log.warning("Failed to save LiteratureItems for job %s", job.job_id, exc_info=True)
+            if saved > 0:
+                try:
+                    safe_commit()
+                    log.info(
+                        "SLR saved %d LiteratureItems (skipped %d) for paper %s job %s",
+                        saved, skipped, job.paper_id, job.job_id,
+                    )
+                except IntegrityError as e:
+                    db.session.rollback()
+                    log.warning(
+                        "IntegrityError saving LiteratureItems for job %s: %s",
+                        job.job_id, e,
+                    )
+                except Exception as e:
+                    db.session.rollback()
+                    log.error("Failed to commit LiteratureItems for job %s: %s", job.job_id, e, exc_info=True)
+            else:
+                log.debug("No new papers to save (all skipped or filtered)")
+                
         except Exception as exc:
-            log.warning("_save_to_db error: %s", exc)
+            log.error("_save_to_db outer error: %s", exc, exc_info=True)
         finally:
             if ctx:
                 try:
                     ctx.pop()
-                except Exception:
-                    pass
+                    log.debug("Flask app context popped")
+                except Exception as e:
+                    log.warning("Error popping Flask app context: %s", e)
 
     @staticmethod
     def _fetch_single_source(
