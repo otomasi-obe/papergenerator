@@ -74,7 +74,11 @@
             :disabled="slrRunning || !slrQuery.trim()"
             class="px-4 py-2 rounded-lg text-sm font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform"
           >
-            {{ slrRunning ? 'Mencari…' : 'Jalankan SLR' }}
+            <span v-if="slrRunning" class="flex items-center gap-1.5">
+              <span class="animate-spin inline-block">🔬</span>
+              {{ primarySlrStatus }}
+            </span>
+            <span v-else>Jalankan SLR</span>
           </button>
         </div>
 
@@ -137,40 +141,12 @@
 
         <!-- Active jobs -->
         <div v-if="activeJobs.length" class="mt-3 space-y-2">
-          <div v-for="job in activeJobs" :key="job.id"
-               class="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-xs">
-            <!-- Header: icon + query + cancel -->
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-medium text-amber-900 dark:text-amber-100 truncate flex items-center gap-1">
-                <span :class="{ 'animate-spin': job.stage === 'fetching' || job.stage === 'analyzing' || job.stage === 'summarizing' || job.stage === 'ranking' }"
-                      class="inline-block">{{ stageIcon(job) }}</span>
-                {{ job.query }}
-              </span>
-              <button @click="cancelJob(job.id)"
-                      class="text-amber-700 dark:text-amber-300 hover:underline shrink-0 text-[10px]">✕ hentikan</button>
-            </div>
-            <!-- Stage badge + progress bar + percentage -->
-            <div class="mt-1.5 flex items-center gap-2">
-              <span
-                class="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0"
-                :class="stageBadgeClass(job)"
-              >{{ stageLabel(job.stage) || stageLabel(job.status) || '—' }}</span>
-              <div class="flex-1 h-2.5 rounded-full bg-amber-200 dark:bg-amber-900/50 overflow-hidden">
-                <div class="h-full bg-amber-500 transition-all duration-500"
-                     :style="{ width: `${job.progress || 0}%` }"></div>
-              </div>
-              <span class="text-[10px] font-mono text-amber-700 dark:text-amber-300 shrink-0 w-8 text-right">{{ job.progress || 0 }}%</span>
-            </div>
-            <!-- Progress message -->
-            <div class="mt-1 text-amber-800 dark:text-amber-200 text-[11px] line-clamp-2">
-              {{ job.progress_message || stageLabel(job.stage) || 'Menunggu…' }}
-            </div>
-            <!-- Sources progress (only during fetching) -->
-            <div v-if="job.stage === 'fetching' && (job.sources_total || 0) > 0"
-                 class="mt-1 text-[10px] text-amber-700 dark:text-amber-300">
-              📡 {{ (job.sources_completed || []).length }}/{{ job.sources_total }} sumber · {{ job.papers_fetched || 0 }} paper ditemukan
-            </div>
-          </div>
+          <SLRProgressCard
+            v-for="job in activeJobs"
+            :key="job.id"
+            :job="job"
+            @cancel="cancelJob(job.id)"
+          />
         </div>
       </div>
 
@@ -490,6 +466,7 @@ import { useLiteratureStore } from '../stores/literature'
 import { useUiStore } from '../stores/ui'
 import api from '../api/index'
 import AppDialog from './AppDialog.vue'
+import SLRProgressCard from './SLRProgressCard.vue'
 
 // Centered confirmation dialog state
 const dg = reactive({ open: false, title: '', message: '', actionLabel: '', onConfirm: () => {}, onCancel: (() => {}) as (() => void) | undefined })
@@ -659,6 +636,20 @@ const reviewBusy = ref(false)
 
 const paperTitle = computed<string>(() => store.paper?.title || '')
 
+// Primary SLR status (for button display)
+const primarySlrStatus = computed<string>(() => {
+  if (activeJobs.value.length === 0) return 'Mencari…'
+  const primary = activeJobs.value[0]
+  const stage = primary.stage || primary.status
+  const sources = primary.sources_completed?.length || 0
+  const total = primary.sources_total || 0
+  
+  if (stage === 'analyzing') return 'Menganalisis…'
+  if (stage === 'fetching') return `Mengambil (${sources}/${total})`
+  if (stage === 'summarizing' || stage === 'ranking') return 'Memproses…'
+  return 'Mencari…'
+})
+
 // Pagination
 const pageSize = ref(50)
 const pageSizeInput = ref(String(pageSize.value))
@@ -826,58 +817,7 @@ function safeUrl(u: string | undefined): string {
   return /^(https?:\/\/|\/)/.test(u) ? u : '#'
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  // New system stages
-  pending: 'Memulai',
-  analyzing: 'Menganalisis keyword',
-  fetching: 'Mencari sumber',
-  ranking: 'Mengurutkan relevansi',
-  summarizing: 'Merangkum hasil',
-  // Legacy stages (backward compat)
-  queued: 'Antri',
-  source_done: 'Mengambil hasil',
-  dedup_done: 'Dedup selesai',
-  scoring: 'Ranking',
-  scored: 'Ranking selesai',
-  reranking: 'AI Re-ranking',
-  reranked: 'AI Re-ranked',
-  summarized: 'Scoring selesai',
-  complete: 'Selesai',
-  running: 'Berjalan',
-  done: 'Selesai',
-  error: 'Gagal',
-}
 
-function stageLabel(stage: string | undefined): string {
-  if (!stage) return ''
-  return STAGE_LABELS[stage] || stage
-}
-
-function stageIcon(job: SLRJob): string {
-  const s = job.stage || job.status
-  if (s === 'analyzing') return '🔍'
-  if (s === 'fetching') return '📡'
-  if (s === 'summarizing') return '📊'
-  if (s === 'ranking') return '📈'
-  if (s === 'done' || s === 'complete') return '✅'
-  if (s === 'error') return '❌'
-  if (s === 'cancelled') return '🚫'
-  if (s === 'pending' || s === 'queued') return '⏳'
-  return '⚙️'
-}
-
-function stageBadgeClass(job: SLRJob | null): string {
-  if (job?.status === 'error') {
-    return 'bg-red-200 text-red-900 dark:bg-red-900 dark:text-red-100'
-  }
-  if (job?.status === 'done' || job?.stage === 'complete') {
-    return 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100'
-  }
-  if (job?.status === 'queued' || job?.stage === 'queued') {
-    return 'bg-cream-100 text-ink-700 dark:bg-anthracite-700 dark:text-anthracite-100'
-  }
-  return 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
-}
 
 function filterStorageKey(paperId: string): string {
   return `lit.filter.${paperId}`
