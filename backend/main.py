@@ -32,8 +32,13 @@ from flask import Flask, Response, g, jsonify, request, send_file
 from flask_cors import CORS
 from flask_jwt_extended import (
     JWTManager,
+    create_access_token,
+    create_refresh_token,
+    get_jwt,
     get_jwt_identity,
     jwt_required,
+    set_access_cookies,
+    set_refresh_cookies,
     verify_jwt_in_request,
 )
 from flask_limiter import Limiter
@@ -54,9 +59,8 @@ from tools.image_generation.images import paper_images, image_serve
 from tools.paperfull.jobs import jobs
 from tools.editor.papers import papers
 from utils.quota import quota
-# SLR / Literature blueprints
-from tools.Literatur.slr_api import slr_api
-from tools.Literatur.slr import slr_new_bp
+# SLR / Literature blueprints (consolidated in slr.py)
+from tools.Literatur.slr import slr_api
 from utils.ai_tools.tools_api import tools_api
 from utils.logging import logging_api
 from utils.state_bp.state import state_bp
@@ -68,8 +72,8 @@ from utils.job_core import (
     _job_set_done,
     _job_set_error,
     _get_current_user_id,
-    _log_api_usage,
 )
+from tools.payment.qris import payment_bp
 
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
 try:
@@ -193,8 +197,8 @@ app.config["JWT_SECRET_KEY"] = _jwt_secret
 from datetime import timedelta as _td
 
 app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = _td(hours=1)
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = _td(days=7)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = _td(hours=24)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = _td(hours=24)
 app.config["JWT_SESSION_COOKIE"] = False  # Persist cookies beyond browser close
 app.config["JWT_COOKIE_SECURE"] = os.getenv("JWT_COOKIE_SECURE", "true").lower() == "true"
 app.config["JWT_COOKIE_HTTPONLY"] = True
@@ -516,6 +520,16 @@ def add_correlation_id():
         identity = get_jwt_identity()
         if identity:
             g.user_id = int(identity)
+            # Sliding window: mark for renewal if access token expires in < 1 hour
+            try:
+                claims = get_jwt()
+                import time as _t
+                remaining = int(claims.get("exp", 0)) - int(_t.time())
+                g._renew_jwt = remaining < 3600  # < 1 hour left
+                g._jwt_identity = identity
+                g._jwt_claims = claims
+            except Exception:
+                g._renew_jwt = False
     except Exception as e:
         # Don't fail the request on a bad/expired token here (optional auth),
         # but don't swallow it silently either — log at debug for diagnostics.
@@ -534,13 +548,13 @@ app.register_blueprint(chart_api)
 app.register_blueprint(data_jobs)
 app.register_blueprint(jobs)
 app.register_blueprint(image_jobs)
-app.register_blueprint(slr_api)  # literature endpoints
-app.register_blueprint(slr_new_bp)
+app.register_blueprint(slr_api)  # literature endpoints (consolidated)
 app.register_blueprint(quota)
 app.register_blueprint(health)
 app.register_blueprint(tools_api)
 app.register_blueprint(logging_api)
 app.register_blueprint(state_bp)
+app.register_blueprint(payment_bp)  # QRIS payment endpoints
 
 # ─── Image generation provider health endpoint ─────────────────────
 @app.route("/api/image-providers/status", methods=["GET"])
@@ -677,6 +691,36 @@ def _log_request(response):
         )
     except Exception:
         pass
+    return response
+
+
+# ─── Sliding window: renew JWT cookies on every authenticated request ─────
+@app.after_request
+def _sliding_window_jwt(response):
+    """If access token has <1h remaining, issue fresh cookies (24h sliding window)."""
+    if getattr(g, "_renew_jwt", False) and g.user_id:
+        try:
+            from utils.database.models import User
+            user = User.query.get(g.user_id)
+            if user:
+                claims = getattr(g, "_jwt_claims", {}) or {}
+                new_access = create_access_token(
+                    identity=str(user.id),
+                    additional_claims={
+                        "email": claims.get("email", user.email),
+                        "name": claims.get("name", user.name),
+                        "role": claims.get("role", user.role),
+                        "avatar": claims.get("avatar", user.avatar_url or ""),
+                    },
+                )
+                new_refresh = create_refresh_token(
+                    identity=str(user.id),
+                    additional_claims={"role": user.role},
+                )
+                set_access_cookies(response, new_access)
+                set_refresh_cookies(response, new_refresh)
+        except Exception:
+            logging.debug("sliding_window_jwt: failed to renew tokens", exc_info=True)
     return response
 
 

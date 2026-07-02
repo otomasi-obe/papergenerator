@@ -77,6 +77,56 @@ class RenderState:
     equation_number: int = 1
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _wq(tag: str) -> str:
     return f"{{{NS_W}}}{tag}"
 
@@ -980,10 +1030,21 @@ def _render_sections(
 def _render_references(
     doc: Document, config: dict[str, Any], proto: dict[str, etree._Element | None]
 ) -> None:
-    references = config.get("references") if isinstance(config.get("references"), dict) else {}
-    title = _fallback_text(references.get("title", ""), "Referensi")
-    content = references.get("content") if isinstance(references.get("content"), list) else []
-    items = [((it.get("text") or it.get("Text") or "").strip() if isinstance(it, dict) else str(it)).strip() for it in content]
+    references_raw = config.get("references")
+    if isinstance(references_raw, list):
+        title = "Referensi"
+        items = [_format_reference(it) for it in references_raw]
+        items = [t for t in items if t]
+    elif isinstance(references_raw, dict):
+        title = _fallback_text(references_raw.get("title", ""), "Referensi")
+        # Support both content and items keys
+        candidate_list = references_raw.get("content") if isinstance(references_raw.get("content"), list) else references_raw.get("items")
+        content = candidate_list if isinstance(candidate_list, list) else []
+        items = [_format_reference(it) for it in content]
+        items = [t for t in items if t]
+    else:
+        title = "Referensi"
+        items = []
     items = [t for t in items if t]
     if not items:
         items = ["Referensi belum tersedia pada source JSON."]

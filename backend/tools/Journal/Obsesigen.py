@@ -696,7 +696,7 @@ def generate(template_docx=None, template_json=None, output_path=None):
     
     # References
     refs = data.get("references", {})
-    refs_list = refs.get("content", []) if isinstance(refs, dict) else (refs if isinstance(refs, list) else [])
+    refs_list = (refs.get("content") or refs.get("items") or []) if isinstance(refs, dict) else (refs if isinstance(refs, list) else [])
     if refs_list:
         content_paras.append(("Daftar Pustaka", SIZE_HEADING, True, "justify"))
         for i, ref in enumerate(refs_list, 1):

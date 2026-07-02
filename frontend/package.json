@@ -1,6 +1,6 @@
 {
   "name": "paper-generator-frontend",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -28,6 +28,7 @@
   "dependencies": {
     "@mdit/plugin-katex": "^0.25.2",
     "@types/markdown-it": "^14.1.2",
+    "@types/qrcode": "^1.5.6",
     "axios": "^1.7.9",
     "chart.js": "^4.5.1",
     "dompurify": "^3.4.11",
@@ -36,6 +37,7 @@
     "markdown-it": "^14.2.0",
     "marked": "^18.0.3",
     "pinia": "^2.3.1",
+    "qrcode": "^1.5.4",
     "serve": "^14.2.6",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.3",

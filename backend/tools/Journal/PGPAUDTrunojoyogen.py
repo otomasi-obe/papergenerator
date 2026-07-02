@@ -247,7 +247,7 @@ def _format_ref(ref):
 
 def _refs(doc, data):
     refs = data.get("references", {})
-    rl = refs.get("content", []) if isinstance(refs, dict) else (refs if isinstance(refs, list) else [])
+    rl = refs.get("content") or refs.get("items") or [] if isinstance(refs, dict) else (refs if isinstance(refs, list) else [])
     if not rl: return
     _heading(doc, "Daftar Pustaka")
     for i, ref in enumerate(rl, 1):

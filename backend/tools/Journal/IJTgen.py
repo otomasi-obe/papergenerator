@@ -23,6 +23,56 @@ TEMPLATE_DOCX = BASE / "IJT.docx"
 TEMPLATE_JSON = BASE / "_template.json"
 OUTPUT_DOCX = BASE / "IJT_output.docx"
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _roman_to_int(s: str) -> int:
     """Convert Roman numeral string to integer. Returns 0 on failure."""
     if not s:
@@ -916,7 +966,7 @@ def add_references(doc, data, ref_index: dict = None):
     if isinstance(refs, list):
         refs = {"title": "REFERENCES", "content": refs}
     title = (refs.get("title") or "REFERENCES").strip()
-    items = [((r.get("text") or r.get("Text") or "").strip() if isinstance(r, dict) else str(r)) for r in (refs.get("content") or [])]
+    items = [_format_reference(r) for r in (refs.get("content") or refs.get("items") or [])]
     items = [t for t in items if t] or ["Author, A., Title of Article. Journal Name, vol. X, no. Y, pp. Z, Year. doi:10.xxxx/xxxxx"]
 
     # Build original index → ref text mapping for proper lookup
@@ -1015,7 +1065,7 @@ def generate():
     if isinstance(ref_raw, list):
         ref_items = [t for t in ref_raw if t]
     else:
-        ref_items = [((r.get("text") or r.get("Text") or "").strip() if isinstance(r, dict) else str(r)) for r in (ref_raw.get("content") or [])]
+        ref_items = [_format_reference(r) for r in (ref_raw.get("content") or ref_raw.get("items") or [])]
         ref_items = [t for t in ref_items if t]
     ref_index = _build_ref_index(ref_items)
 
@@ -1041,6 +1091,15 @@ def generate():
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)
 
+
+def build_document(json_path: str, output_path: str) -> str:
+    """Wrapper for external calls."""
+    global TEMPLATE_JSON, OUTPUT_DOCX
+    import shutil
+    # Copy input JSON to template location
+    shutil.copy(json_path, str(TEMPLATE_JSON))
+    OUTPUT_DOCX = Path(output_path)
+    return generate()
 
 if __name__ == "__main__":
     generate()

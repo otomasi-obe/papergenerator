@@ -261,6 +261,89 @@ def generate_paper(
     return paper_data
 
 
+def _inject_structured_content(paper_data: dict) -> dict:
+    """
+    Inject top-level figures/tables into section content so generators that
+    iterate section->content can find them. This fixes templates that expect
+    figures/tables inside section.content instead of top-level arrays.
+
+    Pattern: For each section, append figures/tables at the end of content list.
+    Handles both nested (paper_data.paper.section) and flat (section1 at root) structures.
+    """
+    import copy
+    paper_data = copy.deepcopy(paper_data)
+
+    # Resolve paper dict from various structures
+    paper = None
+    if "paper_data" in paper_data:
+        inner = paper_data["paper_data"]
+        if isinstance(inner, dict) and "paper" in inner:
+            paper = inner["paper"]
+        elif isinstance(inner, dict):
+            paper = inner
+    if paper is None and isinstance(paper_data, dict):
+        # Check if paper_data itself has sections
+        if any(k.startswith("section") for k in paper_data.keys()):
+            paper = paper_data
+        elif "paper" in paper_data:
+            paper = paper_data["paper"]
+
+    if not isinstance(paper, dict):
+        return paper_data
+
+    figures = paper.get("figures", [])
+    tables = paper.get("tables", [])
+    equations = paper.get("equations", [])
+
+    if not figures and not tables and not equations:
+        return paper_data
+
+    # Iterate section1..sectionN and inject structured items at end of content
+    section_keys = sorted([k for k in paper.keys() if k.startswith("section")])
+    
+    # Only inject into the LAST section to avoid duplicates across multiple sections
+    # (Figures should appear once, near their references)
+    if section_keys:
+        last_section_key = section_keys[-1]
+        sec = paper[last_section_key]
+        if isinstance(sec, dict):
+            content = sec.get("content", [])
+            if not isinstance(content, list):
+                content = []
+                sec["content"] = content
+
+            # Inject figures - preserve all original keys, add id
+            for i, fig in enumerate(figures):
+                fig_item = dict(fig)
+                fig_item["id"] = "gambar"
+                # Ensure Title key exists (some generators expect it)
+                if "Title" not in fig_item:
+                    fig_item["Title"] = fig_item.get("caption", fig.get("caption_ref", f"Figure {i+1}"))
+                if "ImageNumber" not in fig_item:
+                    fig_item["ImageNumber"] = i+1
+                if "Prompt" not in fig_item:
+                    fig_item["Prompt"] = fig_item.get("prompt", "")
+                content.append(fig_item)
+
+            # Inject tables as type="tabel"
+            for i, tbl in enumerate(tables):
+                tbl_item = dict(tbl) if isinstance(tbl, dict) else {}
+                tbl_item["id"] = "tabel"
+                if "TableNumber" not in tbl_item:
+                    tbl_item["TableNumber"] = i+1
+                content.append(tbl_item)
+
+            # Inject equations as type="rumus"
+            for i, eq in enumerate(equations):
+                eq_item = dict(eq) if isinstance(eq, dict) else {}
+                eq_item["id"] = "rumus"
+                if "equation_number" not in eq_item:
+                    eq_item["equation_number"] = i+1
+                content.append(eq_item)
+
+    return paper_data
+
+
 def export_docx(paper_data: dict, journal_code: str = "IEEE", citation_style: Optional[str] = None) -> Optional[Path]:
     """
     Export paper ke DOCX menggunakan template jurnal.
@@ -277,6 +360,9 @@ def export_docx(paper_data: dict, journal_code: str = "IEEE", citation_style: Op
     """
     import importlib
     import tempfile
+
+    # Inject top-level figures/tables into section content
+    paper_data = _inject_structured_content(paper_data)
 
     available = get_available_journals()
     m = {c.lower(): c for c in available}
@@ -305,8 +391,24 @@ def export_docx(paper_data: dict, journal_code: str = "IEEE", citation_style: Op
     # so generators that expect string references continue to work.
     paper_data = _preprocess_references(paper_data, citation_style or journal_code.lower())
 
+    # Extract nested paper structure for generators that expect flat section1..sectionN at root
+    # (Most generators iterate: section_keys = [k for k in data.keys() if k.startswith('section')])
+    # If sections are nested under paper_data.paper, hoist them to root
+    generator_input = paper_data
+    if "paper_data" in paper_data and "paper" in paper_data["paper_data"]:
+        nested_paper = paper_data["paper_data"]["paper"]
+        # Check if any sections are at nested level but not at root
+        nested_sections = [k for k in nested_paper.keys() if k.startswith("section")]
+        if nested_sections and not any(k.startswith("section") for k in paper_data.keys()):
+            # Hoist nested paper to root for generator
+            generator_input = dict(nested_paper)
+            # Preserve top-level metadata if needed
+            for k in ("judul", "updated_at"):
+                if k in paper_data:
+                    generator_input[k] = paper_data[k]
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
-        json.dump(paper_data, f, ensure_ascii=False, indent=2)
+        json.dump(generator_input, f, ensure_ascii=False, indent=2)
         json_path = Path(f.name)
 
     try:

@@ -67,6 +67,56 @@ CFG = {
 
 _XSLT = None
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _set_run_font(run, *, name=None, size_pt=None, bold=None, italic=None, color=None):
     if name is not None:
         run.font.name = name
@@ -485,12 +535,6 @@ def add_authors(doc, data):
     names = [a.get("name", "") for a in authors if a.get("name")]
     if not names:
         names = ["Author Name"]
-    if len(names) == 1:
-        name_line = names[0] + "*"
-    elif len(names) == 2:
-        name_line = f"{names[0]} and {names[1]}*"
-    else:
-        name_line = ", ".join(names[:-1]) + f", and {names[-1]}*"
 
     p = _new_paragraph(doc)
     _set_paragraph_format(
@@ -501,7 +545,16 @@ def add_authors(doc, data):
         line_spacing_tw=CFG["line_spacing_tw"],
         line_rule="auto",
     )
-    _add_plain(p, name_line, size_pt=CFG["size_title_pt"])
+    for i, name in enumerate(names):
+        if i > 0:
+            sep = ", " if i < len(names) - 1 else ", and "
+            _add_plain(p, sep, size_pt=CFG["size_title_pt"])
+        run_name = _add_plain(p, name, size_pt=CFG["size_title_pt"])
+        sup = p.add_run(str(i + 1))
+        sup.font.superscript = True
+        sup.font.size = Pt(CFG["size_title_pt"])
+    # Add corresponding marker
+    _add_plain(p, "*", size_pt=CFG["size_title_pt"])
 
     affiliations = []
     for a in authors:
@@ -953,7 +1006,7 @@ def add_references(doc, data, *, ref_section_num: int = 8):
     if isinstance(refs_block, list):
         refs_block = {"title": "References", "content": refs_block}
     title = (refs_block.get("title") or "References").strip()
-    items = refs_block.get("content") or []
+    items = refs_block.get("content") or refs_block.get("items") or []
 
     if not items:
         items = ["Author, Title, Journal, Year."]
@@ -1076,3 +1129,23 @@ def generate():
 
 if __name__ == "__main__":
     generate()
+
+def build_document(json_path: Path, output_path: Path, template_path: Path = None) -> Path:
+    """Adapter: call generate() with overridden paths."""
+    import shutil
+    global TEMPLATE_JSON, OUTPUT_DOCX
+    _orig_json = TEMPLATE_JSON
+    _orig_output = OUTPUT_DOCX
+    try:
+        TEMPLATE_JSON = Path(json_path)
+        OUTPUT_DOCX = Path(output_path)
+        result = generate()
+    finally:
+        TEMPLATE_JSON = _orig_json
+        OUTPUT_DOCX = _orig_output
+    if not Path(output_path).exists():
+        # generate() might still save to original path
+        fallback = Path(__file__).resolve().parent / "EASR_output.docx"
+        if fallback.exists():
+            shutil.move(str(fallback), str(output_path))
+    return Path(output_path)

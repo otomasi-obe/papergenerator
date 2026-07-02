@@ -83,7 +83,16 @@ class Paper:
     is_open_access: Optional[bool] = None
     type: Optional[str] = None
     publisher: Optional[str] = None
+    publication_date: Optional[str] = None  # ISO date string (YYYY-MM-DD)
     db_score: Optional[float] = None  # PostgreSQL hybrid score (ts_rank + citations + recency)
+    comment: Optional[str] = None  # e.g. "39 pages, 14 figures"
+    fields_of_study: Optional[list[str]] = None  # e.g. ["Artificial Intelligence"]
+    subjects: Optional[list[str]] = None  # e.g. ["cs.AI", "cs.LG"]
+    affiliations: Optional[list[str]] = None  # author affiliations
+    language: Optional[str] = None
+    is_retracted: Optional[bool] = None
+    funders: list[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         # Normalize fields that downstream code treats as strings. Upstream
@@ -105,6 +114,18 @@ class Paper:
         self.pdf_url = _coerce_str(self.pdf_url)
         self.type = _coerce_str(self.type)
         self.publisher = _coerce_str(self.publisher)
+        self.keywords = _coerce_str_list(self.keywords)
+        self.language = _coerce_str(self.language)
+        self.funders = _coerce_str_list(self.funders)
+        self.fields_of_study = _coerce_str_list(self.fields_of_study) if self.fields_of_study is not None else None
+        self.subjects = _coerce_str_list(self.subjects) if self.subjects is not None else None
+        self.affiliations = _coerce_str_list(self.affiliations) if self.affiliations is not None else None
+        if isinstance(self.is_retracted, bool):
+            pass
+        elif self.is_retracted is None:
+            self.is_retracted = None
+        else:
+            self.is_retracted = str(self.is_retracted).lower() in ("true", "1", "yes")
         self.year = _coerce_int(self.year)
         self.citations = _coerce_int(self.citations)
 

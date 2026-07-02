@@ -86,10 +86,15 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     fetched = 0
     offset = 0
 
+    # DBLP search works best with shorter/focused queries.
+    # If the query has 5+ words, use the first 3 as primary search.
+    words = query.split()
+    dblp_query = " ".join(words[:4]) if len(words) > 4 else query
+
     while fetched < limit:
         rl.wait()
         params = {
-            "q": query,
+            "q": dblp_query,
             "format": "json",
             "h": min(per_page, limit - fetched),
             "f": offset,
@@ -105,9 +110,6 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         for hit in hits:
             paper = _parse_hit(hit)
             if paper:
-                # Enrich abstract via DOI cross-reference to OpenAlex
-                if not paper.abstract and paper.doi:
-                    paper.abstract = enrich_abstract_via_doi(paper.doi, client)
                 yield paper
                 fetched += 1
                 if fetched >= limit:

@@ -31,6 +31,7 @@ from . import (
     datacite,
     dblp,
     dimensions,
+    doab,
     doaj,
     embase,
     europepmc,
@@ -47,17 +48,19 @@ from . import (
     plos,
     pmc,
     pubmed,
+    researchgate,
     sciencedirect,
     scopus,
     semantic_scholar,
     sinta,
     unpaywall,
+    web,
+    wos,
     zenodo,
 )
-from .oai_pmh import search_doab, search_oapen
+from .oai_pmh import search_oapen
 from types import SimpleNamespace
 
-doab = SimpleNamespace(search=search_doab)
 oapen = SimpleNamespace(search=search_oapen)
 
 # crossref_publishers alias — delegates to crossref.search_publishers
@@ -107,6 +110,12 @@ ALL = {
     # Elsevier clinical/medical (requires ELSEVIER_API_KEY)
     "embase": embase,
     "clinicalkey": clinicalkey,
+    # Web of Science (requires WOS_API_KEY)
+    "wos": wos,
+    # Web search (DuckDuckGo) — academic paper discovery + landing page scrape
+    "web": web,
+    # ResearchGate — HTML scrape (no public API, Cloudflare-protected)
+    "researchgate": researchgate,
 }
 
 # Each source's strength. Used by orchestrator.pick_sources_for_topic.
@@ -161,4 +170,10 @@ SOURCE_TOPICS: dict[str, set[str]] = {
     # Elsevier clinical/medical
     "embase": {"medical", "biology", "health", "pharmacology"},
     "clinicalkey": {"medical", "health", "clinical", "pharmacology"},
+    # Web of Science (multidisciplinary, requires WOS_API_KEY)
+    "wos": {"general", "any"},
+    # Web search (DuckDuckGo) — covers all topics via landing page scraping
+    "web": {"general", "any"},
+    # ResearchGate — covers all topics (160M+ publications)
+    "researchgate": {"general", "any"},
 }

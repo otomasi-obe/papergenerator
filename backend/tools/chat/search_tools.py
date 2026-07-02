@@ -296,6 +296,9 @@ _NON_SEARCH_KEYWORDS = {
     "buatin", "bikinin", "bikin", "create",
     "hapus", "delete", "remove", "buang",
     "pindah", "move", "cut",
+    # Translation
+    "terjemahkan", "terjemahin", "translate", "translatekan", "convert",
+    "ubah ke english", "ubah ke indonesia", "ke english", "ke indonesia",
     # Definition / clarification
     "definisi", "definition", "pengertian", "apa itu", "apakah",
     "jelaskan", "explain", "terangkan", "describe",
@@ -986,6 +989,30 @@ def academic_search(query: str, limit: int = 10) -> dict[str, Any]:
         return {"success": True, "results": results, "error": None}
     except Exception as e:
         log.warning("academic_search error: %s", e)
+        # Final fallback: ResearchGate HTML scrape (Cloudflare may block)
+        try:
+            from tools.Literatur.fetchers.researchgate import search as rg_search_fn
+            from tools.Literatur.http_client import get_client
+            results = []
+            with get_client() as client:
+                for paper in rg_search_fn(client, query, limit=limit):
+                    results.append({
+                        "title": paper.title or "",
+                        "authors": paper.authors[:5] if paper.authors else [],
+                        "abstract": (paper.abstract or "")[:500],
+                        "year": paper.year,
+                        "venue": paper.venue or "",
+                        "citations": paper.citations,
+                        "doi": paper.doi or "",
+                        "url": paper.url or "",
+                        "source": "researchgate",
+                        "open_access": paper.is_open_access,
+                    })
+            if results:
+                log.info("academic_search (RG) '%s': %d results", query[:60], len(results))
+                return {"success": True, "results": results, "error": None}
+        except Exception as rg_err:
+            log.warning("academic_search (RG fallback) error: %s", rg_err)
         return {"success": False, "results": [], "error": str(e)}
 
 

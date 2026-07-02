@@ -1,15 +1,8 @@
-"""Fetcher untuk OpenCitations — open citation indices (COCI, Meta).
+"""Fetcher untuk OpenCitations — citation index enrichment.
 
-Provides citation data as a complement to Crossref/OpenAlex.
-No API key required. Token optional for performance.
-
-Endpoints:
-  - /citations/{DOI}     — incoming citations
-  - /references/{DOI}    — outgoing references
-  - /citation-count/{DOI}
-  - /metadata/{DOI}      — bibliographic metadata
-
-We use /metadata for paper lookup and /citations for enrichment.
+Since text search is removed from OpenCitations Meta API, this fetcher
+uses Crossref to discover DOIs, then enriches with OpenCitations metadata
+(authors, year, venue, citations, references).
 """
 
 import logging
@@ -21,7 +14,7 @@ from ..http_client import RateLimiter, fetch_json, normalize_doi
 from ..paper import Paper
 
 BASE = "https://opencitations.net/index/api/v1"
-META_BASE = "https://opencitations.net/meta/api/v1"
+META_BASE = "https://api.opencitations.net/meta/v1"
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +40,6 @@ def _parse_metadata(item: dict) -> Paper | None:
 
     doi = item.get("doi")
 
-    # Normalize venue_type from item.get("type") — OpenCitations "type" is venue-level
     raw_type = item.get("type", "")
     _oc_vt_map = {
         "journal article": "journal",
@@ -63,7 +55,6 @@ def _parse_metadata(item: dict) -> Paper | None:
     }
     venue_type = _oc_vt_map.get(raw_type.lower(), "unknown") if raw_type else None
 
-    # Normalize type (same input, different output)
     _oc_type_map = {
         "journal article": "journal-article",
         "article": "journal-article",
@@ -102,6 +93,7 @@ def _normalize(doi: str) -> str | None:
 
 
 def get_citations(client, doi: str) -> list[dict]:
+    """Get incoming citations for a DOI."""
     d = _normalize(doi)
     if not d:
         return []
@@ -112,6 +104,7 @@ def get_citations(client, doi: str) -> list[dict]:
 
 
 def get_references(client, doi: str) -> list[dict]:
+    """Get outgoing references for a DOI."""
     d = _normalize(doi)
     if not d:
         return []
@@ -122,6 +115,7 @@ def get_references(client, doi: str) -> list[dict]:
 
 
 def get_citation_count(client, doi: str) -> int | None:
+    """Get citation count for a DOI."""
     d = _normalize(doi)
     if not d:
         return None
@@ -133,17 +127,71 @@ def get_citation_count(client, doi: str) -> int | None:
     return None
 
 
-def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    """Search OpenCitations Meta for papers by title/DOI.
-
-    OpenCitations is primarily a citation index, not a search engine.
-    For broad discovery, use the Meta API search endpoint.
-    """
+def _enrich_doi(client, doi: str) -> Paper | None:
+    """Enrich a single DOI with OpenCitations metadata."""
+    if not doi:
+        return None
     rl = RateLimiter(0.3)
-    fetched = 0
+    rl.wait()
+    data = fetch_json(client, f"{META_BASE}/metadata/{doi}")
+    if not data:
+        return None
+    if isinstance(data, list):
+        data = data[0] if data else None
+    if not data:
+        return None
+    return _parse_metadata(data)
 
-    # Meta API search endpoint changed — disable for now
-    log.warning("OpenCitations search disabled (Meta API endpoint changed)")
-    return
-    
-    # TODO: Fix endpoint or use DOI-based citation enrichment only
+
+def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
+    """Search via Crossref DOI discovery, then enrich with OpenCitations.
+
+    OpenCitations doesn't support text search anymore. Strategy:
+    1. Get DOIs from Crossref for the query
+    2. Enrich each DOI with OpenCitations metadata
+    """
+    from .crossref import search as crossref_search
+
+    rl = RateLimiter(0.5)
+    fetched = 0
+    seen_dois = set()
+
+    cr_filters = dict(filters) if filters else {}
+
+    # Get DOIs from Crossref first (fast batch)
+    cr_papers = []
+    try:
+        for p in crossref_search(client, query, min(limit * 2, 50), cr_filters):
+            cr_papers.append(p)
+            if len(cr_papers) >= limit * 2:
+                break
+    except Exception:
+        return
+
+    for cr_paper in cr_papers:
+        if fetched >= limit:
+            return
+        doi = cr_paper.doi
+        if not doi or doi in seen_dois:
+            continue
+        seen_dois.add(doi)
+
+        rl.wait()
+        try:
+            paper = _enrich_doi(client, doi)
+        except Exception:
+            paper = None
+        if paper:
+            # Merge: keep Crossref abstract if OpenCitations has none
+            if not paper.abstract and cr_paper.abstract:
+                paper.abstract = cr_paper.abstract
+            if not paper.year and cr_paper.year:
+                paper.year = cr_paper.year
+            if not paper.authors and cr_paper.authors:
+                paper.authors = cr_paper.authors
+            yield paper
+            fetched += 1
+        else:
+            # Fallback: yield Crossref paper directly if OC enrichment fails
+            yield cr_paper
+            fetched += 1

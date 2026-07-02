@@ -40,6 +40,56 @@ XSL_CANDIDATES = [
 _XSLT = None
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _clean_latex(text):
     """Strip inline LaTeX markers dari text."""
     if not isinstance(text, str) or not text.strip():
@@ -687,7 +737,7 @@ def add_references(doc, data):
     if isinstance(refs_data, list):
         refs_data = {"title": "REFERENCES", "content": refs_data}
     refs_title = refs_data.get("title", "REFERENCES")
-    refs_content = refs_data.get("content", [])
+    refs_content = refs_data.get("content") or refs_data.get("items") or []
 
     add_empty_para(doc)
     p = doc.add_paragraph()
@@ -701,7 +751,7 @@ def add_references(doc, data):
         # Normalize ref to string
         if isinstance(ref, dict):
             ref_id = ref.get("id", "")
-            ref_text = ref.get("text", "")
+            ref_text = _format_reference(ref)
             ref_str = f"[{ref_id}] {ref_text}" if ref_id else ref_text
         else:
             ref_str = str(ref)

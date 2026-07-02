@@ -120,9 +120,11 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "q": query,
             "size": min(per_page, limit - fetched),
             "page": page,
-            "type": "publication",  # Focus on publications, not datasets
             "sort": "bestmatch",
         }
+        # Optional: filter to publications only if not specified
+        if not (filters and filters.get("include_datasets")):
+            params["type"] = "publication"
         if filters:
             if filters.get("year_from"):
                 params["published_after"] = f"{filters['year_from']}-01-01"

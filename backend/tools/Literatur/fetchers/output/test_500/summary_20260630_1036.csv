@@ -1,0 +1,36 @@
+fetcher,query,count,target_pct,elapsed_sec,status,error,has_title_pct,has_authors_pct,has_year_pct,has_doi_pct,has_url_pct,has_abstract_pct,completeness_score,known_issue
+arxiv,deep learning neural network architecture optimization,500,100.0,10.4,OK,,100.0,100.0,100.0,2.6,100.0,100.0,83.8,
+biorxiv,CRISPR gene editing protein folding molecular biology,188,37.6,12.1,OK,,100.0,100.0,100.0,100.0,100.0,100.0,100.0,[BROKEN]
+cambridge,political science governance democracy institution law,500,100.0,40.4,OK,,100.0,100.0,100.0,0.0,100.0,0.0,66.7,
+clinicalkey,clinical practice guideline evidence-based medicine diagnosi,0,0.0,0.4,EMPTY,,0,0,0,0,0,0,0,[KEY?]
+core,open access institutional repository preprint scholarly,50,10.0,4.9,OK,,100.0,100.0,98.0,34.0,100.0,98.0,88.3,
+crossref,machine learning natural language processing text classifica,500,100.0,28.7,OK,,100.0,84.8,96.8,100.0,100.0,12.8,82.4,
+datacite,biodiversity ecology species conservation habitat loss,500,100.0,11.1,OK,,100.0,99.8,100.0,100.0,100.0,100.0,100.0,
+dblp,distributed system database query optimization performance,0,0.0,7.8,EMPTY,,0,0,0,0,0,0,0,[BROKEN]
+dimensions,global health infectious disease pandemic response policy,0,0.0,0.0,EMPTY,,0,0,0,0,0,0,0,[KEY?]
+doab,economics development policy governance institutions,0,0.0,0.6,EMPTY,,0,0,0,0,0,0,0,
+doaj,public health epidemiology disease prevention community heal,0,0.0,25.1,EMPTY,,0,0,0,0,0,0,0,[SLOW]
+embase,pharmacology drug interaction adverse effect clinical,0,0.0,0.4,EMPTY,,0,0,0,0,0,0,0,[KEY?]
+europepmc,cancer tumor immunotherapy checkpoint inhibitor therapy,500,100.0,6.0,OK,,100.0,99.4,94.8,90.8,90.8,0.0,79.3,
+google_books,artificial intelligence history philosophy technology societ,0,0.0,9.3,EMPTY,,0,0,0,0,0,0,0,[RATE]
+gutendex,philosophy science nature mathematics classic literature,0,0.0,0.4,EMPTY,,0,0,0,0,0,0,0,
+hal,fluid dynamics computational physics simulation numerical me,86,17.2,2.4,OK,,100.0,100.0,100.0,73.3,100.0,100.0,95.5,
+ieee,embedded system FPGA real-time signal processing hardware,200,40.0,209.1,OK,,100.0,100.0,100.0,98.0,100.0,100.0,99.7,
+lens,patent innovation technology transfer intellectual property,0,0.0,0.0,EMPTY,,0,0,0,0,0,0,0,[KEY?]
+oapen,humanities social science history culture European,0,0.0,120.0,ERR,TIMEOUT 120s,0,0,0,0,0,0,0,[SLOW]
+open_library,environmental science ecology conservation biology textbook,4,0.8,2.2,OK,,100.0,100.0,100.0,0.0,100.0,0.0,66.7,
+openaire,EU research innovation funding horizon grants collaboration,72,14.4,13.6,OK,,100.0,98.6,100.0,77.8,77.8,100.0,92.4,
+openalex,climate change renewable energy carbon emission policy,500,100.0,22.1,OK,,100.0,99.6,0.0,97.8,100.0,57.6,75.8,
+opencitations,citation network reference scholarly impact analysis,0,0.0,0.0,EMPTY,,0,0,0,0,0,0,0,[BROKEN]
+orcid,researcher identity collaboration academic network affiliati,53,10.6,5.5,OK,,100.0,100.0,84.9,0.0,39.6,0.0,54.1,
+plos,evolutionary biology genetics population genome sequencing,500,100.0,5.4,OK,,100.0,100.0,100.0,100.0,100.0,97.6,99.6,[BROKEN]
+pmc,COVID-19 SARS-CoV-2 vaccine efficacy immunization clinical t,500,100.0,9.5,OK,,100.0,100.0,100.0,100.0,100.0,0.0,83.3,
+pubmed,diabetes mellitus treatment insulin resistance metabolic syn,500,100.0,11.2,OK,,100.0,99.2,99.8,83.4,100.0,92.2,95.8,
+sciencedirect,materials science nanotechnology semiconductor polymer,0,0.0,0.5,EMPTY,,0,0,0,0,0,0,0,[KEY?]
+scopus,citation analysis bibliometric research impact factor journa,0,0.0,0.4,EMPTY,,0,0,0,0,0,0,0,
+semantic_scholar,graph neural network knowledge graph embedding representatio,100,20.0,17.4,OK,,100.0,99.0,100.0,98.0,100.0,87.0,97.3,[RATE]
+sinta,pendidikan vokasi kompetensi kurikulum pembelajaran,0,0.0,0.7,EMPTY,,0,0,0,0,0,0,0,
+unpaywall,open access full text PDF availability scholarly article,181,36.2,120.0,PARTIAL,TIMEOUT 120s,100.0,0.0,100.0,100.0,100.0,61.9,77.0,[BROKEN]
+web,sustainable development goal SDG implementation progress,10,2.0,66.6,OK,,100.0,50.0,60.0,50.0,100.0,90.0,75.0,
+wos,interdisciplinary research cross-domain collaboration impact,0,0.0,0.0,EMPTY,,0,0,0,0,0,0,0,[KEY?]
+zenodo,open science reproducibility data sharing research workflow,0,0.0,1.1,EMPTY,,0,0,0,0,0,0,0,

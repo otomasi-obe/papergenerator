@@ -13,7 +13,11 @@ Usage:
     result = run_slr(keyword="machine learning", top_n=20)
 """
 
-from .slr import slr_new_bp  # Legacy Flask blueprint
+try:
+    from . import slr  # noqa: F401  (Flask blueprint, optional)
+except Exception:
+    slr = None  # type: ignore[assignment]
+
 from .slrOrchestrator import run_slr  # NEW: unified pipeline
 
-__all__ = ["slr_new_bp", "run_slr"]
+__all__ = ["slr", "run_slr"]

@@ -9,6 +9,8 @@ from ..paper import Paper
 
 BASE = "https://app.dimensions.ai/api/dsl/v2"
 
+log = logging.getLogger(__name__)
+
 
 def _parse(item: dict) -> Paper | None:
     title = item.get("title")

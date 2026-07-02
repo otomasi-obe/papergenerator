@@ -522,6 +522,8 @@ def send_message(conv_id: str):
             "Example: user says 'tolong buat abstract' → you write an English abstract.\n\n"
             "The ONLY exception: if the user explicitly asks you to switch languages,\n"
             "e.g. 'now speak Indonesian' or 'jawab dalam bahasa Indonesia'.\n\n"
+            "TRANSLATION REQUESTS: If user asks to translate paper content (e.g. 'terjemahkan ke Indonesia'),\n"
+            "use [APPLY_PAPER] to translate the content to the target language, then explain in English.\n"
         )
     else:
         lang_instruction = (
@@ -534,8 +536,13 @@ def send_message(conv_id: str):
             "Meskipun FILE LAMPIRAN berbahasa Inggris, Anda TETAP WAJIB merespons dalam Bahasa Indonesia.\n"
             "Contoh: user asks 'what is IoT?' → Anda menjawab 'IoT (Internet of Things) adalah...'\n"
             "Contoh: user says 'make an abstract' → Anda menulis abstrak dalam Bahasa Indonesia.\n\n"
-            "SATU-SATUNYA pengecualian: jika user secara eksplisit meminta bahasa lain,\n"
-            "misalnya 'now speak English' atau 'jawab dalam bahasa Inggris'.\n\n"
+            "PENGECEUALIAN:\n"
+            "1. User secara eksplisit meminta bahasa lain: 'now speak English', 'jawab dalam bahasa Inggris'\n"
+            "2. User meminta TRANSLASI: 'terjemahkan ke English', 'translate to English', 'convert ke English', 'ubah ke English'\n"
+            "   → Dalam kasus ini, GUNAKAN [APPLY_PAPER] untuk menerjemahkan konten paper ke bahasa target,\n"
+            "     lalu JELASKAN dalam Bahasa Indonesia apa yang sudah Anda lakukan.\n"
+            "   → Contoh: user says 'terjemahkan abstract ke English' → translate abstract via [APPLY_PAPER],\n"
+            "     lalu jawab 'Abstrak sudah diterjemahkan ke bahasa Inggris dan diterapkan ke paper.'\n\n"
         )
     system_content += lang_instruction
 

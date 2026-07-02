@@ -1,0 +1,1409 @@
+{
+  "meta": {
+    "date": "2026-06-30T10:11:48.310402",
+    "target": 500
+  },
+  "results": {
+    "arxiv": {
+      "query": "deep learning neural network architecture optimization",
+      "count": 500,
+      "elapsed_sec": 12.3,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 500,
+        "has_authors_pct": 100.0,
+        "has_year": 500,
+        "has_year_pct": 100.0,
+        "has_doi": 13,
+        "has_doi_pct": 2.6,
+        "has_url": 500,
+        "has_url_pct": 100.0,
+        "has_abstract": 500,
+        "has_abstract_pct": 100.0,
+        "has_pdf_url": 500,
+        "has_pdf_pct": 100.0,
+        "has_venue": 17,
+        "has_venue_pct": 3.4,
+        "has_type": 500,
+        "has_type_pct": 100.0,
+        "has_is_oa": 500,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 83.8,
+        "sample": [
+          {
+            "title": "Hybrid Active-Online Learning Framework for Label-Efficient Concept Drift Adaptation in Optical Network Failure Detection",
+            "authors": [
+              "Yousuf Moiz Ali",
+              "Jaroslaw E. Prilepsky",
+              "João Pedro",
+              "Sasipim Srivallapanondh",
+              "Antonio Napoli"
+            ],
+            "year": 2026,
+            "doi": null,
+            "url": "https://arxiv.org/abs/2606.30322v1",
+            "pdf_url": "https://arxiv.org/pdf/2606.30322v1",
+            "venue": null,
+            "is_open_access": true,
+            "type": "preprint",
+            "abstract": "We propose a hybrid active-online learning framework for label-efficient concept drift adaptation in optical network failure detection. Using margin-based selective labeling, our method achieves nearc"
+          },
+          {
+            "title": "Optimizing Image Preparation and Compression for Face Recognition within 1024 Bytes",
+            "authors": [
+              "Paul Andreas",
+              "Torsten Schlett",
+              "Christoph Busch"
+            ],
+            "year": 2026,
+            "doi": null,
+            "url": "https://arxiv.org/abs/2606.30321v1",
+            "pdf_url": "https://arxiv.org/pdf/2606.30321v1",
+            "venue": null,
+            "is_open_access": true,
+            "type": "preprint",
+            "abstract": "ICAO-compliant machine readable travel documents enable automated biometric face verification. The biometric reference is stored on an RFID chip included in form of a JPEG or JPEG 2000 compressed faci"
+          },
+          {
+            "title": "Continuous-Time Information Design for Hurricane Evacuation: Disclosure, Congestion, and Optimal Phasing under Model Uncertainty",
+            "authors": [
+              "Furkan Sezer"
+            ],
+            "year": 2026,
+            "doi": null,
+            "url": "https://arxiv.org/abs/2606.30320v1",
+            "pdf_url": "https://arxiv.org/pdf/2606.30320v1",
+            "venue": null,
+            "is_open_access": true,
+            "type": "preprint",
+            "abstract": "We study continuous-time information design for emergency evacuation, where an Emergency Management Agency (the Stackelberg leader) steers strategic evacuation zones via two levers: public advisory pr"
+          }
+        ]
+      }
+    },
+    "biorxiv": {
+      "query": "CRISPR gene editing protein folding molecular biology",
+      "count": 188,
+      "elapsed_sec": 12.1,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 188,
+        "has_title": 188,
+        "has_title_pct": 100.0,
+        "has_authors": 188,
+        "has_authors_pct": 100.0,
+        "has_year": 188,
+        "has_year_pct": 100.0,
+        "has_doi": 188,
+        "has_doi_pct": 100.0,
+        "has_url": 188,
+        "has_url_pct": 100.0,
+        "has_abstract": 188,
+        "has_abstract_pct": 100.0,
+        "has_pdf_url": 188,
+        "has_pdf_pct": 100.0,
+        "has_venue": 188,
+        "has_venue_pct": 100.0,
+        "has_type": 188,
+        "has_type_pct": 100.0,
+        "has_is_oa": 188,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 100.0,
+        "sample": [
+          {
+            "title": "ANKS1B in the Nucleus Accumbens controls escalated cocaine self-administration via regulating CBP-FoxO3 complex",
+            "authors": [
+              "Yang, L.",
+              "Wu, X.",
+              "Chen, X.",
+              "Peng, C.",
+              "Li, Z.-H."
+            ],
+            "year": 2026,
+            "doi": "10.64898/2026.01.11.698845",
+            "url": "https://www.bioRxiv.org/content/10.64898/2026.01.11.698845",
+            "pdf_url": "https://www.bioRxiv.org/content/10.64898/2026.01.11.698845v1.full.pdf",
+            "venue": "bioRxiv",
+            "is_open_access": true,
+            "type": "preprint",
+            "abstract": "The transition from controlled to escalated drug intake is a core feature of cocaine use disorder (CUD), yet the molecular mechanisms underlying this behavioral escalation remain poorly defined. Our p"
+          },
+          {
+            "title": "Read-Consistent Minimum Unique Substrings: A Parameter-Free, Linear-Time Framework for Genomic Sequence Representation",
+            "authors": [
+              "Adu, A. F.",
+              "Menkah, E. S.",
+              "Amoako-Yirenkyi, P.",
+              "Pandam Salifu, S."
+            ],
+            "year": 2026,
+            "doi": "10.64898/2026.02.28.708734",
+            "url": "https://www.bioRxiv.org/content/10.64898/2026.02.28.708734",
+            "pdf_url": "https://www.bioRxiv.org/content/10.64898/2026.02.28.708734v1.full.pdf",
+            "venue": "bioRxiv",
+            "is_open_access": true,
+            "type": "preprint",
+            "abstract": "Fixed-length k-mers have been the standard unit of genomic sequence representation for over two decades. However, they impose a uniform resolution on genomes whose complexity varies across loci. We in"
+          },
+          {
+            "title": "The danger hypothesis of virulence evolution",
+            "authors": [
+              "Franz, M.",
+              "Regoes, R. R.",
+              "Rolff, J."
+            ],
+            "year": 2026,
+            "doi": "10.64898/2026.05.20.726587",
+            "url": "https://www.bioRxiv.org/content/10.64898/2026.05.20.726587",
+            "pdf_url": "https://www.bioRxiv.org/content/10.64898/2026.05.20.726587v1.full.pdf",
+            "venue": "bioRxiv",
+            "is_open_access": true,
+            "type": "preprint",
+            "abstract": "Multicellular organisms regularly encounter microbes, which are, however, only rarely pathogenic. Our understanding of this phenomenon is currently restricted due to lacking theory on evolutionary tra"
+          }
+        ]
+      }
+    },
+    "cambridge": {
+      "query": "political science governance democracy institution law",
+      "count": 500,
+      "elapsed_sec": 36.8,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 500,
+        "has_authors_pct": 100.0,
+        "has_year": 500,
+        "has_year_pct": 100.0,
+        "has_doi": 0,
+        "has_doi_pct": 0.0,
+        "has_url": 500,
+        "has_url_pct": 100.0,
+        "has_abstract": 0,
+        "has_abstract_pct": 0.0,
+        "has_pdf_url": 0,
+        "has_pdf_pct": 0.0,
+        "has_venue": 500,
+        "has_venue_pct": 100.0,
+        "has_type": 500,
+        "has_type_pct": 100.0,
+        "has_is_oa": 0,
+        "has_is_oa_pct": 0.0,
+        "completeness_score": 66.7,
+        "sample": [
+          {
+            "title": "Remaking Government Institutions in the 1970s: Participatory Democracy and the Triumph of Administrative Politics",
+            "authors": [
+              "Sidney M. Milkis"
+            ],
+            "year": 1998,
+            "doi": null,
+            "url": "https://www.cambridge.org/core/journals/journal-of-policy-history/article/remaking-government-institutions-in-the-1970s-participatory-democracy-and-the-triumph-of-administrative-politics/BA1C492E63ACD42EF3C78BD89F10C346",
+            "pdf_url": null,
+            "venue": "Journal of Policy History",
+            "is_open_access": null,
+            "type": "journal-article",
+            "abstract": null
+          },
+          {
+            "title": "Applied Political Science and Evidence-Based Foreign Assistance in Democracy, Human Rights, and Governance",
+            "authors": [
+              "Aaron J. Abbarno",
+              "Nicole Bonoff"
+            ],
+            "year": 2018,
+            "doi": null,
+            "url": "https://www.cambridge.org/core/journals/ps-political-science-and-politics/article/applied-political-science-and-evidencebased-foreign-assistance-in-democracy-human-rights-and-governance/C4087C67BA63468FBD797FD1FB433439",
+            "pdf_url": null,
+            "venue": "PS: Political Science & Politics",
+            "is_open_access": null,
+            "type": "journal-article",
+            "abstract": null
+          },
+          {
+            "title": "6 - Political Institutions and Democracy",
+            "authors": [
+              "Allen Hicken",
+              "Samuel Baltz",
+              "Fabricio Vasselai",
+              "Michael Coppedge",
+              "Amanda B. Edgell"
+            ],
+            "year": 2022,
+            "doi": null,
+            "url": "https://www.cambridge.org/core/books/why-democracies-develop-and-decline/political-institutions-and-democracy/F74A318E1FB9DD06388C3216008A6E88",
+            "pdf_url": null,
+            "venue": "Why Democracies Develop and Decline",
+            "is_open_access": null,
+            "type": "journal-article",
+            "abstract": null
+          }
+        ]
+      }
+    },
+    "clinicalkey": {
+      "query": "clinical practice guideline evidence-based medicine diagnosis",
+      "count": 0,
+      "elapsed_sec": 0.9,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "core": {
+      "query": "open access institutional repository preprint scholarly",
+      "count": 50,
+      "elapsed_sec": 5.1,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 50,
+        "has_title": 50,
+        "has_title_pct": 100.0,
+        "has_authors": 50,
+        "has_authors_pct": 100.0,
+        "has_year": 49,
+        "has_year_pct": 98.0,
+        "has_doi": 17,
+        "has_doi_pct": 34.0,
+        "has_url": 50,
+        "has_url_pct": 100.0,
+        "has_abstract": 49,
+        "has_abstract_pct": 98.0,
+        "has_pdf_url": 28,
+        "has_pdf_pct": 56.0,
+        "has_venue": 0,
+        "has_venue_pct": 0.0,
+        "has_type": 0,
+        "has_type_pct": 0.0,
+        "has_is_oa": 50,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 88.3,
+        "sample": [
+          {
+            "title": "Reassembling scholarly publishing: Institutional repositories, open access, and the process of change",
+            "authors": [
+              "Cecez-Kecmanovic, Dubravka",
+              "Kennan, Mary Anne"
+            ],
+            "year": 2007,
+            "doi": "10.26190/unsworks/391",
+            "url": "https://core.ac.uk/works/5116197",
+            "pdf_url": "https://unsworks.unsw.edu.au/bitstreams/3772014e-fa53-411d-85a6-d14c4aca4c80/download",
+            "venue": "",
+            "is_open_access": true,
+            "type": null,
+            "abstract": "The domain of scholarly publishing is undergoing rapid change. Change has been instigated and produced by the Internet and open access systems – such as disciplinary and institutional repositories and"
+          },
+          {
+            "title": "Open Access Bibliography: Liberating Scholarly Literature with E-Prints and Open Access Journals",
+            "authors": [
+              "Bailey, Jr., Charles W.",
+              "Bailey Jr., Charles W.",
+              "Bailey, Charles W., Jr."
+            ],
+            "year": 2005,
+            "doi": null,
+            "url": "https://core.ac.uk/works/5112143",
+            "pdf_url": "https://libros.metabiblioteca.org/bitstream/001/279/8/oab.pdf",
+            "venue": "",
+            "is_open_access": true,
+            "type": null,
+            "abstract": "The Open Access Bibliography: Liberating Scholarly Literature with E-Prints and Open Access Journals provides an overview of open access concepts, and it presents over 1,300 selected English-language "
+          },
+          {
+            "title": "Increasing Self-Archiving of Faculty Publications in Institutional Repositories",
+            "authors": [
+              "Grundmann, Amanda J."
+            ],
+            "year": 2009,
+            "doi": null,
+            "url": "https://core.ac.uk/works/5117785",
+            "pdf_url": "http://eprints.rclis.org/13732/1/Grundmann_Repositories.pdf",
+            "venue": "",
+            "is_open_access": true,
+            "type": null,
+            "abstract": "Despite the increasing interest in institutional repositories by academic institutions and recognition that publisher policies make widespread “green” open access currently achievable, faculty deposit"
+          }
+        ]
+      }
+    },
+    "crossref": {
+      "query": "machine learning natural language processing text classification",
+      "count": 500,
+      "elapsed_sec": 29.8,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 421,
+        "has_authors_pct": 84.2,
+        "has_year": 484,
+        "has_year_pct": 96.8,
+        "has_doi": 500,
+        "has_doi_pct": 100.0,
+        "has_url": 500,
+        "has_url_pct": 100.0,
+        "has_abstract": 64,
+        "has_abstract_pct": 12.8,
+        "has_pdf_url": 0,
+        "has_pdf_pct": 0.0,
+        "has_venue": 446,
+        "has_venue_pct": 89.2,
+        "has_type": 500,
+        "has_type_pct": 100.0,
+        "has_is_oa": 0,
+        "has_is_oa_pct": 0.0,
+        "completeness_score": 82.3,
+        "sample": [
+          {
+            "title": "Construction and Application of Text Classification Model under Natural Language Processing",
+            "authors": [
+              "Zhongnuo Sun",
+              "Pan Gao"
+            ],
+            "year": 2024,
+            "doi": "10.1145/3677779.3677816",
+            "url": "https://doi.org/10.1145/3677779.3677816",
+            "pdf_url": null,
+            "venue": "Proceedings of the International Conference on Modeling, Natural Language Processing and Machine Learning",
+            "is_open_access": null,
+            "type": "proceedings-article",
+            "abstract": null
+          },
+          {
+            "title": "Pharmaceutical Drug Rating Modeling and Classification from Consumer Generated Reviews: A Text Mining, Natural Language Processing and Machine Learnin",
+            "authors": [
+              "Corban Allenbrand"
+            ],
+            "year": 2023,
+            "doi": "10.2139/ssrn.4397759",
+            "url": "https://doi.org/10.2139/ssrn.4397759",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": "posted-content",
+            "abstract": null
+          },
+          {
+            "title": "Text Generation, Machine Translation, and Other Recurrent Language Modeling Tasks",
+            "authors": [
+              "Taweh Beysolow II"
+            ],
+            "year": 2018,
+            "doi": "10.1007/978-1-4842-3733-5_5",
+            "url": "https://doi.org/10.1007/978-1-4842-3733-5_5",
+            "pdf_url": null,
+            "venue": "Applied Natural Language Processing with Python",
+            "is_open_access": null,
+            "type": "book-chapter",
+            "abstract": null
+          }
+        ]
+      }
+    },
+    "datacite": {
+      "query": "biodiversity ecology species conservation habitat loss",
+      "count": 500,
+      "elapsed_sec": 10.5,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 499,
+        "has_authors_pct": 99.8,
+        "has_year": 500,
+        "has_year_pct": 100.0,
+        "has_doi": 500,
+        "has_doi_pct": 100.0,
+        "has_url": 500,
+        "has_url_pct": 100.0,
+        "has_abstract": 500,
+        "has_abstract_pct": 100.0,
+        "has_pdf_url": 0,
+        "has_pdf_pct": 0.0,
+        "has_venue": 0,
+        "has_venue_pct": 0.0,
+        "has_type": 112,
+        "has_type_pct": 22.4,
+        "has_is_oa": 0,
+        "has_is_oa_pct": 0.0,
+        "completeness_score": 100.0,
+        "sample": [
+          {
+            "title": "Ecological shifts of stream ecosystems in a deglaciating area of the European Alps",
+            "authors": [
+              "Brighenti, Stefano"
+            ],
+            "year": 2019,
+            "doi": "10.15168/11572_244514",
+            "url": "https://iris.unitn.it/handle/11572/244514",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": null,
+            "abstract": "This thesis provides a contribution to the knowledge on the effects of deglaciation on alpine stream ecosystems, taking into account also the hydroecological influence of thawing permafrost and paragl"
+          },
+          {
+            "title": "Pleurothallis pembertonii M. F. Monteros & Mark Wilson 2026, sp. nov.",
+            "authors": [
+              "Monteros, Marco F.",
+              "Holcomb, Kevin",
+              "Baquero, Luis E.",
+              "Wilson, Mark"
+            ],
+            "year": 2026,
+            "doi": "10.5281/zenodo.20946899",
+            "url": "https://zenodo.org/doi/10.5281/zenodo.20946899",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": null,
+            "abstract": "Pleurothallis pembertonii M. F. Monteros & Mark Wilson sp. nov.\nFigs 1, 2, 3, 5, 7 a\nHolotype.\nEcuador • Carchi, Reserva Dracula, 1965 m, 3 August 2021 (coordinates omitted for conservation reasons; d"
+          },
+          {
+            "title": "Pleurothallis pembertonii M. F. Monteros & Mark Wilson 2026, sp. nov.",
+            "authors": [
+              "Monteros, Marco F.",
+              "Holcomb, Kevin",
+              "Baquero, Luis E.",
+              "Wilson, Mark"
+            ],
+            "year": 2026,
+            "doi": "10.5281/zenodo.20946898",
+            "url": "https://zenodo.org/doi/10.5281/zenodo.20946898",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": null,
+            "abstract": "Pleurothallis pembertonii M. F. Monteros & Mark Wilson sp. nov.\nFigs 1, 2, 3, 5, 7 a\nHolotype.\nEcuador • Carchi, Reserva Dracula, 1965 m, 3 August 2021 (coordinates omitted for conservation reasons; d"
+          }
+        ]
+      }
+    },
+    "dblp": {
+      "query": "distributed system database query optimization performance",
+      "count": 0,
+      "elapsed_sec": 1.4,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "dimensions": {
+      "query": "global health infectious disease pandemic response policy",
+      "count": 0,
+      "elapsed_sec": 0.0,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "doab": {
+      "query": "economics development policy governance institutions",
+      "count": 0,
+      "elapsed_sec": 0.3,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "doaj": {
+      "query": "public health epidemiology disease prevention community health",
+      "count": 0,
+      "elapsed_sec": 25.1,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "embase": {
+      "query": "pharmacology drug interaction adverse effect clinical",
+      "count": 0,
+      "elapsed_sec": 0.4,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "europepmc": {
+      "query": "cancer tumor immunotherapy checkpoint inhibitor therapy",
+      "count": 500,
+      "elapsed_sec": 6.9,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 497,
+        "has_authors_pct": 99.4,
+        "has_year": 474,
+        "has_year_pct": 94.8,
+        "has_doi": 454,
+        "has_doi_pct": 90.8,
+        "has_url": 454,
+        "has_url_pct": 90.8,
+        "has_abstract": 0,
+        "has_abstract_pct": 0.0,
+        "has_pdf_url": 500,
+        "has_pdf_pct": 100.0,
+        "has_venue": 496,
+        "has_venue_pct": 99.2,
+        "has_type": 500,
+        "has_type_pct": 100.0,
+        "has_is_oa": 500,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 79.3,
+        "sample": [
+          {
+            "title": "Immunotherapy and Stereotactic Body Radiation Treatment-An Overview of the Current Landscape of the Strategic Combination of Two Treatment Modalities ",
+            "authors": [
+              "Abraham A",
+              "Menon A",
+              "Joseph K",
+              "Roa W",
+              "Kunheri B."
+            ],
+            "year": 2026,
+            "doi": "10.3390/cancers18111682",
+            "url": "https://europepmc.org/article/MED/42279267",
+            "pdf_url": "https://europepmc.org/articles/PMC13255685?pdf=render",
+            "venue": "Cancers (Basel)",
+            "is_open_access": true,
+            "type": "review-article; review; journal article",
+            "abstract": null
+          },
+          {
+            "title": "Implications of Rho GTPase signaling in cancer immunotherapy",
+            "authors": [
+              "Cai M",
+              "Guo F",
+              "Zheng Y."
+            ],
+            "year": 2026,
+            "doi": "10.1042/bst20260485",
+            "url": "https://europepmc.org/article/MED/42339915",
+            "pdf_url": "https://doi.org/10.1042/bst20260485",
+            "venue": "Biochem Soc Trans",
+            "is_open_access": false,
+            "type": "review; journal article",
+            "abstract": null
+          },
+          {
+            "title": "Beyond the \"Cold\" Barrier: Redefining the Clinical Paradigm of Immune Checkpoint Inhibitor Therapy in Ovarian Cancer.",
+            "authors": [
+              "Wu T",
+              "Zhang P",
+              "Xi R",
+              "Shen Y",
+              "Hu L"
+            ],
+            "year": 2026,
+            "doi": "10.1016/j.critrevonc.2026.105459",
+            "url": "https://europepmc.org/article/MED/42362076",
+            "pdf_url": "https://doi.org/10.1016/j.critrevonc.2026.105459",
+            "venue": "Crit Rev Oncol Hematol",
+            "is_open_access": false,
+            "type": "im; review; journal article",
+            "abstract": null
+          }
+        ]
+      }
+    },
+    "google_books": {
+      "query": "artificial intelligence history philosophy technology society",
+      "count": 0,
+      "elapsed_sec": 9.3,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "gutendex": {
+      "query": "philosophy science nature mathematics classic literature",
+      "count": 0,
+      "elapsed_sec": 81.4,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "hal": {
+      "query": "fluid dynamics computational physics simulation numerical method",
+      "count": 86,
+      "elapsed_sec": 2.6,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 86,
+        "has_title": 86,
+        "has_title_pct": 100.0,
+        "has_authors": 86,
+        "has_authors_pct": 100.0,
+        "has_year": 86,
+        "has_year_pct": 100.0,
+        "has_doi": 63,
+        "has_doi_pct": 73.3,
+        "has_url": 86,
+        "has_url_pct": 100.0,
+        "has_abstract": 86,
+        "has_abstract_pct": 100.0,
+        "has_pdf_url": 57,
+        "has_pdf_pct": 66.3,
+        "has_venue": 47,
+        "has_venue_pct": 54.7,
+        "has_type": 81,
+        "has_type_pct": 94.2,
+        "has_is_oa": 86,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 95.5,
+        "sample": [
+          {
+            "title": "Geometry aware physics informed neural network surrogate for solving Navier–Stokes equation (GAPINN)",
+            "authors": [
+              "Jan Oldenburg",
+              "Finja Borowski",
+              "Alper Öner",
+              "Klaus Peter Schmitz",
+              "Michael Stiehm"
+            ],
+            "year": 2022,
+            "doi": "10.1186/s40323-022-00221-z",
+            "url": "https://hal.science/hal-04513973v1",
+            "pdf_url": "https://hal.science/hal-04513973/document",
+            "venue": "Advanced Modeling and Simulation in Engineering Sciences",
+            "is_open_access": true,
+            "type": "journal-article",
+            "abstract": "Many real world problems involve fluid flow phenomena, typically be described by the Navier–Stokes equations. The Navier–Stokes equations are partial differential equations (PDEs) with highly nonlinea"
+          },
+          {
+            "title": "Technical note: application of ?-QSS to the numerical integration of kinetic equations in tropospheric chemistry",
+            "authors": [
+              "Franklin Liu",
+              "E. Schaller",
+              "D. R. Mott"
+            ],
+            "year": 2005,
+            "doi": null,
+            "url": "https://hal.science/hal-00301706v1",
+            "pdf_url": "https://hal.science/hal-00301706/document",
+            "venue": "Atmospheric Chemistry and Physics Discussions",
+            "is_open_access": true,
+            "type": "journal-article",
+            "abstract": "A major task in many applications of atmospheric chemistry transport problems is the numerical integration of stiff systems of Ordinary Differential Equations (ODEs) describing the chemical transforma"
+          },
+          {
+            "title": "Direct Numerical Simulation of Mixed Convection Flow in Lid-Driven Cavities",
+            "authors": [
+              "Noura Ben Mansour",
+              "Ridha Jmai"
+            ],
+            "year": 2024,
+            "doi": "10.9734/psij/2024/v28i3831",
+            "url": "https://hal.science/hal-05089878v1",
+            "pdf_url": null,
+            "venue": "Physical Science International Journal",
+            "is_open_access": true,
+            "type": "journal-article",
+            "abstract": "The mixed convection of heat transfer and fluid flow in a - lid drivencubical cavity filled with air is investigated numerically in this study. The computational procedure is based on the finite volum"
+          }
+        ]
+      }
+    },
+    "ieee": {
+      "query": "embedded system FPGA real-time signal processing hardware",
+      "count": 111,
+      "elapsed_sec": 120.0,
+      "status": "PARTIAL",
+      "error": "TIMEOUT 120s",
+      "screening": {
+        "total": 111,
+        "has_title": 111,
+        "has_title_pct": 100.0,
+        "has_authors": 111,
+        "has_authors_pct": 100.0,
+        "has_year": 111,
+        "has_year_pct": 100.0,
+        "has_doi": 109,
+        "has_doi_pct": 98.2,
+        "has_url": 111,
+        "has_url_pct": 100.0,
+        "has_abstract": 111,
+        "has_abstract_pct": 100.0,
+        "has_pdf_url": 111,
+        "has_pdf_pct": 100.0,
+        "has_venue": 111,
+        "has_venue_pct": 100.0,
+        "has_type": 0,
+        "has_type_pct": 0.0,
+        "has_is_oa": 111,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 99.7,
+        "sample": [
+          {
+            "title": "Embedded VLSI Accelerators for Fingerprint Signal Processing",
+            "authors": [
+              "Mariano Fons",
+              "Francisco Fons",
+              "Enrique Canto"
+            ],
+            "year": 2007,
+            "doi": "10.1109/WISP.2007.4447552",
+            "url": "https://ieeexplore.ieee.org/document/4447552",
+            "pdf_url": "https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4447552",
+            "venue": "2007 IEEE International Symposium on Intelligent Signal Processing",
+            "is_open_access": false,
+            "type": null,
+            "abstract": "Personal identification based on biometrics is nowadays an emerging research subject. Several physiological and behavioral human characteristics have been suggested in the last decades as discriminati"
+          },
+          {
+            "title": "Implementation of Mellin transform using FPGA based embedded system platform",
+            "authors": [
+              "Kshitij",
+              "Shaik Abdul Rawoof",
+              "K. C. Ray"
+            ],
+            "year": 2012,
+            "doi": "10.1109/ICPCES.2012.6508091",
+            "url": "https://ieeexplore.ieee.org/document/6508091",
+            "pdf_url": "https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6508091",
+            "venue": "2012 2nd International Conference on Power, Control and Embedded Systems",
+            "is_open_access": false,
+            "type": null,
+            "abstract": "Since decades Mellin transform because of its scale invariant property has gained its attention to various real time applications such as signal and image processing including speech processing, patte"
+          },
+          {
+            "title": "Real-time FPGA implementation of a reconfigurable ultrasonic detection system",
+            "authors": [
+              "Hojat Parta",
+              "Erdal Oruklu",
+              "Jafar Saniie"
+            ],
+            "year": 2007,
+            "doi": "10.1109/EIT.2007.4374501",
+            "url": "https://ieeexplore.ieee.org/document/4374501",
+            "pdf_url": "https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4374501",
+            "venue": "2007 IEEE International Conference on Electro/Information Technology",
+            "is_open_access": false,
+            "type": null,
+            "abstract": "In this paper, we present hardware realization of a reconfigurable ultrasonic flaw detection system (RUFD) for real-time applications. It can be utilized in diverse environments and applications due t"
+          }
+        ]
+      }
+    },
+    "lens": {
+      "query": "patent innovation technology transfer intellectual property",
+      "count": 0,
+      "elapsed_sec": 0.0,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "oapen": {
+      "query": "humanities social science history culture European",
+      "count": 0,
+      "elapsed_sec": 120.0,
+      "status": "ERR",
+      "error": "TIMEOUT 120s",
+      "screening": {
+        "total": 0
+      }
+    },
+    "open_library": {
+      "query": "environmental science ecology conservation biology textbook",
+      "count": 4,
+      "elapsed_sec": 2.6,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 4,
+        "has_title": 4,
+        "has_title_pct": 100.0,
+        "has_authors": 4,
+        "has_authors_pct": 100.0,
+        "has_year": 4,
+        "has_year_pct": 100.0,
+        "has_doi": 0,
+        "has_doi_pct": 0.0,
+        "has_url": 4,
+        "has_url_pct": 100.0,
+        "has_abstract": 0,
+        "has_abstract_pct": 0.0,
+        "has_pdf_url": 0,
+        "has_pdf_pct": 0.0,
+        "has_venue": 0,
+        "has_venue_pct": 0.0,
+        "has_type": 4,
+        "has_type_pct": 100.0,
+        "has_is_oa": 4,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 66.7,
+        "sample": [
+          {
+            "title": "Environmental science",
+            "authors": [
+              "G. Tyler Miller",
+              "Scott Spoolman"
+            ],
+            "year": 1986,
+            "doi": null,
+            "url": "https://openlibrary.org/works/OL66393W",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": false,
+            "type": "book",
+            "abstract": null
+          },
+          {
+            "title": "Biology",
+            "authors": [
+              "Neil Alexander Campbell",
+              "Lawrence G. Mitchell",
+              "Jane B. Reece"
+            ],
+            "year": 1994,
+            "doi": null,
+            "url": "https://openlibrary.org/works/OL1983083W",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": false,
+            "type": "book",
+            "abstract": null
+          },
+          {
+            "title": "Freshwater Ecology",
+            "authors": [
+              "Walter K. Dodds",
+              "Walter K. Dodds",
+              "Walter Dodds"
+            ],
+            "year": 2002,
+            "doi": null,
+            "url": "https://openlibrary.org/works/OL7939526W",
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": false,
+            "type": "book",
+            "abstract": null
+          }
+        ]
+      }
+    },
+    "openaire": {
+      "query": "EU research innovation funding horizon grants collaboration",
+      "count": 0,
+      "elapsed_sec": 1.1,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "openalex": {
+      "query": "climate change renewable energy carbon emission policy",
+      "count": 500,
+      "elapsed_sec": 22.9,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 498,
+        "has_authors_pct": 99.6,
+        "has_year": 0,
+        "has_year_pct": 0.0,
+        "has_doi": 489,
+        "has_doi_pct": 97.8,
+        "has_url": 500,
+        "has_url_pct": 100.0,
+        "has_abstract": 288,
+        "has_abstract_pct": 57.6,
+        "has_pdf_url": 403,
+        "has_pdf_pct": 80.6,
+        "has_venue": 491,
+        "has_venue_pct": 98.2,
+        "has_type": 500,
+        "has_type_pct": 100.0,
+        "has_is_oa": 500,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 75.8,
+        "sample": [
+          {
+            "title": "A review of renewable energy sources, sustainability issues and climate change mitigation",
+            "authors": [
+              "Phebe Asantewaa Owusu",
+              "Samuel Asumadu Sarkodie"
+            ],
+            "year": null,
+            "doi": "10.1080/23311916.2016.1167990",
+            "url": "https://doi.org/10.1080/23311916.2016.1167990",
+            "pdf_url": "https://doi.org/10.1080/23311916.2016.1167990",
+            "venue": "Cogent Engineering",
+            "is_open_access": true,
+            "type": "journal-article",
+            "abstract": "Abstract The world is fast becoming a global village due to the increasing daily requirement of energy by all population across the world while the earth in its form cannot change. The need for energy"
+          },
+          {
+            "title": "Climate Change 2014 - Synthesis Report",
+            "authors": [
+              "Watson, R. T.",
+              "Albritton, D. L.",
+              "Barker, T.",
+              "Bashmakov, I. A.",
+              "Canziani, O."
+            ],
+            "year": null,
+            "doi": "10.59327/ipcc/ar5-9789291691432",
+            "url": "https://doi.org/10.59327/ipcc/ar5-9789291691432",
+            "pdf_url": "https://www.ipcc.ch/site/assets/uploads/2018/02/SYR_AR5_FINAL_full.pdf",
+            "venue": null,
+            "is_open_access": true,
+            "type": "report",
+            "abstract": "The Synthesis Report (SYR) distils and integrates the findings of the three Working Group contributions to the Fifth Assessment Report (AR5) of the Intergovernmental Panel on Climate Change (IPCC), th"
+          },
+          {
+            "title": "The Shared Socioeconomic Pathways and their energy, land use, and greenhouse gas emissions implications: An overview",
+            "authors": [
+              "Keywan Riahi",
+              "Detlef P. van Vuuren",
+              "Elmar Kriegler",
+              "Jae Edmonds",
+              "Brian C. O’Neill"
+            ],
+            "year": null,
+            "doi": "10.1016/j.gloenvcha.2016.05.009",
+            "url": "https://doi.org/10.1016/j.gloenvcha.2016.05.009",
+            "pdf_url": "https://www.sciencedirect.com/science/article/am/pii/S0959378016300681?via%3Dihub",
+            "venue": "Global Environmental Change",
+            "is_open_access": true,
+            "type": "journal-article",
+            "abstract": "This paper presents the overview of the Shared Socioeconomic Pathways (SSPs) and their energy, land use, and emissions implications. The SSPs are part of a new scenario framework, established by the c"
+          }
+        ]
+      }
+    },
+    "opencitations": {
+      "query": "citation network reference scholarly impact analysis",
+      "count": 0,
+      "elapsed_sec": 0.0,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "orcid": {
+      "query": "researcher identity collaboration academic network affiliation",
+      "count": 53,
+      "elapsed_sec": 6.4,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 53,
+        "has_title": 53,
+        "has_title_pct": 100.0,
+        "has_authors": 53,
+        "has_authors_pct": 100.0,
+        "has_year": 45,
+        "has_year_pct": 84.9,
+        "has_doi": 0,
+        "has_doi_pct": 0.0,
+        "has_url": 21,
+        "has_url_pct": 39.6,
+        "has_abstract": 0,
+        "has_abstract_pct": 0.0,
+        "has_pdf_url": 21,
+        "has_pdf_pct": 39.6,
+        "has_venue": 32,
+        "has_venue_pct": 60.4,
+        "has_type": 53,
+        "has_type_pct": 100.0,
+        "has_is_oa": 0,
+        "has_is_oa_pct": 0.0,
+        "completeness_score": 54.1,
+        "sample": [
+          {
+            "title": "Hyperreality: A Postmodern Study of Paul Auster's Travels in The Scriptorium",
+            "authors": [
+              "Mehvish Riaz None"
+            ],
+            "year": 2022,
+            "doi": null,
+            "url": null,
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": "dissertation-thesis",
+            "abstract": null
+          },
+          {
+            "title": "American Dream of a Pakistani immigrantin Mohsin Hamid's Novel The Reluctant Fundamentalist",
+            "authors": [
+              "Mehvish Riaz None"
+            ],
+            "year": 2019,
+            "doi": null,
+            "url": null,
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": "dissertation-thesis",
+            "abstract": null
+          },
+          {
+            "title": "A Comparative Study of the Social Status of Rural and Urban working Women in district Lahore",
+            "authors": [
+              "Mehvish Riaz None"
+            ],
+            "year": 2010,
+            "doi": null,
+            "url": null,
+            "pdf_url": null,
+            "venue": null,
+            "is_open_access": null,
+            "type": "dissertation-thesis",
+            "abstract": null
+          }
+        ]
+      }
+    },
+    "plos": {
+      "query": "evolutionary biology genetics population genome sequencing",
+      "count": 0,
+      "elapsed_sec": 1.6,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "pmc": {
+      "query": "COVID-19 SARS-CoV-2 vaccine efficacy immunization clinical trial",
+      "count": 0,
+      "elapsed_sec": 2.2,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "pubmed": {
+      "query": "diabetes mellitus treatment insulin resistance metabolic syndrome",
+      "count": 500,
+      "elapsed_sec": 8.9,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 500,
+        "has_title": 500,
+        "has_title_pct": 100.0,
+        "has_authors": 496,
+        "has_authors_pct": 99.2,
+        "has_year": 499,
+        "has_year_pct": 99.8,
+        "has_doi": 417,
+        "has_doi_pct": 83.4,
+        "has_url": 500,
+        "has_url_pct": 100.0,
+        "has_abstract": 461,
+        "has_abstract_pct": 92.2,
+        "has_pdf_url": 417,
+        "has_pdf_pct": 83.4,
+        "has_venue": 500,
+        "has_venue_pct": 100.0,
+        "has_type": 500,
+        "has_type_pct": 100.0,
+        "has_is_oa": 500,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 95.8,
+        "sample": [
+          {
+            "title": "Cardiovascular-Kidney-Metabolic (CKM) syndrome: A state-of-the-art review.",
+            "authors": [
+              "Sneha Annie Sebastian",
+              "Inderbir Padda",
+              "Gurpreet Johal"
+            ],
+            "year": 2023,
+            "doi": "10.1016/j.cpcardiol.2023.102344",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/38103820/",
+            "pdf_url": "https://doi.org/10.1016/j.cpcardiol.2023.102344",
+            "venue": "Current problems in cardiology",
+            "is_open_access": false,
+            "type": "review",
+            "abstract": "The correlation between obesity, type 2 diabetes mellitus (DM), cardiovascular disease (CVD), and chronic kidney disease (CKD) is an escalating and widely acknowledged epidemic in industrialized natio"
+          },
+          {
+            "title": "Type 2 diabetes mellitus in adults: pathogenesis, prevention and therapy.",
+            "authors": [
+              "Xi Lu",
+              "Qingxing Xie",
+              "Xiaohui Pan",
+              "Ruining Zhang",
+              "Xinyi Zhang"
+            ],
+            "year": 2024,
+            "doi": "10.1038/s41392-024-01951-9",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/39353925/",
+            "pdf_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11445387/pdf/",
+            "venue": "Signal transduction and targeted therapy",
+            "is_open_access": true,
+            "type": "review",
+            "abstract": "Type 2 diabetes (T2D) is a disease characterized by heterogeneously progressive loss of islet β cell insulin secretion usually occurring after the presence of insulin resistance (IR) and it is one com"
+          },
+          {
+            "title": "The metabolic syndrome.",
+            "authors": [
+              "Robert H Eckel",
+              "Scott M Grundy",
+              "Paul Z Zimmet"
+            ],
+            "year": null,
+            "doi": "10.1016/S0140-6736(05)66378-7",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/15836891/",
+            "pdf_url": "https://doi.org/10.1016/S0140-6736(05)66378-7",
+            "venue": "Lancet (London, England)",
+            "is_open_access": false,
+            "type": "review",
+            "abstract": "The metabolic syndrome is a common metabolic disorder that results from the increasing prevalence of obesity. The disorder is defined in various ways, but in the near future a new definition(s) will b"
+          }
+        ]
+      }
+    },
+    "sciencedirect": {
+      "query": "materials science nanotechnology semiconductor polymer",
+      "count": 0,
+      "elapsed_sec": 0.8,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "scopus": {
+      "query": "citation analysis bibliometric research impact factor journal",
+      "count": 0,
+      "elapsed_sec": 0.5,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "semantic_scholar": {
+      "query": "graph neural network knowledge graph embedding representation",
+      "count": 0,
+      "elapsed_sec": 6.8,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "sinta": {
+      "query": "pendidikan vokasi kompetensi kurikulum pembelajaran",
+      "count": 0,
+      "elapsed_sec": 0.8,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "unpaywall": {
+      "query": "open access full text PDF availability scholarly article",
+      "count": 183,
+      "elapsed_sec": 120.0,
+      "status": "PARTIAL",
+      "error": "TIMEOUT 120s",
+      "screening": {
+        "total": 183,
+        "has_title": 183,
+        "has_title_pct": 100.0,
+        "has_authors": 0,
+        "has_authors_pct": 0.0,
+        "has_year": 183,
+        "has_year_pct": 100.0,
+        "has_doi": 183,
+        "has_doi_pct": 100.0,
+        "has_url": 183,
+        "has_url_pct": 100.0,
+        "has_abstract": 115,
+        "has_abstract_pct": 62.8,
+        "has_pdf_url": 183,
+        "has_pdf_pct": 100.0,
+        "has_venue": 157,
+        "has_venue_pct": 85.8,
+        "has_type": 13,
+        "has_type_pct": 7.1,
+        "has_is_oa": 183,
+        "has_is_oa_pct": 100.0,
+        "completeness_score": 77.1,
+        "sample": [
+          {
+            "title": "ScienceCentral: open access full-text archive of scientific journals based on Journal Article Tag Suite regardless of their languages",
+            "authors": [],
+            "year": 2013,
+            "doi": "10.11613/bm.2013.029",
+            "url": "https://www.biochemia-medica.com/assets/images/upload/xml_tif/Huh_S_-ScienceCentral-open_access_full-text_archive_of_scientific_journals.pdf",
+            "pdf_url": "https://www.biochemia-medica.com/assets/images/upload/xml_tif/Huh_S_-ScienceCentral-open_access_full-text_archive_of_scientific_journals.pdf",
+            "venue": "Biochemia Medica",
+            "is_open_access": true,
+            "type": null,
+            "abstract": null
+          },
+          {
+            "title": "Full-Text Search on Data with Access Control",
+            "authors": [],
+            "year": 2022,
+            "doi": "10.31219/osf.io/4rwj5",
+            "url": "https://osf.io/4rwj5/download",
+            "pdf_url": "https://osf.io/4rwj5/download",
+            "venue": null,
+            "is_open_access": true,
+            "type": null,
+            "abstract": "Full-Text Search combined with access control has a wide range of applications. Unfortunately, there are only few (if not zero) researches that combine the two. While inverted index is already used wi"
+          },
+          {
+            "title": "roadoi: Find Free Versions of Scholarly Publications via Unpaywall",
+            "authors": [],
+            "year": 2017,
+            "doi": "10.32614/cran.package.roadoi",
+            "url": "https://cran.r-project.org/web/packages/roadoi/roadoi.pdf",
+            "pdf_url": "https://cran.r-project.org/web/packages/roadoi/roadoi.pdf",
+            "venue": "CRAN: Contributed Packages",
+            "is_open_access": true,
+            "type": "dataset",
+            "abstract": null
+          }
+        ]
+      }
+    },
+    "web": {
+      "query": "sustainable development goal SDG implementation progress",
+      "count": 11,
+      "elapsed_sec": 78.3,
+      "status": "OK",
+      "error": "",
+      "screening": {
+        "total": 11,
+        "has_title": 11,
+        "has_title_pct": 100.0,
+        "has_authors": 6,
+        "has_authors_pct": 54.5,
+        "has_year": 7,
+        "has_year_pct": 63.6,
+        "has_doi": 6,
+        "has_doi_pct": 54.5,
+        "has_url": 11,
+        "has_url_pct": 100.0,
+        "has_abstract": 10,
+        "has_abstract_pct": 90.9,
+        "has_pdf_url": 6,
+        "has_pdf_pct": 54.5,
+        "has_venue": 6,
+        "has_venue_pct": 54.5,
+        "has_type": 5,
+        "has_type_pct": 45.5,
+        "has_is_oa": 5,
+        "has_is_oa_pct": 45.5,
+        "completeness_score": 77.3,
+        "sample": [
+          {
+            "title": "Efforts to address the Sustainable Development Goals in older populations: a scoping review.",
+            "authors": [
+              "Vlada Shevelkova",
+              "Calum Mattocks",
+              "Louise Lafortune"
+            ],
+            "year": 2023,
+            "doi": "10.1186/s12889-023-15308-4",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/36890447/",
+            "pdf_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9996959/pdf/",
+            "venue": "BMC public health",
+            "is_open_access": true,
+            "type": "review",
+            "abstract": "BACKGROUND: The United Nations Decade of Healthy Ageing (2021-2030) seeks to create multisectoral changes that align healthy ageing with the United Nations' Sustainable Development Goals (SDGs). Given"
+          },
+          {
+            "title": "Sustainable Development Goals (SDGs), and their implementation: A national global framework for health, development and equity needs a systems approac",
+            "authors": [
+              "Stephen Morton",
+              "David Pencheon",
+              "Neil Squires"
+            ],
+            "year": 2017,
+            "doi": "10.1093/bmb/ldx031",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/29069332/",
+            "pdf_url": "https://doi.org/10.1093/bmb/ldx031",
+            "venue": "British medical bulletin",
+            "is_open_access": false,
+            "type": "review",
+            "abstract": "INTRODUCTION: The Sustainable Development Goals (SDGs) are a set of global goals for fair and sustainable health at every level: from planetary biosphere to local community. The aim is to end poverty,"
+          },
+          {
+            "title": "Impact of the Sustainable Development Goals on the academic research agenda. A scientometric analysis.",
+            "authors": [
+              "Antonio Sianes",
+              "Alejandro Vega-Muñoz",
+              "Pilar Tirado-Valencia",
+              "Antonio Ariza-Montes"
+            ],
+            "year": 2022,
+            "doi": "10.1371/journal.pone.0265409",
+            "url": "https://pubmed.ncbi.nlm.nih.gov/35298518/",
+            "pdf_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8929641/pdf/",
+            "venue": "PloS one",
+            "is_open_access": true,
+            "type": "journal-article",
+            "abstract": "Today, global challenges such as poverty, inequality, and sustainability are at the core of the academic debate. This centrality has only increased since the transition from the Millennium Development"
+          }
+        ]
+      }
+    },
+    "wos": {
+      "query": "interdisciplinary research cross-domain collaboration impact",
+      "count": 0,
+      "elapsed_sec": 0.0,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    },
+    "zenodo": {
+      "query": "open science reproducibility data sharing research workflow",
+      "count": 0,
+      "elapsed_sec": 1.0,
+      "status": "EMPTY",
+      "error": "",
+      "screening": {
+        "total": 0
+      }
+    }
+  }
+}

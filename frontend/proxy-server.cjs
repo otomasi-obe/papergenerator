@@ -39,10 +39,11 @@ const server = http.createServer((req, res) => {
 
   // Proxy API requests to backend
   if (url.pathname.startsWith('/api/')) {
-    // SSE streaming endpoints (paper generation) need unbounded duration:
+    // SSE streaming endpoints need unbounded duration:
     // long silent LLM "thinking" must not trip Node's default request/socket
     // timeouts, or the client sees a spurious "network error".
-    const isStream = url.pathname.includes('/generate-stream');
+    const isStream = url.pathname.includes('/generate-stream') ||
+                     url.pathname.match(/^\/api\/slr\/jobs\/[^\/]+\/stream$/);
     if (isStream) {
       try { req.setTimeout(0); } catch (_) { /* noop */ }
       try { res.setTimeout(0); } catch (_) { /* noop */ }

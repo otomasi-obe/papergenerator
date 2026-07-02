@@ -1,16 +1,95 @@
 <template>
- <div class="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-stone-900 text-cream-50">
+ <div class="min-h-screen text-cream-50 animated-gradient-bg">
  <!-- Navigation -->
  <nav class="flex items-center justify-between px-8 py-5 max-w-7xl mx-auto">
- <div class="flex items-center gap-2.5">
- <img :src="logoWithText" alt="PaperFull" class="h-9 object-contain" />
- <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium ml-1">Multi-Journal</span>
- </div>
- <router-link to="/login"
- class="flex items-center gap-2 px-5 py-2.5 bg-cream-50 text-navy-800 rounded-full font-medium hover:bg-cream-100 transition shadow-lg text-sm active:scale-95"
- >
- Sign In
- </router-link>
+   <div class="flex items-center gap-2.5">
+     <img :src="logoWithText" alt="PaperFull" class="h-9 object-contain" />
+     <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium ml-1">Multi-Journal</span>
+   </div>
+   <div class="flex items-center gap-3">
+     <!-- Info Dropdown -->
+     <div class="relative" ref="dropdownRef" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+       <button
+         @click="dropdownOpen = !dropdownOpen"
+         class="flex items-center gap-1.5 px-4 py-2.5 bg-white/95 hover:bg-amber-50/95 backdrop-blur-sm text-amber-900 border border-amber-300/50 shadow-amber-200/30 hover:shadow-amber-200/50 active:bg-amber-100 rounded-full font-bold transition-all shadow-lg text-sm active:scale-95"
+       >
+         {{ t('nav.info') }}
+         <svg 
+           class="w-4 h-4 transition-transform duration-200"
+           :class="{ 'rotate-180': dropdownOpen }"
+           fill="none" 
+           stroke="currentColor" 
+           viewBox="0 0 24 24"
+         >
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+         </svg>
+       </button>
+
+       <!-- Dropdown Menu -->
+       <transition
+         enter-active-class="transition ease-out duration-200"
+         enter-from-class="opacity-0 translate-y-1"
+         enter-to-class="opacity-100 translate-y-0"
+         leave-active-class="transition ease-in duration-150"
+         leave-from-class="opacity-100 translate-y-0"
+         leave-to-class="opacity-0 translate-y-1"
+       >
+         <div
+           v-if="dropdownOpen"
+           class="absolute right-0 mt-1 w-56 bg-white/95 backdrop-blur-sm border border-amber-300/50 rounded-xl shadow-xl overflow-hidden z-50"
+         >
+           <router-link
+             to="/terms"
+             class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 last:border-b-0"
+             @click="dropdownOpen = false"
+           >
+             <div class="font-semibold">{{ t('dropdown.terms') }}</div>
+             <div class="text-xs text-amber-700 mt-0.5">{{ t('dropdown.termsDesc') }}</div>
+           </router-link>
+           <router-link
+             to="/refund"
+             class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 last:border-b-0"
+             @click="dropdownOpen = false"
+           >
+             <div class="font-semibold">{{ t('dropdown.refund') }}</div>
+             <div class="text-xs text-amber-700 mt-0.5">{{ t('dropdown.refundDesc') }}</div>
+           </router-link>
+           <router-link
+             to="/faq"
+             class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 last:border-b-0"
+             @click="dropdownOpen = false"
+           >
+             <div class="font-semibold">{{ t('dropdown.faq') }}</div>
+             <div class="text-xs text-amber-700 mt-0.5">{{ t('dropdown.faqDesc') }}</div>
+           </router-link>
+           <router-link
+             to="/contact"
+             class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 last:border-b-0"
+             @click="dropdownOpen = false"
+           >
+             <div class="font-semibold">{{ t('dropdown.contact') }}</div>
+             <div class="text-xs text-amber-700 mt-0.5">{{ t('dropdown.contactDesc') }}</div>
+           </router-link>
+         </div>
+       </transition>
+     </div>
+
+     <!-- Language Toggle -->
+     <button
+       @click="toggleLanguage"
+       class="flex items-center gap-1.5 px-4 py-2.5 bg-white/95 hover:bg-amber-50/95 backdrop-blur-sm text-amber-900 border border-amber-300/50 shadow-amber-200/30 hover:shadow-amber-200/50 active:bg-amber-100 rounded-full font-bold transition-all shadow-lg text-sm active:scale-95"
+       :title="locale === 'id' ? 'Switch to English' : 'Ganti ke Bahasa Indonesia'"
+     >
+       {{ locale === 'id' ? '🇮🇩 ID' : '🇬🇧 EN' }}
+     </button>
+
+     <!-- Sign In Button -->
+     <router-link to="/login"
+       class="flex items-center gap-2 px-5 py-2.5 bg-white/95 hover:bg-amber-50/95 backdrop-blur-sm text-amber-900 border border-amber-300/50 shadow-amber-200/30 hover:shadow-amber-200/50 active:bg-amber-100 active:border-amber-400 rounded-full font-bold transition-all shadow-lg text-sm active:scale-95"
+     >
+       {{ t('nav.signIn') }}
+     </router-link>
+   </div>
  </nav>
 
  <main>
@@ -18,28 +97,29 @@
  <section class="relative max-w-6xl mx-auto px-8 pt-16 pb-20">
  <div class="grid lg:grid-cols-2 gap-12 items-center">
  <div class="text-center lg:text-left">
- <div class="inline-flex items-center gap-2 text-cream-200 text-sm font-medium bg-cream-300/10 border border-cream-300/30 rounded-full px-4 py-1.5 mb-6">
- <span class="w-1.5 h-1.5 bg-cream-300 rounded-full animate-pulse"></span>
- AI-Powered Academic Paper Writing
- </div>
- <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight font-serif">
- Generate Papers for
- <span class="bg-gradient-to-r from-cream-200 to-cream-400 bg-clip-text text-transparent">Journal</span>
- <br />or Conference
- </h1>
- <p class="text-lg text-cream-200/70 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
- Generate publication-ready papers for IEEE, international journals, SINTA-indexed journals, and conferences. Auto-format with LaTeX formulas, figures, tables, and references — export to DOCX ready for submission.
- </p>
- <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
- <router-link to="/login"
- class="flex items-center justify-center gap-3 px-8 py-4 bg-cream-50 text-navy-800 rounded-xl font-semibold hover:bg-cream-100 transition-all shadow-2xl text-base active:scale-95"
- >
- Get Started
- </router-link>
- <a href="#features" class="flex items-center justify-center gap-2 px-8 py-4 border border-cream-300/40 rounded-xl text-cream-200 hover:border-cream-200 hover:text-cream-50 transition text-base">
- Learn More →
- </a>
- </div>
+   <div class="hero-badge">
+     <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
+     {{ t('hero.badge') }}
+   </div>
+   <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight font-serif">
+     <span v-html="typedHtml"></span><span
+       class="inline-block w-[3px] h-[0.85em] bg-cream-200 ml-0.5 align-middle"
+       style="animation: cursor-blink 500ms step-end infinite"
+     ></span>
+   </h1>
+   <p class="text-lg text-cream-200/70 max-w-xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+     {{ t('hero.subtitle') }}
+   </p>
+   <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+     <router-link to="/login"
+       class="flex items-center justify-center gap-3 px-8 py-4 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 shadow-amber-200/50 hover:border-amber-400 active:bg-amber-100 active:border-amber-500 rounded-xl font-bold transition-all shadow-2xl text-base active:scale-95"
+     >
+       {{ t('nav.getStarted') }}
+     </router-link>
+     <a href="#features" class="flex items-center justify-center gap-2 px-8 py-4 border border-cream-300/40 rounded-xl text-cream-200 hover:border-cream-200 hover:text-cream-50 transition text-base">
+       {{ t('nav.learnMore') }} →
+     </a>
+   </div>
  </div>
  <div class="relative">
  <div class="absolute -inset-6 bg-gradient-to-r from-cream-300/20 via-cream-400/10 to-navy-500/20 blur-3xl"></div>
@@ -49,32 +129,47 @@
  </div>
  </section>
 
- <!-- Trust Strip -->
- <section class="relative">
+ <!-- Trust Strip → Counters + Marquee -->
+ <section class="relative count-section">
  <img :src="trustStrip" alt="" aria-hidden="true"
  class="absolute inset-0 w-full h-full object-cover opacity-25" />
  <div class="absolute inset-0 bg-gradient-to-r from-navy-900/85 via-navy-900/70 to-navy-900/85"></div>
  <div class="relative max-w-6xl mx-auto px-8 py-12">
- <p class="text-center text-cream-200 text-sm uppercase tracking-[0.2em] mb-8">
- Trusted across disciplines · IEEE · SINTA · International Journals · Conferences
- </p>
- <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+ <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center mb-12">
  <div>
- <div class="text-3xl font-bold text-white">100+</div>
+ <div class="text-3xl font-bold text-white counter-value" data-target="100" data-suffix="+">0</div>
  <div class="text-cream-300 text-sm">Domain topics</div>
  </div>
  <div>
- <div class="text-3xl font-bold text-white">20+</div>
+ <div class="text-3xl font-bold text-white counter-value" data-target="20" data-suffix="+">0</div>
  <div class="text-cream-300 text-sm">Citation styles</div>
  </div>
  <div>
- <div class="text-3xl font-bold text-white">4000+</div>
+ <div class="text-3xl font-bold text-white counter-value" data-target="4000" data-suffix="+">0</div>
  <div class="text-cream-300 text-sm">Words per paper</div>
  </div>
  <div>
  <div class="text-3xl font-bold text-white">DOCX</div>
  <div class="text-cream-300 text-sm">Submission-ready</div>
  </div>
+ </div>
+ <div class="marquee-wrapper">
+   <div class="marquee-track">
+     <span class="marquee-item"><span class="dot"></span>IEEE Journals</span>
+     <span class="marquee-item"><span class="dot amber"></span>SINTA 1–6</span>
+     <span class="marquee-item"><span class="dot green"></span>Scopus</span>
+     <span class="marquee-item"><span class="dot"></span>Web of Science</span>
+     <span class="marquee-item"><span class="dot amber"></span>International Journals</span>
+     <span class="marquee-item"><span class="dot green"></span>APA · Vancouver · IEEE</span>
+     <span class="marquee-item"><span class="dot"></span>Conferences</span>
+     <span class="marquee-item"><span class="dot"></span>IEEE Journals</span>
+     <span class="marquee-item"><span class="dot amber"></span>SINTA 1–6</span>
+     <span class="marquee-item"><span class="dot green"></span>Scopus</span>
+     <span class="marquee-item"><span class="dot"></span>Web of Science</span>
+     <span class="marquee-item"><span class="dot amber"></span>International Journals</span>
+     <span class="marquee-item"><span class="dot green"></span>APA · Vancouver · IEEE</span>
+     <span class="marquee-item"><span class="dot"></span>Conferences</span>
+   </div>
  </div>
  </div>
  </section>
@@ -92,8 +187,8 @@
  class="w-full rounded-2xl ring-1 ring-white/10 shadow-2xl" />
  </div>
  <div class="grid md:grid-cols-3 gap-6">
- <div v-for="feature in features" :key="feature.title"
- class="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 transition">
+ <div v-for="(feature, index) in features" :key="feature.title"
+ class="feat-card bg-white/5 border border-white/10 rounded-2xl p-6" :style="{ '--stagger': index + 'ms' }">
  <div class="text-3xl mb-4" aria-hidden="true">{{ feature.icon }}</div>
  <h3 class="text-lg font-semibold mb-2">{{ feature.title }}</h3>
  <p class="text-cream-300/80 text-sm leading-relaxed">{{ feature.description }}</p>
@@ -207,11 +302,17 @@
  <footer class="border-t border-white/10 py-8 text-center text-ink-200 text-sm">
  <p>© 2026 PaperFull · Multi-Journal Academic Paper AI Tool</p>
  </footer>
+ <PatchNotification />
  </div>
-</template>
+ </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from '../composables/useI18n'
+import PatchNotification from '../components/PatchNotification.vue'
+
+const { t, locale, setLocale } = useI18n()
+
 const logoWithText = '/assets/logo-with-text.png'
 const landingHero = '/assets/landing-page.jpg'
 const featureIllustration = '/assets/feature-illustration.jpg'
@@ -220,21 +321,138 @@ const trustStrip = '/assets/trust-strip-bg.jpg'
 const scrollY = ref(0)
 const showBackToTop = computed(() => scrollY.value > 520)
 
+// Dropdown state
+const dropdownOpen = ref(false)
+const dropdownRef = ref(null)
+
+// Typewriter animation for hero heading
+const typedHtml = ref('')
+let typeTimer = null
+
+function buildFullHtml() {
+  const accent = `<span class="bg-gradient-to-r from-cream-200 to-cream-400 bg-clip-text text-transparent">${t('hero.title2')}</span>`
+  return `${t('hero.title1')} ${accent}<br />${t('hero.title3')}`
+}
+
+function startTyping() {
+  if (typeTimer) clearInterval(typeTimer)
+  // Plain text sequence to type; render HTML up to the current plain-text index.
+  const part1 = t('hero.title1')
+  const part2 = t('hero.title2')
+  const part3 = t('hero.title3')
+  const plain = `${part1} ${part2}\n${part3}`
+  const accent = `<span class="bg-gradient-to-r from-cream-200 to-cream-400 bg-clip-text text-transparent">${part2}</span>`
+  let i = 0
+  typedHtml.value = ''
+  typeTimer = setInterval(() => {
+    i++
+    if (i > plain.length) {
+      clearInterval(typeTimer)
+      typeTimer = null
+      return
+    }
+    const slice = plain.slice(0, i)
+    // Replace part2 with accent span only when fully typed
+    let html = slice.replace('\n', '<br />')
+    if (slice.length >= (part1.length + 1 + part2.length)) {
+      html = (part1 + ' ' + accent + slice.slice(part1.length + 1 + part2.length).replace('\n', '<br />'))
+    }
+    typedHtml.value = html
+  }, 60)
+}
+
 function updateScrollY() {
- scrollY.value = window.scrollY
+  scrollY.value = window.scrollY
 }
 
 function backToTop() {
- window.scrollTo({ top: 0, behavior: 'smooth' })
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+let hoverTimer = null
+
+function handleMouseEnter() {
+  clearTimeout(hoverTimer)
+  dropdownOpen.value = true
+}
+
+function handleMouseLeave() {
+  hoverTimer = setTimeout(() => {
+    dropdownOpen.value = false
+  }, 150)
+}
+
+// Close dropdown when clicking outside
+function handleClickOutside(event) {
+  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
+    dropdownOpen.value = false
+  }
+}
+
+function toggleLanguage() {
+  setLocale(locale.value === 'id' ? 'en' : 'id')
+}
+
+// Restart typewriter when language changes
+watch(locale, () => startTyping())
+
 onMounted(() => {
- updateScrollY()
- window.addEventListener('scroll', updateScrollY, { passive: true })
-})
+  updateScrollY()
+  window.addEventListener('scroll', updateScrollY, { passive: true })
+  document.addEventListener('click', handleClickOutside)
+  startTyping()
+ // Animated stat counters
+ function animateCounter(el, target, suffix = '') {
+   const duration = 1800
+   const start = performance.now()
+   const update = (now) => {
+     const progress = Math.min((now - start) / duration, 1)
+     const ease = 1 - Math.pow(1 - progress, 3)
+     el.textContent = Math.round(ease * target).toLocaleString() + (progress > 0.5 ? suffix : '')
+     if (progress < 1) requestAnimationFrame(update)
+     else el.textContent = target.toLocaleString() + suffix
+   }
+   requestAnimationFrame(update)
+ }
+
+ const counterObserver = new IntersectionObserver((entries) => {
+   entries.forEach(entry => {
+     if (entry.isIntersecting) {
+       const counters = entry.target.querySelectorAll('.counter-value')
+       counters.forEach(el => {
+         const target = parseInt(el.dataset.target)
+         const suffix = el.dataset.suffix || ''
+         if (!isNaN(target)) animateCounter(el, target, suffix)
+       })
+       counterObserver.unobserve(entry.target)
+     }
+   })
+ }, { threshold: 0.3 })
+
+ const countSection = document.querySelector('.count-section')
+ if (countSection) counterObserver.observe(countSection)
+
+ // Staggered card reveal
+ const cardObserver = new IntersectionObserver((entries) => {
+   entries.forEach(entry => {
+     if (entry.isIntersecting) {
+       const cards = entry.target.querySelectorAll('.feat-card')
+       cards.forEach((card, i) => {
+         setTimeout(() => card.classList.add('visible'), i * 80)
+       })
+       cardObserver.unobserve(entry.target)
+     }
+   })
+ }, { threshold: 0.15 })
+
+ const cardGrid = document.querySelector('#features .grid.md\\:grid-cols-3')
+ if (cardGrid) cardObserver.observe(cardGrid)
+ })
 
 onUnmounted(() => {
- window.removeEventListener('scroll', updateScrollY)
+  window.removeEventListener('scroll', updateScrollY)
+  document.removeEventListener('click', handleClickOutside)
+  if (typeTimer) clearInterval(typeTimer)
 })
 
 const features = [
@@ -300,3 +518,137 @@ const features = [
  },
 ]
 </script>
+
+<style scoped>
+</style>
+
+<style>
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* 1. Animated gradient background */
+.animated-gradient-bg {
+  background: linear-gradient(135deg, #060f1e, #0a1628, #0d1f3c, #060f1e);
+  background-size: 400% 400%;
+  animation: gradShift 14s ease infinite;
+}
+
+@keyframes gradShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 2. Hero badge shimmer */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: rgba(232, 164, 74, 0.1);
+  border: 1px solid rgba(232, 164, 74, 0.35);
+  color: #fcd34d;
+  font-size: 13px;
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-badge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.18),
+    transparent
+  );
+  animation: shimmer 5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { left: -100%; }
+  60%  { left: 150%; }
+  100% { left: 150%; }
+}
+
+/* 3. Feature card stagger + hover */
+.feat-card {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.45s ease, transform 0.45s ease, border-color 0.2s, scale 0.2s;
+}
+
+.feat-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: calc(var(--stagger, 0) * 1ms);
+}
+
+.feat-card:hover {
+  transform: scale(1.025);
+  border-color: rgba(192, 219, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 4. Marquee — smooth seamless loop */
+.marquee-wrapper {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  gap: 0;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+.marquee-wrapper:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  white-space: nowrap;
+  color: rgba(253, 251, 240, 0.7);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-right: 3rem;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgba(253, 251, 240, 0.5);
+  flex-shrink: 0;
+}
+
+.dot.amber { background: #fbbf24; }
+.dot.green { background: #34d399; }
+
+/* 5. Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>

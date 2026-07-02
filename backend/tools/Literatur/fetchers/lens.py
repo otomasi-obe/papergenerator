@@ -9,6 +9,8 @@ from ..paper import Paper
 
 BASE = "https://api.lens.org/scholarly/search"
 
+log = logging.getLogger(__name__)
+
 
 def _parse(item: dict) -> Paper | None:
     title = item.get("title")

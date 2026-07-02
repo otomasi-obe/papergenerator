@@ -1025,12 +1025,21 @@ def _render_subsection(doc: Document, subsection: dict, json_path: Path, prefix:
 
 
 def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
-    section_keys = sorted(
-        [k for k in config.keys() if re.match(r"^section\d+$", k)],
-        key=lambda key: int(key.replace("section", "")),
-    )
-    for section_index, section_key in enumerate(section_keys, start=1):
-        section = config[section_key]
+    # Support both "sections" array and "section1/section2" legacy format
+    section_list = []
+    if "sections" in config and isinstance(config["sections"], list):
+        for idx, sec in enumerate(config["sections"], start=1):
+            if isinstance(sec, dict):
+                section_list.append((idx, sec))
+    else:
+        section_keys = sorted(
+            [k for k in config.keys() if re.match(r"^section\d+$", k)],
+            key=lambda key: int(key.replace("section", "")),
+        )
+        for idx, key in enumerate(section_keys, start=1):
+            section_list.append((idx, config[key]))
+
+    for section_index, section in section_list:
         section_title = str(section.get("title", "")).strip()
         if section_title:
             _add_section_heading(doc, section_index, section_title)
@@ -1054,12 +1063,66 @@ def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
                 )
 
 
+def _format_ref(item):
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item
+    if not isinstance(item, dict):
+        return str(item)
+    # Already has text
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    # Build from fields
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(f"{jname},")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]" if accessed else ""))
+    result = " ".join(parts).strip()
+    # Clean trailing comma
+    if result.endswith(","):
+        result = result[:-1] + "."
+    return result
+
+
 def _add_references(doc: Document, config: dict) -> None:
     ref_block = config.get("references") or config.get("section_references")
-    references: list = []
+    raw_entries = []
     if ref_block:
-        references = ref_block.get("content", [])
-    if not references:
+        if isinstance(ref_block, list):
+            raw_entries = ref_block
+        elif isinstance(ref_block, dict):
+            for key in ("content", "items", "references"):
+                candidate = ref_block.get(key)
+                if isinstance(candidate, list):
+                    raw_entries = candidate
+                    break
+    if not raw_entries:
         return
 
     heading = _para(doc, "icsm_heading1")
@@ -1069,19 +1132,8 @@ def _add_references(doc: Document, config: dict) -> None:
     run = heading.add_run("Daftar Pustaka")
     _set_run_format(run, bold=True, size_pt=10, font_name="Times New Roman", lang="en-US")
 
-    for index, ref in enumerate(references, start=1):
-        if isinstance(ref, dict):
-            ref_id = str(ref.get("id", index)).strip() or str(index)
-            ref_text = str(ref.get("text", "")).strip()
-        else:
-            ref_text = str(ref).strip()
-            match = re.match(r"^\s*\[(.+?)\]\s*(.*)", ref_text, re.DOTALL)
-            if match:
-                ref_id = match.group(1).strip()
-                ref_text = match.group(2).strip()
-            else:
-                ref_id = str(index)
-
+    for index, ref in enumerate(raw_entries, start=1):
+        ref_text = _format_ref(ref)
         p = _para(doc, "icsm_heading1")
         _sp0(p)
         _jc(p)
@@ -1089,7 +1141,7 @@ def _add_references(doc: Document, config: dict) -> None:
         _set_para_default_rpr(p, bold=False, lang="id-ID")
         _append_rich_text(
             p,
-            f"[{ref_id}] {ref_text}",
+            f"[{index}] {ref_text}",
             default_bold=False,
             default_italic=False,
             default_size_pt=10,

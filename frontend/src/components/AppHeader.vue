@@ -19,7 +19,7 @@
  <div class="flex items-center gap-2">
  <!-- Token quota bar -->
  <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
- <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @click="quotaOpen = !quotaOpen" @focus="quotaOpen = true" @keydown.escape.stop="quotaOpen = false">
+ <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @focus="quotaOpen = true" @blur="quotaOpen = false" @keydown.escape.stop="quotaOpen = false">
  <div class="w-24 h-2 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
  <div
  class="h-full transition-all"
@@ -32,7 +32,7 @@
  </span>
  </button>
  <!-- Tooltip: detail breakdown -->
- <div v-if="quotaOpen" role="dialog" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @keydown.escape.stop="quotaOpen = false">
+ <div v-if="quotaOpen" role="dialog" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @keydown.escape.stop="quotaOpen = false">
  <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Pemakaian token bulan {{ quota.month_key }}</div>
  <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
  <span>Hari ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
@@ -49,8 +49,16 @@
  </div>
  </div>
  <div v-else-if="quota.is_unlimited" class="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-[11px] font-medium text-amber-800 dark:text-amber-200">
- ∞ admin
+  ∞ admin
  </div>
+
+ <!-- Buy Token Package -->
+ <button
+   @click="$router.push('/tokens/purchase')"
+   class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-semibold transition-all hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
+ >
+   Beli Paket Token
+ </button>
 
  <!-- Job inbox bell -->
  <div class="bell-wrap relative" ref="bellRef">

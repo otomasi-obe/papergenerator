@@ -398,3 +398,27 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
   background: var(--bg-elev);
   color: var(--text-base);
 }
+
+/* ── Global button hover: nudge forward ── */
+button, .btn, [role="button"] {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+button:hover:not(:disabled), .btn:hover:not(:disabled), [role="button"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(21, 36, 49, 0.12);
+}
+
+button:active:not(:disabled), .btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button, .btn, [role="button"] {
+    transition: none;
+  }
+  button:hover, .btn:hover, [role="button"]:hover {
+    transform: none;
+  }
+}

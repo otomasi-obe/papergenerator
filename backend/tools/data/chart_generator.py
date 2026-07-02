@@ -510,9 +510,10 @@ def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=Non
             from utils.core.storage_helper import get_user_dir
             charts_base = get_user_dir(int(user_id), "charts")
         except Exception:
-            charts_base = Path(os.path.join(os.path.dirname(__file__), "..", "..", "data", "charts"))
+            # backend/tools/data/chart_generator.py → backend/data/charts
+            charts_base = Path(__file__).resolve().parent.parent.parent / "data" / "charts"
     else:
-        charts_base = Path(os.path.join(os.path.dirname(__file__), "..", "..", "data", "charts"))
+        charts_base = Path(__file__).resolve().parent.parent.parent / "data" / "charts"
     out_dir = charts_base / safe_paper_id
     os.makedirs(out_dir, exist_ok=True)
 

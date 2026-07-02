@@ -52,7 +52,13 @@ api.interceptors.response.use(
 
     if (status === 401) {
       try { localStorage.removeItem('pg_user') } catch {}
-      if (!window.location.pathname.startsWith('/login')) {
+      
+      // Skip redirect for public routes
+      const publicPaths = ['/', '/login', '/auth/callback', '/terms', '/refund', '/faq', '/contact']
+      const currentPath = window.location.pathname
+      const isPublicRoute = publicPaths.includes(currentPath)
+      
+      if (!isPublicRoute && !currentPath.startsWith('/login')) {
         window.location.href = '/login'
       }
     }

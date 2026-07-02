@@ -31,11 +31,12 @@ log = logging.getLogger(__name__)
 MIN_FETCH_TARGET = 1000
 
 
-def _paper_record(idx: int, p: Paper, rank: int | None = None, score_total: float | None = None) -> dict:
+def _paper_record(idx: int, p: Paper, original_rank: int | None = None, new_rank: int | None = None, review: str = "", relevance_score: float | None = None) -> dict:
     """Build paper record dict for frontend/save."""
     return {
         "id": idx,
-        "rank": rank,  # AI rank position (1 = paling relevan)
+        "original_rank": original_rank or idx + 1,  # 1-based index in pre-AI list
+        "new_rank": new_rank or idx + 1,             # 1-based index in post-AI list
         "title": p.title,
         "authors": p.authors,
         "doi": p.doi,
@@ -47,8 +48,10 @@ def _paper_record(idx: int, p: Paper, rank: int | None = None, score_total: floa
         "publisher": p.publisher,
         "citations": p.citations,
         "abstract": p.abstract,
+        "review": review or (getattr(p, "review", None) or ""),
+        "relevance_score": round(relevance_score, 4) if relevance_score else round(getattr(p, "relevance_score", 0) or 0, 4),
         "db_score": round(p.db_score, 4) if p.db_score else None,
-        "score_total": round(score_total, 4) if score_total else None,
+        "score_total": round(relevance_score, 4) if relevance_score else round(getattr(p, "relevance_score", 0) or 0, 4),
         "is_open_access": p.is_open_access,
         "publisher_info": {
             "publisher": p.publisher,
@@ -580,7 +583,8 @@ def run(
     if save_cb:
         records_phase1 = [
             _paper_record(i, p,
-                          score_total=(
+                          original_rank=i + 1,
+                          relevance_score=(
                               ml_scored.get((p.title or "").lower()).score_total
                               if ml_scored.get((p.title or "").lower()) else None
                           ))
@@ -615,20 +619,27 @@ def run(
     if progress_cb:
         progress_cb("displaying_final", {"count": min(len(papers), top_k)})
 
-    # Build final records dengan AI rank position
+    # Build final records: track original rank (pre-AI) and new rank (post-AI)
     all_records = []
-    ai_rank_map = {}
+    ai_rank_map = {}  # title → new rank
     if reordered:
-        # Build rank lookup: paper title → AI rank position
         for rank_pos, p in enumerate(papers, 1):
             key = (p.title or "").lower()
             ai_rank_map[key] = rank_pos
 
     for i, p in enumerate(papers):
-        rank = ai_rank_map.get((p.title or "").lower())
-        sp = ml_scored.get((p.title or "").lower())
-        st = sp.score_total if sp else None
-        all_records.append(_paper_record(i, p, rank=rank, score_total=st))
+        title_key = (p.title or "").lower()
+        new_rank = ai_rank_map.get(title_key)
+        sp = ml_scored.get(title_key)
+        ml_score = sp.score_total if sp else None
+        review = getattr(p, "review", None) or ""
+        all_records.append(_paper_record(
+            i, p,
+            original_rank=i + 1,
+            new_rank=new_rank,
+            review=review,
+            relevance_score=ml_score,
+        ))
 
     top_k_records = all_records[:top_k]
 

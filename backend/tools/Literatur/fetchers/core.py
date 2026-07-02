@@ -10,11 +10,12 @@ from dotenv import load_dotenv
 from ..http_client import RateLimiter, fetch_post_json, env_required
 from ..paper import Paper
 
-_ENV_PATH = Path(__file__).resolve().parent.parent.parent.parent / ".env.literature"
+_ENV_PATH = Path(__file__).resolve().parents[4] / ".env"
 load_dotenv(_ENV_PATH, override=False)
 
 BASE = "https://api.core.ac.uk/v3/search/works"
-CORE_API_KEY = "m0BnoSbYf6sQWgAOU8F1hR7auEycCTtM"
+
+log = logging.getLogger(__name__)
 
 
 def _parse(item: dict) -> Paper | None:
@@ -53,8 +54,16 @@ def _parse(item: dict) -> Paper | None:
     if isinstance(pdf_url, list):
         pdf_url = pdf_url[0] if pdf_url else None
     
-    # Landing page
-    url = item.get("urls", [None])[0] if item.get("urls") else None
+    # Landing page — CORE v3 uses "links" array with type/url
+    url = None
+    links = item.get("links", [])
+    if isinstance(links, list):
+        for link in links:
+            if isinstance(link, dict) and link.get("type") == "display":
+                url = link.get("url")
+                break
+    if not url:
+        url = item.get("urls", [None])[0] if item.get("urls") else None
     if not url and doi:
         url = f"https://doi.org/{doi}"
 
@@ -97,10 +106,9 @@ def _parse(item: dict) -> Paper | None:
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    api_key = os.getenv("CORE_API_KEY") or CORE_API_KEY
-    if not api_key:
-        env_required(log, "CORE_API_KEY", "core")
+    if not env_required(log, "CORE_API_KEY", "core"):
         return
+    api_key = os.getenv("CORE_API_KEY")
     
     rl = RateLimiter(1.0)  # Conservative rate limiting
     fetched = 0
@@ -124,7 +132,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             if "type" in filters:
                 body["type"] = filters["type"]
         
-        headers = {"Authorization": f"Bearer {api_key}"}
+        headers = {"Authorization": f"Bearer {api_key}", "User-Agent": "Hermes/1.0 (research)", "Accept": "application/json"}
         data = fetch_post_json(client, BASE, json_body=body, headers=headers)
         
         if not data:

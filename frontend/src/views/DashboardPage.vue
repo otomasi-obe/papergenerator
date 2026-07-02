@@ -99,13 +99,13 @@
 
  <!-- Tour Guide overlay -->
  <TourGuide
- :active="showTour"
- :steps="tourSteps"
- @finish="onTourFinish"
- @skip="onTourFinish"
- />
- </div>
-</template>
+   :active="showTour"
+   :steps="tourSteps"
+   @finish="onTourFinish"
+   @skip="onTourFinish"
+   />
+   </div>
+   </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
@@ -254,6 +254,11 @@ function formatDate(iso) {
  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
  if (diff < 86400000 * 7) return `${Math.floor(diff / 86400000)}d ago`
  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Token Purchase
+function goToTokenPurchase() {
+ router.push('/tokens/purchase')
 }
 
 onMounted(async () => {

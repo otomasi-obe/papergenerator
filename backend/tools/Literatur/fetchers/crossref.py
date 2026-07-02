@@ -9,6 +9,7 @@ Both expose: search(client, query, limit, filters) -> Iterable[Paper]
 
 import logging
 import os
+import re
 from typing import Iterable
 
 from ..http_client import RateLimiter, fetch_json, get_random_ua, strip_html
@@ -37,22 +38,38 @@ SSRN_PREFIX = "10.2139"
 SELECT_FIELDS = (
     "DOI,title,author,member,container-title,published-print,"
     "published-online,issued,created,type,URL,link,license,"
-    "abstract,is-referenced-by-count,publisher"
+    "abstract,is-referenced-by-count,publisher,page,reference"
 )
 
-
 # ─── Shared helpers ──────────────────────────────────────────────────────
+
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_jats_tags(text: str) -> str:
+    """Remove JATS/HTML markup from CrossRef abstract text.
+
+    CrossRef often returns abstracts wrapped in JATS XML tags such as
+    ``<jats:p>`` or ``<jats:title>``.
+    """
+    return _TAG_RE.sub("", text).strip()
+
 
 def _clean(text) -> str | None:
     if isinstance(text, list):
         text = " ".join(t for t in text if t)
     if not text:
         return None
-    return strip_html(str(text)) or None
+    text = strip_html(str(text)) or None
+    # If it still has JATS tags after strip_html, try harder
+    if text and "<jats:" in text:
+        text = _strip_jats_tags(text) or None
+    return text
 
 
 def _get_year(item: dict) -> int | None:
-    for dk in ("published-print", "published-online", "issued", "created"):
+    """Extract year with priority: published-print > published-online > published > issued > created."""
+    for dk in ("published-print", "published-online", "published", "issued", "created"):
         dp = (item.get(dk) or {}).get("date-parts")
         if dp and dp[0] and dp[0][0]:
             try:
@@ -74,11 +91,17 @@ def _get_authors(item: dict) -> list[str]:
 
 
 def _get_pdf_url(item: dict) -> tuple[str | None, bool]:
-    """Return (url_or_landing, is_pdf) — PDF URL if found, landing URL otherwise."""
+    """Return (url_or_landing, is_pdf).
+
+    Checks both content-type AND URL ending for robust PDF detection.
+    """
     for link in item.get("link", []) or []:
         ct = (link.get("content-type") or "").lower()
-        url = link.get("URL")
-        if url and ("pdf" in ct or url.lower().endswith(".pdf")):
+        url = link.get("URL", "").strip()
+        if not url:
+            continue
+        is_pdf = ("pdf" in ct or url.lower().endswith(".pdf"))
+        if is_pdf:
             return url, True
 
     doi = item.get("DOI")
@@ -88,25 +111,62 @@ def _get_pdf_url(item: dict) -> tuple[str | None, bool]:
     return item.get("URL"), False
 
 
+# CrossRef type → venue_type mapping (more granular than before)
+_CROSSREF_TYPE_MAP = {
+    "journal-article": "journal",
+    "proceedings-article": "conference",
+    "book": "book",
+    "book-chapter": "book-chapter",
+    "monograph": "book",
+    "edited-book": "book",
+    "book-section": "book-chapter",
+    "book-part": "book-chapter",
+    "reference-book": "book",
+    "posted-content": "preprint",
+    "dissertation": "dissertation",
+    "report": "report",
+    "dataset": "dataset",
+    "peer-review": "peer-review",
+    "standard": "standard",
+    "component": "component",
+}
+
+
 def _detect_venue_type(item: dict) -> str | None:
-    ctype = item.get("type", "")
-    if "journal" in ctype:
-        return "journal"
-    if "proceedings" in ctype or "conference" in ctype:
-        return "conference"
-    if "book" in ctype:
-        return "book"
-    if "posted-content" in ctype:
-        return "preprint"
-    return None
+    """Map CrossRef type to venue_type using comprehensive mapping."""
+    ctype = (item.get("type") or "").strip().lower()
+    return _CROSSREF_TYPE_MAP.get(ctype)
 
 
 def _detect_oa(item: dict) -> bool | None:
+    """Detect open access from license URLs (creativecommons)."""
     if item.get("license"):
         for lic in item["license"]:
             if "creativecommons" in (lic.get("URL") or "").lower():
                 return True
     return None
+
+
+def _parse_page_range(item: dict) -> str | None:
+    """Extract page range from the 'page' field."""
+    page = (item.get("page") or "").strip()
+    return page or None
+
+
+def _parse_references(item: dict) -> list[str]:
+    """Extract cited DOIs from a CrossRef work record.
+
+    Only reference entries that carry a DOI field are included.
+    """
+    raw_refs = item.get("reference") or []
+    result = []
+    for entry in raw_refs:
+        if not isinstance(entry, dict):
+            continue
+        doi = (entry.get("DOI") or "").strip()
+        if doi:
+            result.append(doi)
+    return result
 
 
 def _get_unpaywall_resolver():
@@ -135,6 +195,11 @@ def _parse_item_general(item: dict) -> Paper | None:
         url = raw_url or None
     if not url and doi:
         url = f"https://doi.org/{doi}"
+
+    # Parse references and log count
+    refs = _parse_references(item)
+    if refs:
+        log.debug("Crossref: paper %s has %d references", doi, len(refs))
 
     return Paper(
         source="crossref",
@@ -176,7 +241,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "sort": "relevance",
             "order": "desc",
             "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
-            "select": "DOI,title,author,issued,container-title,abstract,type,publisher,URL,is-referenced-by-count",
+            "select": "DOI,title,author,issued,container-title,abstract,type,publisher,URL,is-referenced-by-count,page,reference",
         }
         if filter_parts:
             params["filter"] = ",".join(filter_parts)
@@ -229,6 +294,11 @@ def _parse_item_publisher(item: dict, source_override: str | None = None) -> Pap
     landing_url = item.get("URL") or (doi and f"https://doi.org/{doi}")
     if not _is_pdf:
         pdf_url = None
+
+    # Parse references and log count
+    refs = _parse_references(item)
+    if refs:
+        log.debug("Crossref: paper %s has %d references", doi, len(refs))
 
     return Paper(
         source=source,

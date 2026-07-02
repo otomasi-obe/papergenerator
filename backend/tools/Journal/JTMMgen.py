@@ -55,6 +55,56 @@ class RenderState:
     equation_number: int = 0
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _set_para_style(paragraph, style_name: str) -> None:
     ppr = paragraph._p.get_or_add_pPr()
     pstyle = ppr.find(qn("w:pStyle"))
@@ -816,17 +866,27 @@ def _subsection_keys(section: dict, prefix: str) -> list[str]:
 
 
 def _render_sections(doc: Document, config: dict, json_path: Path, state: RenderState) -> None:
-    section_keys = sorted(
-        [key for key in config if re.fullmatch(r"section\d+", key)],
-        key=lambda key: int(key[7:]),
-    )
-    if not section_keys:
+    # Support both "sections" array and "section1/section2" legacy format
+    section_list = []
+    
+    if "sections" in config and isinstance(config["sections"], list):
+        for idx, sec in enumerate(config["sections"], start=1):
+            if isinstance(sec, dict):
+                section_list.append((f"section{idx}", sec))
+    else:
+        section_keys = sorted(
+            [key for key in config if re.fullmatch(r"section\d+", key)],
+            key=lambda key: int(key[7:]),
+        )
+        for key in section_keys:
+            section_list.append((key, config.get(key, {})))
+
+    if not section_list:
         _add_section_heading(doc, "1", "Pendahuluan")
         _add_body_text(doc, _placeholder_text("isi utama manuskrip"), first_in_group=True)
         return
 
-    for section_index, section_key in enumerate(section_keys, start=1):
-        section = config.get(section_key, {})
+    for section_index, (section_key, section) in enumerate(section_list, start=1):
         if not isinstance(section, dict):
             continue
         title = str(section.get("title", "")).strip() or _placeholder_text(f"judul {section_key}")
@@ -856,12 +916,24 @@ def _add_references(doc: Document, config: dict) -> None:
     references = config.get("references", {})
     title = "REFERENCES"
     content = []
+    
+    # Count sections for numbering
+    num_sections = len([key for key in config if re.fullmatch(r"section\d+", key)])
+    if "sections" in config and isinstance(config["sections"], list):
+        num_sections = len(config["sections"])
+    ref_section_num = str(num_sections + 1)
+    
     if isinstance(references, dict):
         title = str(references.get("title", title)).strip() or title
-        content = references.get("content", [])
-    _add_section_heading(
-        doc, str(len([key for key in config if re.fullmatch(r"section\d+", key)]) + 1), title
-    )
+        content = references.get("content") or references.get("items") or []
+        # Also handle "items" key
+        if not content and "items" in references:
+            content = references["items"]
+    elif isinstance(references, list):
+        # Format: ["ref1", "ref2", ...] or [{"text": "..."}, ...]
+        content = references
+    
+    _add_section_heading(doc, ref_section_num, title)
 
     items = []
     if isinstance(content, list):
@@ -872,7 +944,7 @@ def _add_references(doc: Document, config: dict) -> None:
     for index, item in enumerate(items, start=1):
         text = ""
         if isinstance(item, dict):
-            text = str(item.get("text") or item.get("Text") or "").strip()
+            text = str_format_reference(item)
         else:
             text = str(item).strip()
         text = _clean_reference_text(text) or _placeholder_text(f"referensi {index}")

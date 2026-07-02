@@ -15,7 +15,6 @@ log = logging.getLogger(__name__)
 _MAX_TITLE_LEN = 200
 _MAX_ABSTRACT_LEN = 500
 
-
 def _sanitize_lit_text(txt: str | None, max_len: int = 500) -> str:
     """Clean and truncate a literature text field."""
     if not txt:

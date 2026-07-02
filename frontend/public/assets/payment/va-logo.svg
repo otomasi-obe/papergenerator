@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <style>.bg{fill:#1A3A5C;}.text{fill:#fff;font-family:Arial,sans-serif;font-size:48px;font-weight:700;}</style>
+  </defs>
+  <rect class="bg" width="120" height="120" rx="16"/>
+  <text class="text" x="60" y="75" text-anchor="middle">VA</text>
+</svg>

@@ -1,0 +1,9 @@
+{
+  "version": "1.0.4",
+  "released": "2026-07-02",
+  "title": "Update v1.0.4",
+  "changes": [
+    { "type": "improvement", "text": "Peningkatan tampilan dan sistem" },
+    { "type": "fix", "text": "Perbaikan bug pada sistem" }
+  ]
+}

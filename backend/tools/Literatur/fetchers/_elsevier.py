@@ -15,15 +15,14 @@ from ..paper import Paper
 
 log = logging.getLogger(__name__)
 
-ELSEVIER_API_KEY = "8d60fa37d8a11e09ab1992f8ed87f1b0"
-
 BASE = "https://api.elsevier.com/content"
 
 
 def _get_headers() -> dict:
     headers = {
-        "X-ELS-APIKey": os.getenv("ELSEVIER_API_KEY") or ELSEVIER_API_KEY,
+        "X-ELS-APIKey": os.getenv("ELSEVIER_API_KEY", ""),
         "Accept": "application/json",
+        "User-Agent": "Hermes/1.0 (research; mailto:contact@vokamedia.id)",
     }
     inst_token = os.getenv("ELSEVIER_INST_TOKEN", "")
     if inst_token:
@@ -32,7 +31,8 @@ def _get_headers() -> dict:
 
 
 def elsevier_enabled() -> bool:
-    return bool(os.getenv("ELSEVIER_API_KEY") or ELSEVIER_API_KEY)
+    from ..http_client import env_required
+    return env_required(log, "ELSEVIER_API_KEY", "elsevier")
 
 
 def fetch_paginated(

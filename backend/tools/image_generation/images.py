@@ -328,7 +328,7 @@ def get_paper_image(paper_id: str, filename: str):
         user_id = uid
     else:
         user_id = None
-        # Try query-string JWT first, fall back to cookie/Bearer
+        # Try query-string JWT first
         token_qs = request.args.get("t")
         if token_qs and "Authorization" not in request.headers:
             try:
@@ -337,6 +337,16 @@ def get_paper_image(paper_id: str, filename: str):
                 user_id = int(decoded.get("sub"))
             except Exception:
                 pass
+        # Fallback: read JWT from httpOnly cookie (EventSource sends it automatically)
+        if user_id is None:
+            cookie_token = request.cookies.get('access_token_cookie')
+            if cookie_token:
+                try:
+                    from flask_jwt_extended import decode_token
+                    decoded = decode_token(cookie_token)
+                    user_id = int(decoded.get("sub"))
+                except Exception:
+                    pass
         if user_id is None:
             try:
                 verify_jwt_in_request()

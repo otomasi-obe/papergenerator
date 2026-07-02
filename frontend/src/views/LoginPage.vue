@@ -78,7 +78,7 @@
  />
  </div>
  <button type="submit" :disabled="submitting"
- class="w-full px-6 py-3.5 bg-cream-50 hover:bg-cream-100 text-navy-800 rounded-xl font-semibold transition text-sm disabled:opacity-50 active:scale-95 shadow-lg">
+ class="w-full px-6 py-3.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white rounded-xl font-semibold transition text-sm disabled:opacity-50 active:scale-95 shadow-lg shadow-amber-500/25 border border-amber-400/30">
  {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
  </button>
  </form>

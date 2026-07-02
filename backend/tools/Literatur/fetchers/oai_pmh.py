@@ -138,5 +138,61 @@ def search_doab(client, query: str, limit: int = 25, filters: dict | None = None
 
 
 def search_oapen(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    """OAPEN Library — monograf Open Access, kuat di humanities & social science."""
-    return search_oai(client, "oapen", OAPEN_OAI, query, limit)
+    """OAPEN Library via REST API (not OAI-PMH — too slow).
+
+    Searches DSpace REST API, returns only items with a name (title).
+    Note: metadata is sparse without expand; only title + handle available from search.
+    """
+    from ..http_client import RateLimiter, fetch_json
+    rl = RateLimiter(0.5)
+    fetched = 0
+    offset = 0
+    per_page = min(limit, 100)
+
+    while fetched < limit:
+        rl.wait()
+        data = fetch_json(client, "https://library.oapen.org/rest/search", params={
+            "query": query,
+            "size": min(per_page, limit - fetched),
+            "offset": offset,
+        })
+        if not data or not isinstance(data, list):
+            return
+
+        items_with_name = [item for item in data if item.get("name")]
+        if not items_with_name and not data:
+            return
+
+        for item in data:
+            name = item.get("name")
+            if not name:
+                continue
+            handle = item.get("handle", "")
+            uuid = item.get("uuid", "")
+            landing = f"https://library.oapen.org/handle/{handle}" if handle else None
+
+            from ..paper import Paper
+            paper = Paper(
+                source="oapen",
+                source_id=uuid,
+                title=name,
+                authors=[],
+                abstract=None,
+                year=None,
+                venue=None,
+                venue_type="book",
+                doi=None,
+                url=landing,
+                pdf_url=landing,
+                is_open_access=True,
+                type="book",
+                publisher="OAPEN",
+            )
+            yield paper
+            fetched += 1
+            if fetched >= limit:
+                return
+
+        if len(data) < per_page:
+            return
+        offset += len(data)

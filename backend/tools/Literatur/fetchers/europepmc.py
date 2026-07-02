@@ -96,8 +96,6 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "format": "json",
             "pageSize": min(per_page, limit - fetched),
             "cursorMark": cursor,
-            "resultType": "core",
-            "sort": "P_RELEVANCE desc",
         }
         data = fetch_json(client, BASE, params=params)
         if not data:

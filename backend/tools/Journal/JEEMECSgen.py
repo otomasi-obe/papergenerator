@@ -80,6 +80,56 @@ _DRAWING_ID_NEXT = 1
 _DOC_PR_PATTERN = re.compile(r'<wp:docPr\b[^>]*\bid="(\d+)"')
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _iter_body_blocks(parent: _DocumentType | _Cell):
     parent_elm = parent._element.body if isinstance(parent, _DocumentType) else parent._tc
     for child in parent_elm.iterchildren():
@@ -848,13 +898,13 @@ def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
 
 def _add_references(doc: Document, config: dict) -> None:
     references = config.get("references", {})
-    items = references.get("content", []) if isinstance(references, dict) else []
+    items = (references.get("content") or references.get("items") or []) if isinstance(references, dict) else references
     if not items:
         return
 
     heading = _new_styled_paragraph(doc, "Heading5", align=WD_ALIGN_PARAGRAPH.CENTER)
     _append_run(
-        heading, str(references.get("title", "References")).strip() or "References", bold=True
+        heading, str(references.get("title", "References")).strip() if isinstance(references, dict) else "References", bold=True
     )
 
     for item in items:

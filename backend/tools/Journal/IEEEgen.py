@@ -57,6 +57,56 @@ XSL_CANDIDATES = [
 _XSLT = None
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _strict_to_trans(data: bytes) -> bytes:
     for old, new in NS_MAP.items():
         data = data.replace(old, new)
@@ -64,8 +114,15 @@ def _strict_to_trans(data: bytes) -> bytes:
 
 
 def _inject_template_styles(doc: Document, template_path: Path) -> None:
-    with zipfile.ZipFile(template_path) as archive:
-        raw = archive.read("word/styles.xml")
+    if not template_path.exists():
+        return
+    try:
+        with zipfile.ZipFile(template_path) as archive:
+            if "word/styles.xml" not in archive.namelist():
+                return
+            raw = archive.read("word/styles.xml")
+    except (zipfile.BadZipFile, KeyError):
+        return
     tmpl_styles = etree.fromstring(_strict_to_trans(raw))
     cur = doc.part.styles._element
     for child in list(cur):
@@ -1321,14 +1378,22 @@ def _add_references(doc: Document, config: dict):
     if "references" in config:
         ref_data = config["references"]
         if isinstance(ref_data, dict):
-            references = ref_data.get("content", [])
+            for _rk in ("content", "items"):
+                _rc = ref_data.get(_rk)
+                if isinstance(_rc, list):
+                    references = _rc
+                    break
         elif isinstance(ref_data, list):
             references = ref_data
     # Also try section_references key
     elif "section_references" in config:
         ref_data = config["section_references"]
         if isinstance(ref_data, dict):
-            references = ref_data.get("content", [])
+            for _rk in ("content", "items"):
+                _rc = ref_data.get(_rk)
+                if isinstance(_rc, list):
+                    references = _rc
+                    break
         elif isinstance(ref_data, list):
             references = ref_data
     # If not found, try legacy sections format

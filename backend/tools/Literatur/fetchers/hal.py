@@ -131,7 +131,7 @@ def _parse(doc: dict) -> Paper | None:
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search HAL open archives. No API key required."""
     rl = RateLimiter(0.4)
-    per_page = min(limit, 50)
+    per_page = min(limit, 100)  # HAL supports up to 200; 100 for safety
     fetched = 0
     start = 0
 
@@ -145,7 +145,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "start": start,
             "wt": "json",
             "fl": fields,
-            "sort": "relevance desc",
+            "sort": "score desc",
         }
         if filters:
             if filters.get("year_from"):

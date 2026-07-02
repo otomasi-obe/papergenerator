@@ -85,22 +85,71 @@ def _add_keywords(doc: Document, config: dict):
     append_rich_text(p, ", ".join(keywords))
 
 
+def _format_ref(item):
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item
+    if not isinstance(item, dict):
+        return str(item)
+    # Already has text
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    # Build from fields
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(f"{jname},")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]" if accessed else ""))
+    result = " ".join(parts).strip()
+    # Clean trailing comma
+    if result.endswith(","):
+        result = result[:-1] + "."
+    return result
+
 def _add_references(doc: Document, config: dict):
     references = config.get("references", [])
-    if isinstance(references, dict):
-        references = references.get("content", [])
-    if not references:
+    raw_entries = []
+    if isinstance(references, list):
+        raw_entries = references
+    elif isinstance(references, dict):
+        for key in ("content", "items", "references"):
+            candidate = references.get(key)
+            if isinstance(candidate, list):
+                raw_entries = candidate
+                break
+    if not raw_entries:
         return
     
     h = para(doc, style_id="Heading1")
     h.add_run("REFERENCES")
     
-    for idx, ref in enumerate(references, start=1):
-        if isinstance(ref, dict):
-            ref_text = ref.get("text", "")
-        else:
-            ref_text = str(ref)
-        
+    for idx, ref in enumerate(raw_entries, start=1):
+        ref_text = _format_ref(ref)
         if ref_text:
             p = para(doc, style_id="Reference")
             append_rich_text(p, f"[{idx}] {ref_text}")

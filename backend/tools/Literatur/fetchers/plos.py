@@ -88,8 +88,11 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     fetched = 0
     start = 0
 
-    # Restrict to actual articles (exclude corrections, issue images)
-    q = f'everything:"{query}" AND doc_type:full AND !article_type:"Issue Image"'
+    # Simplified query — avoid doc_type:full which can cause empty results
+    # Use q=everything:"..." for broad search across all fields
+    terms = query.strip()
+    # If multi-word, quote to boost phrase relevance but allow partial matches
+    q = f'everything:({terms}) AND !article_type:"Issue Image" AND !article_type:"Correction"'
 
     while fetched < limit:
         rl.wait()

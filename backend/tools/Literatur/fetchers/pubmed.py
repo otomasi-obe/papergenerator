@@ -6,7 +6,7 @@ Set NCBI_API_KEY for 10 req/sec, otherwise limited to 3 req/sec.
 
 import logging
 import os
-import time
+import re
 from typing import Iterable
 from defusedxml import ElementTree as ET
 
@@ -16,9 +16,139 @@ from ..paper import Paper
 ESEARCH_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 EFETCH_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 
+# PublicationType rules — checked in order, first match wins
+_PAPER_TYPE_RULES = [
+    ("congress", "inproceedings"),
+    ("academic dissertation", "dissertation"),
+    ("technical report", "technical-report"),
+    ("preprint", "preprint"),
+    ("systematic review", "systematic-review"),
+    ("meta-analysis", "meta-analysis"),
+    ("review", "review"),
+    ("journal article", "journal-article"),
+]
+
+# Retraction / correction detection
+_RETRACTION_RE = re.compile(r"retract|correct", re.IGNORECASE)
+
+
+def _normalize_month(month: str) -> str:
+    """Normalize month string (number or name) to two-digit string."""
+    _month_map = {
+        "jan": "01", "feb": "02", "mar": "03", "apr": "04",
+        "may": "05", "jun": "06", "jul": "07", "aug": "08",
+        "sep": "09", "oct": "10", "nov": "11", "dec": "12",
+    }
+    lowered = month.lower()[:3]
+    if lowered in _month_map:
+        return _month_map[lowered]
+    try:
+        return f"{int(month):02d}"
+    except ValueError:
+        return "01"
+
+
+def _parse_date_element(el) -> int | None:
+    """Parse year from XML date element (Year/Month/Day). Returns year int or None."""
+    year_text = (el.findtext("Year") or "").strip()
+    if not year_text:
+        return None
+    try:
+        return int(year_text)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_pub_date(article, medline) -> int | None:
+    """Resolve publication year. Prefers ArticleDate (electronic) over PubDate (print)."""
+    article_date = article.find("ArticleDate")
+    if article_date is not None:
+        year = _parse_date_element(article_date)
+        if year is not None:
+            return year
+    pub_date = medline.find(".//PubDate")
+    if pub_date is not None:
+        return _parse_date_element(pub_date)
+    return None
+
+
+def _parse_keywords_and_subjects(article_el) -> tuple[list[str], list[str]]:
+    """Extract keywords (KeywordList + MeSH non-major) and subjects (MeSH MajorTopic).
+
+    Returns (keywords, subjects) where:
+    - keywords: from <Keyword> elements + DescriptorName where MajorTopicYN != 'Y'
+    - subjects: from DescriptorName where MajorTopicYN == 'Y'
+    """
+    keywords: list[str] = []
+    seen_kw: set[str] = set()
+    for kw_el in article_el.findall(".//Keyword"):
+        kw = (kw_el.text or "").strip()
+        if kw and kw not in seen_kw:
+            seen_kw.add(kw)
+            keywords.append(kw)
+    for mh_el in article_el.findall(".//MeshHeading/DescriptorName"):
+        if mh_el.get("MajorTopicYN") != "Y":
+            kw = (mh_el.text or "").strip()
+            if kw and kw not in seen_kw:
+                seen_kw.add(kw)
+                keywords.append(kw)
+    subjects: list[str] = []
+    seen_subj: set[str] = set()
+    for mh_el in article_el.findall(".//MeshHeading/DescriptorName"):
+        if mh_el.get("MajorTopicYN") == "Y":
+            descriptor = (mh_el.text or "").strip()
+            if descriptor and descriptor not in seen_subj:
+                seen_subj.add(descriptor)
+                subjects.append(descriptor)
+    return keywords, subjects
+
+
+def _parse_paper_type(article) -> tuple[str, bool]:
+    """Detect paper type and retraction status from PublicationTypeList.
+
+    Returns (type, is_retracted).
+    """
+    pub_type_texts = [
+        (pt_el.text or "").strip().lower()
+        for pt_el in article.findall(".//PublicationTypeList/PublicationType")
+        if pt_el.text
+    ]
+    paper_type = "journal-article"  # default
+    for rule_key, rule_val in _PAPER_TYPE_RULES:
+        if any(rule_key in pt for pt in pub_type_texts):
+            paper_type = rule_val
+            break
+    is_retracted = bool(_RETRACTION_RE.search(" ".join(pub_type_texts)))
+    return paper_type, is_retracted
+
+
+def _parse_funders(article_el) -> list[str]:
+    """Extract funder/agency names from GrantList."""
+    funders: list[str] = []
+    seen: set[str] = set()
+    for grant_el in article_el.findall(".//GrantList/Grant"):
+        agency = (grant_el.findtext("Agency") or "").strip()
+        if agency and agency not in seen:
+            seen.add(agency)
+            funders.append(agency)
+    return funders
+
+
+def _parse_affiliations(article) -> list[str]:
+    """Extract all unique author affiliations from Article element."""
+    affs: list[str] = []
+    seen: set[str] = set()
+    for author_el in article.findall(".//AuthorList/Author"):
+        for aff_el in author_el.findall(".//AffiliationInfo/Affiliation"):
+            aff = (aff_el.text or "").strip()
+            if aff and aff not in seen:
+                seen.add(aff)
+                affs.append(aff)
+    return affs
+
 
 def _parse_article(article) -> Paper | None:
-    """Parse PubmedArticle XML element"""
+    """Parse PubmedArticle XML element into a Paper."""
     medline = article.find(".//MedlineCitation")
     if medline is None:
         return None
@@ -58,14 +188,8 @@ def _parse_article(article) -> Paper | None:
             abstract_parts.append(full)
     abstract = " ".join(abstract_parts) if abstract_parts else None
 
-    # Year
-    year = None
-    pub_date = article_elem.find(".//Journal/JournalIssue/PubDate/Year")
-    if pub_date is not None:
-        try:
-            year = int(pub_date.text)
-        except (ValueError, TypeError):
-            pass
+    # Year — prefer ArticleDate (electronic) over PubDate (print)
+    year = _parse_pub_date(article_elem, medline)
 
     # Venue
     journal = article_elem.find(".//Journal/Title")
@@ -81,6 +205,22 @@ def _parse_article(article) -> Paper | None:
                 doi = aid.text
             elif aid.get("IdType") == "pmc":
                 pmc_id = aid.text
+
+    # Language
+    lang_elem = article_elem.find(".//Language")
+    language = lang_elem.text.strip() if lang_elem is not None and lang_elem.text else None
+
+    # Paper type and retraction detection
+    paper_type, is_retracted = _parse_paper_type(article_elem)
+
+    # Keywords and MeSH subjects
+    keywords, subjects = _parse_keywords_and_subjects(article)
+
+    # Funders
+    funders = _parse_funders(article)
+
+    # Author affiliations
+    affiliations = _parse_affiliations(article_elem)
 
     # Build landing page URL
     landing_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None
@@ -105,8 +245,14 @@ def _parse_article(article) -> Paper | None:
         url=landing_url,
         pdf_url=pdf_url,
         is_open_access=bool(pmc_id),  # PMC articles are open access
-        type="journal-article",
+        type=paper_type,
         publisher="NLM",
+        keywords=keywords,
+        subjects=subjects if subjects else None,
+        affiliations=affiliations if affiliations else None,
+        language=language,
+        is_retracted=is_retracted,
+        funders=funders,
     )
 
 

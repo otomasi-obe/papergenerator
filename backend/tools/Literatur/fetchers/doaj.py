@@ -1,35 +1,32 @@
-"""Fetcher untuk DOAJ - Directory of Open Access Journals.
+"""Fetcher untuk DOAJ — Directory of Open Access Journals.
 
-https://doaj.org/api/docs
-
-Keyless public API. Returns peer-reviewed open-access journal articles.
-Endpoint: https://doaj.org/api/search/articles/{query}?page=N&pageSize=M
-All DOAJ articles are open access by definition.
+REST API v3: https://doaj.org/api/v3/search/articles/{query}
+Keyless. Returns OA journal articles only.
 """
 
 import logging
 from typing import Iterable
 from urllib.parse import quote
 
-from ..http_client import RateLimiter, fetch_json, strip_html
+from ..http_client import RateLimiter, fetch_json
 from ..paper import Paper
 
 log = logging.getLogger(__name__)
 
-BASE = "https://doaj.org/api/search/articles"
+BASE = "https://doaj.org/api/v3/search/articles"
 
 
-def _parse(result: dict) -> Paper | None:
-    bib = result.get("bibjson") or {}
-    title = strip_html(bib.get("title"))
+def _parse(item: dict) -> Paper | None:
+    bib = item.get("bibjson") or {}
+    title = bib.get("title")
     if not title:
         return None
 
     authors = []
-    for a in bib.get("author", []) or []:
-        name = (a.get("name") or "").strip()
+    for a in bib.get("author") or []:
+        name = a.get("name") or ""
         if name:
-            authors.append(name)
+            authors.append(name.strip())
 
     year = None
     y = bib.get("year")
@@ -39,72 +36,77 @@ def _parse(result: dict) -> Paper | None:
         except (ValueError, TypeError):
             pass
 
-    journal = bib.get("journal") or {}
-    venue = journal.get("title")
-    publisher = journal.get("publisher")
-
+    # DOI
     doi = None
-    landing_url = None
-    pdf_url = None
-    for ident in bib.get("identifier", []) or []:
+    for ident in bib.get("identifier") or []:
         if ident.get("type") == "doi":
             doi = ident.get("id")
-    for link in bib.get("link", []) or []:
-        url = link.get("url")
-        if not url:
-            continue
-        ltype = (link.get("type") or "").lower()
-        content_type = (link.get("content_type") or "").lower()
-        if "pdf" in content_type or url.lower().endswith(".pdf"):
-            pdf_url = url
-        elif ltype == "fulltext" and not landing_url:
-            landing_url = url
+            break
 
-    if not pdf_url and doi:
-        pdf_url = f"https://doi.org/{doi}"
-    if not landing_url:
-        landing_url = pdf_url or (doi and f"https://doi.org/{doi}")
+    # Links
+    links = bib.get("link") or []
+    pdf_url = None
+    landing_url = None
+    for lnk in links:
+        t = lnk.get("type", "")
+        u = lnk.get("url", "")
+        if t == "fulltext" and not landing_url:
+            landing_url = u
+        if t == "pdf" or (u and u.lower().endswith(".pdf")):
+            pdf_url = u
+    if not landing_url and doi:
+        landing_url = f"https://doi.org/{doi}"
+    if not pdf_url:
+        pdf_url = landing_url
+
+    venue = (bib.get("journal") or {}).get("title")
+    publisher = (bib.get("journal") or {}).get("publisher")
+    abstract = bib.get("abstract")
+    keywords = [k for k in bib.get("keywords") or [] if k]
 
     return Paper(
         source="doaj",
-        source_id=str(result.get("id", "")),
+        source_id=item.get("id") or doi or "",
         title=title,
         authors=authors,
-        abstract=strip_html(bib.get("abstract")),
+        abstract=abstract,
         year=year,
         venue=venue,
         venue_type="journal",
         doi=doi,
         url=landing_url,
         pdf_url=pdf_url,
-        is_open_access=True,  # DOAJ only indexes open access
+        is_open_access=True,  # DOAJ indexes only OA journals
         type="journal-article",
         publisher=publisher,
+        keywords=keywords,
     )
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
-    """Search DOAJ open-access articles. No API key required."""
+    """Search DOAJ articles via REST API v3. No key required."""
     rl = RateLimiter(0.5)
     per_page = min(limit, 100)
     fetched = 0
     page = 1
 
+    encoded = quote(query)
+    url = f"{BASE}/{encoded}"
+
     while fetched < limit:
         rl.wait()
-        encoded = quote(query, safe="")
-        url = f"{BASE}/{encoded}"
         params = {
             "page": page,
             "pageSize": min(per_page, limit - fetched),
-            "sort": "_score",
         }
         data = fetch_json(client, url, params=params)
         if not data:
             return
+
         results = data.get("results") or []
         if not results:
             return
+
         for item in results:
             paper = _parse(item)
             if paper:
@@ -112,6 +114,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
                 fetched += 1
                 if fetched >= limit:
                     return
+
         total = data.get("total", 0)
         if page * per_page >= total:
             return

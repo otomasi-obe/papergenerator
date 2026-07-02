@@ -93,7 +93,7 @@ def lookup_isbn(client, isbn: str) -> Paper | None:
         return None
 
     key = os.getenv("GOOGLE_BOOKS_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
-    rl = RateLimiter(0.3)
+    rl = RateLimiter(1.0)
     rl.wait()
 
     params = {"q": f"isbn:{isbn}"}
@@ -118,9 +118,13 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         query: Free text search. Supports intitle:, inauthor:, subject: prefixes.
         limit: Max results.
         filters: {'intitle': '...', 'inauthor': '...', 'subject': '...', 'lang': 'en'}
+
+    Note: Without API key, Google Books API returns 429 quickly.
+    This fetcher gracefully returns empty when rate-limited.
     """
     key = os.getenv("GOOGLE_BOOKS_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
-    rl = RateLimiter(0.3)
+    # Without key: very conservative to avoid 429
+    rl = RateLimiter(10.0 if not key else 1.0)
     per_page = min(limit, 40)
     fetched = 0
     start = 0

@@ -31,8 +31,13 @@ from tools.Literatur.fetchers import ALL, SOURCE_TOPICS
 
 log = logging.getLogger(__name__)
 
-# Setup logging directory
-_LOG_DIR = Path(os.getenv("SLR_LOG_DIR", "../../log/slr"))
+# Setup logging directory (absolute path from file location)
+_SLR_LOG_DIR_ENV = os.getenv("SLR_LOG_DIR")
+if _SLR_LOG_DIR_ENV:
+    _LOG_DIR = Path(_SLR_LOG_DIR_ENV)
+else:
+    # backend/tools/Literatur/slrFetch.py → backend/log/slr
+    _LOG_DIR = Path(__file__).resolve().parent.parent.parent / "log" / "slr"
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Configure file handler for slrFetch

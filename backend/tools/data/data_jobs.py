@@ -357,7 +357,18 @@ def stream_data_job(job_id: str):
         except Exception:
             # If decode fails, token might be CSRF token - fall through to cookie auth
             pass
-    
+
+    # Fallback: read JWT from httpOnly cookie (EventSource sends it automatically)
+    if not user_id:
+        cookie_token = request.cookies.get('access_token_cookie')
+        if cookie_token:
+            try:
+                from flask_jwt_extended import decode_token
+                decoded = decode_token(cookie_token)
+                user_id = int(decoded['sub'])
+            except Exception:
+                pass
+
     # Also try cookie-based auth (reads access_token_cookie)
     if not user_id:
         try:

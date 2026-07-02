@@ -89,6 +89,56 @@ CFG = {
 # =============================================================================
 # XML helpers
 # =============================================================================
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _pt2tw(pt: float) -> int:
     return int(round(pt * 20))
 
@@ -1023,12 +1073,12 @@ def add_references(doc, data):
     if isinstance(refs, list):
         refs = {"title": "REFERENCES", "content": refs}
     title = (refs.get("title") or "REFERENCES").strip()
-    items = refs.get("content") or ["[1] Author, Title, Journal, Year."]
+    items = refs.get("content") or refs.get("items") or ["[1] Author, Title, Journal, Year."]
 
     add_unnumbered_heading(doc, title)
 
     for ref in items:
-        ref_str = clean_inline_text((str(ref.get("text") or ref.get("Text") or "").strip() if isinstance(ref, dict) else str(ref)).strip())
+        ref_str = clean_inline_text(_format_reference(ref))
         rp = doc.add_paragraph()
         _set_para_style(rp, BODY_STYLE)
         _set_para_format(
@@ -1246,3 +1296,23 @@ def _set_table_borders_match_template(table) -> None:
 
 if __name__ == "__main__":
     generate()
+
+def build_document(json_path: Path, output_path: Path, template_path: Path = None) -> Path:
+    """Adapter: call generate() with overridden paths."""
+    import shutil
+    global TEMPLATE_JSON, OUTPUT_DOCX
+    _orig_json = TEMPLATE_JSON
+    _orig_output = OUTPUT_DOCX
+    try:
+        TEMPLATE_JSON = Path(json_path)
+        OUTPUT_DOCX = Path(output_path)
+        result = generate()
+    finally:
+        TEMPLATE_JSON = _orig_json
+        OUTPUT_DOCX = _orig_output
+    if not Path(output_path).exists():
+        # generate() might still save to original path
+        fallback = Path(__file__).resolve().parent / "JCEF_output.docx"
+        if fallback.exists():
+            shutil.move(str(fallback), str(output_path))
+    return Path(output_path)

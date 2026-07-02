@@ -546,22 +546,113 @@ def _keywords_id_list(config: dict) -> list[str]:
     return result
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict (with authors, year, title, etc.) into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    
+    # Check if already has text field
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    
+    # Build from fields
+    parts = []
+    
+    # Authors
+    authors = item.get("authors", [])
+    if authors:
+        if isinstance(authors, list):
+            parts.append(", ".join(str(a) for a in authors))
+        else:
+            parts.append(str(authors))
+    
+    # Year
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    
+    # Title
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    
+    # Journal or Conference
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    
+    # Volume
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    
+    # Issue
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    
+    # Pages
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    
+    # DOI
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    
+    # URL
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        if accessed:
+            parts.append(f"[Online]. Available: {url} [Accessed: {accessed}].")
+        else:
+            parts.append(f"[Online]. Available: {url}.")
+    
+    # Publisher (for books)
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        if location:
+            parts.append(f"{location}: {publisher}.")
+        else:
+            parts.append(f"{publisher}.")
+    
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    
+    return result
+
+
 def _reference_items(config: dict) -> list[str]:
     references = config.get("references")
-    if isinstance(references, dict):
-        content = references.get("content", [])
-        items = []
-        if isinstance(content, list):
-            for entry in content:
-                if isinstance(entry, dict):
-                    text = str(entry.get("text") or entry.get("Text") or "").strip()
-                else:
-                    text = str(entry).strip()
-                if text:
-                    items.append(text)
-        if items:
-            return items
-    return []
+
+    # Normalize to list of entries (dicts)
+    raw_entries = []
+    if isinstance(references, list):
+        raw_entries = references
+    elif isinstance(references, dict):
+        # Try multiple key names used by different JSON generators
+        for key in ("content", "items", "references"):
+            candidate = references.get(key)
+            if isinstance(candidate, list):
+                raw_entries = candidate
+                break
+
+    items = []
+    for entry in raw_entries:
+        text = _format_reference(entry)
+        if text:
+            items.append(text)
+    return items
 
 
 def _clean_reference_label(text: str) -> str:

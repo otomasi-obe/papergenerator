@@ -342,7 +342,8 @@ def _run_job(app, job_id: str):
                 j.stage = stage[:40]
                 j.progress_message = _stage_message(stage, info)[:200]
                 j.progress = _stage_to_pct(stage, info)
-                _safe_commit(job_id, where="progress")
+                if not _safe_commit(job_id, where="progress"):
+                    log.warning("slr.progress commit failed job=%s, progress lost", job_id)
             except WorkerCancelled:
                 raise
             except Exception:

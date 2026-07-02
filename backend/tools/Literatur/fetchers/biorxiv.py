@@ -92,27 +92,117 @@ def lookup(client, doi: str, server: str = "biorxiv") -> Paper | None:
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search bioRxiv/medRxiv preprints.
 
-    Strategy: use Crossref to find posted-content on bioRxiv/medRxiv,
-    then enrich with bioRxiv API for abstracts.
-    Fallback: search Crossref with type filter.
+    bioRxiv API does not support text search — only date-range queries.
+    Strategy: get recent preprints from last 30 days, filter client-side
+    by query keywords, then enrich via bioRxiv API.
+
+    Fallback: use Crossref to find bioRxiv/medRxiv DOIs, then enrich.
     """
+    import datetime as _dt
     from .crossref import search as crossref_search
 
     rl = RateLimiter(0.4)
     fetched = 0
     seen_dois = set()
 
-    # Search via Crossref for bioRxiv/medRxiv posted content
+    query_terms = [t.lower() for t in query.split() if len(t) > 3]
+    if not query_terms:
+        query_terms = [query.lower()]
+
+    # Strategy 1: Get recent preprints via date-range API (broad sweep)
+    try:
+        today = _dt.date.today()
+        # Sweep last 30 days in chunks of 7 days
+        for day_offset in range(30, 0, -7):
+            if fetched >= limit:
+                return
+            end_dt = today - _dt.timedelta(days=day_offset)
+            start_dt = end_dt - _dt.timedelta(days=6)
+            start_str = start_dt.strftime("%Y-%m-%d")
+            end_str = end_dt.strftime("%Y-%m-%d")
+
+            rl.wait()
+            url = f"{BASE}/details/biorxiv/{start_str}/{end_str}"
+            data = fetch_json(client, url)
+            if not data:
+                collection = []
+            else:
+                collection = data.get("collection", [])
+
+            for item in collection:
+                if fetched >= limit:
+                    return
+                title = (item.get("title") or "").lower()
+                abstract = (item.get("abstract") or "").lower()
+                haystack = f"{title} {abstract}"
+
+                # Client-side keyword filter: match at least 1 term
+                if not any(t in haystack for t in query_terms):
+                    continue
+
+                doi = item.get("doi")
+                if doi and doi in seen_dois:
+                    continue
+                if doi:
+                    seen_dois.add(doi)
+
+                paper = _parse_detail(item)
+                if paper:
+                    yield paper
+                    fetched += 1
+
+            if fetched >= limit:
+                return
+
+            # Also check medRxiv
+            rl.wait()
+            url_m = f"{BASE}/details/medrxiv/{start_str}/{end_str}"
+            data_m = fetch_json(client, url_m)
+            if not data_m:
+                collection_m = []
+            else:
+                collection_m = data_m.get("collection", [])
+
+            for item in collection_m:
+                if fetched >= limit:
+                    return
+                title = (item.get("title") or "").lower()
+                abstract = (item.get("abstract") or "").lower()
+                haystack = f"{title} {abstract}"
+
+                if not any(t in haystack for t in query_terms):
+                    continue
+
+                doi = item.get("doi")
+                if doi and doi in seen_dois:
+                    continue
+                if doi:
+                    seen_dois.add(doi)
+
+                paper = _parse_detail(item)
+                if paper:
+                    yield paper
+                    fetched += 1
+
+    except Exception as e:
+        log.warning("biorxiv date-range error: %s", e)
+
+    # Strategy 2: Fallback via Crossref
+    if fetched >= limit:
+        return
+
     cr_filters = dict(filters) if filters else {}
     cr_filters["type"] = "posted-content"
+    cr_filters["from-date"] = (_dt.date.today() - _dt.timedelta(days=365)).strftime("%Y-%m-%d")
 
-    for paper in crossref_search(client, query, limit * 2, cr_filters):
+    for paper in crossref_search(client, query, limit * 3, cr_filters):
+        if fetched >= limit:
+            return
         if not paper.doi:
             continue
         if paper.doi in seen_dois:
             continue
 
-        # Check if it's from bioRxiv or medRxiv
         is_biorxiv = (paper.publisher and
                       any(s in paper.publisher.lower() for s in ["biorxiv", "medrxiv", "cold spring"]))
         if not is_biorxiv and paper.venue:
@@ -122,23 +212,18 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
 
         seen_dois.add(paper.doi)
 
-        # Try to enrich from bioRxiv API
         server = "medrxiv" if (paper.publisher and "medrxiv" in paper.publisher.lower()) else "biorxiv"
         rl.wait()
         enriched = lookup(client, paper.doi, server=server)
 
         if enriched:
-            # Merge: keep Crossref abstract if bioRxiv has none
             if not enriched.abstract and paper.abstract:
                 enriched.abstract = paper.abstract
             yield enriched
         else:
-            # Yield Crossref paper with preprint flag
             paper.source = "biorxiv"
             paper.is_open_access = True
             paper.type = "preprint"
             yield paper
 
         fetched += 1
-        if fetched >= limit:
-            return

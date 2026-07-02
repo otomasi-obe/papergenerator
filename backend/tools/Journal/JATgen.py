@@ -25,6 +25,56 @@ from lxml import etree
 _FOOTNOTE_COUNTER = 0  # global footnote counter
 _FOOTNOTES_INITIALIZED = False  # only run init once
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _max_footnote_id(doc: Document) -> int:
     """Find the highest existing footnote ID in the footnotes part."""
     for rel in doc.part.rels.values():
@@ -1097,7 +1147,7 @@ def add_references(doc, data):
     ref_data = data.get("references", {})
     if isinstance(ref_data, dict):
         ref_title = ref_data.get("title", "References")
-        ref_content = ref_data.get("content", [])
+        ref_content = ref_data.get("content") or ref_data.get("items") or [])
     else:
         ref_title = "References"
         ref_content = ref_data if isinstance(ref_data, list) else []
@@ -1247,3 +1297,23 @@ def generate():
 
 if __name__ == "__main__":
     generate()
+
+def build_document(json_path: Path, output_path: Path, template_path: Path = None) -> Path:
+    """Adapter: call generate() with overridden paths."""
+    import shutil
+    global TEMPLATE_JSON, OUTPUT_DOCX
+    _orig_json = TEMPLATE_JSON
+    _orig_output = OUTPUT_DOCX
+    try:
+        TEMPLATE_JSON = Path(json_path)
+        OUTPUT_DOCX = Path(output_path)
+        result = generate()
+    finally:
+        TEMPLATE_JSON = _orig_json
+        OUTPUT_DOCX = _orig_output
+    if not Path(output_path).exists():
+        # generate() might still save to original path
+        fallback = Path(__file__).resolve().parent / "JAT_output.docx"
+        if fallback.exists():
+            shutil.move(str(fallback), str(output_path))
+    return Path(output_path)

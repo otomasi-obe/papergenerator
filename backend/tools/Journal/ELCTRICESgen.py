@@ -35,7 +35,7 @@ OUTPUT_DOCX = BASE_DIR / "ELCTRICES_output.docx"
 NS_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 MATH_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 
-MAX_FIGURE_WIDTH_CM = 13.5
+MAX_FIGURE_WIDTH_CM = 8.0
 
 NS_MAP_STRICT = {
     b"http://purl.oclc.org/ooxml/wordprocessingml/main":
@@ -61,6 +61,56 @@ _XSLT = None
 class RenderState:
     figure_count: int = 0
     table_count: int = 0
+
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
 
 def _clean_latex(text):
     """Strip inline LaTeX markers dari text."""
@@ -1022,9 +1072,8 @@ def _add_table(doc: Document, item: dict, samples: dict[str, etree._Element | No
         _add_sample_run(caption, f"Tabel {number}. {title}", samples["table_caption_rpr"])
 
     table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
-    table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = False
-    _set_table_width(table, 8503.5, len(headers))
+    _set_table_width(table, 5000.0, len(headers))
 
     for column_index, value in enumerate(headers):
         cell = table.rows[0].cells[column_index]
@@ -1212,7 +1261,7 @@ def _reference_texts(config: dict) -> tuple[str, list[str]]:
     references = config.get("references")
     if isinstance(references, dict):
         title = str(references.get("title") or "DAFTAR PUSTAKA").strip() or "DAFTAR PUSTAKA"
-        content = references.get("content", [])
+        content = references.get("content") or references.get("items") or []
         items = []
         if isinstance(content, list):
             for entry in content:
@@ -1285,9 +1334,24 @@ def build_document(
 
     _render_title_block(doc, config, samples)
     _render_sections(doc, config, Path(json_path), samples)
-    _new_paragraph(doc, samples["body_close_ppr"])  # Second section break (cols=1 continuous, closes body)
+    _new_paragraph(doc, samples["body_close_ppr"])  # Section break sebelum references
     _add_references(doc, config, samples)
     _update_running_headers(doc, config)
+    
+    # Remove trailing empty paragraphs with sectPr before save
+    from docx.oxml.ns import qn as qn_cleanup
+    body = doc._body._element
+    for para in list(body.iter(qn_cleanup('w:p')))[-5:]:
+        pPr = para.find(qn_cleanup('w:pPr'))
+        if pPr is not None:
+            sectPr = pPr.find(qn_cleanup('w:sectPr'))
+            if sectPr is not None:
+                # Check if para is empty (no text/drawing/table)
+                para_text = ''.join(n.text for n in para.iter() if n.text)
+                if not para_text.strip():
+                    # Remove this empty sectPr para, keeping sectPr in last para
+                    if para != list(body.iter(qn_cleanup('w:p')))[-1]:
+                        body.remove(para)
 
     _set_ai_prompt_color_red(doc)
     _postprocess_clean_latex(doc)

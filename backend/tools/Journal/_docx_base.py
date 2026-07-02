@@ -6,6 +6,7 @@ Extracted from IEEEgen.py patterns to be reused by other template generators.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sys
 import zipfile
@@ -73,7 +74,8 @@ def open_template(template_path: Path) -> Document:
 
 def finalize_doc(doc: Document) -> None:
     """Apply default styles, page numbering, and consistent headers/footers."""
-    from docx.oxml import OxmlElement, qn  # noqa: PLC0415
+    from docx.oxml import OxmlElement  # noqa: PLC0415
+    from docx.oxml.ns import qn
     from docx.shared import Pt, Inches  # noqa: PLC0415
     _log = logging.getLogger(__name__)
     try:

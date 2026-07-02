@@ -30,7 +30,7 @@ CFG = {
     "size_body": 10,
     "size_title": 14,
     "size_heading1": 10,
-    "size_heading2": 10,
+    "size_heading2": 11,
     "size_caption": 8,
     "size_reference": 8,
     "columns": 2,
@@ -41,6 +41,56 @@ CFG = {
     "tbl_prefix": "Table",
     "section_heading_upper": True,
 }
+
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
 
 def load_json():
     with open(TEMPLATE_JSON, "r", encoding="utf-8") as f:
@@ -374,13 +424,20 @@ def add_authors(doc, data):
     authors = data.get("authors", [])
     if not authors:
         return
-    # Author names
+    # Author names with superscripts
     names = [a["name"] if isinstance(a, dict) else str(a) for a in authors]
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     set_para_spacing(p, before_pt=6, after_pt=3)
-    run = p.add_run(", ".join(names))
-    set_run_font(run, CFG["font_title"], CFG["size_body"])
+    for i, name in enumerate(names):
+        if i > 0:
+            sep_run = p.add_run(", ")
+            set_run_font(sep_run, CFG["font_title"], CFG["size_body"])
+        run = p.add_run(name)
+        set_run_font(run, CFG["font_title"], CFG["size_body"])
+        sup_run = p.add_run(str(i + 1))
+        set_run_font(sup_run, CFG["font_title"], CFG["size_body"])
+        sup_run.font.superscript = True
 
     # Affiliations
     affiliations = set()
@@ -433,6 +490,7 @@ def add_keywords(doc, data):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=0, after_pt=6)
+    p.paragraph_format.first_line_indent = -777240  # -61.1pt hanging indent
     run_label = p.add_run("Keywords: ")
     set_run_font(run_label, CFG["font_body"], CFG["size_body"], bold=True)
     run_kw = p.add_run(kw_text)
@@ -442,7 +500,7 @@ def add_keywords(doc, data):
 def add_section_heading(doc, title):
     """Add section heading - NO manual numbering (let Word handle it)."""
     p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=6, after_pt=3)
     display = title.upper() if CFG["section_heading_upper"] else title
     run = p.add_run(display)
@@ -869,7 +927,7 @@ def add_formula(doc, formula_data):
 def add_references(doc, data):
     refs_data = data.get("references", {})
     if isinstance(refs_data, dict):
-        refs_list = refs_data.get("content", [])
+        refs_list = refs_data.get("content") or refs_data.get("items") or [])
     elif isinstance(refs_data, list):
         refs_list = refs_data
     else:
@@ -883,7 +941,7 @@ def add_references(doc, data):
 
     # Items
     for i, ref in enumerate(refs_list, 1):
-        ref_text = str(ref.get("text", ref) if isinstance(ref, dict) else ref).strip()
+        ref_text = _format_reference(ref)
         if not ref_text:
             continue
         # Strip existing bracket number prefix to avoid [1] [1] double numbering
@@ -1084,3 +1142,23 @@ def generate():
 
 if __name__ == "__main__":
     generate()
+
+def build_document(json_path: Path, output_path: Path, template_path: Path = None) -> Path:
+    """Adapter: call generate() with overridden paths."""
+    import shutil
+    global TEMPLATE_JSON, OUTPUT_DOCX
+    _orig_json = TEMPLATE_JSON
+    _orig_output = OUTPUT_DOCX
+    try:
+        TEMPLATE_JSON = Path(json_path)
+        OUTPUT_DOCX = Path(output_path)
+        result = generate()
+    finally:
+        TEMPLATE_JSON = _orig_json
+        OUTPUT_DOCX = _orig_output
+    if not Path(output_path).exists():
+        # generate() might still save to original path
+        fallback = Path(__file__).resolve().parent / "DJLIT_output.docx"
+        if fallback.exists():
+            shutil.move(str(fallback), str(output_path))
+    return Path(output_path)

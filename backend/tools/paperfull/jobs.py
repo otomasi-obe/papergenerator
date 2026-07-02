@@ -1612,9 +1612,11 @@ def stream_job(job_id: str):
     Pumps a snapshot first (so late subscribers catch up), then
     pubsub events until the job terminates or the client disconnects."""
     # EventSource doesn't send custom headers — accept token via query param
+    # or httpOnly cookie (access_token_cookie). EventSource sends cookies
+    # automatically for same-origin requests.
     token = request.args.get('token')
     user_id = None
-    
+
     if token:
         try:
             from flask_jwt_extended import decode_token
@@ -1622,14 +1624,25 @@ def stream_job(job_id: str):
             user_id = int(decoded['sub'])
         except Exception:
             pass
-    
+
+    # Fallback: read JWT from httpOnly cookie (EventSource sends it automatically)
+    if not user_id:
+        cookie_token = request.cookies.get('access_token_cookie')
+        if cookie_token:
+            try:
+                from flask_jwt_extended import decode_token
+                decoded = decode_token(cookie_token)
+                user_id = int(decoded['sub'])
+            except Exception:
+                pass
+
     if not user_id:
         try:
             verify_jwt_in_request()
             user_id = int(get_jwt_identity())
         except Exception:
             pass
-    
+
     if not user_id:
         return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED"}), 401
     

@@ -41,7 +41,12 @@ def _parse(result_item: dict) -> Paper | None:
 
     # Title: list of objects with $ or direct string
     title_raw = r.get("title", []) or []
-    title = _text(title_raw[0]) if isinstance(title_raw, list) and title_raw else _text(title_raw)
+    if isinstance(title_raw, list):
+        # Find the main title first (classid == "main title"), else first item
+        main = next((x for x in title_raw if isinstance(x, dict) and x.get("@classid") == "main title"), None)
+        title = _text(main) if main else (_text(title_raw[0]) if title_raw else "")
+    else:
+        title = _text(title_raw)
     if not title:
         return None
 
@@ -141,14 +146,55 @@ def _parse(result_item: dict) -> Paper | None:
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search OpenAIRE publications. No API key required.
-    
-    Note: OpenAIRE API endpoint changed. Returning empty for now until
-    new Graph API v2 is integrated.
+
+    Uses 'keywords' param for full-text search (broader than 'title').
+    API still works (deprecated May 31, 2026 but live).
     """
-    log.warning("OpenAIRE fetcher temporarily disabled (API endpoint changed)")
-    return
-    # Old API (deprecated):
-    # https://api.openaire.eu/search/publications
-    # New API (Graph v2):
-    # https://graph.openaire.eu/develop/api/
-    # TODO: Integrate new Graph API v2
+    rl = RateLimiter(0.3)
+    fetched = 0
+    page = 1
+
+    while fetched < limit:
+        rl.wait()
+        params = {
+            "keywords": query,
+            "size": min(limit - fetched, 25),
+            "page": page,
+            "format": "json",
+        }
+        data = fetch_json(client, BASE, params=params)
+        if not data:
+            return
+
+        # JSON response structure: data['response']['results']['result']
+        response = data.get("response", {})
+        if not response:
+            return
+
+        results_wrapper = response.get("results", {})
+        if not results_wrapper:
+            return
+
+        results = results_wrapper.get("result", [])
+        if not results:
+            return
+
+        # results can be a single dict or list
+        if isinstance(results, dict):
+            results = [results]
+
+        for item in results:
+            paper = _parse(item)
+            if paper:
+                yield paper
+                fetched += 1
+                if fetched >= limit:
+                    return
+
+        # Check if there are more pages
+        header = response.get("header", {})
+        total_obj = header.get("total", {})
+        total = int(total_obj.get("$", 0)) if isinstance(total_obj, dict) else 0
+        if page * params["size"] >= total:
+            return
+        page += 1

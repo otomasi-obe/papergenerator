@@ -93,6 +93,56 @@ CFG = {
 # =============================================================================
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _pt2tw(pt):
     return int(round(float(pt) * 20))
 
@@ -153,7 +203,7 @@ def _add_run(
     font_name=None,
     color=None,
     vert_align=None,
-    **_,
+    **_0,
 ):
     if font_name is not None and font is None:
         font = font_name
@@ -178,6 +228,10 @@ def _add_run(
             rPr.insert(0, rfonts)
         for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
             rfonts.set(qn(f"w:{attr}"), font)
+    if vert_align == "superscript":
+        run.font.superscript = True
+    if vert_align == "subscript":
+        run.font.subscript = True
     return run
 
 
@@ -847,7 +901,7 @@ def add_references(doc, data):
     if isinstance(refs, list):
         refs = {"title": "REFERENCES", "content": refs}
     title = (refs.get("title") or "REFERENCES").strip()
-    items = refs.get("content") or [
+    items = refs.get("content") or refs.get("items") or [
         "Said, J., Hui, W., Othman, R. & Taylor, D. (2010). The mediating "
         "effects of organizational learning. Asia-Pacific Management "
         "Accounting Journal, 5(2), 11-29."
@@ -873,7 +927,7 @@ def add_references(doc, data):
     )
 
     for ref in items:
-        ref_str = clean_inline_text((str(ref.get("text") or ref.get("Text") or "").strip() if isinstance(ref, dict) else str(ref)).strip())
+        ref_str = _format_reference(ref)
         rp = doc.add_paragraph()
         _set_para_style(rp, "BodyText")
         _set_para_format(
@@ -1060,6 +1114,14 @@ def _set_table_borders_match_template(table) -> None:
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "000000")
 
+
+def build_document(json_path: str, output_path: str) -> str:
+    """Wrapper for external calls."""
+    global TEMPLATE_JSON, OUTPUT_DOCX
+    import shutil
+    shutil.copy(json_path, str(TEMPLATE_JSON))
+    OUTPUT_DOCX = Path(output_path)
+    return generate()
 
 if __name__ == "__main__":
     generate()

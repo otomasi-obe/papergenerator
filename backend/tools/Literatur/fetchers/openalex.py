@@ -10,6 +10,58 @@ from ..paper import Paper
 log = logging.getLogger(__name__)
 BASE = "https://api.openalex.org/works"
 
+# Full select parameter to get all needed fields in one call.
+# This avoids N+1 requests for concepts/keywords/language/funders/etc.
+_SELECT_FIELDS = (
+    "id,doi,title,display_name,publication_date,authorships,"
+    "abstract_inverted_index,cited_by_count,open_access,locations,"
+    "primary_location,concepts,keywords,type,biblio,primary_topic,language,"
+    "is_retracted,funders"
+)
+
+# Mapping from OpenAlex source.type values to normalized venue_type.
+# Extended with repository, ebook platform, metadata, other.
+_VENUE_TYPE_MAP = {
+    "journal": "journal",
+    "conference": "conference",
+    "repository": "repository",
+    "book series": "book",
+    "ebook platform": "book",
+    "book": "book",
+    "publisher": "book",
+    "metadata": "metadata",
+    "other": "other",
+    "proceedings": "conference",
+}
+
+# Mapping from OpenAlex work.type (lowered) to normalized paper type.
+# Extended with dissertation, preprint, report, standard, peer-review,
+# reference-entry, dataset, component, grant, supplementary-materials, libguides.
+_TYPE_MAP = {
+    "article": "journal-article",
+    "journal-article": "journal-article",
+    "proceedings-article": "conference-paper",
+    "conference-paper": "conference-paper",
+    "book": "book",
+    "book-chapter": "book-chapter",
+    "monograph": "book",
+    "dissertation": "dissertation",
+    "preprint": "preprint",
+    "report": "report",
+    "dataset": "dataset",
+    "letter": "journal-article",
+    "review": "journal-article",
+    "editorial": "journal-article",
+    "erratum": "journal-article",
+    "standard": "standard",
+    "peer-review": "peer-review",
+    "reference-entry": "reference-entry",
+    "component": "component",
+    "grant": "grant",
+    "supplementary-materials": "supplementary-materials",
+    "libguides": "libguides",
+}
+
 
 def _reconstruct_abstract(inv_index: dict | None) -> str | None:
     if not inv_index:
@@ -22,6 +74,49 @@ def _reconstruct_abstract(inv_index: dict | None) -> str | None:
         return None
     max_pos = max(pos_map.keys())
     return " ".join(pos_map.get(i, "") for i in range(max_pos + 1)).strip()
+
+
+def _parse_concepts(concepts: list[dict] | None) -> list[str]:
+    """Extract concept display_name strings from concepts array."""
+    if not concepts:
+        return []
+    result = []
+    for c in concepts:
+        if isinstance(c, dict):
+            name = (c.get("display_name") or "").strip()
+            if name:
+                result.append(name)
+    return result
+
+
+def _parse_keywords(keywords: list | None) -> list[str]:
+    """Extract keyword strings from keywords array (str or dict entries)."""
+    if not keywords:
+        return []
+    result = []
+    for kw in keywords:
+        if isinstance(kw, str):
+            name = kw.strip()
+        elif isinstance(kw, dict):
+            name = (kw.get("display_name") or "").strip()
+        else:
+            continue
+        if name:
+            result.append(name)
+    return result
+
+
+def _parse_funders(funders: list[dict] | None) -> list[str]:
+    """Extract funder display_name strings from funders array."""
+    if not funders:
+        return []
+    result = []
+    for f in funders:
+        if isinstance(f, dict):
+            name = (f.get("display_name") or "").strip()
+            if name:
+                result.append(name)
+    return result
 
 
 def enrich_abstract_via_doi(doi: str, client) -> str | None:
@@ -86,42 +181,42 @@ def _parse_work(w: dict) -> Paper | None:
     # Get PDF URL from open_access field or primary_location
     oa_info = w.get("open_access") or {}
     pdf_url = oa_info.get("oa_url")
-    
+
     # Try primary location PDF
     if not pdf_url:
         pdf_url = primary_loc.get("pdf_url")
 
     # Normalize venue_type to standard values
-    _venue_type_map = {
-        "journal": "journal",
-        "book series": "book",
-        "book": "book",
-        "publisher": "book",
-        "conference": "conference",
-        "proceedings": "conference",
-    }
     normalized_venue_type = None
     if venue_type:
-        normalized_venue_type = _venue_type_map.get(venue_type.lower(), "unknown")
+        normalized_venue_type = _VENUE_TYPE_MAP.get(venue_type.lower(), "other")
 
     # Normalize type to standard values
-    _type_map = {
-        "article": "journal-article",
-        "journal-article": "journal-article",
-        "proceedings-article": "conference-paper",
-        "conference-paper": "conference-paper",
-        "book": "book",
-        "book-chapter": "book",
-        "monograph": "book",
-        "report": "journal-article",
-        "dataset": "dataset",
-        "letter": "journal-article",
-        "review": "journal-article",
-        "preprint": "preprint",
-    }
     normalized_type = None
     if w.get("type"):
-        normalized_type = _type_map.get(w["type"].lower(), w.get("type"))
+        normalized_type = _TYPE_MAP.get(w["type"].lower(), w.get("type"))
+
+    # Parse concepts and keywords
+    concepts = _parse_concepts(w.get("concepts"))
+    keywords = _parse_keywords(w.get("keywords"))
+    all_keywords = concepts + keywords
+
+    # Parse language
+    language = w.get("language")
+    if isinstance(language, str):
+        language = language.strip() or None
+
+    # Parse is_retracted
+    is_retracted = w.get("is_retracted")
+    if isinstance(is_retracted, bool):
+        pass
+    elif is_retracted is not None:
+        is_retracted = str(is_retracted).lower() in ("true", "1", "yes")
+    else:
+        is_retracted = None
+
+    # Parse funders
+    funders = _parse_funders(w.get("funders"))
 
     return Paper(
         source="openalex",
@@ -139,12 +234,18 @@ def _parse_work(w: dict) -> Paper | None:
         is_open_access=oa_info.get("is_oa"),
         type=normalized_type,
         publisher=publisher,
+        keywords=all_keywords,
+        language=language,
+        is_retracted=is_retracted,
+        funders=funders,
     )
 
 
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search OpenAlex. filters contoh: {'type': 'article', 'is_paratext': 'false'}"""
-    rl = RateLimiter(0.12)
+    # OpenAlex rate limits: ~10 req/sec without key, 50 req/sec with key.
+    # Use 1.0s backoff for polite access and to avoid 429s.
+    rl = RateLimiter(1.0)
     per_page = min(limit, 50)
     fetched = 0
     cursor = "*"
@@ -167,6 +268,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             "cursor": cursor,
             "sort": "relevance_score:desc",
             "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
+            "select": _SELECT_FIELDS,
         }
         if filter_str:
             params["filter"] = filter_str

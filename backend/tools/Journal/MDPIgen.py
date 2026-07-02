@@ -66,6 +66,56 @@ MD_STYLES = {
 }
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _normalize_config(config: dict) -> dict:
     """Convert 'sections' array format into section1/section2... keyed format.
 
@@ -281,15 +331,25 @@ def _add_authors(doc: Document, config: dict):
         return
 
     author_names = []
+    author_superscripts = []
     for idx, author in enumerate(authors, start=1):
         name = author.get("name", "")
         if name:
-            author_names.append(f"{name} {idx}")
+            author_names.append(name)
+            author_superscripts.append(idx)
 
     if author_names:
         p = para(doc, style_id=MD_STYLES["author_names"], align=WD_ALIGN_PARAGRAPH.LEFT)
-        run = p.add_run(", ".join(author_names))
-        run.font.size = Pt(11)
+        for i, (name, idx) in enumerate(zip(author_names, author_superscripts)):
+            if i > 0:
+                run = p.add_run(", ")
+                run.font.size = Pt(11)
+            run = p.add_run(name)
+            run.font.size = Pt(11)
+            # Add superscript affiliation number
+            sup_run = p.add_run(str(idx))
+            sup_run.font.size = Pt(8)
+            sup_run.font.superscript = True
 
     for idx, author in enumerate(authors, start=1):
         affiliation = author.get("affiliation", "")
@@ -336,7 +396,7 @@ def _add_keywords(doc: Document, config: dict):
 def _add_references(doc: Document, config: dict):
     references = config.get("references", [])
     if isinstance(references, dict):
-        references = references.get("content", [])
+        references = references.get("content") or references.get("items") or []
 
     # Also check for 'referensi' key
     if not references:

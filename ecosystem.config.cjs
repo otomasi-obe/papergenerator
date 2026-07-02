@@ -33,6 +33,6 @@ module.exports = {
         FRONTEND_PORT: '8000',
         BACKEND_PORT: '8001',
       }
-    }
-  ]
+    },
+    ]
 };

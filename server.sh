@@ -143,8 +143,8 @@ do_start_services() {
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}  Services Started!${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
-    echo -e "   Frontend:  ${CYAN}http://localhost:$FRONTEND_PORT${NC}"
-    echo -e "   Backend:   ${CYAN}http://localhost:$BACKEND_PORT${NC}"; echo ""
+    echo -e "   Frontend:      ${CYAN}http://localhost:$FRONTEND_PORT${NC}"
+    echo -e "   Backend:       ${CYAN}http://localhost:$BACKEND_PORT${NC}"; echo ""
 }
 
 do_start() {

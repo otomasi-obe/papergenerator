@@ -26,6 +26,56 @@ XSL_CANDIDATES = [
 _XSLT = None
 
 
+def _format_reference(item) -> str:
+    """Format a reference dict into a citation string."""
+    if isinstance(item, str):
+        return item.strip()
+    if not isinstance(item, dict):
+        return str(item).strip()
+    text = item.get("text") or item.get("Text") or item.get("value")
+    if text:
+        return str(text).strip()
+    parts = []
+    authors = item.get("authors", [])
+    if authors:
+        parts.append(", ".join(str(a) for a in authors) if isinstance(authors, list) else str(authors))
+    year = item.get("year")
+    if year:
+        parts.append(f"({year})")
+    title = item.get("title", "")
+    if title:
+        parts.append(f'"{title},"')
+    jname = item.get("journal") or item.get("conference") or ""
+    if jname:
+        parts.append(str(jname) + ",")
+    vol = item.get("volume", "")
+    if vol:
+        parts.append(f"vol. {vol},")
+    issue = item.get("issue", "")
+    if issue:
+        parts.append(f"no. {issue},")
+    pages = item.get("pages", "")
+    if pages:
+        parts.append(f"pp. {pages},")
+    doi = item.get("doi", "")
+    if doi:
+        parts.append(f"doi: {doi}.")
+    url = item.get("url", "")
+    if url:
+        accessed = item.get("accessed", "")
+        parts.append(f"[Online]. Available: {url}" + (f" [Accessed: {accessed}]." if accessed else "."))
+    publisher = item.get("publisher", "")
+    if publisher and not jname:
+        location = item.get("location", "")
+        parts.append(f"{location}: {publisher}." if location else f"{publisher}.")
+    result = " ".join(str(p) for p in parts if p).strip()
+    result = result.replace(" , ", ", ").replace(" .", ".")
+    if result.endswith(","):
+        result = result[:-1] + "."
+    if not result.endswith("."):
+        result = result + "."
+    return result
+
 def _get_xslt():
     global _XSLT
     if _XSLT is not None:
@@ -591,12 +641,21 @@ def _render_subsection(doc: Document, subsection: dict, json_path: Path) -> None
 
 
 def _render_sections(doc: Document, config: dict, json_path: Path) -> None:
-    section_keys = sorted(
-        [key for key in config if key.startswith("section") and key[7:].isdigit()],
-        key=lambda key: int(key[7:]),
-    )
-    for section_key in section_keys:
-        section = config[section_key]
+    # Support both "sections" array and "section1/section2" legacy format
+    section_list = []
+    if "sections" in config and isinstance(config["sections"], list):
+        for idx, sec in enumerate(config["sections"], start=1):
+            if isinstance(sec, dict):
+                section_list.append((f"section{idx}", sec))
+    else:
+        section_keys = sorted(
+            [key for key in config if key.startswith("section") and key[7:].isdigit()],
+            key=lambda key: int(key[7:]),
+        )
+        for key in section_keys:
+            section_list.append((key, config[key]))
+
+    for section_key, section in section_list:
         title = _smart_title(section.get("title"))
         if title:
             _add_heading(doc, title, level=1)
@@ -621,7 +680,17 @@ def _reference_text(reference) -> str:
 
 
 def _add_references(doc: Document, config: dict) -> None:
-    references = list((config.get("references") or {}).get("content") or [])
+    refs_raw = config.get("references")
+    references = []
+    if isinstance(refs_raw, dict):
+        references = list(refs_raw.get("content", refs_raw.get("items", [])) or [])
+    elif isinstance(refs_raw, list):
+        # Direct list of strings or {"text": ...} dicts
+        for r in refs_raw:
+            if isinstance(r, dict):
+                references.append(_format_reference(r))
+            else:
+                references.append(str(r))
     if not references:
         return
     _add_heading(doc, "References", level=1, numbered=False)

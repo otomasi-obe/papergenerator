@@ -176,8 +176,8 @@
             :disabled="reviewBusy || checkedCount === 0"
             class="px-2 py-1 rounded-lg text-[10px] font-semibold bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 active:scale-95 transition-transform"
             title="Review semua literatur yang di-check dengan AI"
-          >🤖 Review Pinned</button>
-          <span>{{ filteredItems.length }} / {{ items.length }} literatur · {{ pinnedCount }} pinned</span>
+          >🤖 Review Selected</button>
+          <span>{{ filteredItems.length }} / {{ items.length }} literatur</span>
           <button
             @click="clearAllFilters"
             class="px-2 py-1 rounded-lg text-[10px] font-medium bg-gray-500 hover:bg-gray-600 text-white active:scale-95 transition-transform"
@@ -285,10 +285,17 @@
 
       <!-- Table -->
       <div class="overflow-x-auto rounded-xl border border-ivory-300 dark:border-anthracite-500">
-        <table class="min-w-full text-xs">
-          <thead class="bg-ivory-100 dark:bg-anthracite-800 text-ink-700 dark:text-anthracite-100">
+        <table class="w-full table-fixed text-sm border-collapse" style="min-width: 1200px;">
+          <colgroup>
+            <col style="width: 28px" />
+            <col style="width: 36px" />
+            <col style="width: 22%" />
+            <col style="width: 52%" />
+            <col style="width: 26%" />
+          </colgroup>
+          <thead class="bg-ivory-100 dark:bg-anthracite-800 text-ink-700 dark:text-anthracite-100 sticky top-0 z-10">
             <tr>
-              <th class="px-2 py-2 text-left w-6">
+              <th class="px-1 py-2.5 text-left w-5">
                 <input
                   type="checkbox"
                   :checked="allVisibleChecked"
@@ -297,15 +304,15 @@
                   title="Check/uncheck semua di halaman ini"
                 />
               </th>
-              <th class="px-2 py-2 text-left w-10">#</th>
-              <th class="px-2 py-2 text-left min-w-[260px]">Judul</th>
-              <th class="px-2 py-2 text-left min-w-[220px]">Info</th>
-              <th class="px-2 py-2 text-left min-w-[280px]">Abstract</th>
+              <th class="px-1 py-2.5 text-left w-7">#</th>
+              <th class="px-2 py-2.5 text-left">Judul dan Informasi</th>
+              <th class="px-2 py-2.5 text-left">Abstract</th>
+              <th class="px-2 py-2.5 text-left w-52">Review &amp; Gap</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading && items.length === 0">
-              <td colspan="5" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat\u2026</td>
+              <td colspan="5" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
             </tr>
             <tr v-else-if="items.length === 0">
               <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
@@ -314,7 +321,7 @@
                   <button
                     v-if="paperTitle"
                     @click="startSLRFromPaperTopic"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
+                    class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
                   >Jalankan SLR otomatis dari topik paper ini</button>
                 </div>
               </td>
@@ -331,71 +338,70 @@
                 :class="[rowClass(it), { 'ring-2 ring-yellow-400 dark:ring-yellow-500 bg-yellow-50 dark:bg-yellow-900/10': duplicateIds.has(it.id) }]"
                 @click="toggleCheck(it)"
               >
-                <td class="px-2 py-2 align-top" @click.stop>
+                <td class="px-1 py-2.5 align-top text-center" @click.stop>
                   <input
                     type="checkbox"
                     :checked="checkedIds.has(it.id)"
                     @change="toggleCheck(it)"
                     title="Centang = pilih untuk review/delete"
+                    class="w-3 h-3 mt-0.5"
                   />
                 </td>
-                <td class="px-2 py-2 align-top text-ink-500 dark:text-anthracite-200">{{ pageOffset + i + 1 }}</td>
-                <!-- Judul -->
-                <td class="px-2 py-2 align-top">
-                  <div class="font-medium text-ink-900 dark:text-anthracite-50 leading-snug break-words">
-                    <span v-if="it.pinned" class="text-amber-500 mr-1" title="Pinned (prioritas tinggi)">📌</span>
+                <td class="px-1 py-2.5 align-top text-center text-ink-500 dark:text-anthracite-300 font-mono text-[11px] pt-1">{{ pageOffset + i + 1 }}</td>
+                <!-- Judul dan Informasi -->
+                <td class="px-2 py-2 align-top cursor-pointer">
+                  <div class="font-medium text-sm text-ink-900 dark:text-anthracite-50 leading-snug break-words mb-1">
                     {{ it.title }}
                   </div>
-                </td>
-                <!-- Info: Tahun, Sitasi, Penulis, Jurnal, DOI, PDF -->
-                <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed">
-                  <div class="space-y-0.5">
-                    <div v-if="it.year"><span class="text-ink-500 dark:text-anthracite-300">Tahun:</span> {{ it.year }}</div>
-                    <div><span class="text-ink-500 dark:text-anthracite-300">Sitasi:</span> {{ it.citations ?? '\u2013' }}</div>
-                    <div v-if="it.authors && it.authors.length">
-                      <span class="text-ink-500 dark:text-anthracite-300">Penulis:</span>
-                      <span :title="safeAuthorsJoin(it.authors)">{{ formatAuthors(normalizeAuthors(it.authors)) }}</span>
-                    </div>
-                    <div v-if="it.venue || it.publisher" class="text-ink-500 dark:text-anthracite-200 italic">
-                      {{ it.venue || it.publisher }}
-                    </div>
-                    <div v-if="it.doi">
-                      <a :href="`https://doi.org/${it.doi}`" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 hover:underline break-all text-[10px]" @click.stop>https://doi.org/{{ it.doi }}</a>
-                    </div>
-                    <div v-if="it.pdf_url">
-                      <a :href="it.pdf_url" target="_blank" rel="noopener" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-800/60 text-[10px] font-medium transition-colors" title="Download PDF" @click.stop>
-                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M4 18h12V6h-4V2H4v16zm8-14.5V6h2.5L12 3.5zM6 16V4h4v4h4v8H6z"/><path d="M8 12h1.5v-2h1v2H12v-3.5h-1v1h-1v1H8.5v1H8V12z"/></svg>
-                        PDF
-                      </a>
-                    </div>
-                    <div v-if="!it.pdf_url && !it.doi && it.url">
-                      <a :href="safeUrl(it.url)" target="_blank" rel="noopener" class="text-blue-600 hover:underline break-all text-[10px]" @click.stop>🔗 URL</a>
-                    </div>
-                    <!-- Pin toggle -->
+                  <div class="text-[11px] text-ink-500 dark:text-anthracite-400 space-x-2">
+                    <span v-if="it.year" class="inline-block">{{ it.year }}</span>
+                    <span v-if="it.citations !== null && it.citations !== undefined" class="inline-block">⚡ {{ it.citations }} sitasi</span>
+                    <span v-if="it.authors && it.authors.length" class="inline-block" :title="safeAuthorsJoin(it.authors)">👤 {{ formatAuthors(normalizeAuthors(it.authors)) }}</span>
+                    <span v-if="it.venue || it.publisher" class="inline-block text-ink-400 dark:text-anthracite-500 italic">{{ it.venue || it.publisher }}</span>
+                  </div>
+                  <div v-if="it.doi || it.pdf_url || it.url" class="flex flex-wrap gap-1 mt-1">
                     <button
-                      @click.stop="togglePin(it)"
-                      :class="['text-[10px] mt-1 px-1.5 py-0.5 rounded', it.pinned ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-ivory-100 text-ink-500 dark:bg-anthracite-700 dark:text-anthracite-300 hover:bg-ivory-200']"
-                      :title="it.pinned ? 'Unpin' : 'Pin (prioritas tinggi)'"
-                    >{{ it.pinned ? '📌 Unpin' : '📌 Pin' }}</button>
-                    <!-- Delete -->
+                      v-if="it.doi"
+                      @click.stop="openDoi(it.doi)"
+                      class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200"
+                    >DOI</button>
                     <button
-                      @click.stop="deleteItem(it)"
-                      class="text-[10px] mt-1 ml-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/40"
-                      title="Hapus literatur"
-                    >🗑 Hapus</button>
+                      v-if="it.pdf_url"
+                      @click.stop="openPdfUrl(it.pdf_url)"
+                      class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200 hover:bg-emerald-200"
+                    >PDF</button>
+                    <button
+                      v-if="it.url && !it.doi && !it.pdf_url"
+                      @click.stop="openUrl(it.url)"
+                      class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300 hover:bg-gray-200"
+                    >URL</button>
                   </div>
                 </td>
-                <!-- Abstract (expandable) -->
-                <td class="px-2 py-2 align-top text-[11px] text-ink-700 dark:text-anthracite-100 leading-relaxed break-words max-w-[360px]">
-                  <template v-if="it.abstract">
-                    <div :class="expandedAbstract.has(it.id) ? '' : 'line-clamp-3'" class="whitespace-pre-wrap">{{ it.abstract }}</div>
+                <!-- Abstract -->
+                <td class="px-2 py-2 align-top text-xs text-ink-700 dark:text-anthracite-100 leading-relaxed">
+                  <div v-if="it.abstract">
+                    <div class="whitespace-pre-wrap break-words" :class="expandedAbstract.has(it.id) ? '' : 'line-clamp-4'">{{ it.abstract }}</div>
                     <button
                       v-if="isLongText(it.abstract)"
                       @click.stop="toggleExpand('abstract', it.id)"
-                      class="mt-0.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
-                    >{{ expandedAbstract.has(it.id) ? '▲ sembunyikan' : '▼ tampilkan semua' }}</button>
-                  </template>
+                      class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline mt-0.5"
+                    >{{ expandedAbstract.has(it.id) ? '▲ Ciutkan' : '▼ Selengkapnya' }}</button>
+                  </div>
                   <span v-else class="text-ink-400 dark:text-anthracite-300 italic">—</span>
+                </td>
+                <!-- Review & Gap -->
+                <td class="px-2 py-2 align-top text-xs leading-relaxed">
+                  <div v-if="it.summary || it.gap_riset" class="space-y-2">
+                    <div v-if="it.summary" class="text-ink-800 dark:text-anthracite-100">
+                      <span class="font-semibold text-purple-700 dark:text-purple-300">Review:</span>
+                      <span class="block mt-0.5">{{ it.summary }}</span>
+                    </div>
+                    <div v-if="it.gap_riset" class="text-ink-800 dark:text-anthracite-100">
+                      <span class="font-semibold text-orange-700 dark:text-orange-300">Gap:</span>
+                      <span class="block mt-0.5 italic">{{ it.gap_riset }}</span>
+                    </div>
+                  </div>
+                  <span v-else class="text-ink-400 dark:text-anthracite-300 italic text-[11px]">Belum direview</span>
                 </td>
               </tr>
             </template>
@@ -442,7 +448,6 @@
 
       <p class="text-[11px] text-ink-500 dark:text-anthracite-200">
         💡 <strong>Tip:</strong> Klik baris untuk check/uncheck paper. Paper yang di-check bisa direview atau dihapus massal.
-        Pin (📌) untuk menandai prioritas tinggi.
       </p>
     </div>
   </div>
@@ -498,7 +503,6 @@ interface LiteratureItem {
   score_breakdown?: any
   citations?: number
   review?: string
-  pinned?: boolean
   must_read?: boolean
   is_checked?: boolean
 }
@@ -536,7 +540,6 @@ interface ManualForm {
 interface FilterState {
   filter: string
   filterSource: string
-  onlyPinned: boolean
   minYear: number | null
   pageSize?: number
 }
@@ -552,7 +555,6 @@ const loadError = ref('')
 
 const filter = ref('')
 const filterSource = ref('')
-const onlyPinned = ref(false)
 const minYear = ref<number | null>(null)
 
 const showAddManual = ref(false)
@@ -566,10 +568,14 @@ const slrCardRef = ref<HTMLElement | null>(null)
 let _pollTimer: ReturnType<typeof setTimeout> | null = null
 let _extraFastPolls = 0
 let _loadItemsInFlight = false
+let _userClearedTable = false  // Skip auto-reload after user clicks "Clear all"
 
 // SLR live stream: items that arrived during active SLR
 const slrStreamItems = ref<LiteratureItem[]>([])
 let _knownIdsBeforeSlr = new Set<number>()
+
+// SSE connections for real-time job progress
+const _sseConnections = new Map<string, EventSource>()
 
 // SLR Settings
 const showSlrSettings = ref(false)
@@ -579,7 +585,7 @@ const availableSources = ref([
   'doaj', 'core', 'lens', 'zenodo', 'hal', 'cambridge',
   'plos', 'sciencedirect', 'openaire', 'datacite',
 ])
-const slrSources = ref<string[]>([...availableSources.value])
+const slrSources = ref<string[]>([])
 const slrYearFrom = ref<number | null>(null)
 
 const manualForm = ref<ManualForm>({
@@ -606,7 +612,6 @@ const duplicateMode = ref<DuplicateMode>('off')
 const hasActiveFilters = computed(() =>
   filter.value !== '' ||
   filterSource.value !== '' ||
-  onlyPinned.value ||
   minYear.value != null ||
   duplicateMode.value !== 'off' ||
   sortKey.value !== 'default'
@@ -671,12 +676,12 @@ watch(pageSize, (val) => {
   }
 })
 
-// Expandable abstract — Set of item IDs that are expanded (default = collapsed via line-clamp-3)
+// Expandable abstract — Set of item IDs that are expanded (default = collapsed via line-clamp-4)
 const expandedAbstract = ref<Set<number>>(new Set())
 
 function isLongText(text: string | undefined): boolean {
   if (!text) return false
-  return text.length > 200 || (text.split('\n').length > 3)
+  return text.length > 200 || (text.split('\n').length > 4)
 }
 
 function toggleExpand(field: 'abstract', id: number): void {
@@ -693,9 +698,15 @@ const filteredItems = computed<LiteratureItem[]>(() => {
     ? Number(minYear.value)
     : null
   const dupFilters = duplicateMode.value !== 'off'
-  return items.value.filter(it => {
+  // Merge items + slrStreamItems (dedup by title for streaming papers without id)
+  const allRaw = [...items.value]
+  for (const p of slrStreamItems.value) {
+    if (!allRaw.find(i => i.title === p.title)) {
+      allRaw.push(p as LiteratureItem)
+    }
+  }
+  return allRaw.filter(it => {
     if (filterSource.value && it.source !== filterSource.value && it.source_kind !== filterSource.value) return false
-    if (onlyPinned.value && !it.pinned) return false
     if (minY != null && (it.year == null || Number(it.year) < minY)) return false
     // duplicate filter
     if (dupFilters) {
@@ -716,8 +727,6 @@ const displayedItems = computed<LiteratureItem[]>(() => {
   const arr = filteredItems.value.slice()
   if (sortKey.value === 'default') {
     arr.sort((a, b) => {
-      const pinDiff = (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
-      if (pinDiff !== 0) return pinDiff
       const sa = a.score_total ?? -Infinity
       const sb = b.score_total ?? -Infinity
       return sb - sa
@@ -779,8 +788,6 @@ const visiblePageNumbers = computed(() => {
   return pages
 })
 
-const pinnedCount = computed<number>(() => items.value.filter(i => i.pinned).length)
-
 const allVisibleChecked = computed<boolean>(() => {
   const arr = paginatedItems.value
   if (arr.length === 0) return false
@@ -792,13 +799,13 @@ const someVisibleChecked = computed<boolean>(() => {
 })
 
 function rowClass(it: LiteratureItem): string {
-  const classes = ['border-t', 'border-ivory-200', 'dark:border-anthracite-600', 'cursor-pointer']
+  const classes = ['cursor-pointer', 'transition-colors']
   if (checkedIds.value.has(it.id)) {
     classes.push('bg-blue-50', 'dark:bg-blue-900/20', 'border-l-2', 'border-blue-500')
-  } else if (it.pinned) {
-    classes.push('bg-cream-100', 'dark:bg-anthracite-700/60')
-  } else {
-    classes.push('hover:bg-cream-50', 'dark:hover:bg-anthracite-700/30')
+  }
+  // Hover hanya untuk row yang tidak checked
+  if (!checkedIds.value.has(it.id)) {
+    classes.push('hover:bg-ivory-50/70', 'dark:hover:bg-anthracite-700/20')
   }
   return classes.join(' ')
 }
@@ -817,7 +824,33 @@ function safeUrl(u: string | undefined): string {
   return /^(https?:\/\/|\/)/.test(u) ? u : '#'
 }
 
+function openDoi(doi: string): void {
+  if (!doi) return
+  // Strip https://doi.org/ prefix jika ada
+  const cleanDoi = doi.replace(/^https?:\/\/(dx\.)?doi\.org\//, '')
+  const url = `https://doi.org/${cleanDoi}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
 
+function openPdfUrl(pdfUrl: string): void {
+  if (!pdfUrl) return
+  const url = safeUrl(pdfUrl)
+  if (url === '#') {
+    toast('URL PDF tidak valid', 'error')
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+function openUrl(rawUrl: string): void {
+  if (!rawUrl) return
+  const url = safeUrl(rawUrl)
+  if (url === '#') {
+    toast('URL tidak valid', 'error')
+    return
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
 
 function filterStorageKey(paperId: string): string {
   return `lit.filter.${paperId}`
@@ -826,7 +859,6 @@ function filterStorageKey(paperId: string): string {
 function isAllFiltersDefault(): boolean {
   return !filter.value
     && !filterSource.value
-    && !onlyPinned.value
     && (minYear.value == null || minYear.value === '')
     && pageSize.value === 50
 }
@@ -841,7 +873,6 @@ function saveFilterState(): void {
     const payload: FilterState = {
       filter: filter.value,
       filterSource: filterSource.value,
-      onlyPinned: onlyPinned.value,
       minYear: minYear.value,
       pageSize: pageSize.value,
     }
@@ -862,7 +893,6 @@ function applySavedFilter(saved: FilterState | null): void {
   if (!saved) {
     filter.value = ''
     filterSource.value = ''
-    onlyPinned.value = false
     minYear.value = null
     pageSize.value = 50
     pageSizeInput.value = '50'
@@ -870,7 +900,6 @@ function applySavedFilter(saved: FilterState | null): void {
   }
   filter.value = saved.filter || ''
   filterSource.value = saved.filterSource || ''
-  onlyPinned.value = !!saved.onlyPinned
   minYear.value = (saved.minYear === '' || saved.minYear == null) ? null : Number(saved.minYear)
   if (typeof saved.pageSize === 'number' && saved.pageSize > 0) {
     pageSize.value = saved.pageSize
@@ -880,7 +909,7 @@ function applySavedFilter(saved: FilterState | null): void {
 
 let _filterSaveTimer: ReturnType<typeof setTimeout> | null = null
 watch(
-  [filter, filterSource, onlyPinned, minYear, pageSize],
+  [filter, filterSource, minYear, pageSize],
   () => {
     if (_filterSaveTimer) clearTimeout(_filterSaveTimer)
     _filterSaveTimer = setTimeout(() => { saveFilterState() }, 300)
@@ -975,8 +1004,12 @@ async function loadJobs(): Promise<void> {
     const active = jobs.filter(j => 
       j.status === 'queued' || j.status === 'running' || j.status === 'pending' ||
       j.status === 'analyzing' || j.status === 'fetching' || j.status === 'ranking' || j.status === 'summarizing'
-    )
-    activeJobs.value = active
+    ).sort((a, b) => {
+      const ta = new Date(a.queued_at || 0).getTime()
+      const tb = new Date(b.queued_at || 0).getTime()
+      return tb - ta
+    })
+    activeJobs.value = active.length > 0 ? [active[0]] : []
     const finished = jobs
       .filter(j => j.status === 'done' || j.status === 'error')
       .sort((a, b) => {
@@ -994,33 +1027,37 @@ async function loadJobs(): Promise<void> {
       (!_lastJobIds.value.has(j.id) || _lastJobStatus[j.id] !== j.status)
     )
     if (justFinished) {
-      _extraFastPolls = 1
-      await loadItems()
-      if (newlyDone.length > 0) {
-        const newCount = _knownIdsBeforeSlr
-          ? items.value.filter(i => !_knownIdsBeforeSlr.has(i.id)).length
-          : items.value.length
-        toast(`SLR selesai. ${newCount} literatur masuk.`, 'success')
-        try {
-          const { useChatStore } = await import('../stores/chat')
-          const chatStore = useChatStore()
-          const j = newlyDone[0]
-          const q = j?.query || ''
-          const body = [
-            `✅ **SLR selesai.** ${newCount} literatur berhasil dikumpulkan`,
-            q ? ` untuk query *"${q}"*.` : '.',
-            '',
-            'Mau lanjut yang mana?',
-            '[OPSI]',
-            'Lanjutkan generate paper lengkap dengan literatur ini',
-            'Lihat & pilih literatur dulu (pin must-read)',
-            'Tambahkan keyword lain untuk SLR berikutnya',
-            'Cukup, saya akan ketik permintaan sendiri',
-            '[/OPSI]',
-          ].join('\n')
-          chatStore.injectAssistantMessage?.(body)
-        } catch (e) {
-          // Silent
+      if (_userClearedTable) {
+        _userClearedTable = false  // Reset flag, allow future auto-reloads
+      } else {
+        _extraFastPolls = 1
+        await loadItems()
+        if (newlyDone.length > 0) {
+          const newCount = _knownIdsBeforeSlr
+            ? items.value.filter(i => !_knownIdsBeforeSlr.has(i.id)).length
+            : items.value.length
+          toast(`SLR selesai. ${newCount} literatur masuk.`, 'success')
+          try {
+            const { useChatStore } = await import('../stores/chat')
+            const chatStore = useChatStore()
+            const j = newlyDone[0]
+            const q = j?.query || ''
+            const body = [
+              `✅ **SLR selesai.** ${newCount} literatur berhasil dikumpulkan`,
+              q ? ` untuk query *"${q}"*.` : '.',
+              '',
+              'Mau lanjut yang mana?',
+              '[OPSI]',
+              'Lanjutkan generate paper lengkap dengan literatur ini',
+              'Lihat & pilih literatur dulu (pin must-read)',
+              'Tambahkan keyword lain untuk SLR berikutnya',
+              'Cukup, saya akan ketik permintaan sendiri',
+              '[/OPSI]',
+            ].join('\n')
+            chatStore.injectAssistantMessage?.(body)
+          } catch (e) {
+            // Silent
+          }
         }
       }
     }
@@ -1030,6 +1067,18 @@ async function loadJobs(): Promise<void> {
     slrRunning.value = hasActive || (wasRunning && inGrace)
     if (!wasRunning && slrRunning.value) {
       _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
+    }
+    // Connect SSE for any active jobs that don't have an SSE connection yet
+    for (const j of active) {
+      if (!_sseConnections.has(j.id)) {
+        connectSSE(j.id)
+      }
+    }
+    // Disconnect SSE for jobs that are no longer active
+    for (const [id] of _sseConnections) {
+      if (!active.find(j => j.id === id)) {
+        disconnectSSE(id)
+      }
     }
     _lastJobIds.value = new Set(jobs.map(j => j.id))
     _lastJobStatus = Object.fromEntries(jobs.map(j => [j.id, j.status]))
@@ -1095,13 +1144,18 @@ async function runSLR(): Promise<void> {
   _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
   slrStreamItems.value = []
   try {
-    await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
+    const res = await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
       query: q,
       top_k: slrTopK.value,
       ai_summarize: true,
       sources: slrSources.value.length > 0 && slrSources.value.length < availableSources.value.length ? slrSources.value : null,
       year_from: slrYearFrom.value || null,
     })
+    // Connect SSE for real-time streaming
+    const jobId = res.data?.job_id || res.data?.id
+    if (jobId) {
+      connectSSE(jobId)
+    }
     await loadJobs()
     schedulePoll()
   } catch (e: any) {
@@ -1115,11 +1169,128 @@ async function cancelJob(jobId: string): Promise<void> {
   askConfirm('Hentikan SLR?', 'Job akan dihentikan. Hasil parsial akan dihilangkan.', 'Hentikan', async () => {
     try {
       await api.delete(`/api/slr/jobs/${jobId}`)
+      disconnectSSE(jobId)
       await loadJobs()
     } catch (e: any) {
       toast('Cancel failed: ' + (e?.response?.data?.error || e?.message || ''), 'error')
     }
   })
+}
+
+// ── SSE real-time streaming for SLR jobs ──────────────────────────────
+function connectSSE(jobId: string): void {
+  if (_sseConnections.has(jobId)) return
+  try {
+    const es = new EventSource(`/api/slr/jobs/${jobId}/stream?token=${encodeURIComponent(document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/)?.[1] || '')}`)
+    
+    es.addEventListener('snapshot', (ev: MessageEvent) => {
+      try {
+        const data = JSON.parse(ev.data)
+        // Update activeJobs with snapshot
+        const job = activeJobs.value.find(j => j.id === jobId)
+        if (job) {
+          job.status = data.status || job.status
+          job.stage = data.stage || job.stage
+          job.progress = data.percent || job.progress
+          job.papers_fetched = data.papers_count || job.papers_fetched
+        }
+      } catch { /* ignore parse error */ }
+    })
+    
+    es.addEventListener('progress', (ev: MessageEvent) => {
+      try {
+        const data = JSON.parse(ev.data)
+        // Update activeJobs with real-time progress
+        const job = activeJobs.value.find(j => j.id === jobId)
+        if (job) {
+          job.status = data.status || job.status
+          job.stage = data.stage || job.stage
+          job.progress = data.progress_pct || job.progress
+          job.stage_detail = data.stage_detail || job.stage_detail
+          job.papers_fetched = data.papers_fetched || job.papers_fetched
+          job.all_papers_count = data.all_papers_count || job.all_papers_count
+          job.sources_completed = data.sources_completed || job.sources_completed
+          job.sources_running = data.sources_running || job.sources_running
+          job.sources_pending = data.sources_pending || job.sources_pending
+          job.sources_total = data.sources_total || job.sources_total
+          // Also update primarySlrStatus computed
+          slrRunning.value = true
+        }
+      } catch { /* ignore */ }
+    })
+    
+    es.addEventListener('partial', (ev: MessageEvent) => {
+      try {
+        const data = JSON.parse(ev.data)
+        // Update job papers count
+        const job = activeJobs.value.find(j => j.id === jobId)
+        if (job) {
+          job.papers_fetched = data.papers_count || job.papers_fetched
+        }
+        // Add new partial papers to the stream
+        if (data.new_papers && Array.isArray(data.new_papers)) {
+          for (const paper of data.new_papers) {
+            if (paper.title && !slrStreamItems.value.find(p => p.title === paper.title)) {
+              // Add as a temporary display item in the table
+              slrStreamItems.value.push(paper)
+            }
+          }
+        }
+      } catch { /* ignore */ }
+    })
+    
+    es.addEventListener('done', (ev: MessageEvent) => {
+      try {
+        const data = JSON.parse(ev.data)
+        // Mark terminal FIRST so loadJobs won't reconnect SSE
+        const job = activeJobs.value.find(j => j.id === jobId)
+        if (job) {
+          job.status = data.status || job.status || 'done'
+          job.progress = 100
+        }
+        disconnectSSE(jobId)
+        slrRunning.value = false
+        // Give backend a moment to finalize DB, then reload
+        setTimeout(async () => {
+          await loadJobs()
+          await loadItems()
+          // Clear streamed items — real data now in items.value
+          slrStreamItems.value = []
+        }, 500)
+      } catch { /* ignore */ }
+    })
+    
+    es.onerror = () => {
+      // Close immediately to prevent native auto-reconnect (would duplicate)
+      es.close()
+      _sseConnections.delete(jobId)
+      // Reconnect after 3s if job is still active
+      setTimeout(() => {
+        if (activeJobs.value.some(j => j.id === jobId && (j.status === 'running' || j.status === 'pending' || j.status === 'queued' || j.status === 'fetching' || j.status === 'summarizing' || j.status === 'analyzing'))) {
+          connectSSE(jobId)
+        }
+      }, 3000)
+    }
+    
+    _sseConnections.set(jobId, es)
+  } catch {
+    // SSE not supported or network error — fall back to polling
+  }
+}
+
+function disconnectSSE(jobId: string): void {
+  const es = _sseConnections.get(jobId)
+  if (es) {
+    es.close()
+    _sseConnections.delete(jobId)
+  }
+}
+
+function disconnectAllSSE(): void {
+  for (const [id, es] of _sseConnections) {
+    es.close()
+  }
+  _sseConnections.clear()
 }
 
 async function startSLRFromPaperTopic(): Promise<void> {
@@ -1296,11 +1467,11 @@ function toggleCheckAllVisible(): void {
 
 function clearAllFilters(): void {
   askConfirm('Kosongkan tabel?', 'Semua literatur akan dihapus dari tampilan tabel. Data tetap aman — muat ulang atau jalankan SLR baru untuk menampilkan lagi.', 'Kosongkan', () => {
+    _userClearedTable = true  // Prevent auto-reload from re-populating
     items.value = []
     checkedIds.value = new Set()
     filter.value = ''
     filterSource.value = ''
-    onlyPinned.value = false
     minYear.value = null
     pageSize.value = 50
     pageSizeInput.value = '50'
@@ -1371,19 +1542,6 @@ function formatAuthors(authors: string[] | undefined): string {
   if (!authors || authors.length === 0) return '\u2013'
   if (authors.length <= 3) return authors.join(', ')
   return `${authors.slice(0, 3).join(', ')}, et al.`
-}
-
-async function togglePin(it: LiteratureItem): Promise<void> {
-  if (!currentPaperId.value) return
-  const newVal = !it.pinned
-  try {
-    await api.patch(`/api/papers/${currentPaperId.value}/literature/${it.id}`, {
-      pinned: newVal,
-    })
-    it.pinned = newVal
-  } catch (e: any) {
-    toast('Gagal mengubah pin: ' + (e?.response?.data?.error || e?.message || ''), 'error')
-  }
 }
 
 async function reviewAllChecked(): Promise<void> {
@@ -1493,6 +1651,7 @@ onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.removeEventListener('visibilitychange', _onVisibilityChange)
   }
+  disconnectAllSSE()
 })
 </script>
 
@@ -1502,5 +1661,5 @@ onUnmounted(() => {
 .btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700; }
 .sort-btn { @apply px-2 py-1 rounded-lg text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 active:scale-95 transition-transform; }
 .sort-btn.active { @apply bg-navy-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900 border-navy-700 dark:border-cream-200; }
-.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

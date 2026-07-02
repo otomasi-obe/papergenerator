@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 106">
+  <defs>
+    <style>.cls-1{fill:#e31937;}.cls-2{fill:#fff;}</style>
+  </defs>
+  <rect class="cls-1" width="280" height="106" rx="12"/>
+  <g>
+    <path class="cls-2" d="M45,30h8v8h-8v-8Zm0,12h8v8h-8v-8Zm0,12h8v8h-8v-8Z"/>
+    <path class="cls-2" d="M57,30h8v8h-8v-8Zm0,12h8v8h-8v-8Zm0,12h8v8h-8v-8Z"/>
+    <path class="cls-2" d="M69,30h8v8h-8v-8Zm0,12h8v8h-8v-8Zm0,12h8v8h-8v-8Z"/>
+    <path class="cls-2" d="M45,66h8v8h-8v-8Zm0,-12h8v8h-8v-8Z"/>
+    <path class="cls-2" d="M57,66h8v8h-8v-8Zm0,-12h8v8h-8v-8Z"/>
+    <path class="cls-2" d="M69,66h8v8h-8v-8Zm0,-12h8v8h-8v-8Z"/>
+    <text class="cls-2" transform="translate(95 63)" style="font-size:42px;font-weight:700;font-family:Arial,sans-serif">QRIS</text>
+  </g>
+</svg>

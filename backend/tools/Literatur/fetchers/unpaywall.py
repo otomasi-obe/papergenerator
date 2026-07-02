@@ -126,7 +126,7 @@ def lookup(client, doi: str) -> Paper | None:
     if not doi_clean:
         return None
 
-    email = os.getenv("SLR_CONTACT_EMAIL") or "research@example.com"
+    email = os.getenv("SLR_CONTACT_EMAIL") or "sirobo@undip.ac.id"
     rl = RateLimiter(0.1)  # 100k/day = ~1.2/sec, we stay conservative
     rl.wait()
 
@@ -151,7 +151,7 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     from .crossref import search as crossref_search
 
     rl = RateLimiter(0.15)
-    email = os.getenv("SLR_CONTACT_EMAIL") or "research@example.com"
+    email = os.getenv("SLR_CONTACT_EMAIL") or "sirobo@undip.ac.id"
     fetched = 0
 
     # Get DOIs from Crossref first
