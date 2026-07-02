@@ -98,16 +98,25 @@ function fixLatexSpacing(latex: string): string {
  */
 function wrapRawLatex(text: string): string {
   if (!text) return text
-  // Phase 1: wrap sub/super without $ (v_i → $v_i$, x^2 → $x^2$, ΔV_max → $ΔV_{max}$)
-  // Phase 2: wrap \commands (\tau → $\tau$)
+  // Phase 1: wrap sub/super without $ (v_i → $v_i$, x^2 → $x^2$, P_loss → $P_{loss}$)
+  // Also handles AI-generated spaces: P_l oss → $P_{loss}$, ΔV_m ax → $ΔV_{max}$
   // Both phases skip existing $...$ and $$...$$
+
+  // Step 1a: fix split-subscripts where AI inserts space mid-subscript
+  // Pattern: letter_letter<space>letters (e.g. P_l oss → P_loss, PF_b ase → PF_base)
+  text = text.replace(/([a-zA-ZΑ-Ωα-ω])_([a-zA-Z]) ([a-z]{1,12})(?=[\s.,;:)}\]!?]|$)/g, '$1_{$2$3}')
+  
+  // Step 1b: also handle comma-separated like c_1,c_2
   const wrapSubSup = (t: string): string => {
-    return t.replace(/(?<!\$)([a-zA-ZΑ-Ωα-ω0-9)\]}]+)((?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]+))+)/g, (match, base, ops) => {
+    return t.replace(/(?<!\$)([a-zA-ZΑ-Ωα-ω0-9)\]}Δ]+)((?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]+))+)/g, (match, base: string, ops: string) => {
       // Don't wrap if base is too long (likely a word, not a variable)
       if (base.length > 8) return match
       // Don't wrap common false positives: URLs, filenames, code-like patterns
       if (/^https?/.test(base) || /\./.test(base)) return match
-      return '$' + base + ops + '$'
+      // Wrap multi-char subscript/superscript in {} for KaTeX
+      // e.g. P_loss → P_{loss}, x^2n → x^{2n} (but keep single chars: v_i, x^2)
+      const fixedOps = ops.replace(/([_^])([a-zA-Z0-9]{2,})/g, '$1{$2}')
+      return '$' + base + fixedOps + '$'
     })
   }
   text = wrapSubSup(text)
