@@ -106,7 +106,7 @@ function wrapRawLatex(text: string): string {
   // Pattern: letter_letter<space>letters (e.g. P_l oss → P_loss, PF_b ase → PF_base)
   text = text.replace(/([a-zA-ZΑ-Ωα-ω])_([a-zA-Z]) ([a-z]{1,12})(?=[\s.,;:)}\]!?]|$)/g, '$1_{$2$3}')
   
-  // Step 1b: also handle comma-separated like c_1,c_2
+  // Step 1b: wrap subscript/superscript patterns (v_i, x^2, P_loss, c_1,c_2)
   const wrapSubSup = (t: string): string => {
     return t.replace(/(?<!\$)([a-zA-ZΑ-Ωα-ω0-9)\]}Δ]+)((?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]+))+)/g, (match, base: string, ops: string) => {
       // Don't wrap if base is too long (likely a word, not a variable)
@@ -120,6 +120,16 @@ function wrapRawLatex(text: string): string {
     })
   }
   text = wrapSubSup(text)
+  
+  // Step 1c: wrap standalone single-letter variables (v, x, y, z, w, t, etc.)
+  // Only wrap if followed by space/punctuation (not part of a word)
+  // Common math variables: v, x, y, z, w, t, u, p, q, r, s, m, n, k, i, j
+  // Greek letters: α, β, γ, δ, ε, ζ, η, θ, ι, κ, λ, μ, ν, ξ, π, ρ, σ, τ, υ, φ, χ, ψ, ω
+  const singleLetterVars = 'vxyzwtupqrsmnkijαβγδεζηθικλμνξπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ'
+  text = text.replace(new RegExp(`(?<![a-zA-ZΑ-Ωα-ω])([${singleLetterVars}])(?=[\\s.,;:)}\\]!?]|$)`, 'g'), '$$$1$')
+  
+  // Step 1d: wrap comma-separated variable lists (c_1,c_2 → $c_1$,$c_2$)
+  // This is handled by Step 1b for each variable separately, but ensure commas are preserved
   
   // Phase 2: wrap raw \commands outside $...$
   let result = ''

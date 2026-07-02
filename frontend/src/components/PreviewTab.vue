@@ -179,7 +179,7 @@
  </div>
  <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
  <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
- <img v-if="item.Path && !failedImages.has(item.Path)" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="onImgError($event, item.Path)" />
+ <img v-if="item.Path && !failedImages.has(item.Path)" :src="imgSrc(item)" class="max-h-48 mx-auto" :alt="item.Title" @error="onImgError($event, item.Path)" />
  <div v-else-if="item.Path && failedImages.has(item.Path)" class="w-48 h-32 bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center rounded text-xs text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
  ⚠️ Gambar gagal dimuat
  </div>
@@ -238,7 +238,7 @@
  </div>
  <div v-else-if="item.id === 'gambar'" class="my-3 text-center">
  <div class="inline-block border border-cream-300 dark:border-ash-600 rounded p-2">
- <img v-if="item.Path && !failedImages.has(item.Path)" :src="imgSrc(item.Path)" class="max-h-48 mx-auto" :alt="item.Title" @error="onImgError($event, item.Path)" />
+ <img v-if="item.Path && !failedImages.has(item.Path)" :src="imgSrc(item)" class="max-h-48 mx-auto" :alt="item.Title" @error="onImgError($event, item.Path)" />
  <div v-else-if="item.Path && failedImages.has(item.Path)" class="w-48 h-32 bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center rounded text-xs text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
  ⚠️ Gambar gagal dimuat
  </div>
@@ -419,10 +419,49 @@ function onTextareaInput(event: Event, item: any): void {
  item.text = (event.target as HTMLTextAreaElement).value
 }
 
-function imgSrc(path: string): string {
- if (!store.currentPaperId || store.currentPaperId === 'null' || store.currentPaperId === 'undefined' || !path) return ''
- const filename = path.includes('/') ? path.split('/').pop() || path : path
- return `/api/images/${store.currentPaperId}/${encodeURIComponent(filename)}`
+function imgSrc(item: any): string {
+  if (!store.currentPaperId || store.currentPaperId === 'null' || store.currentPaperId === 'undefined' || !item?.Path) return ''
+  const pid = store.currentPaperId
+  let filename = item.Path.includes('/') ? item.Path.split('/').pop() || item.Path : item.Path
+
+  // 1. Direct match: Path already contains the actual stored filename
+  const directMatch = (store.paperImages || []).find(img => img.filename === filename)
+  if (directMatch) {
+    return `/api/images/${pid}/${encodeURIComponent(directMatch.filename)}`
+  }
+
+  // 2. Position-based mapping: placeholder Path (gambar/fig1.png) → N-th AI-generated image
+  //    Count this item's position among gambar items, then map to N-th generated image
+  const genImages = (store.paperImages || []).filter(img =>
+    /^(gen_|ai_|img_gen)/i.test(img.filename || '')
+  )
+  if (genImages.length > 0) {
+    // Find this item's index among all gambar items in document order
+    let gambarIdx = 0
+    function walk(items: any[]) {
+      for (const it of items || []) {
+        if (it.id === 'gambar' && it !== item) gambarIdx++
+        else if (it.id === 'gambar' && it === item) return gambarIdx
+      }
+      return -1
+    }
+    let idx = -1
+    for (const sec of store.paper.sections || []) {
+      const found = walk(sec.content)
+      if (found >= 0) { idx = found; break }
+      for (const sub of sec.subsections || []) {
+        const found2 = walk(sub.content)
+        if (found2 >= 0) { idx = found2; break }
+      }
+      if (idx >= 0) break
+    }
+    if (idx >= 0 && idx < genImages.length) {
+      return `/api/images/${pid}/${encodeURIComponent(genImages[idx].filename)}`
+    }
+  }
+
+  // 3. Fallback: use Path as-is (may 404 if file doesn't exist)
+  return `/api/images/${pid}/${encodeURIComponent(filename)}`
 }
 
 function toRoman(num: number): string { 

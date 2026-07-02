@@ -1433,6 +1433,17 @@ export const usePaperStore = defineStore('paper', () => {
     toast,
     currentPaperId,
     paperImages,
+    figureSources,
+    figureSourceUsage,
+    // Index-based mapping: maps an integer index (0-based document order)
+    // to the corresponding paperImages entry. Used to resolve AI placeholder
+    // paths (gambar/fig1.png) to actual filenames (gen_abc123.png).
+    paperImageByIndex: computed(() => {
+      const genImages = (paperImages.value || []).filter(img =>
+        /^(gen_|ai_|img_gen)/i.test(img.filename || '')
+      )
+      return genImages
+    }),
     paperCharts,
     availableJournals,
     journalsLoading,

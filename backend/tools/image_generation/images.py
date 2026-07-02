@@ -357,15 +357,20 @@ def get_paper_image(paper_id: str, filename: str):
             except (ValueError, TypeError):
                 return jsonify({"error": "Invalid user identity"}), 401
 
-    # Verify both paper ownership AND image belongs to that paper (security fix)
-    # Try sanitized filename first, fall back to original for backwards compat
+    # Verify paper ownership (user must own this paper to access its images)
+    from utils.database.models import Paper
+    paper = Paper.query.filter_by(id=paper_id).first()
+    if not paper:
+        return jsonify({"error": "Paper not found"}), 404
+    if paper.user_id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    # Try PaperImage record first (preferred — has metadata + permissions)
     img = PaperImage.query.filter_by(paper_id=paper_id, filename=sanitized).first()
     if not img and sanitized != filename:
         img = PaperImage.query.filter_by(paper_id=paper_id, filename=filename).first()
-    if not img:
-        return jsonify({"error": "Image not found"}), 404
-    if img.user_id != user_id:
-        return jsonify({"error": "Unauthorized"}), 403
+    # If no PaperImage record, still allow serving if file exists on disk
+    # (handles AI-generated images before reconcile / images saved without DB record)
 
     paper_dir = safe_paper_image_dir(paper_id)
     if not paper_dir:
@@ -382,4 +387,9 @@ def get_paper_image(paper_id: str, filename: str):
 
     if not filepath.is_file():
         return jsonify({"error": "Image not found"}), 404
+
+    # If PaperImage record exists, verify user ownership via the record
+    if img and img.user_id != user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+
     return send_file(str(filepath))
