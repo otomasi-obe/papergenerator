@@ -191,23 +191,23 @@
  <p v-else-if="item.Title" class="text-xs mt-1 opacity-70 dark:opacity-60">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
  </div>
  <div v-else-if="item.id === 'tabel'" class="my-3">
- <input v-if="editMode" v-model="item.Title"
- class="text-xs text-center font-semibold mb-1 w-full bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 dark:text-ash-100"
- placeholder="Judul tabel..." />
- <p v-else-if="item.Title" class="text-xs text-center font-semibold mb-1">TABLE {{ getItemNum(item) }}: {{ item.Title }}</p>
- <table class="w-full text-xs border-collapse border border-cream-400 dark:border-ash-600 mx-auto">
- <thead>
- <tr>
- <th v-for="(h, hi) in item.Headers" :key="hi" class="border border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 px-2 py-1 text-center font-semibold">{{ h }}</th>
- </tr>
- </thead>
- <tbody>
- <tr v-for="(row, ri) in item.Rows" :key="ri">
- <td v-for="(cell, ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center">{{ cell }}</td>
- </tr>
- </tbody>
- </table>
- </div>
+         <input v-if="editMode" v-model="item.Title"
+         class="text-xs text-center font-semibold mb-1 w-full bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 dark:text-ash-100"
+         placeholder="Judul tabel..." />
+         <p v-else-if="item.Title" class="text-xs text-center font-semibold mb-1">TABLE {{ getItemNum(item) }}: {{ item.Title }}</p>
+         <table class="w-full text-xs border-collapse border border-cream-400 dark:border-ash-600 mx-auto">
+         <thead>
+         <tr>
+         <th v-for="(h, hi) in item.Headers" :key="hi" class="border border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 px-2 py-1 text-center font-semibold" v-html="renderInlineText(h)"></th>
+         </tr>
+         </thead>
+         <tbody>
+         <tr v-for="(row, ri) in item.Rows" :key="ri">
+         <td v-for="(cell, ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center" v-html="renderInlineText(cell)"></td>
+         </tr>
+         </tbody>
+         </table>
+         </div>
  <div v-else-if="item.id === 'rumus' && item.latex" class="my-2 text-center text-sm">
  <input v-if="editMode" v-model="item.latex"
  class="w-full text-center bg-transparent border-b border-dashed border-cream-400 dark:border-ash-500 focus:border-navy-500 focus:ring-[#238f7f]/30 outline-none px-1 font-mono dark:text-ash-100"
@@ -250,12 +250,12 @@
  <p v-else-if="item.Title" class="text-xs mt-1 opacity-70 dark:opacity-60">Fig. {{ getItemNum(item) }}. {{ item.Title }}</p>
  </div>
  <div v-else-if="item.id === 'tabel'" class="my-3">
- <p class="text-xs text-center font-semibold mb-1">{{ item.Title || 'Table ' + item.TableNumber }}</p>
- <table class="text-xs border-collapse w-full mx-auto">
- <thead><tr><th v-for="(h,i) in item.Headers" :key="i" class="border border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 px-2 py-1 text-center font-semibold">{{ h }}</th></tr></thead>
- <tbody><tr v-for="(row,ri) in item.Rows" :key="ri"><td v-for="(cell,ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center">{{ cell }}</td></tr></tbody>
- </table>
- </div>
+   <p class="text-xs text-center font-semibold mb-1">{{ item.Title || 'Table ' + item.TableNumber }}</p>
+   <table class="text-xs border-collapse w-full mx-auto">
+   <thead><tr><th v-for="(h,i) in item.Headers" :key="i" class="border border-cream-400 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 px-2 py-1 text-center font-semibold" v-html="renderInlineText(h)"></th></tr></thead>
+   <tbody><tr v-for="(row,ri) in item.Rows" :key="ri"><td v-for="(cell,ci) in row" :key="ci" class="border border-cream-400 dark:border-ash-600 px-2 py-1 text-center" v-html="renderInlineText(cell)"></td></tr></tbody>
+   </table>
+   </div>
  <div v-else-if="item.id === 'rumus' && (item.latex || item.text)" class="my-3">
  <div class="flex items-center justify-between">
  <span class="flex-1 text-center" v-html="renderFormula(item.latex || item.text)"></span>

@@ -98,6 +98,21 @@ function fixLatexSpacing(latex: string): string {
  */
 function wrapRawLatex(text: string): string {
   if (!text) return text
+  // Phase 1: wrap sub/super without $ (v_i → $v_i$, x^2 → $x^2$, ΔV_max → $ΔV_{max}$)
+  // Phase 2: wrap \commands (\tau → $\tau$)
+  // Both phases skip existing $...$ and $$...$$
+  const wrapSubSup = (t: string): string => {
+    return t.replace(/(?<!\$)([a-zA-ZΑ-Ωα-ω0-9)\]}]+)((?:[_^](?:\{[^{}]*\}|[a-zA-Z0-9]+))+)/g, (match, base, ops) => {
+      // Don't wrap if base is too long (likely a word, not a variable)
+      if (base.length > 8) return match
+      // Don't wrap common false positives: URLs, filenames, code-like patterns
+      if (/^https?/.test(base) || /\./.test(base)) return match
+      return '$' + base + ops + '$'
+    })
+  }
+  text = wrapSubSup(text)
+  
+  // Phase 2: wrap raw \commands outside $...$
   let result = ''
   let i = 0
   const len = text.length
