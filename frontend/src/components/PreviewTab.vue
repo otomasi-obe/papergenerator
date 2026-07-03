@@ -305,7 +305,7 @@ watch(() => store.currentPaperId, (newId) => {
   pdfError.value = false
   pdfLoading.value = false
   if (newId) {
-    nextTick(() => renderPdf())
+    nextTick(() => triggerRender())
   }
 }, { immediate: false })
 
@@ -456,25 +456,18 @@ function autoResize(event: Event) {
 
 // PDF rendering with progress bar
 let progressTimer: ReturnType<typeof setInterval> | null = null
+let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
+function triggerRender() {
+  if (renderDebounceTimer) return
+  renderDebounceTimer = setTimeout(() => {
+    renderDebounceTimer = null
+    if (store.currentPaperId) renderPdf()
+  }, 100)
+}
+
 async function renderPdf() {
   if (pdfLoading.value) return
-  // Wait for paper ID to be available
-  if (!store.currentPaperId) {
-    pdfLoading.value = true
-    pdfError.value = false
-    pdfProgress.value = 0
-    let attempts = 0
-    while (!store.currentPaperId && attempts < 20) {
-      await new Promise(r => setTimeout(r, 300))
-      attempts++
-    }
-    if (!store.currentPaperId) {
-      pdfLoading.value = false
-      pdfError.value = true
-      pdfErrorMessage.value = 'Paper belum tersimpan'
-      return
-    }
-  }
+  if (!store.currentPaperId) return
   pdfLoading.value = true
   pdfError.value = false
   pdfUrl.value = ''
@@ -570,10 +563,7 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 onMounted(() => {
-  // Trigger directly — paper may already be loaded
-  if (store.currentPaperId) {
-    renderPdf()
-  }
+  triggerRender()
 })
 
 onUnmounted(clearPdfBlobUrl)
