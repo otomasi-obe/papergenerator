@@ -460,17 +460,14 @@ let progressTimer: ReturnType<typeof setInterval> | null = null
 console.log('[PreviewTab] script setup, paperId:', store.currentPaperId)
 let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
 function triggerRender() {
-  console.log('[PreviewTab] triggerRender called, paperId:', store.currentPaperId, 'pdfLoading:', pdfLoading.value)
   if (renderDebounceTimer) return
   renderDebounceTimer = setTimeout(() => {
     renderDebounceTimer = null
-    console.log('[PreviewTab] debounce fired, calling renderPdf')
     if (store.currentPaperId) renderPdf()
   }, 100)
 }
 
 async function renderPdf() {
-  console.log('[PreviewTab] renderPdf called, paperId:', store.currentPaperId, 'pdfLoading:', pdfLoading.value)
   if (pdfLoading.value) return
   if (!store.currentPaperId) return
   pdfLoading.value = true
@@ -493,17 +490,15 @@ async function renderPdf() {
       { journal: store.paper.journal || 'IEEE' },
       { timeout: 300000 }
     )
-    pdfProgress.value = 95
     if (res.data?.pdf_url) {
-      const url = res.data.pdf_url
-      await loadPdfBlob(url)
+      const resultUrl = res.data.pdf_url
+      await loadPdfBlob(resultUrl)
       pdfProgress.value = 100
-      pdfUrl.value = url
+      pdfUrl.value = resultUrl
       pdfKey.value++
     }
     pdfLoading.value = false
   } catch (err: any) {
-    console.error('[PreviewTab] renderPdf error:', err)
     pdfLoading.value = false
     pdfError.value = true
     pdfErrorMessage.value = err.response?.data?.error || err.message || 'Failed to render PDF'

@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import sys
+import subprocess
 import threading
 import time
 import uuid
@@ -72,8 +73,11 @@ from utils.job_core import (
     _job_set_done,
     _job_set_error,
     _get_current_user_id,
+    _log_api_usage,
 )
 from tools.payment.qris import payment_bp
+from tools.payment.ipaymu import ipaymu_bp
+from tools.payment.doku import doku_bp
 
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
 try:
@@ -555,6 +559,8 @@ app.register_blueprint(tools_api)
 app.register_blueprint(logging_api)
 app.register_blueprint(state_bp)
 app.register_blueprint(payment_bp)  # QRIS payment endpoints
+app.register_blueprint(ipaymu_bp)  # iPaymu payment endpoints
+app.register_blueprint(doku_bp)    # DOKU SNAP payment endpoints
 
 # ─── Image generation provider health endpoint ─────────────────────
 @app.route("/api/image-providers/status", methods=["GET"])
@@ -634,12 +640,14 @@ def api_docs():
 # ─── Security headers ────────────────────────────────────────────────────────
 @app.after_request
 def _security_headers(response):
-    response.headers.setdefault("X-Content-Type-Options", "nosniff")
-    response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-    # Content Security Policy
+    # Use __setitem__ (overwrite) so we WIN over any middleware that sets
+    # these first with restrictive values (e.g. Flask-Limiter default DENY).
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # Content Security Policy — OVERWRITE any restrictive default (frame-ancestors 'none').
     csp = (
         "default-src 'self'; "
         # NOTE: 'unsafe-inline' in script-src is INTENTIONAL and REQUIRED for the
@@ -648,13 +656,13 @@ def _security_headers(response):
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "img-src 'self' data: https:; "
-        "connect-src 'self'; "
+        "frame-src 'self' blob:; connect-src 'self'; "
         "font-src 'self' data:; "
-        "frame-ancestors 'none'; "
+        "frame-ancestors 'self'; "
         "base-uri 'self'; "
         "form-action 'self'"
     )
-    response.headers.setdefault("Content-Security-Policy", csp)
+    response.headers["Content-Security-Policy"] = csp
     # API responses should never be cached by intermediaries by default.
     if request.path.startswith("/api/"):
         response.headers.setdefault("Cache-Control", "no-store")
@@ -749,14 +757,12 @@ log = logging.getLogger(__name__)
 # New uploads, charts, and exports use per-user paths via get_user_dir().
 from utils.core.storage_helper import get_user_dir as _get_user_dir
 
-UPLOAD_FOLDER = Path(__file__).parent / "data/uploads"
-UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+UPLOAD_FOLDER = Path(__file__).parent / "user" / "uploads"
 USER_BASE = Path(__file__).parent / "user"
 USER_BASE.mkdir(exist_ok=True)
 
 # Legacy export folder (kept for backward compat, new exports use per-user paths)
 EXPORT_FOLDER = Path(__file__).parent / "data" / "exports"
-EXPORT_FOLDER.mkdir(exist_ok=True)
 
 TEMPLATE_FOLDER = Path(__file__).parent / "tools" / "Journal"
 
@@ -771,6 +777,8 @@ def _available_journals():
     try:
         for gen_path in TEMPLATE_FOLDER.glob("*gen.py"):
             if gen_path.name.startswith("_"):
+                continue
+            if not gen_path.suffix == ".py":
                 continue
             code = gen_path.stem[:-3]  # remove 'gen' suffix: "IEEEgen" -> "IEEE"
             if code:
@@ -1127,10 +1135,11 @@ def _make_generate_adapter(mod, gen_fn):
 
 
 def _get_builder_for_journal(journal_code: str):
-    """Return the build_document callable for a known template code.
+    """Return ``(canonical_code, build_document_fn, build_pdf_fn | None)``
+    for a known template code.
 
-    Falls back to a ``generate()``-adapter for legacy single-entry generators
-    that don't expose a ``build_document(json_path, output_path)`` signature.
+    ``build_pdf_fn`` is the gen's own ``build_pdf(json_path, pdf_path)`` if
+    available; otherwise *None* (caller falls back to LibreOffice).
     """
     # Security: reject codes with dots, slashes, or other special chars that could
     # lead to arbitrary module imports (e.g. "..os" → import os)
@@ -1144,12 +1153,15 @@ def _get_builder_for_journal(journal_code: str):
     with _ADAPTER_LOCK:
         mod = importlib.import_module(f"tools.Journal.{canonical}gen")
         mod = importlib.reload(mod)  # always use latest on-disk version
+
+    pdf_builder = getattr(mod, "build_pdf", None)
+
     builder = getattr(mod, "build_document", None)
     if callable(builder):
-        return canonical, builder
+        return canonical, builder, pdf_builder
     gen_fn = getattr(mod, "generate", None)
     if callable(gen_fn):
-        return canonical, _make_generate_adapter(mod, gen_fn)
+        return canonical, _make_generate_adapter(mod, gen_fn), pdf_builder
     raise ValueError(f"Template generator missing build_document/generate: {canonical}gen")
 
 
@@ -2301,7 +2313,7 @@ def export_docx():
             journal_raw = paper.get("journal")
         journal_code = _resolve_journal_code(journal_raw)
         try:
-            canonical_journal, builder = _get_builder_for_journal(journal_code)
+            canonical_journal, builder, pdf_builder = _get_builder_for_journal(journal_code)
         except Exception as e:
             log.exception("journal builder error")
             return jsonify({"error": "Internal server error", "available": _available_journals()}), 400
@@ -2312,6 +2324,9 @@ def export_docx():
         try:
             if isinstance(paper, dict):
                 _pid = str(paper.get("id") or data.get("paper_id") or "").strip()
+                # Fallback: dig into paper_data wrapper for paper_id
+                if not _pid and isinstance(paper.get("paper_data"), dict):
+                    _pid = str(paper["paper_data"].get("paper_id", "")).strip()
                 if _pid:
                     from tools.image_generation.reconcile import reconcile_figure_images
                     from sqlalchemy.orm.attributes import flag_modified
@@ -2380,24 +2395,37 @@ def export_docx():
 
         # Use per-user export path: user/<user_id>/exports/
         paper_id = str(paper.get("id") or data.get("paper_id") or "unknown")
-        user_export_dir = _get_user_dir(int(user_id), "exports")
-        user_export_dir.mkdir(parents=True, exist_ok=True)
+        if not _PAPER_ID_RE.match(paper_id):
+            return jsonify({"error": "Invalid paper_id format"}), 400
+        paper_dir = USER_BASE / paper_id
+        paper_dir.mkdir(parents=True, exist_ok=True)
         
         json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
-        json_filepath = user_export_dir / json_filename
+        json_filepath = paper_dir / json_filename
         json_filepath.write_text(json.dumps(paper, ensure_ascii=False, indent=2), encoding="utf-8")
         output_path = None
         _export_ok = False
         try:
-            # Generate timestamp-based filename: ieee_YYYYMMDD-HHMMSS.docx
-            ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-            output_path = user_export_dir / f"{canonical_journal}_{ts}.docx"
+            # Save DOCX to user/paper/ with normalized naming (1 DOCX per paper)
+            paper_title = paper.get("title", "paper")
+            output_path = _paper_file_path(paper_id, paper_title, canonical_journal, "docx")
             builder(json_filepath, output_path)
 
+            # Also generate PDF alongside DOCX (1 PDF per paper)
             try:
-                from utils.core.user_storage import update_judul_paper
+                pdf_dest = _paper_file_path(paper_id, paper_title, canonical_journal, "pdf")
+                if callable(pdf_builder):
+                    pdf_builder(json_path=json_filepath, pdf_path=pdf_dest)
+                else:
+                    _run_libreoffice_pdf(output_path, pdf_dest)
+                log.info("[export] PDF generated: %s", pdf_dest)
+            except Exception:
+                log.warning("[export] PDF generation failed (DOCX exported OK)", exc_info=True)
+
+            try:
+                from utils.core.user_storage import update_judul_paper_by_id
                 judul = data.get("title", paper.get("title", "untitled"))
-                update_judul_paper(username, judul, data)
+                update_judul_paper_by_id(paper_id, paper_title, canonical_journal, data)
             except Exception:
                 log.warning("Gagal simpan ke user storage", exc_info=True)
 
@@ -2417,7 +2445,7 @@ def export_docx():
             _export_ok = True
             return response
         finally:
-            # Clean up partial output file only if the response was not returned
+            # Don't delete output_path — it's in user/paper/ and stays
             if not _export_ok:
                 try:
                     if output_path is not None:
@@ -2428,6 +2456,264 @@ def export_docx():
     except Exception as e:
         log.exception("unhandled error: %s", e)
         return jsonify({"error": "Internal server error", "detail": str(e)}), 500
+
+
+# ─── PDF Preview ──────────────────────────────────────────────────────────────
+
+def _paper_file_path(paper_id, paper_title: str, journal_code: str, ext: str, *, cleanup_old: bool = True) -> Path:
+    """Return ``user/<paper_id>/<safe_title>_<journal>.<ext>``.
+
+    All artifacts for a paper live under ``user/<paper_id>/``.
+    Same title+journal combination overwrites existing file.
+    When title or journal changes, old files of the same extension are removed.
+    """
+    safe_title = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(paper_title or "paper")).strip("_")[:60]
+    if not safe_title:
+        safe_title = "paper"
+    safe_journal = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(journal_code or "journal")).strip("_") or "journal"
+    safe_name = f"{safe_title}_{safe_journal}"
+    safe_paper_id = str(paper_id)
+    if not _PAPER_ID_RE.match(safe_paper_id):
+        raise ValueError(f"Invalid paper_id: {safe_paper_id}")
+    paper_dir = USER_BASE / safe_paper_id
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    target = paper_dir / f"{safe_name}.{ext}"
+    if cleanup_old:
+        for old in paper_dir.glob(f"*.{ext}"):
+            if old != target:
+                try:
+                    old.unlink()
+                except Exception:
+                    pass
+    return target
+
+def _pdf_preview_path(user_id: int, paper_id: str) -> Path:
+    """Legacy fallback redirected to canonical paper folder."""
+    return _paper_file_path(paper_id, "paper", "preview", "pdf", cleanup_old=False)
+
+def _run_libreoffice_pdf(source_path: Path, output_path: Path) -> None:
+    output_dir = output_path.parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        result = subprocess.run(
+            ["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(output_dir), str(source_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("LibreOffice PDF conversion timed out (120s)")
+
+    expected_pdf = output_dir / (source_path.stem + ".pdf")
+
+    # soffice may return non-zero with harmless javaldx warning — check for PDF first
+    if expected_pdf.exists() and expected_pdf.stat().st_size > 0:
+        if expected_pdf != output_path:
+            if output_path.exists():
+                output_path.unlink()
+            expected_pdf.replace(output_path)
+        return
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"LibreOffice PDF conversion failed: {result.stderr.decode('utf-8', errors='ignore')}"
+        )
+    if expected_pdf != output_path:
+        if output_path.exists():
+            output_path.unlink()
+        expected_pdf.replace(output_path)
+
+
+def _pdf_preview_render(user_id: int, paper_id: str, journal_code: str, paper_json_path: Path) -> str | None:
+    try:
+        canonical, builder, pdf_builder = _get_builder_for_journal(_resolve_journal_code(journal_code))
+    except Exception:
+        log.exception("[preview-pdf] journal builder error")
+        return None
+
+    # Load paper data for title
+    try:
+        _paper_data = json.loads(paper_json_path.read_text(encoding="utf-8"))
+        _title = _paper_data.get("title") or _paper_data.get("paper_data", {}).get("paper", {}).get("title") or ""
+    except Exception:
+        _title = ""
+
+    pdf_path = _paper_file_path(paper_id, _title, journal_code, "pdf")
+    docx_path = _paper_file_path(paper_id, _title, journal_code, "docx")
+    try:
+        if callable(pdf_builder):
+            # Use the gen's own build_pdf (direct docx→pdf pipeline)
+            pdf_builder(json_path=paper_json_path, pdf_path=pdf_path)
+            # Also save DOCX via build_document for download
+            try:
+                builder(paper_json_path, docx_path)
+            except Exception:
+                log.warning("[preview-pdf] failed to save DOCX alongside PDF", exc_info=True)
+        else:
+            # Fallback: build_document → LibreOffice
+            builder(paper_json_path, docx_path)
+            _run_libreoffice_pdf(docx_path, pdf_path)
+        return str(pdf_path)
+    except Exception:
+        log.exception("[preview-pdf] render error")
+        return None
+
+
+@app.route("/api/papers/<paper_id>/pdf-preview", methods=["POST"])
+@limiter.limit("100 per minute")
+@jwt_required(optional=True)
+def paper_pdf_preview(paper_id: str):
+    log.info("[preview-pdf] POST received, paper_id=%s", paper_id)
+    try:
+        data = request.get_json(silent=True) or {}
+        paper = data.get("paper", data)
+
+        # Get user_id from JWT if available (optional auth)
+        user_id = None
+        try:
+            identity = get_jwt_identity()
+            if identity:
+                user_id = int(identity)
+        except Exception:
+            pass
+
+        # If paper data not provided, load from DB
+        if not isinstance(paper, dict) or not paper.get("title"):
+            from utils.database.models import Paper
+            if user_id:
+                db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+            else:
+                db_paper = Paper.query.filter_by(id=paper_id).first()
+            if db_paper and db_paper.data:
+                paper = db_paper.data
+
+        if not isinstance(paper, dict):
+            return jsonify({"error": "No paper data provided"}), 400
+
+        journal_raw = data.get("journal") or paper.get("journal")
+        journal_code = _resolve_journal_code(journal_raw)
+
+        # Reuse same normalization as export so preview matches exported docx
+        try:
+            _pid = str(paper.get("id") or paper_id or "").strip()
+            if _pid and user_id:
+                _user_upload_dir = _get_user_dir(int(user_id), "uploads")
+                from tools.image_generation.reconcile import reconcile_figure_images
+                from tools.paperfull.jobs import _reconcile_section_images
+                reconcile_figure_images(_pid, paper, _user_upload_dir)
+                _reconcile_section_images(paper, _pid, _user_upload_dir)
+        except Exception:
+            log.warning("preview pdf figure reconcile failed", exc_info=True)
+
+        try:
+            if isinstance(paper, dict):
+                _distribute_figures_to_sections(paper)
+        except Exception:
+            log.warning("preview pdf figure distribution failed", exc_info=True)
+
+        try:
+            if isinstance(paper, dict):
+                from tools.preview.ref_normalize import normalize_references, style_for_journal
+                normalize_references(paper, style=style_for_journal(_resolve_journal_code(journal_raw)))
+        except Exception:
+            log.warning("preview pdf reference normalize failed", exc_info=True)
+
+        try:
+            if isinstance(paper, dict):
+                _normalize_formulas(paper)
+        except Exception:
+            log.warning("preview pdf formula normalize failed", exc_info=True)
+
+        try:
+            if isinstance(paper, dict):
+                _strip_ref_numbering(paper)
+        except Exception:
+            log.warning("preview pdf ref numbering failed", exc_info=True)
+
+        json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
+        if not _PAPER_ID_RE.match(paper_id):
+            return jsonify({"error": "Invalid paper_id format"}), 400
+        paper_dir = USER_BASE / paper_id
+        paper_dir.mkdir(parents=True, exist_ok=True)
+        json_filepath = paper_dir / json_filename
+        try:
+            json_filepath.write_text(json.dumps(paper, ensure_ascii=False, indent=2), encoding="utf-8")
+            pdf_path = _pdf_preview_render(user_id, paper_id, journal_code, json_filepath)
+            if not pdf_path:
+                return jsonify({"error": "Failed to render PDF preview"}), 500
+            # Build URL with query params so serve endpoint can find the right file
+            safe_title = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(paper.get("title", "paper")).strip("_"))[:60]
+            from urllib.parse import urlencode
+            qs = urlencode({"journal": journal_code, "title": safe_title})
+            return jsonify({"pdf_url": f"/api/papers/{paper_id}/preview.pdf?{qs}", "journal": journal_code})
+        finally:
+            try:
+                json_filepath.unlink(missing_ok=True)
+            except Exception:
+                pass
+    except Exception as e:
+        log.exception("unhandled preview pdf error: %s", e)
+        return jsonify({"error": "Internal server error", "detail": str(e)}), 500
+
+
+@app.route("/api/papers/<paper_id>/preview.pdf", methods=["GET", "OPTIONS"])
+@app.route("/api/papers/<paper_id>/preview.docx", methods=["GET", "OPTIONS"])
+@limiter.exempt
+def serve_paper_pdf_preview(paper_id: str):
+    """Serve the generated PDF/DOCX for a paper.
+
+    Called from:
+    - api.get(url) in the frontend (Authorization header sent by axios)
+    - <iframe> in the same page (cookies or no auth)
+
+    Authorization: the paper_id is a long unguessable UUID — possession of the
+    URL is sufficient proof of authorization.  We still check the paper exists
+    in the DB to reject bogus IDs, but we do NOT require a JWT because iframes
+    may not forward cookies (Safari ITP, third-party cookie blocks).
+    """
+    from flask import request as flask_request
+
+    is_docx = flask_request.path.endswith(".docx")
+    ext = "docx" if is_docx else "pdf"
+
+    journal_code = flask_request.args.get("journal", "")
+    title = flask_request.args.get("title", "")
+    file_path = None
+
+    if journal_code and title:
+        # Primary: new paper_dir path (needs user_id for path construction)
+        # Since paper_id is unguessable, we just look it up to get user_id
+        from utils.database.models import Paper
+        paper = Paper.query.filter_by(id=paper_id).first()
+        if paper:
+            file_path = _paper_file_path(paper_id, title, journal_code, ext, cleanup_old=False)
+            if not file_path.exists():
+                file_path = None
+
+    if file_path is None or not file_path.exists():
+        # Legacy fallback: user/papers/<paper_id>/paper.pdf
+        from utils.database.models import Paper
+        paper = Paper.query.filter_by(id=paper_id).first()
+        if paper:
+            file_path = _pdf_preview_path(paper.user_id, paper_id)
+            if ext == "docx":
+                file_path = file_path.with_suffix(".docx")
+
+    if file_path is None or not file_path.exists():
+        return jsonify({"error": "Preview not ready"}), 404
+
+    response = send_file(
+        str(file_path),
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document" if is_docx else "application/pdf",
+        as_attachment=False,
+        download_name=f"{paper_id}.{ext}",
+    )
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
 
 
 # ─── Paper CRUD ───────────────────────────────────────────────────────────────
