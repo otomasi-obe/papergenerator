@@ -23,7 +23,7 @@ app.directive('autosize', vAutosize)
 setupErrorHandler(app)
 
 window.addEventListener('error', (event: ErrorEvent) => {
-  logger.error('Uncaught error', {
+  if (import.meta.env.DEV) logger.error('Uncaught error', {
     message: event.message,
     filename: event.filename,
     lineno: event.lineno,

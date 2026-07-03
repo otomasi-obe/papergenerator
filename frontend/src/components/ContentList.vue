@@ -42,9 +42,9 @@
 
             <!-- Thumbnail (always rendered when there's a path or live preview from current job) -->
             <div v-if="item.Path" class="rounded border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-700 overflow-hidden flex items-center justify-center" style="max-height:280px">
-              <img v-if="!failedImages.has(item.Path)" :src="thumbUrl(item.Path)" :alt="item.Title || 'image'"
+              <img v-if="!failedImages.has(thumbUrl(item.Path, item))" :src="thumbUrl(item.Path, item)" :alt="item.Title || 'image'"
                    class="max-h-[280px] max-w-full object-contain"
-                   @error="onThumbError($event, item.Path)" />
+                   @error="onThumbError($event, thumbUrl(item.Path, item))" />
               <div v-else class="h-28 flex items-center justify-center text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 w-full">
                 ⚠️ Gambar gagal dimuat
               </div>
@@ -387,10 +387,32 @@ function badgeLabel(item: ContentItem, _idx: number): string {
   return 'Text'
 }
 
-function thumbUrl(filename: string): string {
+function imageBaseName(filename: string): string {
+  return filename.includes('/') ? filename.split('/').pop() || filename : filename
+}
+
+function serverSafeImageName(filename: string): string {
+  return filename.replace(/[^A-Za-z0-9_.-]/g, '_')
+}
+
+function resolvedImageFilename(filename: string, item?: any): string {
+  const base = imageBaseName(filename)
+  const sources = [...(store.paperImages || []), ...(store.paperCharts || [])]
+  if (sources.some((src: any) => src?.filename === base)) return base
+  const safeBase = serverSafeImageName(base)
+  if (sources.some((src: any) => src?.filename === safeBase)) return safeBase
+
+  const figureText = `${filename} ${item?.Title || ''}`
+  const match = figureText.match(/(?:fig|figure)\s*\.?\s*(\d+)/i)
+  const figureNumber = match ? Number(match[1]) : 0
+  const generated = figureNumber > 0 ? store.paperImageByIndex?.[figureNumber - 1] : null
+  return generated?.filename || safeBase
+}
+
+function thumbUrl(filename: string, item?: any): string {
   const pid = store.currentPaperId
   if (!pid || pid === 'null' || pid === 'undefined' || !filename) return ''
-  const base = filename.includes('/') ? filename.split('/').pop() || filename : filename
+  const base = resolvedImageFilename(filename, item)
   return `/api/images/${pid}/${encodeURIComponent(base)}`
 }
 

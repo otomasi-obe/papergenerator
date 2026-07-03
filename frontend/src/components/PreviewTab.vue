@@ -531,17 +531,23 @@ async function renderPdf() {
       { timeout: 300000 }
     )
     if (res.data?.pdf_url) {
-      pdfUrl.value = res.data.pdf_url
-      await loadPdfBlob(res.data.pdf_url)
-      pdfKey.value++
+      const url = res.data.pdf_url
+      await loadPdfBlob(url)
+      // Only set pdfUrl if blob loaded successfully (is a real PDF)
+      if (pdfBlobUrl.value) {
+        pdfUrl.value = url
+        pdfKey.value++
+      }
+      // If blob failed, don't set pdfUrl — let HTML preview stay visible
       pdfLoading.value = false
     } else {
       throw new Error('No PDF URL in response')
     }
   } catch (err: any) {
     pdfLoading.value = false
-    pdfError.value = true
-    pdfErrorMessage.value = err.response?.data?.error || err.message || 'Failed to render PDF'
+    pdfError.value = false  // Don't show error — HTML preview handles it
+    pdfUrl.value = ''
+    clearPdfBlobUrl()
   }
 }
 
@@ -563,8 +569,8 @@ async function loadPdfBlob(url: string) {
 }
 
 function onIframeError() {
-  pdfBlobUrl.value = ''
-  pdfUrl.value = pdfUrl.value
+  clearPdfBlobUrl()
+  pdfUrl.value = ''
 }
 
 function togglePdfPreview() {

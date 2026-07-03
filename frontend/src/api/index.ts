@@ -37,6 +37,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+    if (!original) return Promise.reject(error)
     const status = error.response?.status
 
     const isAuthEndpoint = (original?.url || '').includes('/api/auth/')

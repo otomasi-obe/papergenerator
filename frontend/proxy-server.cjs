@@ -156,6 +156,18 @@ const server = http.createServer((req, res) => {
     filePath = path.join(DIST_DIR, pathname, 'index.html');
   }
 
+  // Static HTML pages: try <path>.html for clean URLs (/terms → /terms.html)
+  // This lets bots/crawlers get full content without JS execution
+  const staticPages = ['/terms', '/refund', '/faq', '/contact'];
+  if (staticPages.includes(pathname) || pathname.match(/^\/(terms|refund|faq|contact)\.html$/)) {
+    const htmlPath = pathname.endsWith('.html') ? pathname : pathname + '.html';
+    const staticHtmlPath = path.join(DIST_DIR, htmlPath);
+    // Check if the static HTML file exists
+    if (fs.existsSync(staticHtmlPath)) {
+      filePath = staticHtmlPath;
+    }
+  }
+
   const extname = path.extname(filePath);
   const contentType = mimeTypes[extname] || 'application/octet-stream';
 
@@ -169,7 +181,8 @@ const server = http.createServer((req, res) => {
   extraHeaders['Referrer-Policy'] = 'strict-origin-when-cross-origin';
   extraHeaders['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
   extraHeaders['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()';
-  extraHeaders['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; font-src 'self' data:; frame-src https://challenges.cloudflare.com;";
+  extraHeaders['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; font-src 'self' data:; frame-src 'self' blob: https://challenges.cloudflare.com; object-src 'self' blob:;";
+  extraHeaders['Cross-Origin-Resource-Policy'] = 'cross-origin';
   if (pathname === '/word-addin/manifest.xml') {
     extraHeaders['Content-Disposition'] = 'attachment; filename="manifest.xml"';
     extraHeaders['Access-Control-Allow-Origin'] = '*';

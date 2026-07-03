@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: {50:'#ebf3ff',100:'#d0e4fb',200:'#a1c9f6',300:'#64a6ed',400:'#2e82e0',500:'#1265c8',600:'#0e51a6',700:'#0b4088',800:'#082f6a',900:'#051d49',950:'#020d2a'},
+            cream: {50:'#f8f5ef',100:'#f2ece1',200:'#e8e0d0',300:'#c4a87a',400:'#a68a5c',500:'#9f7d54',600:'#806044',700:'#624933',800:'#463323',900:'#281c13'},
+            ink: {50:'#f0ebe2',100:'#d5ccb8',200:'#b5a78e',300:'#8d7e65',400:'#6b5e48',500:'#4a4035',600:'#382f24',700:'#1a1610',800:'#0f0d09',900:'#0c0a07'},
+            ash: {50:'#ecf3f9',100:'#d4e4f4',200:'#a8c9e8',300:'#74a8d8',400:'#4787c4',500:'#2969ac',600:'#1e518e',700:'#163d71',800:'#102c55',850:'#0b1f3e',900:'#07122a'},
+          }
+        }
+      }
+    }
+  </script>
+  <title>Kebijakan Refund — PaperFull</title>
+  <meta name="title" content="Kebijakan Refund — PaperFull" />
+  <meta name="description" content="Kebijakan pengembalian dana (refund) PaperFull. Pelajari syarat, prosedur pengajuan, dan waktu pemrosesan refund." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://paperfull.app/refund" />
+  <meta property="og:title" content="Kebijakan Refund — PaperFull" />
+  <meta property="og:description" content="Kebijakan pengembalian dana PaperFull." />
+  <meta property="og:url" content="https://paperfull.app/refund" />  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .dark-bg { background-color: #0f172a; }
+      .dark-text { color: #e2e8f0; }
+      .dark-text-100 { color: #f1f5f9; }
+      .dark-text-200 { color: #e2e8f0; }
+      .dark-text-400 { color: #94a3b8; }
+      .dark-text-50 { color: #f8fafc; }
+    }
+    .prose-lg h1 { font-size: 1.875rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .prose-lg h2 { font-size: 1.5rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; }
+    .prose-lg p, .prose-lg li { font-size: 1.05rem; line-height: 1.75; }
+    .prose-lg ul { padding-left: 1.5rem; list-style: disc; }
+    .prose-lg li { margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body class="bg-cream-50 dark:bg-ash-850 min-h-screen">
+  <!-- PUBLIC HEADER -->
+  <header class="bg-navy-900/95 backdrop-blur-sm border-b border-white/10 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5 no-underline">
+        <img src="/assets/logo-with-text.png" alt="PaperFull" class="h-9 object-contain" />
+        <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium">Multi-Journal</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <div class="relative inline-block group">
+          <button class="flex items-center gap-1.5 px-4 py-2 bg-white/95 hover:bg-amber-50 text-amber-900 border border-amber-300/50 shadow-sm rounded-full font-bold text-sm transition-all" style="cursor:pointer">
+            Informasi
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="absolute right-0 mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-xl overflow-hidden z-50 hidden group-hover:block">
+            <a href="/terms" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 no-underline">
+              <div class="font-semibold">Syarat & Ketentuan</div>
+              <div class="text-xs text-amber-700 mt-0.5">Aturan penggunaan layanan</div>
+            </a>
+            <a href="/refund" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 no-underline">
+              <div class="font-semibold">Kebijakan Refund</div>
+              <div class="text-xs text-amber-700 mt-0.5">Pengembalian dana</div>
+            </a>
+            <a href="/faq" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 no-underline">
+              <div class="font-semibold">FAQ</div>
+              <div class="text-xs text-amber-700 mt-0.5">Pertanyaan umum</div>
+            </a>
+            <a href="/contact" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors no-underline">
+              <div class="font-semibold">Kontak</div>
+              <div class="text-xs text-amber-700 mt-0.5">Hubungi kami</div>
+            </a>
+          </div>
+        </div>
+        <a href="/login" class="flex items-center gap-2 px-5 py-2 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 rounded-full font-bold text-sm transition-all no-underline">Masuk</a>
+      </div>
+    </div>
+  </header>
+  <main class="max-w-4xl mx-auto px-6 py-12">
+    <div class="mb-6">
+      <a href="/" class="inline-flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 font-medium no-underline">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        Kembali ke Beranda
+      </a>
+    </div>
+    <article class="prose prose-lg dark:prose-invert max-w-none">
+      <h1 class="text-3xl font-bold text-ink-900 dark:text-ink-50 mb-2">Kebijakan Refund</h1>
+      <p class="text-sm text-ink-500 dark:text-ink-400 mb-8">Terakhir diperbarui: 30 Juni 2026</p>
+
+      <p class="text-ink-700 dark:text-ink-200 mb-6">Kami berkomitmen memberikan layanan terbaik. Apabila terjadi kendala pada transaksi Anda, berikut ketentuan pengembalian dana (refund) yang berlaku di Paperfull.</p>
+
+      <h2 class="text-2xl font-semibold text-ink-900 dark:text-ink-50 mt-8 mb-4">1. Kondisi yang Memenuhi Syarat Refund</h2>
+      <p class="text-ink-700 dark:text-ink-200 mb-3">Pengguna berhak mengajukan refund apabila:</p>
+      <ul class="list-disc pl-6 space-y-2 text-ink-700 dark:text-ink-200">
+        <li>Pembayaran berhasil diproses oleh sistem, namun layanan/dokumen yang dipesan gagal dihasilkan akibat kesalahan teknis dari pihak Paperfull.</li>
+        <li>Pengguna dikenakan biaya ganda (double charge) untuk satu transaksi yang sama akibat kegagalan sistem.</li>
+        <li>Layanan yang diterima tidak sesuai dengan deskripsi paket yang dipesan (misalnya jumlah halaman, format template, atau fitur yang tidak diberikan sebagaimana dijanjikan).</li>
+      </ul>
+
+      <h2 class="text-2xl font-semibold text-ink-900 dark:text-ink-50 mt-8 mb-4">2. Kondisi yang Tidak Memenuhi Syarat Refund</h2>
+      <p class="text-ink-700 dark:text-ink-200 mb-3">Refund tidak berlaku apabila:</p>
+      <ul class="list-disc pl-6 space-y-2 text-ink-700 dark:text-ink-200">
+        <li>Dokumen telah berhasil di-generate sesuai pesanan dan diunduh oleh pengguna, namun pengguna tidak puas dengan kualitas konten substantif/akademik yang dihasilkan AI (perlu disunting kembali oleh pengguna sebagai bagian dari proses normal).</li>
+        <li>Kesalahan input data oleh pengguna sendiri (misalnya salah memilih template, salah memasukkan judul/konten sumber).</li>
+        <li>Pengguna berubah pikiran setelah dokumen berhasil diunduh.</li>
+        <li>Pengajuan dilakukan lebih dari 7 (tujuh) hari kalender setelah transaksi dilakukan.</li>
+      </ul>
+
+      <h2 class="text-2xl font-semibold text-ink-900 dark:text-ink-50 mt-8 mb-4">3. Cara Mengajukan Refund</h2>
+      <p class="text-ink-700 dark:text-ink-200 mb-3">Kirimkan permintaan refund melalui halaman <a href="/contact" class="text-amber-700 dark:text-amber-400 hover:underline font-medium">Kontak</a> dengan menyertakan:</p>
+      <ul class="list-disc pl-6 space-y-2 text-ink-700 dark:text-ink-200">
+        <li>Bukti transaksi (ID transaksi/invoice)</li>
+        <li>Tanggal dan waktu transaksi</li>
+        <li>Alasan pengajuan refund</li>
+      </ul>
+      <p class="text-ink-700 dark:text-ink-200 mt-4">Tim kami akan meninjau pengajuan dalam waktu maksimal 3 (tiga) hari kerja.</p>
+      <p class="text-ink-700 dark:text-ink-200 mt-2">Apabila disetujui, dana akan dikembalikan ke metode pembayaran asal dalam waktu 5–14 hari kerja, tergantung kebijakan dan proses dari penyedia jasa pembayaran (payment gateway) terkait.</p>
+
+      <h2 class="text-2xl font-semibold text-ink-900 dark:text-ink-50 mt-8 mb-4">4. Catatan</h2>
+      <p class="text-ink-700 dark:text-ink-200">Paperfull berhak menolak pengajuan refund yang tidak memenuhi syarat di atas atau yang terindikasi sebagai bentuk penyalahgunaan kebijakan ini. Keputusan akhir terkait persetujuan refund berada di tangan tim Paperfull setelah proses peninjauan.</p>
+
+      <h2 class="text-2xl font-semibold text-ink-900 dark:text-ink-50 mt-8 mb-4">5. Kontak</h2>
+      <p class="text-ink-700 dark:text-ink-200">Pertanyaan lebih lanjut mengenai kebijakan ini dapat disampaikan melalui halaman <a href="/contact" class="text-amber-700 dark:text-amber-400 hover:underline font-medium">Kontak</a> kami.</p>
+    </article>
+  </main>
+</body>
+</html>

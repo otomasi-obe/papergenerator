@@ -81,7 +81,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
     } catch (e) {
       // 404 = no active job for this paper. Anything else is just a warning.
       if (e?.response?.status !== 404) {
-        console.warn('paperJobs.fetchActive failed', e)
+        if (import.meta.env.DEV) console.warn('paperJobs.fetchActive failed', e)
       } else {
         const next = { ...activeByPaper.value }
         delete next[paperId]
@@ -111,7 +111,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       if (currentPaperId) await fetchActive(currentPaperId)
       return true
     } catch (e) {
-      console.warn('paperJobs.cancel failed', e)
+      if (import.meta.env.DEV) console.warn('paperJobs.cancel failed', e)
       return false
     }
   }
@@ -123,7 +123,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       if (currentPaperId) await fetchActive(currentPaperId)
       return true
     } catch (e) {
-      console.warn('paperJobs.resume failed', e)
+      if (import.meta.env.DEV) console.warn('paperJobs.resume failed', e)
       return false
     }
   }
@@ -135,7 +135,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       if (currentPaperId) await fetchActive(currentPaperId)
       return true
     } catch (e) {
-      console.warn('paperJobs.retrySection failed', e)
+      if (import.meta.env.DEV) console.warn('paperJobs.retrySection failed', e)
       return false
     }
   }
@@ -221,7 +221,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
         '\n\nMau saya generate semua sekarang, edit prompt dulu, atau skip?'
       chatStore.injectAssistantMessage(body)
     } catch (e) {
-      console.warn('paperJobs._onJobDone hook failed', e)
+      if (import.meta.env.DEV) console.warn('paperJobs._onJobDone hook failed', e)
     }
   }
   async function fetchRecentDone() {
@@ -257,7 +257,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
       }
       recentDone.value = done.filter(j => j.paper_id)
     } catch (e) {
-      console.warn('paperJobs.fetchRecentDone failed', e)
+      if (import.meta.env.DEV) console.warn('paperJobs.fetchRecentDone failed', e)
     }
   }
 
@@ -340,7 +340,7 @@ export const usePaperJobsStore = defineStore('paperJobs', () => {
         }
         _stuckTracker.delete(jobId)
       } catch (e) {
-        console.warn('Failed to cancel stuck job', jobId, e)
+        if (import.meta.env.DEV) console.warn('Failed to cancel stuck job', jobId, e)
       }
     })
     await Promise.allSettled(cancelPromises)

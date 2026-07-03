@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: {50:'#ebf3ff',100:'#d0e4fb',200:'#a1c9f6',300:'#64a6ed',400:'#2e82e0',500:'#1265c8',600:'#0e51a6',700:'#0b4088',800:'#082f6a',900:'#051d49',950:'#020d2a'},
+            cream: {50:'#f8f5ef',100:'#f2ece1',200:'#e8e0d0',300:'#c4a87a',400:'#a68a5c',500:'#9f7d54',600:'#806044',700:'#624933',800:'#463323',900:'#281c13'},
+            ink: {50:'#f0ebe2',100:'#d5ccb8',200:'#b5a78e',300:'#8d7e65',400:'#6b5e48',500:'#4a4035',600:'#382f24',700:'#1a1610',800:'#0f0d09',900:'#0c0a07'},
+            ash: {50:'#ecf3f9',100:'#d4e4f4',200:'#a8c9e8',300:'#74a8d8',400:'#4787c4',500:'#2969ac',600:'#1e518e',700:'#163d71',800:'#102c55',850:'#0b1f3e',900:'#07122a'},
+          }
+        }
+      }
+    }
+  </script>
+  <title>FAQ — PaperFull</title>
+  <meta name="title" content="FAQ — PaperFull" />
+  <meta name="description" content="Pertanyaan yang sering diajukan tentang PaperFull. Jawaban tentang cara penggunaan, pembayaran, template jurnal, refund, dan keamanan data." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://paperfull.app/faq" />
+  <meta property="og:title" content="FAQ — PaperFull" />
+  <meta property="og:description" content="Pertanyaan umum tentang PaperFull." />
+  <meta property="og:url" content="https://paperfull.app/faq" />  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .faq-item { background: white; border: 1px solid #d4c5a0; border-radius: 0.75rem; padding: 1rem 1.5rem; margin-bottom: 0.75rem; }
+    .faq-item h3 { font-size: 1rem; font-weight: 600; color: #1c1917; margin-bottom: 0.5rem; }
+    .faq-item p { color: #44403c; line-height: 1.7; font-size: 0.95rem; }
+    .faq-item .tag { color: #d97706; font-weight: 600; margin-right: 0.25rem; }
+    .faq-cta { background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.5rem; padding: 1.5rem; margin-top: 3rem; }
+  </style>
+</head>
+<body class="bg-cream-50 dark:bg-ash-850 min-h-screen">
+  <!-- PUBLIC HEADER -->
+  <header class="bg-navy-900/95 backdrop-blur-sm border-b border-white/10 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2.5 no-underline">
+        <img src="/assets/logo-with-text.png" alt="PaperFull" class="h-9 object-contain" />
+        <span class="text-xs bg-cream-300/20 text-cream-200 px-2 py-0.5 rounded-full font-medium">Multi-Journal</span>
+      </a>
+      <div class="flex items-center gap-3">
+        <div class="relative inline-block group">
+          <button class="flex items-center gap-1.5 px-4 py-2 bg-white/95 hover:bg-amber-50 text-amber-900 border border-amber-300/50 shadow-sm rounded-full font-bold text-sm transition-all" style="cursor:pointer">
+            Informasi
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="absolute right-0 mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-xl overflow-hidden z-50 hidden group-hover:block">
+            <a href="/terms" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 no-underline">
+              <div class="font-semibold">Syarat & Ketentuan</div><div class="text-xs text-amber-700 mt-0.5">Aturan penggunaan layanan</div>
+            </a>
+            <a href="/refund" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 no-underline">
+              <div class="font-semibold">Kebijakan Refund</div><div class="text-xs text-amber-700 mt-0.5">Pengembalian dana</div>
+            </a>
+            <a href="/faq" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors border-b border-amber-100 no-underline">
+              <div class="font-semibold">FAQ</div><div class="text-xs text-amber-700 mt-0.5">Pertanyaan umum</div>
+            </a>
+            <a href="/contact" class="block px-4 py-3 text-sm text-amber-900 hover:bg-amber-50 transition-colors no-underline">
+              <div class="font-semibold">Kontak</div><div class="text-xs text-amber-700 mt-0.5">Hubungi kami</div>
+            </a>
+          </div>
+        </div>
+        <a href="/login" class="flex items-center gap-2 px-5 py-2 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 rounded-full font-bold text-sm transition-all no-underline">Masuk</a>
+      </div>
+    </div>
+  </header>
+  <main class="max-w-4xl mx-auto px-6 py-12">
+    <div class="mb-6">
+      <a href="/" class="inline-flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-400 hover:text-amber-800 font-medium no-underline">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        Kembali ke Beranda
+      </a>
+    </div>
+    <h1 class="text-3xl font-bold text-ink-900 dark:text-ink-50 mb-2">FAQ — Paperfull</h1>
+    <p class="text-sm text-ink-500 dark:text-ink-400 mb-8">Pertanyaan yang sering diajukan</p>
+
+        <div class="faq-item">
+          <h3><span class="tag">1.</span> Apa itu Paperfull?</h3>
+          <p>Paperfull adalah platform berbasis AI yang membantu kamu generate paper/dokumen akademik dalam format .docx, dengan pilihan template jurnal yang fleksibel sesuai kebutuhan kamu.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">2.</span> Apakah hasil generate dari Paperfull bisa langsung dipakai untuk submit jurnal?</h3>
+          <p>Hasil generate adalah draf bantuan berbasis AI. Kami sangat menyarankan kamu memeriksa ulang isi, referensi, dan format sebelum digunakan untuk keperluan resmi (submission jurnal, skripsi, tesis, dll).</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">3.</span> Apakah Paperfull menjamin hasil bebas plagiarisme?</h3>
+          <p>Tidak. Paperfull tidak menjamin keaslian 100% dari konten yang dihasilkan AI. Pengguna bertanggung jawab penuh untuk memverifikasi orisinalitas sebelum digunakan.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">4.</span> Bagaimana cara pembayaran di Paperfull?</h3>
+          <p>Pembayaran diproses melalui iPaymu, mendukung berbagai metode seperti transfer bank, e-wallet, QRIS, dan kartu kredit/debit.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">5.</span> Apakah saya bisa mendapatkan refund?</h3>
+          <p>Bisa, sesuai dengan ketentuan yang tercantum di halaman Kebijakan Refund. Silakan cek halaman tersebut untuk detail prosedur dan syaratnya.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">6.</span> Template jurnal apa saja yang didukung?</h3>
+          <p>Paperfull mendukung berbagai format template jurnal umum. Jika template yang kamu butuhkan belum tersedia, kamu bisa menghubungi tim support kami melalui halaman Kontak.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">7.</span> Bagaimana cara menghubungi tim Paperfull jika ada kendala?</h3>
+          <p>Kamu bisa menghubungi kami melalui email, nomor telepon, atau alamat yang tercantum di halaman Kontak.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">8.</span> Apakah data dan dokumen saya aman?</h3>
+          <p>Kami berupaya menjaga keamanan data pengguna. Dokumen dan informasi pribadi tidak akan dibagikan ke pihak ketiga tanpa izin, kecuali diwajibkan oleh hukum.</p>
+        </div>
+        <div class="faq-item">
+          <h3><span class="tag">9.</span> Apakah Paperfull berbayar?</h3>
+          <p>Paperfull menyediakan layanan berbayar untuk fitur-fitur tertentu. Detail harga dapat dilihat langsung di halaman layanan/pricing kami.</p>
+        </div>
+    <div class="faq-cta">
+      <p class="text-ink-700 dark:text-ink-200">Tidak menemukan jawaban yang kamu cari?
+        <a href="/contact" class="font-semibold text-amber-600 dark:text-amber-400 hover:underline">Hubungi tim support kami</a>
+      </p>
+    </div>
+  </main>
+</body>
+</html>

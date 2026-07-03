@@ -113,7 +113,7 @@ class Logger {
     try {
       await this.api.post('/api/logs/frontend', { logs }, { timeout: 5000 })
     } catch (error) {
-      console.error('[Logger] Failed to send logs to backend:', (error as Error).message)
+      if (import.meta.env.DEV) console.error('[Logger] Failed to send logs to backend:', (error as Error).message)
     }
   }
 

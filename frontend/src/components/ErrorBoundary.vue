@@ -7,7 +7,7 @@ const errorInfo = ref<string>('')
 onErrorCaptured((err: Error, _instance, info) => {
   error.value = err
   errorInfo.value = info
-  console.error('ErrorBoundary caught:', err, info)
+  if (import.meta.env.DEV) console.error('ErrorBoundary caught:', err, info)
   return false
 })
 

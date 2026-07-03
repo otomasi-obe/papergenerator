@@ -69,6 +69,7 @@
  : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
  👁 Preview
  </button>
+
  <button @click="toggleTools"
  :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 shrink-0 whitespace-nowrap active:scale-95',
  toolsOpen || rightPanel
@@ -103,8 +104,11 @@
  Tools sidebar is always visible; chat is always on the right. -->
  <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
  <!-- LEFT pane: editor / preview. -->
- <div v-show="editorVisible" class="overflow-y-auto border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="rightPanel || toolsOpen ? 'w-1/2' : 'w-full'">
- <div class="px-4 lg:px-8 py-6">
+ <div v-show="editorVisible" class="min-w-0 border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="[
+ rightPanel || toolsOpen ? 'w-1/2' : 'w-full',
+ activeTab === 'preview' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'
+ ]">
+ <div :class="activeTab === 'preview' ? 'p-0 h-full min-h-0 w-full flex flex-col overflow-hidden' : 'px-4 lg:px-8 py-6'">
 
  <!-- TAB: EDITOR -->
  <div v-show="activeTab === 'editor'" role="tabpanel" id="panel-editor" aria-labelledby="tab-editor" class="space-y-4">
@@ -275,7 +279,7 @@
  </div>
 
  <!-- TAB: PREVIEW -->
- <div v-show="activeTab === 'preview'" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview">
+ <div v-show="activeTab === 'preview'" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview" class="h-full min-h-0 w-full flex flex-col overflow-hidden">
  <PreviewTab :show-zoom="!rightPanel && !toolsOpen && editorVisible" />
  </div>
  </div>
@@ -418,6 +422,7 @@
  @close="showWordAddonModal = false" 
  />
  </div>
+
 </template>
 
 <script setup lang="ts">
@@ -826,13 +831,13 @@ onMounted(async () => {
  await userState.loadForPaper(store.currentPaperId)
  }
 
- if (route.query.tab) {
- activeTab.value = String(route.query.tab)
- editorVisible.value = true
- }
+if (route.query.tab) {
+activeTab.value = String(route.query.tab)
+editorVisible.value = true
+}
 
  if (route.query.panel) {
- const p = String(route.query.panel)
+const p = String(route.query.panel)
  if (p === 'paperfull' || p === 'chat' || p === 'journal' || p === 'literature' || p === 'files' || p === 'data' || p === 'image') {
  toolsOpen.value = false
  rightPanel.value = p
@@ -846,7 +851,10 @@ onMounted(async () => {
 })
 
 watch(activeTab, (newTab) => {
- router.replace({ query: { ...route.query, tab: newTab || undefined } })
+ const nextQuery = { ...route.query, tab: newTab || undefined }
+ if (newTab === 'preview') {
+ }
+ router.replace({ query: nextQuery })
 }, { immediate: false })
 
 watch(() => store.paper.title, () => resizeTitle())

@@ -681,7 +681,8 @@ const expandedAbstract = ref<Set<number>>(new Set())
 
 function isLongText(text: string | undefined): boolean {
   if (!text) return false
-  return text.length > 200 || (text.split('\n').length > 4)
+  const lines = text.split('\n')
+  return lines.length > 5 || (lines.length > 4 && text.length > 220)
 }
 
 function toggleExpand(field: 'abstract', id: number): void {

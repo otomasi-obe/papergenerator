@@ -18,19 +18,6 @@
         </p>
       </div>
 
-      <!-- VA Bank Selection -->
-      <div v-if="method === 'va' && !paymentData" class="mb-6">
-        <h3 class="text-sm font-bold text-ink-700 dark:text-ink-300 mb-3">Pilih Bank</h3>
-        <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
-          <button v-for="bank in banks" :key="bank.code" @click="selectedBank = bank.code"
-            :class="['cursor-pointer rounded-xl border-2 p-3 flex flex-col items-center gap-1 transition-all hover:shadow-sm',
-              selectedBank === bank.code ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700' : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]']">
-            <div :class="['w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs', bank.color]">{{ bank.short }}</div>
-            <span class="text-xs font-medium text-ink-700 dark:text-ink-300">{{ bank.name }}</span>
-          </button>
-        </div>
-      </div>
-
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Left: Order Summary -->
         <div class="bg-cream-50 dark:bg-ash-800 rounded-2xl border shadow-sm p-6 h-fit">
@@ -46,14 +33,14 @@
             </div>
             <div class="flex justify-between py-2 border-b border-cream-200 dark:border-ash-700">
               <span class="text-ink-600 dark:text-ink-300">Metode</span>
-              <span class="font-medium text-ink-900 dark:text-ink-50">{{ method === 'qris' ? 'QRIS' : 'VA - ' + (selectedBank?.toUpperCase() || '') }}</span>
+              <span class="font-medium text-ink-900 dark:text-ink-50">{{ method === 'qris' ? 'QRIS' : 'Virtual Account' }}</span>
             </div>
             <div class="flex justify-between py-3 mt-2">
               <span class="font-bold text-ink-900 dark:text-ink-50">Total</span>
               <span class="font-bold text-lg text-ink-900 dark:text-ink-50">{{ formatIDR(amount) }}</span>
             </div>
           </div>
-          <button v-if="!paymentData" @click="generatePayment" :disabled="loading || (method === 'va' && !selectedBank)"
+          <button v-if="!paymentData" @click="generatePayment" :disabled="loading"
             class="w-full mt-6 py-3 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all hover:shadow-md active:scale-95">
             {{ loading ? 'Memproses...' : 'Bayar Sekarang' }}
           </button>
@@ -68,13 +55,14 @@
           <!-- Loading -->
           <div v-if="loading" class="flex flex-col items-center justify-center py-12">
             <div class="w-12 h-12 border-4 border-cream-300 dark:border-ash-600 border-t-[var(--accent)] rounded-full animate-spin"></div>
-            <p class="text-ink-500 dark:text-ink-400 text-sm mt-4">Menghasilkan kode pembayaran...</p>
+            <p class="text-ink-500 dark:text-ink-400 text-sm mt-4">Membuat pembayaran...</p>
           </div>
 
-          <!-- QRIS Display -->
+          <!-- QRIS Display (iPaymu) -->
           <div v-if="paymentData && method === 'qris'" class="text-center">
             <div class="bg-white rounded-xl p-4 inline-block mb-4">
-              <canvas ref="qrCanvasRef" width="240" height="240" class="w-60 h-60"></canvas>
+              <img v-if="paymentData.qr_image" :src="paymentData.qr_image" alt="QRIS" class="w-60 h-60 mx-auto" />
+              <canvas v-else ref="qrCanvasRef" width="240" height="240" class="w-60 h-60 mx-auto"></canvas>
             </div>
             <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-3 mb-4">
               <div class="flex justify-between items-center">
@@ -84,11 +72,15 @@
             </div>
             <div class="text-sm text-ink-600 dark:text-ink-300 space-y-1 mb-4">
               <div class="flex justify-between"><span>Amount:</span><span class="font-medium text-ink-900 dark:text-ink-50">{{ formatIDR(paymentData.amount || amount) }}</span></div>
-              <div v-if="paymentData.transaction_id" class="flex justify-between"><span>ID:</span><span class="font-mono text-xs text-ink-700 dark:text-ink-300">{{ paymentData.transaction_id.slice(0, 20) }}</span></div>
+              <div v-if="paymentData.transaction_id" class="flex justify-between"><span>ID:</span><span class="font-mono text-xs text-ink-700 dark:text-ink-300">{{ paymentData.transaction_id.slice(0, 24) }}</span></div>
             </div>
-            <div class="flex gap-2 mt-4">
-              <button @click="copyPaymentData" class="flex-1 py-2 text-xs font-medium text-white bg-slate-600 hover:bg-slate-500 active:bg-slate-700 rounded-lg transition-all active:scale-95">
-                {{ copied ? '✓ Copied!' : 'Copy QR String' }}
+            <a v-if="paymentData.payment_url" :href="paymentData.payment_url" target="_blank" rel="noopener"
+              class="block w-full py-2 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg transition-all active:scale-95 mb-2 text-center">
+              Buka di Halaman iPaymu ↗
+            </a>
+            <div class="flex gap-2 mt-2">
+              <button @click="copyPaymentUrl" class="flex-1 py-2 text-xs font-medium text-white bg-slate-600 hover:bg-slate-500 active:bg-slate-700 rounded-lg transition-all active:scale-95">
+                {{ copied ? '✓ Copied!' : 'Copy Link' }}
               </button>
               <button @click="cancelPayment" class="flex-1 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg transition-all active:scale-95">Batal</button>
             </div>
@@ -97,9 +89,9 @@
           <!-- VA Display -->
           <div v-if="paymentData && method === 'va'" class="text-center">
             <div class="bg-white dark:bg-ash-700 rounded-xl p-6 mb-4">
-              <div :class="['w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-3 font-black text-lg', getBankColor(selectedBank)]">{{ (selectedBank || 'BANK').toUpperCase() }}</div>
+              <div class="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-3 font-black text-lg bg-slate-500 text-white">VA</div>
               <p class="text-xs text-ink-500 dark:text-ink-400 mb-1">Nomor Virtual Account</p>
-              <p class="text-2xl font-mono font-bold tracking-wider text-ink-900 dark:text-ink-50 select-all">{{ paymentData.account_number || '000000' }}</p>
+              <p class="text-2xl font-mono font-bold tracking-wider text-ink-900 dark:text-ink-50 select-all">{{ paymentData.payment_no || '000000' }}</p>
             </div>
             <div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg px-4 py-3 mb-4">
               <div class="flex items-center justify-center gap-2">
@@ -110,15 +102,19 @@
             <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-3 mb-4">
               <div class="flex justify-between items-center">
                 <span class="text-amber-700 dark:text-amber-300 text-sm font-medium">Bayar sebelum:</span>
-                <span class="text-amber-700 dark:text-amber-300 font-bold">{{ formatDate(paymentData.expires_at) }}</span>
+                <span class="text-amber-700 dark:text-amber-300 font-bold text-lg">{{ countdown }}</span>
               </div>
             </div>
             <div class="text-sm text-ink-600 dark:text-ink-300 space-y-1 mb-4">
               <div class="flex justify-between"><span>Amount:</span><span class="font-medium text-ink-900 dark:text-ink-50">{{ formatIDR(paymentData.amount || amount) }}</span></div>
             </div>
+            <a v-if="paymentData.payment_url" :href="paymentData.payment_url" target="_blank" rel="noopener"
+              class="block w-full py-2 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg transition-all active:scale-95 mb-2 text-center">
+              Buka Halaman Pembayaran ↗
+            </a>
             <div class="flex gap-2 mt-4">
-              <button @click="copyPaymentData" class="flex-1 py-2 text-xs font-medium text-white bg-slate-600 hover:bg-slate-500 active:bg-slate-700 rounded-lg transition-all active:scale-95">
-                {{ copied ? '✓ Copied!' : 'Copy No. VA' }}
+              <button @click="copyPaymentUrl" class="flex-1 py-2 text-xs font-medium text-white bg-slate-600 hover:bg-slate-500 active:bg-slate-700 rounded-lg transition-all active:scale-95">
+                {{ copied ? '✓ Copied!' : 'Copy Link' }}
               </button>
               <button @click="cancelPayment" class="flex-1 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg transition-all active:scale-95">Batal</button>
             </div>
@@ -145,9 +141,13 @@ const router = useRouter()
 const route = useRoute()
 
 interface PaymentData {
+  payment_url?: string
+  qr_image?: string
   qr_string?: string
-  account_number?: string
+  payment_no?: string
+  session_id?: string
   amount?: number
+  tokens?: number
   description?: string
   transaction_id?: string
   expires_at?: string
@@ -169,16 +169,6 @@ const packageName = ref('')
 const tokens = ref(0)
 const amount = ref(0)
 const method = ref<'qris' | 'va'>('qris')
-const selectedBank = ref('')
-
-const banks = [
-  { code: 'bca', name: 'BCA', short: 'BCA', color: 'bg-[#0066B3] text-white' },
-  { code: 'bni', name: 'BNI', short: 'BNI', color: 'bg-[#F26522] text-white' },
-  { code: 'bri', name: 'BRI', short: 'BRI', color: 'bg-[#005BAC] text-white' },
-  { code: 'mandiri', name: 'Mandiri', short: 'MDR', color: 'bg-[#003F72] text-[#FFC72C]' },
-  { code: 'cimb', name: 'CIMB', short: 'CMB', color: 'bg-[#8A1B24] text-white' },
-  { code: 'permata', name: 'Permata', short: 'PMT', color: 'bg-[#B5A642] text-white' },
-]
 
 const pkgNames: Record<string, string> = {
   daily: 'Harian', weekly: 'Mingguan', monthly: 'Bulanan', yearly: 'Tahunan'
@@ -189,8 +179,9 @@ tokens.value = parseInt(route.query.tokens as string) || 0
 packageName.value = pkgNames[(route.query.package as string) || ''] || 'Unknown'
 method.value = (route.query.method as string) === 'va' ? 'va' : 'qris'
 
+// Fallback: render QR from qr_string if no qr_image
 watch(paymentData, async (val) => {
-  if (val && method.value === 'qris' && val.qr_string) {
+  if (val && method.value === 'qris' && val.qr_string && !val.qr_image) {
     await nextTick()
     if (qrCanvasRef.value) {
       try {
@@ -199,42 +190,38 @@ watch(paymentData, async (val) => {
           margin: 2,
           color: { dark: '#1a1a1a', light: '#ffffff' }
         })
-      } catch (e) {
-        console.error('QR generation failed:', e)
-      }
+      } catch { /* QR render failed — user can use payment_url instead */ }
     }
   }
 })
 
 async function generatePayment() {
+  if (!amount.value || amount.value <= 0) {
+    error.value = 'Jumlah pembayaran tidak valid. Silakan pilih paket token.'
+    loading.value = false
+    return
+  }
   loading.value = true
   error.value = null
   cancelled.value = false
   paymentData.value = null
 
   try {
-    if (method.value === 'qris') {
-      const response = await api.post('/api/payment/qris/generate', {
-        amount: amount.value,
-        description: `Token ${packageName.value} - ${tokens.value} tokens`
-      })
-      paymentData.value = response.data
-      if (response.data.expires_at) {
-        startCountdown(new Date(response.data.expires_at))
-      }
-    } else {
-      const response = await api.post('/api/payment/va/generate', {
-        amount: amount.value,
-        bank: selectedBank.value,
-        description: `Token ${packageName.value} - ${tokens.value} tokens`
-      })
-      paymentData.value = response.data
+    const response = await api.post('/api/payment/ipaymu/generate', {
+      amount: amount.value,
+      description: `Token ${packageName.value} - ${tokens.value} tokens`,
+      method: method.value
+    })
+    paymentData.value = response.data
+    if (response.data.expires_at) {
+      startCountdown(new Date(response.data.expires_at))
     }
   } catch (err: unknown) {
-    const axiosErr = err as { response?: { data?: { error?: string }, status?: number }, message?: string }
-    console.error('Payment error:', axiosErr)
+    const axiosErr = err as { response?: { data?: { error?: string; message?: string }, status?: number }, message?: string }
     if (axiosErr.response?.data?.error) {
       error.value = axiosErr.response.data.error
+    } else if (axiosErr.response?.data?.message) {
+      error.value = axiosErr.response.data.message
     } else if (axiosErr.response?.status === 401) {
       error.value = 'Sesi login habis. Silakan login ulang.'
     } else if (axiosErr.response?.status === 502) {
@@ -284,13 +271,10 @@ function clearCountdown() {
   }
 }
 
-async function copyPaymentData() {
-  const data = method.value === 'va'
-    ? paymentData.value?.account_number
-    : paymentData.value?.qr_string
-  if (!data) return
+async function copyPaymentUrl() {
+  if (!paymentData.value?.payment_url) return
   try {
-    await navigator.clipboard.writeText(data)
+    await navigator.clipboard.writeText(paymentData.value.payment_url)
     copied.value = true
     setTimeout(() => { copied.value = false }, 2000)
   } catch {}
@@ -305,15 +289,6 @@ function cancelPayment() {
 
 function formatIDR(v: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v)
-}
-
-function formatDate(s: string) {
-  return new Date(s).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-function getBankColor(code: string) {
-  const bank = banks.find(b => b.code === code)
-  return bank?.color || 'bg-slate-500 text-white'
 }
 
 onUnmounted(() => {

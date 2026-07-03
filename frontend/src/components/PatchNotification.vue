@@ -28,7 +28,7 @@
             </div>
             <div>
               <h4 class="text-sm font-bold text-ink-900 dark:text-ink-50 leading-tight">{{ data?.title || 'Update Available' }}</h4>
-              <p class="text-[11px] text-ink-400 dark:text-ink-500">{{ formatDate(data?.released) }}</p>
+              <p class="text-[11px] text-ink-400 dark:text-white/60">{{ formatDate(data?.released) }}</p>
             </div>
           </div>
 
@@ -43,14 +43,14 @@
               <span :class="badgeClass(change.type)" class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex-shrink-0">
                 {{ change.type === 'new' ? '✦ NEW' : change.type === 'fix' ? '🔧 FIX' : '⚡ UPD' }}
               </span>
-              <span class="text-ink-600 dark:text-ink-300">{{ change.text }}</span>
+              <span class="text-ink-700 dark:text-white/80">{{ change.text }}</span>
             </div>
           </div>
 
           <!-- Footer -->
           <button
             @click="dismiss"
-            class="w-full py-2 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors"
+            class="w-full py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-white/10 hover:bg-amber-100 dark:hover:bg-white/15 border border-amber-200 dark:border-white/20 rounded-lg transition-colors"
           >
             Got it 👍
           </button>

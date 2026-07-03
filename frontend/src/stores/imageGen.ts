@@ -62,7 +62,7 @@ export const useImageGenStore = defineStore('imageGen', () => {
 
   function _ensurePoller(): void {
     if (pollTimer) return
-    pollTimer = window.setInterval(_poll, 5000)
+    pollTimer = window.setInterval(_poll, 1500)
   }
 
   function _stopPollerIfIdle(): void {
@@ -89,10 +89,8 @@ export const useImageGenStore = defineStore('imageGen', () => {
       _stopPollerIfIdle()
       return
     }
-    // Throttle: only poll 3 jobs per cycle to avoid rate limits
-    const batchSize = 3
-    const batch = inflightIds.slice(0, batchSize)
-    for (const id of batch) {
+    // Poll ALL inflight jobs every cycle
+    for (const id of inflightIds) {
       try {
         const res = await api.get<{ status: string; image?: string; error?: string }>(`/api/image-jobs/${id}`)
         const data = res.data || {}

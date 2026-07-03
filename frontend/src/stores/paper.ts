@@ -1156,6 +1156,7 @@ export const usePaperStore = defineStore('paper', () => {
   }
 
   async function exportDocx() {
+
     try {
       loading.value = true
       const journal = (paper.value.journal || 'IEEE').trim() || 'IEEE'
@@ -1467,8 +1468,6 @@ export const usePaperStore = defineStore('paper', () => {
     numbering,
     getItemNumber,
     figureItems,
-    figureSources,
-    figureSourceUsage,
     isSourceUsedByOther,
     setFigureSource,
     toPaperJson,
@@ -1496,6 +1495,7 @@ export const usePaperStore = defineStore('paper', () => {
     uploadJson,
     downloadJson,
     exportDocx,
+    
     aiGenerateFullPaper,
     resumePendingJob,
     savePaperToDb,

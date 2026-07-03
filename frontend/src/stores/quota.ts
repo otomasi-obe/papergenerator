@@ -45,12 +45,14 @@ export const useQuotaStore = defineStore('quota', () => {
     try {
       const res = await api.get('/api/me/quota')
       if (res?.data) {
-        Object.assign(quota.value, res.data)
+        // Merge with defaults to guard against missing/null fields
+        const safe = { ...INITIAL_QUOTA, ...res.data }
+        Object.assign(quota.value, safe)
         lastFetchTime.value = now
       }
     } catch (e) {
       // Not signed in or backend cold - keep existing quota state
-      console.warn('[quota] fetchQuota failed:', e instanceof Error ? e.message : String(e))
+      if (import.meta.env.DEV) console.warn('[quota] fetchQuota failed:', e instanceof Error ? e.message : String(e))
     } finally {
       isLoading.value = false
     }

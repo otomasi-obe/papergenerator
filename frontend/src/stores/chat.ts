@@ -689,7 +689,7 @@ export const useChatStore = defineStore('chat', () => {
         // BUG 14: Track consecutive failures and warn user after 10
         consecutiveFailures++
         if (consecutiveFailures === 10) {
-          console.warn(`[ResumePoll] ${convId}: 10 consecutive failures. Stream may be stuck. Consider refreshing or stopping manually.`, err)
+          if (import.meta.env.DEV) console.warn(`[ResumePoll] ${convId}: 10 consecutive failures. Stream may be stuck. Consider refreshing or stopping manually.`, err)
           const s2 = streams.value[convId]
           if (s2) {
             s2.connectionState = 'disconnected'
@@ -1038,7 +1038,7 @@ export const useChatStore = defineStore('chat', () => {
                   try {
                     const data = JSON.parse(line.slice(6))
                     _handleSSEEvent(convId, currentEvent, data)
-                  } catch (parseErr) { console.warn('[SSE] Malformed chunk skipped:', line, parseErr) }
+                  } catch (parseErr) { if (import.meta.env.DEV) console.warn('[SSE] Malformed chunk skipped:', line, parseErr) }
                 }
               }
             }
@@ -1295,7 +1295,7 @@ export const useChatStore = defineStore('chat', () => {
       try {
         const paperStore = usePaperStore()
         if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-          console.error('[chat] paper_applied errors:', data.errors)
+          if (import.meta.env.DEV) console.error('[chat] paper_applied errors:', data.errors)
           window.dispatchEvent(new CustomEvent('papergenerator-toast', {
             detail: { message: 'Apply error: ' + data.errors.join('; '), type: 'error' },
           }))
