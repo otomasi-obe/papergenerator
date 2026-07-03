@@ -298,6 +298,7 @@ const journalFooterStyle = computed(() => ({
 }))
 
 watch(() => store.currentPaperId, (newId) => {
+  console.log('[PreviewTab] watch currentPaperId:', newId)
   failedImages.value = new Set()
   showPdf.value = true
   pdfUrl.value = ''
@@ -307,7 +308,7 @@ watch(() => store.currentPaperId, (newId) => {
   if (newId) {
     nextTick(() => triggerRender())
   }
-}, { immediate: false })
+}, { immediate: true })
 
 const resolvedOpen = ref(false)
 const editMode = ref(false)
@@ -456,16 +457,20 @@ function autoResize(event: Event) {
 
 // PDF rendering with progress bar
 let progressTimer: ReturnType<typeof setInterval> | null = null
+console.log('[PreviewTab] script setup, paperId:', store.currentPaperId)
 let renderDebounceTimer: ReturnType<typeof setTimeout> | null = null
 function triggerRender() {
+  console.log('[PreviewTab] triggerRender called, paperId:', store.currentPaperId, 'pdfLoading:', pdfLoading.value)
   if (renderDebounceTimer) return
   renderDebounceTimer = setTimeout(() => {
     renderDebounceTimer = null
+    console.log('[PreviewTab] debounce fired, calling renderPdf')
     if (store.currentPaperId) renderPdf()
   }, 100)
 }
 
 async function renderPdf() {
+  console.log('[PreviewTab] renderPdf called, paperId:', store.currentPaperId, 'pdfLoading:', pdfLoading.value)
   if (pdfLoading.value) return
   if (!store.currentPaperId) return
   pdfLoading.value = true
@@ -493,15 +498,12 @@ async function renderPdf() {
       const url = res.data.pdf_url
       await loadPdfBlob(url)
       pdfProgress.value = 100
-      if (pdfBlobUrl.value) {
-        pdfUrl.value = url
-        pdfKey.value++
-      }
-      pdfLoading.value = false
-    } else {
-      throw new Error('No PDF URL in response')
+      pdfUrl.value = url
+      pdfKey.value++
     }
+    pdfLoading.value = false
   } catch (err: any) {
+    console.error('[PreviewTab] renderPdf error:', err)
     pdfLoading.value = false
     pdfError.value = true
     pdfErrorMessage.value = err.response?.data?.error || err.message || 'Failed to render PDF'
@@ -562,10 +564,7 @@ function downloadPdf() {
 // Watchers — no auto PDF render; HTML preview is always visible
 // User triggers PDF manually via the PDF button
 
-onMounted(() => {
-  triggerRender()
-})
-
+// Trigger handled by watch with immediate:true
 onUnmounted(clearPdfBlobUrl)
 
 // Expose renderPdf for external use
