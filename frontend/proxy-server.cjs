@@ -156,16 +156,19 @@ const server = http.createServer((req, res) => {
     filePath = path.join(DIST_DIR, pathname, 'index.html');
   }
 
-  // Static HTML pages: try <path>.html for clean URLs (/terms → /terms.html)
-  // This lets bots/crawlers get full content without JS execution
+  // Static HTML pages: serve to bots/crawlers only (SEO), humans get Vue SPA
   const staticPages = ['/terms', '/refund', '/faq', '/contact'];
   if (staticPages.includes(pathname) || pathname.match(/^\/(terms|refund|faq|contact)\.html$/)) {
-    const htmlPath = pathname.endsWith('.html') ? pathname : pathname + '.html';
-    const staticHtmlPath = path.join(DIST_DIR, htmlPath);
-    // Check if the static HTML file exists
-    if (fs.existsSync(staticHtmlPath)) {
-      filePath = staticHtmlPath;
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    const isBot = /googlebot|bingbot|yandex|baiduspider|duckduckbot|slurp|facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegram|crawl|spider|bot|archive/i.test(ua);
+    if (isBot) {
+      const htmlPath = pathname.endsWith('.html') ? pathname : pathname + '.html';
+      const staticHtmlPath = path.join(DIST_DIR, htmlPath);
+      if (fs.existsSync(staticHtmlPath)) {
+        filePath = staticHtmlPath;
+      }
     }
+    // Human users → fall through to SPA (index.html via catch-all below)
   }
 
   const extname = path.extname(filePath);

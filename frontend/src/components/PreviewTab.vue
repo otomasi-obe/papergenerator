@@ -28,36 +28,42 @@
 
       </div>
       <div class="flex items-center gap-2">
-        <!-- Full 100% PDF preview button -->
+        <!-- Re-render PDF preview -->
         <button @click="renderPdf" :disabled="pdfLoading"
-          class="px-3 py-1.5 rounded text-xs font-medium bg-navy-600 text-white transition hover:bg-navy-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-1.5">
+          class="px-3 py-1.5 rounded text-xs font-medium border border-cream-300 text-ink-700 transition hover:bg-cream-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-ash-600 dark:text-ink-200 dark:hover:bg-ash-700 flex items-center gap-1.5">
           <svg v-if="pdfLoading" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-          <svg v-else class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
-          {{ pdfLoading ? 'Rendering PDF...' : 'PDF (Full)' }}
-        </button>
-        <!-- Refresh HTML preview -->
-        <button @click="refreshHtml" :disabled="htmlRefreshing"
-          class="px-3 py-1.5 rounded text-xs font-medium border border-cream-300 text-ink-700 transition hover:bg-cream-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-ash-600 dark:text-ink-200 dark:hover:bg-ash-700">
-          {{ htmlRefreshing ? '...' : 'Refresh' }}
+          {{ pdfLoading ? 'Rendering...' : 'Refresh' }}
         </button>
       </div>
     </div>
 
-    <!-- PDF Preview (100% match) — shown when user clicks PDF button -->
-    <div class="paper-preview-wrapper flex-1 min-h-0 w-full min-w-0 overflow-hidden">
+    <!-- PDF Preview (100% match) -->
+    <div class="flex-1 min-h-0 w-full min-w-0 overflow-hidden">
       <!-- Loading state with progress bar -->
-      <div v-if="pdfLoading" class="h-full w-full bg-white dark:bg-ash-900 p-8 shadow-sm flex flex-col items-center justify-center gap-4">
+      <div v-if="pdfLoading" class="h-full w-full bg-cream-50 dark:bg-ash-900 flex flex-col items-center justify-center gap-5">
         <div class="relative">
-          <div class="w-10 h-10 border-3 border-cream-300 dark:border-ash-600 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></div>
+          <div class="w-12 h-12 border-4 border-cream-200 dark:border-ash-700 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></div>
         </div>
-        <div class="text-center w-full max-w-sm">
-          <p class="text-sm font-medium text-ink-700 dark:text-ink-200">Rendering {{ store.paper.journal || 'IEEE' }} PDF...</p>
-          <p class="text-xs text-ink-500 dark:text-ash-400 mt-1">Generating DOCX → converting to PDF (100% match)</p>
-          <div class="w-full bg-cream-200 dark:bg-ash-700 rounded-full h-1.5 mt-3 overflow-hidden">
-            <div class="bg-navy-600 h-full rounded-full transition-all duration-700 ease-out" :style="{ width: pdfProgress + '%' }"></div>
+        <div class="text-center w-full max-w-xs">
+          <p class="text-sm font-semibold text-ink-800 dark:text-ink-100">Preview PDF sedang dirender</p>
+          <p class="text-xs text-ink-500 dark:text-ash-400 mt-1">Menggenerate DOCX {{ store.paper.journal || 'IEEE' }} → konversi ke PDF</p>
+          <div class="w-full bg-cream-200 dark:bg-ash-700 rounded-full h-2 mt-4 overflow-hidden">
+            <div class="bg-navy-600 h-full rounded-full transition-all duration-500 ease-out" :style="{ width: Math.round(pdfProgress) + '%' }"></div>
           </div>
-          <p class="text-xs text-ink-400 dark:text-ash-500 mt-1">{{ pdfProgress }}%</p>
+          <p class="text-sm font-mono text-ink-600 dark:text-ash-300 mt-2">{{ Math.round(pdfProgress) }}%</p>
         </div>
+      </div>
+
+      <!-- Error state -->
+      <div v-else-if="pdfError" class="h-full w-full bg-cream-50 dark:bg-ash-900 flex flex-col items-center justify-center gap-4">
+        <svg class="w-10 h-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/><path d="M12 15.75h.007v.008H12v-.008z"/></svg>
+        <div class="text-center">
+          <p class="text-sm font-medium text-ink-700 dark:text-ink-200">Gagal merender PDF</p>
+          <p class="text-xs text-ink-500 dark:text-ash-400 mt-1">{{ pdfErrorMessage }}</p>
+        </div>
+        <button @click="renderPdf" class="px-4 py-2 rounded text-xs font-medium bg-navy-600 text-white hover:bg-navy-700 transition">
+          Coba Lagi
+        </button>
       </div>
 
       <!-- PDF ready -->
@@ -69,7 +75,6 @@
           title="PDF preview"
           @error="onIframeError"
         ></iframe>
-        <!-- Download button overlay -->
         <button @click="downloadPdf"
           class="absolute top-3 right-3 px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1">
           <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -84,140 +89,11 @@
           title="PDF preview"
         ></iframe>
       </div>
-    </div>
 
-    <!-- HTML Paper Preview — Scribd-style journal layout -->
-    <div v-if="!pdfBlobUrl && !pdfUrl" class="paper-preview-wrapper overflow-auto" style="background:#525659">
-      <!-- Paper page — mimics A4/Letter with shadow -->
-      <div
-        class="journal-paper mx-auto my-4"
-        :style="journalPaperStyle"
-      >
-        <!-- Running header (journal-specific) -->
-        <div v-if="jl.header?.show" class="journal-header" :style="journalHeaderStyle">
-          {{ jl.header.text }}
-        </div>
-
-        <!-- Title -->
-        <div class="journal-title" :style="journalTitleStyle">
-          <DiffBlock v-if="pendingByKind.title" :change="pendingByKind.title" :store="store" align="center">
-            <template #before>
-              <h1>{{ store.paper.title || 'Paper Title' }}</h1>
-            </template>
-            <template #after>
-              <h1>{{ pendingByKind.title.payload.value || 'Paper Title' }}</h1>
-            </template>
-          </DiffBlock>
-          <h1 v-else>{{ store.paper.title || 'Paper Title' }}</h1>
-        </div>
-
-        <!-- Authors -->
-        <div class="journal-authors" :style="journalAuthorsStyle">
-          <div v-for="(author, i) in store.paper.authors" :key="i">
-            {{ author.name || 'Author Name' }}<span v-if="author.affiliation"> — {{ author.affiliation }}</span>
-          </div>
-        </div>
-
-        <!-- Abstract -->
-        <div class="journal-abstract" :style="journalAbstractStyle">
-          <DiffBlock v-if="pendingByKind.abstract" :change="pendingByKind.abstract" :store="store">
-            <template #before>
-              <p class="abs-label">{{ jl.abstract.label }}</p>
-              <p>{{ store.paper.abstract || 'Abstract goes here...' }}</p>
-            </template>
-            <template #after>
-              <p class="abs-label">{{ jl.abstract.label }}</p>
-              <p>{{ pendingByKind.abstract.payload.value || '' }}</p>
-            </template>
-          </DiffBlock>
-          <template v-else>
-            <p class="abs-label">{{ jl.abstract.label }}</p>
-            <p>{{ store.paper.abstract || 'Abstract goes here...' }}</p>
-          </template>
-        </div>
-
-        <!-- Keywords -->
-        <div v-if="jl.keywords?.show && store.paper.keywords?.length" class="journal-keywords" :style="journalKeywordsStyle">
-          <span class="kw-label">{{ jl.keywords.label }}</span>{{ store.paper.keywords.join(jl.keywords.separator) }}
-        </div>
-
-        <!-- Column wrapper for IEEE/ACM two-column journals -->
-        <div class="journal-body" :style="journalBodyStyle">
-          <!-- New section proposals -->
-          <div v-if="newSectionProposals.length" class="mb-4 space-y-2">
-            <div v-for="c in newSectionProposals" :key="c.id"
-              class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
-              <DiffBlock :change="c" :store="store">
-                <template #after>
-                  <h3 class="text-sm font-bold text-amber-800 dark:text-amber-200">{{ c.payload.title || 'New Section' }}</h3>
-                  <div class="text-sm mt-1" v-html="renderInlineText(c.payload.text || '')"></div>
-                </template>
-              </DiffBlock>
-            </div>
-          </div>
-
-          <!-- Sections -->
-          <template v-for="(section, sIdx) in store.paper.sections" :key="sIdx">
-            <DiffBlock v-if="pendingSectionByIdx[sIdx]" :change="pendingSectionByIdx[sIdx]" :store="store">
-              <template #before>
-                <div class="mb-4">
-                  <h3 class="journal-heading1">{{ getItemNum(section) }}. {{ section.title || 'Untitled Section' }}</h3>
-                  <div v-html="renderInlineText(sectionText(section))"></div>
-                </div>
-              </template>
-              <template #after>
-                <div class="mb-4">
-                  <h3 class="journal-heading1">{{ getItemNum(section) }}. {{ pendingSectionByIdx[sIdx].payload.title || 'Untitled Section' }}</h3>
-                  <div v-html="renderInlineText(pendingSectionByIdx[sIdx].payload.text || '')"></div>
-                </div>
-              </template>
-            </DiffBlock>
-            <div v-else class="mb-4">
-              <h3 class="journal-heading1">{{ getItemNum(section) }}. {{ section.title || 'Untitled Section' }}</h3>
-              <div v-html="renderInlineText(sectionText(section))"></div>
-
-              <!-- Subsections -->
-              <div v-for="(sub, subIdx) in section.subsections || []" :key="subIdx" class="mb-3 ml-4">
-                <h4 class="journal-heading2">{{ getItemNum(sub) }}. {{ sub.title || 'Untitled Subsection' }}</h4>
-                <div v-html="renderInlineText(sub.content?.map?.((c: any) => c.text).join('\n\n') || '')"></div>
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <!-- References -->
-        <div v-if="store.paper.references?.length" class="journal-references" :style="journalReferencesStyle">
-          <h3 class="journal-ref-heading">{{ jl.references.label }}</h3>
-          <div class="ref-list">
-            <div v-for="(ref, rIdx) in store.paper.references" :key="rIdx" class="ref-item">
-              <DiffBlock v-if="pendingRefByIdx[rIdx]" :change="pendingRefByIdx[rIdx]" :store="store" :index="rIdx">
-                <template #before>
-                  <span class="ref-num">[{{ rIdx + 1 }}]</span>{{ displayRef(ref) }}
-                </template>
-                <template #after>
-                  <span class="ref-num">[{{ rIdx + 1 }}]</span>{{ pendingRefByIdx[rIdx].payload.text || '' }}
-                </template>
-              </DiffBlock>
-              <span v-else>
-                <span class="ref-num">[{{ rIdx + 1 }}]</span>{{ displayRef(ref) }}
-              </span>
-            </div>
-            <!-- New reference proposals -->
-            <div v-for="c in newRefProposals" :key="c.id"
-              class="ref-item p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
-              <DiffBlock :change="c" :store="store">
-                <template #after>
-                  <span class="ref-num text-amber-600">[New]</span>{{ c.payload.text || '' }}
-                </template>
-              </DiffBlock>
-            </div>
-          </div>
-        </div>
-
-        <!-- Running footer -->
-        <div v-if="jl.footer?.show" class="journal-footer" :style="journalFooterStyle">
-          <span v-if="jl.footer.text">{{ jl.footer.text }}</span>
-        </div>
+      <!-- Initial state — waiting for auto-render -->
+      <div v-else class="h-full w-full bg-cream-50 dark:bg-ash-900 flex flex-col items-center justify-center gap-4">
+        <svg class="w-10 h-10 text-ink-300 dark:text-ash-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+        <p class="text-sm text-ink-500 dark:text-ash-400">Menyiapkan preview...</p>
       </div>
     </div>
 
@@ -423,12 +299,14 @@ const journalFooterStyle = computed(() => ({
 
 watch(() => store.currentPaperId, () => {
   failedImages.value = new Set()
-  // Reset PDF state on paper change — don't auto-render PDF
   showPdf.value = true
   pdfUrl.value = ''
   clearPdfBlobUrl()
   pdfError.value = false
   pdfLoading.value = false
+  if (store.currentPaperId) {
+    nextTick(() => renderPdf())
+  }
 })
 
 const resolvedOpen = ref(false)
@@ -680,7 +558,10 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 onMounted(() => {
-  // Don't auto-render PDF — show HTML preview by default. User clicks "PDF (Full)" to generate.
+  // Auto-render PDF preview saat tab dibuka
+  if (store.currentPaperId) {
+    renderPdf()
+  }
 })
 
 onUnmounted(clearPdfBlobUrl)
