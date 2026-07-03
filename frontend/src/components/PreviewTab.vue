@@ -71,166 +71,137 @@
       </div>
     </div>
 
-    <!-- HTML Paper Preview (rendered, with INLINE diffs) — shown as fallback when PDF is not ready -->
-    <div v-if="!pdfBlobUrl && !pdfUrl" class="paper-preview-wrapper overflow-auto">
-      <div class="paper-preview border border-cream-300 dark:border-ash-700 rounded-2xl bg-white dark:bg-ash-900 p-8 max-w-4xl mx-auto shadow-sm"
-        :style="{ transform: (showZoom && !editMode) ? `scale(${zoomLevel})` : '', transformOrigin: 'top center', transition: 'transform 0.2s ease' }">
-        <!-- Title (with inline diff if pending) -->
-        <DiffBlock v-if="pendingByKind.title" :change="pendingByKind.title" :store="store" align="center">
-          <template #before>
-            <h1 class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
-              {{ store.paper.title || 'Paper Title' }}
-            </h1>
-          </template>
-          <template #after>
-            <h1 class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
-              {{ pendingByKind.title.payload.value || 'Paper Title' }}
-            </h1>
-          </template>
-        </DiffBlock>
-        <div v-else class="text-center mb-4">
-          <h1 class="text-2xl font-bold leading-tight" style="font-family: 'Times New Roman', serif;">
-            {{ store.paper.title || 'Paper Title' }}
-          </h1>
+    <!-- HTML Paper Preview — Scribd-style journal layout -->
+    <div v-if="!pdfBlobUrl && !pdfUrl" class="paper-preview-wrapper overflow-auto" style="background:#525659">
+      <!-- Paper page — mimics A4/Letter with shadow -->
+      <div
+        class="journal-paper mx-auto my-4"
+        :style="journalPaperStyle"
+      >
+        <!-- Running header (journal-specific) -->
+        <div v-if="jl.header?.show" class="journal-header" :style="journalHeaderStyle">
+          {{ jl.header.text }}
+        </div>
+
+        <!-- Title -->
+        <div class="journal-title" :style="journalTitleStyle">
+          <DiffBlock v-if="pendingByKind.title" :change="pendingByKind.title" :store="store" align="center">
+            <template #before>
+              <h1>{{ store.paper.title || 'Paper Title' }}</h1>
+            </template>
+            <template #after>
+              <h1>{{ pendingByKind.title.payload.value || 'Paper Title' }}</h1>
+            </template>
+          </DiffBlock>
+          <h1 v-else>{{ store.paper.title || 'Paper Title' }}</h1>
         </div>
 
         <!-- Authors -->
-        <div class="text-center mb-6">
-          <div v-for="(author, i) in store.paper.authors" :key="i" class="mb-2">
-            <div class="text-sm" style="font-family: 'Times New Roman', serif;">
-              {{ author.name || 'Author Name' }}<span v-if="author.affiliation" class="text-ink-600 dark:text-ink-300"> — {{ author.affiliation }}</span>
-            </div>
+        <div class="journal-authors" :style="journalAuthorsStyle">
+          <div v-for="(author, i) in store.paper.authors" :key="i">
+            {{ author.name || 'Author Name' }}<span v-if="author.affiliation"> — {{ author.affiliation }}</span>
           </div>
         </div>
 
         <!-- Abstract -->
-        <DiffBlock v-if="pendingByKind.abstract" :change="pendingByKind.abstract" :store="store">
-          <template #before>
-            <div class="mb-4">
-              <h2 class="text-base font-bold" style="font-family: 'Times New Roman', serif;">Abstract</h2>
-              <p class="text-sm leading-relaxed mt-1" style="font-family: 'Times New Roman', serif;">
-                {{ store.paper.abstract || 'Abstract goes here...' }}
-              </p>
-            </div>
+        <div class="journal-abstract" :style="journalAbstractStyle">
+          <DiffBlock v-if="pendingByKind.abstract" :change="pendingByKind.abstract" :store="store">
+            <template #before>
+              <p class="abs-label">{{ jl.abstract.label }}</p>
+              <p>{{ store.paper.abstract || 'Abstract goes here...' }}</p>
+            </template>
+            <template #after>
+              <p class="abs-label">{{ jl.abstract.label }}</p>
+              <p>{{ pendingByKind.abstract.payload.value || '' }}</p>
+            </template>
+          </DiffBlock>
+          <template v-else>
+            <p class="abs-label">{{ jl.abstract.label }}</p>
+            <p>{{ store.paper.abstract || 'Abstract goes here...' }}</p>
           </template>
-          <template #after>
-            <div class="mb-4">
-              <h2 class="text-base font-bold" style="font-family: 'Times New Roman', serif;">Abstract</h2>
-              <p class="text-sm leading-relaxed mt-1" style="font-family: 'Times New Roman', serif;">
-                {{ pendingByKind.abstract.payload.value || '' }}
-              </p>
-            </div>
-          </template>
-        </DiffBlock>
-        <div v-else class="mb-4">
-          <h2 class="text-base font-bold" style="font-family: 'Times New Roman', serif;">Abstract</h2>
-          <p class="text-sm leading-relaxed mt-1" style="font-family: 'Times New Roman', serif;">
-            {{ store.paper.abstract || 'Abstract goes here...' }}
-          </p>
         </div>
 
         <!-- Keywords -->
-        <div class="mb-6" v-if="store.paper.keywords?.length">
-          <p class="text-sm" style="font-family: 'Times New Roman', serif;">
-            <strong>Keywords:</strong> {{ store.paper.keywords.join(', ') }}
-          </p>
+        <div v-if="jl.keywords?.show && store.paper.keywords?.length" class="journal-keywords" :style="journalKeywordsStyle">
+          <span class="kw-label">{{ jl.keywords.label }}</span>{{ store.paper.keywords.join(jl.keywords.separator) }}
         </div>
 
-        <!-- New section proposals (not yet in the paper) -->
-        <div v-if="newSectionProposals.length" class="mb-4 space-y-2">
-          <div v-for="c in newSectionProposals" :key="c.id"
-            class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
-            <DiffBlock :change="c" :store="store">
-              <template #after>
-                <h3 class="text-sm font-bold text-amber-800 dark:text-amber-200" style="font-family: 'Times New Roman', serif;">
-                  {{ c.payload.title || 'New Section' }}
-                </h3>
-                <div class="text-sm mt-1" style="font-family: 'Times New Roman', serif;" v-html="renderInlineText(c.payload.text || '')"></div>
-              </template>
-            </DiffBlock>
-          </div>
-        </div>
-
-        <!-- Sections -->
-        <template v-for="(section, sIdx) in store.paper.sections" :key="sIdx">
-          <DiffBlock v-if="pendingSectionByIdx[sIdx]" :change="pendingSectionByIdx[sIdx]" :store="store">
-            <template #before>
-              <div class="mb-4">
-                <h3 class="text-base font-bold mt-6 mb-2" style="font-family: 'Times New Roman', serif;">
-                  {{ getItemNum(section) }}. {{ section.title || 'Untitled Section' }}
-                </h3>
-                <div class="text-sm leading-relaxed" style="font-family: 'Times New Roman', serif;"
-                  v-html="renderInlineText(sectionText(section))"></div>
-              </div>
-            </template>
-            <template #after>
-              <div class="mb-4">
-                <h3 class="text-base font-bold mt-6 mb-2" style="font-family: 'Times New Roman', serif;">
-                  {{ getItemNum(section) }}. {{ pendingSectionByIdx[sIdx].payload.title || 'Untitled Section' }}
-                </h3>
-                <div class="text-sm leading-relaxed" style="font-family: 'Times New Roman', serif;"
-                  v-html="renderInlineText(pendingSectionByIdx[sIdx].payload.text || '')"></div>
-              </div>
-            </template>
-          </DiffBlock>
-          <div v-else class="mb-4">
-            <h3 class="text-base font-bold mt-6 mb-2" style="font-family: 'Times New Roman', serif;">
-              {{ getItemNum(section) }}. {{ section.title || 'Untitled Section' }}
-            </h3>
-            <div class="text-sm leading-relaxed" style="font-family: 'Times New Roman', serif;"
-              v-html="renderInlineText(sectionText(section))"></div>
-
-            <!-- Subsections -->
-            <div v-for="(sub, subIdx) in section.subsections || []" :key="subIdx" class="mb-3 ml-4">
-              <h4 class="text-sm font-semibold mt-4 mb-1" style="font-family: 'Times New Roman', serif;">
-                {{ getItemNum(sub) }}. {{ sub.title || 'Untitled Subsection' }}
-              </h4>
-              <div class="text-sm leading-relaxed" style="font-family: 'Times New Roman', serif;"
-                v-html="renderInlineText(sub.content?.map?.((c:any) => c.text).join('\n\n') || '')"></div>
+        <!-- Column wrapper for IEEE/ACM two-column journals -->
+        <div class="journal-body" :style="journalBodyStyle">
+          <!-- New section proposals -->
+          <div v-if="newSectionProposals.length" class="mb-4 space-y-2">
+            <div v-for="c in newSectionProposals" :key="c.id"
+              class="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
+              <DiffBlock :change="c" :store="store">
+                <template #after>
+                  <h3 class="text-sm font-bold text-amber-800 dark:text-amber-200">{{ c.payload.title || 'New Section' }}</h3>
+                  <div class="text-sm mt-1" v-html="renderInlineText(c.payload.text || '')"></div>
+                </template>
+              </DiffBlock>
             </div>
           </div>
-        </template>
+
+          <!-- Sections -->
+          <template v-for="(section, sIdx) in store.paper.sections" :key="sIdx">
+            <DiffBlock v-if="pendingSectionByIdx[sIdx]" :change="pendingSectionByIdx[sIdx]" :store="store">
+              <template #before>
+                <div class="mb-4">
+                  <h3 class="journal-heading1">{{ getItemNum(section) }}. {{ section.title || 'Untitled Section' }}</h3>
+                  <div v-html="renderInlineText(sectionText(section))"></div>
+                </div>
+              </template>
+              <template #after>
+                <div class="mb-4">
+                  <h3 class="journal-heading1">{{ getItemNum(section) }}. {{ pendingSectionByIdx[sIdx].payload.title || 'Untitled Section' }}</h3>
+                  <div v-html="renderInlineText(pendingSectionByIdx[sIdx].payload.text || '')"></div>
+                </div>
+              </template>
+            </DiffBlock>
+            <div v-else class="mb-4">
+              <h3 class="journal-heading1">{{ getItemNum(section) }}. {{ section.title || 'Untitled Section' }}</h3>
+              <div v-html="renderInlineText(sectionText(section))"></div>
+
+              <!-- Subsections -->
+              <div v-for="(sub, subIdx) in section.subsections || []" :key="subIdx" class="mb-3 ml-4">
+                <h4 class="journal-heading2">{{ getItemNum(sub) }}. {{ sub.title || 'Untitled Subsection' }}</h4>
+                <div v-html="renderInlineText(sub.content?.map?.((c: any) => c.text).join('\n\n') || '')"></div>
+              </div>
+            </div>
+          </template>
+        </div>
 
         <!-- References -->
-        <div class="mt-8" v-if="store.paper.references?.length">
-          <h3 class="text-base font-bold mb-3" style="font-family: 'Times New Roman', serif;">References</h3>
-          <div class="space-y-1">
-            <div v-for="(ref, rIdx) in store.paper.references" :key="rIdx" class="text-sm" style="font-family: 'Times New Roman', serif;">
+        <div v-if="store.paper.references?.length" class="journal-references" :style="journalReferencesStyle">
+          <h3 class="journal-ref-heading">{{ jl.references.label }}</h3>
+          <div class="ref-list">
+            <div v-for="(ref, rIdx) in store.paper.references" :key="rIdx" class="ref-item">
               <DiffBlock v-if="pendingRefByIdx[rIdx]" :change="pendingRefByIdx[rIdx]" :store="store" :index="rIdx">
                 <template #before>
-                  <span class="text-xs text-ink-500 mr-1">[{{ rIdx + 1 }}]</span>{{ displayRef(ref) }}
+                  <span class="ref-num">[{{ rIdx + 1 }}]</span>{{ displayRef(ref) }}
                 </template>
                 <template #after>
-                  <span class="text-xs text-ink-500 mr-1">[{{ rIdx + 1 }}]</span>{{ pendingRefByIdx[rIdx].payload.text || '' }}
+                  <span class="ref-num">[{{ rIdx + 1 }}]</span>{{ pendingRefByIdx[rIdx].payload.text || '' }}
                 </template>
               </DiffBlock>
               <span v-else>
-                <span class="text-xs text-ink-500 mr-1">[{{ rIdx + 1 }}]</span>{{ displayRef(ref) }}
+                <span class="ref-num">[{{ rIdx + 1 }}]</span>{{ displayRef(ref) }}
               </span>
             </div>
             <!-- New reference proposals -->
             <div v-for="c in newRefProposals" :key="c.id"
-              class="p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
+              class="ref-item p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
               <DiffBlock :change="c" :store="store">
                 <template #after>
-                  <span class="text-xs text-amber-600 dark:text-amber-400 mr-1">[New]</span>{{ c.payload.text || '' }}
+                  <span class="ref-num text-amber-600">[New]</span>{{ c.payload.text || '' }}
                 </template>
               </DiffBlock>
             </div>
           </div>
         </div>
 
-        <!-- New Ref Proposals not rendered inline -->
-        <div v-if="newRefProposals.length" class="mt-4">
-          <h4 class="text-sm font-semibold mb-2">New References</h4>
-          <div v-for="c in newRefProposals" :key="c.id"
-            class="p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
-            <DiffBlock :change="c" :store="store">
-              <template #after>
-                <span class="text-xs text-amber-600 dark:text-amber-400 mr-1">[New]</span>{{ c.payload.text || '' }}
-              </template>
-            </DiffBlock>
-          </div>
+        <!-- Running footer -->
+        <div v-if="jl.footer?.show" class="journal-footer" :style="journalFooterStyle">
+          <span v-if="jl.footer.text">{{ jl.footer.text }}</span>
         </div>
       </div>
     </div>
@@ -312,6 +283,7 @@ import { usePaperStore } from '../stores/paper'
 import DiffBlock from './DiffBlock.vue'
 import { renderLatex, renderRichText } from '../composables/useMathRender'
 import { useSanitize } from '../composables/useSanitize'
+import { getJournalLayout } from '../composables/journalLayouts'
 import api from '../api/index.js'
 
 const failedImages = ref(new Set<string>())
@@ -355,6 +327,77 @@ const props = withDefaults(defineProps<Props>(), {
 
 const store = usePaperStore()
 const journalLabel = computed(() => store.paper.journal || 'IEEE')
+
+// ─── Journal layout ──────────────────────────────────────────────────────────
+const jl = computed(() => getJournalLayout(store.paper.journal))
+
+const journalPaperStyle = computed(() => ({
+  fontFamily: jl.value.paper.fontFamily,
+  fontSize: jl.value.paper.fontSize,
+  lineHeight: jl.value.paper.lineHeight,
+  columnCount: jl.value.paper.columns,
+  columnGap: jl.value.paper.columnGap,
+  textAlign: jl.value.paper.textAlign,
+  padding: jl.value.paper.padding,
+  maxWidth: jl.value.paper.maxWidth,
+  color: jl.value.paper.color,
+  background: jl.value.paper.background,
+  boxShadow: '0 1px 4px rgba(0,0,0,.3)',
+  minHeight: '11in',
+}))
+
+const journalHeaderStyle = computed(() => ({
+  fontSize: jl.value.header?.fontSize || '8pt',
+  color: jl.value.header?.color || '#666',
+  borderBottom: jl.value.header?.borderBottom || 'none',
+  paddingBottom: '4pt',
+  marginBottom: '12pt',
+  textAlign: 'center' as const,
+}))
+
+const journalTitleStyle = computed(() => ({
+  fontSize: jl.value.title.fontSize,
+  fontWeight: jl.value.title.fontWeight,
+  textAlign: jl.value.title.textAlign,
+  color: jl.value.title.color,
+  marginBottom: jl.value.title.marginBottom,
+}))
+
+const journalAuthorsStyle = computed(() => ({
+  fontSize: jl.value.authors.fontSize,
+  textAlign: jl.value.authors.textAlign,
+  marginBottom: jl.value.authors.marginBottom,
+}))
+
+const journalAbstractStyle = computed(() => ({
+  fontSize: jl.value.abstract.fontSize,
+  fontWeight: jl.value.abstract.labelStyle === 'bold' ? '700' : '400',
+  marginBottom: '12pt',
+}))
+
+const journalKeywordsStyle = computed(() => ({
+  fontSize: jl.value.abstract.fontSize,
+  fontStyle: 'italic',
+  marginBottom: '12pt',
+  '--kw-label-weight': jl.value.abstract.labelStyle === 'bold' ? '700' : '400',
+}))
+
+const journalBodyStyle = computed(() => {
+  const b = jl.value.body
+  return {
+    fontSize: b.fontSize,
+    textAlign: b.textAlign,
+    '--text-indent': b.textIndent,
+  }
+})
+
+const journalReferencesStyle = computed(() => ({
+  fontSize: jl.value.references.fontSize,
+  marginTop: '18pt',
+  borderTop: '1px solid #000',
+  paddingTop: '6pt',
+  '--ref-hanging': jl.value.references.hangingIndent,
+}))
 
 watch(() => store.currentPaperId, () => {
   failedImages.value = new Set()
@@ -615,3 +658,156 @@ onUnmounted(clearPdfBlobUrl)
 // Expose renderPdf for external use
 defineExpose({ renderPdf, showPdf, togglePdfPreview })
 </script>
+
+<style scoped>
+/* ── Journal paper page (Scribd-style) ─────────────────────────── */
+.journal-paper {
+  position: relative;
+  width: 8.5in;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  border-radius: 2px;
+}
+
+.journal-header {
+  font-size: 8pt;
+  color: #666;
+  border-bottom: 1px solid #999;
+  padding-bottom: 4pt;
+  margin-bottom: 12pt;
+  text-align: center;
+}
+
+.journal-title h1 {
+  font-size: inherit;
+  font-weight: inherit;
+  text-align: inherit;
+  color: inherit;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.journal-title {
+  font-size: 18pt;
+  font-weight: 700;
+  text-align: center;
+  color: #000;
+  margin-bottom: 12pt;
+}
+
+.journal-authors {
+  font-size: 10pt;
+  text-align: center;
+  margin-bottom: 6pt;
+}
+
+.journal-abstract {
+  font-size: 9pt;
+  margin-bottom: 12pt;
+}
+
+.journal-abstract .abs-label {
+  font-weight: 700;
+  font-style: italic;
+  margin-bottom: 4pt;
+  display: block;
+}
+
+.journal-keywords {
+  font-size: 9pt;
+  font-style: italic;
+  margin-bottom: 12pt;
+}
+
+.kw-label {
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Two-column layout for IEEE/ACM */
+@media (min-width: 0px) {
+  .journal-paper {
+    column-count: 1;
+    column-gap: 0;
+  }
+}
+
+/* Body text inside columns */
+.journal-body {
+  font-size: 9pt;
+  line-height: 1.5;
+  text-align: justify;
+}
+
+.journal-heading1 {
+  font-size: 10pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 12pt;
+  margin-bottom: 6pt;
+  break-after: avoid;
+}
+
+.journal-heading2 {
+  font-size: 9pt;
+  font-weight: 600;
+  font-style: italic;
+  margin-top: 8pt;
+  margin-bottom: 4pt;
+  break-after: avoid;
+}
+
+/* Text inside journal-body inherits from journal-paper */
+.journal-body > div > div {
+  font-size: inherit;
+  line-height: inherit;
+  text-align: inherit;
+}
+
+/* References — always full-width, single column */
+.journal-references {
+  font-size: 8pt;
+  margin-top: 18pt;
+  border-top: 1px solid #000;
+  padding-top: 6pt;
+  column-span: all;
+  -webkit-column-span: all;
+}
+
+.journal-ref-heading {
+  font-size: inherit;
+  font-weight: 700;
+  margin-bottom: 6pt;
+}
+
+.ref-list {
+  font-size: inherit;
+}
+
+.ref-item {
+  font-size: inherit;
+  margin-bottom: 4pt;
+  padding-left: var(--ref-hanging, 0.25in);
+  text-indent: calc(-1 * var(--ref-hanging, 0.25in));
+}
+
+.ref-num {
+  font-size: 0.85em;
+  margin-right: 4pt;
+}
+
+.journal-footer {
+  font-size: 8pt;
+  color: #666;
+  border-top: 1px solid #999;
+  padding-top: 4pt;
+  margin-top: 12pt;
+  text-align: center;
+}
+
+/* Abstract italic text */
+.journal-abstract p:not(.abs-label) {
+  font-style: normal;
+  text-align: justify;
+}
+</style>
