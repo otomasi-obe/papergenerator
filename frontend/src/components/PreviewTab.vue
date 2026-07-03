@@ -297,14 +297,15 @@ const journalFooterStyle = computed(() => ({
   color: jl.value.footer?.color || '#666',
 }))
 
-watch(() => store.currentPaperId, () => {
+watch(() => store.currentPaperId, (newId, oldId) => {
   failedImages.value = new Set()
   showPdf.value = true
   pdfUrl.value = ''
   clearPdfBlobUrl()
   pdfError.value = false
   pdfLoading.value = false
-  if (store.currentPaperId) {
+  // Auto-render when paper loads or changes
+  if (newId) {
     nextTick(() => renderPdf())
   }
 })
@@ -558,10 +559,8 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 onMounted(() => {
-  // Auto-render PDF preview saat tab dibuka
-  if (store.currentPaperId) {
-    renderPdf()
-  }
+  // Always auto-render PDF preview on mount (renderPdf guards against double-call)
+  renderPdf()
 })
 
 onUnmounted(clearPdfBlobUrl)
