@@ -297,14 +297,14 @@ const journalFooterStyle = computed(() => ({
   color: jl.value.footer?.color || '#666',
 }))
 
-watch(() => store.currentPaperId, (newId, oldId) => {
+watch(() => store.currentPaperId, (newId) => {
   failedImages.value = new Set()
   showPdf.value = true
   pdfUrl.value = ''
   clearPdfBlobUrl()
   pdfError.value = false
+  // Reset loading state so "Menyiapkan..." shows, then renderPdf shows progress
   pdfLoading.value = false
-  // Auto-render when paper loads or changes
   if (newId) {
     nextTick(() => renderPdf())
   }
@@ -459,10 +459,22 @@ function autoResize(event: Event) {
 let progressTimer: ReturnType<typeof setInterval> | null = null
 async function renderPdf() {
   if (pdfLoading.value) return
+  // Wait for paper ID to be available
   if (!store.currentPaperId) {
-    pdfError.value = true
-    pdfErrorMessage.value = 'Paper belum tersimpan'
-    return
+    pdfLoading.value = true
+    pdfError.value = false
+    pdfProgress.value = 0
+    let attempts = 0
+    while (!store.currentPaperId && attempts < 20) {
+      await new Promise(r => setTimeout(r, 300))
+      attempts++
+    }
+    if (!store.currentPaperId) {
+      pdfLoading.value = false
+      pdfError.value = true
+      pdfErrorMessage.value = 'Paper belum tersimpan'
+      return
+    }
   }
   pdfLoading.value = true
   pdfError.value = false
@@ -559,8 +571,7 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 onMounted(() => {
-  // Always auto-render PDF preview on mount (renderPdf guards against double-call)
-  renderPdf()
+  // renderPdf triggered by watch with immediate:true
 })
 
 onUnmounted(clearPdfBlobUrl)
