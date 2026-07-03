@@ -28,31 +28,40 @@
 
       </div>
       <div class="flex items-center gap-2">
-        <button @click="downloadPdf" :disabled="!pdfBlobUrl || pdfLoading"
-          class="px-3 py-1.5 rounded text-xs font-medium bg-navy-600 text-white transition hover:bg-navy-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
-          PDF
-        </button>
+        <!-- Full 100% PDF preview button -->
         <button @click="renderPdf" :disabled="pdfLoading"
+          class="px-3 py-1.5 rounded text-xs font-medium bg-navy-600 text-white transition hover:bg-navy-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-1.5">
+          <svg v-if="pdfLoading" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          <svg v-else class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+          {{ pdfLoading ? 'Rendering PDF...' : 'PDF (Full)' }}
+        </button>
+        <!-- Refresh HTML preview -->
+        <button @click="refreshHtml" :disabled="htmlRefreshing"
           class="px-3 py-1.5 rounded text-xs font-medium border border-cream-300 text-ink-700 transition hover:bg-cream-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-ash-600 dark:text-ink-200 dark:hover:bg-ash-700">
-          Refresh
+          {{ htmlRefreshing ? '...' : 'Refresh' }}
         </button>
       </div>
     </div>
 
-    <!-- PDF Preview -->
+    <!-- PDF Preview (100% match) — shown when user clicks PDF button -->
     <div class="paper-preview-wrapper flex-1 min-h-0 w-full min-w-0 overflow-hidden">
-      <!-- Loading state -->
+      <!-- Loading state with progress bar -->
       <div v-if="pdfLoading" class="h-full w-full bg-white dark:bg-ash-900 p-8 shadow-sm flex flex-col items-center justify-center gap-4">
         <div class="relative">
           <div class="w-10 h-10 border-3 border-cream-300 dark:border-ash-600 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></div>
         </div>
-        <div class="text-center">
+        <div class="text-center w-full max-w-sm">
           <p class="text-sm font-medium text-ink-700 dark:text-ink-200">Rendering {{ store.paper.journal || 'IEEE' }} PDF...</p>
-          <p class="text-xs text-ink-500 dark:text-ash-400 mt-1">Generating from template, please wait</p>
+          <p class="text-xs text-ink-500 dark:text-ash-400 mt-1">Generating DOCX → converting to PDF (100% match)</p>
+          <div class="w-full bg-cream-200 dark:bg-ash-700 rounded-full h-1.5 mt-3 overflow-hidden">
+            <div class="bg-navy-600 h-full rounded-full transition-all duration-700 ease-out" :style="{ width: pdfProgress + '%' }"></div>
+          </div>
+          <p class="text-xs text-ink-400 dark:text-ash-500 mt-1">{{ pdfProgress }}%</p>
         </div>
       </div>
 
-      <div v-else-if="pdfBlobUrl" class="h-full w-full min-w-0 overflow-hidden bg-white dark:bg-ash-900">
+      <!-- PDF ready -->
+      <div v-else-if="pdfBlobUrl" class="h-full w-full min-w-0 overflow-hidden bg-white dark:bg-ash-900 relative">
         <iframe
           :src="pdfViewerUrl"
           :key="pdfKey"
@@ -60,6 +69,12 @@
           title="PDF preview"
           @error="onIframeError"
         ></iframe>
+        <!-- Download button overlay -->
+        <button @click="downloadPdf"
+          class="absolute top-3 right-3 px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Download
+        </button>
       </div>
       <div v-else-if="pdfUrl" class="h-full w-full min-w-0 overflow-hidden bg-white dark:bg-ash-900">
         <iframe
@@ -294,6 +309,8 @@ const pdfErrorMessage = ref('')
 const pdfUrl = ref('')
 const pdfBlobUrl = ref('')
 const pdfKey = ref(0)
+const pdfProgress = ref(0)
+const htmlRefreshing = ref(false)
 const pdfViewerUrl = computed(() => pdfBlobUrl.value ? pdfBlobUrl.value : '')
 const pdfFallbackUrl = computed(() => { if (!pdfUrl.value) return ''; const sep = pdfUrl.value.includes('?') ? '&' : '?'; return `${pdfUrl.value}${sep}v=${pdfKey.value}#toolbar=1&navpanes=0&scrollbar=1&view=FitH&zoom=page-width` })
 
@@ -399,15 +416,19 @@ const journalReferencesStyle = computed(() => ({
   '--ref-hanging': jl.value.references.hangingIndent,
 }))
 
+const journalFooterStyle = computed(() => ({
+  fontSize: jl.value.footer?.fontSize || '8pt',
+  color: jl.value.footer?.color || '#666',
+}))
+
 watch(() => store.currentPaperId, () => {
   failedImages.value = new Set()
-  // Reset PDF state on paper change
+  // Reset PDF state on paper change — don't auto-render PDF
   showPdf.value = true
   pdfUrl.value = ''
   clearPdfBlobUrl()
   pdfError.value = false
   pdfLoading.value = false
-  if (store.currentPaperId) renderPdf()
 })
 
 const resolvedOpen = ref(false)
@@ -555,7 +576,8 @@ function autoResize(event: Event) {
   el.style.height = el.scrollHeight + 'px'
 }
 
-// PDF rendering
+// PDF rendering with progress bar
+let progressTimer: ReturnType<typeof setInterval> | null = null
 async function renderPdf() {
   if (pdfLoading.value) return
   if (!store.currentPaperId) {
@@ -566,32 +588,53 @@ async function renderPdf() {
   pdfLoading.value = true
   pdfError.value = false
   pdfUrl.value = ''
+  pdfProgress.value = 0
   clearPdfBlobUrl()
+
+  // Simulated progress (backend doesn't support streaming progress)
+  progressTimer = setInterval(() => {
+    if (pdfProgress.value < 90) {
+      pdfProgress.value += Math.random() * 8 + 2
+      if (pdfProgress.value > 90) pdfProgress.value = 90
+    }
+  }, 500)
+
   try {
     const res = await api.post(
       `/api/papers/${encodeURIComponent(String(store.currentPaperId))}/pdf-preview`,
       { journal: store.paper.journal || 'IEEE' },
       { timeout: 300000 }
     )
+    pdfProgress.value = 95
     if (res.data?.pdf_url) {
       const url = res.data.pdf_url
       await loadPdfBlob(url)
-      // Only set pdfUrl if blob loaded successfully (is a real PDF)
+      pdfProgress.value = 100
       if (pdfBlobUrl.value) {
         pdfUrl.value = url
         pdfKey.value++
       }
-      // If blob failed, don't set pdfUrl — let HTML preview stay visible
       pdfLoading.value = false
     } else {
       throw new Error('No PDF URL in response')
     }
   } catch (err: any) {
     pdfLoading.value = false
-    pdfError.value = false  // Don't show error — HTML preview handles it
-    pdfUrl.value = ''
-    clearPdfBlobUrl()
+    pdfError.value = true
+    pdfErrorMessage.value = err.response?.data?.error || err.message || 'Failed to render PDF'
+  } finally {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
+    pdfProgress.value = 0
   }
+}
+
+function refreshHtml() {
+  // Clear PDF state so HTML preview re-renders
+  htmlRefreshing.value = true
+  pdfUrl.value = ''
+  clearPdfBlobUrl()
+  pdfError.value = false
+  setTimeout(() => { htmlRefreshing.value = false }, 300)
 }
 
 function clearPdfBlobUrl() {
@@ -633,24 +676,11 @@ function downloadPdf() {
   document.body.removeChild(a)
 }
 
-// Auto-render when PDF tab is shown or journal changes and PDF not ready
-watch(() => showPdf.value, async (show) => {
-  if (show && store.currentPaperId && !pdfUrl.value && !pdfLoading.value) {
-    await renderPdf()
-  }
-})
-
-// Auto-render when journal changes
-watch(() => store.paper.journal, async (newJ, oldJ) => {
-  if (showPdf.value && pdfUrl.value && !pdfLoading.value) {
-    await renderPdf()
-  }
-})
+// Watchers — no auto PDF render; HTML preview is always visible
+// User triggers PDF manually via the PDF button
 
 onMounted(() => {
-  if (showPdf.value && store.currentPaperId && !pdfUrl.value && !pdfLoading.value) {
-    renderPdf()
-  }
+  // Don't auto-render PDF — show HTML preview by default. User clicks "PDF (Full)" to generate.
 })
 
 onUnmounted(clearPdfBlobUrl)
