@@ -303,12 +303,11 @@ watch(() => store.currentPaperId, (newId) => {
   pdfUrl.value = ''
   clearPdfBlobUrl()
   pdfError.value = false
-  // Reset loading state so "Menyiapkan..." shows, then renderPdf shows progress
   pdfLoading.value = false
   if (newId) {
     nextTick(() => renderPdf())
   }
-})
+}, { immediate: false })
 
 const resolvedOpen = ref(false)
 const editMode = ref(false)
@@ -571,7 +570,10 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 onMounted(() => {
-  // renderPdf triggered by watch with immediate:true
+  // Trigger directly — paper may already be loaded
+  if (store.currentPaperId) {
+    renderPdf()
+  }
 })
 
 onUnmounted(clearPdfBlobUrl)
