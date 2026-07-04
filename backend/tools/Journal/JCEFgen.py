@@ -1010,6 +1010,9 @@ def add_table_block(doc, table_data):
     headers = table_data.get("Headers") or ["Col 1", "Col 2"]
     rows = table_data.get("Rows") or [["Data", "Data"]]
 
+    # Break out of 2-col → 1-col for full-width table
+    _emit_section_break(doc, num_cols=1, sec_type="continuous", title_pg=True)
+
     cap = doc.add_paragraph()
     _set_para_style(cap, "TableCaption")
     _set_para_format(
@@ -1071,6 +1074,9 @@ def add_table_block(doc, table_data):
             val_clean = re.sub(r"\\b", "", str(val))
             _add_run(para, val_clean, font_name=CFG["font_main"], size_pt=CFG["size_caption"])
             _set_cell_borders_3line(cell, is_last_row=is_last)
+
+    # Return to 2-col after table
+    _emit_section_break(doc, num_cols=2, sec_type="continuous", title_pg=True)
 
 
 def add_references(doc, data):
