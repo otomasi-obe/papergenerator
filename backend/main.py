@@ -394,6 +394,24 @@ def revoked_token_callback(jwt_header, jwt_payload):
     return jsonify({"error": "Token has been revoked", "code": "TOKEN_REVOKED", "category": "AUTH"}), 401
 
 
+@jwt.token_in_blocklist_loader
+def _check_if_token_revoked(jwt_header, jwt_payload):
+    """Check if a refresh token's JTI has been revoked via Redis blocklist."""
+    if jwt_payload.get("type") != "refresh":
+        return False  # Only check refresh tokens
+    jti = jwt_payload.get("jti")
+    if not jti:
+        return False
+    try:
+        from utils.core.redis_client import get_redis
+        rc = get_redis()
+        if rc:
+            return rc.exists(f"rjti:{jti}") > 0
+    except Exception:
+        pass
+    return False
+
+
 init_oauth(app)
 
 # ─── Database query logging (debug / performance monitoring) ─────────────
@@ -1140,6 +1158,8 @@ def _get_builder_for_journal(journal_code: str):
 
     ``build_pdf_fn`` is the gen's own ``build_pdf(json_path, pdf_path)`` if
     available; otherwise *None* (caller falls back to LibreOffice).
+
+    Template lookup is cached — changes to template files require a restart.
     """
     # Security: reject codes with dots, slashes, or other special chars that could
     # lead to arbitrary module imports (e.g. "..os" → import os)
@@ -1152,7 +1172,8 @@ def _get_builder_for_journal(journal_code: str):
         raise ValueError(f"Unknown journal template: {journal_code}")
     with _ADAPTER_LOCK:
         mod = importlib.import_module(f"tools.Journal.{canonical}gen")
-        mod = importlib.reload(mod)  # always use latest on-disk version
+        # ponytail: importlib.reload removed — cached for performance.
+        # Add back if hot-reload of template generators is needed in prod.
 
     pdf_builder = getattr(mod, "build_pdf", None)
 
@@ -2298,14 +2319,18 @@ def export_docx():
             return jsonify({"error": "No paper data provided"}), 400
         paper = data.get("paper", data)
 
-        # If paper_id provided but no paper data, fetch from DB
+        # If paper_id provided, always verify ownership — even if body contains paper data
         paper_id = data.get("paper_id") or (paper.get("id") if isinstance(paper, dict) else None)
-        if paper_id and (not isinstance(paper, dict) or "figures" not in paper):
+        if paper_id:
             from utils.database.models import Paper
             user_id = int(get_jwt_identity())
             db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            if db_paper and db_paper.data:
-                paper = db_paper.data
+            if not db_paper:
+                return jsonify({"error": "Paper not found or access denied"}), 404
+            # If body has no figure data, use DB version
+            if not isinstance(paper, dict) or "figures" not in paper:
+                if db_paper.data:
+                    paper = db_paper.data
                 log.info("[export] Loaded paper %s from DB, %d figures", paper_id, len(paper.get("figures", [])))
 
         journal_raw = data.get("journal")
@@ -2454,8 +2479,8 @@ def export_docx():
                     log.warning("Partial cleanup unlink failed for %s: %s", output_path, _e)
             json_filepath.unlink(missing_ok=True)
     except Exception as e:
-        log.exception("unhandled error: %s", e)
-        return jsonify({"error": "Internal server error", "detail": str(e)}), 500
+        log.exception("unhandled error")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # ─── PDF Preview ──────────────────────────────────────────────────────────────
@@ -2561,30 +2586,22 @@ def _pdf_preview_render(user_id: int, paper_id: str, journal_code: str, paper_js
 
 @app.route("/api/papers/<paper_id>/pdf-preview", methods=["POST"])
 @limiter.limit("100 per minute")
-@jwt_required(optional=True)
+@jwt_required()
 def paper_pdf_preview(paper_id: str):
     log.info("[preview-pdf] POST received, paper_id=%s", paper_id)
     try:
         data = request.get_json(silent=True) or {}
         paper = data.get("paper", data)
 
-        # Get user_id from JWT if available (optional auth)
-        user_id = None
-        try:
-            identity = get_jwt_identity()
-            if identity:
-                user_id = int(identity)
-        except Exception:
-            pass
+        user_id = int(get_jwt_identity())
 
         # If paper data not provided, load from DB
         if not isinstance(paper, dict) or not paper.get("title"):
             from utils.database.models import Paper
-            if user_id:
-                db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
-            else:
-                db_paper = Paper.query.filter_by(id=paper_id).first()
-            if db_paper and db_paper.data:
+            db_paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+            if not db_paper:
+                return jsonify({"error": "Paper not found"}), 404
+            if db_paper.data:
                 paper = db_paper.data
 
         if not isinstance(paper, dict):
@@ -2680,13 +2697,12 @@ def serve_paper_pdf_preview(paper_id: str):
     title = flask_request.args.get("title", "")
     file_path = None
 
-    if journal_code and title:
-        # Primary: new paper_dir path (needs user_id for path construction)
-        # Since paper_id is unguessable, we just look it up to get user_id
+    if journal_code:
+        # Primary: new paper_dir path
         from utils.database.models import Paper
         paper = Paper.query.filter_by(id=paper_id).first()
         if paper:
-            file_path = _paper_file_path(paper_id, title, journal_code, ext, cleanup_old=False)
+            file_path = _paper_file_path(paper_id, title or "paper", journal_code, ext, cleanup_old=False)
             if not file_path.exists():
                 file_path = None
 
