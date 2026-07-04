@@ -75,11 +75,18 @@
           title="PDF preview"
           @error="onIframeError"
         ></iframe>
-        <button @click="downloadPdf"
-          class="absolute top-3 right-3 px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1">
-          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-          Download
-        </button>
+        <div class="absolute top-3 right-3 flex items-center gap-1.5">
+          <button @click="downloadPdf"
+            class="px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Ekspor PDF
+          </button>
+          <button @click="store.exportDocx()" :disabled="store.loading"
+            class="px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1 disabled:opacity-50">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            Ekspor DOCX
+          </button>
+        </div>
       </div>
       <div v-else-if="pdfUrl" class="h-full w-full min-w-0 overflow-hidden bg-white dark:bg-ash-900">
         <iframe
@@ -560,7 +567,11 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 // Trigger handled by watch with immediate:true
-onUnmounted(clearPdfBlobUrl)
+onUnmounted(() => {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
+  if (renderDebounceTimer) { clearTimeout(renderDebounceTimer); renderDebounceTimer = null }
+  clearPdfBlobUrl()
+})
 
 // Expose renderPdf for external use
 defineExpose({ renderPdf, showPdf, togglePdfPreview })
