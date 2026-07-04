@@ -991,11 +991,16 @@ def _set_cell_borders_3line(cell, is_first_row=False, is_last_row=False, is_head
         b.set(qn("w:color"), "000000")
         return b
 
+    # All cells get left + right borders
+    tcBorders.append(_border("left", sz=4))
+    tcBorders.append(_border("right", sz=4))
     if is_first_row:
         tcBorders.append(_border("top", sz=4))
     if is_header_under:
         tcBorders.append(_border("bottom", sz=4))
     elif is_last_row:
+        tcBorders.append(_border("bottom", sz=4))
+    else:
         tcBorders.append(_border("bottom", sz=4))
 
 
@@ -1278,7 +1283,7 @@ def _set_table_borders_match_template(table) -> None:
     if tbl_borders is None:
         tbl_borders = OxmlElement("w:tblBorders")
         tbl_pr.append(tbl_borders)
-    visible_sides = {"top", "bottom", "insideH"}
+    visible_sides = {"top", "bottom", "left", "right", "insideH", "insideV"}
     for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
         el = tbl_borders.find(qn(f"w:{edge}"))
         if el is None:
@@ -1316,3 +1321,13 @@ def build_document(json_path: Path, output_path: Path, template_path: Path = Non
         if fallback.exists():
             shutil.move(str(fallback), str(output_path))
     return Path(output_path)
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)
