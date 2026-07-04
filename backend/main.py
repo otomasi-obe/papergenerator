@@ -2418,12 +2418,11 @@ def export_docx():
         except Exception:
             username = f"user_{user_id}"
 
-        # Use per-user export path: user/<user_id>/exports/
+        # Use per-user export path: user/<username>/<paper_id>/
         paper_id = str(paper.get("id") or data.get("paper_id") or "unknown")
         if not _PAPER_ID_RE.match(paper_id):
             return jsonify({"error": "Invalid paper_id format"}), 400
-        paper_dir = USER_BASE / paper_id
-        paper_dir.mkdir(parents=True, exist_ok=True)
+        paper_dir = _user_paper_dir(user_id, paper_id)
         
         json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
         json_filepath = paper_dir / json_filename
@@ -2433,12 +2432,12 @@ def export_docx():
         try:
             # Save DOCX to user/paper/ with normalized naming (1 DOCX per paper)
             paper_title = paper.get("title", "paper")
-            output_path = _paper_file_path(paper_id, paper_title, canonical_journal, "docx")
+            output_path = _paper_file_path(paper_id, paper_title, canonical_journal, "docx", user_id=user_id)
             builder(json_filepath, output_path)
 
             # Also generate PDF alongside DOCX (1 PDF per paper)
             try:
-                pdf_dest = _paper_file_path(paper_id, paper_title, canonical_journal, "pdf")
+                pdf_dest = _paper_file_path(paper_id, paper_title, canonical_journal, "pdf", user_id=user_id)
                 if callable(pdf_builder):
                     pdf_builder(json_path=json_filepath, pdf_path=pdf_dest)
                 else:
@@ -2485,12 +2484,30 @@ def export_docx():
 
 # ─── PDF Preview ──────────────────────────────────────────────────────────────
 
-def _paper_file_path(paper_id, paper_title: str, journal_code: str, ext: str, *, cleanup_old: bool = True) -> Path:
-    """Return ``user/<paper_id>/<safe_title>_<journal>.<ext>``.
+def _user_paper_dir(user_id: int, paper_id: str = None) -> Path:
+    """Return ``user/<username>/<paper_id>/`` (or just ``user/<username>/`` if no paper_id).
+    
+    Falls back to ``user/<paper_id>/`` when username lookup fails.
+    """
+    try:
+        from utils.core.user_storage import get_username
+        username = get_username(user_id=user_id)
+    except Exception:
+        username = f"user_{user_id}"
+    safe_user = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(username)).strip("_") or "anonymous"
+    path = USER_BASE / safe_user
+    if paper_id:
+        path = path / paper_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
-    All artifacts for a paper live under ``user/<paper_id>/``.
+def _paper_file_path(paper_id, paper_title: str, journal_code: str, ext: str, *, cleanup_old: bool = True, user_id: int = None) -> Path:
+    """Return ``user/<username>/<paper_id>/<safe_title>_<journal>.<ext>``.
+
+    All artifacts for a paper live under ``user/<username>/<paper_id>/``.
     Same title+journal combination overwrites existing file.
     When title or journal changes, old files of the same extension are removed.
+    Falls back to ``user/<paper_id>/`` if user_id not provided (legacy compat).
     """
     safe_title = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(paper_title or "paper")).strip("_")[:60]
     if not safe_title:
@@ -2500,8 +2517,12 @@ def _paper_file_path(paper_id, paper_title: str, journal_code: str, ext: str, *,
     safe_paper_id = str(paper_id)
     if not _PAPER_ID_RE.match(safe_paper_id):
         raise ValueError(f"Invalid paper_id: {safe_paper_id}")
-    paper_dir = USER_BASE / safe_paper_id
-    paper_dir.mkdir(parents=True, exist_ok=True)
+    if user_id is not None:
+        paper_dir = _user_paper_dir(user_id, safe_paper_id)
+    else:
+        # Legacy fallback: user/<paper_id>/
+        paper_dir = USER_BASE / safe_paper_id
+        paper_dir.mkdir(parents=True, exist_ok=True)
     target = paper_dir / f"{safe_name}.{ext}"
     if cleanup_old:
         for old in paper_dir.glob(f"*.{ext}"):
@@ -2514,7 +2535,7 @@ def _paper_file_path(paper_id, paper_title: str, journal_code: str, ext: str, *,
 
 def _pdf_preview_path(user_id: int, paper_id: str) -> Path:
     """Legacy fallback redirected to canonical paper folder."""
-    return _paper_file_path(paper_id, "paper", "preview", "pdf", cleanup_old=False)
+    return _paper_file_path(paper_id, "paper", "preview", "pdf", cleanup_old=False, user_id=user_id)
 
 def _run_libreoffice_pdf(source_path: Path, output_path: Path) -> None:
     output_dir = output_path.parent
@@ -2556,15 +2577,28 @@ def _pdf_preview_render(user_id: int, paper_id: str, journal_code: str, paper_js
         log.exception("[preview-pdf] journal builder error")
         return None
 
-    # Load paper data for title
+    # Load paper data, unwrap paper_data.paper → flat for generator
     try:
         _paper_data = json.loads(paper_json_path.read_text(encoding="utf-8"))
         _title = _paper_data.get("title") or _paper_data.get("paper_data", {}).get("paper", {}).get("title") or ""
     except Exception:
         _title = ""
 
-    pdf_path = _paper_file_path(paper_id, _title, journal_code, "pdf")
-    docx_path = _paper_file_path(paper_id, _title, journal_code, "docx")
+    # Unwrap paper_data.paper so generators see section1..N at top level
+    # (same logic as _make_generate_adapter)
+    if isinstance(_paper_data, dict) and "paper_data" in _paper_data:
+        pd = _paper_data["paper_data"]
+        _unwrapped = pd.get("paper", pd) if isinstance(pd, dict) else _paper_data
+        if isinstance(_unwrapped, dict) and isinstance(pd, dict):
+            for key in ("figures", "tables", "equations"):
+                if key in pd and key not in _unwrapped:
+                    _unwrapped[key] = pd[key]
+        if isinstance(_unwrapped, dict) and "figures" in _unwrapped:
+            _distribute_figures_to_sections(_unwrapped)
+        paper_json_path.write_text(json.dumps(_unwrapped, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    pdf_path = _paper_file_path(paper_id, _title, journal_code, "pdf", user_id=user_id)
+    docx_path = _paper_file_path(paper_id, _title, journal_code, "docx", user_id=user_id)
     try:
         if callable(pdf_builder):
             # Use the gen's own build_pdf (direct docx→pdf pipeline)
@@ -2606,6 +2640,16 @@ def paper_pdf_preview(paper_id: str):
 
         if not isinstance(paper, dict):
             return jsonify({"error": "No paper data provided"}), 400
+
+        # Unwrap paper_data.paper so normalizations + generators see flat structure
+        if "paper_data" in paper:
+            pd = paper["paper_data"]
+            if isinstance(pd, dict):
+                paper = pd.get("paper", pd)
+                # Inject figures/tables from wrapper level
+                for key in ("figures", "tables", "equations"):
+                    if key in pd and key not in paper:
+                        paper[key] = pd[key]
 
         journal_raw = data.get("journal") or paper.get("journal")
         journal_code = _resolve_journal_code(journal_raw)
@@ -2650,8 +2694,7 @@ def paper_pdf_preview(paper_id: str):
         json_filename = f"_tmp_{uuid.uuid4().hex[:8]}.json"
         if not _PAPER_ID_RE.match(paper_id):
             return jsonify({"error": "Invalid paper_id format"}), 400
-        paper_dir = USER_BASE / paper_id
-        paper_dir.mkdir(parents=True, exist_ok=True)
+        paper_dir = _user_paper_dir(user_id, paper_id)
         json_filepath = paper_dir / json_filename
         try:
             json_filepath.write_text(json.dumps(paper, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -2702,9 +2745,17 @@ def serve_paper_pdf_preview(paper_id: str):
         from utils.database.models import Paper
         paper = Paper.query.filter_by(id=paper_id).first()
         if paper:
-            file_path = _paper_file_path(paper_id, title or "paper", journal_code, ext, cleanup_old=False)
+            file_path = _paper_file_path(paper_id, title or "paper", journal_code, ext, cleanup_old=False, user_id=paper.user_id)
             if not file_path.exists():
                 file_path = None
+
+    if file_path is None or not file_path.exists():
+        # Legacy fallback: user/<paper_id>/ (old path before per-user fix)
+        legacy_path = USER_BASE / paper_id / f"{title or 'paper'}_{journal_code}.{ext}"
+        if legacy_path.exists():
+            file_path = legacy_path
+        if file_path is None or not file_path.exists():
+            file_path = None
 
     if file_path is None or not file_path.exists():
         # Legacy fallback: user/papers/<paper_id>/paper.pdf
