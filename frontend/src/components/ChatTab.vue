@@ -1,5 +1,5 @@
 <template>
- <div class="flex flex-col h-full overflow-hidden bg-cream-100/40 dark:bg-ash-850">
+ <div class="flex flex-col h-full overflow-hidden bg-gradient-to-b from-white to-cream-50 dark:from-ash-850 dark:to-ash-900">
  <!-- ─── PICKER VIEW: list of chats only (no active chat yet) ─── -->
  <template v-if="!currentConversationId">
  <header class="px-5 py-3 bg-cream-50 dark:bg-ash-800 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
@@ -77,7 +77,7 @@
  <!-- ─── ACTIVE CHAT VIEW ─── -->
  <template v-else>
  <!-- Header bar with clear chat -->
- <header class="px-4 py-2 bg-cream-50 dark:bg-ash-800 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
+ <header class="px-4 py-2 bg-gradient-to-r from-cream-50 to-cream-100 dark:from-ash-800 dark:to-ash-750 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
  <button
  @click="currentConversationId = null"
  :disabled="isStreaming"

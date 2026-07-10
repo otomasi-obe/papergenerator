@@ -179,20 +179,27 @@ onUnmounted(() => {
 /* ── Button ── */
 .floating-chat-btn {
   position: fixed; bottom: 24px; right: 24px;
-  height: 48px; padding: 0 20px; border-radius: 24px;
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 50%, #0a1f38 100%);
-  color: #e8f4fd; border: 1px solid rgba(56, 139, 253, 0.4);
-  box-shadow: 0 4px 20px rgba(15, 39, 68, 0.4), 0 0 0 1px rgba(56, 139, 253, 0.15);
+  height: 50px; padding: 0 22px; border-radius: 25px;
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #0d5c56 100%);
+  color: #ffffff; border: 1px solid rgba(13, 148, 136, 0.5);
+  box-shadow:
+    0 4px 24px rgba(13, 148, 136, 0.35),
+    0 0 0 1px rgba(13, 148, 136, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   cursor: pointer; display: flex; align-items: center; gap: 10px;
-  z-index: 9998; font-family: inherit; font-size: 0.88rem; font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  z-index: 9998; font-family: inherit; font-size: 0.9rem; font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
 .floating-chat-btn:hover {
-  transform: scale(1.05) translateY(-2px);
-  box-shadow: 0 8px 30px rgba(15, 39, 68, 0.5), 0 0 0 1px rgba(56, 139, 253, 0.25);
-  background: linear-gradient(135deg, #234b75 0%, #0f2744 50%, #0a1f38 100%);
+  transform: scale(1.08) translateY(-2px);
+  box-shadow:
+    0 8px 32px rgba(13, 148, 136, 0.45),
+    0 0 0 1px rgba(13, 148, 136, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
 }
-.floating-chat-btn:active { transform: scale(0.96); }
+.floating-chat-btn:active { transform: scale(0.95); }
 .btn-label { white-space: nowrap; }
 
 /* ── Overlay (non-blocking) ── */
@@ -281,12 +288,13 @@ onUnmounted(() => {
 .panel-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 
 /* ── Transition ── */
-.panel-fade-enter-active { transition: opacity 0.2s ease; }
-.panel-fade-leave-active { transition: opacity 0.15s ease; }
-.panel-fade-enter-active .floating-chat-panel { transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease; }
-.panel-fade-leave-active .floating-chat-panel { transition: transform 0.2s ease-in, opacity 0.15s ease; }
+.panel-fade-enter-active { transition: opacity 0.3s ease; }
+.panel-fade-leave-active { transition: opacity 0.3s ease; }
+.panel-fade-enter-active .floating-chat-panel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; }
+.panel-fade-leave-active .floating-chat-panel { transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; }
 .panel-fade-enter-from, .panel-fade-leave-to { opacity: 0; }
-.panel-fade-enter-from .floating-chat-panel, .panel-fade-leave-to .floating-chat-panel { transform: translateY(20px) scale(0.96); opacity: 0; }
+.panel-fade-enter-from .floating-chat-panel { transform: translateY(24px) scale(0.95); opacity: 0; }
+.panel-fade-leave-to .floating-chat-panel { transform: translateY(24px) scale(0.95); opacity: 0; }
 
 /* ── Dark mode overrides ── */
 @media (prefers-color-scheme: dark) {
