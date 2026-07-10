@@ -1,8 +1,20 @@
 {
-  "version": "1.3.1",
-  "released": "2026-07-10",
-  "title": "Update v1.3.1",
+  "version": "1.3.2",
+  "released": "2026-07-11",
+  "title": "Update v1.3.2 — Token Detail Kontras & Navigasi",
   "history": [
+    {
+      "version": "1.3.2",
+      "released": "2026-07-11",
+      "title": "Update v1.3.2 — Token Detail Kontras & Navigasi",
+      "changes": [
+        { "type": "fix", "text": "TokenDetailModal dark mode: bg ash-700 → ash-500 (#2969ac) — kontras jelas dengan web bg ash-900, tidak menyatu" },
+        { "type": "fix", "text": "TokenDetailModal text: semua dark:text-ink-300/400/500 diganti ke ink-50/100/200 — text putih/terang, terbaca jelas di bg gelap" },
+        { "type": "improvement", "text": "PaperEditorPage back button: tambah ikon panah kiri (←) + label 'Kembali ke Dashboard'" },
+        { "type": "improvement", "text": "Update button: dipasang di landing page (PublicHeader, sebelah Info) & dashboard (AppHeader, kiri quota bar)" },
+        { "type": "fix", "text": "Version files: version.json dihapus, version-history.json jadi single source; backend /api/version serve file ini" }
+      ]
+    },
     {
       "version": "1.3.1",
       "released": "2026-07-10",

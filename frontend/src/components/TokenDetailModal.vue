@@ -1,7 +1,7 @@
 <template>
   <div v-if="open" class="fixed inset-0 z-[60] flex items-start justify-center p-4 pt-8 sm:pt-10">
     <div class="fixed inset-0 bg-black/30 transition-opacity z-0" @click="$emit('close')" aria-hidden="true" />
-    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-700 rounded-2xl shadow-xl flex flex-col">
+    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-500 rounded-2xl shadow-xl flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-cream-200 dark:border-ash-600 shrink-0">
         <h2 class="text-lg font-bold text-ink-900 dark:text-ink-50">Detail Token</h2>
