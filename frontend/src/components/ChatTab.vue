@@ -173,14 +173,13 @@
  <button
    v-if="showScrollBtn && !userIsNearBottom"
    @click="scrollToBottomSmooth"
-   class="absolute right-4 bottom-2 z-10 flex items-center gap-1.5 px-3 py-2 rounded-full bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 shadow-lg text-xs font-medium transition-all active:scale-95"
-   title="Scroll ke bawah"
+   class="absolute right-6 bottom-6 z-10 w-10 h-10 rounded-full bg-navy-700 hover:bg-navy-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-cream-50 shadow-lg flex items-center justify-center transition-all active:scale-90"
+   title="Ke bawah"
    aria-label="Scroll ke bawah"
  >
-   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
      <polyline points="6 9 12 15 18 9"/>
    </svg>
-   <span>Ke bawah</span>
  </button>
  </Transition>
 
