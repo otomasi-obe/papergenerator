@@ -47,24 +47,37 @@
               </div>
             </div>
 
-            <!-- Body: paper picker (dashboard) or ChatTab (editor) -->
+            <!-- Body -->
             <div class="panel-body">
-              <!-- Dashboard: no paperId → show paper picker -->
+              <!-- Dashboard: no paperId -->
               <template v-if="!currentPaperId">
                 <div v-if="loading" class="picker-loading">
                   <div class="spinner"></div>
-                  <span>Memuat daftar paper...</span>
+                  <span>Memuat...</span>
                 </div>
                 <div v-else class="picker-container">
                   <div class="picker-header">
-                    <h3 class="picker-title">Pilih Paper</h3>
-                    <p class="picker-desc">Pilih paper untuk mulai chat AI</p>
+                    <h3 class="picker-title">AI Assistant</h3>
+                    <p class="picker-desc">Mulai chat atau pilih paper</p>
+                  </div>
+
+                  <!-- New Chat CTA -->
+                  <button
+                    class="new-chat-btn"
+                    @click="createNewChat"
+                    :disabled="creatingPaper"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    <span>{{ creatingPaper ? 'Membuat paper...' : 'Mulai Chat Baru' }}</span>
+                  </button>
+
+                  <!-- Or pick existing paper -->
+                  <div class="divider">
+                    <span>atau pilih paper yang ada</span>
                   </div>
 
                   <div v-if="paperList.length === 0" class="picker-empty">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <p class="text-sm text-[var(--text-muted)]">Belum ada paper.</p>
-                    <p class="text-xs text-[var(--text-muted)]">Buat paper baru dulu untuk mulai chat dengan AI.</p>
+                    <p class="text-sm text-[var(--text-muted)]">Belum ada paper lain.</p>
                   </div>
 
                   <div v-else class="paper-list">
@@ -102,16 +115,19 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
+import { usePaperStore } from '@/stores/paper'
 import ChatTab from '@/components/ChatTab.vue'
 
 const auth = useAuthStore()
 const chatStore = useChatStore()
+const paperStore = usePaperStore()
 const route = useRoute()
 const router = useRouter()
 
 const isOpen = ref(false)
 const showGreeting = ref(false)
 const loading = ref(false)
+const creatingPaper = ref(false)
 const paperList = ref<any[]>([])
 
 const currentPaperId = computed(() => {
@@ -142,7 +158,6 @@ async function open() {
   if (showGreeting.value) dismissGreeting()
   isOpen.value = true
 
-  // If no paperId (dashboard), load paper list
   if (!currentPaperId.value) {
     loading.value = true
     try {
@@ -152,7 +167,6 @@ async function open() {
     }
     loading.value = false
   } else {
-    // Editor: open ChatTab directly
     await chatStore.openPaper(currentPaperId.value)
   }
 }
@@ -162,10 +176,29 @@ function close() {
   paperList.value = []
 }
 
+async function createNewChat() {
+  creatingPaper.value = true
+  try {
+    // Create new paper via paperStore
+    await paperStore.newPaper('id')
+    const newPaperId = await paperStore.savePaperToDb(true)
+    if (!newPaperId) throw new Error('Failed to save paper')
+
+    // Navigate to editor with new paper
+    await router.push({ name: 'editor', params: { paperId: newPaperId } })
+    
+    // ChatTab will mount with new paperId, openPaper will be called
+    await chatStore.openPaper(newPaperId)
+  } catch (e) {
+    console.error('Create paper failed:', e)
+    alert('Gagal membuat paper baru. Silakan coba lagi.')
+  } finally {
+    creatingPaper.value = false
+  }
+}
+
 async function selectPaper(paperId: string) {
-  // Navigate to editor with that paper
-  router.push({ name: 'editor', params: { paperId } })
-  // Keep panel open — ChatTab will mount with new paperId
+  await router.push({ name: 'editor', params: { paperId } })
   await chatStore.openPaper(paperId)
 }
 
@@ -282,23 +315,52 @@ onUnmounted(() => {
 
 .panel-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 
-/* ── Paper picker ── */
+/* ── Picker ── */
 .picker-loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: #94a3b8; font-size: 0.85rem; }
 .spinner { width: 20px; height: 20px; border: 2px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.picker-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.picker-header { padding: 16px 16px 8px; flex-shrink: 0; }
+.picker-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0 16px 16px; }
+.picker-header { padding: 16px 0 8px; flex-shrink: 0; }
 .picker-title { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin: 0; }
 .picker-desc { font-size: 0.75rem; color: #64748b; margin: 4px 0 0; }
 
-.picker-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: #64748b; text-align: center; gap: 8px; }
+.new-chat-btn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.new-chat-btn:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4); }
+.new-chat-btn:active:not(:disabled) { transform: scale(0.98); }
+.new-chat-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.paper-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 12px 0 8px; color: #64748b; font-size: 0.75rem;
+}
+.divider::before,
+.divider::after {
+  content: ""; flex: 1; height: 1px; background: #334155;
+}
+
+.picker-empty { padding: 20px; text-align: center; }
+
+.paper-list { flex: 1; overflow-y: auto; }
 .paper-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px; cursor: pointer;
+  padding: 12px 12px; cursor: pointer;
+  border-radius: 10px;
   transition: background 0.12s; color: #e2e8f0;
+  margin-bottom: 4px;
 }
 .paper-item:hover { background: rgba(255, 255, 255, 0.04); }
 .paper-item-icon { display: flex; align-items: center; color: #64748b; flex-shrink: 0; }
