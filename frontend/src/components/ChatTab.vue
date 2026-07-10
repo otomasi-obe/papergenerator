@@ -6,7 +6,7 @@
  <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1">AI Chat</h3>
  <button
  @click="createNewChat"
- :disabled="creatingChat || !currentPaperId"
+ :disabled="creatingChat"
  class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95 "
  >
  <span class="text-sm leading-none">＋</span>
@@ -111,7 +111,7 @@
  </header>
 
  <!-- Messages -->
- <div ref="messagesContainer" @scroll="checkScrollPosition" class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+ <div ref="messagesContainer" @scroll="checkScrollPosition" class="flex-1 overflow-y-auto px-4 py-4 space-y-4 relative">
  <!-- Empty-state hero: no messages yet. Offers entry chips + quick
  prompts to seed a focused first turn instead of staring at a
  blank textarea. -->
@@ -146,10 +146,7 @@
  @review-cancel="onReviewCancel"
  />
 
- <div
- v-if="showInlineStreamingIndicator"
- class="flex gap-3 justify-start"
- >
+ <div v-if="showInlineStreamingIndicator" class="flex gap-3 justify-start">
  <div class="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-navy-400 to-navy-600 flex items-center justify-center mt-1 shadow-sm">
  <svg class="w-4 h-4 text-cream-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
@@ -170,6 +167,22 @@
  </div>
  </div>
  </div>
+
+ <!-- Floating scroll-to-bottom button -->
+ <Transition name="scroll-btn-fade">
+ <button
+   v-if="showScrollBtn && !userIsNearBottom"
+   @click="scrollToBottomSmooth"
+   class="absolute right-4 bottom-2 z-10 flex items-center gap-1.5 px-3 py-2 rounded-full bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 shadow-lg text-xs font-medium transition-all active:scale-95"
+   title="Scroll ke bawah"
+   aria-label="Scroll ke bawah"
+ >
+   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+     <polyline points="6 9 12 15 18 9"/>
+   </svg>
+   <span>Ke bawah</span>
+ </button>
+ </Transition>
 
  <!-- Pending changes summary above input -->
  <div
@@ -1271,6 +1284,8 @@ watch(
 )
 
 const userIsNearBottom = ref(true)
+const showScrollBtn = ref(false)
+let _autoScrollDisabledByUser = false
 const lastScrollTop = ref(0)
 
 const statusMessage = computed(() => {
@@ -1397,22 +1412,40 @@ function conversationTitle(title?: string | null): string {
 }
 
 function checkScrollPosition(): void {
- if (!messagesContainer.value) return
- const container = messagesContainer.value
- const scrollTop = container.scrollTop
- const scrollHeight = container.scrollHeight
- const clientHeight = container.clientHeight
- const distanceFromBottom = scrollHeight - scrollTop - clientHeight
- userIsNearBottom.value = distanceFromBottom < 100
- lastScrollTop.value = scrollTop
+  if (!messagesContainer.value) return
+  const container = messagesContainer.value
+  const scrollTop = container.scrollTop
+  const scrollHeight = container.scrollHeight
+  const clientHeight = container.clientHeight
+  const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+  
+  const wasNearBottom = userIsNearBottom.value
+  userIsNearBottom.value = distanceFromBottom < 100
+  
+  // User manually scrolled up - disable auto-scroll and show button
+  if (!wasNearBottom && scrollTop > lastScrollTop.value) {
+    // scrolling down, ignore
+  } else if (scrollTop < lastScrollTop.value && distanceFromBottom > 100) {
+    // scrolling up - user wants to read history
+    _autoScrollDisabledByUser = true
+    showScrollBtn.value = true
+  }
+  
+  // User scrolled back to bottom - re-enable auto-scroll
+  if (userIsNearBottom.value) {
+    _autoScrollDisabledByUser = false
+    showScrollBtn.value = false
+  }
+  
+  lastScrollTop.value = scrollTop
 }
 
 watch(() => messages.value.length, () => {
- nextTick(() => {
- if (userIsNearBottom.value) {
- scrollToBottom()
- }
- })
+  nextTick(() => {
+    if (!_autoScrollDisabledByUser && userIsNearBottom.value) {
+      scrollToBottom()
+    }
+  })
 })
 
 watch(inputText, () => {
@@ -1435,13 +1468,17 @@ watch(currentChat, (chat) => {
  }
 })
 
-// Watch streaming state to manage timer
+// Watch streaming state to manage timer + auto-scroll during streaming
 watch(isStreaming, (streaming) => {
- if (streaming) {
- startStreamingTimer()
- } else {
- stopStreamingTimer()
- }
+  if (streaming) {
+    startStreamingTimer()
+    // Reset user scroll preference when a new response starts
+    _autoScrollDisabledByUser = false
+    showScrollBtn.value = false
+    scrollToBottom()
+  } else {
+    stopStreamingTimer()
+  }
 })
 
 // Watch for errors from chat store
@@ -1457,10 +1494,42 @@ watch(currentConversationId, () => {
 })
 
 function scrollToBottom(): void {
- if (messagesContainer.value) {
- messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
- userIsNearBottom.value = true
- }
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    userIsNearBottom.value = true
+    _autoScrollDisabledByUser = false
+    showScrollBtn.value = false
+  }
+}
+
+function scrollToBottomSmooth(): void {
+  if (!messagesContainer.value) return
+  const container = messagesContainer.value
+  const start = container.scrollTop
+  const end = container.scrollHeight - container.clientHeight
+  const distance = end - start
+  const duration = 400 // ms
+  const startTime = performance.now()
+  
+  function easeOutCubic(t: number): number {
+    return 1 - Math.pow(1 - t, 3)
+  }
+  
+  function animate(currentTime: number) {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    const eased = easeOutCubic(progress)
+    container.scrollTop = start + distance * eased
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    } else {
+      userIsNearBottom.value = true
+      _autoScrollDisabledByUser = false
+      showScrollBtn.value = false
+    }
+  }
+  
+  requestAnimationFrame(animate)
 }
 
 function formatDate(s: string): string {
@@ -1988,9 +2057,20 @@ function openPreview(): void {
 }
 
 .ai-status-bubble {
- background: var(--surface-ai, #fafafa);
- color: var(--text-strong, #111);
- border: 1px solid var(--border-soft, #e5e7eb);
- box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: var(--surface-ai, #fafafa);
+  color: var(--text-strong, #111);
+  border: 1px solid var(--border-soft, #e5e7eb);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Scroll button transition */
+.scroll-btn-fade-enter-active,
+.scroll-btn-fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.scroll-btn-fade-enter-from,
+.scroll-btn-fade-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 </style>

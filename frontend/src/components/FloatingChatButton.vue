@@ -37,12 +37,22 @@
       <Transition name="panel-fade">
         <div v-if="isOpen" class="floating-chat-overlay">
           <div class="floating-chat-panel">
-            <!-- Header -->
+            <!-- Header with gradient -->
             <div class="panel-header">
-              <span class="panel-title">AI Assistant</span>
+              <div class="header-brand">
+                <div class="header-avatar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                  </svg>
+                </div>
+                <div class="header-text">
+                  <span class="panel-title">AI Assistant</span>
+                  <span class="header-subtitle">PaperFull</span>
+                </div>
+              </div>
               <div class="panel-header-actions">
-                <button class="panel-btn" @click="close" title="Close">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                <button class="panel-btn" @click="close" title="Minimize">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
                 </button>
               </div>
             </div>
@@ -169,15 +179,19 @@ onUnmounted(() => {
 /* ── Button ── */
 .floating-chat-btn {
   position: fixed; bottom: 24px; right: 24px;
-  height: 44px; padding: 0 18px; border-radius: 22px;
-  background: linear-gradient(135deg, #f5e6d3, #e8d5c4);
-  color: #5c3d2e; border: 1px solid rgba(92, 61, 46, 0.2);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  cursor: pointer; display: flex; align-items: center; gap: 8px;
-  z-index: 9998; font-family: inherit; font-size: 0.85rem; font-weight: 600;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 48px; padding: 0 20px; border-radius: 24px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 50%, #0a1f38 100%);
+  color: #e8f4fd; border: 1px solid rgba(56, 139, 253, 0.4);
+  box-shadow: 0 4px 20px rgba(15, 39, 68, 0.4), 0 0 0 1px rgba(56, 139, 253, 0.15);
+  cursor: pointer; display: flex; align-items: center; gap: 10px;
+  z-index: 9998; font-family: inherit; font-size: 0.88rem; font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
-.floating-chat-btn:hover { transform: scale(1.05); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2); }
+.floating-chat-btn:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 8px 30px rgba(15, 39, 68, 0.5), 0 0 0 1px rgba(56, 139, 253, 0.25);
+  background: linear-gradient(135deg, #234b75 0%, #0f2744 50%, #0a1f38 100%);
+}
 .floating-chat-btn:active { transform: scale(0.96); }
 .btn-label { white-space: nowrap; }
 
@@ -190,34 +204,99 @@ onUnmounted(() => {
 }
 
 .floating-chat-panel {
-  width: 440px; max-width: 100vw; height: 620px;
+  width: 440px; max-width: 100vw; height: 640px;
   max-height: calc(100vh - 32px);
-  background: #1e293b; border: 1px solid #334155;
-  border-radius: 16px; box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, #f8f6f2 0%, #f3efe8 100%);
+  border: 1px solid rgba(35, 143, 127, 0.2);
+  border-radius: 20px; box-shadow:
+    0 20px 60px rgba(15, 39, 68, 0.25),
+    0 4px 20px rgba(15, 39, 68, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   display: flex; flex-direction: column; overflow: hidden;
   pointer-events: auto;
 }
 
+/* ── Header with gradient ── */
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; background: #0f172a;
-  border-bottom: 1px solid #334155; flex-shrink: 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0a1f38 100%);
+  border-bottom: 1px solid rgba(56, 139, 253, 0.2);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
 }
-.panel-title { font-weight: 600; font-size: 0.9rem; color: #e2e8f0; }
-.panel-header-actions { display: flex; gap: 4px; }
+
+/* Decorative gradient shine */
+.panel-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(56, 139, 253, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.header-brand {
+  display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 1;
+}
+
+.header-avatar {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #238f7f 0%, #1a7a6d 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(35, 143, 127, 0.4);
+  color: #e8f4fd;
+}
+
+.header-text {
+  display: flex; flex-direction: column; gap: 1px;
+}
+
+.panel-title {
+  font-weight: 700; font-size: 0.95rem; color: #f0f6fc;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.header-subtitle {
+  font-size: 0.7rem; color: rgba(232, 244, 253, 0.6);
+  font-weight: 500;
+}
+
+.panel-header-actions { display: flex; gap: 4px; position: relative; z-index: 1; }
 .panel-btn {
-  background: none; border: none; color: #94a3b8;
-  padding: 6px; border-radius: 6px; cursor: pointer;
-  display: flex; align-items: center;
-  transition: color 0.15s, background 0.15s;
+  background: rgba(255, 255, 255, 0.1); border: none; color: rgba(232, 244, 253, 0.7);
+  padding: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center;
+  transition: all 0.15s ease;
 }
-.panel-btn:hover { color: #e2e8f0; background: #1e293b; }
+.panel-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #e8f4fd;
+  transform: translateY(1px);
+}
 
 .panel-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 
 /* ── Transition ── */
-.panel-fade-enter-active, .panel-fade-leave-active { transition: opacity 0.2s ease; }
-.panel-fade-enter-active .floating-chat-panel, .panel-fade-leave-active .floating-chat-panel { transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+.panel-fade-enter-active { transition: opacity 0.2s ease; }
+.panel-fade-leave-active { transition: opacity 0.15s ease; }
+.panel-fade-enter-active .floating-chat-panel { transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease; }
+.panel-fade-leave-active .floating-chat-panel { transition: transform 0.2s ease-in, opacity 0.15s ease; }
 .panel-fade-enter-from, .panel-fade-leave-to { opacity: 0; }
-.panel-fade-enter-from .floating-chat-panel, .panel-fade-leave-to .floating-chat-panel { transform: translateY(20px) scale(0.96); }
+.panel-fade-enter-from .floating-chat-panel, .panel-fade-leave-to .floating-chat-panel { transform: translateY(20px) scale(0.96); opacity: 0; }
+
+/* ── Dark mode overrides ── */
+@media (prefers-color-scheme: dark) {
+  .floating-chat-panel {
+    background: linear-gradient(180deg, #1a1f2e 0%, #151a26 100%);
+    border-color: rgba(35, 143, 127, 0.15);
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.5),
+      0 4px 20px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+}
 </style>

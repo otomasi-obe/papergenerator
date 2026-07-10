@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
 
 const paperStore = usePaperStore()
@@ -70,9 +70,6 @@ const thinkingLabelElipsis = computed(() =>
   paperStore.paper.language === 'en' ? 'Thinking...' : 'Masih berpikir...'
 )
 
-let _openTimer: ReturnType<typeof setTimeout> | null = null
-let _closeTimer: ReturnType<typeof setTimeout> | null = null
-
 // Derived: actively thinking (phase === 'thinking' or streaming with no content yet)
 const isThinking = computed(() => {
   if (props.streamPhase === 'thinking') return true
@@ -88,53 +85,6 @@ const isThinkingDone = computed(() => {
 // Whether the thinking block header should show active styling
 const thinkingActive = computed(() => {
   return isThinking.value || (props.isStreaming && !isThinkingDone.value)
-})
-
-// Auto-open when content starts flowing during streaming
-watch(
-  () => props.content,
-  (newVal) => {
-    if (props.isStreaming && newVal && isThinking.value) {
-      isOpen.value = true
-    }
-  }
-)
-
-// Also auto-open when streaming starts in thinking phase
-watch(
-  () => props.isStreaming,
-  (streaming) => {
-    if (streaming && isThinking.value) {
-      // Slight delay to let the label animate first, then auto-expand
-      clearTimeout(_openTimer)
-      _openTimer = setTimeout(() => { isOpen.value = true }, 800)
-    }
-  }
-)
-
-// Auto-close thinking block when phase moves past thinking (composing/streaming)
-// but only if it was auto-opened (not manually toggled by user)
-watch(
-  () => props.streamPhase,
-  (newPhase) => {
-    if ((newPhase === 'composing' || newPhase === 'streaming') && isOpen.value) {
-      // Collapse thinking block when content starts flowing
-      // User can still re-open it manually
-      clearTimeout(_closeTimer)
-      _closeTimer = setTimeout(() => { isOpen.value = false }, 500)
-    }
-  }
-)
-
-onBeforeUnmount(() => {
-  if (_openTimer !== null) {
-    clearTimeout(_openTimer)
-    _openTimer = null
-  }
-  if (_closeTimer !== null) {
-    clearTimeout(_closeTimer)
-    _closeTimer = null
-  }
 })
 </script>
 
