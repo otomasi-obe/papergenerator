@@ -1,17 +1,16 @@
 {
-  "version": "1.3.3",
+  "version": "1.3.4",
   "released": "2026-07-11",
-  "title": "Update v1.3.3 — AI Assistant Floating Chat Overhaul",
+  "title": "Update v1.3.4 — AI Assistant Button Animation & Panel Border",
   "history": [
     {
       "version": "1.3.4",
       "released": "2026-07-11",
-      "title": "Update v1.3.4 — Token Detail: Warning & Kontras",
+      "title": "Update v1.3.4 — AI Assistant Button Animation & Panel Border",
       "changes": [
-        { "type": "new", "text": "TokenDetailModal: warning alert merah saat sisa token < 10% kuota, tombol 'Beli Token Sekarang' → buka modal beli" },
-        { "type": "fix", "text": "TokenDetailModal dark mode: bg ash-900 + border ash-600 agar tidak menyatu dengan web bg" },
-        { "type": "fix", "text": "TokenDetailModal: teks tabel/chart di dark mode diganti ke ink-100/200/300 — terbaca jelas" },
-        { "type": "fix", "text": "TokenDetailModal: status 'cancelled' di riwayat transaksi warna merah (sebelumnya biru default)" }
+        { "type": "improvement", "text": "AI Assistant: border panel gradient teal→emerald dikuatkan (inset -2px, opacity 0.95) — tidak menyatu dengan bg halaman" },
+        { "type": "improvement", "text": "AI Assistant: tombol floating punya animasi border conic-gradient berputar saat hover" },
+        { "type": "improvement", "text": "AI Assistant: tombol maximize/restore di header panel — siap untuk mode lebar 720px" }
       ]
     },
     {

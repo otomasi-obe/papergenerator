@@ -36,7 +36,7 @@
     <Teleport to="body">
       <Transition name="panel-fade">
         <div v-if="isOpen" class="floating-chat-overlay">
-          <div class="floating-chat-panel">
+          <div class="floating-chat-panel" :class="{ maximized: isMaximized }">
             <!-- Header with gradient -->
             <div class="panel-header">
               <div class="header-brand">
@@ -51,6 +51,15 @@
                 </div>
               </div>
               <div class="panel-header-actions">
+                <button class="panel-btn" @click="toggleMaximize" :title="isMaximized ? 'Restore' : 'Maximize'"
+                  :aria-label="isMaximized ? 'Restore panel' : 'Maximize panel'">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline v-show="isMaximized" points="18,5 18,9 22,9"/>
+                    <polyline v-show="isMaximized" points="6,19 6,15 2,15"/>
+                    <polyline v-show="!isMaximized" points="18,15 18,19 22,19"/>
+                    <polyline v-show="!isMaximized" points="6,9 6,5 2,5"/>
+                  </svg>
+                </button>
                 <button class="panel-btn" @click="close" title="Minimize">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 9l-7 7-7-7"/></svg>
                 </button>
@@ -79,6 +88,11 @@ const route = useRoute()
 
 const isOpen = ref(false)
 const showGreeting = ref(false)
+const isMaximized = ref(false)
+
+function toggleMaximize() {
+  isMaximized.value = !isMaximized.value
+}
 
 const currentPaperId = computed(() => {
   if (route.params.paperId) return route.params.paperId as string
@@ -181,7 +195,7 @@ onUnmounted(() => {
   position: fixed; bottom: 24px; right: 24px;
   height: 50px; padding: 0 22px; border-radius: 25px;
   background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #0d5c56 100%);
-  color: #ffffff; border: 1px solid rgba(13, 148, 136, 0.5);
+  color: #ffffff; border: none;
   box-shadow:
     0 4px 24px rgba(13, 148, 136, 0.35),
     0 0 0 1px rgba(13, 148, 136, 0.2),
@@ -189,8 +203,22 @@ onUnmounted(() => {
   cursor: pointer; display: flex; align-items: center; gap: 10px;
   z-index: 9998; font-family: inherit; font-size: 0.9rem; font-weight: 600;
   letter-spacing: 0.01em;
+  overflow: visible;
   transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
+/* Rotating conic ring on hover */
+.floating-chat-btn::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 28px;
+  background: conic-gradient(from 0deg, #14b8a6, #0d9488, #10b981, #0d9488, #14b8a6);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  animation: btn-ring-spin 2s linear infinite;
+}
+.floating-chat-btn:hover::after { opacity: 1; }
 .floating-chat-btn:hover {
   transform: scale(1.08) translateY(-2px);
   box-shadow:
@@ -201,6 +229,10 @@ onUnmounted(() => {
 }
 .floating-chat-btn:active { transform: scale(0.95); }
 .btn-label { white-space: nowrap; }
+
+@keyframes btn-ring-spin {
+  to { transform: rotate(360deg); }
+}
 
 /* ── Overlay (non-blocking) ── */
 .floating-chat-overlay {
@@ -220,17 +252,20 @@ onUnmounted(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   display: flex; flex-direction: column; overflow: hidden;
   pointer-events: auto;
-  /* Gradient border via before pseudo */
   position: relative;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.floating-chat-panel.maximized {
+  width: 720px;
 }
 .floating-chat-panel::before {
   content: '';
   position: absolute;
-  inset: -1px;
-  border-radius: 21px;
+  inset: -2px;
+  border-radius: 22px;
   background: linear-gradient(180deg, #238f7f 0%, #0d9488 30%, #059669 60%, #10b981 100%);
   z-index: -1;
-  opacity: 0.6;
+  opacity: 0.95;
 }
 
 /* ── Header with gradient ── */
