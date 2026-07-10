@@ -17,6 +17,9 @@
 
  <!-- User Menu -->
  <div class="flex items-center gap-2">
+ <!-- Update Button -->
+ <UpdateHistoryButton />
+
  <!-- Token quota bar -->
  <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
  <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @focus="quotaOpen = true" @blur="quotaOpen = false" @keydown.escape.stop="quotaOpen = false" @click="detailModalOpen = true">
@@ -262,6 +265,7 @@ import { usePaperJobsStore } from '../stores/paperJobs'
 import { useQuotaStore } from '../stores/quota'
 import TokenPurchaseModal from './TokenPurchaseModal.vue'
 import TokenDetailModal from './TokenDetailModal.vue'
+import UpdateHistoryButton from './UpdateHistoryButton.vue'
 
 const logoUrl = '/assets/logo.png'
 

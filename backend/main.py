@@ -3154,11 +3154,6 @@ def api_version():
             return jsonify(json.load(f))
     except:
         pass
-    try:
-        with open(os.path.join(base, "version.json"), "r") as f:
-            return jsonify(json.load(f))
-    except:
-        pass
     return jsonify({"version": "0.0.0", "released": "", "title": "", "changes": []})
 
 

@@ -9,7 +9,10 @@
 
       <!-- Right side nav -->
       <div class="flex items-center gap-3">
-        <!-- Info Dropdown -->
+      <!-- Update Button -->
+      <UpdateHistoryButton />
+
+      <!-- Info Dropdown -->
         <div class="relative" ref="dropdownRef">
           <button
             @click="dropdownOpen = !dropdownOpen"
@@ -99,6 +102,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import UpdateHistoryButton from './UpdateHistoryButton.vue'
 
 const logoWithText = '/assets/logo-with-text.png'
 
