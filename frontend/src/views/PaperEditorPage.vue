@@ -345,10 +345,6 @@
  <div class="px-4 lg:px-8 py-6"><PaperfullTab /></div>
  </div>
 
- <div v-else-if="rightPanel === 'chat'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-hidden flex flex-col border-l border-cream-300 dark:border-ash-700">
- <ChatTab :paper-id="store.currentPaperId" @open-preview="activeTab = 'preview'; editorVisible = true" />
- </div>
-
  <div v-else-if="rightPanel === 'journal'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
  <div class="px-4 lg:px-8 py-6"><JournalTab /></div>
  </div>
@@ -447,7 +443,6 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from '../composables/useK
 
 // Lazy-loaded tab components (shown conditionally; no need to bundle eagerly)
 const PreviewTab = defineAsyncComponent(() => import('../components/PreviewTab.vue'))
-const ChatTab = defineAsyncComponent(() => import('../components/ChatTab.vue'))
 const JournalTab = defineAsyncComponent(() => import('../components/JournalTab.vue'))
 const LiteratureTab = defineAsyncComponent(() => import('../components/LiteratureTab.vue'))
 const FilesTab = defineAsyncComponent(() => import('../components/FilesTab.vue'))
@@ -506,7 +501,7 @@ const lastSavedAt = ref<number | null>(null)
 const nowTick = ref(Date.now())
 
 // ─── Split layout state ───────────────────────────────────────────────────
-// rightPanel: '' = closed | 'chat' | 'journal' | 'literature' | 'files' | 'data' | 'image' | 'tool-workspace'
+// rightPanel: '' = closed | 'journal' | 'literature' | 'files' | 'data' | 'image' | 'tool-workspace'
 // Persisted state via userState store (per-paper)
 // All four layout fields route through the `ui` store (single source of truth =
 // perPaper) so the deep-watcher in ui.ts never clobbers userState with a stale
@@ -586,16 +581,9 @@ function togglePreview() {
 }
 
 function handlePapersBack() {
- const onPaperChatHome = rightPanel.value === 'chat' && !toolsOpen.value && !chatStore.currentConversationId && activeTab.value === 'editor' && editorVisible.value
- if (!onPaperChatHome && store.currentPaperId) {
- rightPanel.value = 'chat'
- toolsOpen.value = false
- activeTab.value = 'editor'
- editorVisible.value = true
- chatStore.currentConversationId = null
- return
- }
- router.push({ name: 'dashboard' })
+  // Chat is now floating AI Assistant — no right panel for chat
+  // Back button: go to dashboard
+  router.push({ name: 'dashboard' })
 }
 const showShortcutsHelp = ref(false)
 
@@ -604,18 +592,18 @@ const shortcuts: KeyboardShortcut[] = [
  key: 'k',
  ctrl: true,
  handler: () => {
- if (rightPanel.value === 'chat') {
- // Closing chat → ensure left pane is visible so page isn't empty
+ // Toggle: if any right panel open, close it; otherwise open paperfull
+ if (rightPanel.value) {
  rightPanel.value = ''
  toolsOpen.value = false
  if (!editorVisible.value) editorVisible.value = true
  } else {
- rightPanel.value = 'chat'
+ rightPanel.value = 'paperfull'
  toolsOpen.value = false
  if (!editorVisible.value) editorVisible.value = true
  }
  },
- description: 'Toggle AI Chat panel'
+ description: 'Toggle right panel'
  },
  {
  key: 'z',
@@ -798,10 +786,10 @@ onMounted(async () => {
  const paperId = route.params.paperId
  const lang = authStore.user?.preferred_language || 'id'
 
- // Helper: restore right panel from persisted state, defaulting to 'chat'.
+ // Helper: restore right panel from persisted state, defaulting to '' (closed).
  function _restorePanel(): void {
  const saved = store.currentPaperId ? ui.getRightPanel(store.currentPaperId) : ''
- rightPanel.value = saved || 'chat'
+ rightPanel.value = saved || ''
  }
 
  const paperIdRaw = Array.isArray(paperId) ? paperId[0] : paperId
@@ -872,9 +860,9 @@ watch(() => route.params.paperId, async (newId, oldId) => {
  router.replace({ name: 'dashboard' })
  return
  }
- // Restore right panel from per-paper state; fallback 'chat' if never set.
+ // Restore right panel from per-paper state; fallback '' (closed).
  const saved = store.currentPaperId ? ui.getRightPanel(store.currentPaperId) : ''
- rightPanel.value = saved || 'chat'
+ rightPanel.value = saved || ''
  resizeTitle()
  resizeAbstract()
  }
