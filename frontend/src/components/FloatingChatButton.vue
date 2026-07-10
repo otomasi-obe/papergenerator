@@ -206,19 +206,24 @@ onUnmounted(() => {
   overflow: visible;
   transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
-/* Rotating conic ring on hover */
-.floating-chat-btn::after {
+/* Rotating pill ring on hover — actual border line around the button */
+.floating-chat-btn::before {
   content: '';
   position: absolute;
-  inset: -3px;
-  border-radius: 28px;
-  background: conic-gradient(from 0deg, #14b8a6, #0d9488, #10b981, #0d9488, #14b8a6);
+  inset: -4px;
+  border-radius: 29px;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#0d5c56, #0d5c56) padding-box,
+    conic-gradient(from 0deg, #14b8a6, #0d9488, #10b981, #0d9488, #14b8a6) border-box;
   z-index: -1;
   opacity: 0;
   transition: opacity 0.25s ease;
-  animation: btn-ring-spin 2s linear infinite;
 }
-.floating-chat-btn:hover::after { opacity: 1; }
+.floating-chat-btn:hover::before {
+  opacity: 1;
+  animation: btn-ring-spin 1.8s linear infinite;
+}
 .floating-chat-btn:hover {
   transform: scale(1.08) translateY(-2px);
   box-shadow:
@@ -246,7 +251,9 @@ onUnmounted(() => {
   width: 440px; max-width: 100vw; height: 640px;
   max-height: calc(100vh - 32px);
   background: linear-gradient(180deg, #f8f6f2 0%, #f3efe8 100%);
-  border-radius: 20px; box-shadow:
+  border-radius: 20px;
+  border: 2px solid #0d9488;
+  box-shadow:
     0 20px 60px rgba(15, 39, 68, 0.25),
     0 4px 20px rgba(15, 39, 68, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -261,11 +268,11 @@ onUnmounted(() => {
 .floating-chat-panel::before {
   content: '';
   position: absolute;
-  inset: -2px;
-  border-radius: 22px;
+  inset: -3px;
+  border-radius: 23px;
   background: linear-gradient(180deg, #238f7f 0%, #0d9488 30%, #059669 60%, #10b981 100%);
   z-index: -1;
-  opacity: 0.95;
+  opacity: 0.6;
 }
 
 /* ── Header with gradient ── */
@@ -345,7 +352,7 @@ onUnmounted(() => {
 @media (prefers-color-scheme: dark) {
   .floating-chat-panel {
     background: linear-gradient(180deg, #1a1f2e 0%, #151a26 100%);
-    border-color: rgba(35, 143, 127, 0.15);
+    border-color: #14b8a6;
     box-shadow:
       0 20px 60px rgba(0, 0, 0, 0.5),
       0 4px 20px rgba(0, 0, 0, 0.3),
