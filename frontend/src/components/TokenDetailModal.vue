@@ -15,29 +15,29 @@
         <!-- Summary Cards -->
         <div class="grid grid-cols-3 gap-3">
           <div v-for="card in summaryCards" :key="card.label" :class="['p-3 rounded-xl border', card.colorClass]">
-            <div class="text-xs font-medium text-ink-600 dark:text-ink-300 mb-2">{{ card.label }}</div>
+            <div class="text-xs font-medium text-ink-600 dark:text-ink-50 mb-2">{{ card.label }}</div>
             <div class="text-2xl font-bold">{{ formatNum(card.value) }}</div>
           </div>
         </div>
 
         <!-- Trend Card -->
         <div class="p-4 rounded-xl bg-cream-50 dark:bg-ash-800 border border-cream-200 dark:border-ash-700">
-          <div class="text-sm font-medium text-ink-700 dark:text-ink-300 mb-2">Trend Harian</div>
+          <div class="text-sm font-medium text-ink-700 dark:text-ink-50 mb-2">Trend Harian</div>
           <div class="flex items-center justify-between">
             <div>
               <div class="text-2xl font-bold text-ink-900 dark:text-ink-50">{{ formatNum(data?.today_usage || 0) }}</div>
-              <div class="text-xs text-ink-500 dark:text-ink-400">Hari ini</div>
+              <div class="text-xs text-ink-500 dark:text-ink-100">Hari ini</div>
             </div>
             <div class="text-right">
               <div :class="['text-xl font-bold', trendColor]">{{ trendIcon }} {{ trendPct > 0 ? '+' : '' }}{{ trendPct }}%</div>
-              <div class="text-xs text-ink-500 dark:text-ink-400">vs kemarin ({{ formatNum(data?.yesterday_usage || 0) }})</div>
+              <div class="text-xs text-ink-500 dark:text-ink-100">vs kemarin ({{ formatNum(data?.yesterday_usage || 0) }})</div>
             </div>
           </div>
         </div>
 
         <!-- Line Chart -->
         <div>
-          <div class="text-sm font-medium text-ink-700 dark:text-ink-300 mb-2">Grafik Pemakaian (30 hari)</div>
+          <div class="text-sm font-medium text-ink-700 dark:text-ink-50 mb-2">Grafik Pemakaian (30 hari)</div>
           <div v-if="chartPoints.length > 0" class="rounded-xl bg-white dark:bg-ash-900 border border-cream-200 dark:border-ash-700 p-2">
             <svg width="560" height="180" viewBox="0 0 560 180" class="w-full h-auto">
               <!-- Grid lines -->
@@ -63,8 +63,8 @@
               </g>
             </svg>
           </div>
-          <div v-else class="h-48 rounded-xl bg-cream-50 dark:bg-ash-800 border border-cream-200 dark:border-ash-700 flex items-center justify-center">
-            <span class="text-ink-500 dark:text-ink-400 text-sm">Belum ada data pemakaian</span>
+          <div v-else class="h-48 rounded-xl bg-cream-50 dark:bg-ash-800 border border-cream-200 dark:border-ash-600 flex items-center justify-center">
+            <span class="text-ink-500 dark:text-ink-200 text-sm">Belum ada data pemakaian</span>
           </div>
         </div>
 
@@ -80,8 +80,8 @@
               <tbody>
                 <tr v-for="(d, i) in displayUsage" :key="'u-'+i" :class="['border-b border-cream-100 dark:border-ash-800', i % 2 === 0 ? 'bg-cream-50/50 dark:bg-ash-800/50' : '']">
                   <td class="py-2 pr-4 text-ink-900 dark:text-ink-500">{{ formatDate(d.date) }}</td>
-                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-300">{{ formatNum(d.tokens) }}</td>
-                  <td class="py-2 text-right font-mono tabular-nums text-ink-500 dark:text-ink-400">{{ d.calls }}</td>
+                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-50">{{ formatNum(d.tokens) }}</td>
+                  <td class="py-2 text-right font-mono tabular-nums text-ink-500 dark:text-ink-200">{{ d.calls }}</td>
                 </tr>
                 <tr v-if="displayUsage.length === 0"><td colspan="3" class="py-6 text-center text-ink-400 dark:text-ink-500 text-sm">Belum ada data pemakaian</td></tr>
               </tbody>
@@ -101,8 +101,8 @@
               <tbody>
                 <tr v-for="(d, i) in (data?.purchase_history || [])" :key="'p-'+i" :class="['border-b border-cream-100 dark:border-ash-800', i % 2 === 0 ? 'bg-cream-50/50 dark:bg-ash-800/50' : '']">
                   <td class="py-2 pr-4 text-ink-900 dark:text-ink-500">{{ formatDate(d.date) }}</td>
-                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-300">{{ formatNum(d.tokens) }}</td>
-                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-300">{{ formatIDR(d.amount) }}</td>
+                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-50">{{ formatNum(d.tokens) }}</td>
+                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-50">{{ formatIDR(d.amount) }}</td>
                   <td class="py-2 pr-4 text-ink-600 dark:text-ink-400">{{ d.payment_method || d.provider }}</td>
                   <td class="py-2"><span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', statusColor(d.status)]">{{ d.status }}</span></td>
                 </tr>

@@ -214,13 +214,23 @@ onUnmounted(() => {
   width: 440px; max-width: 100vw; height: 640px;
   max-height: calc(100vh - 32px);
   background: linear-gradient(180deg, #f8f6f2 0%, #f3efe8 100%);
-  border: 1px solid rgba(35, 143, 127, 0.2);
   border-radius: 20px; box-shadow:
     0 20px 60px rgba(15, 39, 68, 0.25),
     0 4px 20px rgba(15, 39, 68, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   display: flex; flex-direction: column; overflow: hidden;
   pointer-events: auto;
+  /* Gradient border via before pseudo */
+  position: relative;
+}
+.floating-chat-panel::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 21px;
+  background: linear-gradient(180deg, #238f7f 0%, #0d9488 30%, #059669 60%, #10b981 100%);
+  z-index: -1;
+  opacity: 0.6;
 }
 
 /* ── Header with gradient ── */
