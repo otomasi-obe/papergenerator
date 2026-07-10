@@ -4,6 +4,17 @@
   "title": "Update v1.3.3 — AI Assistant Floating Chat Overhaul",
   "history": [
     {
+      "version": "1.3.4",
+      "released": "2026-07-11",
+      "title": "Update v1.3.4 — Token Detail: Warning & Kontras",
+      "changes": [
+        { "type": "new", "text": "TokenDetailModal: warning alert merah saat sisa token < 10% kuota, tombol 'Beli Token Sekarang' → buka modal beli" },
+        { "type": "fix", "text": "TokenDetailModal dark mode: bg ash-900 + border ash-600 agar tidak menyatu dengan web bg" },
+        { "type": "fix", "text": "TokenDetailModal: teks tabel/chart di dark mode diganti ke ink-100/200/300 — terbaca jelas" },
+        { "type": "fix", "text": "TokenDetailModal: status 'cancelled' di riwayat transaksi warna merah (sebelumnya biru default)" }
+      ]
+    },
+    {
       "version": "1.3.3",
       "released": "2026-07-11",
       "title": "Update v1.3.3 — AI Assistant Floating Chat Overhaul",
@@ -16,17 +27,6 @@
         { "type": "improvement", "text": "Scroll button: icon-only, circular, posisi di dalam messages (atas send button), animasi ease-out cubic" },
         { "type": "improvement", "text": "Thinking block: default collapsed (tidak auto-expand), hanya expand saat user klik dropdown" },
         { "type": "improvement", "text": "Panel minimize: animasi smooth 0.4s dengan easing cubic-bezier" }
-      ]
-    },
-    {
-      "version": "1.3.4",
-      "released": "2026-07-11",
-      "title": "Update v1.3.4 — Token Detail: Warning & Kontras",
-      "changes": [
-        { "type": "new", "text": "TokenDetailModal: warning alert merah saat sisa token < 10% kuota, tombol 'Beli Token Sekarang' → buka modal beli" },
-        { "type": "fix", "text": "TokenDetailModal dark mode: bg kembali ash-900 + border ash-600 agar tidak menyatu dengan web bg" },
-        { "type": "fix", "text": "TokenDetailModal: teks abu-abu (ink-400/500) di tabel riwayat & label chart diganti ke ink-100/200/300 — terbaca jelas di dark mode" },
-        { "type": "fix", "text": "TokenDetailModal: status 'cancelled' di riwayat transaksi warna merah (sebelumnya biru default)" }
       ]
     },
     {
