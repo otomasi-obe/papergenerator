@@ -13,12 +13,9 @@
       <!-- Body -->
       <div class="px-5 py-4 overflow-y-auto space-y-5 flex-1" v-if="!loading && !error">
         <!-- Summary Cards -->
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-3 gap-3">
           <div v-for="card in summaryCards" :key="card.label" :class="['p-3 rounded-xl border', card.colorClass]">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-lg">{{ card.icon }}</span>
-              <span class="text-xs font-medium text-ink-500 dark:text-ink-400">{{ card.label }}</span>
-            </div>
+            <div class="text-xs font-medium text-ink-600 dark:text-ink-300 mb-2">{{ card.label }}</div>
             <div class="text-2xl font-bold">{{ formatNum(card.value) }}</div>
           </div>
         </div>
@@ -175,7 +172,7 @@ async function fetchData() {
 
 watch(() => props.open, (val) => { if (val) fetchData() })
 
-// Summary cards
+// Summary cards (3 only: sisa, dibeli bulan ini, dipakai bulan ini)
 const summaryCards = computed(() => {
   const d = data.value
   if (!d) return []
@@ -184,10 +181,9 @@ const summaryCards = computed(() => {
     : remaining < 150000 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
     : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
   return [
-    { label: 'Sisa Token', value: remaining, icon: '💎', colorClass: remainingColor },
-    { label: 'Base Quota', value: d.base_quota || 0, icon: '📦', colorClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
-    { label: 'Bonus', value: d.bonus_tokens || 0, icon: '🎁', colorClass: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
-    { label: 'Total', value: (d.base_quota || 0) + (d.bonus_tokens || 0), icon: '📊', colorClass: 'bg-navy-50 dark:bg-navy-900/20 text-navy-700 dark:text-navy-300 border-navy-200 dark:border-navy-800' },
+    { label: 'Sisa Token', value: remaining, colorClass: remainingColor },
+    { label: 'Token Dibeli Bulan Ini', value: d.total_purchased || 0, colorClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
+    { label: 'Token Dipakai Bulan Ini', value: d.total_spent_month || 0, colorClass: 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' },
   ]
 })
 
