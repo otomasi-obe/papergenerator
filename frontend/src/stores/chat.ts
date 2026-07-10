@@ -514,9 +514,9 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function loadConversations(paperId) {
-    if (!paperId) return []
     try {
-      const res = await api.get(`/api/papers/${paperId}/conversations`)
+      const url = paperId ? `/api/papers/${paperId}/conversations` : '/api/chat/conversations'
+      const res = await api.get(url)
       conversations.value = res.data || []
       return conversations.value
     } catch (e) {
@@ -525,6 +525,19 @@ export const useChatStore = defineStore('chat', () => {
       if (e?.response?.status !== 404) {
         error.value = e.message
       }
+      conversations.value = []
+      return []
+    }
+  }
+
+  // Load ALL user conversations (global + paper-linked) for dashboard view
+  async function loadAllConversations() {
+    try {
+      const res = await api.get('/api/chat/conversations')
+      conversations.value = res.data || []
+      return conversations.value
+    } catch (e) {
+      error.value = e.message
       conversations.value = []
       return []
     }
@@ -809,9 +822,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function createConversation(paperId, title = 'New Chat') {
-    if (!paperId) return null
+    // paperId is optional — null = global conversation
     try {
-      const res = await api.post(`/api/papers/${paperId}/conversations`, { title })
+      const url = paperId ? `/api/papers/${paperId}/conversations` : '/api/chat/conversations'
+      const res = await api.post(url, { title })
       const conv = res.data
       conversations.value = [conv, ...conversations.value]
       // bump the paper sidebar entry
@@ -833,6 +847,16 @@ export const useChatStore = defineStore('chat', () => {
 
   async function newChatForCurrentPaper() {
     const conv = await createConversation(currentPaperId.value)
+    if (conv) {
+      currentConversationId.value = conv.id
+      _ensureStream(conv.id)
+      _bindActive(conv.id)
+    }
+    return conv
+  }
+
+  async function newGlobalChat() {
+    const conv = await createConversation(null)
     if (conv) {
       currentConversationId.value = conv.id
       _ensureStream(conv.id)
@@ -1647,11 +1671,13 @@ export const useChatStore = defineStore('chat', () => {
     activeJob,
     loadPaperChats,
     loadConversations,
+    loadAllConversations,
     openPaper,
     openConversation,
     closeConversation,
     createConversation,
     newChatForCurrentPaper,
+    newGlobalChat,
     renameConversation,
     deleteConversation,
     clearCurrentChat,

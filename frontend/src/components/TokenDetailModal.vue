@@ -1,9 +1,9 @@
 <template>
   <div v-if="open" class="fixed inset-0 z-[60] flex items-start justify-center p-4 pt-8 sm:pt-10">
     <div class="fixed inset-0 bg-black/30 transition-opacity z-0" @click="$emit('close')" aria-hidden="true" />
-    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-900 rounded-2xl shadow-xl flex flex-col">
+    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-700 rounded-2xl shadow-xl flex flex-col">
       <!-- Header -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-cream-200 dark:border-ash-700 shrink-0">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-cream-200 dark:border-ash-600 shrink-0">
         <h2 class="text-lg font-bold text-ink-900 dark:text-ink-50">Detail Token</h2>
         <button @click="$emit('close')" class="p-1.5 min-h-[36px] min-w-[36px] rounded-lg text-ink-400 hover:text-ink-600 dark:hover:text-ink-300 hover:bg-cream-100 dark:hover:bg-ash-800 transition-colors" aria-label="Tutup">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>

@@ -11,9 +11,9 @@
  <button
  type="button"
  @click="handlePapersBack"
- class="flex items-center gap-1 text-sm text-ink-700 dark:text-ink-200 hover:text-ink-900 dark:hover:text-ink-50 px-2 py-1.5 rounded hover:bg-cream-200 dark:hover:bg-ash-700 shrink-0 transition active:scale-95 "
+ class="flex items-center gap-1.5 text-sm text-ink-700 dark:text-ink-200 hover:text-ink-900 dark:hover:text-ink-50 px-2 py-1.5 rounded hover:bg-cream-200 dark:hover:bg-ash-700 shrink-0 transition active:scale-95 "
  >
- Kembali ke Dashboard
+ ← Kembali ke Dashboard
  </button>
  <span class="text-cream-400 dark:text-ash-600 shrink-0">|</span>
  <input

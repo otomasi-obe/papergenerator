@@ -15,30 +15,25 @@
  </header>
 
  <div class="flex-1 overflow-y-auto p-3">
- <p v-if="currentPaperId" class="text-[11px] text-[var(--text-muted)] mb-2 px-1">
- Pilih chat yang sudah ada, atau buat chat baru.
- </p>
- <div v-if="!currentPaperId" class="px-3 py-10 text-center">
- <span class="inline-block w-5 h-5 border-2 border-navy-400 dark:border-cream-400 border-t-transparent rounded-full animate-spin mb-3"></span>
- <p class="text-xs text-[var(--text-muted)]">Paper sedang disiapkan…</p>
- <p class="text-[10px] text-[var(--text-muted)] mt-1 opacity-70">Chat akan aktif setelah paper tersimpan.</p>
- </div>
- <div v-else-if="conversations.length === 0" class="px-3 py-12 text-center text-xs text-[var(--text-muted)]">
- Belum ada chat. Klik <strong>+ New chat</strong> untuk memulai.
- </div>
+   <p class="text-[11px] text-[var(--text-muted)] mb-2 px-1">
+     {{ currentPaperId ? 'Pilih chat yang sudah ada, atau buat chat baru.' : 'Chat global — tanya apa saja, atau buat chat baru.' }}
+   </p>
+   <div v-if="conversations.length === 0" class="px-3 py-12 text-center text-xs text-[var(--text-muted)]">
+     Belum ada chat. Klik <strong>+ New chat</strong> untuk memulai.
+   </div>
 
- <div class="space-y-1.5">
- <div
- v-for="(conv, idx) in conversations"
- :key="conv.id"
- :class="[
- 'group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all',
- conv.id === currentConversationId
- ? 'bg-navy-100 dark:bg-ash-700 border-l-4 border-navy-600 dark:border-cream-400 shadow-sm'
- : 'hover:bg-[var(--bg-surface)] hover:shadow-sm border border-transparent hover:border-[var(--border-soft)]'
- ]"
- @click="handleSelectConversation(conv.id)"
- >
+   <div class="space-y-1.5">
+     <div
+       v-for="(conv, idx) in conversations"
+       :key="conv.id"
+       :class="[
+         'group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all',
+         conv.id === currentConversationId
+         ? 'bg-navy-100 dark:bg-ash-700 border-l-4 border-navy-600 dark:border-cream-400 shadow-sm'
+         : 'hover:bg-[var(--bg-surface)] hover:shadow-sm border border-transparent hover:border-[var(--border-soft)]'
+       ]"
+       @click="handleSelectConversation(conv.id)"
+     >
  <span class="text-base leading-none">
  {{ idx === 0 ? '💬' : '💭' }}
  </span>
@@ -1192,58 +1187,61 @@ async function onReviewCancel(): Promise<void> {
 }
 
 onMounted(async () => {
- if (props.paperId) {
- await chatStore.openPaper(props.paperId)
- 
- // Check for interrupted streaming sessions and restore them
- try {
- const { useUserStateStore } = await import('../stores/userState')
- const userState = useUserStateStore()
- const savedStream = userState.get('chat.streaming', null, null)
- 
- if (savedStream && savedStream.conv_id) {
- const { data } = await api.get(`/api/chat/conversations/${savedStream.conv_id}/stream-status`)
- 
- if (data.status === 'streaming') {
- // Backend still streaming - reconnect
- const stream = chatStore._ensureStream(savedStream.conv_id)
- stream.isStreaming = true
- stream.connectionState = 'reconnecting'
- stream.streamingMessage = {
- id: null,
- role: 'assistant',
- content: data.content || savedStream.content || '',
- thinking: data.thinking || savedStream.thinking || '',
- tool_calls: [],
- created_at: data.started_at || savedStream.started_at,
- }
- stream.messages.push(stream.streamingMessage)
- chatStore._syncFromStream(savedStream.conv_id)
- 
- // Set current conversation to the streaming one
- if (currentConversationId.value !== savedStream.conv_id) {
- await chatStore.openConversation(savedStream.conv_id)
- }
- 
- showToast('Melanjutkan streaming yang terputus...', 'info')
- } else if (data.status === 'done' && data.message_id) {
- // Backend finished - fetch the complete message
- await chatStore.openConversation(savedStream.conv_id)
- userState.deleteKey('chat.streaming', null)
- showToast('Streaming selesai saat Anda refresh', 'success')
- } else {
- // Clear stale streaming state
- userState.deleteKey('chat.streaming', null)
- }
- }
- } catch { /* ignore restore errors */ }
+  if (props.paperId) {
+    await chatStore.openPaper(props.paperId)
+  } else {
+    // Dashboard: load global conversations
+    await chatStore.loadAllConversations()
+  }
 
- // Process pending literature review intent (from LiteratureTab → switch to chat)
- const pendingIntent = litStore.consumeIntent()
- if (pendingIntent && pendingIntent.action === 'review_checked') {
- await handleReviewIntent(pendingIntent)
- }
- }
+  // Check for interrupted streaming sessions and restore them
+  try {
+    const { useUserStateStore } = await import('../stores/userState')
+    const userState = useUserStateStore()
+    const savedStream = userState.get('chat.streaming', null, null)
+
+    if (savedStream && savedStream.conv_id) {
+      const { data } = await api.get(`/api/chat/conversations/${savedStream.conv_id}/stream-status`)
+
+      if (data.status === 'streaming') {
+        // Backend still streaming - reconnect
+        const stream = chatStore._ensureStream(savedStream.conv_id)
+        stream.isStreaming = true
+        stream.connectionState = 'reconnecting'
+        stream.streamingMessage = {
+          id: null,
+          role: 'assistant',
+          content: data.content || savedStream.content || '',
+          thinking: data.thinking || savedStream.thinking || '',
+          tool_calls: [],
+          created_at: data.started_at || savedStream.started_at,
+        }
+        stream.messages.push(stream.streamingMessage)
+        chatStore._syncFromStream(savedStream.conv_id)
+
+        // Set current conversation to the streaming one
+        if (currentConversationId.value !== savedStream.conv_id) {
+          await chatStore.openConversation(savedStream.conv_id)
+        }
+
+        showToast('Melanjutkan streaming yang terputus...', 'info')
+      } else if (data.status === 'done' && data.message_id) {
+        // Backend finished - fetch the complete message
+        await chatStore.openConversation(savedStream.conv_id)
+        userState.deleteKey('chat.streaming', null)
+        showToast('Streaming selesai saat Anda refresh', 'success')
+      } else {
+        // Clear stale streaming state
+        userState.deleteKey('chat.streaming', null)
+      }
+    }
+  } catch { /* ignore restore errors */ }
+
+  // Process pending literature review intent (from LiteratureTab → switch to chat)
+  const pendingIntent = litStore.consumeIntent()
+  if (pendingIntent && pendingIntent.action === 'review_checked') {
+    await handleReviewIntent(pendingIntent)
+  }
 })
 
 onUnmounted(() => {
@@ -1489,17 +1487,20 @@ async function handleSelectConversation(convId: number): Promise<void> {
 }
 
 async function createNewChat(): Promise<void> {
- if (!currentPaperId.value || creatingChat.value) return
- creatingChat.value = true
- try {
- const conv = await chatStore.newChatForCurrentPaper()
- if (conv) {
- currentConversationId.value = conv.id
- messages.value = []
- showSuggestions.value = false
- showToast('Chat baru berhasil dibuat', 'success')
- }
- } catch (e: any) {
+  if (creatingChat.value) return
+  // Allow creating chat even without paperId (global chat)
+  creatingChat.value = true
+  try {
+    const conv = currentPaperId.value
+      ? await chatStore.newChatForCurrentPaper()
+      : await chatStore.newGlobalChat()
+    if (conv) {
+      currentConversationId.value = conv.id
+      messages.value = []
+      showSuggestions.value = false
+      showToast('Chat baru berhasil dibuat', 'success')
+    }
+  } catch (e: any) {
  showToast('Gagal membuat chat baru', 'error')
  } finally {
  creatingChat.value = false
