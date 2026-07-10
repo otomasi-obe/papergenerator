@@ -5,12 +5,14 @@ Standalone AI writing tools — paraphrase, translate, humanize, detect AI,
 check plagiarism, fix grammar, summarize, generate citations.
 
 Each endpoint accepts { text, option } and streams back results via SSE.
+Every AI call checks quota first and deducts tokens after completion.
 """
 
 import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -19,6 +21,8 @@ from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from .ai_client import chat as _ai_chat, stream_chat as _ai_stream
+from utils.quota import quota_exceeded
+from utils.database.models import ApiUsageLog, User, db, safe_commit
 
 tools_api = Blueprint("tools_api", __name__)
 log = logging.getLogger(__name__)
@@ -120,20 +124,190 @@ try:
 except ImportError:
     _run_detector = None
 
+# ── Query Planner (password-gated) ────────────────────────────────────────────
 
-def _stream_ai(system_prompt, user_prompt):
-    """Stream AI response via SSE using the per-index endpoint chain."""
+try:
+    from tools.Literatur.query_planner import run_query_planner_tool as _run_qp
+except ImportError:
+    _run_qp = None
+
+
+def _query_planner_password() -> str:
+    return os.environ.get("QUERY_PLANNER_PASSWORD", "").strip()
+
+
+@tools_api.route("/api/tools/query-planner", methods=["POST"])
+@jwt_required()
+def run_query_planner():
+    """Password-gated Query Planner tool.
+
+    Request body: { text: <topic> }  -- password already verified via /verify endpoint
+
+    - If user's user_memory.query_planner_blocked is True → 403 "maintenance"
+    - Run planner and return result
+    """
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+
+    # ── Check if user is already blocked ──
+    mem = dict(user.user_memory or {})
+    if mem.get("query_planner_blocked"):
+        return jsonify({"error": "Tool under maintenance for your account", "blocked": True}), 403
+
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+
+    if not text:
+        return jsonify({"error": "No topic provided"}), 400
+
+    # ── Quota check ──
+    exceeded, info = quota_exceeded(user_id)
+    if exceeded:
+        return jsonify({"error": "Kuota token habis", **info}), 429
+
+    # ── Run planner ──
+    if _run_qp is None:
+        return jsonify({"error": "Query planner module not available"}), 500
+    try:
+        result = _run_qp(data)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        log.exception("query-planner failed for user=%d", user_id)
+        return jsonify({"error": f"Tool failed: {type(e).__name__}: {e}"}), 500
+
+    # Estimate and log tokens
+    result_text = json.dumps(result)
+    _log_tool_usage(user_id, "query-planner", "runner/query-planner",
+                    _estimate_tokens(text), _estimate_tokens(result_text))
+
+    return jsonify({"result": result})
+
+
+@tools_api.route("/api/tools/query-planner/verify", methods=["POST"])
+@jwt_required()
+def query_planner_verify():
+    """Verify password before revealing the Query Planner UI."""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    mem = dict(user.user_memory or {})
+    if mem.get("query_planner_blocked"):
+        return jsonify({"error": "Tool under maintenance for your account", "blocked": True}), 403
+
+    data = request.get_json(silent=True) or {}
+    pw = (data.get("password") or "").strip()
+    if not pw or pw != _query_planner_password():
+        mem["query_planner_blocked"] = True
+        user.user_memory = mem
+        safe_commit()
+        log.warning("QP_BLOCKED user=%d wrong/missing password on verify", user_id)
+        return jsonify({"error": "Incorrect password — tool locked for your account", "blocked": True}), 403
+
+    return jsonify({"ok": True})
+
+
+@tools_api.route("/api/tools/query-planner/status", methods=["GET"])
+@jwt_required()
+def query_planner_status():
+    """Check if query-planner is blocked for current user."""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    mem = user.user_memory or {}
+    return jsonify({
+        "blocked": mem.get("query_planner_blocked", False),
+        "requires_password": bool(_query_planner_password()),
+    })
+
+
+@tools_api.route("/api/tools/query-planner/unblock", methods=["POST"])
+@jwt_required()
+def query_planner_unblock():
+    """Admin-only: unblock a user's query-planner access."""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if user.role != "admin":
+        return jsonify({"error": "Admin only"}), 403
+
+    data = request.get_json(silent=True) or {}
+    target_id = data.get("user_id")
+    if not target_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    target = User.query.get(int(target_id))
+    if not target:
+        return jsonify({"error": "User not found"}), 404
+
+    mem = dict(target.user_memory or {})
+    mem["query_planner_blocked"] = False
+    target.user_memory = mem
+    safe_commit()
+    log.info("QP_UNBLOCK admin=%d target=%d", user_id, target_id)
+    return jsonify({"ok": True, "user_id": target_id})
+
+
+# ── Token tracking helpers ────────────────────────────────────────────────────
+
+def _estimate_tokens(text: str) -> int:
+    """Rough token estimate: ~4 chars per token for English/Indonesian mix."""
+    return max(1, len(text) // 4)
+
+
+def _log_tool_usage(
+    user_id: int,
+    tool_id: str,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+):
+    """Log token usage and deduct from user's monthly quota."""
+    try:
+        total = prompt_tokens + completion_tokens
+        if total <= 0:
+            return
+
+        log_entry = ApiUsageLog(
+            user_id=user_id,
+            endpoint=f"/api/tools/{tool_id}",
+            model=model or "tools",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total,
+            created_at=datetime.now(timezone.utc),
+        )
+        db.session.add(log_entry)
+
+        user = User.query.get(int(user_id))
+        if user and user.role != "admin":
+            now = datetime.now(timezone.utc)
+            month_key = now.strftime("%Y-%m")
+            if (user.usage_month_key or "") != month_key:
+                user.usage_month_key = month_key
+                user.token_used_month = 0
+            user.token_used_month = int(user.token_used_month or 0) + total
+
+        safe_commit()
+        log.info(
+            "TOKEN_DEDUCT user=%d tool=%s model=%s prompt=%d completion=%d total=%d",
+            user_id, tool_id, model or "tools", prompt_tokens, completion_tokens, total,
+        )
+    except Exception as e:
+        log.warning("TOKEN_DEDUCT_FAILED user=%d tool=%s: %s", user_id, tool_id, e)
+
+
+# ── Streaming / non-streaming AI wrappers with token tracking ─────────────────
+
+def _stream_ai(system_prompt, user_prompt, user_id=None, tool_id=None):
+    """Stream AI response via SSE. After stream completes, log token usage."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
+    accumulated = ""
     try:
         for delta in _ai_stream(messages, heavy=False, max_tokens=4096, timeout=120):
+            accumulated += delta
             yield f"data: {json.dumps({'text': delta})}\n\n"
     except GeneratorExit:
-        # Client disconnected mid-stream. Nothing to yield back — just let
-        # the underlying requests stream close on its own (the context manager
-        # in _ai_stream will handle it).
         log.info("_stream_ai: client disconnected mid-stream")
         return
     except RuntimeError as e:
@@ -141,22 +315,38 @@ def _stream_ai(system_prompt, user_prompt):
             yield f"data: {json.dumps({'error': 'AI service not configured'})}\n\n"
         else:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        return
     except requests.exceptions.Timeout:
         yield f"data: {json.dumps({'error': 'AI service timeout'})}\n\n"
+        return
     except Exception as e:
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        return
+
+    # Stream completed — log token usage
+    if user_id and tool_id:
+        prompt_tokens = _estimate_tokens(system_prompt + user_prompt)
+        completion_tokens = _estimate_tokens(accumulated)
+        _log_tool_usage(user_id, tool_id, "stream", prompt_tokens, completion_tokens)
 
 
-def _non_stream_ai(system_prompt, user_prompt):
+def _non_stream_ai(system_prompt, user_prompt, user_id=None, tool_id=None):
     """Non-streaming AI call for detector/plagiarism that need JSON results."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
     try:
-        content, _model = _ai_chat(messages, heavy=False, max_tokens=2048, timeout=60)
+        content, model_used = _ai_chat(messages, heavy=False, max_tokens=2048, timeout=60)
         if not content:
             return {"error": "No response from AI"}
+
+        # Log token usage (estimate since upstream usage not returned)
+        if user_id and tool_id:
+            prompt_t = _estimate_tokens(system_prompt + user_prompt)
+            comp_t = _estimate_tokens(content)
+            _log_tool_usage(user_id, tool_id, model_used, prompt_t, comp_t)
+
         return {"text": content}
     except RuntimeError as e:
         if "no endpoint configured" in str(e):
@@ -174,6 +364,15 @@ def run_tool(tool_id):
         return Response(
             f"data: {json.dumps({'error': 'Unauthorized'})}\n\n",
             status=401,
+            mimetype="text/event-stream",
+        )
+
+    # ── Quota check (skip for admin) ──
+    exceeded, info = quota_exceeded(int(user_id))
+    if exceeded:
+        return Response(
+            f"data: {json.dumps({'error': 'Kuota token habis. Silakan beli paket token untuk melanjutkan.', **info})}\n\n",
+            status=429,
             mimetype="text/event-stream",
         )
 
@@ -202,6 +401,13 @@ def run_tool(tool_id):
                 status=500,
                 mimetype="text/event-stream",
             )
+
+        # Estimate tokens for program-only runners (input + output text)
+        result_text = json.dumps(result) if isinstance(result, dict) else str(result)
+        prompt_tokens = _estimate_tokens(text)
+        completion_tokens = _estimate_tokens(result_text)
+        _log_tool_usage(int(user_id), tool_id, f"runner/{tool_id}", prompt_tokens, completion_tokens)
+
         return Response(
             f"data: {json.dumps({'text': json.dumps(result), 'result': result})}\n\n",
             mimetype="text/event-stream",
@@ -214,12 +420,22 @@ def run_tool(tool_id):
                 status=400, mimetype="text/event-stream",
             )
         def _generate():
+            accumulated = ""
             try:
                 for chunk in STREAMING_TOOL_RUNNERS[tool_id](data):
+                    # Accumulate text from streaming chunks
+                    if isinstance(chunk, dict) and chunk.get("text"):
+                        accumulated += chunk["text"]
                     yield f"data: {json.dumps(chunk)}\n\n"
             except Exception as e:
                 log.exception("Streaming tool %s failed", tool_id)
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            finally:
+                # Log token usage after stream completes
+                if accumulated:
+                    prompt_tokens = _estimate_tokens(text)
+                    completion_tokens = _estimate_tokens(accumulated)
+                    _log_tool_usage(int(user_id), tool_id, f"stream/{tool_id}", prompt_tokens, completion_tokens)
         return Response(
             stream_with_context(_generate()),
             mimetype="text/event-stream",
@@ -248,7 +464,10 @@ def run_tool(tool_id):
     if is_json_tool:
         # Non-streaming for tools that return JSON results
         full_prompt = tool_config["user_template"].format(option=option, text=text)
-        result = _non_stream_ai(tool_config["system"], full_prompt)
+        result = _non_stream_ai(
+            tool_config["system"], full_prompt,
+            user_id=int(user_id), tool_id=tool_id,
+        )
 
         if "error" in result:
             return Response(
@@ -281,7 +500,10 @@ def run_tool(tool_id):
     full_prompt = tool_config["user_template"].format(option=option, text=text)
 
     return Response(
-        stream_with_context(_stream_ai(tool_config["system"], full_prompt)),
+        stream_with_context(_stream_ai(
+            tool_config["system"], full_prompt,
+            user_id=int(user_id), tool_id=tool_id,
+        )),
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

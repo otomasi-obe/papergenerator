@@ -1,0 +1,229 @@
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base Score: 100 | Penalty: -116 | Final: 0%
+============================================================
+[AUDIT] Scanning: AMORI.docx vs AMORI_PID_Robot.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 2, Output: 2
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 14 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 2, Output: 2
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 8
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, mismatch: 0 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 0, extra: 0
+  Gambar fisik di Original (referensi)  : 4
+  [OK] Semua gambar/prompt sesuai JSON, tidak ada placeholder usang.
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 8 | Figures dengan referensi: 4 | Caption-first valid: 4 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=38 out=38 | AbstractIds: orig=38 out=38
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 7 | Output headings: 0 | Levels checked: 1 | Format mismatches: 0
+  Level 0: [OK] template=None (7 headings) → output=None (0 headings)
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 5 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 5 | OK: 5 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 12 (output) | 0 (template) | Mismatches: 0
+  [OK] Semua figure caption mengikuti pola label-bold + deskripsi-normal.
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 10 | Mismatches: 10
+  [!] FONT SIZE MISMATCH: Paragraf #0 orig=24.0pt vs out=14.0pt. "Perancangan Sistem Kendali PID pada Lengan Robot I"
+  [!] FONT SIZE MISMATCH: Paragraf #1 orig=11.0pt vs out=10.0pt. "Annabil Hisyam"
+  [!] FONT SIZE MISMATCH: Paragraf #2 orig=11.0pt vs out=9.0pt. "Universitas Diponegoro"
+  [!] FONT SIZE MISMATCH: Paragraf #3 orig=11.0pt vs out=9.0pt. "annabilhisyammuyassa@students.undip.ac.id"
+  [!] FONT SIZE MISMATCH: Paragraf #4 orig=11.0pt vs out=10.0pt. "Abstract"
+  [!] FONT SIZE MISMATCH: Paragraf #5 orig=11.0pt vs out=10.0pt. "Presisi pengelasan pada lengan robot industri menj"
+  [!] FONT SIZE MISMATCH: Paragraf #6 orig=11.0pt vs out=10.0pt. "Keywords: kendali PID, lengan robot, pengelasan ot"
+  [!] FONT SIZE MISMATCH: Paragraf #7 orig=11.0pt vs out=10.0pt. "PENDAHULUAN"
+  [!] FONT SIZE MISMATCH: Paragraf #8 orig=11.0pt vs out=10.0pt. "Industri otomotif global terus mendorong peningkat"
+  [!] FONT SIZE MISMATCH: Paragraf #9 orig=11.0pt vs out=10.0pt. "Penelitian sebelumnya telah mengeksplorasi berbaga"
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 4 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 0 total (0 body + 0 header/footer) | Logo output: 0 total (0 body + 0 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  [OK] Template tidak memiliki logo di body top/headers/footers (skip check).
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 50 | Violations: 26
+  [!] PARA SPACING MISMATCH #0 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Perancangan Sistem Kendali PID pada Lengan Robot Industri un"
+  [!] PARA SPACING MISMATCH #3 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "annabilhisyammuyassa@students.undip.ac.id"
+  [!] PARA SPACING MISMATCH #5 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+  [!] PARA SPACING MISMATCH #6 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+  [!] PARA SPACING MISMATCH #10 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Kesenjangan penelitian yang teridentifikasi adalah belum ada"
+  [!] PARA SPACING MISMATCH #11 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Kontribusi spesifik penelitian ini meliputi:"
+  [!] PARA SPACING MISMATCH #12 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Perancangan model kinematik lengan robot enam derajat kebe"
+  [!] PARA SPACING MISMATCH #13 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Penentuan parameter PID optimal menggunakan metode Ziegler"
+  [!] PARA SPACING MISMATCH #14 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Analisis komparatif kinerja kendali PID terhadap kendali p"
+  [!] PARA SPACING MISMATCH #15 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Rekomendasi parameter awal untuk implementasi nyata pada p"
+  ... dan 16 paragraf lainnya.
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 2, Output: 2
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 0, Output: 5, Expected (orig + JSON): 0 (JSON tables: 0, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 5
+  [!] TABLE EXTRA FILLED: Output kelebihan 5 tabel berkonten (Expected: 0, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 2, Output: 2 | Original berkonten: 2 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 94% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1, 1], Output: [1, 1]
+  Drawings -- Original: 2, Output: 8
+  Dekoratif by cols -- Original: {}, Output: {}
+  Konten by cols -- Original: {1: 2}, Output: {1: 8}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 1 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 4 | Center violations: 0 | Tab violations: 4 | Alignment mismatches (vs template): 0
+  [!] FORMULA NUMBER TAB: Paragraf #28 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #31 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #49 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #60 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 0 | Mismatch: 0
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `AMORI_PID_Robotgen.py`. Tolong perbaiki kodingan `AMORI_PID_Robotgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- [FONT] Para #59 run #0: orig={} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} | "Hasil Simulasi Respons Step"
+- [FONT] Para #4 run #0: orig={} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} | "Abstract"
+- [FONT] Para #1 run #0: orig={} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} | "Annabil Hisyam"
+- [FONT] Para #27 run #2: orig={'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman'} | "    (1)"
+- FONT SIZE MISMATCH: Paragraf #0 orig=24.0pt vs out=14.0pt. "Perancangan Sistem Kendali PID pada Lengan Robot I"
+- FONT SIZE MISMATCH: Paragraf #1 orig=11.0pt vs out=10.0pt. "Annabil Hisyam"
+- FONT SIZE MISMATCH: Paragraf #2 orig=11.0pt vs out=9.0pt. "Universitas Diponegoro"
+- FONT SIZE MISMATCH: Paragraf #3 orig=11.0pt vs out=9.0pt. "annabilhisyammuyassa@students.undip.ac.id"
+- FONT SIZE MISMATCH: Paragraf #4 orig=11.0pt vs out=10.0pt. "Abstract"
+- FONT SIZE MISMATCH: Paragraf #5 orig=11.0pt vs out=10.0pt. "Presisi pengelasan pada lengan robot industri menj"
+- FONT SIZE MISMATCH: Paragraf #6 orig=11.0pt vs out=10.0pt. "Keywords: kendali PID, lengan robot, pengelasan ot"
+- FONT SIZE MISMATCH: Paragraf #7 orig=11.0pt vs out=10.0pt. "PENDAHULUAN"
+- FONT SIZE MISMATCH: Paragraf #8 orig=11.0pt vs out=10.0pt. "Industri otomotif global terus mendorong peningkat"
+- FONT SIZE MISMATCH: Paragraf #9 orig=11.0pt vs out=10.0pt. "Penelitian sebelumnya telah mengeksplorasi berbaga"
+- INFO: 8 gambar di bawah target 8.4cm (1-col layout) — mungkin gambar test/placeholder
+- PARA SPACING MISMATCH #0 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Perancangan Sistem Kendali PID pada Lengan Robot Industri un"
+- PARA SPACING MISMATCH #3 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "annabilhisyammuyassa@students.undip.ac.id"
+- PARA SPACING MISMATCH #5 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+- PARA SPACING MISMATCH #6 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+- PARA SPACING MISMATCH #10 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Kesenjangan penelitian yang teridentifikasi adalah belum ada"
+- PARA SPACING MISMATCH #11 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Kontribusi spesifik penelitian ini meliputi:"
+- PARA SPACING MISMATCH #12 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Perancangan model kinematik lengan robot enam derajat kebe"
+- PARA SPACING MISMATCH #13 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Penentuan parameter PID optimal menggunakan metode Ziegler"
+- PARA SPACING MISMATCH #14 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Analisis komparatif kinerja kendali PID terhadap kendali p"
+- PARA SPACING MISMATCH #15 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "• Rekomendasi parameter awal untuk implementasi nyata pada p"
+- PARA SPACING MISMATCH #21 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Chen dan Li [7] mengusulkan kendali PID berbasis jaringan sy"
+- PARA SPACING MISMATCH #23 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Keterbatasan yang terlihat dari penelitian-penelitian terseb"
+- PARA SPACING MISMATCH #29 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Pemodelan kinematik lengan robot menggunakan parameter Denav"
+- PARA SPACING MISMATCH #32 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Metode penalaan Ziegler-Nichols kedua (closed-loop) dilakuka"
+- PARA SPACING MISMATCH #33 [Normal]: before=4.0pt (orig=0.0pt, delta=4.0pt) after=14.0pt (orig=0.0pt, delta=14.0pt) — "Fig. 1. Diagram blok sistem kendali posisi lengan robot deng"
+- PARA SPACING MISMATCH #34 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Gambar 1 memperlihatkan diagram blok sistem kendali posisi y"
+- PARA SPACING MISMATCH #36 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Bab ini menjelaskan langkah-langkah perancangan sistem kenda"
+- PARA SPACING MISMATCH #38 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Sistem yang dirancang terdiri dari lengan robot 6-DOF dengan"
+- PARA SPACING MISMATCH #39 [Normal]: before=10.0pt (orig=0.0pt, delta=10.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Table I. Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+- PARA SPACING MISMATCH #40 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Parameter a₁ sampai a₆ merupakan panjang lengan dan offset y"
+- PARA SPACING MISMATCH #41 [Normal]: before=4.0pt (orig=0.0pt, delta=4.0pt) after=14.0pt (orig=3.0pt, delta=11.0pt) — "Fig. 2. Arsitektur sistem kendali PID pada lengan robot untu"
+- PARA SPACING MISMATCH #42 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Gambar 2 menunjukkan arsitektur keseluruhan sistem. Trajekto"
+- PARA SPACING MISMATCH #43 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=3.0pt, delta=0.0pt) — "Implementasi dan Prosedur Eksperimen"
+- PARA SPACING MISMATCH #44 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Simulasi dilakukan menggunakan MATLAB/Simulink R2023a. Pemod"
+- PARA SPACING MISMATCH #47 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Penalaan PID dilakukan menggunakan metode Ziegler-Nichols cl"
+- PARA SPACING MISMATCH #48 [Normal]: before=10.0pt (orig=0.0pt, delta=10.0pt) after=6.0pt (orig=3.0pt, delta=3.0pt) — "Table II. Parameter PID dari Metode Ziegler-Nichols Closed-L"
+- TABLE EXTRA FILLED: Output kelebihan 5 tabel berkonten (Expected: 0, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+- FORMULA NUMBER TAB: Paragraf #28 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #31 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #49 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #60 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Font Full Audit Mismatch (MINOR): -3 x 4 = -12
+  - Font Size Mismatch (MINOR): -3 x 10 = -30
+  - Paragraph Spacing Mismatch (MINOR): -2 x 26 = -52
+  - Tabel Extra Berkonten (MINOR): -5 x 2 = -10
+  - Formula Alignment Salah (MINOR): -3 x 4 = -12
+  Total Penalty: -116
+  Skor Akhir: 0%

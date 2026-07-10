@@ -52,17 +52,21 @@ class User(db.Model):
     name = db.Column(db.String(255), nullable=False)
     password_hash = db.Column(db.String(255), nullable=True)
     avatar_url = db.Column(db.String(500))
-    role = db.Column(db.String(20), default="user")  # 'user' or 'admin'
-    created_at = db.Column(db.DateTime, default=_utcnow)
+    role = db.Column(db.String(20), default="user", nullable=False)  # 'user' or 'admin'
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
     last_login = db.Column(db.DateTime, default=_utcnow)
     # Token quota (admin-managed via /api/admin/users/<id>/quota)
-    token_quota_monthly = db.Column(db.Integer, default=1000000, nullable=False)
+    token_quota_monthly = db.Column(db.Integer, default=500000, nullable=False)
     token_used_month = db.Column(db.Integer, default=0, nullable=False)
-    usage_month_key = db.Column(db.String(7), default="")  # 'YYYY-MM'
+    usage_month_key = db.Column(db.String(7), default="", nullable=False)  # 'YYYY-MM'
     # Settings
     nickname = db.Column(db.String(100), nullable=True, default="")
     institution = db.Column(db.String(255), nullable=True, default="")
     preferred_language = db.Column(db.String(10), nullable=True, default="id")  # 'id' or 'en'
+    user_memory = db.Column(db.JSON, nullable=False, default=dict)  # learned preferences/corrections for chat AI
+    # Account deletion (GDPR-style soft delete + anonymize)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
 
     # BUG-11: Validate enum-like fields at the ORM level
     @validates("role")
@@ -114,10 +118,10 @@ class Paper(db.Model):
 
     id = db.Column(db.String(20), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    title = db.Column(db.Text, default="Untitled")
+    title = db.Column(db.Text, default="Untitled", nullable=False)
     data = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=False, default=dict)
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
     active_operation = db.Column(db.String(50), nullable=True)
     active_operation_job_id = db.Column(db.String(50), nullable=True)
     active_operation_started_at = db.Column(db.DateTime, nullable=True)
@@ -155,6 +159,23 @@ class Paper(db.Model):
         return result
 
 
+class Payment(db.Model):
+    __tablename__ = "payments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    external_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    provider = db.Column(db.String(30), nullable=False)  # 'doku', 'xendit', 'ipaymu'
+    payment_method = db.Column(db.String(20), nullable=True)  # 'QRIS', 'VA'
+    status = db.Column(db.String(20), default="pending", nullable=False, index=True)  # pending|paid|expired|failed|cancelled
+    amount = db.Column(db.Integer, nullable=False)  # IDR
+    tokens = db.Column(db.Integer, nullable=False)  # tokens credited on success
+    payment_url = db.Column(db.Text, nullable=True)
+    raw_response = db.Column(db.Text, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+
+
 class PaperImage(db.Model):
     __tablename__ = "paper_images"
 
@@ -164,7 +185,7 @@ class PaperImage(db.Model):
     filename = db.Column(db.String(255), nullable=False)  # stored filename (uuid-based)
     original_name = db.Column(db.String(255), nullable=False)  # original upload name
     file_path = db.Column(db.String(500), nullable=False)  # relative path in data/uploads/
-    created_at = db.Column(db.DateTime, default=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
 
     def to_dict(self):
         from urllib.parse import quote
@@ -189,9 +210,9 @@ class PaperFile(db.Model):
     filename = db.Column(db.String(255), nullable=False)  # stored filename (uuid-based)
     original_name = db.Column(db.String(255), nullable=False)  # original upload name
     ext = db.Column(db.String(10), nullable=False)  # .pdf .docx etc
-    size_bytes = db.Column(db.Integer, default=0)
+    size_bytes = db.Column(db.Integer, default=0, nullable=False)
     file_path = db.Column(db.String(500), nullable=False)  # relative path in data/uploads/
-    extracted_text = db.Column(db.Text, default="")  # cached text for preview
+    extracted_text = db.Column(db.Text, default="", nullable=False)  # cached text for preview
     # PDF metadata — extracted during upload before file is deleted
     meta_title = db.Column(db.Text, default="")
     meta_authors = db.Column(JSON().with_variant(JSONB, "postgresql"), default=list)  # list[str]
@@ -200,7 +221,7 @@ class PaperFile(db.Model):
     meta_abstract = db.Column(db.Text, default="")
     meta_venue = db.Column(db.String(500), default="")
     meta_publisher = db.Column(db.String(500), default="")
-    created_at = db.Column(db.DateTime, default=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
 
     def to_dict(self, include_text=False):
         d = {
@@ -221,15 +242,18 @@ class PaperFile(db.Model):
 
 class ApiUsageLog(db.Model):
     __tablename__ = "api_usage_logs"
+    __table_args__ = (
+        db.Index("ix_api_usage_logs_user_created", "user_id", "created_at"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     endpoint = db.Column(db.String(100), nullable=False)
-    prompt_tokens = db.Column(db.Integer, default=0)
-    completion_tokens = db.Column(db.Integer, default=0)
-    total_tokens = db.Column(db.Integer, default=0)
+    prompt_tokens = db.Column(db.Integer, default=0, nullable=False)
+    completion_tokens = db.Column(db.Integer, default=0, nullable=False)
+    total_tokens = db.Column(db.Integer, default=0, nullable=False)
     model = db.Column(db.String(50))
-    created_at = db.Column(db.DateTime, default=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
 
 
 class Conversation(db.Model):
@@ -240,10 +264,10 @@ class Conversation(db.Model):
     id = db.Column(db.String(36), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id", ondelete="CASCADE"), nullable=True)
-    title = db.Column(db.Text, default="New Chat")
+    title = db.Column(db.Text, default="New Chat", nullable=False)
     mode = db.Column(db.String(30), nullable=True, default=None)
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
 
     messages = db.relationship(
         "ChatMessage",
@@ -285,10 +309,10 @@ class ChatMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     conversation_id = db.Column(db.String(36), db.ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False, index=True)
     role = db.Column(db.String(20), nullable=False)
-    content = db.Column(db.Text, default="")
+    content = db.Column(db.Text, default="", nullable=False)
     thinking = db.Column(db.Text, nullable=True)
     tool_calls = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
-    created_at = db.Column(db.DateTime, default=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
 
     def to_dict(self):
         return {
@@ -333,9 +357,9 @@ class ProjectMemory(db.Model):
     )
     key = db.Column(db.String(120), nullable=False)
     value = db.Column(db.Text, nullable=False)
-    kind = db.Column(db.String(40), default="fact")
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    kind = db.Column(db.String(40), default="fact", nullable=False)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
 
     __table_args__ = (
         db.Index(
@@ -388,14 +412,14 @@ class AiJob(db.Model):
             raise ValueError(f"AiJob.status must be one of {allowed}, got {value!r}")
         return value
 
-    progress = db.Column(db.Integer, default=0)  # 0..100
-    stage = db.Column(db.String(60), default="")  # 'outline' | 'sections' | 'references' | ...
+    progress = db.Column(db.Integer, default=0, nullable=False)  # 0..100
+    stage = db.Column(db.String(60), default="", nullable=False)  # 'outline' | 'sections' | 'references' | ...
     prompt = db.Column(db.Text)
     result = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
     error = db.Column(db.Text)
-    timeout = db.Column(db.Boolean, default=False)
-    started_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    timeout = db.Column(db.Boolean, default=False, nullable=False)
+    started_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
 
     __table_args__ = (
         db.Index("ix_ai_jobs_user_paper_kind", "user_id", "paper_id", "kind"),
@@ -429,35 +453,35 @@ class LiteratureItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     paper_id = db.Column(db.String(20), db.ForeignKey("papers.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    source_kind = db.Column(db.String(20), default="slr")  # slr | file | manual
-    source = db.Column(db.String(40), default="")  # arxiv|ieee|sinta|...
-    title = db.Column(db.Text, default="")
+    source_kind = db.Column(db.String(20), default="slr", nullable=False)  # slr | file | manual
+    source = db.Column(db.String(40), default="", nullable=False)  # arxiv|ieee|sinta|...
+    title = db.Column(db.Text, default="", nullable=False)
     title_norm = db.Column(db.Text, nullable=True, default="")
     authors = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=list)  # list[str]
     year = db.Column(db.Integer, nullable=True)
-    venue = db.Column(db.Text, default="")
-    publisher = db.Column(db.Text, default="")
+    venue = db.Column(db.Text, default="", nullable=False)
+    publisher = db.Column(db.Text, default="", nullable=False)
     doi = db.Column(db.String(255), nullable=True, index=True)
-    url = db.Column(db.Text, default="")
+    url = db.Column(db.Text, default="", nullable=False)
     pdf_url = db.Column(db.Text, nullable=True)
-    abstract = db.Column(db.Text, default="")
-    summary = db.Column(db.Text, default="")
+    abstract = db.Column(db.Text, default="", nullable=False)
+    summary = db.Column(db.Text, default="", nullable=False)
     citations = db.Column(db.Integer, nullable=True)
     score_total = db.Column(db.Float, nullable=True)
     score_breakdown = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
-    must_read = db.Column(db.Boolean, default=False)
-    is_relevant = db.Column(db.Boolean, default=True)
-    notes = db.Column(db.Text, default="")  # user-editable notes
+    must_read = db.Column(db.Boolean, default=False, nullable=False)
+    is_relevant = db.Column(db.Boolean, default=True, nullable=False)
+    notes = db.Column(db.Text, default="", nullable=False)  # user-editable notes
     gap_riset = db.Column(db.Text, default="")  # AI-generated research gap suggestion
     review = db.Column(db.Text, default="")  # AI-generated review (viola-chat)
-    pinned = db.Column(db.Boolean, default=False)  # user-pinned to top
+    pinned = db.Column(db.Boolean, default=False, nullable=False)  # user-pinned to top
     is_checked = db.Column(db.Boolean, default=False, nullable=False, server_default=db.text("false"))
     file_id = db.Column(db.Integer, db.ForeignKey("paper_files.id", ondelete="SET NULL"), nullable=True)
     slr_job_id = db.Column(
         db.String(20), db.ForeignKey("slr_jobs.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    created_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
 
     __table_args__ = (
         db.Index(
@@ -563,26 +587,27 @@ class SlrJob(db.Model):
     conversation_id = db.Column(db.String(36), db.ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True)
     query = db.Column(db.Text, nullable=False)
     sources = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=list)
-    top_k = db.Column(db.Integer, default=50)
-    per_source = db.Column(db.Integer, default=60)
+    top_k = db.Column(db.Integer, default=50, nullable=False)
+    per_source = db.Column(db.Integer, default=60, nullable=False)
     year_from = db.Column(db.Integer, nullable=True)
-    ai_summarize = db.Column(db.Boolean, default=True)
-    ai_model = db.Column(db.String(40), default="V-OPUS")
+    year_to = db.Column(db.Integer, nullable=True)
+    ai_summarize = db.Column(db.Boolean, default=True, nullable=False)
+    ai_model = db.Column(db.String(40), default="V-OPUS", nullable=False)
 
-    status = db.Column(db.String(20), default="queued", index=True)
+    status = db.Column(db.String(20), default="queued", index=True, nullable=False)
     # queued|running|done|error|cancelled
-    stage = db.Column(db.String(40), default="")
-    progress = db.Column(db.Integer, default=0)  # 0..100
-    progress_message = db.Column(db.Text, default="")
+    stage = db.Column(db.String(40), default="", nullable=False)
+    progress = db.Column(db.Integer, default=0, nullable=False)  # 0..100
+    progress_message = db.Column(db.Text, default="", nullable=False)
     result = db.Column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
     """Full pipeline output. Callers MUST keep this small (top_k items + stats only);
     the worker is responsible for trimming large payloads before persisting."""
-    error = db.Column(db.Text, default="")
+    error = db.Column(db.Text, default="", nullable=False)
 
-    queued_at = db.Column(db.DateTime, default=_utcnow)
+    queued_at = db.Column(db.DateTime, default=_utcnow, nullable=False)
     started_at = db.Column(db.DateTime, nullable=True)
     finished_at = db.Column(db.DateTime, nullable=True)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
 
     __table_args__ = (db.Index("ix_slr_jobs_status_queued_at", "status", "queued_at"),)
 
@@ -595,6 +620,8 @@ class SlrJob(db.Model):
             "query": self.query,
             "sources": self.sources or [],
             "top_k": self.top_k,
+            "year_from": self.year_from,
+            "year_to": self.year_to,
             "status": self.status,
             "stage": self.stage,
             "progress": int(self.progress or 0),
@@ -603,6 +630,7 @@ class SlrJob(db.Model):
             "queued_at": self.queued_at.isoformat() if self.queued_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "stats": stats or {},
         }
         if include_result:
@@ -641,7 +669,7 @@ class ImageGenJob(db.Model):
     error = db.Column(db.Text, nullable=True)  # error message if status=error
     retry_count = db.Column(db.Integer, default=0, nullable=False)  # job-level retry attempts
     target_path = db.Column(db.String(500), nullable=True)  # intended filename from paper JSON (e.g., "fig1_architecture.jpg")
-    created_at = db.Column(db.DateTime, default=_utcnow, index=True)
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True, nullable=False)
     started_at = db.Column(db.DateTime, nullable=True)  # when worker claimed the job
     finished_at = db.Column(db.DateTime, nullable=True)  # when job reached terminal state
 

@@ -576,6 +576,7 @@ def build_document(
     json_path: Path | str,
     output_path: Path | str | None = None,
     template_path: Path | str = TEMPLATE_PATH,
+
 ) -> Path:
     """Build PAUDIA DOCX from JSON config."""
     json_path = Path(json_path)
@@ -659,6 +660,15 @@ def build_document(
     doc.save(str(final))
     return final
 
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)
 
 if __name__ == "__main__":
     from _docx_base import run_generator

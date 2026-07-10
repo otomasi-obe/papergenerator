@@ -206,18 +206,18 @@ def update_paper(paper_id: str):
     paper.title = title
     paper.data = data
     paper.updated_at = datetime.now(timezone.utc)
-    # Save paper.json to user storage
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    # Save paper.json to user storage after DB commit succeeds
     try:
         from utils.core.user_storage import get_username, save_paper_json_by_id
         _username = get_username(user_id=user_id)
         save_paper_json_by_id(_username, paper_id, data)
     except Exception:
         log.exception("save_paper_json_by_id failed on update", extra={"paper_id": paper_id, "user_id": user_id})
-    try:
-        safe_commit()
-    except Exception:
-        db.session.rollback()
-        raise
     return jsonify({"success": True, "paper": paper.to_dict()})
 
 
@@ -262,14 +262,11 @@ def delete_paper(paper_id: str):
         db.session.execute(_sa_text("DELETE FROM chat_drafts WHERE paper_id = :pid"), {"pid": paper_id})
         db.session.execute(_sa_text("DELETE FROM user_states WHERE paper_id = :pid"), {"pid": paper_id})
 
-        paper_img_dir = safe_paper_dir(paper_id)
-        if paper_img_dir and paper_img_dir.exists():
-            shutil.rmtree(str(paper_img_dir))
-
         db.session.delete(paper)
-        safe_commit()
 
         # Mark user storage JSON as deleted instead of removing it
+        # Commit DB FIRST before touching filesystem so rollback is possible
+        safe_commit()
         try:
             import json as _json
             from utils.core.user_storage import get_username, get_paper_base_by_id
@@ -359,9 +356,11 @@ def patch_paper(paper_id: str):
     try:
         patched = jsonpatch.apply_patch(base, ops, in_place=False)
     except jsonpatch.JsonPatchException as e:
-        return jsonify({"error": f"patch failed: {e}"}), 422
+        log.warning("JSON patch failed: %s", e)
+        return jsonify({"error": "patch failed"}), 422
     except Exception as e:
-        return jsonify({"error": f"patch error: {e}"}), 422
+        log.warning("JSON patch error: %s", e)
+        return jsonify({"error": "patch error"}), 422
 
     # Optional: validate post-patch shape stays sane.
     if not isinstance(patched, dict):
@@ -371,14 +370,14 @@ def patch_paper(paper_id: str):
     new_title = (patched.get("title") or "").strip() or paper.title or "Untitled"
     paper.title = new_title
     paper.updated_at = datetime.now(timezone.utc)
-    # Save paper.json to user storage
+    safe_commit()
+    # Save paper.json to user storage after DB commit succeeds
     try:
         from utils.core.user_storage import get_username, save_paper_json_by_id
         _username = get_username(user_id=user_id)
         save_paper_json_by_id(_username, paper_id, patched)
     except Exception:
         log.exception("save_paper_json_by_id failed on patch", extra={"paper_id": paper_id, "user_id": user_id})
-    safe_commit()
 
     return jsonify(
         {

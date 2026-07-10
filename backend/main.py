@@ -75,8 +75,6 @@ from utils.job_core import (
     _get_current_user_id,
     _log_api_usage,
 )
-from tools.payment.qris import payment_bp
-from tools.payment.ipaymu import ipaymu_bp
 from tools.payment.doku import doku_bp
 
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
@@ -247,7 +245,7 @@ if not _APP_BASE_URL:
 
 # Per-request body cap. 100MB — prevents DoS via memory exhaustion while still
 # allowing multi-file uploads of large PDFs (~10MB each × multiple files).
-app.config["MAX_CONTENT_LENGTH"] = 1100 * 1024 * 1024  # 1.1GB — supports large file uploads (100MB/file × 11 files)
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB — prevents DoS while allowing multi-file uploads
 
 
 # Friendlier 413 — Werkzeug's default returns an HTML page that the chat
@@ -396,17 +394,23 @@ def revoked_token_callback(jwt_header, jwt_payload):
 
 @jwt.token_in_blocklist_loader
 def _check_if_token_revoked(jwt_header, jwt_payload):
-    """Check if a refresh token's JTI has been revoked via Redis blocklist."""
-    if jwt_payload.get("type") != "refresh":
-        return False  # Only check refresh tokens
+    """Check if a token's JTI has been revoked via Redis blocklist.
+
+    Revokes both refresh (`rjti:`) and access (`ajti:`) tokens so that
+    account deletion / logout-everywhere can kill active sessions immediately.
+    """
     jti = jwt_payload.get("jti")
     if not jti:
         return False
+    token_type = jwt_payload.get("type")
     try:
         from utils.core.redis_client import get_redis
         rc = get_redis()
         if rc:
-            return rc.exists(f"rjti:{jti}") > 0
+            if token_type == "refresh":
+                return rc.exists(f"rjti:{jti}") > 0
+            # access tokens (and any other type) use the ajti: prefix
+            return rc.exists(f"ajti:{jti}") > 0
     except Exception:
         pass
     return False
@@ -521,6 +525,14 @@ limiter = Limiter(
 )
 
 
+@limiter.request_filter
+def _auth_flow_rate_limit_exempt():
+    # Auth bootstrap must never be blocked by generic page/API bursts; otherwise
+    # OAuth callback succeeds but /api/auth/me returns 429 and the UI shows
+    # "Failed to load user info".
+    return request.path == "/api/auth/me" or request.path.startswith("/api/auth/google/")
+
+
 # ─── Correlation ID + JWT cache middleware ────────────────────────────────
 @app.before_request
 def add_correlation_id():
@@ -576,16 +588,14 @@ app.register_blueprint(health)
 app.register_blueprint(tools_api)
 app.register_blueprint(logging_api)
 app.register_blueprint(state_bp)
-app.register_blueprint(payment_bp)  # QRIS payment endpoints
-app.register_blueprint(ipaymu_bp)  # iPaymu payment endpoints
-app.register_blueprint(doku_bp)    # DOKU SNAP payment endpoints
+app.register_blueprint(doku_bp)    # DOKU SNAP payment endpoints (QRIS + VA)
 
 # ─── Image generation provider health endpoint ─────────────────────
 @app.route("/api/image-providers/status", methods=["GET"])
 @jwt_required()
 def image_providers_status():
     """Return health status of all image generation providers (API-first)."""
-    from tools.image_generation.image_api import get_provider_status
+    from tools.image_generation.image_api_v2 import get_provider_status
     return jsonify(get_provider_status())
 
 
@@ -1782,6 +1792,44 @@ def _run_generate_full_job(
         # Stop progress ticker
         _ticker_stop.set()
 
+        # ── Token deduction for Generate Full (fallback single-shot path) ────
+        # This mirrors the deduction in paper_worker.py chunked path.
+        if uid is not None and paper_data:
+            try:
+                from utils.database.models import ApiUsageLog, User as _User
+                prompt_text = "\n".join(str(x or "") for x in (prompt, extra, topic, style, language))
+                completion_text = json.dumps(paper_data, ensure_ascii=False)
+                prompt_tokens = max(1, len(prompt_text) // 4)
+                completion_tokens = max(1, len(completion_text) // 4)
+                total_tokens = prompt_tokens + completion_tokens
+                # Streaming/fallback providers often omit reasoning usage; Generate Full
+                # has a minimum internal charge after a successful save.
+                if total_tokens < 120_000:
+                    completion_tokens += 120_000 - total_tokens
+                    total_tokens = 120_000
+                db.session.add(ApiUsageLog(
+                    user_id=int(uid),
+                    endpoint="/api/papers/generate-full",
+                    model="VIOLA-GENERATE",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=total_tokens,
+                    created_at=datetime.now(timezone.utc),
+                ))
+                _user = _User.query.get(int(uid))
+                if _user and _user.role != "admin":
+                    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+                    if (_user.usage_month_key or "") != month_key:
+                        _user.usage_month_key = month_key
+                        _user.token_used_month = 0
+                    _user.token_used_month = int(_user.token_used_month or 0) + total_tokens
+                safe_commit()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+
         # Single end-of-run checkpoint — stage="complete", progress=100.
         _checkpoint("complete", 100)
 
@@ -2282,6 +2330,8 @@ def upload_image_legacy():
         file.stream.seek(0, 2)
         size = file.stream.tell()
         file.stream.seek(0)
+        if size > 10 * 1024 * 1024:
+            return jsonify({"error": "Image too large (max 10MB)"}), 400
         head = file.stream.read(16)
         file.stream.seek(0)
         if not _is_image_bytes(head, ext):
@@ -2713,7 +2763,7 @@ def paper_pdf_preview(paper_id: str):
                 pass
     except Exception as e:
         log.exception("unhandled preview pdf error: %s", e)
-        return jsonify({"error": "Internal server error", "detail": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route("/api/papers/<paper_id>/preview.pdf", methods=["GET", "OPTIONS"])
@@ -2726,32 +2776,40 @@ def serve_paper_pdf_preview(paper_id: str):
     - api.get(url) in the frontend (Authorization header sent by axios)
     - <iframe> in the same page (cookies or no auth)
 
-    Authorization: the paper_id is a long unguessable UUID — possession of the
-    URL is sufficient proof of authorization.  We still check the paper exists
-    in the DB to reject bogus IDs, but we do NOT require a JWT because iframes
-    may not forward cookies (Safari ITP, third-party cookie blocks).
+    Authorization: possession of the URL is sufficient proof. We still
+    validate paper_id format to prevent path traversal.
     """
     from flask import request as flask_request
+
+    # 👮 Prevent path traversal via malformed paper_id
+    if not _PAPER_ID_RE.match(paper_id):
+        return jsonify({"error": "Invalid paper_id"}), 400
 
     is_docx = flask_request.path.endswith(".docx")
     ext = "docx" if is_docx else "pdf"
 
     journal_code = flask_request.args.get("journal", "")
     title = flask_request.args.get("title", "")
+
+    # Sanitize title and journal_code before they touch the filesystem
+    safe_title = re.sub(r"[^a-zA-Z0-9_\-\s]+", "_", (title or "paper").strip())[:120]
+    safe_journal = re.sub(r"[^a-zA-Z0-9_-]+", "_", (journal_code or "journal").strip())[:40]
+
     file_path = None
 
     if journal_code:
-        # Primary: new paper_dir path
+        # Primary: new paper_dir path (safe — _paper_file_path sanitizes internally)
         from utils.database.models import Paper
         paper = Paper.query.filter_by(id=paper_id).first()
+        # TODO: add user_id filter — preview endpoint is possession-based (URL = proof)
         if paper:
-            file_path = _paper_file_path(paper_id, title or "paper", journal_code, ext, cleanup_old=False, user_id=paper.user_id)
+            file_path = _paper_file_path(paper_id, safe_title, journal_code, ext, cleanup_old=False, user_id=paper.user_id)
             if not file_path.exists():
                 file_path = None
 
     if file_path is None or not file_path.exists():
         # Legacy fallback: user/<paper_id>/ (old path before per-user fix)
-        legacy_path = USER_BASE / paper_id / f"{title or 'paper'}_{journal_code}.{ext}"
+        legacy_path = USER_BASE / paper_id / f"{safe_title}_{safe_journal}.{ext}"
         if legacy_path.exists():
             file_path = legacy_path
         if file_path is None or not file_path.exists():
@@ -2769,6 +2827,14 @@ def serve_paper_pdf_preview(paper_id: str):
     if file_path is None or not file_path.exists():
         return jsonify({"error": "Preview not ready"}), 404
 
+    # 🛡️ Final containment check: file must be under USER_BASE
+    try:
+        resolved = file_path.resolve()
+        resolved.relative_to(USER_BASE.resolve())
+    except ValueError:
+        log.warning("path traversal blocked for paper_id=%s path=%s", paper_id, file_path)
+        return jsonify({"error": "Invalid path"}), 403
+
     response = send_file(
         str(file_path),
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document" if is_docx else "application/pdf",
@@ -2778,7 +2844,7 @@ def serve_paper_pdf_preview(paper_id: str):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Origin"] = request.origin or "*"
     return response
 
 
@@ -3076,6 +3142,24 @@ def word_addon_content():
     if not snippet:
         return _office_cors(jsonify({"error": "Unknown content type"})), 400
     return _office_cors(jsonify(snippet))
+
+
+# ─── Version endpoint ───────────────────────────────────────────────────────────
+@app.route("/api/version", methods=["GET"])
+def api_version():
+    import os, json
+    base = os.path.join(os.path.dirname(__file__), "..", "frontend", "public")
+    try:
+        with open(os.path.join(base, "version-history.json"), "r") as f:
+            return jsonify(json.load(f))
+    except:
+        pass
+    try:
+        with open(os.path.join(base, "version.json"), "r") as f:
+            return jsonify(json.load(f))
+    except:
+        pass
+    return jsonify({"version": "0.0.0", "released": "", "title": "", "changes": []})
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────

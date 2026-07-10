@@ -343,22 +343,21 @@ def get_data_job(job_id: str):
 @data_jobs.route("/api/data-jobs/<job_id>/stream", methods=["GET"])
 def stream_data_job(job_id: str):
     """SSE stream for job progress. Accepts token via query param (EventSource doesn't send custom headers)."""
-    # EventSource doesn't support custom headers, so we accept token via query param
-    # Support both 'token' (JWT) and 'csrf_token' (CSRF cookie) for backward compatibility
+    # SECURITY: Token via query param is logged/visible — prefer httpOnly cookie.
+    # EventSource automatically sends cookies on same-origin requests.
+    # Only fall back to query param if no cookie present (legacy clients).
     token = request.args.get('token') or request.args.get('csrf_token')
     user_id = None
-    
+
     if token:
         try:
             from flask_jwt_extended import decode_token
-            # Try decoding as JWT token first
             decoded = decode_token(token)
             user_id = int(decoded['sub'])
         except Exception:
-            # If decode fails, token might be CSRF token - fall through to cookie auth
             pass
 
-    # Fallback: read JWT from httpOnly cookie (EventSource sends it automatically)
+    # Prefer cookie over query param when available (less exposure)
     if not user_id:
         cookie_token = request.cookies.get('access_token_cookie')
         if cookie_token:
@@ -369,17 +368,15 @@ def stream_data_job(job_id: str):
             except Exception:
                 pass
 
-    # Also try cookie-based auth (reads access_token_cookie)
     if not user_id:
         try:
-            from flask_jwt_extended import verify_jwt_in_request
             verify_jwt_in_request()
             user_id = int(get_jwt_identity())
         except Exception:
             pass
-    
+
     if not user_id:
-        return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED"}), 401
+        return jsonify({"error": "Missing authorization", "code": "UNAUTHORIZED"}), 401
 
     job = AiJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:

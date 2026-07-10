@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import shutil
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,6 +31,9 @@ _SAFE_RE = re.compile(r'[^A-Za-z0-9._-]+')
 
 def _safe(name, fallback="unknown"):
     s = _SAFE_RE.sub("_", str(name or "")).strip("._-")
+    # ponytail: max path segment capped at 200; callers append suffixes/extensions
+    if len(s) > 200:
+        s = s[:200].strip("._-")
     return s or fallback
 
 
@@ -79,10 +83,9 @@ def get_paper_base(username, judul_paper):
 
 
 def get_paper_base_by_id(username, paper_id):
-    """Return base dir for paper_id-based storage: user/<username>/<paper_id>/"""
-    safe_user = _safe(username)
+    """Return base dir for paper_id-based storage: user/<paper_id>/"""
     safe_id = _safe(paper_id, "unknown")
-    return _ensure_dir(USER_BASE / safe_user / safe_id)
+    return _ensure_dir(USER_BASE / safe_id)
 
 def save_chat_send_by_id(username, paper_id, data, conv_id=None):
     """Save user→AI message to user/<username>/<paper_id>/chat/<conv_id>/YYYYMMDD-HHMMSS-send.json"""
@@ -274,11 +277,15 @@ def save_uploaded_file(username, judul_paper, source_path, filename):
     safe_name = _safe(filename)
     dest = file_dir / safe_name
     if dest.exists():
-        stem = dest.stem
-        suffix = dest.suffix
+        # BUG FIX: Counter loop was not re-sanitizing the incremented filename,
+        # allowing collisions with sanitized names to create unpredictable paths.
+        stem = Path(filename).stem  # Use original (unsanitized) stem for counter
+        suffix = Path(filename).suffix
         counter = 1
-        while dest.exists():
-            dest = file_dir / f"{stem}_{counter}{suffix}"
+        while True:
+            dest = file_dir / f"{_safe(stem)}_{counter}{suffix}"
+            if not dest.exists():
+                break
             counter += 1
     shutil.copy2(str(source_path), str(dest))
     return dest
@@ -290,11 +297,14 @@ def save_uploaded_file_bytes(username, judul_paper, data_bytes, filename):
     safe_name = _safe(filename)
     filepath = file_dir / safe_name
     if filepath.exists():
-        stem = filepath.stem
-        suffix = filepath.suffix
+        # BUG FIX: Same counter-loop fix as save_uploaded_file — re-sanitize each iteration
+        stem = Path(filename).stem
+        suffix = Path(filename).suffix
         counter = 1
-        while filepath.exists():
-            filepath = file_dir / f"{stem}_{counter}{suffix}"
+        while True:
+            filepath = file_dir / f"{_safe(stem)}_{counter}{suffix}"
+            if not filepath.exists():
+                break
             counter += 1
     with open(filepath, "wb") as f:
         f.write(data_bytes)
@@ -302,7 +312,7 @@ def save_uploaded_file_bytes(username, judul_paper, data_bytes, filename):
 
 
 def update_judul_paper(username, judul_paper, paper_data=None):
-    """Save paper.json (renamed from judulpaper.json for clarity)."""
+    """Save paper.json (legacy, title-based paths)."""
     base = get_paper_base(username, judul_paper)
     filepath = base / "paper.json"
     payload = {
@@ -321,6 +331,39 @@ def update_judul_paper(username, judul_paper, paper_data=None):
         except Exception:
             pass
     return filepath
+
+
+def update_judul_paper_by_id(paper_id, paper_title, journal_code, paper_data=None):
+    """Save paper JSON to user/<paper_id>/<title>_<journal>.json.
+
+    Removes old JSON files in that folder so only the latest title+journal
+    combination is kept.
+    """
+    safe_id = _safe(paper_id, "unknown")
+    paper_dir = _ensure_dir(USER_BASE / safe_id)
+    safe_title = _safe(paper_title, "paper")[:60]
+    safe_journal = _safe(journal_code, "journal")
+    filename = f"{safe_title}_{safe_journal}.json"
+    target = paper_dir / filename
+    for old in paper_dir.glob("*.json"):
+        if old.name.startswith("_tmp_"):
+            continue
+        if old != target:
+            try:
+                old.unlink()
+            except Exception:
+                pass
+    payload = {
+        "paper_id": paper_id,
+        "title": paper_title,
+        "journal": journal_code,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if paper_data:
+        payload["paper_data"] = paper_data
+    with open(target, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    return target
 
 
 def get_judul_paper(username, judul_paper):
@@ -495,8 +538,8 @@ def save_status_json(username, paper_id, status_data):
     filepath = get_status_json_path(username, paper_id)
     status_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     
-    # Atomic write: write to .tmp then rename
-    tmp_path = str(filepath) + ".tmp"
+    # Atomic write: write to unique .tmp then rename
+    tmp_path = f"{filepath}.tmp.{uuid.uuid4()}"
     with open(tmp_path, "w", encoding="utf-8") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         json.dump(status_data, f, ensure_ascii=False, indent=2)
@@ -688,7 +731,11 @@ def build_status_context(username, paper_id, selected_facts=None, selected_files
                 # Try to read file content if it's text-based
                 if filepath:
                     try:
-                        file_path = Path(filepath)
+                        file_path = Path(filepath).resolve()
+                        paper_base = get_paper_base_by_id(username, paper_id).resolve()
+                        if not str(file_path).startswith(str(paper_base) + os.sep):
+                            log.warning(f"build_status_context: path outside paper dir ignored: {filepath}")
+                            continue
                         if file_path.exists() and file_path.suffix.lower() in ['.txt', '.md', '.csv', '.json']:
                             content = file_path.read_text(encoding='utf-8')
                             context_parts.append(f"  Content:\n```\n{content}\n```")

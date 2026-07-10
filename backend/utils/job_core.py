@@ -99,11 +99,7 @@ def _job_set_done(job_id: str, user_id: int, paper_data: dict, elapsed_s: int):
     }
     job.error = None
     job.timeout = False
-    try:
-        safe_commit()
-    except Exception:
-        db.session.rollback()
-        raise
+    safe_commit()
 
 
 def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool = False):
@@ -115,11 +111,7 @@ def _job_set_error(job_id: str, user_id: int, error_msg: str, timeout_flag: bool
     job.status = "error"
     job.error = error_msg
     job.timeout = bool(timeout_flag)
-    try:
-        safe_commit()
-    except Exception:
-        db.session.rollback()
-        raise
+    safe_commit()
 
 
 # ── Auth helper ─────────────────────────────────────────────────────────────

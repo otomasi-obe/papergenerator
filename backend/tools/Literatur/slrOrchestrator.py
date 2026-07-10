@@ -68,7 +68,7 @@ log.info("slrOrchestrator initialized with logging to %s", _LOG_FILE)
 
 MAX_WORKERS_DEFAULT = 8
 FETCH_TIMEOUT_SEC = 300  # 5 min total fetch
-PER_FETCHER_LIMIT = 500  # Default large limit per fetcher (fetch all available)
+# PER_FETCHER_LIMIT removed — per-fetcher limit is now computed dynamically as top_n * 2 in run_slr()
 RATE_LIMITERS: dict[str, RateLimiter] = {}
 
 
@@ -250,7 +250,11 @@ def run_slr(
         len(fetcher_names), total_queries, analysis.get("domains", []),
     )
     
-    # ── Stage 2: Parallel fetch (all data, no limit) ────────────────────
+    # Per-fetcher limit: top_n * 2 (e.g. top_k=50, 3 fetchers → 300 raw papers)
+    per_fetcher_limit = max(top_n * 2, 20)  # minimum 20 per fetcher
+    log.info("Per-fetcher limit: %d (top_n=%d × 2)", per_fetcher_limit, top_n)
+    
+    # ── Stage 2: Parallel fetch ─────────────────────────────────────────
     log.info("Stage 2: Parallel fetching from %d sources...", len(fetcher_names))
     
     filters: dict = {}
@@ -275,34 +279,40 @@ def run_slr(
             future = executor.submit(
                 _fetch_single_source,
                 fn, q,
-                limit=PER_FETCHER_LIMIT,  # None = no limit
+                limit=per_fetcher_limit,  # = top_n * 2 per fetcher
                 filters=filters,
             )
             futures[future] = (fn, q)
         
         # Collect results as they complete
         completed = 0
-        for future in as_completed(futures, timeout=FETCH_TIMEOUT_SEC):
-            fn, q = futures[future]
-            try:
-                papers = future.result()
-            except Exception as exc:
-                log.warning("Fetch task %s (q=%s) failed: %s", fn, q[:30], exc)
-                papers = []
-            
-            # Dedup on-the-fly
-            for p in papers:
-                k = p.dedup_key()
-                if k not in seen_keys:
-                    seen_keys[k] = len(all_papers)
-                    all_papers.append(p)
-            
-            completed += 1
-            if completed % max(1, len(fetch_tasks) // 5) == 0:
-                log.info(
-                    "Fetch progress: %d/%d tasks completed, %d unique papers so far",
-                    completed, len(fetch_tasks), len(all_papers),
-                )
+        try:
+            for future in as_completed(futures, timeout=FETCH_TIMEOUT_SEC):
+                fn, q = futures[future]
+                try:
+                    papers = future.result()
+                except Exception as exc:
+                    log.warning("Fetch task %s (q=%s) failed: %s", fn, q[:30], exc)
+                    papers = []
+                
+                # Dedup on-the-fly
+                for p in papers:
+                    k = p.dedup_key()
+                    if k not in seen_keys:
+                        seen_keys[k] = len(all_papers)
+                        all_papers.append(p)
+                
+                completed += 1
+                if completed % max(1, len(fetch_tasks) // 5) == 0:
+                    log.info(
+                        "Fetch progress: %d/%d tasks completed, %d unique papers so far",
+                        completed, len(fetch_tasks), len(all_papers),
+                    )
+        except TimeoutError:
+            log.warning("Fetch timeout after %ds — %d/%d tasks completed, using partial results",
+                        FETCH_TIMEOUT_SEC, completed, len(futures))
+            for f in futures:
+                f.cancel()
     
     elapsed = time.time() - start_time
     log.info(

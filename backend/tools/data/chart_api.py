@@ -481,7 +481,7 @@ def upload_chart_data(paper_id: str):
             "FILE_TOO_LARGE", 400
         )
 
-    paper_dir = safe_paper_dir(paper_id)
+    paper_dir = safe_paper_dir(paper_id, user_id=user_id)
     if paper_dir is None:
         return _err("Invalid paper id", "BAD_REQUEST", 400)
     paper_dir.mkdir(parents=True, exist_ok=True)

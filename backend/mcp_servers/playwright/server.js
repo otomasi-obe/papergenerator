@@ -100,10 +100,10 @@ async function humanLikeInteraction(page) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function fetchPage(url, waitSelector = null, timeout = 30) {
-  let browser, context;
+  let browser, context, page;
   try {
     ({ browser, context } = await launchBrowser(true));
-    const page = await context.newPage();
+    page = await context.newPage();
 
     // Navigate
     const response = await page.goto(url, {
@@ -116,7 +116,7 @@ async function fetchPage(url, waitSelector = null, timeout = 30) {
     if (title.includes("Just a moment") || (response && response.status() === 403)) {
       console.error("[playwright] Cloudflare challenge detected, waiting...");
       try {
-        await page.waitForURL(url => !url.includes("Just a moment"), { timeout: 15000 });
+        await page.waitForURL(u => !u.includes("Just a moment"), { timeout: 15000 });
       } catch {
         // Continue anyway
       }
@@ -134,19 +134,28 @@ async function fetchPage(url, waitSelector = null, timeout = 30) {
     // Human-like interaction
     await humanLikeInteraction(page);
 
+    // ✅ CRITICAL: Extract ALL data BEFORE closing browser
     const html = await page.content();
+    const pageUrl = page.url();
+    const pageTitle = await page.title();
+    const statusCode = response ? response.status() : 200;
+
+    // Cleanup
+    await context.close();
     await browser.close();
 
     return {
       success: true,
       html,
-      url: page.url(),
-      title: await page.title(),
-      status: response ? response.status() : 200,
+      url: pageUrl,
+      title: pageTitle,
+      status: statusCode,
     };
 
   } catch (error) {
-    if (browser) await browser.close();
+    // Cleanup on error
+    if (context) await context.close().catch(() => {});
+    if (browser) await browser.close().catch(() => {});
     return {
       success: false,
       error: error.message,
@@ -156,52 +165,55 @@ async function fetchPage(url, waitSelector = null, timeout = 30) {
 }
 
 async function fetchPages(urls, delayMin = 2000, delayMax = 5000) {
-  let browser, context;
-  const results = [];
+      let browser, context;
+      const results = [];
 
-  try {
-    ({ browser, context } = await launchBrowser(true));
-
-    for (const url of urls) {
-      const page = await context.newPage();
-      
       try {
-        await page.goto(url, { timeout: 30000, waitUntil: "domcontentloaded" });
-        await humanLikeInteraction(page);
-        
-        const html = await page.content();
-        results.push({
-          url,
-          success: true,
-          html,
-          title: await page.title(),
-        });
-        
-        await page.close();
-        
-        // Delay antar request
-        if (urls.indexOf(url) < urls.length - 1) {
-          await humanLikeDelay(delayMin, delayMax);
+        ({ browser, context } = await launchBrowser(true));
+
+        for (const url of urls) {
+          let page;
+          try {
+            page = await context.newPage();
+            await page.goto(url, { timeout: 30000, waitUntil: "domcontentloaded" });
+            await humanLikeInteraction(page);
+
+            const html = await page.content();
+            const pageTitle = await page.title();
+            results.push({
+              url,
+              success: true,
+              html,
+              title: pageTitle,
+            });
+
+            await page.close();
+
+            // Delay antar request
+            if (urls.indexOf(url) < urls.length - 1) {
+              await humanLikeDelay(delayMin, delayMax);
+            }
+
+          } catch (error) {
+            results.push({
+              url,
+              success: false,
+              error: error.message,
+            });
+            if (page) await page.close().catch(() => {});
+          }
         }
-        
+
+        await context.close();
+        await browser.close();
+        return { success: true, results };
+
       } catch (error) {
-        results.push({
-          url,
-          success: false,
-          error: error.message,
-        });
-        await page.close();
+        if (context) await context.close().catch(() => {});
+        if (browser) await browser.close().catch(() => {});
+        return { success: false, error: error.message };
       }
     }
-
-    await browser.close();
-    return { success: true, results };
-
-  } catch (error) {
-    if (browser) await browser.close();
-    return { success: false, error: error.message };
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MCP Protocol Handlers

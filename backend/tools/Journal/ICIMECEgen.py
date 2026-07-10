@@ -1,4 +1,4 @@
-﻿"""
+"""
 ICIMECEgen.py - Generator DOCX untuk jurnal ICIMECE.
 Menggunakan dokumen asli ICIMECE.docx sebagai base template.
 Data diambil dari _template.json.
@@ -592,6 +592,30 @@ def _clean_latex(text):
     return text.strip()
 
 
+# Greek Unicode chars that must render in Symbol font
+_GREEK_CHARS = set("αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ")
+
+
+def _split_greek(text: str, base_font: str, sym_font: str):
+    """Split text into segments of plain and Greek chars, each with appropriate font."""
+    result = []
+    i = 0
+    while i < len(text):
+        if text[i] in _GREEK_CHARS:
+            j = i
+            while j < len(text) and text[j] in _GREEK_CHARS:
+                j += 1
+            result.append((text[i:j], sym_font))
+            i = j
+        else:
+            j = i
+            while j < len(text) and text[j] not in _GREEK_CHARS:
+                j += 1
+            result.append((text[i:j], base_font))
+            i = j
+    return result
+
+
 def add_body_text(doc, text):
     cleaned = _clean_latex(text)
     p = doc.add_paragraph()
@@ -599,8 +623,12 @@ def add_body_text(doc, text):
     set_para_spacing(p, before_pt=0, after_pt=0)
     if CFG["first_line_indent_tw"] > 0:
         set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
-    run = p.add_run(cleaned)
-    set_run_font(run, CFG["font_body"], CFG["size_body"])
+    sym_font = CFG.get("font_sym", "Symbol")
+    base_font = CFG["font_body"]
+    for seg_text, seg_font in _split_greek(cleaned, base_font, sym_font):
+        if seg_text:
+            run = p.add_run(seg_text)
+            set_run_font(run, seg_font, CFG["size_body"])
 
 
 def add_figure(doc, fig_data, fig_counter):
@@ -609,6 +637,8 @@ def add_figure(doc, fig_data, fig_counter):
     prompt_hint = _clean_latex(str(fig_data.get("Prompt", "")).strip())
 
     image_path_str = str(fig_data.get("Path", "")).strip()
+    # Normalise: AI tokenizer sometimes inserts spaces inside filenames
+    image_path_norm = image_path_str.replace(" ", "") if " " in image_path_str else image_path_str
     image_url = str(fig_data.get("url", "")).strip()
     has_image = fig_data.get("hasImage", False)
 
@@ -617,9 +647,11 @@ def add_figure(doc, fig_data, fig_counter):
     if image_path_str or image_url:
         candidates = []
 
-        # 1) Absolute path
+        # 1) Absolute path (original + space-normalised)
         if image_path_str and os.path.isabs(image_path_str):
             candidates.append(Path(image_path_str))
+            if image_path_norm != image_path_str:
+                candidates.append(Path(image_path_norm))
 
         # 2) Relative to TEMPLATE_JSON's image/ sibling folder
         try:
@@ -628,6 +660,8 @@ def add_figure(doc, fig_data, fig_counter):
             image_dir = paper_dir / "image"
             if image_dir.is_dir() and image_path_str:
                 candidates.append(image_dir / image_path_str)
+                if image_path_norm != image_path_str:
+                    candidates.append(image_dir / image_path_norm)
                 stem = os.path.splitext(image_path_str)[0]
                 if stem:
                     for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
@@ -635,7 +669,25 @@ def add_figure(doc, fig_data, fig_counter):
         except Exception:
             pass
 
-        # 3) Direct path from fig_data
+        # 3) Scan user/*/<paper_id>/image/ (web export: TEMPLATE_JSON is /tmp/)
+        try:
+            data = load_json()
+            _pid = str(data.get("paper_id") or data.get("id") or "").strip()
+            if not _pid and isinstance(data.get("paper_data"), dict):
+                _pid = str(data["paper_data"].get("paper_id", "")).strip()
+            if _pid:
+                _udir = Path(__file__).resolve().parent.parent.parent / "user"
+                if _udir.is_dir():
+                    for _uname in _udir.iterdir():
+                        _idir = _uname / _pid / "image"
+                        if _idir.is_dir():
+                            for _n in (image_path_str, image_path_norm):
+                                candidates.append(_idir / _n)
+                            break
+        except Exception:
+            pass
+
+        # 4) Direct path from fig_data
         if image_path_str:
             candidates.append(Path(image_path_str))
 
@@ -770,7 +822,7 @@ def add_formula(doc, formula_data):
 def add_references(doc, data):
     refs_data = data.get("references", {})
     if isinstance(refs_data, dict):
-        refs_list = refs_data.get("content") or refs_data.get("items") or [])
+        refs_list = refs_data.get("content") or refs_data.get("items") or []
     elif isinstance(refs_data, list):
         refs_list = refs_data
     else:
@@ -970,6 +1022,44 @@ def generate():
     print("[VERIFY] OK")
     return str(OUTPUT_DOCX)
 
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Writes a temporary .docx via generate(), then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    import sys as _sys
+    import tempfile as _tf
+
+    _json_path = Path(json_path)
+    _pdf_path = Path(pdf_path)
+    _pdf_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create temp docx path
+    with _tf.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+        _tmp_docx = Path(_tmp.name)
+
+    _mod = _sys.modules[__name__]
+    _saved_in = getattr(_mod, "TEMPLATE_JSON", None)
+    _saved_out = getattr(_mod, "OUTPUT_DOCX", None)
+
+    try:
+        setattr(_mod, "TEMPLATE_JSON", _json_path)
+        setattr(_mod, "OUTPUT_DOCX", _tmp_docx)
+        generate()
+    finally:
+        if _saved_in is not None:
+            setattr(_mod, "TEMPLATE_JSON", _saved_in)
+        if _saved_out is not None:
+            setattr(_mod, "OUTPUT_DOCX", _saved_out)
+
+    try:
+        from ._render_pdf import convert_docx_to_pdf
+        return convert_docx_to_pdf(_tmp_docx, _pdf_path)
+    finally:
+        _tmp_docx.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     generate()

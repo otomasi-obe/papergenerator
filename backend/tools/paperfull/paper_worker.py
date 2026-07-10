@@ -122,7 +122,7 @@ def run_generate_paper(
     """
     # Build a Flask app context inside the worker so SQLAlchemy can talk to the DB.
     from main import app  # noqa: F401  (boots the global Flask app + DB binding)
-    from utils.database.models import AiJob, Paper, db, safe_commit
+    from utils.database.models import AiJob, Paper, ImageGenJob, db, safe_commit
     from tools.editor.chunked import (
         GenerationCancelled,
         generate_paper_json_chunked,
@@ -219,7 +219,12 @@ def run_generate_paper(
                         or "Untitled"
                     )
                     paper.updated_at = datetime.now(timezone.utc)
-                    safe_commit()
+                    try:
+                        safe_commit()
+                    except Exception:
+                        db.session.rollback()
+                        _checkpoint(job_id, "error", 100, status="error", error="Gagal menyimpan paper")
+                        return {"status": "error", "error": "Gagal menyimpan paper"}
                     import logging
                     logger = logging.getLogger(__name__)
                     logger.info(f"[run_generate_paper] Paper.data updated successfully: paper_id={paper_id}, user_id={user_id}, sections={len(paper_data.get('sections', []))}")
@@ -228,10 +233,14 @@ def run_generate_paper(
                     logger = logging.getLogger(__name__)
                     logger.warning(f"[run_generate_paper] Paper NOT FOUND with id={paper_id}, user_id={user_id}")
                     paper_any = Paper.query.filter_by(id=paper_id).first()
+                    # TODO: add user_id filter — diagnostic fallback after user-scoped query failed
                     if paper_any:
                         logger.warning(f"[run_generate_paper] Paper EXISTS but user_id mismatch: paper_id={paper_id}, expected_user_id={user_id}, actual_user_id={paper_any.user_id}")
                     else:
                         logger.warning(f"[run_generate_paper] Paper does NOT exist in database: paper_id={paper_id}")
+                    # Return early: don't charge tokens for non-existent paper
+                    _checkpoint(job_id, "error", 100, status="error", error="Paper tidak ditemukan")
+                    return {"status": "error", "error": "Paper tidak ditemukan"}
 
             # ── Persist paper to editor BEFORE image generation ─────────────
             # Send done checkpoint immediately so editor shows content right away.
@@ -246,13 +255,63 @@ def run_generate_paper(
                 elapsed=int(time.time() - t0),
             )
 
+            # ── Token deduction for Generate Full ───────────────────────────
+            # Full generation is intentionally charged from generated content/context.
+            try:
+                import json
+                from utils.database.models import ApiUsageLog, User
+
+                prompt_text = "\n".join(str(x or "") for x in (prompt, custom_prompt, topic, style, language))
+                completion_text = json.dumps(paper_data, ensure_ascii=False)
+                prompt_tokens = max(1, len(prompt_text) // 4)
+                completion_tokens = max(1, len(completion_text) // 4)
+                total_tokens = prompt_tokens + completion_tokens
+                # Streaming/fallback providers often omit reasoning usage; Generate Full
+                # has a minimum internal charge after a successful save.
+                if total_tokens < 120_000:
+                    completion_tokens += 120_000 - total_tokens
+                    total_tokens = 120_000
+
+                db.session.add(ApiUsageLog(
+                    user_id=int(user_id),
+                    endpoint="/api/papers/generate-full",
+                    model=model or "generate-full",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=total_tokens,
+                    created_at=datetime.now(timezone.utc),
+                ))
+                user = User.query.get(int(user_id))
+                if user and user.role != "admin":
+                    month_key = datetime.now(timezone.utc).strftime("%Y-%m")
+                    if (user.usage_month_key or "") != month_key:
+                        user.usage_month_key = month_key
+                        user.token_used_month = 0
+                    user.token_used_month = int(user.token_used_month or 0) + total_tokens
+                safe_commit()
+            except Exception:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+
             # ── Auto-generate images in BACKGROUND ──────────────────────────
             # Enqueue figure images (Gemini) and data charts (matplotlib)
             # These run asynchronously - editor already has paper content.
             if paper_id:
                 import threading
-                # BUG-6.3: daemon=False so thread isn't silently killed on exit.
-                # Error handling in _generate_images_background updates DB status.
+                # Delete old ImageGenJobs for this paper before enqueuing new ones
+                # so re-generations don't accumulate stale images from prior runs.
+                try:
+                    ImageGenJob.query.filter_by(
+                        paper_id=paper_id, user_id=user_id
+                    ).delete(synchronize_session=False)
+                    safe_commit()
+                except Exception:
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
                 t = threading.Thread(
                     target=_generate_images_background,
                     args=(paper_id, user_id, paper_data),
@@ -424,8 +483,8 @@ def _auto_enqueue_figure_images(
                 .limit(enqueued)
                 .all()
             )
-            for j in new_jobs:
-                submit_now(j.id)
+            if new_jobs:
+                submit_now(new_jobs[0].id)
         except Exception:
             logger.warning(
                 "[auto_image] submit_now failed, dispatcher poll will pick up",

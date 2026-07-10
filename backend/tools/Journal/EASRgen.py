@@ -47,6 +47,15 @@ CFG = {
     "col_width_cm": 15.9,
     "col_space_tw": 274,
     "font_default": "Times New Roman",
+    "font_heading": "Times New Roman",  # ponytail: add more heading-specific fonts (e.g. Calibri) when EASR template is updated
+    "font_calibri": "Calibri",         # ascii/eastAsia for section headings
+    "font_cs_default": "Times New Roman",
+    "font_eastAsia_default": "Times New Roman",
+    "font_cs_thai": "Cordia New",      # cs for headings (Thai script compat)
+    "font_eastAsia_thai": "Angsana New",  # eastAsia for figure/table labels
+    "font_heading_cfg": {"cs": "Cordia New", "eastAsia": "Calibri"},  # section heading font config
+    "font_section_cfg": {"cs": "Times New Roman", "eastAsia": "Calibri"},  # section/subsection heading
+    "font_sym": "Symbol",             # font for Greek Unicode chars
     "size_title_pt": 12,
     "size_body_pt": 12,
     "size_heading_pt": 12,
@@ -117,7 +126,8 @@ def _format_reference(item) -> str:
         result = result + "."
     return result
 
-def _set_run_font(run, *, name=None, size_pt=None, bold=None, italic=None, color=None):
+def _set_run_font(run, *, name=None, size_pt=None, bold=None, italic=None, color=None,
+                  font_category=None):
     if name is not None:
         run.font.name = name
         from docx.oxml.ns import qn
@@ -129,8 +139,18 @@ def _set_run_font(run, *, name=None, size_pt=None, bold=None, italic=None, color
 
             rfonts = OxmlElement("w:rFonts")
             rPr.insert(0, rfonts)
-        for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
-            rfonts.set(qn(f"w:{attr}"), name)
+        # Resolve cs/eastAsia from font_category CFG entry, else default to name
+        if font_category and font_category in CFG and isinstance(CFG[font_category], dict):
+            cfg_entry = CFG[font_category]
+            cs_font = cfg_entry.get("cs", name)
+            ea_font = cfg_entry.get("eastAsia", name)
+        else:
+            cs_font = name
+            ea_font = name
+        rfonts.set(qn("w:ascii"), name)
+        rfonts.set(qn("w:hAnsi"), name)
+        rfonts.set(qn("w:cs"), cs_font)
+        rfonts.set(qn("w:eastAsia"), ea_font)
     if size_pt is not None:
         from docx.shared import Pt
 
@@ -246,13 +266,45 @@ def _clean_latex(text):
     """Wrapper that calls _sanitize_inline_latex for LaTeX cleanup."""
     return _sanitize_inline_latex(str(text))
 
-def _add_plain(paragraph, text, *, size_pt=None, bold=False, italic=False):
+def _add_plain(paragraph, text, *, size_pt=None, bold=False, italic=False,
+               font_name=None, font_category=None):
     run = paragraph.add_run(_sanitize_inline_latex(text))
-    _set_run_font(run, name=CFG["font_default"], size_pt=size_pt, bold=bold, italic=italic)
+    fn = font_name or CFG["font_default"]
+    _set_run_font(run, name=fn, size_pt=size_pt, bold=bold, italic=italic,
+                  font_category=font_category)
     return run
 
-def _add_rich(paragraph, text, *, size_pt=None, bold=False, italic=False):
-    return _add_plain(paragraph, text, size_pt=size_pt, bold=bold, italic=italic)
+_GREEK_CHARS = set("αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩϵϕϱςτωψζξνμλκιθηδγβα")
+
+
+def _split_greek(text: str, base_font: str, sym_font: str = "Symbol"):
+    """Split text into segments of plain and Greek chars, each with appropriate font."""
+    result = []
+    i = 0
+    while i < len(text):
+        if text[i] in _GREEK_CHARS:
+            j = i
+            while j < len(text) and text[j] in _GREEK_CHARS:
+                j += 1
+            result.append((text[i:j], sym_font))
+            i = j
+        else:
+            j = i
+            while j < len(text) and text[j] not in _GREEK_CHARS:
+                j += 1
+            result.append((text[i:j], base_font))
+            i = j
+    return result
+
+
+def _add_rich(paragraph, text, *, size_pt=None, bold=False, italic=False,
+              font_name=None, font_category=None):
+    sym_font = CFG.get("font_sym", "Symbol")
+    base_font = font_name or CFG["font_default"]
+    for seg_text, seg_font in _split_greek(text, base_font, sym_font):
+        if seg_text:
+            _add_plain(paragraph, seg_text, size_pt=size_pt, bold=bold, italic=italic,
+                       font_name=seg_font, font_category=font_category)
 
 def _append_inline_math(paragraph, latex):
     """Render LaTeX into the paragraph. Prefer native Word OMML (real equation
@@ -627,7 +679,8 @@ def add_abstract(doc, data):
         line_rule="auto",
         keep_next=True,
     )
-    _add_plain(head, "Abstract", size_pt=CFG["size_body_pt"], bold=True)
+    _add_plain(head, "Abstract", size_pt=CFG["size_body_pt"], bold=True, font_name="Calibri",
+               font_category="font_heading_cfg")
 
     body = _new_paragraph(doc)
     _set_paragraph_format(
@@ -671,7 +724,7 @@ def add_keywords(doc, data):
     )
 
 def add_section_heading(doc, number, title):
-    """Section heading: "1. Title" - bold, TNR 12pt, left-aligned, sp_before=3pt+"""
+    """Section heading: "1. Title" - bold, Calibri 12pt, left-aligned"""
     text = f"{number}. {title}"
     p = _new_paragraph(doc)
     _set_paragraph_format(
@@ -683,10 +736,11 @@ def add_section_heading(doc, number, title):
         line_rule="auto",
         keep_next=True,
     )
-    _add_plain(p, text, size_pt=CFG["size_heading_pt"], bold=True)
+    _add_plain(p, text, size_pt=CFG["size_heading_pt"], bold=True, font_name="Calibri",
+               font_category="font_section_cfg")
 
 def add_subsection_heading(doc, number, title):
-    """Subsection heading: "2.1 Title" - italic, TNR 12pt, left-aligned"""
+    """Subsection heading: "2.1 Title" - italic, Calibri 12pt, left-aligned"""
     text = f"{number} {title}"
     p = _new_paragraph(doc)
     _set_paragraph_format(
@@ -698,7 +752,8 @@ def add_subsection_heading(doc, number, title):
         line_rule="auto",
         keep_next=True,
     )
-    _add_plain(p, text, size_pt=CFG["size_heading_pt"], italic=True)
+    _add_plain(p, text, size_pt=CFG["size_heading_pt"], italic=True, font_name="Calibri",
+               font_category="font_section_cfg")
 
 def add_body_text(doc, text, *, indent=True):
     cleaned = _clean_latex(text)
@@ -724,21 +779,39 @@ def add_body_text(doc, text, *, indent=True):
 def _resolve_image_path(path_text: str) -> Path | None:
     if not path_text:
         return None
-    p = Path(path_text)
-    if p.is_absolute():
-        return p if p.exists() else None
-    cand = BASE / p
-    if cand.exists():
-        return cand
-    cand2 = BASE.parent / p
-    if cand2.exists():
-        return cand2
-    cand3 = BASE.parent / "template" / p
-    if cand3.exists():
-        return cand3
-    # cwd-relative fallback (batch test / web pipeline)
-    if p.exists():
-        return p
+    # Normalise stray spaces from AI tokenizer
+    path_text_norm = path_text.replace(" ", "")
+    for _pt in (path_text, path_text_norm):
+        p = Path(_pt)
+        if p.is_absolute() and p.exists():
+            return p
+        if (BASE / _pt).exists():
+            return BASE / _pt
+        if (BASE.parent / _pt).exists():
+            return BASE.parent / _pt
+        if (BASE.parent / "template" / _pt).exists():
+            return BASE.parent / "template" / _pt
+        if p.exists():
+            return p
+    # Scan user/*/<paper_id>/image/
+    try:
+        data = load_json()
+        _pid = str(data.get("paper_id") or data.get("id") or "").strip()
+        if not _pid and isinstance(data.get("paper_data"), dict):
+            _pid = str(data["paper_data"].get("paper_id", "")).strip()
+        if _pid:
+            _udir = Path(__file__).resolve().parent.parent.parent / "user"
+            if _udir.is_dir():
+                for _uname in _udir.iterdir():
+                    _idir = _uname / _pid / "image"
+                    if _idir.is_dir():
+                        for _pt in (path_text, path_text_norm):
+                            _cand = _idir / _pt
+                            if _cand.exists():
+                                return _cand
+                        break
+    except Exception:
+        pass
     return None
 
 def add_figure(doc, fig_data):
@@ -1024,7 +1097,8 @@ def add_references(doc, data, *, ref_section_num: int = 8):
         line_rule="auto",
         keep_next=True,
     )
-    _add_plain(p, title, size_pt=CFG["size_heading_pt"], bold=True)
+    _add_plain(p, title, size_pt=CFG["size_heading_pt"], bold=True, font_name="Calibri",
+               font_category="font_section_cfg")
 
     for idx, ref in enumerate(items, start=1):
         ref_text = ref if isinstance(ref, str) else (ref.get("text") or str(ref))
@@ -1047,8 +1121,10 @@ def add_references(doc, data, *, ref_section_num: int = 8):
             left_tw=CFG["ref_left_indent_tw"],
             hanging_tw=CFG["ref_hanging_indent_tw"],
         )
-        _add_plain(p, f"[{num}] ", size_pt=CFG["size_reference_pt"])
-        _add_rich(p, body, size_pt=CFG["size_reference_pt"])
+        _add_plain(p, f"[{num}] ", size_pt=CFG["size_reference_pt"], font_name="Calibri",
+                   font_category="font_section_cfg")
+        _add_plain(p, body, size_pt=CFG["size_reference_pt"], font_name="Calibri",
+                   font_category="font_section_cfg")
 
 def _process_content_items(doc, items):
     for it in items:
@@ -1149,3 +1225,13 @@ def build_document(json_path: Path, output_path: Path, template_path: Path = Non
         if fallback.exists():
             shutil.move(str(fallback), str(output_path))
     return Path(output_path)
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)

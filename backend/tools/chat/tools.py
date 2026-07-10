@@ -499,7 +499,17 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                 results.append("✓ Abstract updated")
 
             elif action == "update_section":
-                sec = _find_section(data.get("sections", []), target)
+                # Keyed-section aliases like section2a -> section2
+                _keyed_match = re.match(r'^section(\d+)([a-z]?)$', target, re.IGNORECASE)
+                if _keyed_match:
+                    _parent_key = f"section{_keyed_match.group(1)}"
+                    if isinstance(data.get(_parent_key), dict):
+                        sec = data[_parent_key]
+                        target = _parent_key
+                    else:
+                        sec = _find_section(data.get("sections", []), target)
+                else:
+                    sec = _find_section(data.get("sections", []), target)
                 if sec is not None:
                     if isinstance(content, str):
                         # Merge: replace text of existing text blocks, append new text block

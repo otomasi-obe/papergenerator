@@ -1,1 +1,158 @@
-{"title": "Test", "authors": [{"name": "A", "affiliation": "B", "location": "C", "email": "a@b.com"}], "abstract": "Test", "keywords": ["test"], "section1": {"title": "Intro", "content": [{"id": "text", "text": "Hello"}]}, "references": {"items": [{"authors": ["Smith, J."], "year": 2024, "title": "Test Paper", "journal": "IEEE J.", "volume": "1", "pages": "1-5", "doi": "10.1109/test"}]}}
+{
+  "paper_id": "8098480149ff",
+  "updated_at": "2026-06-17T10:36:07.364356+00:00",
+  "paper_data": {
+    "journal": "IEEE",
+    "title": "",
+    "authors": [
+      {
+        "affiliation": "",
+        "email": "",
+        "location": "",
+        "name": ""
+      }
+    ],
+    "abstract": "",
+    "keywords": [],
+    "section1": {
+      "title": "Pendahuluan",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ]
+    },
+    "section2": {
+      "title": "Tinjauan Pustaka",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ],
+      "section2a": {
+        "title": "Tinjauan Penelitian Terdahulu",
+        "content": [
+          {
+            "id": "text",
+            "text": ""
+          }
+        ]
+      },
+      "section2b": {
+        "title": "Kerangka Teoritis",
+        "content": [
+          {
+            "id": "text",
+            "text": ""
+          }
+        ]
+      }
+    },
+    "section3": {
+      "title": "Metodologi",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ],
+      "section3a": {
+        "title": "Desain dan Arsitektur Sistem",
+        "content": [
+          {
+            "id": "text",
+            "text": ""
+          },
+          {
+            "ImageNumber": "1",
+            "Path": "gambar/system_architecture.png",
+            "Prompt": "(create an image \"\")",
+            "Title": "",
+            "id": "gambar"
+          }
+        ]
+      },
+      "section3b": {
+        "title": "Implementasi dan Prosedur Eksperimen",
+        "content": [
+          {
+            "id": "text",
+            "text": ""
+          },
+          {
+            "Headers": [],
+            "Rows": [],
+            "TableNumber": "I",
+            "Title": "",
+            "id": "tabel"
+          }
+        ]
+      }
+    },
+    "section4": {
+      "title": "Hasil dan Pembahasan",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ],
+      "section4a": {
+        "title": "Hasil Eksperimen",
+        "content": [
+          {
+            "id": "text",
+            "text": ""
+          },
+          {
+            "Headers": [],
+            "Rows": [],
+            "TableNumber": "II",
+            "Title": "",
+            "id": "tabel"
+          },
+          {
+            "ImageNumber": "2",
+            "Path": "gambar/results.png",
+            "Prompt": "(create an image \"\")",
+            "Title": "",
+            "id": "gambar"
+          }
+        ]
+      },
+      "section4b": {
+        "title": "Analisis dan Pembahasan",
+        "content": [
+          {
+            "id": "text",
+            "text": ""
+          },
+          {
+            "Headers": [],
+            "Rows": [],
+            "TableNumber": "III",
+            "Title": "",
+            "id": "tabel"
+          }
+        ]
+      }
+    },
+    "section5": {
+      "title": "Kesimpulan",
+      "content": [
+        {
+          "id": "text",
+          "text": ""
+        }
+      ]
+    },
+    "references": {
+      "number": "VI",
+      "title": "REFERENCES",
+      "content": []
+    }
+  },
+  "journal": "AEJ"
+}

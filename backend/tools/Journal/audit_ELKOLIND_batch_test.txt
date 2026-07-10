@@ -1,0 +1,266 @@
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base Score: 100 | Penalty: -193 | Final: 0%
+============================================================
+[AUDIT] Scanning: ELKOLIND.docx vs ELKOLIND_batch_test.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 1, Output: 1
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 20 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 1, Output: 1
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 4
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, mismatch: 0 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 4, extra: 0
+  Gambar fisik di Original (referensi)  : 3
+  [!] GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 4 gambar konten + 0 prompt AI = 4. Kurang 4 elemen.
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 4 | Figures dengan referensi: 4 | Caption-first valid: 4 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=3 out=3 | AbstractIds: orig=3 out=3
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 0 | Output headings: 0 | Levels checked: 0 | Format mismatches: 0
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 6 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 5 | OK: 5 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: CUSTOM_STYLE
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 8 (output) | 4 (template) | Mismatches: 6
+  [!] Figure caption style mismatch (para #34): label not bold -- "Gambar 1 memperlihatkan diagram blok sistem kendali posisi yang digunakan. Sinya"
+  [!] Figure caption style mismatch (para #44): label not bold -- "Gambar 2 menunjukkan arsitektur keseluruhan sistem. Trajektori pengelasan dihasi"
+  [!] Figure caption style mismatch (para #55): label not bold -- "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika setelah penerapan pa"
+  [!] Figure caption style mismatch (para #70): label not bold -- "Gambar 4 memperlihatkan secara visual perbedaan kinerja ketiga kendali. Respons "
+  [!] Figure caption #0 bold pattern mismatch: template=[False] output=[True, False]
+  [!] Figure caption #2 bold pattern mismatch: template=[False] output=[True, False]
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 10 | Mismatches: 5
+  [!] FONT SIZE MISMATCH: Paragraf #0 orig=24.0pt vs out=10.0pt. "Annabil Hisyam"
+  [!] FONT SIZE MISMATCH: Paragraf #1 orig=10.0pt vs out=9.0pt. "Universitas Diponegoro"
+  [!] FONT SIZE MISMATCH: Paragraf #2 orig=10.0pt vs out=9.0pt. "annabilhisyammuyassa@students.undip.ac.id"
+  [!] FONT SIZE MISMATCH: Paragraf #3 orig=9.0pt vs out=10.0pt. "Abstract"
+  [!] FONT SIZE MISMATCH: Paragraf #4 orig=9.0pt vs out=10.0pt. "Presisi pengelasan pada lengan robot industri menj"
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 4 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 9 total (0 body + 9 header/footer) | Logo output: 9 total (0 body + 9 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  Original logo rIds: ['rId1', 'rId2']
+  Preserved rIds: ['rId1', 'rId2']
+  [OK] Semua logo jurnal (branding) dipertahankan di output.
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 50 | Violations: 12
+  [!] PARA SPACING MISMATCH #2 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "annabilhisyammuyassa@students.undip.ac.id"
+  [!] PARA SPACING MISMATCH #4 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+  [!] PARA SPACING MISMATCH #5 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+  [!] PARA SPACING MISMATCH #15 [Normal]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Sistematika penulisan paper ini adalah sebagai berikut. Bagi"
+  [!] PARA SPACING MISMATCH #21 [Normal]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Dalam domain pengelasan robotik, Gonzalez et al. [9] meranca"
+  [!] PARA SPACING MISMATCH #25 [Normal]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Sistem kendali PID terdiri dari tiga komponen: aksi proporsi"
+  [!] PARA SPACING MISMATCH #32 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 1. Diagram blok sistem kendali posisi lengan robot deng"
+  [!] PARA SPACING MISMATCH #38 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table I. Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+  [!] PARA SPACING MISMATCH #40 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 2. Arsitektur sistem kendali PID pada lengan robot untu"
+  [!] PARA SPACING MISMATCH #42 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Implementasi dan Prosedur Eksperimen"
+  ... dan 2 paragraf lainnya.
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 1, Output: 1
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 2, Output: 5, Expected (orig + JSON): 2 (JSON tables: 0, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 3
+  [OK] Jumlah tabel body sesuai (dalam toleransi).
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 1, Output: 1 | Original berkonten: 1 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1], Output: [1]
+  Drawings -- Original: 3, Output: 4
+  Dekoratif by cols -- Original: {}, Output: {}
+  Konten by cols -- Original: {1: 3}, Output: {1: 4}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 1 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 4 | Center violations: 0 | Tab violations: 4 | Alignment mismatches (vs template): 0
+  [!] FORMULA NUMBER TAB: Paragraf #26 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #29 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #47 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #58 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 45 | Mismatch: 2
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `ELKOLIND_batch_testgen.py`. Tolong perbaiki kodingan `ELKOLIND_batch_testgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 4 gambar konten + 0 prompt AI = 4. Kurang 4 elemen.
+- FONT SIZE MISMATCH: Paragraf #0 orig=24.0pt vs out=10.0pt. "Annabil Hisyam"
+- FONT SIZE MISMATCH: Paragraf #1 orig=10.0pt vs out=9.0pt. "Universitas Diponegoro"
+- FONT SIZE MISMATCH: Paragraf #2 orig=10.0pt vs out=9.0pt. "annabilhisyammuyassa@students.undip.ac.id"
+- FONT SIZE MISMATCH: Paragraf #3 orig=9.0pt vs out=10.0pt. "Abstract"
+- FONT SIZE MISMATCH: Paragraf #4 orig=9.0pt vs out=10.0pt. "Presisi pengelasan pada lengan robot industri menj"
+- LINE SPACING MISMATCH: 2 paragraphs differ from template
+- PARA SPACING MISMATCH #2 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "annabilhisyammuyassa@students.undip.ac.id"
+- PARA SPACING MISMATCH #4 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+- PARA SPACING MISMATCH #5 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+- PARA SPACING MISMATCH #15 [Normal]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Sistematika penulisan paper ini adalah sebagai berikut. Bagi"
+- PARA SPACING MISMATCH #21 [Normal]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Dalam domain pengelasan robotik, Gonzalez et al. [9] meranca"
+- PARA SPACING MISMATCH #25 [Normal]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Sistem kendali PID terdiri dari tiga komponen: aksi proporsi"
+- PARA SPACING MISMATCH #32 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 1. Diagram blok sistem kendali posisi lengan robot deng"
+- PARA SPACING MISMATCH #38 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table I. Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+- PARA SPACING MISMATCH #40 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 2. Arsitektur sistem kendali PID pada lengan robot untu"
+- PARA SPACING MISMATCH #42 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Implementasi dan Prosedur Eksperimen"
+- PARA SPACING MISMATCH #47 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table II. Parameter PID dari Metode Ziegler-Nichols Closed-L"
+- PARA SPACING MISMATCH #49 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 3. Diagram alir prosedur penalaan PID dan simulasi"
+- Figure caption style mismatch (para #34): label not bold -- "Gambar 1 memperlihatkan diagram blok sistem kendali posisi yang digunakan. Sinya"
+- Figure caption style mismatch (para #44): label not bold -- "Gambar 2 menunjukkan arsitektur keseluruhan sistem. Trajektori pengelasan dihasi"
+- Figure caption style mismatch (para #55): label not bold -- "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika setelah penerapan pa"
+- Figure caption style mismatch (para #70): label not bold -- "Gambar 4 memperlihatkan secara visual perbedaan kinerja ketiga kendali. Respons "
+- Figure caption #0 bold pattern mismatch: template=[False] output=[True, False]
+- Figure caption #2 bold pattern mismatch: template=[False] output=[True, False]
+- Paragraf #2: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #4: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #5: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #7: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #8: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #9: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #10: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #11: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #12: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #13: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #14: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #15: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #17: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #22: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #23: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #25: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #27: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #28: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #30: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #31: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #36: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #37: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #38: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #41: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #45: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #46: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #48: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #49: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #52: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #56: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #57: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #59: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #60: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #62: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #64: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #67: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #71: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #75: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #76: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #77: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #78: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #81: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #82: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #83: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #84: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #85: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #86: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #88: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #89: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- Paragraf #90: first_line_indent=0.00cm, expected=1.27cm (diff=1.27cm)
+- FORMULA NUMBER TAB: Paragraf #26 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #29 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #47 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #58 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Placeholder/Prompt Gambar Salah (MINOR): -5 x 4 = -20
+  - Font Size Mismatch (MINOR): -3 x 5 = -15
+  - Line Spacing Body Text (MINOR): -2 x 2 = -4
+  - Paragraph Spacing Mismatch (MINOR): -2 x 12 = -24
+  - Figure Caption Style Mismatch (MINOR): -3 x 6 = -18
+  - First Line Indent Tidak Sesuai (MINOR): -2 x 50 = -100
+  - Formula Alignment Salah (MINOR): -3 x 4 = -12
+  Total Penalty: -193
+  Skor Akhir: 0%

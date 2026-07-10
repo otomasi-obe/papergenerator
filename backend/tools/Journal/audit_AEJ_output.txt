@@ -1,6 +1,6 @@
 ============================================================
 [SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
-  Base Score: 100 | Penalty: -145 | Final: 0%
+  Base Score: 100 | Penalty: -104 | Final: 0%
 ============================================================
 [AUDIT] Scanning: AEJ.docx vs AEJ_output.docx
 ============================================================
@@ -19,23 +19,23 @@
   [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
 
 [4] Strict Placeholder & AI Prompt Validation...
-  [A] Gambar fisik (drawing) di Output : 1
-  [B] Prompt AI gambar di Output       : 9 (valid: 9, mismatch: 0 [no penalty])
-  [C] Ekspektasi dari _template.json   : 9
+  [A] Gambar fisik (drawing) di Output : 3
+  [B] Prompt AI gambar di Output       : 6 (valid: 6, mismatch: 0 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
   Placeholder usang '[Image placeholder]': 0
   Selisih -> missing: 0, extra: 0
   Gambar fisik di Original (referensi)  : 7
   [OK] Semua gambar/prompt sesuai JSON, tidak ada placeholder usang.
 
 [5] Kebocoran LaTeX/Simbol...
-  [!] Paragraf #54: `_{, $` -- "[PROMPT UNTUK AI GAMBAR: Profil Daya 24 Jam Sistem Hibrida. (create an image "A line chart showing the 24-hour power gen..."
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
 
 [5a] Text Quality / Mojibake Detection...
   Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
 
 [5b] Figure Position Cross-Check...
-  Total drawings: 4 | Figures dengan referensi: 9 | Caption-first valid: 0 | Violations: 0
-  [OK] Semua gambar muncul setelah referensi teks.
+  Total drawings: 6 | Figures dengan referensi: 7 | Caption-first valid: 0 | Violations: 1
+  [!] FIGURE POSITION: Gambar 1 muncul di paragraf #7 JAUH SEBELUM referensi pertama di paragraf #27 (gap 20 paragraf, toleransi caption-first <= 3). Snippet: "..."
 
 [5c] Heading Auto-Numbering Render Check...
   Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=2 out=2 | AbstractIds: orig=2 out=2
@@ -54,16 +54,16 @@
   [OK] Run formatting konsisten.
 
 [5e] Table Content Validation...
-  Total tables: 4 | Low density: 0
+  Total tables: 1 | Low density: 0
   [OK] Tidak ada tabel placeholder kosong.
 
 [5e2] Table Border Visibility...
-  Tabel data: 4 | OK: 4 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Tabel data: 1 | OK: 1 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
   Template original pattern: CUSTOM_STYLE
   [OK] Semua tabel data punya border match dengan template.
 
 [5o] Figure Caption Style Audit (label bold, deskripsi normal)...
-  Caption terdeteksi: 18 (output) | 7 (template) | Mismatches: 2
+  Caption terdeteksi: 7 (output) | 7 (template) | Mismatches: 2
   [!] Figure caption #1 bold pattern mismatch: template=[True, False, False] output=[True, False]
   [!] Figure caption #6 bold pattern mismatch: template=[False, False, False] output=[True, False]
 
@@ -72,14 +72,11 @@
   [OK] Font family konsisten.
 
 [5f.2] Font Size Consistency...
-  Pasangan diperiksa: 10 | Mismatches: 4
-  [!] FONT SIZE MISMATCH: Paragraf #6 orig=9.0pt vs out=11.0pt. "TINJAUAN PUSTAKA"
-  [!] FONT SIZE MISMATCH: Paragraf #7 orig=11.0pt vs out=9.0pt. "Bagian ini meninjau evolusi teknologi pembangkitan"
-  [!] FONT SIZE MISMATCH: Paragraf #8 orig=9.0pt vs out=10.0pt. "Tinjauan Penelitian Terdahulu"
-  [!] FONT SIZE MISMATCH: Paragraf #9 orig=8.0pt vs out=9.0pt. "Evolusi sel surya telah mendekati batas teoretisny"
+  Pasangan diperiksa: 10 | Mismatches: 1
+  [!] FONT SIZE MISMATCH: Paragraf #7 orig=11.0pt vs out=8.0pt. "Figure 3 "
 
 [5h] Placeholder/Blank Image Detection...
-  Body images (non-decorative): 1 | Placeholder terdeteksi: 0
+  Body images (non-decorative): 2 | Placeholder terdeteksi: 0
   [OK] Tidak ada gambar placeholder/blank terdeteksi.
 
 [5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
@@ -88,18 +85,13 @@
   [OK] Template tidak memiliki logo di body top/headers/footers (skip check).
 
 [5k.3] Paragraph Spacing (space_before/space_after body text)...
-  Paragraf body dicek: 50 | Violations: 12
-  [!] PARA SPACING MISMATCH #14 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Perbandingan Spektrum Operasi PV da"
-  [!] PARA SPACING MISMATCH #15 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 1. Perbandingan Spektrum Operasi PV dan TRC"
-  [!] PARA SPACING MISMATCH #17 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Diagram Blok Kerangka Teoretis Hibr"
-  [!] PARA SPACING MISMATCH #18 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 2. Diagram Blok Kerangka Teoretis Hibridisasi"
-  [!] PARA SPACING MISMATCH #24 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Alur Data dan Energi Sistem Hibrida"
-  [!] PARA SPACING MISMATCH #25 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 3. Alur Data dan Energi Sistem Hibrida"
-  [!] PARA SPACING MISMATCH #27 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Penampang Melintang Arsitektur Lapi"
-  [!] PARA SPACING MISMATCH #28 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 4. Penampang Melintang Arsitektur Lapisan"
-  [!] PARA SPACING MISMATCH #30 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Sirkuit Termal Ekuivalen. (create a"
-  [!] PARA SPACING MISMATCH #31 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 5. Sirkuit Termal Ekuivalen"
-  ... dan 2 paragraf lainnya.
+  Paragraf body dicek: 26 | Violations: 6
+  [!] PARA SPACING MISMATCH #6 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 3. Buatkan gambar/diagram/il"
+  [!] PARA SPACING MISMATCH #8 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 5. Buatkan gambar/diagram/il"
+  [!] PARA SPACING MISMATCH #10 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 7. Buatkan gambar/diagram/il"
+  [!] PARA SPACING MISMATCH #14 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 2. Buatkan gambar/diagram/il"
+  [!] PARA SPACING MISMATCH #16 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 4. Buatkan gambar/diagram/il"
+  [!] PARA SPACING MISMATCH #18 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 6. Buatkan gambar/diagram/il"
 
 [6] Multi-Column XPath Audit (FATAL XML)...
   Section sectPrs -- Original: 8, Output: 8
@@ -111,8 +103,8 @@
   [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
 
 [7b] Body Table Count Audit...
-  Tabel body -- Original: 9, Output: 4, Expected (orig + JSON): 9 (JSON tables: 3, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 1
-  [OK] Jumlah tabel body sesuai (dalam toleransi).
+  Tabel body -- Original: 9, Output: 1, Expected (orig + JSON): 9 (JSON tables: 0, toleransi: 3) | Missing: 8 | Extra empty: 0 | Extra filled: 0
+  [!] TABLE MISSING: Output kekurangan 8 tabel (Expected: 9, Output: 1). Tabel layout container template (mis. figure side-by-side) kemungkinan hilang.
 
 [7c] SectPr Distribution Audit (MAYOR)...
   Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
@@ -121,14 +113,14 @@
 
 [7d] Empty Section / Blank Page Audit (MAYOR)...
   Section -- Original: 8, Output: 8 | Original berkonten: 5 section
-  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 99% (threshold: 85%)
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 96% (threshold: 85%)
   [OK] Konten body tersebar benar antar section, tidak ada blank page.
 
 [7e] Structural Position Audit - Level 1 (MAYOR)...
   Section cols -- Original: [1, 2, 1, 2, 2, 1, 1, 1], Output: [1, 2, 1, 2, 2, 1, 1, 1]
-  Drawings -- Original: 7, Output: 1
+  Drawings -- Original: 7, Output: 3
   Dekoratif by cols -- Original: {}, Output: {}
-  Konten by cols -- Original: {1: 7}, Output: {1: 1}
+  Konten by cols -- Original: {1: 7}, Output: {1: 3}
   Mismatches -- Deco: 0, Content: 0, Section shift: 0
   [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
 
@@ -148,11 +140,11 @@
   [OK] Tidak ada halaman kosong berlebih atau section break waste.
 
 [7i] Formula Alignment Audit (MINOR)...
-  Total formula paragraphs: 3 | Center violations: 0 | Tab violations: 0 | Alignment mismatches (vs template): 0
+  Total formula paragraphs: 0 | Center violations: 0 | Tab violations: 0 | Alignment mismatches (vs template): 0
   [OK] Semua formula paragraph center-aligned dengan benar.
 
 [7j] Line Spacing Body Text (MINOR)...
-  Paragraf diperiksa: 49 | Mismatch: 0
+  Paragraf diperiksa: 18 | Mismatch: 0
   [OK] Semua line spacing body text sesuai template.
 
 ============================================================
@@ -161,51 +153,37 @@
 --------------------------------------------------
 Sistem QA mendeteksi kegagalan pada skrip generator `AEJgen.py`. Tolong perbaiki kodingan `AEJgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
 
-- GAMBAR TIDAK EMBEDDED: Figure 'Perbandingan Spektrum Operasi PV dan TRC' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Diagram Blok Kerangka Teoretis Hibridisasi' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Alur Data dan Energi Sistem Hibrida' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Penampang Melintang Arsitektur Lapisan' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Sirkuit Termal Ekuivalen' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Profil Daya 24 Jam Sistem Hibrida' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Efisiensi Total terhadap Suhu Ambien' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- GAMBAR TIDAK EMBEDDED: Figure 'Tumpang Tindih Spektral dan Rugi Refleksi' - JSON expect 9 gambar, DOCX hanya punya 1 embedded image(s) + 9 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
-- LATEX BOCOR: Paragraf #54 (6 pattern) tag: `_{, $`. Snippet: "[PROMPT UNTUK AI GAMBAR: Profil Daya 24 Jam Sistem Hibrida. (create an image "A line chart showing the 24-hour power gen..."
-- FONT SIZE MISMATCH: Paragraf #6 orig=9.0pt vs out=11.0pt. "TINJAUAN PUSTAKA"
-- FONT SIZE MISMATCH: Paragraf #7 orig=11.0pt vs out=9.0pt. "Bagian ini meninjau evolusi teknologi pembangkitan"
-- FONT SIZE MISMATCH: Paragraf #8 orig=9.0pt vs out=10.0pt. "Tinjauan Penelitian Terdahulu"
-- FONT SIZE MISMATCH: Paragraf #9 orig=8.0pt vs out=9.0pt. "Evolusi sel surya telah mendekati batas teoretisny"
-- INFO: 1 gambar di bawah target 8.9cm (1-col layout) — mungkin gambar test/placeholder
-- SPACING: Table caption #46 before=0pt (expected 3-24pt) - Tabel I merangkum parameter input untuk simulasi numerik. Ni
-- PARA SPACING MISMATCH #14 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Perbandingan Spektrum Operasi PV da"
-- PARA SPACING MISMATCH #15 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 1. Perbandingan Spektrum Operasi PV dan TRC"
-- PARA SPACING MISMATCH #17 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Diagram Blok Kerangka Teoretis Hibr"
-- PARA SPACING MISMATCH #18 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 2. Diagram Blok Kerangka Teoretis Hibridisasi"
-- PARA SPACING MISMATCH #24 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Alur Data dan Energi Sistem Hibrida"
-- PARA SPACING MISMATCH #25 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 3. Alur Data dan Energi Sistem Hibrida"
-- PARA SPACING MISMATCH #27 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Penampang Melintang Arsitektur Lapi"
-- PARA SPACING MISMATCH #28 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 4. Penampang Melintang Arsitektur Lapisan"
-- PARA SPACING MISMATCH #30 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Sirkuit Termal Ekuivalen. (create a"
-- PARA SPACING MISMATCH #31 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Fig. 5. Sirkuit Termal Ekuivalen"
-- PARA SPACING MISMATCH #43 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Table I. Parameter dan Variabel Simulasi Sistem"
-- PARA SPACING MISMATCH #49 [normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Table II. Kinerja Diurnal Sistem Hibrida"
-- EMPTY PARAGRAPHS: 11 paragraf kosong beruntun (index 96–106)
-- Spacing caption tabel #46 terlalu rapat: 0pt before (min 3pt)
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 1' - JSON expect 8 gambar, DOCX hanya punya 3 embedded image(s) + 6 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 3' - JSON expect 8 gambar, DOCX hanya punya 3 embedded image(s) + 6 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 5' - JSON expect 8 gambar, DOCX hanya punya 3 embedded image(s) + 6 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 7' - JSON expect 8 gambar, DOCX hanya punya 3 embedded image(s) + 6 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 2' - JSON expect 8 gambar, DOCX hanya punya 3 embedded image(s) + 6 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- FIGURE POSITION: Gambar 1 muncul di paragraf #7 JAUH SEBELUM referensi pertama di paragraf #27 (gap 20 paragraf, toleransi caption-first <= 3). Snippet: "..."
+- FONT SIZE MISMATCH: Paragraf #7 orig=11.0pt vs out=8.0pt. "Figure 3 "
+- INFO: 3 gambar di bawah target 8.9cm (1-col layout) — mungkin gambar test/placeholder
+- PARA SPACING MISMATCH #6 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 3. Buatkan gambar/diagram/il"
+- PARA SPACING MISMATCH #8 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 5. Buatkan gambar/diagram/il"
+- PARA SPACING MISMATCH #10 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 7. Buatkan gambar/diagram/il"
+- PARA SPACING MISMATCH #14 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 2. Buatkan gambar/diagram/il"
+- PARA SPACING MISMATCH #16 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 4. Buatkan gambar/diagram/il"
+- PARA SPACING MISMATCH #18 [normal]: before=14.0pt (orig=0.0pt, delta=14.0pt) after=8.0pt (orig=0.0pt, delta=8.0pt) — "[PROMPT UNTUK AI GAMBAR: Figure 6. Buatkan gambar/diagram/il"
+- EMPTY PARAGRAPHS: 11 paragraf kosong beruntun (index 28–38)
 - Figure caption #1 bold pattern mismatch: template=[True, False, False] output=[True, False]
 - Figure caption #6 bold pattern mismatch: template=[False, False, False] output=[True, False]
-- Paragraf #107: first_line_indent=0.00cm, expected=0.32cm (diff=0.32cm)
+- Paragraf #39: first_line_indent=0.00cm, expected=0.32cm (diff=0.32cm)
+- TABLE MISSING: Output kekurangan 8 tabel (Expected: 9, Output: 1). Tabel layout container template (mis. figure side-by-side) kemungkinan hilang.
 --------------------------------------------------
 
 [SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
 Rincian Pemotongan Poin:
   Base Score: 100
-  - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 8 = -80
-  - Kebocoran LaTeX/Simbol: -2 x 6 = -12
-  - Font Size Mismatch (MINOR): -3 x 4 = -12
-  - Spacing Element Tidak Konsisten (MINOR): -3
-  - Paragraph Spacing Mismatch (MINOR): -2 x 12 = -24
+  - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 5 = -50
+  - Figure Position Salah (MINOR): -3
+  - Font Size Mismatch (MINOR): -3
+  - Paragraph Spacing Mismatch (MINOR): -2 x 6 = -12
   - Paragraf Kosong Beruntun (MINOR): -3
-  - Caption/Table Spacing Rapat (MINOR): -3
   - Figure Caption Style Mismatch (MINOR): -3 x 2 = -6
   - First Line Indent Tidak Sesuai (MINOR): -2
-  Total Penalty: -145
+  - Tabel Body Hilang (MINOR): -5 x 5 = -25
+  Total Penalty: -104
   Skor Akhir: 0%

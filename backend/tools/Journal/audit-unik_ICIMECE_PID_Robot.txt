@@ -1,0 +1,138 @@
+============================================================
+  MASTER PROMPT PERBAIKAN ICIMECE_PID_ROBOTGEN.PY UNTUK TEMPLATE ICIMECE_PID_ROBOT
+============================================================
+Template       : ICIMECE.docx
+Output         : ICIMECE_PID_Robot.docx
+Generator      : ICIMECE_PID_Robotgen.py
+Total anomali  : 30
+Kategori error : ERROR_STYLE
+Catatan        : Skor utama BISA tetap tinggi -- sebagian temuan
+                 di sini adalah anomali heuristik visual yang
+                 tidak merusak struktur XML.
+
+============================================================
+  RINCIAN TEMUAN
+============================================================
+
+[STYLE] 30 masalah
+    - Paragraf 0: Style hilang/berubah dari 'Title' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 1: Style hilang/berubah dari 'Author Last Name' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 2: Style hilang/berubah dari 'Affiliation' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 3: Style hilang/berubah dari 'Affiliation' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 4: Style hilang/berubah dari 'Abstract body' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 5: Style hilang/berubah dari 'Section' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 6: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 7: Style hilang/berubah dari 'Table Caption' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 8: Style hilang/berubah dari 'Subsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 9: Style hilang/berubah dari 'Subsubsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 10: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 11: Style hilang/berubah dari 'Subsubsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 12: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 13: Style hilang/berubah dari 'Paragraph' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 14: Style hilang/berubah dari 'Subsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 15: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 16: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 17: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 18: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 19: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 20: Style hilang/berubah dari 'Paragraph' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 21: Style hilang/berubah dari 'Table Caption' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 22: Style hilang/berubah dari 'Section' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 23: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 24: Style hilang/berubah dari 'Subsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 25: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 26: Style hilang/berubah dari 'Subsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 27: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 28: Style hilang/berubah dari 'Style Figure Caption' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+    - Paragraf 29: Style hilang/berubah dari 'Subsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+
+============================================================
+  PROMPT SOLUSI PER KATEGORI (copy ke AI yang akan benerin ICIMECE_PID_Robotgen.py)
+============================================================
+
+[SOLUSI UNTUK ICIMECE_PID_Robotgen.py - STYLE PRESERVATION]
+Skrip `ICIMECE_PID_Robotgen.py` saat ini mereset custom style (seperti judul) menjadi Normal. Tolong modifikasi `ICIMECE_PID_Robotgen.py` agar saat melakukan `paragraph.text = new_text`, skrip harus MEMPERTAHANKAN `paragraph.style` dan meng-copy properti font dari `run` sebelumnya.
+
+============================================================
+  MASTER PROMPT PERBAIKAN (gabungan, siap copy-paste)
+============================================================
+
+Sistem QA mendeteksi masalah pada hasil generator `ICIMECE_PID_Robotgen.py` untuk template `ICIMECE.docx`. Tolong perbaiki `ICIMECE_PID_Robotgen.py` mengatasi semua masalah berikut sekaligus, tanpa mengubah logika lain yang sudah benar:
+
+KATEGORI 3: STYLE & FONT
+  - Paragraf 0: Style hilang/berubah dari 'Title' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 1: Style hilang/berubah dari 'Author Last Name' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 2: Style hilang/berubah dari 'Affiliation' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 3: Style hilang/berubah dari 'Affiliation' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 4: Style hilang/berubah dari 'Abstract body' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 5: Style hilang/berubah dari 'Section' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 6: Style hilang/berubah dari 'Paragraph_first' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 7: Style hilang/berubah dari 'Table Caption' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 8: Style hilang/berubah dari 'Subsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+  - Paragraf 9: Style hilang/berubah dari 'Subsubsection' menjadi 'Normal'. Ini menyebabkan font dan spasi berantakan.
+
+[SOLUSI UNTUK ICIMECE_PID_Robotgen.py - STYLE PRESERVATION]
+Skrip `ICIMECE_PID_Robotgen.py` saat ini mereset custom style (seperti judul) menjadi Normal. Tolong modifikasi `ICIMECE_PID_Robotgen.py` agar saat melakukan `paragraph.text = new_text`, skrip harus MEMPERTAHANKAN `paragraph.style` dan meng-copy properti font dari `run` sebelumnya.
+
+============================================================
+
+============================================================
+  PROMPT UPGRADE auto_checker.py (META-IMPROVEMENT)
+============================================================
+
+Selain memperbaiki `ICIMECE_PID_Robotgen.py`, gunakan temuan di atas sebagai masukan untuk meng-upgrade `auto_checker.py` supaya checker jauh lebih spesifik, valid, dan tahan terhadap pola anomali baru di template lain. Tolong analisis temuan ini dan perbarui checker sesuai panduan di bawah:
+
+LANGKAH 1 -- Analisis temuan baru
+  Untuk template `ICIMECE_PID_Robot`, temuan berikut muncul:
+    - KATEGORI 3: STYLE & FONT: 30 masalah
+
+  Pertanyaan kunci yang harus dijawab sebelum mengubah checker:
+    a. Apakah pola anomali ini SUDAH ditangkap oleh audit existing,
+       hanya saja threshold-nya kurang tepat? (=> tune threshold)
+    b. Apakah pola ini BENAR-BENAR baru, belum ada audit-nya?
+       (=> tambah audit function baru)
+    c. Apakah finding ini false-positive untuk template-style ini?
+       (=> tambah whitelist/exclusion, JANGAN hapus check global)
+
+LANGKAH 2 -- Pilih strategi upgrade (urut dari paling aman)
+  [A] Tune threshold existing
+      Contoh: TABLE_COUNT_TOLERANCE, SECTPR_DISTRIBUTION_THRESHOLD,
+      PARAGRAPH_STYLE_CHECK_COUNT. Ubah hanya bila pola yang
+      terdeteksi konsisten muncul di >=2 template berbeda.
+
+  [B] Tambah sub-check di audit existing
+      Bila finding-nya varian dari kategori existing (mis. table
+      count meleset karena pattern figure-wrapper), tambahkan
+      cabang khusus di `audit_table_count()` atau sejenisnya
+      sehingga pesan error lebih spesifik (sebut pattern-nya).
+
+  [C] Tambah audit function baru
+      Bila pola benar-benar di luar 7 kategori existing, buat
+      `audit_<nama>()` baru yang return `AuditResult`, daftarkan
+      di `main()`, dan tambahkan render-nya di `render_report()`.
+      Konvensi: MAYOR untuk struktural, MINOR untuk visual.
+
+LANGKAH 3 -- Validasi sebelum commit
+  - Run checker terhadap SEMUA file output existing (DJLIT, SAGE,
+    JCEF, dll) untuk pastikan tidak ada regresi false-positive.
+  - Untuk template yang sebelumnya 'Lulus', skornya harus tetap
+    >= skor sebelumnya. Bila ada penurunan, threshold/check baru
+    terlalu agresif -- mundur atau perlonggar.
+  - Tambahkan komentar di check baru yang menyebut template
+    sumber pola: '# Pattern asal: template ICIMECE_PID_Robot (run YYYY-MM-DD)'
+    supaya jejak rule traceable di git history.
+
+LANGKAH 4 -- Hindari over-fitting
+  - JANGAN bikin rule yang hanya men-deteksi kasus persis di
+    `ICIMECE_PID_Robot` (mis. hard-code nilai twip atau nama style).
+    Generalisasi ke pola struktural (rasio, range, signature XML).
+  - JANGAN hapus/loosen check existing hanya supaya template ini
+    'lulus'. Kalau check existing salah, perbaiki rumusnya, bukan
+    matikan check-nya.
+  - Determinisme dijaga: checker tetap pure-function (tidak baca
+    state run sebelumnya, tidak ada randomness).
+
+Output yang diharapkan: patch `auto_checker.py` + ringkasan singkat
+alasan setiap perubahan, sehingga reviewer bisa verifikasi cepat.
+
+============================================================

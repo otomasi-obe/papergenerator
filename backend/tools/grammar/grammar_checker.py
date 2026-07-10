@@ -327,14 +327,14 @@ _ACADEMIC_MISSPELLINGS = {
 _COMMON_GRAMMAR_ERRORS = [
     (r'\b(they|we|these|those|the authors|the results)\s+(is)\b', r'\1 are', 'subject-verb agreement'),
     (r'\b(he|she|it|this|that|the study|the paper|the model)\s+(are)\b', r'\1 is', 'subject-verb agreement'),
-    (r'\b(The|the)\s+(\w+)\s+(of|for|in)\s+\w+\s+(are)\b', r'\1 \2 \3 \4 is', 'subject-verb agreement'),
+    (r'\b(The|the)\s+(\w+)\s+(of|for|in)\s+(\w+)\s+(are)\b', r'\1 \2 \3 \4 is', 'subject-verb agreement'),
     (r'\b(have|has)\s+(beened|haden|wenten)\b', r'\1 been', 'verb tense'),
     (r"\b(ain't|don't|doesn't|didn't|won't|can't|couldn't|wouldn't|shouldn't|needn't)\s+(no|none|nothing|nobody|nowhere|never)\b",
      r'\1 any', 'double negative'),
     (r'\bits\s+(their|they\'re)\b', 'its', 'confused word'),
     (r'\byour\s+(probably|welcome)\b', "you're \1", 'confused word'),
-    (r"\byou're\s+\w+\s+(is|are|was|were)\b", 'your \1', 'confused word'),
-    (r'\bthere\s+(is|are|was|were|has|have)\s+\w+\s+is\b', 'their \1', 'confused word'),
+    (r"\byou're\s+(\w+)\s+(is|are|was|were)\b", r'your \1', 'confused word'),
+    (r'\b(there)\s+(is|are|was|were|has|have)\s+\w+\s+\2\b', r'their \2', 'confused word'),
     (r'\b(is|was|are|were)\s+(important|crucial|essential|significant|key|major)\s+(part|aspect|factor|role|component)\b',
      r'\1 a \2 \3', 'missing article'),
 ]
@@ -494,7 +494,7 @@ _INDONESIAN_GRAMMAR_ERRORS = [
     (r'\b(ke)(sana|situ|sini|kantor|rumah|kampus|kelas|jakarta|bandung)\b',
      r'ke \2', 'preposition spacing'),
     # "yang" sometimes duplicated.
-    (r'\b(yang)\s+\w+\s+(yang)\b', r'\1 \2', 'redundant yang'),
+    (r'\b(yang)\s+\w+(?:\s+\w+){0,4}\s+(yang)\b', r'\1 \2', 'redundant yang'),
     # "para" should not precede "se-", "semua", "seluruh" (redundant).
     (r'\bpara\s+(semua|seluruh|se-)\b', r'\1', 'redundant para'),
     # "sedangkan" sometimes misspelled "sedangakan".

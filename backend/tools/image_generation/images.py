@@ -359,11 +359,7 @@ def get_paper_image(paper_id: str, filename: str):
 
     # Verify paper ownership (user must own this paper to access its images)
     from utils.database.models import Paper
-    paper = Paper.query.filter_by(id=paper_id).first()
-    if not paper:
-        return jsonify({"error": "Paper not found"}), 404
-    if paper.user_id != user_id:
-        return jsonify({"error": "Unauthorized"}), 403
+    paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
 
     # Try PaperImage record first (preferred — has metadata + permissions)
     img = PaperImage.query.filter_by(paper_id=paper_id, filename=sanitized).first()
@@ -386,7 +382,13 @@ def get_paper_image(paper_id: str, filename: str):
         return jsonify({"error": "Invalid path"}), 400
 
     if not filepath.is_file():
-        return jsonify({"error": "Image not found"}), 404
+        stem = sanitized.rsplit(".", 1)[0]
+        for alt in sorted(paper_dir.iterdir()):
+            if alt.is_file() and alt.stem == stem:
+                filepath = alt
+                break
+        else:
+            return jsonify({"error": "Image not found"}), 404
 
     # If PaperImage record exists, verify user ownership via the record
     if img and img.user_id != user_id:

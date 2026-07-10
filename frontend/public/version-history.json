@@ -1,0 +1,134 @@
+{
+  "version": "1.3.0",
+  "released": "2026-07-10",
+  "title": "Update v1.3.0",
+  "history": [
+    {
+      "version": "1.3.0",
+      "released": "2026-07-10",
+      "title": "Update v1.3.0",
+      "changes": [
+        { "type": "new", "text": "Query Planner tool — plan structured SLR search queries with phrase preservation, multi-language support (ID↔EN), and domain detection" },
+        { "type": "new", "text": "Password-gated tool access — wrong password locks tool per-user (maintenance mode) until admin unblock" }
+      ]
+    },
+    {
+      "version": "1.2.9",
+      "released": "2026-07-10",
+      "title": "Update v1.2.9",
+      "changes": [
+        { "type": "fix", "text": "Chat AI: conversation hilang saat pindah dashboard → paper editor — sekarang persist across all pages" },
+        { "type": "fix", "text": "Chat AI: stuck loading di dashboard setelah hard refresh — sekarang auto-init global mode" },
+        { "type": "new", "text": "Chat AI: scroll-to-bottom button dengan fade+slide animation" },
+        { "type": "improvement", "text": "Chat AI: auto-scroll pakai physics easing (fast → slow, cancel-on-interrupt)" },
+        { "type": "fix", "text": "SLR: query Indonesia diterjemahkan ke English untuk API internasional (Scopus, Crossref, OpenAlex, dll) — sebelumnya kirim mentah → 400 error" },
+        { "type": "fix", "text": "SLR: 250+ kamus istilah akademik Indonesia→English (termasuk 'kultur jaringan' → 'tissue culture')" },
+        { "type": "fix", "text": "SLR: _extract_core_query tidak lagi memotong kata domain penting (jaringan, konservasi, tumbuhan, langka)" },
+        { "type": "fix", "text": "SLR: relevance filter diperketat — 80+ stopwords Indonesia, tidak lagi match paper generik" }
+      ]
+    },
+    {
+      "version": "1.2.8",
+      "released": "2026-07-10",
+      "title": "Update v1.2.8",
+      "changes": [
+        { "type": "new", "text": "Inline button riwayat update di navbar & header" },
+        { "type": "fix", "text": "Detail token: grafik 30 hari, trend harian, base quota akurat" },
+        { "type": "improvement", "text": "Query token lebih cepat dengan composite index database" }
+      ]
+    },
+    {
+      "version": "1.2.7",
+      "released": "2026-07-09",
+      "title": "Update v1.2.7",
+      "changes": [
+        { "type": "fix", "text": "Bank selector grid cards di floating checkout modal (TokenPurchaseModal)" },
+        { "type": "fix", "text": "QRIS disabled di frontend (service tidak aktif di DOKU)" },
+        { "type": "fix", "text": "Channel VA dikirim ke backend (sebelumnya hardcode BRI)" },
+        { "type": "improvement", "text": "Hapus halaman checkout standalone (TokenCheckoutPage.vue) — semua via floating modal" },
+        { "type": "improvement", "text": "Trial (amount=0) auto-credit token, skip DOKU API" },
+        { "type": "fix", "text": "Backend raw_response json.dumps() di query-va" }
+      ]
+    },
+    {
+      "version": "1.2.6",
+      "released": "2026-07-08",
+      "title": "Update v1.2.6",
+      "changes": [
+        { "type": "new", "text": "Export selected data to DOCX/PDF" },
+        { "type": "fix", "text": "Improved selected item handoff to AI draft" },
+        { "type": "improvement", "text": "More reliable selection sync and download menu behavior" }
+      ]
+    },
+    {
+      "version": "1.2.5",
+      "released": "2026-07-01",
+      "title": "Update v1.2.5",
+      "changes": [
+        { "type": "fix", "text": "Detail token: perbaikan trend harian, base quota, dan grafik 30 hari" },
+        { "type": "new", "text": "Grafik line chart pemakaian token 30 hari" },
+        { "type": "improvement", "text": "Composite index ApiUsageLog untuk query lebih cepat" }
+      ]
+    },
+    {
+      "version": "1.2.4",
+      "released": "2026-06-20",
+      "title": "Update v1.2.4",
+      "changes": [
+        { "type": "new", "text": "AI Chat floating panel di semua halaman" },
+        { "type": "fix", "text": "PDF preview path traversal fix" },
+        { "type": "improvement", "text": "Payment callback security hardening" }
+      ]
+    },
+    {
+      "version": "1.2.3",
+      "released": "2026-06-01",
+      "title": "Update v1.2.3",
+      "changes": [
+        { "type": "new", "text": "SLR/Literature review pipeline" },
+        { "type": "improvement", "text": "Optimistic locking untuk paper concurrent edits" },
+        { "type": "fix", "text": "Image worker standalone PM2 process" }
+      ]
+    },
+    {
+      "version": "1.2.2",
+      "released": "2026-05-15",
+      "title": "Update v1.2.2",
+      "changes": [
+        { "type": "new", "text": "Google OAuth login" },
+        { "type": "new", "text": "Token quota system dengan admin management" },
+        { "type": "improvement", "text": "Performance indexes untuk papers, users, jobs" }
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "released": "2026-04-01",
+      "title": "Update v1.2.0",
+      "changes": [
+        { "type": "new", "text": "49 journal template generators" },
+        { "type": "new", "text": "Image generation tool" },
+        { "type": "new", "text": "Word Add-on integrasi" }
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "released": "2026-03-01",
+      "title": "Update v1.1.0",
+      "changes": [
+        { "type": "new", "text": "Multi-journal support IEEE format" },
+        { "type": "new", "text": "AI Detector & Plagiarism checker" },
+        { "type": "improvement", "text": "DOCX export dengan formatting" }
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "released": "2026-02-01",
+      "title": "PaperFull v1.0.0",
+      "changes": [
+        { "type": "new", "text": "PaperFull launch - AI academic paper generation" },
+        { "type": "new", "text": "31 paper fetcher sources" },
+        { "type": "new", "text": "Chat AI dengan project memory" }
+      ]
+    }
+  ]
+}

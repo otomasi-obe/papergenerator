@@ -1,0 +1,1 @@
+Task completed: VA transactions are now properly deleted from DOKU dashboard upon cancellation.

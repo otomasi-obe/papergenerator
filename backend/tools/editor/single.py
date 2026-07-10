@@ -40,6 +40,7 @@ from json_repair import repair_json
 from utils.core.env_loader import load_app_env
 from utils.core.storage_helper import _get_username_from_user_id, get_generation_log_path
 from utils.ai_tools.model_config import get_primary_generate_model, get_generate_model_chain, get_retry_count
+from tools.editor.prompt_sanitizer import sanitize_prompt
 
 # GenerationCancelled is re-exported via app._run_generate_full_job; this module
 # does not raise it itself but the caller imports it from generate_paper_chunked.
@@ -388,53 +389,53 @@ def _call_v_opus(
         "reasoning": {"effort": "high"},
     }
 
-    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, stream=True)
-    resp.raise_for_status()
-    # Force UTF-8 decoding to avoid mojibake (requests defaults to latin-1
-    # when Content-Type charset is missing). Must set BEFORE iter_lines().
-    resp.encoding = "utf-8"
+    with requests.post(url, json=payload, headers=headers, timeout=timeout, stream=True) as resp:
+        resp.raise_for_status()
+        # Force UTF-8 decoding to avoid mojibake (requests defaults to latin-1
+        # when Content-Type charset is missing). Must set BEFORE iter_lines().
+        resp.encoding = "utf-8"
 
-    content = ""
-    for line in resp.iter_lines(decode_unicode=True):
-        if not line:
-            continue
-        if line.startswith("data: "):
-            data_str = line[6:]
-            if data_str.strip() == "[DONE]":
-                break
-            try:
-                chunk = json.loads(data_str)
-                delta = chunk.get("choices", [{}])[0].get("delta", {})
-                if delta.get("content"):
-                    content += delta["content"]
-                    if progress_cb:
-                        try:
-                            progress_cb(len(content))
-                        except Exception:
-                            pass
-            except json.JSONDecodeError:
-                pass
-        elif line.startswith("{"):
-            try:
-                full = json.loads(line)
-                if full.get("choices"):
-                    msg = full["choices"][0].get("message", {})
-                    if msg.get("content"):
-                        content += msg["content"]
+        content = ""
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            if line.startswith("data: "):
+                data_str = line[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data_str)
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    if delta.get("content"):
+                        content += delta["content"]
                         if progress_cb:
                             try:
                                 progress_cb(len(content))
                             except Exception:
                                 pass
-            except json.JSONDecodeError:
-                pass
+                except json.JSONDecodeError:
+                    pass
+            elif line.startswith("{"):
+                try:
+                    full = json.loads(line)
+                    if full.get("choices"):
+                        msg = full["choices"][0].get("message", {})
+                        if msg.get("content"):
+                            content += msg["content"]
+                            if progress_cb:
+                                try:
+                                    progress_cb(len(content))
+                                except Exception:
+                                    pass
+                except json.JSONDecodeError:
+                    pass
 
     if not content:
         raise ValueError("AI returned empty content")
     return content
 
 
-# ── JSON parsing + shape normalization ───────────────────────────────────────
+# ── JSON parsing + shape normalization ────────────────────────────────────────
 def _parse_json_response(raw: str) -> dict:
     """Strip markdown fences and parse JSON; fall back to json_repair."""
     clean = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
@@ -678,22 +679,14 @@ def generate_paper_json_single(
         custom_prompt = re.sub(r"\s+", " ", custom_prompt).strip()
         log.info("[generate_paper_json_single] @slr tag detected — forcing pinned literature injection")
 
+    # Sanitize user-supplied custom_prompt to prevent prompt injection
+    custom_prompt = sanitize_prompt(custom_prompt)
+
     # ── Build user message ───────────────────────────────────────────────────
     user_parts: list[str] = [f"Topic / title: {judul}"]
 
     if custom_prompt and custom_prompt.strip():
         user_parts.append(custom_prompt.strip())
-
-    # Load workflow context if available
-    if paper_id and user_id:
-        try:
-            from PaperRiset.eks.editor.workflow_integration import load_workflow_context
-            workflow_ctx = load_workflow_context(paper_id, user_id)
-            if workflow_ctx:
-                user_parts.append(workflow_ctx)
-                log.info("[generate_paper_json_single] Injected workflow context")
-        except Exception as e:
-            log.warning("[generate_paper_json_single] Failed to load workflow context: %s", e)
 
     history_block = _load_chat_history(conv_id, limit=10)
     if history_block:
@@ -751,12 +744,6 @@ def generate_paper_json_single(
     user_kb = len(user_message.encode("utf-8")) / 1024
     log.info(
         "[generate_paper_json_single] system=%.1fKB user=%.1fKB model=%s",
-        sys_kb,
-        user_kb,
-        SINGLE_SHOT_MODEL,
-    )
-    log.info(
-        "[generate_paper_json_single] starting (system=%.1fKB user=%.1fKB model=%s)",
         sys_kb,
         user_kb,
         SINGLE_SHOT_MODEL,

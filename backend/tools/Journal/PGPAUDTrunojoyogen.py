@@ -411,5 +411,43 @@ def generate():
     print(f"[VERIFY] OK - {counters['fig']} figures, {counters['tbl']} tables")
     return str(OUTPUT_DOCX)
 
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Writes a temporary .docx via generate(), then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    import sys as _sys
+    import tempfile as _tf
+
+    _json_path = Path(json_path)
+    _pdf_path = Path(pdf_path)
+    _pdf_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create temp docx path
+    with _tf.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+        _tmp_docx = Path(_tmp.name)
+
+    _mod = _sys.modules[__name__]
+    _saved_in = getattr(_mod, "TEMPLATE_JSON", None)
+    _saved_out = getattr(_mod, "OUTPUT_DOCX", None)
+
+    try:
+        setattr(_mod, "TEMPLATE_JSON", _json_path)
+        setattr(_mod, "OUTPUT_DOCX", _tmp_docx)
+        generate()
+    finally:
+        if _saved_in is not None:
+            setattr(_mod, "TEMPLATE_JSON", _saved_in)
+        if _saved_out is not None:
+            setattr(_mod, "OUTPUT_DOCX", _saved_out)
+
+    try:
+        from ._render_pdf import convert_docx_to_pdf
+        return convert_docx_to_pdf(_tmp_docx, _pdf_path)
+    finally:
+        _tmp_docx.unlink(missing_ok=True)
+
 if __name__ == "__main__":
     generate()

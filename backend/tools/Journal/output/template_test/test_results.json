@@ -1,257 +1,257 @@
 {
   "meta": {
-    "date": "2026-06-30T12:25:07.777799",
+    "date": "2026-07-03T01:51:08.941586",
     "total_templates": 49,
-    "kelompok_1_kompatibel": 22,
-    "kelompok_2_tidak_kompatibel": 27
+    "kelompok_1_kompatibel": 23,
+    "kelompok_2_tidak_kompatibel": 26
   },
   "kelompok_1_kompatibel": [
     {
       "template": "ACM",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_acm.docx",
-      "elapsed_sec": 0.12678252498153597
+      "elapsed_sec": 0.14279178995639086
     },
     {
       "template": "APA",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_apa.docx",
-      "elapsed_sec": 0.03653598896926269
+      "elapsed_sec": 0.04463616700377315
     },
     {
       "template": "CCJ",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_ccj.docx",
-      "elapsed_sec": 0.1176417269743979
+      "elapsed_sec": 0.10043186508119106
     },
     {
       "template": "DJLIT",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_djlit.docx",
-      "elapsed_sec": 0.0398735890048556
+      "elapsed_sec": 0.04357863403856754
     },
     {
       "template": "EASR",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_easr.docx",
-      "elapsed_sec": 0.06492365500889719
+      "elapsed_sec": 0.06535589508712292
     },
     {
       "template": "ELSEVIER",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_elsevier.docx",
-      "elapsed_sec": 0.03675123397260904
+      "elapsed_sec": 0.04031414806377143
     },
     {
       "template": "IEEE",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_ieee.docx",
-      "elapsed_sec": 0.049099577008746564
+      "elapsed_sec": 0.04400175204500556
     },
     {
       "template": "IJECE",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_ijece.docx",
-      "elapsed_sec": 0.0968760690302588
+      "elapsed_sec": 0.07879450893960893
     },
     {
       "template": "IJT",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_ijt.docx",
-      "elapsed_sec": 0.04479777597589418
+      "elapsed_sec": 0.037642243900336325
     },
     {
       "template": "JAT",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_jat.docx",
-      "elapsed_sec": 0.049761660979129374
+      "elapsed_sec": 0.03500316897407174
     },
     {
       "template": "JCEF",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_jcef.docx",
-      "elapsed_sec": 0.3389765419997275
+      "elapsed_sec": 0.33497456402983516
     },
     {
       "template": "JEEMECS",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_jeemecs.docx",
-      "elapsed_sec": 0.07556445000227541
+      "elapsed_sec": 0.07333161809947342
     },
     {
       "template": "JIEB",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_jieb.docx",
-      "elapsed_sec": 0.05368512397399172
+      "elapsed_sec": 0.06022043095435947
     },
     {
       "template": "JNTETI",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_jnteti.docx",
-      "elapsed_sec": 0.10748518898617476
+      "elapsed_sec": 0.11737195402383804
     },
     {
       "template": "JOKI",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_joki.docx",
-      "elapsed_sec": 0.05721496697515249
+      "elapsed_sec": 0.05829227005597204
     },
     {
       "template": "JRC",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_jrc.docx",
-      "elapsed_sec": 0.021239294961560518
+      "elapsed_sec": 0.023902948014438152
+    },
+    {
+      "template": "KKCK",
+      "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_kkck.docx",
+      "elapsed_sec": 0.1007849529851228
     },
     {
       "template": "MDPI",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_mdpi.docx",
-      "elapsed_sec": 0.06778447300894186
+      "elapsed_sec": 0.06713427905924618
     },
     {
       "template": "MEV",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_mev.docx",
-      "elapsed_sec": 0.04597643099259585
+      "elapsed_sec": 0.05415957304649055
     },
     {
       "template": "PAUDIA",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_paudia.docx",
-      "elapsed_sec": 0.03940950700780377
+      "elapsed_sec": 0.04129438300151378
     },
     {
       "template": "ROTASI",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_rotasi.docx",
-      "elapsed_sec": 0.04550330003257841
+      "elapsed_sec": 0.051248052972368896
     },
     {
       "template": "SPRINGER",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_springer.docx",
-      "elapsed_sec": 0.03765674901660532
+      "elapsed_sec": 0.04049825109541416
     },
     {
       "template": "UITM",
       "output": "/home/sirobo/papergenerator/backend/tools/Journal/output/template_test/test_uitm.docx",
-      "elapsed_sec": 0.08364441304001957
+      "elapsed_sec": 0.0901444599730894
     }
   ],
   "kelompok_2_tidak_kompatibel": [
     {
       "template": "AEJ",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.020268638036213815
+      "elapsed_sec": 0.0008261250331997871
     },
     {
       "template": "AMORI",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.009650042047724128
+      "elapsed_sec": 0.0009256360353901982
     },
     {
       "template": "CERIMRE",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.009036901989020407
+      "elapsed_sec": 0.000965554965659976
     },
     {
       "template": "ELCTRICES",
       "error": "AttributeError: 'NoneType' object has no attribute '__dict__'",
-      "elapsed_sec": 0.017391036031767726
+      "elapsed_sec": 0.0021282510133460164
     },
     {
       "template": "ELKOLIND",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.00966076203621924
+      "elapsed_sec": 0.0007890010019764304
     },
     {
       "template": "ENERGIUPM",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.00865073298336938
+      "elapsed_sec": 0.0006739400560036302
     },
     {
       "template": "EL-USRAH",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.006655903998762369
+      "elapsed_sec": 0.0006203110096976161
     },
     {
       "template": "ICET",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.01707139500649646
+      "elapsed_sec": 0.0015494440449401736
     },
     {
       "template": "ICIMECE",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.012281444971449673
+      "elapsed_sec": 0.002984848921187222
     },
     {
       "template": "ICONIE",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.01176684396341443
+      "elapsed_sec": 0.0008857459761202335
     },
     {
       "template": "ICOSEG",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.01109841902507469
+      "elapsed_sec": 0.0006423619342967868
     },
     {
       "template": "IJB",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.017520313034765422
+      "elapsed_sec": 0.001497614081017673
     },
     {
       "template": "IJEECS",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.010329362994525582
+      "elapsed_sec": 0.0011247060028836131
     },
     {
       "template": "IJIMS",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.00999098498141393
+      "elapsed_sec": 0.0011382290394976735
     },
     {
       "template": "IJITEE",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.006928509974386543
+      "elapsed_sec": 0.000919668935239315
     },
     {
       "template": "IJRED",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.006567346979863942
+      "elapsed_sec": 0.0007003640057519078
     },
     {
       "template": "JAMRIS",
       "error": "AttributeError: 'NoneType' object has no attribute '__dict__'",
-      "elapsed_sec": 0.001185261004138738
+      "elapsed_sec": 0.001575237954966724
     },
     {
       "template": "JMEM",
       "error": "AttributeError: 'NoneType' object has no attribute '__dict__'",
-      "elapsed_sec": 0.0016438709571957588
+      "elapsed_sec": 0.0011356619652360678
     },
     {
       "template": "JTMM",
       "error": "AttributeError: 'NoneType' object has no attribute '__dict__'",
-      "elapsed_sec": 0.0011501950211822987
+      "elapsed_sec": 0.0018382440321147442
     },
     {
       "template": "JTRANSIENT",
       "error": "AttributeError: 'NoneType' object has no attribute '__dict__'",
-      "elapsed_sec": 0.0010553490137681365
+      "elapsed_sec": 0.0010313679231330752
     },
     {
       "template": "JTUNDIP",
       "error": "AttributeError: 'NoneType' object has no attribute '__dict__'",
-      "elapsed_sec": 0.0009762500412762165
-    },
-    {
-      "template": "KKCK",
-      "error": "ModuleNotFoundError: No module named 'latex2mathml'",
-      "elapsed_sec": 0.000756683002691716
+      "elapsed_sec": 0.0008798700291663408
     },
     {
       "template": "MURHUM",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.00817762699443847
+      "elapsed_sec": 0.0008322530193254352
     },
     {
       "template": "OBSESI",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.008058947045356035
+      "elapsed_sec": 0.0005495880031958222
     },
     {
       "template": "PGPAUDTRUNOJOYO",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.006212317966856062
+      "elapsed_sec": 0.0009346440201625228
     },
     {
       "template": "PST",
       "error": "No build_document() function found",
-      "elapsed_sec": 0.0009147440432570875
+      "elapsed_sec": 0.0008118640398606658
     },
     {
       "template": "ULTIMACOMP",
       "error": "Signature error: build_document() takes from 1 to 2 positional arguments but 3 were given",
-      "elapsed_sec": 0.0010401270119473338
+      "elapsed_sec": 0.0012429100461304188
     }
   ]
 }

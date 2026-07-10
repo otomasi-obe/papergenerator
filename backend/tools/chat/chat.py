@@ -18,16 +18,13 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc
 
 from utils.database.models import ChatMessage, Conversation, Paper, db, safe_commit
-import requests as _requests
-import urllib3 as _urllib3
+
+log = logging.getLogger(__name__)
 from utils.ai_tools.model_router import route_chat_call
 from utils.core.redis_client import get_redis
 from utils.core.user_storage import get_username, save_chat_send_by_id, save_chat_recv_by_id
 from tools.chat.tools import parse_completion, apply_operations, save_thinking_to_fs
 from tools.Literatur.literature_helpers import get_pinned_literature
-
-log = logging.getLogger(__name__)
-
 simple_chat = Blueprint("simple_chat", __name__)
 
 
@@ -102,6 +99,8 @@ def get_paper_context(paper_id: str | None) -> str:
     if not data:
         return f"Paper: {paper.title or 'Untitled'}\nPaper ID: {paper_id}\n(Paper data is empty — belum ada konten.)"
 
+    header = f"Paper: {paper.title or 'Untitled'}\nPaper ID: {paper_id}\n"
+
     # Always include paper_id in the context for [APPLY_PAPER] operations
     data["_paper_id"] = paper_id
 
@@ -117,6 +116,19 @@ def get_paper_context(paper_id: str | None) -> str:
         data.pop("_section_keys", None)
     except Exception as e:
         log.warning("Failed to normalize paper data for %s: %s", paper_id, e)
+
+    section_summary_parts = []
+    for i, sec in enumerate(data.get("sections", []), 1):
+        title = sec.get("title") if isinstance(sec, dict) else None
+        if title:
+            snippet = ""
+            content = sec.get("content") if isinstance(sec, dict) else None
+            if isinstance(content, list) and content:
+                first = content[0]
+                if isinstance(first, dict):
+                    snippet = (first.get("text") or "").replace("\n", " ")[:90]
+            section_summary_parts.append(f"- section{i}: {title} | {snippet}")
+    data["_section_summary"] = "\n".join(section_summary_parts) if section_summary_parts else "(belum ada section)"
 
     # Serialize full paper data
     try:
@@ -212,6 +224,93 @@ def list_chat_papers():
         .all()
     )
     return jsonify([{"id": p.id, "title": p.title} for p in papers])
+
+
+# ─── Global (paperless) conversation routes ─────────────────────────────────
+
+@simple_chat.route("/api/chat/conversations", methods=["GET"])
+@jwt_required()
+def list_all_conversations():
+    """List ALL conversations for the current user (global + paper-linked)."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    convs = (
+        Conversation.query.filter_by(user_id=user_id)
+        .order_by(Conversation.created_at.desc())
+        .all()
+    )
+    conv_ids = [c.id for c in convs]
+    msg_counts = {}
+    if conv_ids:
+        rows = (
+            db.session.query(ChatMessage.conversation_id, db.func.count(ChatMessage.id))
+            .filter(ChatMessage.conversation_id.in_(conv_ids))
+            .group_by(ChatMessage.conversation_id)
+            .all()
+        )
+        msg_counts = dict(rows)
+    result = []
+    for c in convs:
+        d = c.to_dict(message_count=msg_counts.get(c.id, 0))
+        # Attach paper title if linked
+        if c.paper_id:
+            paper = Paper.query.get(c.paper_id)
+            d["paper_title"] = paper.title if paper else None
+        else:
+            d["paper_title"] = None
+        result.append(d)
+    return jsonify(result)
+
+
+@simple_chat.route("/api/chat/conversations", methods=["POST"])
+@jwt_required()
+def create_global_conversation():
+    """Create a conversation with optional paper_id. If no paper_id, it's a global chat."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "New Chat").strip() or "New Chat"
+    paper_id = data.get("paper_id")  # nullable
+    # Validate paper ownership if paper_id provided
+    if paper_id:
+        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+        if not paper:
+            return jsonify({"error": "Paper not found"}), 404
+    conv = Conversation(id=_gen_id(), user_id=user_id, paper_id=paper_id, title=title)
+    db.session.add(conv)
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify(conv.to_dict()), 201
+
+
+@simple_chat.route("/api/chat/conversations/<conv_id>/link-paper", methods=["PATCH"])
+@jwt_required()
+def link_paper_to_conversation(conv_id: str):
+    """Link an existing global conversation to a paper (or unlink by passing null)."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return jsonify({"error": "Unauthorized"}), 401
+    conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+    data = request.get_json(silent=True) or {}
+    paper_id = data.get("paper_id")  # null to unlink
+    if paper_id:
+        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+        if not paper:
+            return jsonify({"error": "Paper not found"}), 404
+    conv.paper_id = paper_id
+    try:
+        safe_commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify(conv.to_dict())
 
 
 @simple_chat.route("/api/papers/<paper_id>/conversations", methods=["GET"])
@@ -354,9 +453,27 @@ def clear_conversation(conv_id: str):
 @simple_chat.route("/api/chat/conversations/<conv_id>/messages", methods=["POST"])
 @jwt_required()
 def send_message(conv_id: str):
+    # Manual rate limiting: 10 requests per minute per user
+    from utils.core.redis_client import get_redis
+    from utils.quota import quota_exceeded
+
     user_id = _current_user_id()
     if user_id is None:
         return jsonify({"error": "Unauthorized"}), 401
+
+    r = get_redis()
+    if r:
+        rate_key = f"rate:chat:{user_id}"
+        current = r.incr(rate_key)
+        if current == 1:
+            r.expire(rate_key, 60)
+        elif current > 10:
+            return jsonify({"error": "Rate limit exceeded (10/min)"}), 429
+
+    # ── Quota gate ────────────────────────────────────────────────────────
+    exceeded, info = quota_exceeded(user_id)
+    if exceeded:
+        return jsonify(info), 429
 
     conv = Conversation.query.filter_by(id=conv_id, user_id=user_id).first()
     if not conv:
@@ -365,6 +482,7 @@ def send_message(conv_id: str):
     data = request.get_json(silent=True) or {}
     content = (data.get("content") or "").strip()
     images = data.get("images") or []  # base64 images: [{"data": "...", "name": "..."}]
+    view_context = data.get("view_context") if isinstance(data.get("view_context"), dict) else {}
 
     # Detect image-only request (no text, just images)
     image_only = not content and images
@@ -375,6 +493,34 @@ def send_message(conv_id: str):
 
     if not content:
         return jsonify({"error": "Message content is required"}), 400
+
+    # Learn explicit user preferences/corrections with near-zero token overhead.
+    # ponytail: only explicit signals for now; add LLM summarizer when memory quality needs nuance.
+    try:
+        lowered = content.lower()
+        from utils.database.models import User as _MemUser
+        _mu = _MemUser.query.get(user_id)
+        if _mu:
+            mem = dict(_mu.user_memory or {})
+            # Intentionally store request-character history so future prompts get richer/boros.
+            # Secrets are redacted before memory injection.
+            note = re.sub(r"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*\S+", r"\1=[REDACTED]", content[:700].strip())
+            recent = mem.get("recent_request_character", "")
+            lines = [x for x in (recent.split("\n") if recent else []) if x.strip()]
+            lines.append(f"- {note}")
+            mem["recent_request_character"] = "\n".join(lines[-20:])[-8000:]
+
+            learn_markers = ("ingat", "jangan", "prefer", "saya suka", "gua suka", "aku suka", "biasakan")
+            if any(m in lowered for m in learn_markers):
+                key = "correction_or_preference"
+                prev = mem.get(key, "")
+                merged = (prev + "\n- " + note).strip() if prev else "- " + note
+                mem[key] = merged[-4000:]
+            _mu.user_memory = mem
+            safe_commit()
+    except Exception as e:
+        log.warning("user_memory learn failed user=%s: %s", user_id, e)
+
     if len(content) > 2000000:
         return jsonify({"error": "Pesan terlalu panjang (maks 2 juta karakter, termasuk isi file lampiran). Kurangi jumlah file atau coba @slr untuk analisis literatur otomatis."}), 400
     if len(images) > 5:
@@ -450,10 +596,35 @@ def send_message(conv_id: str):
                 user_prefs.append(f"- Institusi user: **{institution}**")
             # Language: paper-level > user-level > default 'id'
             lang = current_user.preferred_language or "id"
+            memory = current_user.user_memory or {}
+            if isinstance(memory, dict) and memory:
+                for k, v in list(memory.items())[:20]:
+                    if isinstance(v, str) and v.strip():
+                        user_prefs.append(f"- {k}: {v[:300]}")
             if user_prefs:
-                system_content += "## User Preferences\n" + "\n".join(user_prefs) + "\n\n"
+                system_content += "## User Preferences & Learned Memory\n" + "\n".join(user_prefs) + "\n\n"
     except Exception as e:
         log.warning("Failed to inject user preferences into system prompt: %s", e)
+
+    # Inject UI location so the assistant does not point dashboard users to editor-only controls.
+    try:
+        location = str(view_context.get("location") or ("editor" if conv.paper_id else "dashboard"))
+        if location == "dashboard" or not conv.paper_id:
+            system_content += (
+                "## Current User Location\n"
+                "User sedang di DASHBOARD, bukan di halaman editor.\n"
+                "Dashboard controls visible: tombol `+ New Paper` untuk membuat paper/editor baru, dan floating `AI Chat`.\n"
+                "Editor-only controls like `🛠 Tools`, `Generate Full`, `Literatur`, `Preview`, and paper sections are NOT visible yet.\n"
+                "Jika user ingin membuat jurnal dari dashboard: instruksikan klik `+ New Paper` dulu, lalu di editor klik `🛠 Tools` → `Generate Full`.\n"
+                "Jika user bilang tidak melihat Tools, jangan ulangi lokasi Tools; akui karena mereka masih di dashboard dan arahkan ke `+ New Paper`.\n\n"
+            )
+        else:
+            system_content += (
+                "## Current User Location\n"
+                "User sedang di EDITOR paper. Controls visible: `📝 Editor`, `👁 Preview`, `🛠 Tools`; di dalam Tools ada `Generate Full`, `Journal`, `Literatur`, `Files`, `Data`, `Images`, dan AI tools.\n\n"
+            )
+    except Exception as e:
+        log.warning("Failed to inject view context: %s", e)
 
     if conv.paper_id:
         try:
@@ -626,7 +797,7 @@ def send_message(conv_id: str):
 
     # ── Detect research gap/SLR intent for conditional template injection ──
     # Keywords in user message that need SLR analysis template
-    _SLR_KEYWORDS = ["riset gap", "research gap", "review literatur", "literature review",
+    _SLR_KEYWORDS = ["riset gap", "gap riset", "research gap", "review literatur", "literature review",
                      "slr analysis", "systematic review", "gap analysis",
                      "celah riset", "analisis gap"]
     _content_lower = content.lower()
@@ -1003,6 +1174,22 @@ def send_message(conv_id: str):
                             "success": False,
                         }
                     content = parsed["cleaned_text"] or content
+
+                status_lines = []
+                if out.get("paper_applied") and out["paper_applied"].get("operations"):
+                    ops = out["paper_applied"].get("operations") or []
+                    results = out["paper_applied"].get("results") or []
+                    errors = out["paper_applied"].get("errors") or []
+                    success = bool(out["paper_applied"].get("success") and ops and not errors)
+                    if success:
+                        status_lines.append("**Editor:** " + "; ".join(results))
+                    elif ops and errors:
+                        status_lines.append("**Editor - Failed:** " + "; ".join(errors))
+                    elif ops and results:
+                        status_lines.append("**Editor:** " + "; ".join(results))
+
+                if status_lines:
+                    content = (content or "").rstrip() + "\n\n" + "\n".join(status_lines)
                 if parsed["has_ask_user"] and parsed["ask_user"]:
                     out["ask_user"] = parsed["ask_user"]
                     if parsed["cleaned_text"]:
@@ -1079,6 +1266,38 @@ def send_message(conv_id: str):
                                 pass
                             log.exception("Chat DB save failed (non-retryable)")
                             break
+                    # ── Token deduction ────────────────────────────────────────
+                    if content and content.strip():
+                        try:
+                            from utils.database.models import ApiUsageLog, User as _ChatUser
+                            from utils.database.models import db as _chatdb, safe_commit as _chat_commit
+                            _prompt_t = max(1, len(system_content + content) // 4)
+                            _comp_t = max(1, len(content) // 4)
+                            _total = _prompt_t + _comp_t
+                            _log_entry = ApiUsageLog(
+                                user_id=int(user_id),
+                                endpoint="/api/chat/messages",
+                                model=model_used or "chat",
+                                prompt_tokens=_prompt_t,
+                                completion_tokens=_comp_t,
+                                total_tokens=_total,
+                                created_at=datetime.now(timezone.utc),
+                            )
+                            _chatdb.session.add(_log_entry)
+                            _chat_user = _ChatUser.query.get(int(user_id))
+                            if _chat_user and _chat_user.role != "admin":
+                                _now = datetime.now(timezone.utc)
+                                _mk = _now.strftime("%Y-%m")
+                                if (_chat_user.usage_month_key or "") != _mk:
+                                    _chat_user.usage_month_key = _mk
+                                    _chat_user.token_used_month = 0
+                                _chat_user.token_used_month = int(_chat_user.token_used_month or 0) + _total
+                            _chat_commit()
+                            log.info("CHAT_TOKEN_DEDUCT user=%d model=%s prompt=%d comp=%d total=%d",
+                                     user_id, model_used or "chat", _prompt_t, _comp_t, _total)
+                        except Exception as _te:
+                            log.warning("CHAT_TOKEN_DEDUCT_FAILED user=%d: %s", user_id, _te)
+
                     out["message_id"] = mid
                     if mid:
                         try:
@@ -1831,9 +2050,11 @@ def send_message(conv_id: str):
                 })
                 yield _sse("replace_text", {"content": _fin["content"]})
 
+            if _fin.get("content") is not None and _fin.get("content") != assistant_content:
+                yield _sse("replace_text", {"content": _fin["content"]})
+
             if _fin.get("ask_user"):
                 yield _sse("ask_user", _fin["ask_user"])
-                yield _sse("replace_text", {"content": _fin["content"]})
 
             # Emit docx_ready event with download URL
             if _fin.get("docx_url"):
@@ -2050,12 +2271,17 @@ def get_faq_analytics():
             func.count(ChatMessage.id).label("cnt"),
         )
         .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+        .filter(Conversation.user_id == user_id)
         .filter(ChatMessage.role == "user")
         .filter(ChatMessage.content.isnot(None))
         .filter(ChatMessage.content != "")
     )
 
     if paper_id:
+        # Verify paper ownership before scoping
+        from utils.database.models import Paper
+        if not Paper.query.filter_by(id=paper_id, user_id=user_id).first():
+            return jsonify({"error": "Paper not found"}), 404
         q = q.filter(Conversation.paper_id == paper_id)
     if since:
         q = q.filter(ChatMessage.created_at >= since)
@@ -2067,6 +2293,7 @@ def get_faq_analytics():
     total_q = (
         db.session.query(func.count(ChatMessage.id))
         .join(Conversation, ChatMessage.conversation_id == Conversation.id)
+        .filter(Conversation.user_id == user_id)
         .filter(ChatMessage.role == "user")
     )
     if paper_id:

@@ -755,7 +755,7 @@ def add_references(doc, data):
         ref_content = ref_data
     elif isinstance(ref_data, dict):
         ref_title = ref_data.get("title", "Reference")
-        ref_content = ref_data.get("content") or ref_data.get("items") or [])
+        ref_content = ref_data.get("content") or ref_data.get("items") or []
     else:
         ref_title = "Reference"
         ref_content = []
@@ -914,3 +914,13 @@ def build_document(json_path: Path, output_path: Path, template_path: Path = Non
         if fallback.exists():
             shutil.move(str(fallback), str(output_path))
     return Path(output_path)
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)

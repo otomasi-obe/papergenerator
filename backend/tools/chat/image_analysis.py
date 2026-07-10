@@ -66,7 +66,7 @@ def _validate_base64_image(b64_data: str) -> tuple[bool, str]:
 
     # Check size
     try:
-        decoded = base64.b64decode(raw)
+        decoded = base64.b64decode(raw, validate=True)
     except Exception:
         return False, "Invalid base64 encoding"
 

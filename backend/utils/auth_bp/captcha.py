@@ -13,6 +13,7 @@ import hashlib
 import logging
 import os
 import random
+import time
 import uuid
 from typing import Optional
 
@@ -65,6 +66,18 @@ def _generate_challenge() -> tuple[str, int]:
     return question, answer
 
 
+def _prune_fallback_store():
+    """Remove expired entries and cap size at 1000."""
+    now = time.time()
+    expired = [k for k, (_, exp) in _fallback_store.items() if now >= exp]
+    for k in expired:
+        del _fallback_store[k]
+    if len(_fallback_store) > 1000:
+        sorted_keys = sorted(_fallback_store.keys(), key=lambda k: _fallback_store[k][1])
+        for k in sorted_keys[:len(_fallback_store) - 1000]:
+            del _fallback_store[k]
+
+
 def generate_captcha() -> dict:
     """
     Generate a new CAPTCHA challenge.
@@ -80,9 +93,11 @@ def generate_captcha() -> dict:
         except Exception as e:
             log.warning("captcha: failed to store in Redis: %s", e)
             # Fallback: store in-memory (per-process, less reliable but functional)
-            _fallback_store[captcha_id] = (str(answer), os.times().elapsed + CAPTCHA_TTL)
+            _prune_fallback_store()
+            _fallback_store[captcha_id] = (str(answer), time.time() + CAPTCHA_TTL)
     else:
-        _fallback_store[captcha_id] = (str(answer), os.times().elapsed + CAPTCHA_TTL)
+        _prune_fallback_store()
+        _fallback_store[captcha_id] = (str(answer), time.time() + CAPTCHA_TTL)
 
     return {"captcha_id": captcha_id, "question": question}
 
@@ -111,11 +126,12 @@ def verify_captcha(captcha_id: str, answer: str) -> bool:
         except Exception as e:
             log.warning("captcha: Redis error during verify: %s", e)
     else:
-        # Fallback
+        # Fallback: prune stale entries, then lookup
+        _prune_fallback_store()
         entry = _fallback_store.pop(captcha_id, None)
         if entry:
             stored_answer, expiry = entry
-            if os.times().elapsed > expiry:
+            if time.time() > expiry:
                 stored_answer = None  # expired
 
     if stored_answer is None:
@@ -137,6 +153,45 @@ def _failed_attempts_key() -> str:
     return f"captcha:failed_login:{_get_client_ip()}"
 
 
+# In-memory fallback for failed attempts when Redis unavailable
+_failed_attempts_inmem: dict[str, dict] = {}  # ip -> {count, expires_at}
+_MAX_INMEM_ATTEMPTS = 500
+
+
+def _get_failed_attempts_inmem() -> int:
+    """Get in-memory failed attempts count, respecting expiry."""
+    ip = _get_client_ip()
+    entry = _failed_attempts_inmem.get(ip)
+    if not entry:
+        return 0
+    if time.time() > entry["expires_at"]:
+        del _failed_attempts_inmem[ip]
+        return 0
+    return entry["count"]
+
+
+def _increment_failed_attempts_inmem() -> None:
+    """Increment in-memory failed attempts counter."""
+    ip = _get_client_ip()
+    now = time.time()
+    # Cap dict size
+    if len(_failed_attempts_inmem) >= _MAX_INMEM_ATTEMPTS:
+        expired = [k for k, v in _failed_attempts_inmem.items() if now > v["expires_at"]]
+        for k in expired:
+            del _failed_attempts_inmem[k]
+    entry = _failed_attempts_inmem.get(ip)
+    if entry and now <= entry["expires_at"]:
+        entry["count"] += 1
+    else:
+        _failed_attempts_inmem[ip] = {"count": 1, "expires_at": now + 900}
+
+
+def _reset_failed_attempts_inmem() -> None:
+    """Clear in-memory failed attempts for current IP."""
+    ip = _get_client_ip()
+    _failed_attempts_inmem.pop(ip, None)
+
+
 def get_failed_login_attempts() -> int:
     """Get the number of failed login attempts from the current IP."""
     rc = _get_redis()
@@ -146,7 +201,8 @@ def get_failed_login_attempts() -> int:
             return int(val) if val else 0
         except Exception:
             pass
-    return 0
+    # Fall back to in-memory
+    return _get_failed_attempts_inmem()
 
 
 def increment_failed_attempts() -> None:
@@ -159,6 +215,9 @@ def increment_failed_attempts() -> None:
             rc.expire(key, 900)  # 15 minute window
         except Exception as e:
             log.warning("captcha: failed to increment attempts: %s", e)
+            _increment_failed_attempts_inmem()
+    else:
+        _increment_failed_attempts_inmem()
 
 
 def reset_failed_attempts() -> None:
@@ -169,6 +228,7 @@ def reset_failed_attempts() -> None:
             rc.delete(_failed_attempts_key())
         except Exception:
             pass
+    _reset_failed_attempts_inmem()
 
 
 def captcha_required_for_login() -> bool:

@@ -2,7 +2,7 @@
 Storage Helper for User/Paper-based File Organization
 ======================================================
 Provides path resolution and file operations for the user storage structure:
-    backend/user/<username>/<paper_id>/
+    backend/user/<paper_id>/
         chat/
             DDMMYY-HHMMSS-send.json
             DDMMYY-HHMMSS-recv.json
@@ -135,7 +135,9 @@ def get_image_path(username: str, paper_id: str, filename: str) -> Path:
     base_path = get_user_paper_path(username, paper_id)
     image_dir = base_path / "image"
     image_dir.mkdir(exist_ok=True)
-    return image_dir / filename
+    # Prevent path traversal: filename must be safe basename only
+    safe_name = _safe_path_seg(filename, "image")
+    return image_dir / safe_name
 
 
 def get_paper_json_path(username: str, paper_id: str, title: str) -> Path:
@@ -239,9 +241,9 @@ def get_legacy_paper_dir(paper_id: str) -> Path:
         paper_id: Paper ID
 
     Returns:
-        Path: backend/data/uploads/<paper_id>/
+        Path: backend/user/<paper_id>/uploads/ (legacy migration only)
     """
-    return Path(__file__).parent.parent.parent / "data" / "uploads" / paper_id
+    return Path(__file__).parent.parent.parent / "user" / paper_id / "uploads"
 
 
 def migrate_to_new_structure(user_id: int, paper_id: str) -> bool:

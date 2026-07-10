@@ -29,14 +29,15 @@ import re
 import threading
 import time
 import uuid
+from io import BytesIO
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 import redis
-from flask import Blueprint, Response, jsonify, request, stream_with_context
+from flask import Blueprint, Response, jsonify, request, send_file, stream_with_context
 from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.orm import defer
@@ -57,11 +58,14 @@ slr_api = Blueprint("slr_api", __name__)
 
 # ━━━ SLR ORCHESTRATOR CONSTANTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MAX_WORKERS = 6
-FETCH_TIMEOUT_SEC = 120
+# Single fetcher must not exceed this per-source budget.
+FETCH_TIMEOUT_SEC = int(os.getenv("SLR_FETCH_TIMEOUT_SEC", "45"))
 FETCH_LIMIT_PER_FETCHER = 30
 PARTIAL_RESULTS_PREVIEW = 20
 REDIS_KEY_PREFIX = "slr_new:"
 REDIS_PROGRESS_TTL = 10800  # 3 hours (SLR jobs can take 15+ min)
+ANALYZE_TIMEOUT_SEC = int(os.getenv("SLR_ANALYZE_TIMEOUT_SEC", "12"))
+_push_count = 0  # throttle counter for DB persistence in _push_progress
 
 # In-memory job store
 _jobs: dict[str, "SLRJob"] = {}
@@ -71,6 +75,53 @@ _jobs_lock = threading.Lock()
 _rate_limiters: dict[str, RateLimiter] = {}
 
 JOB_ID_RE = re.compile(r"^[A-Za-z0-9_]{6,32}$")
+FETCHER_ALIASES = {
+    "scholar": "semantic_scholar",
+    "semantic": "semantic_scholar",
+    "semantic-scholar": "semantic_scholar",
+    "googlebooks": "google_books",
+    "openlibrary": "open_library",
+    "science_direct": "sciencedirect",
+    "europe_pmc": "europepmc",
+}
+
+
+def _normalize_fetcher_name(name: str, available: set[str] | None = None) -> str | None:
+    key = re.sub(r"[^a-z0-9_\-]+", "", (name or "").strip().lower())
+    key = FETCHER_ALIASES.get(key, key.replace("-", "_"))
+    if available is None:
+        available = set(FETCHER_ALL.keys())
+    return key if key in available else None
+
+
+def _parse_inline_fetcher_queries(keyword: str, available: set[str] | None = None) -> tuple[str, dict[str, list[str]]]:
+    """Parse `arxiv:robot ieee:agv` into fetcher→queries.
+
+    Text before the first recognized `source:` remains the plain keyword and
+    still goes through AI routing. Unknown prefixes are treated as normal text.
+    """
+    if available is None:
+        available = set(FETCHER_ALL.keys())
+    matches = []
+    for match in re.finditer(r"(?<!\S)([A-Za-z][A-Za-z0-9_\-]{1,40}):", keyword):
+        source = _normalize_fetcher_name(match.group(1), available)
+        if source:
+            matches.append((match.start(), match.end(), source))
+    if not matches:
+        return keyword.strip(), {}
+
+    plain_parts: list[str] = []
+    fetch_map: dict[str, list[str]] = {}
+    if matches[0][0] > 0:
+        plain_parts.append(keyword[:matches[0][0]].strip())
+
+    for index, (_start, end, source) in enumerate(matches):
+        next_start = matches[index + 1][0] if index + 1 < len(matches) else len(keyword)
+        query = keyword[end:next_start].strip()
+        if query:
+            fetch_map.setdefault(source, []).append(query)
+
+    return " ".join(part for part in plain_parts if part).strip(), fetch_map
 
 # Redis client for cross-process rate limiting + orchestrator job discovery.
 # Falls back to in-memory if Redis unavailable.
@@ -108,12 +159,19 @@ def _get_orch_jobs_from_redis(paper_id: str, user_id: int) -> list[dict]:
         job_ids = _redis_client.smembers(set_key)
         results = []
         for jid in job_ids:
+            if isinstance(jid, bytes):
+                jid = jid.decode("utf-8", "ignore")
             raw = _redis_client.get(f"slr_new:{jid}")
             if raw:
                 try:
                     d = json.loads(raw)
                     # Filter by paper_id and user_id (now included in to_dict)
                     if d.get("paper_id") == paper_id and d.get("user_id") == user_id:
+                        db_job = db.session.query(SlrJob.status).filter_by(id=jid, paper_id=paper_id, user_id=user_id).first()
+                        if not db_job or db_job[0] in ("done", "error", "cancelled"):
+                            _redis_client.srem(set_key, jid)
+                            _redis_client.delete(f"slr_new:{jid}")
+                            continue
                         results.append(d)
                 except Exception:
                     pass
@@ -149,6 +207,82 @@ def _sanitize_lit_text(text: str | None, max_len: int) -> str:
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     # Truncate to safe length
     return cleaned.strip()[:max_len]
+
+
+_RELEVANCE_STOPWORDS = {
+    "untuk", "dan", "yang", "dengan", "pada", "dalam", "atau", "dari", "ke",
+    "di", "ini", "itu", "adalah", "akan", "sudah", "belum", "tidak",
+    "bisa", "dapat", "harus", "perlu", "masih", "sangat", "lebih",
+    "juga", "hanya", "saja", "lain", "semua", "setiap", "beberapa",
+    "seperti", "sebagai", "menjadi", "merupakan", "mengenai", "terkait",
+    "hubungan", "kaitan", "berkaitan", "berhubungan",
+    # English stopwords
+    "the", "and", "for", "with", "from", "into", "a", "an", "of", "to",
+    "in", "on", "by", "is", "be", "at", "or", "as", "if", "no", "so",
+    "that", "this", "are", "was", "but", "not", "can", "all", "any",
+    "has", "its", "may", "who", "which", "their", "how", "what", "why",
+    "use", "also", "been", "were", "will", "have", "had", "do", "does",
+    "did", "than", "just", "more", "most", "new", "other", "some",
+    "such", "only", "over", "when", "where", "each", "about", "after",
+    "before", "between", "during", "these", "those",
+    # Generic academic/method words (shared with _GENERIC_ACADEMIC_WORDS)
+    "system", "sistem", "process", "proses", "model", "data",
+    "review", "analysis", "study", "studies", "research", "paper",
+    "method", "methods", "metode", "algorithm", "algorithms",
+    "framework", "application", "applications", "development",
+    "validation", "evaluation", "implementation", "design",
+    "performance", "comparison", "perbandingan", "effect", "impact",
+    "role", "case", "survey", "survei", "overview", "challenge",
+    "challenges", "issue", "issues", "trend", "trends", "advance",
+    "advances", "recent", "comprehensive", "state", "art",
+    "based", "using", "through", "approach", "pendekatan",
+    "technique", "techniques", "teknik", "kultur", "pemanfaatan",
+    "penerapan", "kajian", "studi", "analisis", "implementasi",
+    "pembangunan", "pengembangan", "penelitian", "metodologi",
+    "perancangan", "evaluasi", "validasi", "optimasi", "tinjauan",
+    "eksplorasi", "investigasi", "eksperimen", "simulasi", "pemodelan",
+    # Engineering/industrial generic terms
+    "monitoring", "kontrol", "control", "industrial", "industri",
+    # Generic ML/CV words
+    "deep", "learning", "machine", "neural", "network", "networks",
+    "computer", "vision", "image", "images", "video", "detection",
+    "recognition", "classification", "prediction", "predicting",
+    "enhanced", "improved", "novel", "automatic", "automated",
+    "efficient", "robust", "hybrid", "optimization", "object",
+    "feature", "features", "extraction", "segmentation",
+    "architecture", "architectures", "transfer", "training",
+    "dataset", "datasets", "benchmark", "benchmarks", "accuracy",
+    "precision", "scalable", "adaptive", "embedded", "embedding",
+    "embeddings",
+}
+
+
+def _filter_relevant_papers(keyword: str, papers: list[Any]) -> list[Any]:
+    """Drop clearly off-topic search hits before ranking/saving.
+
+    ponytail: lexical gate catches bad scraper/search results; upgrade with embedding rerank
+    when a vector model is available.
+    """
+    kw = (keyword or "").lower()
+    required = {t for t in re.findall(r"[a-z0-9]+", kw) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+    # Domain anchors for common engineering/control queries; these must not be drowned by generic words.
+    anchors = {"scada", "iot", "plc", "hmi", "supervisory", "automation", "sensor", "actuator"}
+    active_anchors = required & anchors
+    kept: list[Paper] = []
+    for p in papers:
+        hay = " ".join([
+            getattr(p, "title", "") or "",
+            getattr(p, "abstract", "") or "",
+            getattr(p, "venue", "") or "",
+        ]).lower()
+        if not hay:
+            continue
+        if active_anchors and not any(a in hay for a in active_anchors):
+            continue
+        hits = sum(1 for t in required if t in hay)
+        if hits >= max(1, min(3, len(required))):
+            kept.append(p)
+    return kept
 
 
 # ─── Pinned literature helper ────────────────────────────────────────────
@@ -352,6 +486,12 @@ def create_slr_job(paper_id: str):
     if user_id is None:
         return _err("Unauthorized", "UNAUTHORIZED", 401)
 
+    # ── Quota gate ────────────────────────────────────────────────────
+    from utils.quota import quota_exceeded
+    exceeded, info = quota_exceeded(user_id)
+    if exceeded:
+        return jsonify(info), 429
+
     # F-28: simple per-user in-memory rate limit (10 jobs/minute).
     ok, retry_after = _check_rate_limit(user_id, "create_slr_job")
     if not ok:
@@ -376,6 +516,7 @@ def create_slr_job(paper_id: str):
     query = (body.get("query") or body.get("topic") or "").strip()
     if not query:
         return _err("query is required", "QUERY_REQUIRED", 400)
+    plain_query, inline_fetch_map = _parse_inline_fetcher_queries(query)
 
     sources = body.get("sources") or None
     if sources is not None and not isinstance(sources, list):
@@ -384,14 +525,18 @@ def create_slr_job(paper_id: str):
     per_source = _safe_per_source(body.get("per_source"))
     top_k = _safe_top_k(body.get("top_k"))
 
-    # Per fetcher = topK × 2. Total across all fetchers = topK × 2 × N.
-    # Example: topK=50, 3 fetchers → per_source=100, total=300 papers.
+    # Per fetcher = topK × 5. Total across all fetchers = topK × 5 × N.
+    # Example: topK=50, 3 fetchers → per_source=250, total=750 papers.
     if not body.get("per_source"):
-        per_source = top_k * 2
+        per_source = top_k * 5
 
     year_from, year_err = _validate_year(body.get("year_from"))
     if year_err:
         return year_err
+
+    year_to, year_to_err = _validate_year(body.get("year_to"))
+    if year_to_err:
+        return year_to_err
 
     ai_summarize = bool(body.get("ai_summarize", True))
     ai_model = (body.get("ai_model") or get_primary_generate_model()).strip()
@@ -417,8 +562,11 @@ def create_slr_job(paper_id: str):
         user_id=user_id,
         sources=sources,
         year_from=year_from,
+        year_to=year_to,
         ai_summarize=ai_summarize,
         per_source=per_source,
+        inline_fetch_map=inline_fetch_map or None,
+        plain_keyword=plain_query or None,
     )
 
     return jsonify({
@@ -502,9 +650,9 @@ def stream_slr_job(job_id: str):
         event: partial    — incremental paper results as fetchers complete
         event: done       — job finished (success/error/cancelled)
     """
-    # EventSource doesn't send custom headers — accept token via query param
-    # or httpOnly cookie (access_token_cookie). EventSource sends cookies
-    # automatically for same-origin requests.
+    # SECURITY: Prefer httpOnly cookie auth — query param token is visible in logs/URLs.
+    # EventSource sends cookies automatically on same-origin requests.
+    # Only use query param as last-resort fallback for legacy clients.
     token = request.args.get('token')
     user_id = None
 
@@ -516,7 +664,7 @@ def stream_slr_job(job_id: str):
         except Exception:
             pass
 
-    # Fallback: read JWT from httpOnly cookie (EventSource sends it automatically)
+    # Cookie auth is preferred over query param
     if not user_id:
         cookie_token = request.cookies.get('access_token_cookie')
         if cookie_token:
@@ -535,7 +683,7 @@ def stream_slr_job(job_id: str):
             pass
 
     if not user_id:
-        return jsonify({"error": "Missing authorization token", "code": "UNAUTHORIZED"}), 401
+        return jsonify({"error": "Missing authorization", "code": "UNAUTHORIZED"}), 401
     
     # Verify job ownership (check both orchestrator in-memory and DB)
     job_dict = _orchestrator.get_job(job_id)
@@ -560,7 +708,11 @@ def stream_slr_job(job_id: str):
         
         # If already terminal, send done and exit
         if job_dict and job_dict.get("status") in ("done", "error", "cancelled"):
-            yield f"event: done\ndata: {json.dumps({'status': job_dict['status']})}\n\n"
+            payload = {
+                "status": job_dict["status"],
+                "stage_detail": job_dict.get("stage_detail") or job_dict.get("progress_message") or "",
+            }
+            yield f"event: done\ndata: {json.dumps(payload)}\n\n"
             return
         
         # Subscribe to Redis pubsub channel for this job
@@ -590,7 +742,11 @@ def stream_slr_job(job_id: str):
                         
                         # Check if done
                         if parsed.get("status") in ("done", "error", "cancelled"):
-                            yield f"event: done\ndata: {json.dumps({'status': parsed.get('status')})}\n\n"
+                            payload = {
+                                "status": parsed.get("status"),
+                                "stage_detail": parsed.get("stage_detail") or parsed.get("progress_message") or "",
+                            }
+                            yield f"event: done\ndata: {json.dumps(payload)}\n\n"
                             break
                     except Exception:
                         yield f"event: progress\ndata: {data}\n\n"
@@ -682,7 +838,7 @@ def _wait_slr_jobs_inner(paper_id: str, user_id: int):
             except Exception:
                 pass
 
-            if ts > after:
+            if ts > after or (orch_jobs and len(orch_jobs) > 0):
                 jobs = (
                     db.session.query(SlrJob)
                     .options(defer(SlrJob.result))
@@ -1034,6 +1190,34 @@ def delete_literature(paper_id: str, item_id: int):
     db.session.delete(item)
     safe_commit()
     return jsonify({"ok": True})
+
+
+@slr_api.route("/api/papers/<paper_id>/literature/clear", methods=["POST"])
+@jwt_required()
+def clear_literature(paper_id: str):
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    try:
+        deleted = (
+            db.session.query(LiteratureItem)
+            .filter(
+                LiteratureItem.paper_id == paper_id,
+                LiteratureItem.user_id == user_id,
+            )
+            .delete(synchronize_session=False)
+        )
+        safe_commit()
+        log.info("slr.literature.clear user=%d paper=%s deleted=%d", user_id, paper_id, deleted)
+        return jsonify({"deleted": deleted})
+    except Exception:
+        db.session.rollback()
+        log.exception("slr.literature.clear failed paper=%s", paper_id)
+        return _err("clear literature failed", "LITERATURE_CLEAR_FAILED", 500)
 
 
 @slr_api.route("/api/papers/<paper_id>/literature/bulk-delete", methods=["POST"])
@@ -1586,6 +1770,10 @@ def run_slr_legacy(paper_id: str):
     if year_err:
         return year_err
 
+    year_to, year_to_err = _validate_year(body.get("year_to"))
+    if year_to_err:
+        return year_to_err
+
     ai_model = (body.get("ai_model") or get_primary_generate_model()).strip()
     if ai_model not in {"VIOLA-CHAT", "VIOLA-GENERATE"}:
         ai_model = get_primary_generate_model()
@@ -1651,6 +1839,152 @@ def get_checked_literature(paper_id: str):
         })
 
     return jsonify({"items": result})
+
+
+@slr_api.route("/api/papers/<paper_id>/literature/checked/export", methods=["GET"])
+@jwt_required()
+def export_checked_literature(paper_id: str):
+    """Download checked literature as DOCX or PDF."""
+    user_id = _current_user_id()
+    if user_id is None:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
+    _paper, err = _paper_or_404(paper_id, user_id)
+    if err:
+        return err
+
+    fmt = (request.args.get("format") or "docx").lower().strip()
+    if fmt not in {"docx", "pdf"}:
+        return _err("format must be docx or pdf", "FORMAT_INVALID", 400)
+
+    items = LiteratureItem.query.filter_by(
+        paper_id=paper_id,
+        user_id=user_id,
+        is_checked=True,
+    ).order_by(LiteratureItem.score_total.desc().nullslast()).all()
+    if not items:
+        return _err("Tidak ada literatur yang di-check", "NO_CHECKED_LITERATURE", 404)
+
+    title_source = (getattr(_paper, "title", "") or "").strip()
+    if not title_source or title_source.lower() == "untitled":
+        title_source = next((it.title for it in items if it.title), "selected_literature")
+    safe_title = re.sub(r"[^A-Za-z0-9\u00C0-\u024F_-]+", "_", title_source).strip("_")
+    safe_title = re.sub(r"_+", "_", safe_title)[:80] or "selected_literature"
+    safe_name = f"Literature_{safe_title}"
+    if fmt == "docx":
+        try:
+            from docx import Document
+        except Exception as e:
+            log.exception("DOCX export unavailable: %s", e)
+            return _err("DOCX export dependency unavailable", "DOCX_UNAVAILABLE", 500)
+        doc = Document()
+        doc.add_heading("Selected Literature", level=1)
+        doc.add_paragraph(f"Paper ID: {paper_id}")
+        doc.add_paragraph(f"Total: {len(items)}")
+        for idx, it in enumerate(items, 1):
+            doc.add_heading(f"{idx}. {it.title or 'Untitled'}", level=2)
+            authors = ", ".join(it.authors or []) if isinstance(it.authors, list) else (it.authors or "")
+            rows = [
+                ("Authors", authors),
+                ("Year", str(it.year or "")),
+                ("Venue/Publisher", it.venue or it.publisher or ""),
+                ("DOI", it.doi or ""),
+                ("URL", it.url or ""),
+                ("PDF URL", it.pdf_url or ""),
+                ("Citations", str(it.citations or 0)),
+                ("Source", it.source or ""),
+            ]
+            for label, value in rows:
+                if value:
+                    p = doc.add_paragraph()
+                    p.add_run(f"{label}: ").bold = True
+                    p.add_run(value)
+            if it.abstract:
+                doc.add_paragraph("Abstract:").runs[0].bold = True
+                doc.add_paragraph(it.abstract)
+            if it.summary:
+                doc.add_paragraph("Summary:").runs[0].bold = True
+                doc.add_paragraph(it.summary)
+        bio = BytesIO()
+        doc.save(bio)
+        bio.seek(0)
+        return send_file(
+            bio,
+            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            as_attachment=True,
+            download_name=f"{safe_name}.docx",
+        )
+
+    # ponytail: basic text-only PDF; upgrade to reportlab if rich tables/styles are needed.
+    lines: list[str] = ["Selected Literature", f"Paper ID: {paper_id}", f"Total: {len(items)}", ""]
+    for idx, it in enumerate(items, 1):
+        lines.append(f"{idx}. {it.title or 'Untitled'}")
+        authors = ", ".join(it.authors or []) if isinstance(it.authors, list) else (it.authors or "")
+        for label, value in [
+            ("Authors", authors), ("Year", it.year), ("Venue/Publisher", it.venue or it.publisher),
+            ("DOI", it.doi), ("URL", it.url), ("PDF URL", it.pdf_url),
+            ("Citations", it.citations), ("Source", it.source),
+        ]:
+            if value not in (None, ""):
+                lines.append(f"{label}: {value}")
+        if it.abstract:
+            lines.extend(["Abstract:", it.abstract])
+        if it.summary:
+            lines.extend(["Summary:", it.summary])
+        lines.append("")
+
+    def _pdf_escape(text: str) -> str:
+        return str(text).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    page_chunks: list[list[str]] = [[]]
+    for raw in lines:
+        wrapped = re.findall(r".{1,95}(?:\s+|$)", str(raw).replace("\n", " ")) or [""]
+        for line in wrapped:
+            if len(page_chunks[-1]) >= 54:
+                page_chunks.append([])
+            page_chunks[-1].append(line.strip())
+
+    objects: list[bytes] = [b""]
+    pages_obj_id = 2
+    page_ids: list[int] = []
+    content_ids: list[int] = []
+    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
+    objects.append(b"")
+    for chunk in page_chunks:
+        content_ops = ["BT", "/F1 10 Tf", "50 800 Td", "14 TL"]
+        for line in chunk:
+            content_ops.append(f"({_pdf_escape(line)}) Tj")
+            content_ops.append("T*")
+        content_ops.append("ET")
+        stream = "\n".join(content_ops).encode("latin-1", "replace")
+        content_id = len(objects)
+        objects.append(b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream")
+        page_id = len(objects)
+        objects.append(
+            f"<< /Type /Page /Parent {pages_obj_id} 0 R /MediaBox [0 0 595 842] "
+            f"/Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> "
+            f"/Contents {content_id} 0 R >>".encode()
+        )
+        content_ids.append(content_id)
+        page_ids.append(page_id)
+    kids = " ".join(f"{pid} 0 R" for pid in page_ids)
+    objects[pages_obj_id] = f"<< /Type /Pages /Kids [{kids}] /Count {len(page_ids)} >>".encode()
+
+    out = BytesIO()
+    out.write(b"%PDF-1.4\n")
+    offsets = [0]
+    for obj_id in range(1, len(objects)):
+        offsets.append(out.tell())
+        out.write(f"{obj_id} 0 obj\n".encode())
+        out.write(objects[obj_id])
+        out.write(b"\nendobj\n")
+    xref = out.tell()
+    out.write(f"xref\n0 {len(objects)}\n".encode())
+    out.write(b"0000000000 65535 f \n")
+    for off in offsets[1:]:
+        out.write(f"{off:010d} 00000 n \n".encode())
+    out.write(f"trailer\n<< /Size {len(objects)} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF".encode())
+    out.seek(0)
+    return send_file(out, mimetype="application/pdf", as_attachment=True, download_name=f"{safe_name}.pdf")
 
 
 # ─── PINNED LITERATURE (prompt preview) ───────────────────────────────────
@@ -1736,6 +2070,7 @@ def _safe_per_source(value, default=60):
 
 
 @slr_api.route("/api/slr/cache/stats", methods=["GET"])
+@jwt_required()
 def cache_stats():
     """Return DB cache statistics.
     
@@ -1759,6 +2094,7 @@ def cache_stats():
 
 
 @slr_api.route("/api/slr/cache/search", methods=["GET"])
+@jwt_required()
 def cache_search():
     """Search papers in DB cache.
     
@@ -1798,6 +2134,7 @@ def cache_search():
         limit = int(request.args.get("limit", 50))
     except (TypeError, ValueError):
         limit = 50
+    limit = max(1, min(limit, 100))  # prevent abuse/exhaustion
     
     try:
         year_from = int(request.args.get("year_from")) if request.args.get("year_from") else None
@@ -1850,6 +2187,7 @@ def cache_search():
 
 
 @slr_api.route("/api/slr/mega-fetch/status", methods=["GET"])
+@jwt_required()
 def mega_fetch_status():
     """Get mega fetch daemon progress and stats.
 
@@ -1882,10 +2220,10 @@ def mega_fetch_status():
         import psycopg2
         import psycopg2.extras
         conn = psycopg2.connect(
-            host="localhost",
-            dbname="paper_database",
-            user="sirobo",
-            password="paper2026",
+            host=os.getenv("DB_HOST", "localhost"),
+            dbname=os.getenv("DB_NAME", "paper_database"),
+            user=os.getenv("DB_USER", "papergenerator"),
+            password=os.getenv("DB_PASSWORD", ""),
         )
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -2148,7 +2486,8 @@ class SLRJob:
         "sources_completed", "sources_total", "sources_running", "sources_pending",
         "papers_fetched", "all_papers_count",
         "started_at", "stopped",
-        "per_source",
+        "per_source", "sources",
+        "year_from", "year_to",
     )
 
     def __init__(
@@ -2159,6 +2498,9 @@ class SLRJob:
         top_n: int,
         user_id: int,
         per_source: int = 30,
+        sources: list[str] | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
     ):
         self.job_id = job_id
         self.paper_id = paper_id
@@ -2182,6 +2524,9 @@ class SLRJob:
         self.started_at = datetime.now(timezone.utc).isoformat()
         self.stopped = threading.Event()
         self.per_source = per_source
+        self.sources = list(sources or [])
+        self.year_from = year_from
+        self.year_to = year_to
 
     def to_dict(self) -> dict:
         """Serialize to dict for API responses and Redis.
@@ -2209,6 +2554,7 @@ class SLRJob:
             "sources_pending": list(self.sources_pending),
             "papers_fetched": self.papers_fetched,
             "all_papers_count": self.all_papers_count,
+            "sources": list(self.sources),
             "error": self.error,
             "partial_results": self.partial_results[:PARTIAL_RESULTS_PREVIEW],
             "results": self.results,
@@ -2244,6 +2590,11 @@ def _push_progress(job: SLRJob):
         _publish_progress_to_pubsub(client, data)
     except Exception:
         pass
+    # Throttled DB persistence: every 5th push (keeps job row fresh across restarts)
+    global _push_count
+    _push_count += 1
+    if _push_count % 5 == 0:
+        _persist_job_to_db(job)
 
 
 def _publish_progress_to_pubsub(client, job_json: str):
@@ -2275,7 +2626,7 @@ def _persist_job_to_db(job: SLRJob):
             except ImportError as e:
                 log.error("Flask app unavailable, skipping persist: %s", e)
                 return
-    
+
         from utils.database.models import SlrJob as DbSlrJob, db, safe_commit
         
         now = datetime.now(timezone.utc)
@@ -2286,7 +2637,10 @@ def _persist_job_to_db(job: SLRJob):
                 user_id=job.user_id,
                 paper_id=job.paper_id,
                 query=job.keyword,
+                sources=job.sources,
                 top_k=job.top_n,
+                year_from=getattr(job, "year_from", None),
+                year_to=getattr(job, "year_to", None),
                 status=job.status,
                 stage=job.stage,
                 progress=int(job.progress_pct),
@@ -2299,6 +2653,9 @@ def _persist_job_to_db(job: SLRJob):
             db_job.status = job.status
             db_job.stage = job.stage
             db_job.progress = int(job.progress_pct)
+            db_job.sources = job.sources
+            db_job.year_from = getattr(job, "year_from", None)
+            db_job.year_to = getattr(job, "year_to", None)
             db_job.progress_message = job.stage_detail
             db_job.updated_at = now  # CRITICAL: eksplisit set untuk long-poll detection
             if job.status == "done":
@@ -2394,7 +2751,48 @@ def _get_rate_limiters() -> dict[str, RateLimiter]:
 
 # ── LLM call helper ──────────────────────────────────────────────────────
 
-def _get_llm_call() -> Callable[[str, str], str] | None:
+def _estimate_text_tokens(text: str) -> int:
+    return max(1, len(text or "") // 4)
+
+
+def _log_slr_ai_usage(user_id: int | None, model: str, prompt: str, completion: str) -> None:
+    if not user_id:
+        return
+    try:
+        from utils.ai_tools.tools_api import _log_tool_usage
+        _log_tool_usage(
+            int(user_id),
+            "slr",
+            model or "VIOLA-CHAT",
+            _estimate_text_tokens(prompt),
+            _estimate_text_tokens(completion),
+        )
+    except Exception as e:
+        log.warning("SLR token tracking failed for user=%s: %s", user_id, e)
+
+
+def _limit_words(text: str, max_words: int) -> str:
+    if not text:
+        return ""
+    words = text.strip().split()
+    if len(words) <= max_words:
+        return text.strip()
+    return " ".join(words[:max_words]) + "…"
+
+
+def _make_gap_riset(title: str, abstract: str, query: str = "") -> str:
+    text = (abstract or title or "").strip()
+    if not text:
+        return "Belum ada gap riset: metadata abstract/review kosong."
+    focus = (query or title or "topik terkait").strip()
+    gap = (
+        f"Gap riset potensial: {focus}, namun masih perlu dibandingkan "
+        f"dengan studi terbaru pada konteks, metode, dan metrik berbeda."
+    )
+    return _limit_words(gap, 25)
+
+
+def _get_llm_call(user_id: int | None = None) -> Callable[[str, str], str] | None:
     """Build an llm_call(system_prompt, user_message) -> str wrapper.
 
     Uses utils.ai_tools.model_router.route_chat_call when available.
@@ -2417,7 +2815,7 @@ def _get_llm_call() -> Callable[[str, str], str] | None:
             "max_tokens": 16384,
             "temperature": 0.3,
         }
-        resp, _model_used = route_chat_call(
+        resp, model_used = route_chat_call(
             json=payload,
             timeout=120,
         )
@@ -2426,6 +2824,7 @@ def _get_llm_call() -> Callable[[str, str], str] | None:
         content = data["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("LLM returned non-string content")
+        _log_slr_ai_usage(user_id, model_used, system_prompt + user_message, content)
         return content
 
     return llm_call
@@ -2454,8 +2853,11 @@ class SLROrchestrator:
         user_id: int,
         sources: list[str] | None = None,
         year_from: int | None = None,
+        year_to: int | None = None,
         ai_summarize: bool = False,
         per_source: int = 30,
+        inline_fetch_map: dict[str, list[str]] | None = None,
+        plain_keyword: str | None = None,
     ) -> str:
         """Create and start a new SLR job. Returns job_id string."""
         job_id = f"slr_{uuid.uuid4().hex[:12]}"
@@ -2463,7 +2865,8 @@ class SLROrchestrator:
         with _jobs_lock:
             job = SLRJob(
                 job_id=job_id, paper_id=paper_id, keyword=keyword,
-                top_n=top_n, user_id=user_id, per_source=per_source,
+                top_n=top_n, user_id=user_id, per_source=per_source, sources=sources,
+                year_from=year_from, year_to=year_to,
             )
             _jobs[job_id] = job
 
@@ -2483,7 +2886,7 @@ class SLROrchestrator:
         # Fire-and-forget the pipeline in a background thread
         thread = threading.Thread(
             target=self._run_pipeline,
-            args=(job, keyword, top_n, sources, year_from, ai_summarize),
+            args=(job, keyword, top_n, sources, year_from, year_to, ai_summarize, inline_fetch_map, plain_keyword),
             daemon=True,
             name=f"slr-run-{job_id}",
         )
@@ -2504,6 +2907,14 @@ class SLROrchestrator:
                             return json.loads(data)
                     except Exception:
                         pass
+                # Try DB (survives restart / Redis expiry)
+                try:
+                    from utils.database.models import SlrJob as DbSlrJob
+                    db_job = db.session.query(DbSlrJob).filter_by(id=job_id).first()
+                    if db_job is not None:
+                        return db_job.to_dict()
+                except Exception:
+                    pass
                 return None
             return job.to_dict()
 
@@ -2529,6 +2940,7 @@ class SLROrchestrator:
             job.stage_detail = "Cancelled by user"
             job.cancel()
             _push_progress(job)
+            _persist_job_to_db(job)
 
     # ── Pipeline internals ─────────────────────────────────────────────
 
@@ -2539,30 +2951,54 @@ class SLROrchestrator:
         top_n: int,
         sources: list[str] | None,
         year_from: int | None,
+        year_to: int | None,
         ai_summarize: bool,
+        inline_fetch_map: dict[str, list[str]] | None = None,
+        plain_keyword: str | None = None,
     ):
         """Full pipeline: analyze → fetch → summarize → complete."""
         try:
             # ── Stage 1: Analyze keyword (0-10%) ──────────────────────
             self._set_stage(job, "analyzing", 2.0, "Analyzing keyword for source routing...")
 
-            llm_call = _get_llm_call()
+            routing_keyword = plain_keyword or keyword
 
-            try:
-                analysis = analyze_keyword(keyword, llm_call=llm_call)
-            except Exception as exc:
-                log.warning("analyze_keyword failed (%s), using guess_fetchers", exc)
-                analysis = guess_fetchers(keyword)
-
-            # Route fetchers: {fetcher_name: [queries...]}
+            # Fetcher routing MUST use slrFetchPrompt.txt via analyze_keyword().
+            # Timeout keeps the UI responsive; fallback only if the AI route fails.
+            llm_for_fetch = _get_llm_call(job.user_id)
+            if llm_for_fetch:
+                with ThreadPoolExecutor(max_workers=1, thread_name_prefix="slr-analyze") as analyze_executor:
+                    analyze_future = analyze_executor.submit(analyze_keyword, routing_keyword, llm_call=llm_for_fetch)
+                    try:
+                        analysis = analyze_future.result(timeout=ANALYZE_TIMEOUT_SEC)
+                        self._set_stage(job, "analyzing", 8.0, "Fetcher dipilih dengan slrFetchPrompt.txt...")
+                    except TimeoutError:
+                        analyze_future.cancel()
+                        log.warning("analyze_keyword timeout after %ss; using local fallback", ANALYZE_TIMEOUT_SEC)
+                        analysis = guess_fetchers(routing_keyword)
+                        self._set_stage(job, "analyzing", 8.0, "Fetcher AI timeout; using local fallback...")
+                    except Exception as exc:
+                        log.warning("analyze_keyword failed (%s); using local fallback", exc)
+                        analysis = guess_fetchers(routing_keyword)
+                        self._set_stage(job, "analyzing", 8.0, "Fetcher AI failed; using local fallback...")
+            else:
+                analysis = guess_fetchers(routing_keyword)
+                self._set_stage(job, "analyzing", 8.0, "Fetcher AI unavailable; using local fallback...")
+            
             fetch_map = route_fetchers(analysis)
+            if not fetch_map:
+                fetch_map = {"explicit": [keyword]}
+
+            for source, queries in (inline_fetch_map or {}).items():
+                fetch_map.setdefault(source, [])
+                fetch_map[source].extend(q for q in queries if q)
 
             # If user explicitly provided sources, override
             if sources:
                 available = set(FETCHER_ALL.keys())
-                user_sources = [s for s in sources if s in available]
+                user_sources = [s for s in (_normalize_fetcher_name(str(src), available) for src in sources) if s]
                 if user_sources:
-                    fetch_map = {s: [keyword] for s in user_sources}
+                    fetch_map = {s: [routing_keyword or keyword] for s in user_sources}
 
             if not fetch_map:
                 self._set_error(job, "No fetcher sources available for this query")
@@ -2587,24 +3023,29 @@ class SLROrchestrator:
             filters: dict = {}
             if year_from:
                 filters["year_from"] = year_from
+            if year_to:
+                filters["year_to"] = year_to
 
             all_papers: list[Paper] = []
             seen_keys: dict[str, int] = {}  # dedup_key → index in all_papers
 
             sources_running_set: set[str] = set(fetcher_names)
             sources_done: set[str] = set()
+            source_remaining: dict[str, int] = {fn: len(queries) for fn, queries in fetch_map.items()}
+            completed_tasks = 0
 
-            # Build flat task list: (fetcher_name, query)
-            fetch_tasks: list[tuple[str, str]] = []
+            # Build flat task list: cap each fetcher to N×5 across its queries.
+            fetch_tasks: list[tuple[str, str, int]] = []
             for fn, queries in fetch_map.items():
+                per_query_limit = max(1, (job.per_source + len(queries) - 1) // len(queries))
                 for q in queries:
-                    fetch_tasks.append((fn, q))
+                    fetch_tasks.append((fn, q, per_query_limit))
 
             # Submit all fetch tasks
             futures = {}
-            for fn, q in fetch_tasks:
+            for fn, q, limit in fetch_tasks:
                 future = self._executor.submit(
-                    self._fetch_single_source, fn, q, job.per_source, filters
+                    self._fetch_single_source, fn, q, limit, filters
                 )
                 futures[future] = (fn, q)
 
@@ -2612,23 +3053,15 @@ class SLROrchestrator:
             job.sources_pending = []
             _push_progress(job)
 
-            # Process results as they complete
-            for future in as_completed(futures, timeout=FETCH_TIMEOUT_SEC):
-                fn, q = futures[future]
-                if job.stopped.is_set():
-                    continue
-
-                try:
-                    papers = future.result()
-                except Exception as exc:
-                    log.warning("Fetcher %s (q=%s) failed: %s", fn, q[:30], exc)
-                    papers = []
-
-                sources_done.add(fn)
-                sources_running_set.discard(fn)
+            def absorb_fetch_result(fn: str, papers: list[Paper]):
+                nonlocal completed_tasks
+                completed_tasks += 1
+                source_remaining[fn] = max(0, source_remaining.get(fn, 1) - 1)
+                if source_remaining[fn] == 0:
+                    sources_done.add(fn)
+                    sources_running_set.discard(fn)
                 completed_count = len(sources_done)
 
-                # Dedup incrementally against existing results
                 new_papers: list[Paper] = []
                 for p in papers:
                     k = p.dedup_key()
@@ -2637,26 +3070,23 @@ class SLROrchestrator:
                         all_papers.append(p)
                         new_papers.append(p)
 
-                # Update progress
-                pct_progress = 10.0 + (completed_count / len(fetcher_names)) * 60.0
                 job.sources_completed = list(sources_done)
                 job.sources_running = list(sources_running_set)
-                job.sources_pending = [
-                    s for s in fetcher_names
-                    if s not in sources_done and s not in sources_running_set
-                ]
+                job.sources_pending = [s for s in fetcher_names if s not in sources_done and s not in sources_running_set]
 
-                # Stream preview of latest papers to frontend
                 partial_dicts = []
                 for p in new_papers:
                     try:
-                        d = p.to_dict()
+                        partial_dicts.append(p.to_dict())
                     except Exception:
-                        d = {"title": p.title, "source": p.source}
-                    partial_dicts.append(d)
+                        partial_dicts.append({"title": p.title, "source": p.source})
                 if partial_dicts:
                     _stream_partial_results(job, partial_dicts)
+                    # Save each fetcher batch immediately so Literature tab updates
+                    # without waiting for all sources + final grouping.
+                    self._save_to_db(job, partial_dicts)
 
+                pct_progress = 10.0 + (completed_count / len(fetcher_names)) * 60.0
                 self._set_stage(
                     job, "fetching", min(pct_progress, 70.0),
                     f"Fetched {completed_count}/{len(fetcher_names)} sources "
@@ -2664,17 +3094,73 @@ class SLROrchestrator:
                     extra={"all_papers_count": len(all_papers)},
                 )
 
+            try:
+                completed_futures = as_completed(futures, timeout=FETCH_TIMEOUT_SEC)
+                for future in completed_futures:
+                    fn, q = futures[future]
+                    if job.stopped.is_set():
+                        continue
+                    try:
+                        papers = future.result()
+                    except Exception as exc:
+                        log.warning("Fetcher %s (q=%s) failed: %s", fn, q[:30], exc)
+                        papers = []
+                    absorb_fetch_result(fn, papers)
+            except TimeoutError:
+                timed_out = [(future, *futures[future]) for future in futures if not future.done()]
+                log.warning(
+                    "SLR fetch timeout after %ss for job %s: %d/%d tasks unfinished; using partial results",
+                    FETCH_TIMEOUT_SEC, job.job_id, len(timed_out), len(futures),
+                )
+                for future, fn, _q in timed_out:
+                    future.cancel()
+                    absorb_fetch_result(fn, [])
+                # ponytail: unfinished fetch threads may finish later; isolate fetchers or use process pool if they leak resources.
+
             if job.stopped.is_set():
                 self._set_stage(job, "cancelled", 0.0, "Cancelled by user")
                 return
 
             # ── Stage 3: Summarize (70-95%) ───────────────────────────
+            # Post-filter year range (universal safety net for all fetchers)
+            if year_from or year_to:
+                before_year = len(all_papers)
+                all_papers = [
+                    p for p in all_papers
+                    if (not year_from or not p.year or p.year >= year_from)
+                    and (not year_to or not p.year or p.year <= year_to)
+                ]
+                removed_year = before_year - len(all_papers)
+                if removed_year > 0:
+                    log.info("Post-filter removed %d papers outside year range %s-%s", removed_year, year_from, year_to)
+
+            before_filter = len(all_papers)
+            all_papers = _filter_relevant_papers(keyword, all_papers)
+            removed_irrelevant = before_filter - len(all_papers)
+
+            if not all_papers:
+                job.results = []
+                job.summary_result = {
+                    "groups": [],
+                    "total_fetched": before_filter,
+                    "total_unique": 0,
+                    "total_returned": 0,
+                    "stats": {"removed_irrelevant": removed_irrelevant},
+                }
+                job.status = "done"
+                job.stage = "complete"
+                job.progress_pct = 100.0
+                job.stage_detail = f"Complete: 0 relevant papers (filtered {removed_irrelevant} off-topic results)"
+                _push_progress(job)
+                _persist_job_to_db(job)
+                return
+
             self._set_stage(
                 job, "summarizing", 70.0,
-                f"Processing {len(all_papers)} papers: dedup → rank → group...",
+                f"Processing {len(all_papers)} relevant papers: filtered {removed_irrelevant} off-topic results...",
             )
 
-            # Convert Paper objects → dicts for slrSummarize
+            # Prepare paper dicts for summarizer
             paper_dicts = []
             for p in all_papers:
                 try:
@@ -2701,29 +3187,55 @@ class SLROrchestrator:
                         "citations": p.citations,
                     })
 
+            # Local summarize only. slrSummarizePrompt.txt batch-review sent the same
+            # system prompt multiple times in one SLR run; keep one AI call for fetcher
+            # selection only, then dedup/rank/group locally.
+            summarize_timeout = int(os.getenv("SLR_SUMMARIZE_TIMEOUT_SEC", "60"))
             self._set_stage(
                 job, "summarizing", 78.0,
-                f"Deduplicating and ranking {len(paper_dicts)} papers...",
+                f"Deduplicating, ranking and grouping {len(paper_dicts)} papers...",
             )
 
-            # Call slrSummarize.summarize() — returns top_n × 5 grouped results
-            summarize_llm = llm_call if ai_summarize else None
+            # Call slrSummarize.summarize() — returns top_n × 5 grouped results.
+            # Never let this block the whole SLR job; fallback ranking is better than 78% stuck.
+            summarize_llm = None
+            summary_result = None
+            summarize_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="slr-summarize")
+            summarize_future = summarize_executor.submit(
+                summarize_papers,
+                papers=paper_dicts,
+                query=keyword,
+                top_n=top_n,
+                llm_call=summarize_llm,
+            )
             try:
-                summary_result = summarize_papers(
-                    papers=paper_dicts,
-                    query=keyword,
-                    top_n=top_n,
-                    llm_call=summarize_llm,
-                )
+                summary_result = summarize_future.result(timeout=summarize_timeout)
+            except TimeoutError:
+                log.warning("summarize_papers timeout after %ss, building fallback", summarize_timeout)
+                summarize_future.cancel()
+                summary_result = self._fallback_summarize(paper_dicts, keyword, top_n)
             except Exception as exc:
                 log.warning("summarize_papers failed (%s), building fallback", exc)
                 summary_result = self._fallback_summarize(paper_dicts, keyword, top_n)
+            finally:
+                # ponytail: summarize may call a slow upstream LLM; process isolation would kill it harder.
+                summarize_executor.shutdown(wait=False, cancel_futures=True)
 
             self._set_stage(
                 job, "summarizing", 90.0,
                 f"Grouped into {len(summary_result.get('groups', []))} categories "
                 f"({summary_result.get('total_returned', 0)} papers returned)",
             )
+
+            db_cancelled = False
+            try:
+                with db.session.no_autoflush:
+                    db_cancelled = db.session.query(SlrJob.status).filter_by(id=job.job_id).scalar() == "cancelled"
+            except Exception:
+                db_cancelled = False
+            if job.stopped.is_set() or db_cancelled:
+                self._set_stage(job, "cancelled", 0.0, "Cancelled by user")
+                return
 
             # ── Stage 4: Save & complete (95-100%) ────────────────────
             self._set_stage(job, "summarizing", 95.0, "Saving results...")
@@ -2758,6 +3270,79 @@ class SLROrchestrator:
             _push_progress(job)
             _persist_job_to_db(job)  # persist completion to DB
 
+            # ── Token deduction for SLR (inside app context) ──────────────
+            try:
+                from flask import current_app
+                if current_app:
+                    with current_app.app_context():
+                        import json as _json
+                        from utils.database.models import ApiUsageLog, User as _SlrUser
+                        from utils.database.models import db as _slr_db, safe_commit as _slr_commit
+                        _summary_text = _json.dumps(summary_result, ensure_ascii=False) if summary_result else ""
+                        _prompt_t = max(1, len(keyword) // 4)
+                        _comp_t = max(1, len(_summary_text) // 4)
+                        _total = _prompt_t + _comp_t
+                        _log_entry = ApiUsageLog(
+                            user_id=int(job.user_id),
+                            endpoint="/api/papers/slr/jobs",
+                            model="slr-orchestrator",
+                            prompt_tokens=_prompt_t,
+                            completion_tokens=_comp_t,
+                            total_tokens=_total,
+                            created_at=datetime.now(timezone.utc),
+                        )
+                        _slr_db.session.add(_log_entry)
+                        _slr_user = _SlrUser.query.get(int(job.user_id))
+                        if _slr_user and _slr_user.role != "admin":
+                            _now = datetime.now(timezone.utc)
+                            _mk = _now.strftime("%Y-%m")
+                            if (_slr_user.usage_month_key or "") != _mk:
+                                _slr_user.usage_month_key = _mk
+                                _slr_user.token_used_month = 0
+                            _slr_user.token_used_month = int(_slr_user.token_used_month or 0) + _total
+                        _slr_commit()
+                        log.info("SLR_TOKEN_DEDUCT user=%d job=%s prompt=%d comp=%d total=%d",
+                                 job.user_id, job.job_id, _prompt_t, _comp_t, _total)
+                else:
+                    # fallback: no current_app, try main app
+                    try:
+                        from main import app as _main_app
+                        with _main_app.app_context():
+                            import json as _json
+                            from utils.database.models import ApiUsageLog, User as _SlrUser
+                            from utils.database.models import db as _slr_db, safe_commit as _slr_commit
+                            _summary_text = _json.dumps(summary_result, ensure_ascii=False) if summary_result else ""
+                            _prompt_t = max(1, len(keyword) // 4)
+                            _comp_t = max(1, len(_summary_text) // 4)
+                            _total = _prompt_t + _comp_t
+                            _log_entry = ApiUsageLog(
+                                user_id=int(job.user_id),
+                                endpoint="/api/papers/slr/jobs",
+                                model="slr-orchestrator",
+                                prompt_tokens=_prompt_t,
+                                completion_tokens=_comp_t,
+                                total_tokens=_total,
+                                created_at=datetime.now(timezone.utc),
+                            )
+                            _slr_db.session.add(_log_entry)
+                            _slr_user = _SlrUser.query.get(int(job.user_id))
+                            if _slr_user and _slr_user.role != "admin":
+                                _now = datetime.now(timezone.utc)
+                                _mk = _now.strftime("%Y-%m")
+                                if (_slr_user.usage_month_key or "") != _mk:
+                                    _slr_user.usage_month_key = _mk
+                                    _slr_user.token_used_month = 0
+                                _slr_user.token_used_month = int(_slr_user.token_used_month or 0) + _total
+                            _slr_commit()
+                            log.info("SLR_TOKEN_DEDUCT user=%d job=%s prompt=%d comp=%d total=%d",
+                                     job.user_id, job.job_id, _prompt_t, _comp_t, _total)
+                    except Exception as _te2:
+                        log.warning("SLR_TOKEN_DEDUCT_FAILED user=%d job=%s (fallback): %s",
+                                    job.user_id, job.job_id, _te2)
+            except Exception as _te:
+                log.warning("SLR_TOKEN_DEDUCT_FAILED user=%d job=%s: %s",
+                            job.user_id, job.job_id, _te)
+
         except Exception as exc:
             log.exception("SLR pipeline failed for job %s", job.job_id)
             self._set_error(job, f"Pipeline error: {exc}")
@@ -2772,11 +3357,11 @@ class SLROrchestrator:
             job.stage = stage
             job.progress_pct = pct
             job.stage_detail = detail
-            # Set status = stage for intermediate stages only
-            # "complete" stage should keep status = "done" (set manually in caller)
-            # "pending" and "cancelled" managed separately
-            if stage in ("pending", "analyzing", "fetching", "ranking", "summarizing", "complete"):
+            # Only set status during terminal stages; intermediate stages keep "running"
+            if stage in ("done", "error", "cancelled"):
                 job.status = stage
+            elif job.status not in ("done", "error", "cancelled"):
+                job.status = "running"
             if extra:
                 for k, v in extra.items():
                     setattr(job, k, v)
@@ -2862,24 +3447,43 @@ class SLROrchestrator:
             for p in papers:
                 try:
                     doi = (p.get("doi") or "").strip() or None
-                    # Skip if DOI already exists for this paper_id
+                    title = (p.get("title") or "").strip()
+                    abstract = (p.get("abstract") or p.get("review") or "").strip()
+                    review = _limit_words((p.get("review") or "").strip(), 50)
+                    summary = (review or _limit_words(abstract, 50) or _limit_words(title, 50))
+                    gap = (p.get("gap_riset") or p.get("gap") or _make_gap_riset(
+                        title=title,
+                        abstract=abstract,
+                        query=job.keyword or "",
+                    ))[:1000]
+                    title_norm = re.sub(r'[^a-z0-9]+', '', title.lower()) or None
+
+                    # Debug missing year source
+                    year_raw = p.get("year")
+                    if title and not year_raw:
+                        log.debug("SLR missing year for paper: %s", title[:80])
+
+                    existing = None
                     if doi:
                         existing = db.session.query(LiteratureItem).filter_by(
                             paper_id=job.paper_id, doi=doi
                         ).first()
-                        if existing:
-                            skipped += 1
-                            continue
-                    else:
-                        # For papers without DOI, skip if same title already exists
-                        title_norm = (p.get("title") or "").strip().lower()
-                        if title_norm:
-                            existing = db.session.query(LiteratureItem).filter_by(
-                                paper_id=job.paper_id, title_norm=title_norm
-                            ).first()
-                            if existing:
-                                skipped += 1
-                                continue
+                    if existing is None and title_norm:
+                        existing = db.session.query(LiteratureItem).filter_by(
+                            paper_id=job.paper_id, title_norm=title_norm
+                        ).first()
+                    if existing:
+                        if abstract and not (existing.abstract or "").strip():
+                            existing.abstract = abstract[:3000]
+                        if summary and not (existing.summary or "").strip():
+                            existing.summary = summary
+                        if review and not (existing.review or "").strip():
+                            existing.review = review
+                        if gap and not (existing.gap_riset or "").strip():
+                            existing.gap_riset = gap
+                        existing.slr_job_id = job.job_id
+                        skipped += 1
+                        continue
 
                     item = LiteratureItem(
                         paper_id=job.paper_id,
@@ -2889,13 +3493,18 @@ class SLROrchestrator:
                         title=(p.get("title") or "").strip(),
                         title_norm=re.sub(r'[^a-z0-9]+', '', (p.get("title") or "").strip().lower()) or None,
                         authors=p.get("authors") or [],
-                        year=p.get("year"),
+                        year=(p.get("year") or p.get("publication_year")),
                         doi=doi,
-                        url=(p.get("url") or p.get("pdf_url") or "").strip(),
+                        url=p.get("url") or None,
                         pdf_url=p.get("pdf_url") or None,
-                        abstract=(p.get("abstract") or "").strip(),
-                        summary=(p.get("review") or "")[:2000],
-                        gap_riset=(p.get("gap") or "")[:1000],
+                        abstract=(p.get("abstract") or p.get("review") or "").strip()[:3000],
+                        review=_limit_words((p.get("review") or "").strip(), 50),
+                        summary=(_limit_words((p.get("review") or "").strip(), 50) or _limit_words((p.get("abstract") or "").strip(), 50) or _limit_words((p.get("title") or "").strip(), 50)),
+                        gap_riset=_make_gap_riset(
+                            title=(p.get("title") or "").strip(),
+                            abstract=(p.get("abstract") or p.get("review") or "").strip(),
+                            query=job.keyword or "",
+                        ),
                         citations=p.get("citations"),
                         score_total=p.get("relevance_score"),
                         score_breakdown=p.get("score_breakdown", {}),
@@ -2905,10 +3514,17 @@ class SLROrchestrator:
                         created_at=datetime.now(timezone.utc),
                     )
                     db.session.add(item)
+                    try:
+                        db.session.flush()
+                    except IntegrityError:
+                        db.session.rollback()
+                        skipped += 1
+                        continue
                     saved += 1
                     if saved >= 500:
                         break
                 except Exception as e:
+                    db.session.rollback()
                     log.warning("Error creating LiteratureItem for paper %s: %s", p.get("title", "?")[:30], e)
                     continue
 
@@ -2993,7 +3609,7 @@ def _get_slr_summary_data(job_id: str) -> dict | None:
 # ── Flask endpoints ───────────────────────────────────────────────────────
 
 @slr_api.route("/api/papers/<paper_id>/slr/orch", methods=["POST"])
-@jwt_required(optional=True)
+@jwt_required()
 def slr_start(paper_id):
     """Start a new SLR job via orchestrator v3.
 
@@ -3070,6 +3686,9 @@ def get_slr_job(job_id: str):
     # Check orchestrator v3 in-memory/Redis jobs
     orch_job = _orchestrator.get_job(job_id)
     if orch_job:
+        # Verify owner to prevent cross-user disclosure
+        if str(orch_job.get("user_id") or "") != str(user_id):
+            return _err("Job not found", "JOB_NOT_FOUND", 404)
         return jsonify(orch_job)
     return _err("Job not found", "JOB_NOT_FOUND", 404)
 
@@ -3078,10 +3697,16 @@ def get_slr_job(job_id: str):
 @jwt_required()
 def slr_summary(job_id):
     """Get grouped/summarized results for a completed orchestrator SLR job."""
+    user_id = _current_user_id()
+    if not user_id:
+        return _err("Unauthorized", "UNAUTHORIZED", 401)
     if not JOB_ID_RE.match(job_id):
         return _err("Invalid job id", "JOB_ID_INVALID", 400)
     job_data = _get_slr_job_data(job_id)
     if job_data is None:
+        return _err("Job not found", "JOB_NOT_FOUND", 404)
+    # Verify ownership for orchestrator jobs
+    if "user_id" in job_data and str(job_data["user_id"]) != str(user_id):
         return _err("Job not found", "JOB_NOT_FOUND", 404)
     if job_data.get("status") != "done":
         return jsonify({"error": "Job not yet complete", "status": job_data.get("status"), "progress": job_data.get("progress", 0)}), 202
@@ -3107,8 +3732,16 @@ def cancel_slr_job(job_id: str):
     if job:
         log.info("slr.cancel user=%d job=%s status=%s", user_id, job.id, job.status)
         if job.status in ("queued", "running", "pending"):
+            # Cancel both DB row and in-memory orchestrator. DB-only cancel leaves
+            # the worker running until it writes progress again after refresh.
+            # ponytail: current summarize call cannot be killed mid-request; it exits at next checkpoint.
+            try:
+                _orchestrator.cancel_job(job_id)
+            except Exception:
+                pass
             job.status = "cancelled"
             job.stage = "cancelled"
+            job.progress_message = "Cancelled by user"
             job.finished_at = datetime.now(timezone.utc)
             try:
                 safe_commit()
@@ -3130,12 +3763,26 @@ def cancel_slr_job(job_id: str):
                 return _err("delete failed", "JOB_DELETE_FAILED", 500)
             return jsonify({"deleted": True}), 200
         return _err(f"unknown status {job.status}", "JOB_STATUS_UNKNOWN", 400)
-    # Try orchestrator v3
+    # Try orchestrator v3 / Redis snapshot cleanup. A hard refresh can leave
+    # a Redis-only running card even when the DB row is gone.
     try:
         _orchestrator.cancel_job(job_id)
-        return jsonify({"id": job_id, "status": "cancelled"}), 200
     except Exception:
-        return _err("Job not found", "JOB_NOT_FOUND", 404)
+        pass
+    if _redis_client is not None:
+        try:
+            raw = _redis_client.get(f"slr_new:{job_id}")
+            if raw:
+                d = json.loads(raw)
+                if d.get("user_id") == user_id:
+                    paper_id = d.get("paper_id")
+                    if paper_id:
+                        _redis_client.srem(f"slr_new:paper:{paper_id}:{user_id}", job_id)
+                    _redis_client.delete(f"slr_new:{job_id}")
+                    return jsonify({"id": job_id, "status": "cancelled", "deleted_stale": True}), 200
+        except Exception:
+            pass
+    return _err("Job not found", "JOB_NOT_FOUND", 404)
 
 
 # ── End of slr.py ─────────────────────────────────────────────────────────

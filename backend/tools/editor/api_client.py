@@ -55,37 +55,37 @@ def _call_aiotomasi(
         "reasoning": {"effort": "high"},
     }
 
-    resp = requests.post(url, json=payload, headers=headers, timeout=timeout, stream=True)
-    resp.raise_for_status()
+    with requests.post(url, json=payload, headers=headers, timeout=timeout, stream=True) as resp:
+        resp.raise_for_status()
 
-    content = ""
-    for line in resp.iter_lines(decode_unicode=True):
-        if not line:
-            continue
-        if line.startswith("data: "):
-            data_str = line[6:]
-            if data_str.strip() == "[DONE]":
-                break
-            try:
-                chunk = json.loads(data_str)
-                delta = chunk.get("choices", [{}])[0].get("delta", {})
-                if delta.get("content"):
-                    content += delta["content"]
-                    if progress_cb:
-                        progress_cb(len(content))
-            except json.JSONDecodeError:
-                pass
-        elif line.startswith("{"):
-            try:
-                full = json.loads(line)
-                if full.get("choices"):
-                    msg = full["choices"][0].get("message", {})
-                    if msg.get("content"):
-                        content += msg["content"]
+        content = ""
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            if line.startswith("data: "):
+                data_str = line[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data_str)
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    if delta.get("content"):
+                        content += delta["content"]
                         if progress_cb:
                             progress_cb(len(content))
-            except json.JSONDecodeError:
-                pass
+                except json.JSONDecodeError:
+                    pass
+            elif line.startswith("{"):
+                try:
+                    full = json.loads(line)
+                    if full.get("choices"):
+                        msg = full["choices"][0].get("message", {})
+                        if msg.get("content"):
+                            content += msg["content"]
+                            if progress_cb:
+                                progress_cb(len(content))
+                except json.JSONDecodeError:
+                    pass
 
     if not content:
         raise ValueError("API returned empty content")

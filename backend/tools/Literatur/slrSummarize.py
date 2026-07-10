@@ -587,7 +587,7 @@ def summarize(
     # ranked_papers[0]["no"] = original rank (1-based), new_rank assigned by _llm_group.
     if llm_call:
         try:
-            grouped = _llm_group(ranked_papers, query, llm_call)
+            grouped = _llm_group(ranked_papers, query, llm_call, top_n=top_n)
             # _llm_group already sorted papers by relevance_score and assigned new_rank.
             # Use its returned papers (sorted by AI relevance) for the final result.
             ranked_papers = ranked_papers  # keep original for stats
@@ -607,11 +607,29 @@ def summarize(
     
     method_dist = {g["label"]: g["count"] for g in grouped["groups"]}
 
+    # Build raw_papers: original paper data before AI review (used for display)
+    # Preserve order from ranked_papers (relevance-sorted)
+    paper_no_map = {p.get("no"): p for p in ranked_papers}
+    raw_papers = []
+    for p in ranked_papers:
+        no = p.get("no")
+        raw_papers.append({
+            "no": no,
+            "title": p.get("title", "Untitled"),
+            "year": p.get("year"),
+            "citations": p.get("citations", 0) or 0,
+            "abstract": p.get("abstract") or "",
+            "source": p.get("source", ""),
+            "doi": p.get("doi") or "",
+            "url": p.get("url") or "",
+        })
+
     return {
         "total_fetched": total_fetched,
         "total_unique": total_unique,
         "total_returned": len(reviewed_papers) if reviewed_papers else len(ranked_papers),
-        "reviewed_papers": reviewed_papers,  # AI-reviewed papers with new_rank, review, relevance_score
+        "raw_papers": raw_papers,         # raw fetcher data: no, title, year, citations, abstract, source
+        "reviewed_papers": reviewed_papers,  # AI-reviewed papers with new_rank/no, review, relevance_score
         "groups": grouped["groups"],
         "method_distribution": method_dist,
         "grouping_notes": grouped.get("grouping_notes", ""),
@@ -623,6 +641,7 @@ def _llm_group(
     papers: list[dict],
     query: str,
     llm_call: Callable[[str, str], str],
+    top_n: int = 20,
 ) -> dict:
     """Use LLM to review ALL papers: title, abstract, year, citations → review + relevance.
 
@@ -658,14 +677,12 @@ def _llm_group(
         compact = []
         for p in batch_sorted:
             abstract = p.get("abstract") or ""
-            if len(abstract) > 500:
-                abstract = abstract[:500] + "..."
+            if len(abstract) > 800:
+                abstract = abstract[:800] + "..."
             compact.append({
-                "no": p.get("no", papers.index(p) + 1),
+                "no_urut_awal": p.get("no", papers.index(p) + 1),
                 "title": p.get("title", "Untitled"),
                 "abstract": abstract,
-                "year": p.get("year"),
-                "citations": p.get("citations", 0) or 0,
             })
 
         user_msg = json.dumps({
@@ -731,16 +748,17 @@ def _llm_group(
             log.warning("Batch %d response missing 'papers' key", batch_idx + 1)
             continue
 
-        # Build review map: no → {review, relevance}
+        # Build review map: no_urut_awal → {review, no_urut_baru}
         for rp in parsed.get("papers", []):
             if not isinstance(rp, dict):
                 continue
-            no = rp.get("no")
+            no = rp.get("no_urut_awal", rp.get("no"))
             if no is None:
                 continue
             all_reviewed.append({
                 "no": no,
                 "review": (rp.get("review") or "")[:2000],
+                "no_urut_baru": rp.get("no_urut_baru", rp.get("new_no")),
                 "relevance": rp.get("relevance"),
             })
 
@@ -749,7 +767,15 @@ def _llm_group(
     # Build review_map: no → review data
     review_map = {r["no"]: r for r in all_reviewed}
 
-    # Apply reviews + relevance back to ALL papers
+    def _ai_rank_value(p: dict) -> int:
+        rev = review_map.get(p.get("no"), {})
+        try:
+            value = int(rev.get("no_urut_baru"))
+        except (TypeError, ValueError):
+            value = 10**9
+        return value if value > 0 else 10**9
+
+    # Apply reviews + AI order back to ALL papers
     reviewed_papers = []
     for p in papers:
         no = p.get("no")
@@ -757,29 +783,33 @@ def _llm_group(
         reviewed_papers.append({
             **p,
             "review": rev.get("review", ""),
+            "no_urut_awal": no,
+            "no_urut_baru": rev.get("no_urut_baru"),
             "relevance_score": rev.get("relevance") or p.get("relevance_score", 0),
         })
 
-    # Sort by relevance_score DESC for final ranking
+    # Sort by AI-provided no_urut_baru; fall back to programmatic relevance.
     reviewed_papers.sort(
-        key=lambda x: x.get("relevance_score", 0),
-        reverse=True,
+        key=lambda x: (_ai_rank_value(x), -(x.get("relevance_score", 0) or 0)),
     )
 
-    # Assign new rank
+    total_reviewed = len(reviewed_papers)
     for rank, p in enumerate(reviewed_papers, 1):
         p["new_rank"] = rank
+        p["new_no"] = rank
+        p["no_urut_baru"] = rank
+        p["relevance_score"] = total_reviewed - rank + 1
 
     result_groups = {
         "groups": [{
             "label": "Literature Review",
-            "description": f"AI-reviewed papers for query: {query}",
+            "description": f"AI-reviewed papers for query: {query}. Only top {top_n} papers have new_rank.",
             "count": len(reviewed_papers),
             "papers": reviewed_papers,
         }],
-        "grouping_notes": f"AI-reviewed {len(reviewed_papers)} papers for '{query}'",
+        "grouping_notes": f"AI-reviewed {len(reviewed_papers)} papers for '{query}', assigning new_no for top {top_n} papers",
     }
-    log.info("=== _llm_group DONE: %d papers with review+relevance ===", len(reviewed_papers))
+    log.info("=== _llm_group DONE: %d papers with review+relevance, top_n=%d ===", len(reviewed_papers), top_n)
     return result_groups
 
 

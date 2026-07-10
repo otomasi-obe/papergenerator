@@ -590,34 +590,54 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
     """Resolve an image path to an actual file on disk.
 
     Tries (in order):
-      1. Absolute path as-is
+      1. Absolute path as-is (with space-normalisation fallback)
       2. Relative to json_path.parent (legacy behaviour)
       3. Relative to an ``image/`` subfolder of json_path.parent's parent
          (covers the user/<username>/<paper_id>/export/ → …/image/ case)
       4. ``safe_paper_image_dir()`` lookup by paper_id (best effort)
       5. BASE_DIR fallback
+
+    AI tokenizer sometimes inserts stray spaces inside filenames
+    (e.g. "flowchart_t uning.jpg" → "flowchart_tuning.jpg").
+    All lookups try the original path first, then a space-normalised variant.
     """
     p = Path(path_text)
-    if p.is_absolute():
-        return p
+    p_norm = Path(path_text.replace(" ", "")) if " " in path_text else p
 
-    # 2. Relative to json_path.parent (e.g. export/_tmp.json → export/<path>)
-    candidate = json_path.parent / p
-    if candidate.is_file():
-        return candidate
-
-    # 3. Sibling image/ folder: export/ is sibling of image/ under <paper_id>/
-    #    json_path.parent = …/<paper_id>/export/_tmp.json → parent.parent = …/<paper_id>/
-    paper_root = json_path.parent.parent
-    candidate = paper_root / "image" / p
-    if candidate.is_file():
-        return candidate
-    # Also try just the basename in the image folder (Path may include "gambar/" prefix)
-    fname = p.name
-    if fname and fname != str(p):
-        candidate = paper_root / "image" / fname
+    # Helper: try a candidate, return if it exists
+    def _try(candidate: Path) -> Path | None:
         if candidate.is_file():
             return candidate
+        return None
+
+    # 1. Absolute path
+    if p.is_absolute():
+        if (r := _try(p)):
+            return r
+        if p_norm != p and (r := _try(p_norm)):
+            return r
+        return p  # fallback — return original even if not found
+
+    # 2. Relative to json_path.parent
+    if (r := _try(json_path.parent / p)):
+        return r
+    if p_norm != p and (r := _try(json_path.parent / p_norm)):
+        return r
+
+    # 3. Sibling image/ folder
+    paper_root = json_path.parent.parent
+    if (r := _try(paper_root / "image" / p)):
+        return r
+    if p_norm != p and (r := _try(paper_root / "image" / p_norm)):
+        return r
+    # Also try just the basename in the image folder
+    fname = p.name
+    fname_norm = p_norm.name if p_norm != p else fname
+    if fname and fname != str(p):
+        if (r := _try(paper_root / "image" / fname)):
+            return r
+    if fname_norm != fname and (r := _try(paper_root / "image" / fname_norm)):
+        return r
 
     # 4. safe_paper_image_dir() — needs Flask app context; best-effort
     try:
@@ -626,13 +646,9 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
         paper_id = json_path.parent.name if json_path.parent.name not in ("export",) else paper_root.name
         img_dir = safe_paper_image_dir(paper_id)
         if img_dir:
-            candidate = img_dir / p
-            if candidate.is_file():
-                return candidate
-            if fname:
-                candidate = img_dir / fname
-                if candidate.is_file():
-                    return candidate
+            for name in (p, p_norm, fname, fname_norm):
+                if name and (r := _try(img_dir / name)):
+                    return r
     except Exception:
         pass
 

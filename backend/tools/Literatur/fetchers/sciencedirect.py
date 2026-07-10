@@ -28,6 +28,17 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
 
     entries = fetch_paginated(client, f"{BASE}/search/sciencedirect", params, limit, 100)
 
+    # ScienceDirect Search API needs special entitlement; if key lacks it the
+    # call returns 401 and we get no entries. Fall back to Scopus (same Elsevier
+    # umbrella, same API key) so Elsevier papers still surface.
+    if not entries:
+        try:
+            from .scopus import search as scopus_search
+            yield from scopus_search(client, query, limit=limit, filters=filters)
+        except Exception as e:
+            log.warning("ScienceDirect fallback to Scopus failed: %s", e)
+        return
+
     for entry in entries:
         if entry.get("error"):
             continue

@@ -1,28 +1,12 @@
 """
-Export System for Paper Generator
-==================================
-Unified export system supporting multiple formats: DOCX, PDF, LaTeX, Markdown.
-
-Usage:
-    from exports import ExportManager
-    
-    manager = ExportManager()
-    output_path = manager.export(paper_data, format='pdf', template='IEEE')
+Preview package — reference normalization and formatting for paper exports.
 """
 
-from .manager import ExportManager
-from .base import BaseExporter, ExportFormat
-from .docx_exporter import DOCXExporter
-from .pdf_exporter import PDFExporter
-from .latex_exporter import LaTeXExporter
-from .markdown_exporter import MarkdownExporter
+from .ref_normalize import normalize_references, style_for_journal
+from .reference_formatter import format_reference
 
 __all__ = [
-    'ExportManager',
-    'BaseExporter',
-    'ExportFormat',
-    'DOCXExporter',
-    'PDFExporter',
-    'LaTeXExporter',
-    'MarkdownExporter',
+    "normalize_references",
+    "style_for_journal",
+    "format_reference",
 ]

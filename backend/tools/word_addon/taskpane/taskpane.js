@@ -2,7 +2,7 @@
   "use strict";
 
   const API_URL = "https://ai.otomasi.app/v1/chat/completions";
-  const API_KEY = "sk-ccfa926bc01cfa19-7wxcu8-b7f17c13";
+  const API_KEY = ""; // Set at runtime; never ship provider keys in client code.
 
   let chatHistory = [];
   let isStreaming = false;

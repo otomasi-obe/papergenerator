@@ -24,6 +24,7 @@ from json_repair import repair_json
 
 from utils.core.env_loader import load_app_env
 from utils.ai_tools.model_config import get_primary_generate_model
+from tools.editor.prompt_sanitizer import sanitize_prompt
 
 # Reuse existing API caller with fallback
 from tools.editor.api_client import _call_aiotomasi_with_fallback
@@ -550,17 +551,6 @@ Adapt content to the specific topic, but keep section titles in the correct lang
     if context_block:
         system_prompt += f"\n\nCONTEXT FROM PROJECT:\n{context_block}"
 
-    # Inject workflow context
-    if paper_id and user_id:
-        try:
-            from PaperRiset.eks.editor.workflow_integration import load_workflow_context
-            workflow_ctx = load_workflow_context(paper_id, user_id)
-            if workflow_ctx:
-                system_prompt += f"\n\n{workflow_ctx}"
-                log.info("[_generate_outline] Injected workflow context")
-        except Exception as e:
-            log.warning("[_generate_outline] Failed to load workflow context: %s", e)
-
     user_message = f"""Topic description: {judul}
 
 Additional instructions: {custom_prompt if custom_prompt else "(none)"}
@@ -765,13 +755,13 @@ from the current numbering state.
             from utils.database.models import LiteratureItem, db
             _lit_items = (
                 db.session.query(LiteratureItem)
-                .filter_by(paper_id=paper_id, user_id=user_id)
+                .filter_by(paper_id=paper_id, user_id=user_id, is_checked=True)
                 .order_by(
                     LiteratureItem.pinned.desc(),
                     LiteratureItem.must_read.desc(),
                     LiteratureItem.score_total.desc(),
                 )
-                .all()  # Load ALL user refs — exact count matters, no limit
+                .all()  # Use only checked refs — unchecked SLR rows are candidates, not citations
             )
             if _lit_items:
                 lit_entries_in_section = [
@@ -794,17 +784,6 @@ User has provided {_lit_count} references via Literature catalog.
 This is a HARD CONSTRAINT. Violating it produces fabricated references which is unacceptable.
 """
         log.info("[_generate_section] Section %d: Injected ref constraint — %d user refs, no fabrication allowed", section_num, _lit_count)
-
-    # Inject workflow context
-    if paper_id and user_id:
-        try:
-            from PaperRiset.eks.editor.workflow_integration import load_workflow_context
-            workflow_ctx = load_workflow_context(paper_id, user_id)
-            if workflow_ctx:
-                system_prompt += f"\n\n{workflow_ctx}"
-                log.info("[_generate_section] Section %d: Injected workflow context", section_num)
-        except Exception as e:
-            log.warning("[_generate_section] Section %d: Failed to load workflow context: %s", section_num, e)
 
     user_message = f"""Topic: {judul}
 
@@ -920,13 +899,13 @@ def _generate_references(
 
             items = (
                 db.session.query(LiteratureItem)
-                .filter_by(paper_id=paper_id, user_id=user_id)
+                .filter_by(paper_id=paper_id, user_id=user_id, is_checked=True)
                 .order_by(
                     LiteratureItem.pinned.desc(),
                     LiteratureItem.must_read.desc(),
                     LiteratureItem.score_total.desc(),
                 )
-                .all()  # Load ALL user refs — exact count matters, no limit
+                .all()  # Use only checked refs — unchecked SLR rows are candidates, not citations
             )
             if items:
                 # Build entries in (idx, body) format

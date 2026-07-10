@@ -868,6 +868,32 @@ _INLINE_RE = re.compile(
     re.DOTALL,
 )
 
+# Greek Unicode chars that must render in Symbol font
+_GREEK_CHARS = set("αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ")
+
+
+def _split_greek(text: str, base_font: str, sym_font: str):
+    """Split text into segments of plain and Greek chars, each with appropriate font."""
+    result = []  # list of (text_segment, font_name)
+    i = 0
+    while i < len(text):
+        if text[i] in _GREEK_CHARS:
+            # Collect Greek sequence
+            j = i
+            while j < len(text) and text[j] in _GREEK_CHARS:
+                j += 1
+            result.append((text[i:j], sym_font))
+            i = j
+        else:
+            # Collect non-Greek sequence
+            j = i
+            while j < len(text) and text[j] not in _GREEK_CHARS:
+                j += 1
+            result.append((text[i:j], base_font))
+            i = j
+    return result
+
+
 def add_runs_with_inline(
     paragraph, text, base_font, base_size, base_bold=False, base_italic=False, base_color=None
 ):
@@ -877,21 +903,25 @@ def add_runs_with_inline(
         text = sanitize_llm_text_artifacts(text)
     except Exception:
         pass
-    pos = 0
     text = text.replace(" ", " ")
+    sym_font = CFG.get("font_sym", "Symbol")
+
+    pos = 0
     for m in _INLINE_RE.finditer(text):
         if m.start() > pos:
             chunk = text[pos : m.start()]
             if chunk:
-                add_run(
-                    paragraph,
-                    chunk,
-                    name=base_font,
-                    size_pt=base_size,
-                    bold=base_bold,
-                    italic=base_italic,
-                    color=base_color,
-                )
+                for seg_text, seg_font in _split_greek(chunk, base_font, sym_font):
+                    if seg_text:
+                        add_run(
+                            paragraph,
+                            seg_text,
+                            name=seg_font,
+                            size_pt=base_size,
+                            bold=base_bold,
+                            italic=base_italic,
+                            color=base_color,
+                        )
         if m.group(1) is not None:
             content = latex_to_unicode(m.group(1))
             add_run(
@@ -936,15 +966,17 @@ def add_runs_with_inline(
     if pos < len(text):
         tail = text[pos:]
         if tail:
-            add_run(
-                paragraph,
-                tail,
-                name=base_font,
-                size_pt=base_size,
-                bold=base_bold,
-                italic=base_italic,
-                color=base_color,
-            )
+            for seg_text, seg_font in _split_greek(tail, base_font, sym_font):
+                if seg_text:
+                    add_run(
+                        paragraph,
+                        seg_text,
+                        name=seg_font,
+                        size_pt=base_size,
+                        bold=base_bold,
+                        italic=base_italic,
+                        color=base_color,
+                    )
 
 # ======================================================================
 # CONTENT GENERATORS
@@ -1166,10 +1198,31 @@ def add_figure(doc, fig):
     set_para_spacing(
         img_p, before_pt=4, after_pt=2, alignment=WD_ALIGN_PARAGRAPH.CENTER, first_line_tw=0
     )
-    img_path = fig.get("Path", "")
+    img_path = fig.get("Path", "") or ""
     full_path = None
+    img_path_norm = img_path.replace(" ", "") if " " in img_path else img_path
     if img_path:
-        for cand in (Path(img_path), BASE / img_path):
+        # Try original + normalised in each location
+        all_paths = []
+        for _p in (img_path, img_path_norm):
+            all_paths.extend([Path(_p), BASE / _p])
+        # Also scan user/*/<paper_id>/image/
+        try:
+            _data = load_json()
+            _pid = str(_data.get("paper_id") or _data.get("id") or "").strip()
+            if not _pid and isinstance(_data.get("paper_data"), dict):
+                _pid = str(_data["paper_data"].get("paper_id", "")).strip()
+            if _pid:
+                _udir = Path(__file__).resolve().parent.parent.parent / "user"
+                if _udir.is_dir():
+                    for _uname in _udir.iterdir():
+                        _idir = _uname / _pid / "image"
+                        if _idir.is_dir():
+                            all_paths.extend([_idir / img_path, _idir / img_path_norm])
+                            break
+        except Exception:
+            pass
+        for cand in all_paths:
             if cand.is_file():
                 full_path = cand
                 break
@@ -1548,6 +1601,44 @@ def generate():
     doc.save(str(OUTPUT_DOCX))
     print(f"Generated: {OUTPUT_DOCX}")
     return str(OUTPUT_DOCX)
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Writes a temporary .docx via generate(), then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    import sys as _sys
+    import tempfile as _tf
+
+    _json_path = Path(json_path)
+    _pdf_path = Path(pdf_path)
+    _pdf_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create temp docx path
+    with _tf.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+        _tmp_docx = Path(_tmp.name)
+
+    _mod = _sys.modules[__name__]
+    _saved_in = getattr(_mod, "TEMPLATE_JSON", None)
+    _saved_out = getattr(_mod, "OUTPUT_DOCX", None)
+
+    try:
+        setattr(_mod, "TEMPLATE_JSON", _json_path)
+        setattr(_mod, "OUTPUT_DOCX", _tmp_docx)
+        generate()
+    finally:
+        if _saved_in is not None:
+            setattr(_mod, "TEMPLATE_JSON", _saved_in)
+        if _saved_out is not None:
+            setattr(_mod, "OUTPUT_DOCX", _saved_out)
+
+    try:
+        from ._render_pdf import convert_docx_to_pdf
+        return convert_docx_to_pdf(_tmp_docx, _pdf_path)
+    finally:
+        _tmp_docx.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     generate()

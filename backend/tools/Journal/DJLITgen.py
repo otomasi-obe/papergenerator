@@ -656,6 +656,8 @@ def add_figure(doc, fig_data, fig_counter):
     prompt_hint = _clean_latex(str(fig_data.get("Prompt", "")).strip())
 
     image_path_str = str(fig_data.get("Path", "")).strip()
+    # Normalise: AI tokenizer sometimes inserts spaces inside filenames
+    image_path_norm = image_path_str.replace(" ", "") if " " in image_path_str else image_path_str
     image_url = str(fig_data.get("url", "")).strip()
     has_image = fig_data.get("hasImage", False)
 
@@ -664,9 +666,11 @@ def add_figure(doc, fig_data, fig_counter):
     if image_path_str or image_url:
         candidates = []
 
-        # 1) Absolute path
+        # 1) Absolute path (original + space-normalised)
         if image_path_str and os.path.isabs(image_path_str):
             candidates.append(Path(image_path_str))
+            if image_path_norm != image_path_str:
+                candidates.append(Path(image_path_norm))
 
         # 2) Relative to TEMPLATE_JSON's image/ sibling folder
         try:
@@ -675,6 +679,8 @@ def add_figure(doc, fig_data, fig_counter):
             image_dir = paper_dir / "image"
             if image_dir.is_dir() and image_path_str:
                 candidates.append(image_dir / image_path_str)
+                if image_path_norm != image_path_str:
+                    candidates.append(image_dir / image_path_norm)
                 stem = os.path.splitext(image_path_str)[0]
                 if stem:
                     for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
@@ -682,7 +688,25 @@ def add_figure(doc, fig_data, fig_counter):
         except Exception:
             pass
 
-        # 3) Direct path from fig_data
+        # 3) Scan user/*/<paper_id>/image/ (web export: TEMPLATE_JSON is /tmp/)
+        try:
+            data = load_json()
+            _pid = str(data.get("paper_id") or data.get("id") or "").strip()
+            if not _pid and isinstance(data.get("paper_data"), dict):
+                _pid = str(data["paper_data"].get("paper_id", "")).strip()
+            if _pid:
+                _udir = Path(__file__).resolve().parent.parent.parent / "user"
+                if _udir.is_dir():
+                    for _uname in _udir.iterdir():
+                        _idir = _uname / _pid / "image"
+                        if _idir.is_dir():
+                            for _n in (image_path_str, image_path_norm):
+                                candidates.append(_idir / _n)
+                            break
+        except Exception:
+            pass
+
+        # 4) Direct path from fig_data
         if image_path_str:
             candidates.append(Path(image_path_str))
 
@@ -927,7 +951,7 @@ def add_formula(doc, formula_data):
 def add_references(doc, data):
     refs_data = data.get("references", {})
     if isinstance(refs_data, dict):
-        refs_list = refs_data.get("content") or refs_data.get("items") or [])
+        refs_list = refs_data.get("content") or refs_data.get("items") or []
     elif isinstance(refs_data, list):
         refs_list = refs_data
     else:
@@ -1162,3 +1186,13 @@ def build_document(json_path: Path, output_path: Path, template_path: Path = Non
         if fallback.exists():
             shutil.move(str(fallback), str(output_path))
     return Path(output_path)
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)

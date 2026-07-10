@@ -1089,6 +1089,7 @@ def build_document(
     json_path: Path = JSON_PATH,
     output_path: Path | None = None,
     template_path: Path = TEMPLATE_PATH,
+
 ) -> Path:
     config = json.loads(Path(json_path).read_text(encoding="utf-8"))
     final_output = (
@@ -1122,6 +1123,15 @@ def build_document(
     print(f"Generated: {final_output}")
     return final_output
 
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)
 
 def main() -> None:
     if len(sys.argv) >= 2:

@@ -287,6 +287,21 @@ _GENERIC_ACADEMIC_WORDS = {
     # Words with hyphens that become meaningless after splitting
     "state-of-the-art", "end-to-end", "real-time", "plug-and-play",
     "attention-based", "attention-enhanced",
+    # Indonesian generic academic/method words
+    "pemanfaatan", "teknik", "kultur", "penerapan", "kajian", "studi",
+    "analisis", "implementasi", "pembangunan", "pengembangan",
+    "penelitian", "metode", "metodologi", "pendekatan", "sistem",
+    "model", "perancangan", "evaluasi", "validasi", "optimasi",
+    "perbandingan", "kajian", "tinjauan", "survei", "eksplorasi",
+    "investigasi", "eksperimen", "simulasi", "pemodelan",
+    # Indonesian stopwords/prepositions
+    "untuk", "dari", "ke", "di", "pada", "dalam", "dengan", "dan", "atau",
+    "yang", "ini", "itu", "adalah", "akan", "sudah", "belum", "tidak",
+    "bisa", "dapat", "harus", "perlu", "masih", "sangat", "lebih",
+    "sekali", "pun", "juga", "hanya", "saja", "lain", "lainnya",
+    "semua", "setiap", "beberapa", "banyak", "sedikit", "cukup",
+    "seperti", "sebagai", "menjadi", "merupakan", "berhubungan",
+    "berkaitan", "mengenai", "terkait", "hubungan", "kaitan",
 }
 _WORDS_MIN_LEN = 3  # Ignore words shorter than this in OR queries
 

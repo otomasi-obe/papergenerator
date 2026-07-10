@@ -269,7 +269,7 @@ def _add_references(doc: Document, config: dict) -> None:
 
     refs_cfg = config.get("references", {})
     if isinstance(refs_cfg, dict):
-        content = refs_cfg.get("content") or refs_cfg.get("items") or [])
+        content = refs_cfg.get("content") or refs_cfg.get("items") or []
     elif isinstance(refs_cfg, list):
         content = refs_cfg
     else:
@@ -409,6 +409,16 @@ def build_document(json_path: Path, output_path: Path | None = None) -> Path:
     doc.save(str(out))
     return out
 
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)
 
 if __name__ == "__main__":
     run_generator(BASE_DIR, TEMPLATE_PATH, build_document)

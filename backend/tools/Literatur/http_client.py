@@ -222,8 +222,8 @@ def fetch_json(
                     log.debug("Rotating proxy on %d: %s", r.status_code, new_proxy[:30])
                     client.close()
                     transport = httpx.HTTPTransport(proxy=new_proxy)
-                    client._transport = transport
-                    client._timeout = httpx.Timeout(30.0, connect=10.0, read=25.0, write=10.0, pool=10.0)
+                    timeout = httpx.Timeout(30.0, connect=10.0, read=25.0, write=10.0, pool=10.0)
+                    client = httpx.Client(transport=transport, timeout=timeout)
                 time.sleep(2 ** (attempt + 1))
                 continue
             if r.status_code in _RETRYABLE_STATUS and attempt < retries:
@@ -234,12 +234,6 @@ def fetch_json(
             return None
         except httpx.TimeoutException:
             log.warning("Timeout on attempt %d/%d for %s", attempt + 1, retries + 1, url[:80])
-            if attempt < retries:
-                time.sleep(2 ** (attempt + 1))
-                continue
-            return None
-        except httpx.HTTPError as e:
-            log.warning("HTTP error on attempt %d/%d: %s", attempt + 1, retries + 1, e)
             if attempt < retries:
                 time.sleep(2 ** (attempt + 1))
                 continue

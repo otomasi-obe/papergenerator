@@ -328,57 +328,59 @@ def _fetch_members(
     rl = RateLimiter(0.5)
     per_page = min(limit, 100)
     fetched = 0
-    cursor = "*"
-
-    full_filter = f"member:{_ALL_MEMBERS}"
+    year_filter = ""
     if filters and filters.get("year_from"):
-        full_filter += f",from-pub-date:{filters['year_from']}-01-01"
+        year_filter = f",from-pub-date:{filters['year_from']}-01-01"
 
     resolver = _get_unpaywall_resolver()
 
-    while fetched < limit:
-        rl.wait()
-        params = {
-            "query": query,
-            "filter": full_filter,
-            "rows": min(per_page, limit - fetched),
-            "cursor": cursor,
-            "sort": "relevance",
-            "order": "desc",
-            "select": SELECT_FIELDS,
-            "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
-        }
-        data = fetch_json(client, BASE, params=params, headers={"User-Agent": get_random_ua()})
-        if not data:
+    # Crossref `member:` filter only accepts ONE member ID per call, so we loop
+    # over each publisher member and merge results (a few extra HTTP calls, but
+    # each stays within rate limits via the shared RateLimiter).
+    for member_id, (source_name, _display) in MEMBER_PUBLISHERS.items():
+        if fetched >= limit:
             return
-        msg = data.get("message") or {}
-        items = msg.get("items") or []
-        if not items:
-            return
+        cursor = "*"
+        while fetched < limit:
+            rl.wait()
+            params = {
+                "query": query,
+                "filter": f"member:{member_id}{year_filter}",
+                "rows": min(per_page, limit - fetched),
+                "cursor": cursor,
+                "sort": "relevance",
+                "order": "desc",
+                "select": SELECT_FIELDS,
+                "mailto": os.getenv("SLR_CONTACT_EMAIL") or "research@example.com",
+            }
+            data = fetch_json(client, BASE, params=params, headers={"User-Agent": get_random_ua()})
+            if not data:
+                break
+            msg = data.get("message") or {}
+            items = msg.get("items") or []
+            if not items:
+                break
 
-        for item in items:
-            paper = _parse_item_publisher(item)
-            if paper:
-                if resolver and not paper.pdf_url and paper.doi:
-                    try:
-                        pdf = resolver(paper.doi)
-                        if pdf:
-                            paper.pdf_url = pdf
-                            paper.is_open_access = True
-                    except Exception:
-                        pass
-                # NOTE: OpenAlex enrichment disabled to avoid 429 rate limits
-                # if not paper.abstract and paper.doi:
-                #     paper.abstract = enrich_abstract_via_doi(paper.doi, client)
-                yield paper
-                fetched += 1
-                if fetched >= limit:
-                    return
+            for item in items:
+                paper = _parse_item_publisher(item, source_override=source_name)
+                if paper:
+                    if resolver and not paper.pdf_url and paper.doi:
+                        try:
+                            pdf = resolver(paper.doi)
+                            if pdf:
+                                paper.pdf_url = pdf
+                                paper.is_open_access = True
+                        except Exception:
+                            pass
+                    yield paper
+                    fetched += 1
+                    if fetched >= limit:
+                        return
 
-        next_cursor = msg.get("next-cursor")
-        if not next_cursor or next_cursor == cursor:
-            return
-        cursor = next_cursor
+            next_cursor = msg.get("next-cursor")
+            if not next_cursor or next_cursor == cursor:
+                break
+            cursor = next_cursor
 
 
 def _fetch_ssrn(

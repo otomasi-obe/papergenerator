@@ -3595,6 +3595,174 @@ def audit_font_family(doc_orig, doc_out, n_check: int = 10) -> AuditResult:
 
 
 # =============================================================================
+# [5f.1b] Full Paragraph Font Audit — ALL paragraphs, per-run comparison
+# =============================================================================
+# K罗德: teman bilang "font tidak identik" tapi checker lama hanya cek 10 paragraf.
+# Audit ini scan SEMUA paragraf, bandingkan per-run font attributes satu-per-satu.
+# Greek char detection: template pakai Symbol font untuk αβθμ, output harus sama.
+# Penalty: -3 per mismatch (MAJOR zone) / -2 per mismatch (body zone).
+#
+# FIXED 2026-07-03: sebelumnya hanya cek 10 paragraf pertama (blind spot).
+# Root cause mismatch: Greek Unicode chars (α,θ,μ) tidak dilindungi LaTeX
+# sehingga lewat add_runs_with_inline() sebagai plain text → font_serif bukan Symbol.
+
+_GREEK_CHAR_SET = frozenset(
+    "αβγδεζηθικλμνξοπρστυφχψω"
+    "ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ"
+    "ϵϕϱςτωψζξνμλκιθηδγβα"  # variants
+)
+
+
+def _extract_all_run_fonts(para):
+    """Extract per-run font info: {run_index: {w:ascii, w:hAnsi, w:cs, w:eastAsia}}."""
+    result = []
+    for run in para.runs:
+        rPr = run._element.find(qn("w:rPr"))
+        fonts = {}
+        if rPr is not None:
+            rFonts = rPr.find(qn("w:rFonts"))
+            if rFonts is not None:
+                for attr in ("w:ascii", "w:hAnsi", "w:cs", "w:eastAsia"):
+                    val = rFonts.get(qn(attr))
+                    if val:
+                        fonts[attr.split(":")[1]] = val
+        result.append({"text": run.text, "fonts": fonts})
+    return result
+
+
+def _has_greek(text: str) -> bool:
+    return any(c in _GREEK_CHAR_SET for c in text)
+
+
+def _run_fonts_match(orig_fonts: dict, out_fonts: dict, out_text: str) -> tuple[bool, str]:
+    """Return (match, reason). Special handling for Greek chars."""
+    # Normalize for comparison — strip eastAsia if template lacks it
+    def _norm(f: dict) -> set:
+        return set((k, _normalize_font_name(v) or "") for k, v in f.items())
+
+    # If template has no font info at all, skip (inherits from style)
+    if not orig_fonts:
+        return True, ""
+
+    # Strip eastAsia from comparison if template doesn't specify it
+    orig_stripped = {k: v for k, v in orig_fonts.items() if k != "eastAsia"}
+    out_stripped = {k: v for k, v in out_fonts.items() if "eastAsia" not in orig_fonts or k != "eastAsia"}
+    if "eastAsia" not in orig_fonts:
+        out_stripped = {k: v for k, v in out_fonts.items() if k != "eastAsia"}
+
+    orig_set = _norm(orig_stripped)
+    out_set = _norm(out_stripped)
+
+    # Check if fonts match (after stripping eastAsia)
+    if orig_set == out_set:
+        return True, ""
+
+    # Special case: Greek chars should use Symbol font
+    if _has_greek(out_text):
+        out_sym = out_fonts.get("ascii") or out_fonts.get("hAnsi") or ""
+        out_sym_norm = _normalize_font_name(out_sym)
+        orig_sym = orig_fonts.get("ascii") or orig_fonts.get("hAnsi") or ""
+        orig_sym_norm = _normalize_font_name(orig_sym)
+        if "Symbol" in (out_sym_norm or "") or "MT Extra" in (out_sym_norm or ""):
+            if "Symbol" not in (out_sym_norm or "") and "MT Extra" not in (out_sym_norm or ""):
+                return False, f"GREEK_CHAR_MISMATCH: text='{out_text[:20]}...' template uses '{orig_sym}' but output uses '{out_sym}'"
+        if "Symbol" not in (orig_sym_norm or "") and "Times" not in (orig_sym_norm or "") and "serif" not in (orig_sym_norm or ""):
+            if "Symbol" in (out_sym_norm or "") or "MT Extra" in (out_sym_norm or ""):
+                return False, f"GREEK_UNEXPECTED_FONT: text='{out_text[:20]}...' template='{orig_sym}' but output uses '{out_sym}'"
+
+    return False, f"FONT_MISMATCH"
+
+
+def audit_font_full(doc_orig, doc_out) -> AuditResult:
+    """Scan ALL paragraphs and compare per-run fonts between template and output."""
+    res = AuditResult()
+
+    orig_paras = [p for p in doc_orig.paragraphs if p.text.strip()]
+    out_paras = [p for p in doc_out.paragraphs if p.text.strip()]
+
+    # Pair by text similarity (fallback: index alignment)
+    from difflib import SequenceMatcher
+
+    def best_match(orig_list, out_list):
+        pairs = []
+        used_out = set()
+        for oi, op in enumerate(orig_list):
+            best_score = 0.0
+            best_oi = None
+            best_oj = None
+            for oj, ojp in enumerate(out_list):
+                if oj in used_out:
+                    continue
+                ratio = SequenceMatcher(None, op.text, ojp.text).ratio()
+                if ratio > best_score:
+                    best_score = ratio
+                    best_oi = oi
+                    best_oj = oj
+            if best_oi is not None and best_score >= 0.6:  # 0.6 to avoid false para matches
+                pairs.append((best_oi, best_oj))
+                used_out.add(best_oj)
+        return pairs
+
+    pairs = best_match(orig_paras, out_paras)
+
+    mismatches = []
+    for orig_idx, out_idx in pairs:
+        orig_p = orig_paras[orig_idx]
+        out_p = out_paras[out_idx]
+        orig_runs = _extract_all_run_fonts(orig_p)
+        out_runs = _extract_all_run_fonts(out_p)
+
+        # Compare each run pair by text similarity
+        out_text = out_p.text
+        for ri, orig_run in enumerate(orig_runs):
+            if not orig_run["text"]:
+                continue
+            # Find best matching out run
+            best_ratio = 0.0
+            best_out_run = None
+            for oj, out_run in enumerate(out_runs):
+                r = SequenceMatcher(None, orig_run["text"], out_run["text"]).ratio()
+                if r > best_ratio:
+                    best_ratio = r
+                    best_out_run = out_run
+            if best_out_run is None or best_ratio < 0.4:
+                continue
+            matched, reason = _run_fonts_match(orig_run["fonts"], best_out_run["fonts"], best_out_run["text"])
+            if not matched:
+                mismatches.append({
+                    "para_idx": out_idx,
+                    "run_idx": ri,
+                    "orig": orig_run["fonts"],
+                    "out": best_out_run["fonts"],
+                    "text": best_out_run["text"][:50],
+                    "reason": reason,
+                })
+
+    # Deduplicate by para_idx (show first mismatch per paragraph)
+    seen_para = {}
+    for m in mismatches:
+        pid = m["para_idx"]
+        if pid not in seen_para:
+            seen_para[pid] = m
+
+    if seen_para:
+        for m in list(seen_para.values())[:15]:
+            if "GREEK" in m["reason"]:
+                res.errors.append(
+                    f"[FONT] {m['reason']} | orig={m['orig']} out={m['out']}"
+                )
+            else:
+                res.errors.append(
+                    f"[FONT] Para #{m['para_idx']} run #{m['run_idx']}: "
+                    f"orig={m['orig']} out={m['out']} | \"{m['text']}\""
+                )
+
+    res.info["font_full_mismatches"] = len(seen_para)
+
+    return res
+
+
+# =============================================================================
 # [5f.2] Font Size Consistency Audit (MINOR -3 per mismatch)
 # =============================================================================
 # Bandingkan ukuran font (w:sz) run pertama di N paragraf STRICT zone.
@@ -7498,6 +7666,18 @@ def main() -> None:
             count=font_res.info["mismatches"],
             unit=PENALTY_FONT_FAMILY,
             total=PENALTY_FONT_FAMILY * font_res.info["mismatches"],
+        ))
+
+    # [5f.1b] Full Font Audit — ALL paragraphs, per-run comparison
+    font_full_res = audit_font_full(doc_orig, doc_out)
+    all_errors.extend(font_full_res.errors)
+    if font_full_res.info.get("font_full_mismatches", 0) > 0:
+        n_mm = font_full_res.info["font_full_mismatches"]
+        penalties.append(Penalty(
+            category="Font Full Audit Mismatch (MINOR)",
+            count=n_mm,
+            unit=PENALTY_FONT_FAMILY,
+            total=PENALTY_FONT_FAMILY * n_mm,
         ))
 
     # [5f.2] Font Size Consistency (-3 per mismatch)

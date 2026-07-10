@@ -1,0 +1,129 @@
+============================================================
+  MASTER PROMPT PERBAIKAN ICET_FINAL2GEN.PY UNTUK TEMPLATE ICET_FINAL2
+============================================================
+Template       : ICET.docx
+Output         : ICET_final2.docx
+Generator      : ICET_final2gen.py
+Total anomali  : 9
+Kategori error : ERROR_STYLE, ERROR_TABLE
+Catatan        : Skor utama BISA tetap tinggi -- sebagian temuan
+                 di sini adalah anomali heuristik visual yang
+                 tidak merusak struktur XML.
+
+============================================================
+  RINCIAN TEMUAN
+============================================================
+
+[STYLE] 9 masalah
+    - Paragraf 0: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 1: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 3: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 9: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 10: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 11: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 21: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 22: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+    - Paragraf 24: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+
+[TABLE] 1 masalah
+    - TABLE EXTRA FILLED: Output kelebihan 4 tabel berkonten (Expected: 1, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+
+============================================================
+  PROMPT SOLUSI PER KATEGORI (copy ke AI yang akan benerin ICET_final2gen.py)
+============================================================
+
+[SOLUSI UNTUK ICET_final2gen.py - STYLE PRESERVATION]
+Skrip `ICET_final2gen.py` saat ini mereset custom style (seperti judul) menjadi Normal. Tolong modifikasi `ICET_final2gen.py` agar saat melakukan `paragraph.text = new_text`, skrip harus MEMPERTAHANKAN `paragraph.style` dan meng-copy properti font dari `run` sebelumnya.
+
+[SOLUSI UNTUK ICET_final2gen.py - TABLE LAYOUT CONTAINER]
+Jumlah tabel body output `ICET_final2gen.py` tidak match template original. Banyak template jurnal (mis. SAGE) menggunakan `<w:tbl>` sebagai container layout untuk figure/diagram side-by-side, kotak rules, atau highlight box -- bukan hanya tabel data. Tolong modifikasi `ICET_final2gen.py` supaya setiap blok figure/diagram fullwidth di-wrap dalam tabel 1-row container, dan blok rules/highlight juga pakai tabel mini, agar jumlah tabel body match template asli.
+
+============================================================
+  MASTER PROMPT PERBAIKAN (gabungan, siap copy-paste)
+============================================================
+
+Sistem QA mendeteksi masalah pada hasil generator `ICET_final2gen.py` untuk template `ICET.docx`. Tolong perbaiki `ICET_final2gen.py` mengatasi semua masalah berikut sekaligus, tanpa mengubah logika lain yang sudah benar:
+
+KATEGORI 3: STYLE & FONT
+  - Paragraf 0: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 1: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 3: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 9: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 10: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 11: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 21: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 22: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+  - Paragraf 24: muncul tag <w:numPr> auto-numbering yang tidak ada di template asli.
+
+[SOLUSI UNTUK ICET_final2gen.py - STYLE PRESERVATION]
+Skrip `ICET_final2gen.py` saat ini mereset custom style (seperti judul) menjadi Normal. Tolong modifikasi `ICET_final2gen.py` agar saat melakukan `paragraph.text = new_text`, skrip harus MEMPERTAHANKAN `paragraph.style` dan meng-copy properti font dari `run` sebelumnya.
+
+KATEGORI 4: TABLE LAYOUT CONTAINER
+  - TABLE EXTRA FILLED: Output kelebihan 4 tabel berkonten (Expected: 1, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+
+[SOLUSI UNTUK ICET_final2gen.py - TABLE LAYOUT CONTAINER]
+Jumlah tabel body output `ICET_final2gen.py` tidak match template original. Banyak template jurnal (mis. SAGE) menggunakan `<w:tbl>` sebagai container layout untuk figure/diagram side-by-side, kotak rules, atau highlight box -- bukan hanya tabel data. Tolong modifikasi `ICET_final2gen.py` supaya setiap blok figure/diagram fullwidth di-wrap dalam tabel 1-row container, dan blok rules/highlight juga pakai tabel mini, agar jumlah tabel body match template asli.
+
+============================================================
+
+============================================================
+  PROMPT UPGRADE auto_checker.py (META-IMPROVEMENT)
+============================================================
+
+Selain memperbaiki `ICET_final2gen.py`, gunakan temuan di atas sebagai masukan untuk meng-upgrade `auto_checker.py` supaya checker jauh lebih spesifik, valid, dan tahan terhadap pola anomali baru di template lain. Tolong analisis temuan ini dan perbarui checker sesuai panduan di bawah:
+
+LANGKAH 1 -- Analisis temuan baru
+  Untuk template `ICET_final2`, temuan berikut muncul:
+    - KATEGORI 3: STYLE & FONT: 9 masalah
+    - KATEGORI 4: TABLE LAYOUT CONTAINER: 1 masalah
+
+  Pertanyaan kunci yang harus dijawab sebelum mengubah checker:
+    a. Apakah pola anomali ini SUDAH ditangkap oleh audit existing,
+       hanya saja threshold-nya kurang tepat? (=> tune threshold)
+    b. Apakah pola ini BENAR-BENAR baru, belum ada audit-nya?
+       (=> tambah audit function baru)
+    c. Apakah finding ini false-positive untuk template-style ini?
+       (=> tambah whitelist/exclusion, JANGAN hapus check global)
+
+LANGKAH 2 -- Pilih strategi upgrade (urut dari paling aman)
+  [A] Tune threshold existing
+      Contoh: TABLE_COUNT_TOLERANCE, SECTPR_DISTRIBUTION_THRESHOLD,
+      PARAGRAPH_STYLE_CHECK_COUNT. Ubah hanya bila pola yang
+      terdeteksi konsisten muncul di >=2 template berbeda.
+
+  [B] Tambah sub-check di audit existing
+      Bila finding-nya varian dari kategori existing (mis. table
+      count meleset karena pattern figure-wrapper), tambahkan
+      cabang khusus di `audit_table_count()` atau sejenisnya
+      sehingga pesan error lebih spesifik (sebut pattern-nya).
+
+  [C] Tambah audit function baru
+      Bila pola benar-benar di luar 7 kategori existing, buat
+      `audit_<nama>()` baru yang return `AuditResult`, daftarkan
+      di `main()`, dan tambahkan render-nya di `render_report()`.
+      Konvensi: MAYOR untuk struktural, MINOR untuk visual.
+
+LANGKAH 3 -- Validasi sebelum commit
+  - Run checker terhadap SEMUA file output existing (DJLIT, SAGE,
+    JCEF, dll) untuk pastikan tidak ada regresi false-positive.
+  - Untuk template yang sebelumnya 'Lulus', skornya harus tetap
+    >= skor sebelumnya. Bila ada penurunan, threshold/check baru
+    terlalu agresif -- mundur atau perlonggar.
+  - Tambahkan komentar di check baru yang menyebut template
+    sumber pola: '# Pattern asal: template ICET_final2 (run YYYY-MM-DD)'
+    supaya jejak rule traceable di git history.
+
+LANGKAH 4 -- Hindari over-fitting
+  - JANGAN bikin rule yang hanya men-deteksi kasus persis di
+    `ICET_final2` (mis. hard-code nilai twip atau nama style).
+    Generalisasi ke pola struktural (rasio, range, signature XML).
+  - JANGAN hapus/loosen check existing hanya supaya template ini
+    'lulus'. Kalau check existing salah, perbaiki rumusnya, bukan
+    matikan check-nya.
+  - Determinisme dijaga: checker tetap pure-function (tidak baca
+    state run sebelumnya, tidak ada randomness).
+
+Output yang diharapkan: patch `auto_checker.py` + ringkasan singkat
+alasan setiap perubahan, sehingga reviewer bisa verifikasi cepat.
+
+============================================================

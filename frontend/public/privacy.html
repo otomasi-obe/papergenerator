@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kebijakan Privasi — Paperfull</title>
+  <meta name="description" content="Kebijakan Privasi dan penanganan data pengguna Paperfull.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://paperfull.app/privacy">
+  <meta property="og:title" content="Kebijakan Privasi — Paperfull">
+  <meta property="og:description" content="Kebijakan Privasi dan penanganan data pengguna Paperfull.">
+  <meta property="og:url" content="https://paperfull.app/privacy">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f5ef;color:#2d2d2d;line-height:1.75;-webkit-font-smoothing:antialiased}
+    .header{background:#12284c;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    .header-left{display:flex;align-items:center;gap:10px}
+    .header-left a{text-decoration:none;display:flex;align-items:center}
+    .header-left img{height:28px;width:auto}
+    .header-badge{background:rgba(255,255,255,.12);color:#e0d0b0;font-size:11px;padding:3px 12px;border-radius:20px;font-weight:600;letter-spacing:.3px;margin-left:8px}
+    .header-right{display:flex;align-items:center;gap:8px}
+    .header-btn{display:inline-flex;align-items:center;gap:6px;color:#78350f;background:rgba(255,255,255,.95);text-decoration:none;padding:8px 16px;border-radius:24px;font-size:13px;font-weight:700;border:1px solid rgba(217,168,78,.3);transition:all .15s;cursor:pointer;box-shadow:0 2px 8px rgba(217,168,78,.15)}
+    .header-btn:hover{background:#fffbf0;box-shadow:0 2px 12px rgba(217,168,78,.25)}
+    .header-btn svg{width:16px;height:16px;transition:transform .2s}
+    .dropdown-wrap{position:relative;padding-bottom:6px}
+    .dropdown-menu{display:none;position:absolute;right:0;top:100%;width:240px;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border:1px solid rgba(217,168,78,.3);border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.12);overflow:hidden;z-index:50}
+    .dropdown-wrap:hover .dropdown-menu{display:block}
+    .dropdown-wrap:hover .dropdown-arrow{transform:rotate(180deg)}
+    .dropdown-item{display:block;padding:12px 16px;text-decoration:none;border-bottom:1px solid #f5f0e8;transition:background .12s}
+    .dropdown-item:last-child{border-bottom:none}
+    .dropdown-item:hover{background:#fef7ed}
+    .dropdown-item .label{font-size:13px;font-weight:600;color:#78350f}
+    .dropdown-item .desc{font-size:11px;color:#a08050;margin-top:2px}
+    .dropdown-item.disabled{cursor:not-allowed}
+    .dropdown-item.disabled .label{color:#999;opacity:.6}
+    .dropdown-item.disabled .desc{opacity:.4}
+    .dropdown-item.active .label{color:#78350f}
+    .dropdown-item.active .desc{color:#a08050}
+    .pill-badge{font-size:9px;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:10px;font-weight:700;margin-left:6px;vertical-align:middle}
+    .container{max-width:800px;margin:0 auto;padding:48px 24px}
+    .back-link{color:#b35a15;text-decoration:none;font-size:14px;display:inline-flex;align-items:center;gap:4px;margin-bottom:24px;font-weight:600}
+    .back-link:hover{text-decoration:underline}
+    h1{font-family:'Playfair Display',Georgia,serif;font-size:34px;margin-bottom:6px;color:#1a1a1a;letter-spacing:-.3px}
+    h2{font-family:'Playfair Display',Georgia,serif;font-size:20px;margin:36px 0 14px;color:#1a1a1a}
+    .updated{font-size:13px;color:#999;margin-bottom:28px}
+    p{margin-bottom:14px;font-size:15px;color:#3d3d3d}
+    ul,ol{margin:8px 0 18px 24px;font-size:15px;color:#3d3d3d}
+    li{margin-bottom:8px;padding-left:2px}
+    .footer{text-align:center;padding:40px 24px;font-size:13px;color:#aaa;border-top:1px solid #e8e0d3;margin-top:48px}
+    .footer a{color:#b35a15;text-decoration:none;font-weight:600}
+    .footer a:hover{text-decoration:underline}
+    @media(max-width:600px){
+      .header{padding:12px 16px}
+      .header-btn{padding:6px 12px;font-size:12px}
+      .container{padding:32px 16px}
+      h1{font-size:26px}
+      h2{font-size:18px}
+    }
+
+    /* ── Global button hover: nudge forward ── */
+    button, a[href]:not([href="#"]):not(.no-nudge), a[class*="rounded"], [class*="btn"],
+    button[class], a[class*="px-"][class*="py-"]:not(.no-nudge),
+    .header-btn, .dropdown-item, .back-link {
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
+    }
+    button:hover:not(:disabled), a[href]:hover:not([href="#"]):not(.no-nudge),
+    a[class*="rounded"]:hover, [class*="btn"]:hover,
+    button[class]:hover, a[class*="px-"][class*="py-"]:hover:not(.no-nudge),
+    .header-btn:hover, .dropdown-item:hover, .back-link:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 6px 20px rgba(21, 36, 49, 0.12);
+      filter: brightness(1.05);
+    }
+    button:active:not(:disabled), a[href]:active:not(.no-nudge),
+    .header-btn:active, .dropdown-item:active, .back-link:active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: none;
+      filter: brightness(1);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button, a[href], a[class*="rounded"], [class*="btn"],
+      .header-btn, .dropdown-item, .back-link {
+        transition: none;
+      }
+      button:hover, a:hover, .header-btn:hover, .dropdown-item:hover {
+        transform: none;
+      }
+    }
+
+  </style>
+
+  <meta property="og:image" content="https://paperfull.app/assets/logo-with-text.png">
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="https://paperfull.app">
+        <img src="/assets/logo-with-text.png" alt="Paperfull">
+      </a>
+      <span class="header-badge">Multi-Journal</span>
+    </div>
+    <div class="header-right">
+      <div class="dropdown-wrap">
+        <a class="header-btn" href="/">
+          Informasi
+          <svg class="dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </a>
+        <div class="dropdown-menu">
+          <a href="/terms" class="dropdown-item">
+            <div class="label">Syarat & Ketentuan</div>
+            <div class="desc">Aturan penggunaan layanan</div>
+          </a>
+          <a href="/refund" class="dropdown-item">
+            <div class="label">Kebijakan Refund</div>
+            <div class="desc">Prosedur pengembalian dana</div>
+          </a>
+          <a href="/privacy" class="dropdown-item active">
+            <div class="label">Privasi Data</div>
+            <div class="desc">Kebijakan privasi</div>
+          </a>
+          <a href="/faq" class="dropdown-item">
+            <div class="label">FAQ</div>
+            <div class="desc">Pertanyaan umum</div>
+          </a>
+          <a href="/contact" class="dropdown-item">
+            <div class="label">Kontak</div>
+            <div class="desc">Hubungi kami</div>
+          </a>
+        </div>
+      </div>
+      
+    </div>
+  </header>
+  <main class="container">
+    <a href="/" class="back-link" onclick="window.close();window.location='https://paperfull.app';return false">← Kembali ke Beranda</a>
+    <h1>Kebijakan Privasi</h1>
+    <p class="updated">Terakhir diperbarui: 7 Juli 2026</p>
+
+    <p>Kebijakan ini menjelaskan bagaimana Paperfull mengumpulkan, menggunakan, dan melindungi data pribadi Anda sesuai dengan prinsip perlindungan data (PDPA/GDPR-style).</p>
+
+    <h2>1. Data yang Kami Kumpulkan</h2>
+    <ul>
+      <li><strong>Data akun</strong>: nama, email, institusi, preferensi bahasa, avatar.</li>
+      <li><strong>Konten</strong>: paper yang Anda buat, literatur, riwayat SLR, dan percakapan di tools AI.</li>
+      <li><strong>Data teknis</strong>: alamat IP, timestamp akses, user-agent, dan log aktivitas untuk keamanan.</li>
+      <li><strong>Pembayaran</strong>: metadata transaksi (provider, status, amount, token paket). Data kartu/kredit <strong>tidak</strong> disimpan di server kami.</li>
+    </ul>
+
+    <h2>2. Penggunaan Data</h2>
+    <p>Data digunakan untuk:</p>
+    <ul>
+      <li>Menyediakan dan menjaga Layanan berjalan (generate paper, chat, SLR, quota tracking).</li>
+      <li>Memproses pembayaran dan mencegah penipuan/abuse.</li>
+      <li>Mengembangkan fitur baru, memperbaiki bug, dan memahami pola penggunaan.</li>
+      <li>Berkomunikasi dengan Anda (email transaksi, dukungan, perubahan kebijakan).</li>
+    </ul>
+    <p>Kami <strong>tidak menjual</strong> data pribadi Anda kepada pihak ketiga untuk pemasaran.</p>
+
+    <h2>3. Hak Anda</h2>
+    <ul>
+      <li><strong>Akses & Export</strong>: Anda dapat mengunduh salinan data akun Anda kapan saja melalui pengaturan.</li>
+      <li><strong>Koreksi</strong>: Anda dapat memperbarui profil, nama, dan preferensi kapan saja.</li>
+      <li><strong>Penghapusan</strong>: Anda dapat menghapus akun secara permanen. Data pribadi akan dianonimisasi dan sesi aktif diakhiri.</li>
+      <li><strong>Portabilitas</strong>: data yang diekspor bersifat JSON dan dapat dipindahkan ke tools lain yang kompatibel.</li>
+    </ul>
+
+    <h2>4. Penyimpanan & Keamanan</h2>
+    <ul>
+      <li>Data disimpan di infra yang aman dengan kontrol akses terbatas.</li>
+      <li>Kata sandi di-hash dengan algoritma modern.</li>
+      <li>Token sesi dikelola melalui cookie httpOnly + CSRF protection.</li>
+      <li>Transmisi data menggunakan HTTPS untuk seluruh traffic.</li>
+    </ul>
+
+    <h2>5. Retensi Data</h2>
+    <ul>
+      <li>Data aktif disimpan selama akun Anda aktif.</li>
+      <li>Setelah penghapusan akun, data pribadi (email, nama, password, OAuth) dihapus/anonimisasi.</li>
+      <li>Beberapa data agregat/anonim dapat dipertahankan untuk keperluan operasional tanpa mengidentifikasi Anda.</li>
+      <li>Log keamanan dan transaksi disimpan selama maksimal 12 bulan untuk compliance (jika diatur oleh payment gateway).</li>
+    </ul>
+
+    <h2>6. Cookies & Teknologi Serupa</h2>
+    <p>Kami menggunakan cookies untuk autentikasi sesi, preferensi tema, dan analitik dasar. Anda dapat menonaktifkan cookies melalui browser, namun beberapa fitur (login, kuota) tidak akan berfungsi tanpa cookies.</p>
+
+    <h2>7. Pengaturan Data untuk Anak</h2>
+    <p>Layanan ini ditujukan untuk pengguna akademis dewasa (usia 18+). Kami tidak secara sengaja mengumpulkan data dari anak-anak di bawah umur. Jika Anda menemukan akun yang didaftarkan oleh anak di bawah umur, hubungi kami untuk penghapusan.</p>
+
+    <h2>8. Perubahan Kebijakan</h2>
+    <p>Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Perubahan akan disertai dengan tanggal pembaruan di bagian atas halaman ini. Penggunaan Layanan yang berkelanjutan setelah perubahan merupakan persetujuan Anda terhadap kebijakan yang baru.</p>
+
+    <h2>9. Transfers Data</h2>
+    <p>Data Anda dapat diproses di infrastruktur cloud yang berlokasi di luar negeri (mis. provider hosting di Asia/Pasifik). Kami memastikan transfer data dilakukan melalui kanal yang aman dan sesuai dengan standar keamanan yang berlaku.</p>
+
+    <h2>10. Hubungi Kami</h2>
+    <p>Permintaan terkait privasi, export data, atau penghapusan akun dapat diajukan melalui:</p>
+    <ul>
+      <li>Halaman <a href="/contact" style="color:#b35a15;font-weight:600">Kontak</a></li>
+      <li>Email: <a href="mailto:support@paperfull.app" style="color:#b35a15;font-weight:600">support@paperfull.app</a></li>
+      <li>Atau melalui halaman Pengaturan → Data & Privasi → Export Data / Hapus Akun</li>
+    </ul>
+
+    <p>Baca juga <a href="/terms" style="color:#b35a15;font-weight:600">Syarat & Ketentuan</a> kami.</p>
+  </main>
+  <footer class="footer">
+    © 2026 <a href="/">Paperfull</a> — Generate Complete Academic Papers with AI
+  </footer>
+
+</body>
+</html>

@@ -3,21 +3,17 @@ Image generation worker pool.
 
 Architecture
 ============
-- 4 workers, one per Gemini account (account1..account4).
-- Each worker = a dedicated thread + a single GeminiAccount + a private FIFO queue.
-- Each worker creates its OWN sync_playwright() instance in its own thread
-  (Playwright sync API is greenlet-based and bound to the creating thread).
-- A central dispatcher pulls `queued` jobs from the database and pushes them to
-  the worker with the shortest local queue. Within a worker, jobs run strictly
-  sequentially (the persistent Chrome profile cannot be shared concurrently).
-- Browsers stay launched (warm) between jobs; we only re-launch on hard failure.
+- Pure API-only workers: no accounts, no browsers, no Playwright.
+- Workers process jobs via image_api_v2.py providers (Alibaba, AG, Cloudflare).
+- A central dispatcher pulls `queued` jobs from DB and pushes to the worker
+  with the shortest local queue.
 
 Persistence
 ===========
 - All jobs are persisted in `image_gen_jobs` so they survive process restarts
   and frontend page reloads. The frontend polls /api/image-jobs/<id>.
 - On startup, any `queued` or `running` jobs are re-queued into worker queues
-  (running ones are demoted to queued: their browser session is gone).
+  (running ones are demoted to queued).
 """
 
 from __future__ import annotations
@@ -36,33 +32,21 @@ from typing import Optional
 log = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parent
-# Legacy: UPLOADS_DIR was data/uploads. Now uses per-user paths via get_user_dir().
-# Kept as reference for backward-compat migration scripts.
 
 
 class _Worker(threading.Thread):
-    """One worker drives exactly one GeminiAccount, sequentially.
+    """One worker processes image generation jobs via API providers."""
 
-    Each worker creates its own sync_playwright() + GeminiAccount in its own
-    thread. Playwright's sync API uses greenlets bound to the creating thread,
-    so sharing across threads causes 'Cannot switch to a different thread'.
-    """
-
-    def __init__(self, app, account_name: str):
-        super().__init__(name=f"img-worker-{account_name}", daemon=True)
+    def __init__(self, app, worker_id: int):
+        super().__init__(name=f"img-worker-{worker_id}", daemon=True)
         self.app = app
-        self.account_name = account_name
+        self.worker_id = worker_id
         self.q: "queue.Queue[str]" = queue.Queue()
         self._stop_event = threading.Event()
-        # Per-worker Playwright + Account (created in run() thread)
-        self._pw_cm = None
-        self._pw = None
-        self._acc = None
-        self._browser_healthy = True
 
     def stop(self):
         self._stop_event.set()
-        self.q.put(None)  # unblock get()
+        self.q.put("")  # unblock get()
 
     def submit(self, job_id: str):
         self.q.put(job_id)
@@ -70,107 +54,28 @@ class _Worker(threading.Thread):
     def qsize(self) -> int:
         return self.q.qsize()
 
-    def _init_browser(self):
-        """Create Playwright + GeminiAccount in THIS thread."""
-        from tools.image_generation.CreateImageGemini import (  # noqa: PLC0415
-            GeminiAccount,
-        )
-        from playwright.sync_api import sync_playwright  # noqa: PLC0415
-
-        self._pw_cm = sync_playwright()
-        self._pw = self._pw_cm.__enter__()
-        try:
-            self._acc = GeminiAccount.from_env(self.account_name)
-        except Exception:
-            # Clean up playwright on account init failure
-            if self._pw_cm is not None:
-                try:
-                    self._pw_cm.__exit__(None, None, None)
-                except Exception:
-                    pass
-                self._pw_cm = None
-                self._pw = None
-            raise
-        log.info("img-worker %s: Playwright + account initialized", self.account_name)
-
-    def _close_browser(self):
-        """Cleanup Playwright + account."""
-        if self._acc is not None:
-            try:
-                self._acc.close()
-            except Exception:
-                pass
-            self._acc = None
-        if self._pw_cm is not None:
-            try:
-                self._pw_cm.__exit__(None, None, None)
-            except Exception:
-                pass
-            self._pw_cm = None
-            self._pw = None
-
     def run(self):
-        try:
-            self._init_browser()
-        except Exception:
-            log.exception(
-                "img-worker %s: failed to initialize browser, worker exiting",
-                self.account_name,
-            )
-            self._dead = True
-            # Drain pending jobs and mark as error so they don't hang forever
-            while not self.q.empty():
-                try:
-                    orphan_job_id = self.q.get_nowait()
-                    try:
-                        with self.app.app_context():
-                            from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
-                            orphan = db.session.get(ImageGenJob, orphan_job_id)
-                            if orphan and orphan.status == "running":
-                                orphan.status = "error"
-                                orphan.error = "Worker unavailable (browser init failed)"
-                                orphan.finished_at = datetime.now(timezone.utc)
-                                safe_commit()
-                    except Exception:
-                        log.warning("Failed to mark orphan job %s as error", orphan_job_id, exc_info=True)
-                except queue.Empty:
-                    break
-            return
-
-        try:
             while not self._stop_event.is_set():
                 try:
                     job_id = self.q.get(timeout=1.0)
                 except queue.Empty:
-                    # Idle health check: if browser crashed while idle, re-init
-                    if self._acc is None:
-                        log.info("img-worker %s: browser died while idle, re-initializing", self.account_name)
-                        self._init_browser()
                     continue
-                if job_id is None:
+                if job_id == "":
                     break
-                # Ensure browser is healthy before processing
                 try:
-                    if self._acc is None:
-                        self._init_browser()
                     self._process(job_id)
                 except Exception:
                     log.exception(
-                        "img-worker %s: unhandled error processing %s",
-                        self.account_name,
-                        job_id,
+                        "img-worker %d: unhandled error processing %s",
+                        self.worker_id, job_id,
                     )
-        finally:
-            self._close_browser()
-
     def _process(self, job_id: str):
         # Watchdog timeout: fail job if processing takes > 10 minutes
         # Uses threading.Timer instead of signal.SIGALRM (which only works in main thread)
-        watchdog_timeout = int(os.getenv("IMAGE_GEN_WATCHDOG_TIMEOUT", "600"))
-        generate_timeout = int(os.getenv("IMAGE_GEN_GENERATE_TIMEOUT", "300"))
+        watchdog_timeout = int(os.getenv("IMAGE_GEN_WATCHDOG_TIMEOUT", "120"))
+        generate_timeout = int(os.getenv("IMAGE_GEN_GENERATE_TIMEOUT", "60"))
         max_job_retries = int(os.getenv("IMAGE_GEN_MAX_RETRIES", "3"))
-        # Prefer API-first approach (pollinations.ai etc.)
-        use_api_first = os.environ.get("IMAGE_GEN_API_FIRST", "1") == "1"
+
         _timed_out = threading.Event()
         _timer = threading.Timer(watchdog_timeout, _timed_out.set)
         _timer.daemon = True
@@ -192,7 +97,7 @@ class _Worker(threading.Thread):
                 result = db.session.execute(
                     update(ImageGenJob)
                     .where(ImageGenJob.id == job_id, ImageGenJob.status == "queued")
-                    .values(status="running", worker=self.account_name, started_at=now)
+                    .values(status="running", worker=f"api-{self.worker_id}", started_at=now)
                 )
                 safe_commit()
                 if result.rowcount == 0:
@@ -259,101 +164,20 @@ class _Worker(threading.Thread):
                     filename = f"{uuid.uuid4().hex}{ext}"
                 out_path = paper_dir / filename
 
-                # ─── API-FIRST: try free API providers before headless browser ───
-                # This eliminates: cookie expiry, UI drift, browser crashes, RAM overhead
+                # ─── API-ONLY: all generation via API providers (Alibaba, AG, Cloudflare) ───
                 res: dict = {}
-                api_success = False
-
-                if use_api_first:
-                    try:
-                        from tools.image_generation.image_api import generate_image as api_generate_image  # noqa: PLC0415
-                        res = api_generate_image(
-                            prompt, str(out_path),
-                            compress=True,
-                            max_size_mb=1.0,
-                            generate_timeout_s=generate_timeout,
-                        )
-                        api_success = True
-                        log.info(
-                            "img-worker %s: API-first success via %s (cached=%s)",
-                            self.account_name,
-                            res.get("provider", "unknown"),
-                            res.get("cached", False),
-                        )
-                    except Exception as api_err:
-                        log.warning(
-                            "img-worker %s: API-first failed (%s), falling back to headless",
-                            self.account_name, str(api_err)[:150]
-                        )
-                        # Clean up partial output before fallback
-                        if out_path and out_path.exists():
-                            try:
-                                out_path.unlink()
-                            except Exception:
-                                pass
-
-                # ─── FALLBACK: headless Chrome via Gemini (existing system) ───
-                if not api_success:
-                    acc = self._acc
-                    if acc is None:
-                        raise RuntimeError(
-                            f"Account {self.account_name} not initialized (browser init failed)"
-                        )
-
-                    # Retry browser launch up to 3 times with exponential backoff
-                    launch_attempts = 3
-                    for attempt in range(1, launch_attempts + 1):
-                        try:
-                            acc.launch(self._pw)
-                            break
-                        except Exception as launch_err:
-                            if attempt == launch_attempts:
-                                raise RuntimeError(
-                                    f"Browser launch gagal setelah {launch_attempts} percobaan: {launch_err}"
-                                )
-                            log.warning(
-                                "Browser launch attempt %d/%d failed: %s. Retrying...",
-                                attempt,
-                                launch_attempts,
-                                launch_err,
-                            )
-                            # Close and cleanup before retry
-                            try:
-                                acc.close()
-                            except Exception:
-                                pass
-                            # Exponential backoff: 2s, 4s
-                            time.sleep(2**attempt)
-
-                    res = acc.generate_image(prompt, out_path, generate_timeout_s=generate_timeout)
-
-                    # Compression is critical: large images cause upload/display failures.
-                    # If compression fails, we must fail the job rather than storing
-                    # a 10MB+ image that will break the frontend.
-                    try:
-                        from tools.image_generation.compress import compress_image  # noqa: PLC0415
-
-                        if not compress_image(out_path, max_size_mb=1.0):
-                            raise RuntimeError(
-                                f"Image compression failed: could not reduce {out_path.name} to <1MB. "
-                                f"Original size: {out_path.stat().st_size // 1024}KB"
-                            )
-                        log.info(
-                            "Image compressed successfully: %s -> %dKB",
-                            out_path.name,
-                            out_path.stat().st_size // 1024,
-                        )
-                    except Exception as compress_err:
-                        log.error(
-                            "Compression failed for %s: %s", out_path, compress_err, exc_info=True
-                        )
-                        # Delete the uncompressed image
-                        try:
-                            if out_path and out_path.exists():
-                                out_path.unlink()
-                        except Exception:
-                            pass
-                        raise RuntimeError(f"Image compression failed: {compress_err}")
+                try:
+                    from tools.image_generation.image_api_v2 import generate_image as api_generate_image  # noqa: PLC0415
+                    res = api_generate_image(
+                        prompt, str(out_path),
+                        compress=True,
+                        max_size_mb=1.0,
+                        generate_timeout_s=generate_timeout,
+                    )
+                except Exception as api_err:
+                    raise RuntimeError(
+                        f"API image generation failed: {api_err}"
+                    )
 
                 with self.app.app_context():
                     img = PaperImage(
@@ -405,14 +229,14 @@ class _Worker(threading.Thread):
                     log.warning("Gagal simpan image ke user storage", exc_info=True)
 
                 log.info(
-                    "img-worker %s: done job=%s file=%s size=%s",
-                    self.account_name,
+                    "img-worker %d: done job=%s file=%s size=%s",
+                    self.worker_id,
                     job_id,
                     filename,
                     res.get("size") if res else "unknown",
                 )
             except Exception as e:
-                log.exception("img-worker %s: failed job=%s", self.account_name, job_id)
+                log.exception("img-worker %d: failed job=%s", self.worker_id, job_id)
                 try:
                     if out_path and out_path.exists():
                         out_path.unlink()
@@ -434,8 +258,8 @@ class _Worker(threading.Thread):
                             job2.worker = None
                             safe_commit()
                             log.warning(
-                                "img-worker %s: job=%s re-queued (retry %d/%d): %s",
-                                self.account_name, job_id, current_retry + 1,
+                                "img-worker %d: job=%s re-queued (retry %d/%d): %s",
+                                self.worker_id, job_id, current_retry + 1,
                                 max_job_retries, str(e)[:200],
                             )
                         else:
@@ -445,34 +269,15 @@ class _Worker(threading.Thread):
                             job2.finished_at = datetime.now(timezone.utc)
                             safe_commit()
                             log.error(
-                                "img-worker %s: job=%s failed permanently after %d retries: %s",
-                                self.account_name, job_id, max_job_retries, str(e)[:200],
+                                "img-worker %d: job=%s failed permanently after %d retries: %s",
+                                self.worker_id, job_id, max_job_retries, str(e)[:200],
                             )
 
         finally:
             # Cancel the timer
             _timer.cancel()
             if _timed_out.is_set():
-                log.warning("img-worker %s: job %s exceeded watchdog timeout", self.account_name, job_id)
-
-                # ─── Force-close browser yang menggantung ───
-                try:
-                    self._close_browser()
-                except Exception:
-                    log.exception(
-                        "img-worker %s: error closing browser after timeout",
-                        self.account_name,
-                    )
-
-                # ─── Re-init browser untuk job berikutnya ───
-                self._browser_healthy = False
-                try:
-                    self._init_browser()
-                except Exception:
-                    log.exception(
-                        "img-worker %s: error re-initializing browser after timeout",
-                        self.account_name,
-                    )
+                log.warning("img-worker %d: job %s exceeded watchdog timeout", self.worker_id, job_id)
 
                 # ─── Cleanup partial output file ───
                 out_path_var = locals().get("out_path")
@@ -480,8 +285,8 @@ class _Worker(threading.Thread):
                     try:
                         out_path_var.unlink()
                         log.info(
-                            "img-worker %s: cleaned up partial output %s after timeout",
-                            self.account_name, out_path_var,
+                            "img-worker %d: cleaned up partial output %s after timeout",
+                            self.worker_id, out_path_var,
                         )
                     except Exception:
                         pass
@@ -494,17 +299,17 @@ class _Worker(threading.Thread):
                         job2 = db.session.get(ImageGenJob, job_id)
                         if job2 is not None and job2.status == "running":
                             job2.status = "error"
-                            job2.error = "Watchdog timeout — browser dibunuh paksa"
+                            job2.error = "Watchdog timeout — generation took too long"
                             job2.finished_at = datetime.now(timezone.utc)
                             safe_commit()
                             log.info(
-                                "img-worker %s: job %s marked error after watchdog timeout",
-                                self.account_name, job_id,
+                                "img-worker %d: job %s marked error after watchdog timeout",
+                                self.worker_id, job_id,
                             )
                 except Exception:
                     log.exception(
-                        "img-worker %s: error updating job %s status after timeout",
-                        self.account_name, job_id,
+                        "img-worker %d: error updating job %s status after timeout",
+                        self.worker_id, job_id,
                     )
 
 
@@ -558,17 +363,11 @@ class _Dispatcher(threading.Thread):
                         .all()
                     )
                     ids = [j.id for j in queued]
-                # Atomically claim each id: only the thread that successfully
-                # adds it to `_dispatched` submits it. This closes the window
-                # where the poll loop and submit_now() could both route the
-                # same job to a worker. The atomic claim in `_Worker._process`
-                # is the second line of defence; this avoids paying the cost
-                # of starting a second browser run that will then no-op.
-                with self._lock:
-                    to_submit = [i for i in ids if i not in self._dispatched]
-                    for jid in to_submit:
-                        self._dispatched.add(jid)
-                for jid in to_submit:
+                # Submit all queued ids. _Worker._process atomically flips
+                # queued→running, so duplicate submissions become cheap no-ops.
+                # This also recovers jobs manually reset to queued after a
+                # worker/browser hang.
+                for jid in ids:
                     self._least_loaded_worker().submit(jid)
                 # Bound the dispatched set: drop entries that left the active
                 # set on the DB side (done/error/cancelled). Without this the
@@ -604,16 +403,15 @@ def start_image_workers(app):
     with _start_lock:
         if _started:
             return
-        names_env = os.environ.get("GEMINI_PROFILES", "account1,account2,account3,account4")
-        names = [n.strip() for n in names_env.split(",") if n.strip()]
-        for n in names:
-            w = _Worker(app, n)
+        num_workers = int(os.environ.get("IMAGE_GEN_WORKERS", "2"))
+        for i in range(num_workers):
+            w = _Worker(app, i)
             w.start()
             _workers.append(w)
         _dispatcher = _Dispatcher(app, _workers)
         _dispatcher.start()
         _started = True
-        log.info("image worker pool started: %d workers", len(_workers))
+        log.info("image worker pool started: %d API-only workers", len(_workers))
 
 
 def submit_now(job_id: str):

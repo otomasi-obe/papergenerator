@@ -1,0 +1,167 @@
+============================================================
+[SKOR KECOCOKAN: 27%] -> STATUS: REVISI MAYOR
+  Base Score: 100 | Penalty: -73 | Final: 27%
+============================================================
+[AUDIT] Scanning: AEJ.docx vs AEJ_embedded_real.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 8, Output: 8
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 1 | Original: 20, Output: 1 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 8, Output: 8
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 1
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, mismatch: 0 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 8, extra: 0
+  Gambar fisik di Original (referensi)  : 7
+  [!] GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 0 gambar konten + 0 prompt AI = 0. Kurang 8 elemen.
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 4 | Figures dengan referensi: 0 | Caption-first valid: 0 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=2 out=2 | AbstractIds: orig=2 out=2
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 0 | Output headings: 0 | Levels checked: 0 | Format mismatches: 0
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 1 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 1 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 1 | OK: 1 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: CUSTOM_STYLE
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 0 (output) | 7 (template) | Mismatches: 0
+  [OK] Semua figure caption mengikuti pola label-bold + deskripsi-normal.
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 1 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 1 | Mismatches: 1
+  [!] FONT SIZE MISMATCH: Paragraf #0 orig=11.0pt vs out=7.0pt. "© 2024 Penerbit UTM Press. All rights reserved."
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 1 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 0 total (0 body + 0 header/footer) | Logo output: 0 total (0 body + 0 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  [OK] Template tidak memiliki logo di body top/headers/footers (skip check).
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 1 | Violations: 0
+  [OK] Paragraph spacing (before/after) sesuai template.
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 8, Output: 8
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 9, Output: 1, Expected (orig + JSON): 9 (JSON tables: 0, toleransi: 3) | Missing: 8 | Extra empty: 0 | Extra filled: 0
+  [!] TABLE MISSING: Output kekurangan 8 tabel (Expected: 9, Output: 1). Tabel layout container template (mis. figure side-by-side) kemungkinan hilang.
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [1, 0, 2, 0, 0], Output: [1, 0, 2, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 8, Output: 8 | Original berkonten: 5 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1, 2, 1, 2, 2, 1, 1, 1], Output: [1, 2, 1, 2, 2, 1, 1, 1]
+  Drawings -- Original: 7, Output: 1
+  Dekoratif by cols -- Original: {}, Output: {}
+  Konten by cols -- Original: {1: 7}, Output: {1: 1}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 0 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 0 | Center violations: 0 | Tab violations: 0 | Alignment mismatches (vs template): 0
+  [OK] Semua formula paragraph center-aligned dengan benar.
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 0 | Mismatch: 0
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `AEJ_embedded_realgen.py`. Tolong perbaiki kodingan `AEJ_embedded_realgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 0 gambar konten + 0 prompt AI = 0. Kurang 8 elemen.
+- FONT SIZE MISMATCH: Paragraf #0 orig=11.0pt vs out=7.0pt. "© 2024 Penerbit UTM Press. All rights reserved."
+- INFO: 1 gambar di bawah target 8.9cm (1-col layout) — mungkin gambar test/placeholder
+- EMPTY PARAGRAPHS: 13 paragraf kosong beruntun (index 0–12)
+- Paragraf #13: first_line_indent=0.00cm, expected=0.32cm (diff=0.32cm)
+- TABLE MISSING: Output kekurangan 8 tabel (Expected: 9, Output: 1). Tabel layout container template (mis. figure side-by-side) kemungkinan hilang.
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 27%] -> STATUS: REVISI MAYOR
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Placeholder/Prompt Gambar Salah (MINOR): -5 x 8 = -40
+  - Font Size Mismatch (MINOR): -3
+  - Paragraf Kosong Beruntun (MINOR): -3
+  - First Line Indent Tidak Sesuai (MINOR): -2
+  - Tabel Body Hilang (MINOR): -5 x 5 = -25
+  Total Penalty: -73
+  Skor Akhir: 27%

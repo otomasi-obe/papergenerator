@@ -1,0 +1,230 @@
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base Score: 100 | Penalty: -125 | Final: 0%
+============================================================
+[AUDIT] Scanning: IJB.docx vs IJB_output.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 1, Output: 1
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 4 | Original: 11, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 1, Output: 1
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 8
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, mismatch: 0 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 0, extra: 0
+  Gambar fisik di Original (referensi)  : 2
+  [OK] Semua gambar/prompt sesuai JSON, tidak ada placeholder usang.
+
+[5] Kebocoran LaTeX/Simbol...
+  [!] Paragraf #29: `^5, ^0, ^1` -- "Pemodelan kinematik lengan robot menggunakan parameter Denavit-Hartenberg (DH) menyediakan hubungan antara sudut sendi d..."
+  [!] Paragraf #43: `^0` -- "Parameter  sampai  merupakan panjang lengan dan offset yang diperoleh dari lembar data robot industri. Sudut sendi  hing..."
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 8 | Figures dengan referensi: 4 | Caption-first valid: 4 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=5 out=5 | AbstractIds: orig=5 out=5
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 5 | Output headings: 66 | Levels checked: 1 | Format mismatches: 0
+  Level 0: [OK] template=None (5 headings) → output=None (66 headings)
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 4 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 5 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 5 | OK: 5 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 4 (output) | 0 (template) | Mismatches: 0
+  [OK] Semua figure caption mengikuti pola label-bold + deskripsi-normal.
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 4 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 4 | Mismatches: 0
+  [OK] Font size konsisten dengan template.
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 4 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 0 total (0 body + 0 header/footer) | Logo output: 0 total (0 body + 0 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  [OK] Template tidak memiliki logo di body top/headers/footers (skip check).
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 41 | Violations: 3
+  [!] PARA SPACING MISMATCH #1 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=8.0pt, delta=8.0pt) — "1 Universitas Diponegoro, Semarang, Indonesia, annabilhisyam"
+  [!] PARA SPACING MISMATCH #2 [No Spacing]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+  [!] PARA SPACING MISMATCH #3 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 1, Output: 1
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 0, Output: 5, Expected (orig + JSON): 0 (JSON tables: 0, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 5
+  [!] TABLE EXTRA FILLED: Output kelebihan 5 tabel berkonten (Expected: 0, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 1, Output: 1 | Original berkonten: 1 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1], Output: [1]
+  Drawings -- Original: 1, Output: 8
+  Dekoratif by cols -- Original: {}, Output: {}
+  Konten by cols -- Original: {1: 1}, Output: {1: 8}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 1 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 26 | Center violations: 22 | Tab violations: 6 | Alignment mismatches (vs template): 0
+  [!] FORMULA ALIGNMENT: Paragraf #5 alignment='both' (expected 'center'). Formula: "Presisi pengelasan pada lengan robot industri menjadi faktor"
+  [!] FORMULA ALIGNMENT: Paragraf #20 alignment='both' (expected 'center'). Formula: "Penelitian di bidang kendali lengan robot telah banyak dilak"
+  [!] FORMULA ALIGNMENT: Paragraf #21 alignment='both' (expected 'center'). Formula: "Chen dan Li [7] mengusulkan kendali PID berbasis jaringan sy"
+  [!] FORMULA ALIGNMENT: Paragraf #22 alignment='both' (expected 'center'). Formula: "Dalam domain pengelasan robotik, Gonzalez et al. [9] meranca"
+  [!] FORMULA NUMBER TAB: Paragraf #27 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA ALIGNMENT: Paragraf #28 alignment='both' (expected 'center'). Formula: "dengan u(t) adalah sinyal kontrol, e(t) adalah error posisi "
+  [!] FORMULA ALIGNMENT: Paragraf #29 alignment='both' (expected 'center'). Formula: "Pemodelan kinematik lengan robot menggunakan parameter Denav"
+  [!] FORMULA NUMBER TAB: Paragraf #30 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA ALIGNMENT: Paragraf #32 alignment='both' (expected 'center'). Formula: "Metode penalaan Ziegler-Nichols kedua (closed-loop) dilakuka"
+  [!] FORMULA ALIGNMENT: Paragraf #43 alignment='both' (expected 'center'). Formula: "Parameter  sampai  merupakan panjang lengan dan offset yang "
+  [!] FORMULA NUMBER TAB: Paragraf #43 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #49 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA ALIGNMENT: Paragraf #50 alignment='both' (expected 'center'). Formula: "dengan K adalah gain statis, τ konstanta waktu, dan L waktu "
+  [!] FORMULA ALIGNMENT: Paragraf #51 alignment='both' (expected 'center'). Formula: "Penalaan PID dilakukan menggunakan metode Ziegler-Nichols cl"
+  [!] FORMULA NUMBER TAB: Paragraf #51 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA ALIGNMENT: Paragraf #55 alignment='both' (expected 'center'). Formula: "Setelah parameter PID diperoleh ( = ,  = ,  = ), simulasi di"
+  [!] FORMULA ALIGNMENT: Paragraf #58 alignment='both' (expected 'center'). Formula: "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika "
+  [!] FORMULA NUMBER TAB: Paragraf #61 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA ALIGNMENT: Paragraf #62 alignment='both' (expected 'center'). Formula: "dengan  adalah keluaran kontrol pada langkah ke-k,  adalah w"
+  [!] FORMULA ALIGNMENT: Paragraf #63 alignment='both' (expected 'center'). Formula: "Simulasi dilakukan untuk tiga konfigurasi kendali: PID, prop"
+  [!] FORMULA ALIGNMENT: Paragraf #67 alignment='both' (expected 'center'). Formula: "Hasil simulasi respons step untuk ketiga konfigurasi kendali"
+  [!] FORMULA ALIGNMENT: Paragraf #71 alignment='both' (expected 'center'). Formula: "Data pada Tabel III menunjukkan bahwa kendali PID mampu menc"
+  [!] FORMULA ALIGNMENT: Paragraf #76 alignment='both' (expected 'center'). Formula: "Pengujian dengan beban elektroda (massa  kg) menunjukkan bah"
+  [!] FORMULA ALIGNMENT: Paragraf #80 alignment='both' (expected 'center'). Formula: "Hasil pada Tabel IV mengindikasikan bahwa sistem kendali PID"
+  [!] FORMULA ALIGNMENT: Paragraf #81 alignment='both' (expected 'center'). Formula: "Saat gangguan sinusoidal (getaran konveyor) diterapkan denga"
+  [!] FORMULA ALIGNMENT: Paragraf #83 alignment='both' (expected 'center'). Formula: "Untuk memvalidasi hasil penelitian, dilakukan perbandingan d"
+  [!] FORMULA ALIGNMENT: Paragraf #87 alignment='both' (expected 'center'). Formula: "Data pada Tabel V menunjukkan bahwa kendali logika fuzzy [8]"
+  [!] FORMULA ALIGNMENT: Paragraf #94 alignment='both' (expected 'center'). Formula: "Penelitian ini berhasil merancang sistem kendali PID untuk l"
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 6 | Mismatch: 0
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `IJBgen.py`. Tolong perbaiki kodingan `IJBgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- LATEX BOCOR: Paragraf #29 (4 pattern) tag: `^5, ^0, ^1`. Snippet: "Pemodelan kinematik lengan robot menggunakan parameter Denavit-Hartenberg (DH) menyediakan hubungan antara sudut sendi d..."
+- LATEX BOCOR: Paragraf #43 (1 pattern) tag: `^0`. Snippet: "Parameter  sampai  merupakan panjang lengan dan offset yang diperoleh dari lembar data robot industri. Sudut sendi  hing..."
+- PARA SPACING MISMATCH #1 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=8.0pt, delta=8.0pt) — "1 Universitas Diponegoro, Semarang, Indonesia, annabilhisyam"
+- PARA SPACING MISMATCH #2 [No Spacing]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+- PARA SPACING MISMATCH #3 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- TABLE EXTRA FILLED: Output kelebihan 5 tabel berkonten (Expected: 0, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+- FORMULA ALIGNMENT: Paragraf #5 alignment='both' (expected 'center'). Formula: "Presisi pengelasan pada lengan robot industri menjadi faktor"
+- FORMULA ALIGNMENT: Paragraf #20 alignment='both' (expected 'center'). Formula: "Penelitian di bidang kendali lengan robot telah banyak dilak"
+- FORMULA ALIGNMENT: Paragraf #21 alignment='both' (expected 'center'). Formula: "Chen dan Li [7] mengusulkan kendali PID berbasis jaringan sy"
+- FORMULA ALIGNMENT: Paragraf #22 alignment='both' (expected 'center'). Formula: "Dalam domain pengelasan robotik, Gonzalez et al. [9] meranca"
+- FORMULA NUMBER TAB: Paragraf #27 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA ALIGNMENT: Paragraf #28 alignment='both' (expected 'center'). Formula: "dengan u(t) adalah sinyal kontrol, e(t) adalah error posisi "
+- FORMULA ALIGNMENT: Paragraf #29 alignment='both' (expected 'center'). Formula: "Pemodelan kinematik lengan robot menggunakan parameter Denav"
+- FORMULA NUMBER TAB: Paragraf #30 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA ALIGNMENT: Paragraf #32 alignment='both' (expected 'center'). Formula: "Metode penalaan Ziegler-Nichols kedua (closed-loop) dilakuka"
+- FORMULA ALIGNMENT: Paragraf #43 alignment='both' (expected 'center'). Formula: "Parameter  sampai  merupakan panjang lengan dan offset yang "
+- FORMULA NUMBER TAB: Paragraf #43 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #49 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA ALIGNMENT: Paragraf #50 alignment='both' (expected 'center'). Formula: "dengan K adalah gain statis, τ konstanta waktu, dan L waktu "
+- FORMULA ALIGNMENT: Paragraf #51 alignment='both' (expected 'center'). Formula: "Penalaan PID dilakukan menggunakan metode Ziegler-Nichols cl"
+- FORMULA NUMBER TAB: Paragraf #51 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA ALIGNMENT: Paragraf #55 alignment='both' (expected 'center'). Formula: "Setelah parameter PID diperoleh ( = ,  = ,  = ), simulasi di"
+- FORMULA ALIGNMENT: Paragraf #58 alignment='both' (expected 'center'). Formula: "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika "
+- FORMULA NUMBER TAB: Paragraf #61 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA ALIGNMENT: Paragraf #62 alignment='both' (expected 'center'). Formula: "dengan  adalah keluaran kontrol pada langkah ke-k,  adalah w"
+- FORMULA ALIGNMENT: Paragraf #63 alignment='both' (expected 'center'). Formula: "Simulasi dilakukan untuk tiga konfigurasi kendali: PID, prop"
+- FORMULA ALIGNMENT: Paragraf #67 alignment='both' (expected 'center'). Formula: "Hasil simulasi respons step untuk ketiga konfigurasi kendali"
+- FORMULA ALIGNMENT: Paragraf #71 alignment='both' (expected 'center'). Formula: "Data pada Tabel III menunjukkan bahwa kendali PID mampu menc"
+- FORMULA ALIGNMENT: Paragraf #76 alignment='both' (expected 'center'). Formula: "Pengujian dengan beban elektroda (massa  kg) menunjukkan bah"
+- FORMULA ALIGNMENT: Paragraf #80 alignment='both' (expected 'center'). Formula: "Hasil pada Tabel IV mengindikasikan bahwa sistem kendali PID"
+- FORMULA ALIGNMENT: Paragraf #81 alignment='both' (expected 'center'). Formula: "Saat gangguan sinusoidal (getaran konveyor) diterapkan denga"
+- FORMULA ALIGNMENT: Paragraf #83 alignment='both' (expected 'center'). Formula: "Untuk memvalidasi hasil penelitian, dilakukan perbandingan d"
+- FORMULA ALIGNMENT: Paragraf #87 alignment='both' (expected 'center'). Formula: "Data pada Tabel V menunjukkan bahwa kendali logika fuzzy [8]"
+- FORMULA ALIGNMENT: Paragraf #94 alignment='both' (expected 'center'). Formula: "Penelitian ini berhasil merancang sistem kendali PID untuk l"
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Kebocoran LaTeX/Simbol: -2 x 5 = -10
+  - Paragraph Spacing Mismatch (MINOR): -2 x 3 = -6
+  - Caption/Table Spacing Rapat (MINOR): -3 x 5 = -15
+  - Tabel Extra Berkonten (MINOR): -5 x 2 = -10
+  - Formula Alignment Salah (MINOR): -3 x 28 = -84
+  Total Penalty: -125
+  Skor Akhir: 0%

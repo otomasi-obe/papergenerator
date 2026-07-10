@@ -1563,6 +1563,7 @@ def build_document(
     json_path: Path = TEMPLATE_JSON,
     output_path: Path = OUTPUT_DOCX,
     template_path: Path = TEMPLATE_DOCX,
+
 ) -> Path:
     """
     Export paper ke DOCX menggunakan template CCJ.
@@ -1675,6 +1676,15 @@ def build_document(
     print(f"Generated: {output_path}")
     return output_path
 
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)
 
 def generate():
     """Legacy wrapper untuk CLI/standalone use."""

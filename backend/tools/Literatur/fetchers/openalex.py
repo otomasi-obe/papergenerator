@@ -254,8 +254,15 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
     if filters:
         if filters.get("require_abstract", False):
             filter_parts.append("has_abstract:true")
+        # Convert year_from/year_to to OpenAlex API filters
+        yf = filters.get("year_from")
+        yt = filters.get("year_to")
+        if yf:
+            filter_parts.append(f"from_publication_date:{int(yf)}-01-01")
+        if yt:
+            filter_parts.append(f"to_publication_date:{int(yt)}-12-31")
         for k, v in filters.items():
-            if k == "require_abstract":
+            if k in ("require_abstract", "year_from", "year_to"):
                 continue
             filter_parts.append(f"{k}:{v}")
     filter_str = ",".join(filter_parts)

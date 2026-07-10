@@ -188,77 +188,6 @@ def _collect_gambar_prompts(paper_data: dict, paper_kind: Optional[str] = None) 
             unique.append(item)
     return unique
 
-
-def _collect_section4_chart_specs(paper_data: dict, paper_kind: Optional[str] = None) -> list[dict]:
-    """Collect section 4 gambar items with chart specifications.
-
-    Section 4 charts are only meaningful for REGULAR papers (data-driven).
-    For REVIEW papers, section 4 images are conceptual and handled by
-    _collect_gambar_prompts.
-
-    Args:
-        paper_data: Full paper JSON.
-        paper_kind: 'regular' or 'review'. Auto-detected if None.
-
-    Returns list of dicts: {
-        ImageNumber, Title, Path, Prompt (chart spec text),
-        data_tools_payload (structured chart JSON from LLM, OPTIONAL),
-        source_tables (list of table dicts from section 4, OPTIONAL),
-    }.
-    These are fed into the data tools pipeline for matplotlib chart generation.
-    """
-    if paper_kind is None:
-        paper_kind = _detect_paper_kind(paper_data)
-
-    # REVIEW mode: section 4 images are conceptual, not chart data
-    if paper_kind == "review":
-        return []
-    specs = []
-    _section4_tables: list[dict] = []
-
-    if not isinstance(paper_data, dict):
-        return specs
-
-    def walk(obj, in_section4=False, _depth=0):
-        if isinstance(obj, dict):
-            if obj.get("id") == "gambar" and in_section4:
-                p = obj.get("Prompt") or obj.get("prompt") or ""
-                payload = obj.get("data_tools_payload") or obj.get("data_tools")
-                spec = {
-                    "ImageNumber": obj.get("ImageNumber", ""),
-                    "Title": obj.get("Title", ""),
-                    "Path": obj.get("Path", ""),
-                    "Prompt": p.strip() if isinstance(p, str) else "",
-                }
-                # Attach structured data_tools_payload if present
-                if isinstance(payload, dict):
-                    spec["data_tools_payload"] = payload
-                # Attach source tables from section 4 for chart context
-                if _section4_tables:
-                    spec["source_tables"] = list(_section4_tables)
-                specs.append(spec)
-            # Collect tables in section 4 for chart context
-            if (obj.get("id") == "tabel" or obj.get("type") == "table") and in_section4:
-                _section4_tables.append(obj)
-            for k, v in obj.items():
-                child_in_section4 = in_section4
-                if isinstance(k, str):
-                    if re.match(r'section4[a-z]?$', k):
-                        child_in_section4 = True
-                    # Detect list-based sections: sections[3] = section4 (0-based)
-                    if k == "sections" and isinstance(v, list):
-                        for i, item in enumerate(v):
-                            walk(item, in_section4=in_section4 or (i == 3), _depth=_depth+1)
-                        continue  # already walked with section context
-                walk(v, in_section4=child_in_section4, _depth=_depth+1)
-        elif isinstance(obj, list):
-            for item in obj:
-                walk(item, in_section4=in_section4, _depth=_depth+1)
-
-    walk(paper_data)
-    return specs
-
-
 def _verify_data_integrity(paper_data: dict, data_texts: list[str], paper_id: str) -> list[dict]:
     """Verify numbers in section 4 JSON match source data texts.
 
@@ -424,7 +353,7 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
         if isinstance(fig, dict):
             p = str(fig.get("Path") or fig.get("path") or "")
             if p and os.path.isabs(p) and os.path.exists(p):
-                used_images.add(p)
+                used_images.add(os.path.basename(p).lower())
 
     def _extract_img_number(item: dict) -> int | None:
         """Extract image number from ImageNumber field or Path."""
@@ -506,7 +435,7 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
                 # Find matching image
                 matched = _find_matching_image(obj)
                 if matched:
-                    obj["Path"] = matched.name
+                    obj["Path"] = str(matched)
                     used_images.add(matched.name)
                     log.debug("[reconcile_sections] Mapped gambar to %s", matched.name)
             # Recurse into all dict values
@@ -518,134 +447,6 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
 
     walk_sections(paper_data)
     log.info("[reconcile_sections] Mapped %d/%d images for paper %s", len(used_images), len(image_files), paper_id)
-
-
-def _auto_generate_data_charts(paper_id: str, user_id: int, data_texts: list[str]) -> str | None:
-    """Auto-trigger data extraction → matplotlib chart generation for section 4.
-
-    When user uploads data files (Excel/CSV), this function creates an AiJob
-    for data extraction and chart generation. The charts will be linked to
-    section 4 grafik items during reconciliation.
-
-    Returns the job_id if successful, None otherwise.
-    """
-    import uuid
-    from utils.database.models import AiJob, db, safe_commit
-
-    # Combine data texts — do NOT truncate here. Truncation happens per-file
-    # inside _run_data_chart_render AFTER splitting by file markers. Truncating
-    # here would cut file markers mid-stream and silently drop files.
-    combined = "\n\n".join(t for t in data_texts if t and t.strip())
-    if not combined.strip():
-        return None
-
-    # Create AiJob for tracking
-    job_id = uuid.uuid4().hex
-    job = AiJob(
-        id=job_id,
-        user_id=user_id,
-        paper_id=paper_id,
-        kind="data_extract",
-        status="queued",
-        stage="pending",
-        progress=0,
-    )
-    db.session.add(job)
-    if not safe_commit(reraise=False):
-        log.warning("[paperfull] Chart job creation failed: safe_commit returned False for job %s", job_id)
-        return None
-
-    # Fire background thread
-    from flask import current_app
-    import threading
-    app = current_app._get_current_object()
-    thread = threading.Thread(
-        target=_run_data_chart_render,
-        args=(app, job_id, paper_id, user_id, combined),
-        daemon=True,
-    )
-    try:
-        thread.start()
-    except Exception as e:
-        # Thread start failed (e.g., resource exhaustion) — mark job as error
-        try:
-            job = AiJob.query.get(job_id)
-            if job:
-                job.status = "error"
-                job.error = f"Thread start failed: {e}"
-                safe_commit()
-        except Exception:
-            db.session.rollback()
-        return None
-
-    return job_id
-
-
-def _auto_generate_section4_charts(
-    paper_id: str, user_id: int, chart_specs: list[dict], data_texts: list[str]
-) -> str | None:
-    """Auto-trigger chart generation from section 4 gambar specs (new architecture).
-
-    The LLM writes chart specifications (type, data, axis, title) in the Prompt field.
-    This function reads those specs and generates matplotlib charts.
-
-    Args:
-        chart_specs: List of {ImageNumber, Title, Path, Prompt} from section 4 gambar
-        data_texts: Raw Excel data texts (fallback/context for chart generation)
-
-    Returns the job_id if successful, None otherwise.
-    """
-    import uuid
-    from utils.database.models import AiJob, db, safe_commit
-
-    # Filter specs that have actual chart specs in Prompt
-    valid_specs = [s for s in chart_specs if s.get("Prompt") and s["Prompt"].strip()]
-    if not valid_specs:
-        log.info("[sec4_charts] No valid chart specs found, skipping")
-        return None
-
-    # Create AiJob for tracking
-    job_id = uuid.uuid4().hex
-    job = AiJob(
-        id=job_id,
-        user_id=user_id,
-        paper_id=paper_id,
-        kind="data_extract",
-        status="queued",
-        stage="pending",
-        progress=0,
-    )
-    db.session.add(job)
-    if not safe_commit(reraise=False):
-        log.warning("[paperfull] Chart job creation failed: safe_commit returned False for job %s", job_id)
-        return None
-
-    # Fire background thread
-    from flask import current_app
-    import threading
-    app = current_app._get_current_object()
-    combined_data = "\n\n".join(t for t in data_texts if t and t.strip())
-    thread = threading.Thread(
-        target=_run_section4_chart_render,
-        args=(app, job_id, paper_id, user_id, valid_specs, combined_data),
-        daemon=True,
-    )
-    try:
-        thread.start()
-    except Exception as e:
-        # Thread start failed (e.g., resource exhaustion) — mark job as error
-        try:
-            job = AiJob.query.get(job_id)
-            if job:
-                job.status = "error"
-                job.error = f"Thread start failed: {e}"
-                safe_commit()
-        except Exception:
-            db.session.rollback()
-        return None
-
-    return job_id
-
 
 def _run_section4_chart_render(
     app, job_id: str, paper_id: str, user_id: int,
@@ -1396,6 +1197,17 @@ def enqueue_generate(paper_id: str):
         user_id = int(get_jwt_identity())
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
+
+    # Validate paper_id format to prevent path traversal
+    if not re.match(r"^[A-Za-z0-9_-]{1,64}$", paper_id):
+        return jsonify({"error": "Invalid paper id"}), 400
+
+    # ── Quota gate ────────────────────────────────────────────────────────
+    from utils.quota import quota_exceeded
+    exceeded, info = quota_exceeded(user_id)
+    if exceeded:
+        return jsonify(info), 429
+
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "paper not found"}), 404
@@ -1478,7 +1290,6 @@ def enqueue_generate(paper_id: str):
             if status_context:
                 custom_prompt = (custom_prompt + "\n\n" + status_context).strip()
         except Exception as e:
-            log = logging.getLogger(__name__)
             log.warning(f"Failed to build status context for paper {paper_id}: {e}")
 
     # Inject selected chat drafts as additional context
@@ -1536,11 +1347,10 @@ def enqueue_generate(paper_id: str):
         style,
         language,
         custom_prompt=custom_prompt,
-        job_id=job_id,
-        job_timeout=3600,  # 60 min — paper gen ~30-40 min (8 sections)
+        job_timeout=3600,
         result_ttl=3600,
+        failure_ttl=86400,
     )
-
     publish_progress(job_id, {"stage": "queued", "percent": 0})
     return jsonify({"job_id": job_id, "status": "queued"})
 
@@ -1689,8 +1499,8 @@ def stream_job(job_id: str):
                 if time.time() - last_ping > 15:
                     yield ": ping\n\n"
                     last_ping = time.time()
-                # Hard cap 20 min per stream (resubscribe on client side).
-                if time.time() - t0 > 1200:
+                # Hard cap 15 min per stream (resubscribe on client side).
+                if time.time() - t0 > 900:
                     break
         finally:
             try:
@@ -1763,7 +1573,6 @@ def _enqueue_resume(job: AiJob, resume_state: dict | None) -> None:
             job.id, job.user_id, job.paper_id, job.prompt or "",
             None, None, _resume_lang,
             resume_state=resume_state,
-            job_id=job.id,
             job_timeout=3600,  # 60 min for resume
             result_ttl=3600,
         )
@@ -2244,9 +2053,35 @@ def generate_stream(paper_id: str):
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
 
+    # Validate paper_id format to prevent path traversal
+    import re as _re
+    if not _re.match(r"^[A-Za-z0-9_-]{1,64}$", paper_id):
+        return jsonify({"error": "Invalid paper id"}), 400
+
+    # ── Quota gate — block generate if insufficient tokens ────────────
+    from utils.quota import quota_exceeded
+    exceeded, info = quota_exceeded(user_id)
+    if exceeded:
+        _info = dict(info) if isinstance(info, dict) else {"error": str(info)}
+        _info["needs_purchase"] = "true"
+        return jsonify(_info), 429
+
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
         return jsonify({"error": "paper not found"}), 404
+
+    # Prevent concurrent generation on same paper
+    active_job = AiJob.query.filter_by(
+        paper_id=paper_id,
+        user_id=user_id
+    ).filter(
+        AiJob.status.in_(["queued", "running", "pending"])
+    ).first()
+    if active_job:
+        return jsonify({
+            "error": "Paper ini sedang dalam proses generate. Tunggu sampai selesai.",
+            "existing_job_id": active_job.id,
+        }), 409
 
     # Parse request body
     data_texts: list[str] = []
@@ -2419,6 +2254,7 @@ def generate_stream(paper_id: str):
             existing_data["_data_files_count"] = len([t for t in data_texts if t and t.strip()])
             paper.data = existing_data
             safe_commit()
+            db.session.remove()  # Release DB connection back to pool (avoid leak in JSON pre-store branch)
             log.info("[paperfull] Pre-stored %d data_texts to paper.data for paper %s",
                      len(data_texts), paper_id)
             _prestore_log.getLogger(__name__).warning(f"=== PRE-STORE SUCCESS: saved {len(data_texts)} items")
@@ -2434,6 +2270,15 @@ def generate_stream(paper_id: str):
 
     if not prompt:
         return jsonify({"error": "prompt required"}), 400
+
+    # New generate session must not inherit stale Redis snapshot from the previous run.
+    # ponytail: key is per-paper; upgrade to per-run ids if concurrent same-paper generate is ever allowed.
+    try:
+        _r = get_redis()
+        if _r:
+            _r.delete(f"paperfull:stream:{paper_id}")
+    except Exception:
+        pass
 
     # ── Register an AiJob so this generation shows up in the notification
     #    bell immediately (kind=generate_paper is what /api/me/ai-jobs/recent
@@ -2578,15 +2423,51 @@ def generate_stream(paper_id: str):
 
             # Style guide
             if style:
-                style_file = prompt_dir / "style" / f"{style.upper()}.txt"
-                if style_file.exists():
-                    system_parts.append(f"## CITATION STYLE GUIDE — {style.upper()}\n" + style_file.read_text(encoding="utf-8"))
+                # Whitelist: only allow known style slugs
+                _ALLOWED_STYLES = {
+                    'APA', 'MLA', 'CHICAGO', 'HARVARD', 'VANCOUVER', 'IEEE',
+                    'AMA', 'TURABIAN', 'OSCOLA', 'AGLC', 'CEUR', 'SPRINGER',
+                    'MDPI', 'LNCS', 'SPRINGERNATURE', 'NATURE', 'ELSEVIER',
+                    'ACM', 'IEEE-COMPUTER', 'SPRINGER-LNCS', 'SPRINGER-LNBIP',
+                    'SPRINGER-STUDIES', 'LIPICS', 'NATURALSCIENCES', 'E3S',
+                    'DRF', 'USCS', 'AMORI', 'ICET', 'ICIMECE', 'EASR', 'ITM',
+                }
+                style_key = style.upper().strip()
+                if style_key in _ALLOWED_STYLES:
+                    style_file = prompt_dir / "style" / f"{style_key}.txt"
+                    if style_file.exists():
+                        resolved = style_file.resolve()
+                        if resolved.is_relative_to((prompt_dir / "style").resolve()):
+                            system_parts.append(f"## CITATION STYLE GUIDE — {style_key}\n" + resolved.read_text(encoding="utf-8"))
 
             # Topic guide
             if topic:
-                topic_file = prompt_dir / "topic" / f"{topic}.txt"
-                if topic_file.exists():
-                    system_parts.append(f"## TOPIC GUIDE — {topic}\n" + topic_file.read_text(encoding="utf-8"))
+                # Whitelist: only allow known topic slugs
+                _ALLOWED_TOPICS = {
+                    'artificial-intelligence', 'machine-learning', 'deep-learning',
+                    'natural-language-processing', 'data-science', 'computer-vision',
+                    'robotics', 'cybersecurity', 'blockchain', 'cloud-computing',
+                    'iot', 'hci', 'software-engineering', 'bioinformatics',
+                    'environmental-science', 'climate-change', 'renewable-energy',
+                    'sustainable-development', 'water-resources', 'agriculture',
+                    'public-health', 'epidemiology', 'healthcare', 'medicine',
+                    'economics', 'finance', 'management', 'marketing',
+                    'education', 'psychology', 'sociology', 'law',
+                    'materials-science', 'chemistry', 'physics', 'biology',
+                    'mathematics', 'engineering', 'mechanical-engineering',
+                    'electrical-engineering', 'civil-engineering', 'chemical-engineering',
+                    'renewable-energy-engineering', 'biomedical-engineering',
+                    'aerospace', 'food-science', 'pharmacy', 'dentistry',
+                    'nursing', 'veterinary', 'architecture', 'urban-planning',
+                    'supply-chain', 'logistics', 'tourism', 'hospitality',
+                }
+                topic_key = topic.strip().lower().replace(' ', '-')
+                if topic_key in _ALLOWED_TOPICS:
+                    topic_file = prompt_dir / "topic" / f"{topic_key}.txt"
+                    if topic_file.exists():
+                        resolved = topic_file.resolve()
+                        if resolved.is_relative_to((prompt_dir / "topic").resolve()):
+                            system_parts.append(f"## TOPIC GUIDE — {topic_key}\n" + resolved.read_text(encoding="utf-8"))
 
             # Inject user preferences (name, full name, institution, language)
             try:
@@ -3130,7 +3011,7 @@ def generate_stream(paper_id: str):
             if not _injected_data_texts:
                 # Third fallback: read from pre-stored paper.data in DB
                 try:
-                    _stored = Paper.query.filter_by(id=paper_id).first()
+                    _stored = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
                     if _stored and _stored.data:
                         _stored_dict = _stored.data if isinstance(_stored.data, dict) else (
                             json.loads(_stored.data) if isinstance(_stored.data, str) else {}
@@ -3159,6 +3040,31 @@ def generate_stream(paper_id: str):
                 _pf_snapshot("error", reasoning_acc, full_content, error=f"DB save failed: {save_err}", force=True)
                 yield f"event: error\ndata: {_json.dumps({'error': f'DB save failed: {save_err}'})}\n\n"
                 return
+
+            # ── Token deduction for Generate Full stream path ───────────────
+            try:
+                from utils.ai_tools.tools_api import _log_tool_usage
+                _prompt_text = system_prompt + "\n" + user_message
+                _prompt_tokens = max(1, len(_prompt_text) // 4)
+                _completion_tokens = max(1, len(full_content or _json.dumps(paper_data, ensure_ascii=False)) // 4)
+                # Generate Full is expensive in real provider usage (reasoning + long JSON),
+                # while streaming often does not return exact usage. Charge a safe floor.
+                _min_total_tokens = 120_000
+                _completion_tokens += max(0, _min_total_tokens - (_prompt_tokens + _completion_tokens))
+                _log_tool_usage(
+                    int(user_id),
+                    "generate-full",
+                    model or "VIOLA-GENERATE",
+                    _prompt_tokens,
+                    _completion_tokens,
+                )
+                log.info(
+                    "GENERATE_FULL_TOKEN_DEDUCT user=%s paper=%s model=%s prompt=%d completion=%d total=%d",
+                    user_id, paper_id, model or "VIOLA-GENERATE", _prompt_tokens, _completion_tokens,
+                    _prompt_tokens + _completion_tokens,
+                )
+            except Exception as _tok_e:
+                log.warning("GENERATE_FULL_TOKEN_DEDUCT_FAILED user=%s paper=%s: %s", user_id, paper_id, _tok_e)
 
             # ── Auto-enqueue image generation jobs (section 2/3 conceptual) ──
             image_job_ids = []
@@ -3234,7 +3140,7 @@ def generate_stream(paper_id: str):
                 log.info("[paperfull] Waiting for %d image/chart jobs for paper %s", _total_jobs, paper_id)
 
                 _wait_start = _time.time()
-                _max_wait = 600  # 10 minutes max
+                _max_wait = 120  # 2 minutes max — remaining images reconciled async
                 _last_progress_emit = -10  # emit immediately on first check
 
                 while True:
@@ -3282,31 +3188,36 @@ def generate_stream(paper_id: str):
 
                     _time.sleep(3)
 
-            # ── Reconcile image paths into paper_data ─────────────────
-            # After all images are generated, update paper_data figure paths
-            # so DOCX export embeds them immediately.
-            try:
-                from tools.image_generation.reconcile import reconcile_figure_images
-                from utils.core.storage_helper import get_user_dir
-                _upload_base = get_user_dir(int(user_id), "uploads")
-                reconcile_figure_images(paper_id, paper_data, _upload_base)
-                # Collect resolved paths from figures to prevent double-assignment
-                _used_by_figures: set[str] = set()
-                for fig in paper_data.get("figures", []):
-                    if isinstance(fig, dict):
-                        p = str(fig.get("Path") or fig.get("path") or "")
-                        if p and os.path.isabs(p) and os.path.exists(p):
-                            _used_by_figures.add(p)
-                # Also walk sections for gambar items (not just top-level figures)
-                _reconcile_section_images(paper_data, paper_id, _upload_base)
-                # Re-save updated paper_data with resolved image paths
-                ok_rec, rec_err = _persist_paper_data(paper_id, user_id, paper_data)
-                if not ok_rec:
-                    log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
-                    yield f"event: error\ndata: {_json.dumps({'error': f'Image re-save failed: {rec_err}'})}\n\n"
-                log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
-            except Exception as _rec_e:
-                log.warning("[paperfull] Image reconciliation failed for paper %s: %s", paper_id, _rec_e)
+            # ── Launch background image reconciliation (daemon thread) ───────────
+            # This runs even if GeneratorExit fires (client disconnects).
+            # Reconciliation is I/O bound (DB + filesystem) so a daemon thread is fine.
+            def _bg_reconcile():
+                try:
+                    from flask import current_app
+                    with current_app.app_context():
+                        from tools.image_generation.reconcile import reconcile_figure_images
+                        from utils.core.storage_helper import get_user_dir
+                        _upload_base = get_user_dir(int(user_id), "uploads")
+                        reconcile_figure_images(paper_id, paper_data, _upload_base)
+                        # Collect resolved paths from figures to prevent double-assignment
+                        _used_by_figures: set[str] = set()
+                        for fig in paper_data.get("figures", []):
+                            if isinstance(fig, dict):
+                                p = str(fig.get("Path") or fig.get("path") or "")
+                                if p and os.path.isabs(p) and os.path.exists(p):
+                                    _used_by_figures.add(p)
+                        # Also walk sections for gambar items (not just top-level figures)
+                        _reconcile_section_images(paper_data, paper_id, _upload_base)
+                        # Re-save updated paper_data with resolved image paths
+                        ok_rec, rec_err = _persist_paper_data(paper_id, user_id, paper_data)
+                        if not ok_rec:
+                            log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
+                        log.info("[paperfull] Background image reconciliation complete for paper %s", paper_id)
+                except Exception as _bg_e:
+                    log.warning("[paperfull] Background image reconciliation failed for paper %s: %s", paper_id, _bg_e)
+
+            _reconcile_thread = threading.Thread(target=_bg_reconcile, daemon=True)
+            _reconcile_thread.start()
 
             # ── Count errors for images_complete event ────────────────────────
             error_count = 0

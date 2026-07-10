@@ -1,7 +1,6 @@
 """
-Payment Gateway Integration Module
-Handles QRIS payment via Xendit API
+Payment Gateway Integration — DOKU only.
 """
-from .qris import payment_bp
+from .doku import doku_bp
 
-__all__ = ['payment_bp']
+__all__ = ['doku_bp']

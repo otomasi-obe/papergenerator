@@ -734,10 +734,28 @@ def add_figure(doc, fig_data):
     title = fig_data.get("Title", "Title of the figure")
     path_text = fig_data.get("Path", "").strip()
     prompt_hint = fig_data.get("Prompt", "")
-
     image_path = None
     if path_text:
-        for cand in (Path(path_text), BASE / path_text):
+        path_text_norm = path_text.replace(" ", "")
+        all_cands = []
+        for _pt in (path_text, path_text_norm):
+            all_cands.extend([Path(_pt), BASE / _pt])
+        try:
+            _data = load_json()
+            _pid = str(_data.get("paper_id") or _data.get("id") or "").strip()
+            if not _pid and isinstance(_data.get("paper_data"), dict):
+                _pid = str(_data["paper_data"].get("paper_id", "")).strip()
+            if _pid:
+                _udir = Path(__file__).resolve().parent.parent.parent / "user"
+                if _udir.is_dir():
+                    for _uname in _udir.iterdir():
+                        _idir = _uname / _pid / "image"
+                        if _idir.is_dir():
+                            all_cands.extend([_idir / path_text, _idir / path_text_norm])
+                            break
+        except Exception:
+            pass
+        for cand in all_cands:
             if cand.is_file():
                 image_path = cand
                 break
@@ -929,7 +947,7 @@ def add_references(doc, data):
     ref_data = data.get("references", {})
     if isinstance(ref_data, dict):
         ref_title = ref_data.get("title", "References")
-        ref_content = ref_data.get("content") or ref_data.get("items") or [])
+        ref_content = ref_data.get("content") or ref_data.get("items") or []
     else:
         ref_title = "References"
         ref_content = list(ref_data) if isinstance(ref_data, list) else []
@@ -1158,3 +1176,13 @@ def build_document(json_path: Path, output_path: Path, template_path: Path = Non
         if fallback.exists():
             shutil.move(str(fallback), str(output_path))
     return Path(output_path)
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Calls build_document() to produce a .docx, then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    from ._render_pdf import build_pdf_from_builder
+    return build_pdf_from_builder(build_document, json_path, pdf_path, template_path)

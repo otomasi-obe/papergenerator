@@ -76,45 +76,9 @@ def post_fork(server, worker):
     import random
     random.seed(os.urandom(32))
     server.log.info("Worker spawned (pid: %s)", worker.pid)
-    # Start image generation worker pool on exactly ONE gunicorn worker.
-    # Uses a marker file so only the first worker to reach this point starts
-    # the pool. The pool uses persistent Chrome profiles that cannot be shared
-    # across processes. Jobs are DB-persisted so the dispatcher in one worker
-    # can serve requests received by any gunicorn worker.
-    _img_marker = "/tmp/papergenerator-img-workers.lock"
-    _lock_fd = None
-    try:
-        import fcntl as _fcntl
-        _lock_fd = open(_img_marker, "w")
-        try:
-            _fcntl.flock(_lock_fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
-            # We got the lock — this is the first worker. Hold the fd open
-            # in a module-level var so it's not GC'd (which would release lock).
-            import builtins
-            builtins._img_lock_fd = _lock_fd
-            _lock_fd.write(str(os.getpid()))
-            _lock_fd.flush()
-            server.log.info("Acquired image worker lock, calling start_image_workers...")
-            from main import app  # noqa: PLC0415
-            from tools.image_generation.worker import start_image_workers  # noqa: PLC0415
-            start_image_workers(app)
-            server.log.info("Image worker pool started in worker pid=%s", worker.pid)
-        except (IOError, OSError):
-            # Another worker already has the lock — skip
-            _lock_fd.close()
-            _lock_fd = None
-            server.log.info("Image worker pool already started by another worker, skipping")
-        except Exception as e:
-            server.log.exception("Exception in start_image_workers: %s", e)
-            _lock_fd.close()
-            _lock_fd = None
-    except Exception:
-        server.log.exception("Failed to start image worker pool in worker pid=%s", worker.pid)
-        if _lock_fd is not None:
-            try:
-                _lock_fd.close()
-            except Exception:
-                pass
+    # Image workers now run as a separate PM2 process (paper-image-worker).
+    # See worker_runner.py. Do not start them inside gunicorn workers.
+    # The old lock-based startup is kept for reference but skipped.
 
 
 def pre_exec(server):

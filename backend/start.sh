@@ -8,6 +8,10 @@ cd /home/sirobo/papergenerator/backend
 if [ -f /home/sirobo/papergenerator/.env ]; then
     export $(grep -v '^#' /home/sirobo/papergenerator/.env | xargs)
 fi
+# Load backend-specific env (overrides root)
+if [ -f /home/sirobo/papergenerator/backend/.env ]; then
+    export $(grep -v '^#' /home/sirobo/papergenerator/backend/.env | xargs)
+fi
 
 # Use venv Python directly (no activation needed)
 exec /home/sirobo/papergenerator/backend/.venv/bin/python -m gunicorn --config gunicorn.conf.py "main:app"

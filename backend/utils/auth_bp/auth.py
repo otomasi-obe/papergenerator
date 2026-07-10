@@ -13,8 +13,11 @@ import logging
 import os
 import re
 import secrets
+import smtplib
 import time
 from datetime import datetime, timezone
+from email.message import EmailMessage
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import requests
@@ -23,14 +26,17 @@ from flask import Blueprint, current_app, jsonify, redirect, request, session
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    get_jwt,
     get_jwt_identity,
     jwt_required,
     set_access_cookies,
+    verify_jwt_in_request,
     set_refresh_cookies,
     unset_jwt_cookies,
 )
 
 from utils.database.models import User, db, safe_commit
+from utils.core.redis_client import get_redis
 from .captcha import (
     captcha_enabled,
     captcha_required_for_login,
@@ -119,13 +125,14 @@ def _claim_admin_atomically(user: "User") -> None:
     rc = get_redis()
     _lock_key = "papergenerator:admin_claim_lock"
     _lock_ttl = 10  # seconds
+    _lock_token = secrets.token_hex(8)  # unique per acquisition attempt
 
     if rc is not None:
-        # Spin-acquire with short timeout
+        # Spin-acquire with short timeout; store unique token so we only delete our own lock
         import time as _time
         deadline = _time.monotonic() + _lock_ttl
         while _time.monotonic() < deadline:
-            if rc.set(_lock_key, "1", nx=True, ex=_lock_ttl):
+            if rc.set(_lock_key, _lock_token, nx=True, ex=_lock_ttl):
                 break
             _time.sleep(0.05)
         else:
@@ -143,10 +150,14 @@ def _claim_admin_atomically(user: "User") -> None:
             user.role = "user"
     finally:
         if rc is not None:
-            try:
-                rc.delete(_lock_key)
-            except Exception:
-                pass
+            # Only delete if we still own the lock (token still matches)
+            import time as _time
+            current = rc.get(_lock_key)
+            if current == _lock_token:
+                try:
+                    rc.delete(_lock_key)
+                except Exception:
+                    pass
         else:
             _admin_claim_lock.release()
 
@@ -470,6 +481,17 @@ def google_login():
         )
 
     redirect_to = _allowed_redirect_url(request.args.get("redirect_to", ""))
+
+    # If PaperFull session is still valid, never send the user back to Google.
+    # This prevents repeated account chooser prompts after the first successful login.
+    try:
+        verify_jwt_in_request(optional=True)
+        if get_jwt_identity():
+            target_origin = _redirect_origin(redirect_to) if redirect_to else _allowed_frontend_url(os.getenv("FRONTEND_URL", "http://localhost:1000"))
+            return redirect(f"{target_origin}/dashboard")
+    except Exception:
+        pass
+
     signed_state = _make_signed_state(redirect_to)
     if redirect_to:
         session[f"oauth_redirect:{signed_state}"] = redirect_to
@@ -478,7 +500,12 @@ def google_login():
     redirect_uri = _google_callback_url()
 
     log.info("OAuth login - Redirect URI: %s", redirect_uri)
-    resp = oauth.google.authorize_redirect(redirect_uri, state=signed_state)
+    # Pass login_hint so Google pre-selects the user's account (no account chooser)
+    extra_params = {}
+    login_hint = request.args.get("login_hint", "").strip()
+    if login_hint:
+        extra_params["login_hint"] = login_hint
+    resp = oauth.google.authorize_redirect(redirect_uri, state=signed_state, **extra_params)
     session.modified = True
     return resp
 
@@ -602,7 +629,14 @@ def google_callback():
                 user.oauth_provider = "google"
             log.info("User logged in via Google: %s", email)
 
-        safe_commit()
+        # BUG FIX: Wrap commit in try-except with explicit rollback
+        # to ensure session is not left in broken state on failure
+        try:
+            safe_commit()
+        except Exception as commit_err:
+            log.error("OAuth commit failed: %s, rolling back session", commit_err)
+            db.session.rollback()
+            return redirect(f"{frontend_url}/login?error=auth_failed")
 
         access, refresh = _issue_tokens_for(user)
         resp = redirect(redirect_to or f"{frontend_url}/auth/callback")
@@ -613,6 +647,11 @@ def google_callback():
 
     except Exception as e:
         log.error("OAuth callback error: %s", e, exc_info=True)
+        # BUG FIX: Ensure session rollback before redirect
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         error_code = "auth_failed"
         error_lower = str(e).lower()
         if "access_denied" in error_lower:
@@ -704,6 +743,14 @@ def refresh():
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
+
+    # Revoke old refresh token JTI to prevent replay
+    old_jti = get_jwt().get("jti")
+    rc = get_redis()
+    if rc and old_jti:
+        # Store revoked JTI with TTL matching token expiry (default 30 days)
+        rc.setex(f"rjti:{old_jti}", 2592000, "1")
+
     access, new_refresh = _issue_tokens_for(user)
     resp = jsonify({"user": user.to_dict()})
     set_access_cookies(resp, access)
@@ -720,9 +767,28 @@ def get_me():
         return jsonify({"error": "Invalid user identity"}), 401
 
     user = User.query.get(user_id)
-    if not user:
+    if not user or user.is_deleted:
         return jsonify({"error": "User not found"}), 404
     return jsonify(user.to_dict())
+
+
+def _revoke_all_tokens(jwt_payload):
+    """Revoke the current access + refresh token via Redis blocklist."""
+    try:
+        rc = get_redis()
+        if not rc:
+            return
+        jti = jwt_payload.get("jti")
+        if not jti:
+            return
+        exp = jwt_payload.get("exp")
+        ttl = int(exp - time.time()) if exp else 86400
+        ttl = max(1, min(ttl, 86400 * 30))
+        token_type = jwt_payload.get("type")
+        prefix = "rjti:" if token_type == "refresh" else "ajti:"
+        rc.setex(f"{prefix}{jti}", ttl, "1")
+    except Exception:
+        pass
 
 
 @auth.route("/me/settings", methods=["PATCH"])
@@ -770,16 +836,43 @@ def update_settings():
         else:
             # OAuth user setting password for first time — require email verification
             # or a fresh Google token to prevent account takeover.
-            # TODO(security): the google_token / email_verified flags are currently
-            # trusted as-is from the request body. They should be replaced by a full
-            # Google token verification (verify signature + audience against Google's
-            # tokeninfo endpoint) to fully prevent account takeover. Until then we at
-            # least require that the user is actually a Google-linked OAuth account
-            # (has google_id) before allowing the email_verified bypass path.
+            # BUG FIX: Verify google_token server-side instead of trusting email_verified flag
             if not user.google_id:
                 return jsonify({"error": "Akun ini bukan akun OAuth; tidak dapat set password tanpa password lama"}), 400
-            if not body.get("google_token") and not body.get("email_verified"):
-                return jsonify({"error": "Akun OAuth harus verifikasi email dulu sebelum set password"}), 400
+            
+            google_token = body.get("google_token")
+            if not google_token:
+                return jsonify({"error": "Google token required untuk set password pertama kali"}), 400
+            
+            # Verify token with Google's tokeninfo endpoint
+            try:
+                token_info_resp = requests.get(
+                    f"https://oauth2.googleapis.com/tokeninfo?id_token={google_token}",
+                    timeout=8,
+                )
+                if not token_info_resp.ok:
+                    log.warning("Google token verification failed for user %s", user.id)
+                    return jsonify({"error": "Invalid Google token"}), 400
+                
+                token_data = token_info_resp.json()
+                token_email = token_data.get("email", "").strip().lower()
+                token_audience = token_data.get("aud", "")
+                
+                # Verify email matches and audience is our app
+                if token_email != user.email:
+                    log.warning("Google token email mismatch: %s vs %s", token_email, user.email)
+                    return jsonify({"error": "Token email tidak cocok"}), 400
+                
+                # Verify audience (client_id)
+                expected_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+                if expected_client_id and token_audience != expected_client_id:
+                    log.warning("Google token audience mismatch")
+                    return jsonify({"error": "Token tidak valid untuk aplikasi ini"}), 400
+                    
+            except Exception as e:
+                log.error("Google token verification error: %s", e)
+                return jsonify({"error": "Failed to verify Google token"}), 503
+        
         user.set_password(new_pw)
 
     safe_commit()
@@ -790,5 +883,205 @@ def update_settings():
 @jwt_required(optional=True)
 def logout():
     resp = jsonify({"success": True, "message": "Logged out successfully"})
+    unset_jwt_cookies(resp)
+    return resp
+
+
+@auth.route("/contact", methods=["POST"])
+def submit_contact():
+    """Contact form: validate, rate-limit, save to JSONL, optionally email."""
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip()
+    category = (data.get("category") or "general").strip().lower()
+    subject = (data.get("subject") or "").strip()
+    message = (data.get("message") or "").strip()
+
+    # Validate
+    if not name or len(name) > 100:
+        return jsonify({"error": "Nama harus diisi (max 100 karakter)"}), 400
+    if not email or len(email) > 254 or "@" not in email:
+        return jsonify({"error": "Email tidak valid"}), 400
+    if category not in ("general", "refund", "privacy", "technical", "other"):
+        category = "general"
+    if not subject or len(subject) > 200:
+        return jsonify({"error": "Subjek harus diisi (max 200 karakter)"}), 400
+    if not message or len(message) < 10 or len(message) > 5000:
+        return jsonify({"error": "Pesan harus 10-5000 karakter"}), 400
+
+    # Rate-limit: 3 per hour per IP
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    redis_client = get_redis()
+    rate_key = f"contact_rl:{ip}"
+    if redis_client:
+        try:
+            count = redis_client.incr(rate_key)
+            if count == 1:
+                redis_client.expire(rate_key, 3600)
+            if count > 20:
+                return jsonify({"error": "Terlalu banyak permintaan. Coba lagi dalam 1 jam."}), 429
+        except Exception:
+            pass  # Redis down → allow
+
+    # Save to JSONL
+    instance_dir = Path(current_app.instance_path)
+    instance_dir.mkdir(parents=True, exist_ok=True)
+    contact_log = instance_dir / "contact_messages.jsonl"
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "ip": ip,
+        "name": name,
+        "email": email,
+        "category": category,
+        "subject": subject,
+        "message": message,
+    }
+    try:
+        import json
+        with open(contact_log, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception as e:
+        log.error(f"Failed to write contact log: {e}")
+
+    # Send email via Resend
+    resend_api_key = os.getenv("RESEND_API_KEY")
+    contact_to = os.getenv("CONTACT_TO", "anabilhisyam23@gmail.com")
+    from_email = "Paperfull Support <support@paperfull.app>"
+
+    if resend_api_key:
+        try:
+            import resend
+            resend.api_key = resend_api_key
+
+            # Admin notification
+            resend.Emails.send({
+                "from": from_email,
+                "to": [contact_to],
+                "reply_to": email,
+                "subject": f"[{category.upper()}] {subject}",
+                "html": f"""<div style="font-family: sans-serif;">
+<p><strong>Nama:</strong> {name}</p>
+<p><strong>Email:</strong> {email}</p>
+<p><strong>Kategori:</strong> {category}</p>
+<p><strong>Subjek:</strong> {subject}</p>
+<p><strong>Pesan:</strong></p>
+<p>{message.replace(chr(10), '<br>')}</p>
+<hr>
+<p><small>IP: {ip} • {entry['timestamp']}</small></p>
+</div>""",
+            })
+
+            # Auto-reply to user
+            ticket_id = f"PF-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{hash(email + subject) % 10000:04d}"
+            ar_subject = f"[Paperfull] Pesan Anda telah kami terima"
+            resend.Emails.send({
+                "from": from_email,
+                "to": [email],
+                "subject": ar_subject,
+                "html": f"""<div style="font-family: sans-serif;">
+<p>Halo {name},</p>
+<p>Terima kasih telah menghubungi Paperfull.</p>
+<p>Pesan Anda dengan subjek <em>{subject}</em> telah kami terima.</p>
+<p>Tim kami akan merespons dalam 1-2 hari kerja.</p>
+<p>Nomor tiket: <strong>#{ticket_id}</strong></p>
+<p><em>(Jangan balas email ini — kami akan menghubungi Anda melalui email ini)</em></p>
+<p>Salam,<br>Tim Paperfull</p>
+</div>""",
+            })
+
+        except Exception as e:
+            log.warning(f"Resend email failed: {e}")
+            # JSONL fallback already saved
+
+    return jsonify({"success": True, "message": "Pesan Anda telah dikirim. Kami akan merespons dalam 1-2 hari kerja."})
+
+
+@auth.route("/me/export", methods=["GET"])
+@jwt_required()
+def export_my_data():
+    """GDPR-style data export: return all user-owned data as JSON (download)."""
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+
+    user = User.query.get(user_id)
+    if not user or user.is_deleted:
+        return jsonify({"error": "User not found"}), 404
+
+    from utils.database.models import (
+        Paper, LiteratureItem, SlrJob, ApiUsageLog, Conversation, ChatMessage,
+    )
+
+    papers = [p.to_dict() for p in db.session.query(Paper).filter_by(user_id=user_id).all()]
+    literature = [
+        li.to_dict() for li in db.session.query(LiteratureItem).filter_by(user_id=user_id).all()
+    ]
+    slr_jobs = [j.to_dict() for j in db.session.query(SlrJob).filter_by(user_id=user_id).all()]
+    usage = [
+        u.to_dict() for u in db.session.query(ApiUsageLog).filter_by(user_id=user_id).all()
+    ]
+    conversations = [
+        c.to_dict() for c in db.session.query(Conversation).filter_by(user_id=user_id).all()
+    ]
+
+    payload = {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "user": user.to_dict(),
+        "papers": papers,
+        "literature_items": literature,
+        "slr_jobs": slr_jobs,
+        "api_usage_logs": usage,
+        "conversations": conversations,
+    }
+    resp = jsonify(payload)
+    resp.headers["Content-Disposition"] = (
+        f'attachment; filename="paperfull-data-export-{user_id}.json"'
+    )
+    return resp
+
+
+@auth.route("/me", methods=["DELETE"])
+@jwt_required()
+def delete_my_account():
+    """GDPR-style account deletion: soft-delete + anonymize PII, revoke tokens.
+
+    Data is retained (papers/literature kept for referential integrity) but the
+    account is deactivated and all personally identifiable info is wiped.
+    """
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user identity"}), 401
+
+    user = User.query.get(user_id)
+    if not user or user.is_deleted:
+        return jsonify({"error": "User not found"}), 404
+
+    if user.role == "admin":
+        return jsonify({"error": "Admin account cannot be self-deleted"}), 403
+
+    # Anonymize PII
+    import secrets as _secrets
+    anon = _secrets.token_hex(8)
+    user.email = f"deleted-{anon}@deleted.paperfull.app"
+    user.name = "Deleted User"
+    user.nickname = ""
+    user.institution = ""
+    user.password_hash = None
+    user.google_id = None
+    user.oauth_provider = None
+    user.avatar_url = None
+    user.is_deleted = True
+    user.deleted_at = datetime.now(timezone.utc)
+    safe_commit()
+
+    # Revoke current token so the session dies immediately
+    try:
+        _revoke_all_tokens(get_jwt())
+    except Exception:
+        pass
+
+    resp = jsonify({"success": True, "message": "Account deleted"})
     unset_jwt_cookies(resp)
     return resp

@@ -3,7 +3,7 @@ Reconcile paper figures with actual generated images.
 
 During generation, figures have placeholder paths like "gambar/fig1.png".
 After image generation, actual images are stored in user/<username>/<paper_id>/image/
-(via ``safe_paper_dir``), or legacy ``data/uploads/<paper_id>/``.
+(via ``safe_paper_dir``).
 This module maps figures to their actual image files before DOCX export.
 
 Two data shapes carry image paths:
@@ -30,25 +30,33 @@ def reconcile_figure_images(paper_id: str, paper_data: dict, upload_base: Path) 
     Args:
         paper_id: Paper ID
         paper_data: Paper data dict (modified in place)
-        upload_base: Base upload folder (e.g., backend/data/uploads) — used as fallback
+        upload_base: Base upload folder (e.g., backend/user/<user_id>/uploads) — used as fallback
     """
     if not paper_id:
         log.warning("[reconcile] No paper_id provided")
         return
 
     # ── Collect all image files for this paper ──────────────────────────
-    # Primary: user/<username>/<paper_id>/image/ (via safe_paper_dir)
-    # Fallback: data/uploads/<paper_id>/
-    paper_upload_dir = _find_paper_image_dir(paper_id, upload_base)
-    log.info("[reconcile] Paper %s — using image dir: %s", paper_id, paper_upload_dir)
+    # Scan ALL dirs (canonical + legacy) and merge file lists
+    all_dirs = _find_paper_image_dirs(paper_id, upload_base)
+    log.info("[reconcile] Paper %s — image dirs: %s", paper_id, [str(d) for d in all_dirs])
 
-    if paper_upload_dir is None or not paper_upload_dir.exists():
+    if not all_dirs:
         log.warning("[reconcile] No image folder for paper %s", paper_id)
         return
 
     image_files: List[Path] = []
-    for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
-        image_files.extend(paper_upload_dir.glob(f'*{ext}'))
+    seen_names: set[str] = set()
+    for img_dir in all_dirs:
+        for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+            for f in img_dir.glob(f'*{ext}'):
+                if f.name not in seen_names:
+                    image_files.append(f)
+                    seen_names.add(f.name)
+            for f in img_dir.glob(f'*{ext.upper()}'):
+                if f.name not in seen_names:
+                    image_files.append(f)
+                    seen_names.add(f.name)
 
     if not image_files:
         log.debug("[reconcile] No images found for paper %s", paper_id)
@@ -181,43 +189,58 @@ def _patch_section_gambar_paths(paper_data: dict, file_map: dict[str, Path]) -> 
     Walk all section/subsection content arrays and patch ``gambar`` items
     whose ``Path`` is a bare filename → absolute path from the upload folder.
 
+    Handles nested structures: paper_data.paper.section2, paper_data.section1, etc.
+    Walks recursively into any dict that contains section* keys.
+
     Returns the number of gambar items patched.
     """
     patched = 0
 
-    for key, section in paper_data.items():
-        if not isinstance(section, dict):
-            continue
-        # Match section keys: section1, section2a, section3b, etc.
-        if not re.match(r'^section\d+[a-z]?$', key):
-            continue
+    def _walk(obj: dict) -> None:
+        nonlocal patched
+        if not isinstance(obj, dict):
+            return
 
-        content = section.get("content")
-        if isinstance(content, list):
-            patched += _patch_content_list(content, file_map)
+        # Check if this dict itself has section* keys
+        section_keys = [k for k in obj if isinstance(k, str) and re.match(r'^section\d+[a-z]?$', k)]
+        if section_keys:
+            for key in section_keys:
+                section = obj.get(key)
+                if not isinstance(section, dict):
+                    continue
+                content = section.get("content")
+                if isinstance(content, list):
+                    patched += _patch_content_list(content, file_map)
+                # Also check subsection keys like section2a, section3b inside a section
+                for sub_key, sub in section.items():
+                    if sub_key in ("content", "title", "number", "letter"):
+                        continue
+                    if isinstance(sub, dict) and re.match(r'^section\d+[a-z]+$', sub_key):
+                        sub_content = sub.get("content")
+                        if isinstance(sub_content, list):
+                            patched += _patch_content_list(sub_content, file_map)
 
-        # Also check subsection keys like section2a, section3b inside a section
-        for sub_key, sub in section.items():
-            if sub_key == "content" or sub_key == "title" or sub_key == "number" or sub_key == "letter":
+        # Also handle legacy "sections" array format
+        for section in obj.get("sections", []):
+            if not isinstance(section, dict):
                 continue
-            if isinstance(sub, dict) and re.match(r'^section\d+[a-z]+$', sub_key):
-                sub_content = sub.get("content")
-                if isinstance(sub_content, list):
-                    patched += _patch_content_list(sub_content, file_map)
+            content = section.get("content")
+            if isinstance(content, list):
+                patched += _patch_content_list(content, file_map)
+            for sub in section.get("subsections", []):
+                if isinstance(sub, dict):
+                    sub_content = sub.get("content")
+                    if isinstance(sub_content, list):
+                        patched += _patch_content_list(sub_content, file_map)
 
-    # Also handle legacy "sections" array format
-    for section in paper_data.get("sections", []):
-        if not isinstance(section, dict):
-            continue
-        content = section.get("content")
-        if isinstance(content, list):
-            patched += _patch_content_list(content, file_map)
-        for sub in section.get("subsections", []):
-            if isinstance(sub, dict):
-                sub_content = sub.get("content")
-                if isinstance(sub_content, list):
-                    patched += _patch_content_list(sub_content, file_map)
+        # Recurse into nested dicts that might wrap the paper (e.g. paper_data.paper)
+        for key, val in obj.items():
+            if key in ("sections", "subsections", "content", "title"):
+                continue
+            if isinstance(val, dict):
+                _walk(val)
 
+    _walk(paper_data)
     return patched
 
 
@@ -307,30 +330,61 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
     return patched
 
 
-def _find_paper_image_dir(paper_id: str, upload_base: Path) -> Optional[Path]:
+def _find_paper_image_dirs(paper_id: str, upload_base: Path) -> list[Path]:
+    """Return ALL image directories for this paper (canonical + legacy).
+
+    Priority:
+      1. user/<username>/<paper_id>/image/  (canonical, per-user)
+      2. user/<paper_id>/image/              (canonical, direct)
+      3. upload_base/<paper_id>/             (legacy fallback)
     """
-    Locate the image directory for a paper.
-    Returns the first existing path:
-      1. user/<user_id>/uploads/<paper_id>/image/  (new per-user via safe_paper_dir)
-      2. user/<username>/<paper_id>/image/          (existing username-based)
-      3. upload_base/<paper_id>/                    (passed fallback, e.g. per-user uploads dir)
-      4. legacy data/uploads/<paper_id>/            (old centralized)
-    """
-    # Primary: safe_paper_image_dir (tries new per-user first, then username-based)
+    dirs = []
+
+    # 1. user/<paper_id>/image/ (canonical)
+    from utils.database.models import Paper
+    from main import app
     try:
-        from tools.editor.utils import safe_paper_image_dir
-        image_dir = safe_paper_image_dir(paper_id)
-        if image_dir and image_dir.exists():
-            return image_dir
+        with app.app_context():
+            paper = Paper.query.get(paper_id)
+            if paper and paper.user_id:
+                from utils.core.user_storage import get_username
+                username = get_username(user_id=paper.user_id)
+                if username:
+                    user_dir = Path(__file__).resolve().parent.parent.parent / "user" / username / paper_id / "image"
+                    if user_dir.exists():
+                        dirs.append(user_dir)
     except Exception:
-        log.debug("[reconcile] safe_paper_image_dir lookup failed", exc_info=True)
+        pass
 
-    # Fallback: upload_base/<paper_id>/ (per-user or legacy)
-    legacy_dir = upload_base / paper_id
-    if legacy_dir.exists():
-        return legacy_dir
+    # 2. user/<paper_id>/image/ (direct canonical)
+    direct = Path(__file__).resolve().parent.parent.parent / "user" / paper_id / "image"
+    if direct.exists():
+        dirs.append(direct)
 
-    return None
+    # 3. Scan all user dirs for paper_id/image/
+    try:
+        user_root = Path(__file__).resolve().parent.parent.parent / "user"
+        for user_dir in user_root.iterdir():
+            if not user_dir.is_dir() or user_dir.name.startswith("."):
+                continue
+            candidate = user_dir / paper_id / "image"
+            if candidate.exists() and candidate not in dirs:
+                dirs.append(candidate)
+    except Exception:
+        pass
+
+    # Fallback: upload_base/<paper_id>/
+    legacy = upload_base / paper_id
+    if legacy.exists() and legacy not in dirs:
+        dirs.append(legacy)
+
+    return dirs
+
+
+def _find_paper_image_dir(paper_id: str, upload_base: Path) -> Optional[Path]:
+    """Legacy wrapper — returns first existing dir."""
+    dirs = _find_paper_image_dirs(paper_id, upload_base)
+    return dirs[0] if dirs else None
 
 
 def _extract_figure_number(path: str, title: str) -> Optional[int]:

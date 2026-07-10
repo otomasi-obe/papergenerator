@@ -15,7 +15,8 @@ from lxml import etree
 def add_omml_formula(doc, latex, number="", CFG=None,
                      before_pt=10, after_pt=8, alignment="center",
                      font_body="Times New Roman", size_body=11,
-                     max_width_cm=None, line_spacing_tw=360):
+                     max_width_cm=None, line_spacing_tw=360,
+                     font_cs=None, font_eastAsia=None):
     """Insert formula as OMML (real Word equation object) + optional (number).
     Falls back to plain text if conversion fails.
     
@@ -95,6 +96,10 @@ def add_omml_formula(doc, latex, number="", CFG=None,
             rFonts = etree.SubElement(rPr, qn("w:rFonts"))
             rFonts.set(qn("w:ascii"), font_body)
             rFonts.set(qn("w:hAnsi"), font_body)
+            if font_cs:
+                rFonts.set(qn("w:cs"), font_cs)
+            if font_eastAsia:
+                rFonts.set(qn("w:eastAsia"), font_eastAsia)
             sz = etree.SubElement(rPr, qn("w:sz"))
             sz.set(qn("w:val"), str(int(size_body * 2)))
             szCs = etree.SubElement(rPr, qn("w:szCs"))

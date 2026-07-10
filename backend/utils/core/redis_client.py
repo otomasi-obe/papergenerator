@@ -68,7 +68,6 @@ def get_redis() -> Redis | None:
             log.info("redis: connected to %s", url)
             return _redis_client
         except (RedisConnectionError, RedisTimeoutError, OSError) as exc:
-            log.warning("redis: unavailable (%s) — running in fallback mode", exc)
-            _fallback_mode = True
+            log.warning("redis: unavailable (%s) — will retry next call", exc)
             _redis_client = None
             return None

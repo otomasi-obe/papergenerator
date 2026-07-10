@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
 from utils.database.models import ApiUsageLog, Paper, PaperImage, User, db, safe_commit
@@ -19,8 +19,12 @@ admin = Blueprint("admin", __name__, url_prefix="/api/admin")
 
 
 def _require_admin():
-    claims = get_jwt()
-    return claims.get("role") == "admin"
+    try:
+        user_id = int(get_jwt_identity())
+    except (TypeError, ValueError):
+        return False
+    user = User.query.get(user_id)
+    return bool(user and user.role == "admin")
 
 
 @admin.route("/users", methods=["GET"])
@@ -94,7 +98,7 @@ def set_user_quota(user_id):
 
     data = request.get_json(silent=True) or {}
     try:
-        quota = int(data.get("token_quota_monthly", 1000000))
+        quota = int(data.get("token_quota_monthly", 500000))
     except (TypeError, ValueError):
         return jsonify({"error": "token_quota_monthly must be integer"}), 400
     if quota < 0 or quota > 10_000_000:

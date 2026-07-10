@@ -185,7 +185,6 @@ def _clean_latex_notation(text: str) -> str:
     """Convert LaTeX notation in text to plain Unicode, preserving math-mode regions."""
     if not isinstance(text, str):
         return text
-    global _SUP, _SUB, _MATH_PATTERN
 
     # 1. Extract and protect math-mode regions ($$, $, \[...\], \(...\))
     math_regions = {}
@@ -279,6 +278,8 @@ def clean_paper_text(text: str) -> str:
 
 def clean_paper_data(data):
     """Recursively clean all string values in a paper data dict/list."""
+    if data is None:
+        return None
     if isinstance(data, dict):
         return {k: clean_paper_data(v) for k, v in data.items()}
     elif isinstance(data, list):

@@ -1,0 +1,217 @@
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base Score: 100 | Penalty: -177 | Final: 0%
+============================================================
+[AUDIT] Scanning: IJRED.docx vs IJRED_g1_test.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 5, Output: 5
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 6 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 5, Output: 5
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 2
+  [B] Prompt AI gambar di Output       : 1 (valid: 0, mismatch: 1 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 7, extra: 0
+  Gambar fisik di Original (referensi)  : 7
+  [!] GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 0 gambar konten + 1 prompt AI = 1. Kurang 7 elemen.
+  [!] PROMPT TIDAK COCOK: Paragraf #16 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Perbandingan Kemampuan Sosial Emosional. Buat diagram batang yang menunjukkan perbandingan skor pret"
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 0 | Figures dengan referensi: 1 | Caption-first valid: 0 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=43 out=43 | AbstractIds: orig=43 out=43
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 28 | Output headings: 5 | Levels checked: 1 | Format mismatches: 0
+  Level 0: [!] template=decimal (28 headings) → output=None (5 headings)
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 6 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 2 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 1 | OK: 1 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: HORIZONTAL_ONLY
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 1 (output) | 4 (template) | Mismatches: 1
+  [!] Figure caption #0 bold pattern mismatch: template=[False] output=[True, False]
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 6 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 6 | Mismatches: 0
+  [OK] Font size konsisten dengan template.
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 0 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 2 total (2 body + 0 header/footer) | Logo output: 2 total (2 body + 0 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  Original logo rIds: ['rId8', 'rId9']
+  Preserved rIds: ['rId8', 'rId9']
+  [OK] Semua logo jurnal (branding) dipertahankan di output.
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 21 | Violations: 9
+  [!] PARA SPACING MISMATCH #1 [icsm_bodytext]: before=0.0pt (orig=12.0pt, delta=12.0pt) after=0.0pt (orig=12.0pt, delta=12.0pt) — "Abstract—Penelitian ini bertujuan untuk mengetahui pengaruh "
+  [!] PARA SPACING MISMATCH #2 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Index Terms—bermain peran, kemampuan sosial emosional, anak "
+  [!] PARA SPACING MISMATCH #4 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=18.0pt, delta=18.0pt) — "Pendidikan anak usia dini merupakan pondasi penting dalam pe"
+  [!] PARA SPACING MISMATCH #8 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=18.0pt, delta=18.0pt) — "TABLE 1
+Hasil Pretest dan Posttest Kemampuan Sosial Emosiona"
+  [!] PARA SPACING MISMATCH #10 [icsm_bodytext]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=12.0pt, delta=12.0pt) — "Berdasarkan hasil penelitian, kelompok eksperimen yang menda"
+  [!] PARA SPACING MISMATCH #14 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Metode bermain peran berpengaruh signifikan terhadap peningk"
+  [!] PARA SPACING MISMATCH #18 [icsm_bodytext]: before=0.0pt (orig=18.0pt, delta=18.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Wahyuni, S., & Sari, D. (2021). The Effect of Role Play on S"
+  [!] PARA SPACING MISMATCH #19 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Zain, M. (2018). Metode Bermain dalam Pendidikan Anak Usia D"
+  [!] PARA SPACING MISMATCH #20 [icsm_bodytext]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Nurlaila, A. (2022). Implementasi Bermain Peran untuk Mening"
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 5, Output: 5
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 2, Output: 2, Expected (orig + JSON): 2 (JSON tables: 0, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 0
+  [OK] Jumlah tabel body sesuai (dalam toleransi).
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 1, 0, 0, 0], Output: [0, 1, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 5, Output: 5 | Original berkonten: 4 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1, 2, 1, 1, 1], Output: [1, 2, 1, 1, 1]
+  Drawings -- Original: 6, Output: 2
+  Dekoratif by cols -- Original: {1: 3}, Output: {1: 2}
+  Konten by cols -- Original: {1: 3}, Output: {}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 3, Output: 2
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 3, Output: 2
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 1 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 0 | Center violations: 0 | Tab violations: 0 | Alignment mismatches (vs template): 0
+  [OK] Semua formula paragraph center-aligned dengan benar.
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 0 | Mismatch: 0
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `IJRED_g1_testgen.py`. Tolong perbaiki kodingan `IJRED_g1_testgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 0 gambar konten + 1 prompt AI = 1. Kurang 7 elemen.
+- PROMPT TIDAK COCOK: Paragraf #16 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Perbandingan Kemampuan Sosial Emosional. Buat diagram batang yang menunjukkan perbandingan skor pret"
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 1' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 3' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 5' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 7' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 2' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 4' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 6' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Diagram blok sistem kendali adaptif berbasis fuzzy logic pad' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 1 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- SPACING: Table caption #12 before=0pt (expected 3-24pt) - TABLE 1
+Hasil Pretest dan Posttest Kemampuan Sosial Emosiona
+- SPACING: Figure caption #17 before=0pt (expected 3-24pt) - Fig. 1. Perbandingan Kemampuan Sosial Emosional
+- PARA SPACING MISMATCH #1 [icsm_bodytext]: before=0.0pt (orig=12.0pt, delta=12.0pt) after=0.0pt (orig=12.0pt, delta=12.0pt) — "Abstract—Penelitian ini bertujuan untuk mengetahui pengaruh "
+- PARA SPACING MISMATCH #2 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=3.0pt, delta=3.0pt) — "Index Terms—bermain peran, kemampuan sosial emosional, anak "
+- PARA SPACING MISMATCH #4 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=18.0pt, delta=18.0pt) — "Pendidikan anak usia dini merupakan pondasi penting dalam pe"
+- PARA SPACING MISMATCH #8 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=18.0pt, delta=18.0pt) — "TABLE 1
+Hasil Pretest dan Posttest Kemampuan Sosial Emosiona"
+- PARA SPACING MISMATCH #10 [icsm_bodytext]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=12.0pt, delta=12.0pt) — "Berdasarkan hasil penelitian, kelompok eksperimen yang menda"
+- PARA SPACING MISMATCH #14 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Metode bermain peran berpengaruh signifikan terhadap peningk"
+- PARA SPACING MISMATCH #18 [icsm_bodytext]: before=0.0pt (orig=18.0pt, delta=18.0pt) after=0.0pt (orig=0.0pt, delta=0.0pt) — "Wahyuni, S., & Sari, D. (2021). The Effect of Role Play on S"
+- PARA SPACING MISMATCH #19 [icsm_bodytext]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Zain, M. (2018). Metode Bermain dalam Pendidikan Anak Usia D"
+- PARA SPACING MISMATCH #20 [icsm_bodytext]: before=0.0pt (orig=6.0pt, delta=6.0pt) after=0.0pt (orig=6.0pt, delta=6.0pt) — "Nurlaila, A. (2022). Implementasi Bermain Peran untuk Mening"
+- EMPTY PARAGRAPHS: 4 paragraf kosong beruntun (index 0–3)
+- Spacing caption tabel #12 terlalu rapat: 0pt before (min 3pt)
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Figure caption #0 bold pattern mismatch: template=[False] output=[True, False]
+- Paragraf #4: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #5: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #6: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #8: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #9: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #11: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #15: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #19: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #21: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #22: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #23: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #24: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #25: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Placeholder/Prompt Gambar Salah (MINOR): -5 x 7 = -35
+  - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 8 = -80
+  - Spacing Element Tidak Konsisten (MINOR): -3 x 2 = -6
+  - Paragraph Spacing Mismatch (MINOR): -2 x 9 = -18
+  - Paragraf Kosong Beruntun (MINOR): -3
+  - Caption/Table Spacing Rapat (MINOR): -3 x 2 = -6
+  - Figure Caption Style Mismatch (MINOR): -3
+  - First Line Indent Tidak Sesuai (MINOR): -2 x 13 = -26
+  Total Penalty: -177
+  Skor Akhir: 0%

@@ -19,7 +19,7 @@
  <div class="flex items-center gap-2">
  <!-- Token quota bar -->
  <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
- <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @focus="quotaOpen = true" @blur="quotaOpen = false" @keydown.escape.stop="quotaOpen = false">
+ <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @focus="quotaOpen = true" @blur="quotaOpen = false" @keydown.escape.stop="quotaOpen = false" @click="detailModalOpen = true">
  <div class="w-24 h-2 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
  <div
  class="h-full transition-all"
@@ -54,7 +54,7 @@
 
  <!-- Buy Token Package -->
  <button
-   @click="$router.push('/tokens/purchase')"
+   @click="purchaseModalOpen = true"
    class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-semibold transition-all hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
  >
    Beli Paket Token
@@ -246,6 +246,10 @@
  </div>
  </div>
  </header>
+ <Teleport to="body">
+   <TokenPurchaseModal :isOpen="purchaseModalOpen" @close="purchaseModalOpen = false" />
+   <TokenDetailModal :open="detailModalOpen" @close="detailModalOpen = false" @buy-tokens="detailModalOpen = false; purchaseModalOpen = true" />
+ </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -256,6 +260,8 @@ import { useAuthStore } from '../stores/auth'
 import { useTheme } from '../stores/theme'
 import { usePaperJobsStore } from '../stores/paperJobs'
 import { useQuotaStore } from '../stores/quota'
+import TokenPurchaseModal from './TokenPurchaseModal.vue'
+import TokenDetailModal from './TokenDetailModal.vue'
 
 const logoUrl = '/assets/logo.png'
 
@@ -264,6 +270,8 @@ const router = useRouter()
 const menuOpen = ref(false)
 const quotaOpen = ref(false)
 const bellOpen = ref(false)
+const purchaseModalOpen = ref(false)
+const detailModalOpen = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
 const quotaRef = ref<HTMLElement | null>(null)
 const bellRef = ref<HTMLElement | null>(null)

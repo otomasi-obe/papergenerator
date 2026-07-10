@@ -8,6 +8,7 @@ includes both cookies and headers.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import tempfile
 import uuid
@@ -241,7 +242,9 @@ def upload_paper_files(paper_id: str):
 
         # Always use temp file — raw binary is NOT persisted to disk.
         # Only extracted .txt text is saved permanently.
-        temp_file = Path(tempfile.mktemp(suffix=ext))
+        temp_fd, temp_path = tempfile.mkstemp(suffix=ext)
+        os.close(temp_fd)
+        temp_file = Path(temp_path)
         temp_file.write_bytes(data)
         temp_files.append(temp_file)
         filepath = temp_file

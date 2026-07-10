@@ -2,7 +2,7 @@
 Frontend Logging Endpoint
 ==========================
 Receives structured logs from frontend and writes them to per-hour files
-at frontend/log/YYYY-MM-DD-HH/frontend.log
+under backend/log/frontend/YYYY-MM-DD-HH/frontend.log
 """
 
 import json
@@ -16,9 +16,9 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from utils.core.hourly_log_handler import HourlyFileHandler
 
-# Frontend log directory
-FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend"
-FRONTEND_LOG_BASE = FRONTEND_DIR / "log"
+# All application logs belong under backend/log.
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+FRONTEND_LOG_BASE = BACKEND_DIR / "log" / "frontend"
 
 log = logging.getLogger("papergenerator.frontend")
 

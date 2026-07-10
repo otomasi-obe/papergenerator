@@ -29,15 +29,16 @@ def upload_folder(user_id: int | None = None) -> Path:
             return get_user_dir(int(user_id), "uploads")
         except Exception:
             pass
-    return Path(current_app.root_path) / "data/uploads"
+    return Path(current_app.root_path) / "user" / "uploads"
 
 
 def safe_paper_dir(paper_id: str, user_id: int | None = None) -> Path | None:
     """Return paper directory: user/<username>/<paper_id>/.
 
     Priority:
-    1. user/<username>/<paper_id>/ (preferred — username-based, matches existing user dirs)
-    2. legacy data/uploads/<paper_id>/ (backward compat fallback)
+    1. user/<username>/<paper_id>/ (canonical — per-user storage)
+    2. user/<paper_id>/ (legacy — old data before per-user fix)
+    3. data/uploads/<paper_id>/ (backward compat)
     """
     if not paper_id or not PAPER_ID_RE.match(paper_id):
         return None
@@ -48,12 +49,15 @@ def safe_paper_dir(paper_id: str, user_id: int | None = None) -> Path | None:
         try:
             from utils.database.models import Paper as _Paper
             _p = _Paper.query.filter_by(id=paper_id).first()
+            # TODO: add user_id filter — query resolves user_id when not provided
             if _p:
                 _uid = _p.user_id
         except Exception:
             pass
 
-    # Primary: user/<username>/<paper_id>/ (matches existing user directories)
+    user_base = (Path(current_app.root_path) / "user").resolve()
+    
+    # Primary: user/<username>/<paper_id>/ (new canonical)
     if _uid:
         try:
             from utils.database.models import User as _User
@@ -61,15 +65,28 @@ def safe_paper_dir(paper_id: str, user_id: int | None = None) -> Path | None:
             if _u and _u.email:
                 username = re.sub(r'[^A-Za-z0-9._-]+', '_', _u.email.split("@")[0]).strip("._-") or "unknown"
                 user_dir = (Path(current_app.root_path) / "user" / username / paper_id).resolve()
-                base = (Path(current_app.root_path) / "user").resolve()
                 try:
-                    user_dir.relative_to(base)
+                    user_dir.relative_to(user_base)
                 except ValueError:
-                    return None
-                user_dir.mkdir(parents=True, exist_ok=True)
-                return user_dir
+                    pass
+                else:
+                    user_dir.mkdir(parents=True, exist_ok=True)
+                    if (user_dir / "image").exists() or (user_dir / "chat").exists() or any(user_dir.glob("*.json")):
+                        return user_dir
+                    # Even if empty, return it (new canonical location)
+                    return user_dir
         except Exception:
             pass
+
+    # Legacy fallback: user/<paper_id>/ (old data before per-user fix)
+    canonical = (Path(current_app.root_path) / "user" / paper_id).resolve()
+    try:
+        canonical.relative_to(user_base)
+    except ValueError:
+        pass
+    else:
+        if canonical.exists() and ((canonical / "image").exists() or (canonical / "chat").exists() or any(canonical.glob("*.json"))):
+            return canonical
 
     # Fallback: legacy data/uploads/<paper_id>/
     base = upload_folder().resolve()
@@ -78,7 +95,7 @@ def safe_paper_dir(paper_id: str, user_id: int | None = None) -> Path | None:
         target.relative_to(base)
     except ValueError:
         return None
-    return target
+    return target if target.exists() else None
 
 
 def safe_paper_image_dir(paper_id: str) -> Path | None:
@@ -86,11 +103,42 @@ def safe_paper_image_dir(paper_id: str) -> Path | None:
 
     Falls back to legacy data/uploads/<paper_id>/ if paper/user not found.
     All images (generated, uploaded, charts) go here.
+
+    If the canonical paper dir (user/<paper_id>/) doesn't contain an image/
+    subdirectory, tries the legacy username-based path before falling back.
     """
     base_dir = safe_paper_dir(paper_id)
     if base_dir is None:
         return None
-    return base_dir / "image"
+
+    img_dir = base_dir / "image"
+    if img_dir.is_dir() and any(img_dir.iterdir()):
+        return img_dir
+
+    # Canonical dir may have export artifacts but not images;
+    # try the legacy username-based path which may have the actual image/ dir
+    try:
+        from utils.database.models import Paper as _Paper, User as _User
+        _p = _Paper.query.filter_by(id=paper_id).first()
+        # TODO: add user_id filter — safe_paper_image_dir has no user_id param (legacy fallback)
+        if _p and _p.user_id:
+            _u = _User.query.get(int(_p.user_id))
+            if _u and _u.email:
+                username = re.sub(r'[^A-Za-z0-9._-]+', '_', _u.email.split("@")[0]).strip("._-") or "unknown"
+                legacy_base = (Path(current_app.root_path) / "user" / username / paper_id).resolve()
+                base = (Path(current_app.root_path) / "user").resolve()
+                try:
+                    legacy_base.relative_to(base)
+                except ValueError:
+                    pass
+                else:
+                    legacy_img = legacy_base / "image"
+                    if legacy_img.is_dir() and any(legacy_img.iterdir()):
+                        return legacy_img
+    except Exception:
+        pass
+
+    return img_dir
 
 
 def is_image_bytes(head: bytes, ext: str) -> bool:

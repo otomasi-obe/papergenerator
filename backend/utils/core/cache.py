@@ -13,6 +13,7 @@ _cache_store: dict[str, tuple[Any, datetime]] = {}
 # runs once per key (single-flight), preventing a cache stampede under load.
 _keyed_locks: dict[str, threading.Lock] = {}
 _keyed_locks_guard = threading.Lock()
+_MAX_KEYED_LOCKS = 500
 
 # Max entries to prevent memory leak from unbounded growth
 _MAX_CACHE_ENTRIES = 500
@@ -35,6 +36,12 @@ def _evict_expired():
 
 def _get_key_lock(cache_key: str) -> threading.Lock:
     with _keyed_locks_guard:
+        # Cleanup if over limit
+        if len(_keyed_locks) > _MAX_KEYED_LOCKS:
+            # Remove locks not currently held (safe heuristic)
+            to_remove = [k for k, l in _keyed_locks.items() if not l.locked()]
+            for k in to_remove[:len(_keyed_locks) - _MAX_KEYED_LOCKS // 2]:
+                del _keyed_locks[k]
         lock = _keyed_locks.get(cache_key)
         if lock is None:
             lock = threading.Lock()

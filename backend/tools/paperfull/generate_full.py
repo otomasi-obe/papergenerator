@@ -273,6 +273,17 @@ def _inject_structured_content(paper_data: dict) -> dict:
     import copy
     paper_data = copy.deepcopy(paper_data)
 
+    # Guard: if section content already has structured items, skip to avoid duplicates
+    _paper_raw = paper_data
+    if isinstance(_paper_raw, dict):
+        _inner = _paper_raw.get("paper_data", _paper_raw)
+        if isinstance(_inner, dict) and "paper" in _inner:
+            _inner = _inner["paper"]
+        if isinstance(_inner, dict):
+            _content_blob = str(_inner)
+            if "<figure" in _content_blob or "<table" in _content_blob:
+                return paper_data
+
     # Resolve paper dict from various structures
     paper = None
     if "paper_data" in paper_data:
@@ -406,10 +417,39 @@ def export_docx(paper_data: dict, journal_code: str = "IEEE", citation_style: Op
             for k in ("judul", "updated_at"):
                 if k in paper_data:
                     generator_input[k] = paper_data[k]
+            # Preserve paper_id for image resolution (AEJgen reads it from JSON root)
+            for k in ("paper_id", "id"):
+                if paper_data.get(k):
+                    generator_input[k] = paper_data[k]
+                    break
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
-        json.dump(generator_input, f, ensure_ascii=False, indent=2)
-        json_path = Path(f.name)
+    # Write JSON to paper directory so image resolution works
+    # (AEJgen scans relative to JSON path for images)
+    paper_id = paper_data.get("paper_id") or paper_data.get("paper_data", {}).get("paper_id", "")
+    from tools.image_generation.reconcile import _find_paper_image_dirs
+    user_base = Path(__file__).resolve().parent.parent.parent / "user"
+    
+    # Find paper dir — try user/<paper_id>/ first, then user/*/<paper_id>/
+    target_dir = None
+    if paper_id:
+        direct = user_base / paper_id
+        if direct.is_dir():
+            target_dir = direct
+        else:
+            for udir in user_base.iterdir():
+                if udir.is_dir() and (udir / paper_id).is_dir():
+                    target_dir = udir / paper_id
+                    break
+    
+    if target_dir:
+        json_path = target_dir / f"_export_{journal_code}.json"
+        json.dump(generator_input, json_path.open("w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    else:
+        # Fallback to /tmp/ if no paper dir found
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump(generator_input, f, ensure_ascii=False, indent=2)
+            json_path = Path(f.name)
 
     try:
         output_path = json_path.with_suffix(".docx")

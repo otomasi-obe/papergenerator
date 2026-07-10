@@ -1,7 +1,7 @@
 """Chart generator for paper section 4 (Results) — v2.
 
 Generates publication-quality matplotlib PNG charts from user-provided or AI-estimated data.
-Output saved to backend/data/charts/<paper_id>/<chart_id>.png.
+Output saved to backend/user/<user_id>/charts/<paper_id>/<chart_id>.png.
 
 Supports 15+ chart types with extensive styling options.
 
@@ -504,16 +504,15 @@ def generate_chart(paper_id: str, spec: ChartSpec, user_id=None, judul_paper=Non
 
     safe_paper_id = str(paper_id) if paper_id else "default"
     # Use per-user chart dir: user/<user_id>/charts/<paper_id>/
-    # Falls back to data/charts/<paper_id>/ when user_id unavailable.
+    # Falls back to user/charts/<paper_id>/ when user_id unavailable.
     if user_id:
         try:
             from utils.core.storage_helper import get_user_dir
             charts_base = get_user_dir(int(user_id), "charts")
         except Exception:
-            # backend/tools/data/chart_generator.py → backend/data/charts
-            charts_base = Path(__file__).resolve().parent.parent.parent / "data" / "charts"
+            charts_base = Path(__file__).resolve().parent.parent.parent / "user" / "charts"
     else:
-        charts_base = Path(__file__).resolve().parent.parent.parent / "data" / "charts"
+        charts_base = Path(__file__).resolve().parent.parent.parent / "user" / "charts"
     out_dir = charts_base / safe_paper_id
     os.makedirs(out_dir, exist_ok=True)
 

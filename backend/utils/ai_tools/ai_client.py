@@ -8,9 +8,10 @@ switches provider as well as model name (the MonitoringVokasi pattern).
 
 Two public helpers:
 
-  ``chat(messages, heavy=False, **opts) -> (content, model_used)``
-      Non-streaming. Returns the assistant content string and the model that
-      produced it. Raises the last exception when the whole chain fails.
+  ``chat(messages, heavy=False, **opts) -> (content, model_used, usage)``
+      Non-streaming. Returns the assistant content string, the model that
+      produced it, and usage dict (prompt/completion/total). Raises the last
+      exception when the whole chain fails.
 
   ``stream_chat(messages, heavy=False, **opts) -> Iterator[str]``
       Streaming. Yields content-delta strings. On a per-index failure BEFORE
@@ -60,7 +61,6 @@ def chat(
     max_tokens: int = 4096,
     temperature: float | None = None,
     timeout: int = 1800,
-    retry_count: int | None = None,
     extra_payload: dict[str, Any] | None = None,
 ) -> tuple[str, str]:
     """Non-streaming chat completion with per-index failover.
@@ -75,7 +75,7 @@ def chat(
             "(set AIOTOMASI_API{1,2,3} + AIOTOMASI_APIKEY{1,2,3} + MODEL* in .env)"
         )
 
-    max_attempts = retry_count if retry_count is not None else get_retry_count()
+    max_attempts = get_retry_count()
     last_err: Exception | None = None
 
     for idx, (model, base_url, api_key) in enumerate(chain, start=1):
@@ -173,6 +173,7 @@ def stream_chat(
             payload.update(extra_payload)
 
         emitted = False
+        resp = None
         try:
             resp = requests.post(
                 url,
@@ -209,8 +210,6 @@ def stream_chat(
         except Exception as e:  # noqa: BLE001
             last_err = e
             if emitted:
-                # Tokens already went to the client; cannot safely retry on a
-                # fresh index without duplicating output. Surface the failure.
                 log.warning(
                     "ai_client.stream mid-stream drop index=%d model=%s: %s",
                     idx, model, e,
@@ -222,5 +221,8 @@ def stream_chat(
                 idx, model, e,
             )
             continue
+        finally:
+            if resp is not None:
+                resp.close()
 
     raise last_err or RuntimeError("ai_client.stream_chat: all endpoints failed")

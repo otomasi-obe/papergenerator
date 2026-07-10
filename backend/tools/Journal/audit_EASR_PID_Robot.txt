@@ -1,0 +1,220 @@
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base Score: 100 | Penalty: -194 | Final: 0%
+============================================================
+[AUDIT] Scanning: EASR.docx vs EASR_PID_Robot.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 1, Output: 1
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 5 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 1, Output: 1
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 8
+  [B] Prompt AI gambar di Output       : 0 (valid: 0, mismatch: 0 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 0, extra: 0
+  Gambar fisik di Original (referensi)  : 2
+  [OK] Semua gambar/prompt sesuai JSON, tidak ada placeholder usang.
+
+[5] Kebocoran LaTeX/Simbol...
+  [OK] Tidak ada kebocoran LaTeX terdeteksi.
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 8 | Figures dengan referensi: 4 | Caption-first valid: 4 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=8 out=8 | AbstractIds: orig=8 out=8
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 0 | Output headings: 0 | Levels checked: 0 | Format mismatches: 0
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 5 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 5 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 5 | OK: 5 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: NO_BORDERS
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 12 (output) | 2 (template) | Mismatches: 6
+  [!] Figure caption style mismatch (para #39): label not bold -- "Gambar 1 memperlihatkan diagram blok sistem kendali posisi yang digunakan. Sinya"
+  [!] Figure caption style mismatch (para #50): label not bold -- "Gambar 2 menunjukkan arsitektur keseluruhan sistem. Trajektori pengelasan dihasi"
+  [!] Figure caption style mismatch (para #62): label not bold -- "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika setelah penerapan pa"
+  [!] Figure caption style mismatch (para #78): label not bold -- "Gambar 4 memperlihatkan secara visual perbedaan kinerja ketiga kendali. Respons "
+  [!] Figure caption #0 bold pattern mismatch: template=[True, False] output=[True, False, False]
+  [!] Figure caption #1 bold pattern mismatch: template=[True, False] output=[False]
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 5 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 5 | Mismatches: 0
+  [OK] Font size konsisten dengan template.
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 4 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 0 total (0 body + 0 header/footer) | Logo output: 0 total (0 body + 0 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  [OK] Template tidak memiliki logo di body top/headers/footers (skip check).
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 50 | Violations: 7
+  [!] PARA SPACING MISMATCH #20 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "2.1 Tinjauan Penelitian Terdahulu"
+  [!] PARA SPACING MISMATCH #34 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Figure 1 Diagram blok sistem kendali posisi lengan robot den"
+  [!] PARA SPACING MISMATCH #38 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "3.1 Desain dan Arsitektur Sistem"
+  [!] PARA SPACING MISMATCH #40 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table I Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+  [!] PARA SPACING MISMATCH #42 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Figure 2 Arsitektur sistem kendali PID pada lengan robot unt"
+  [!] PARA SPACING MISMATCH #44 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "3.2 Implementasi dan Prosedur Eksperimen"
+  [!] PARA SPACING MISMATCH #49 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table II Parameter PID dari Metode Ziegler-Nichols Closed-Lo"
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 1, Output: 1
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 1, Output: 5, Expected (orig + JSON): 1 (JSON tables: 0, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 4
+  [!] TABLE EXTRA FILLED: Output kelebihan 4 tabel berkonten (Expected: 1, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 1, Output: 1 | Original berkonten: 1 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1], Output: [1]
+  Drawings -- Original: 2, Output: 8
+  Dekoratif by cols -- Original: {}, Output: {}
+  Konten by cols -- Original: {1: 2}, Output: {1: 8}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 1 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 4 | Center violations: 0 | Tab violations: 4 | Alignment mismatches (vs template): 0
+  [!] FORMULA NUMBER TAB: Paragraf #31 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #34 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #53 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+  [!] FORMULA NUMBER TAB: Paragraf #65 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 50 | Mismatch: 0
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `EASR_PID_Robotgen.py`. Tolong perbaiki kodingan `EASR_PID_Robotgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- [FONT] Para #0 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Research Article or Review Article"
+- [FONT] Para #4 run #1: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "*Corresponding author. Tel.: +00-0000-0000"
+- [FONT] Para #5 run #0: orig={'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Abstract"
+- [FONT] Para #7 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Keywords:"
+- [FONT] Para #58 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "4. Hasil dan Pembahasan"
+- [FONT] Para #26 run #2: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "2.2 Kerangka Teoritis"
+- [FONT] Para #84 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Angsana New'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Figure 1"
+- [FONT] Para #85 run #0: orig={'cs': 'Times New Roman', 'eastAsia': 'Angsana New'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Figure 2"
+- [FONT] Para #86 run #2: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Angsana New'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Figure title"
+- [FONT] Para #87 run #0: orig={'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "Figure title"
+- [FONT] Para #34 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | " "
+- [FONT] Para #38 run #2: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Angsana New'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "3.1 Desain dan Arsitektur Sistem"
+- [FONT] Para #76 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "4.4 Diskusi dan Keterbatasan"
+- [FONT] Para #107 run #0: orig={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman'} out={'ascii': 'Times New Roman', 'hAnsi': 'Times New Roman', 'cs': 'Times New Roman', 'eastAsia': 'Times New Roman'} | "[19] "
+- UKURAN GAMBAR OVERSIZE: 8 gambar > target 8.0cm (1-col layout) — resiko overflow kolom
+- PARA SPACING MISMATCH #20 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "2.1 Tinjauan Penelitian Terdahulu"
+- PARA SPACING MISMATCH #34 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Figure 1 Diagram blok sistem kendali posisi lengan robot den"
+- PARA SPACING MISMATCH #38 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "3.1 Desain dan Arsitektur Sistem"
+- PARA SPACING MISMATCH #40 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table I Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+- PARA SPACING MISMATCH #42 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Figure 2 Arsitektur sistem kendali PID pada lengan robot unt"
+- PARA SPACING MISMATCH #44 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "3.2 Implementasi dan Prosedur Eksperimen"
+- PARA SPACING MISMATCH #49 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table II Parameter PID dari Metode Ziegler-Nichols Closed-Lo"
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "..."
+- Figure caption style mismatch (para #39): label not bold -- "Gambar 1 memperlihatkan diagram blok sistem kendali posisi yang digunakan. Sinya"
+- Figure caption style mismatch (para #50): label not bold -- "Gambar 2 menunjukkan arsitektur keseluruhan sistem. Trajektori pengelasan dihasi"
+- Figure caption style mismatch (para #62): label not bold -- "Gambar 3 menunjukkan alur penalaan PID yang digunakan. Jika setelah penerapan pa"
+- Figure caption style mismatch (para #78): label not bold -- "Gambar 4 memperlihatkan secara visual perbedaan kinerja ketiga kendali. Respons "
+- Figure caption #0 bold pattern mismatch: template=[True, False] output=[True, False, False]
+- Figure caption #1 bold pattern mismatch: template=[True, False] output=[False]
+- Paragraf #0: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #2: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #5: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- Paragraf #9: first_line_indent=0.00cm, expected=0.50cm (diff=0.50cm)
+- TABLE EXTRA FILLED: Output kelebihan 4 tabel berkonten (Expected: 1, Output: 5). Generator menambahkan tabel data yang tidak ada di JSON.
+- FORMULA NUMBER TAB: Paragraf #31 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #34 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #53 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+- FORMULA NUMBER TAB: Paragraf #65 punya nomor formula tapi tidak ada right-aligned tab stop — nomor mungkin tidak rata kanan
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Font Full Audit Mismatch (MINOR): -3 x 14 = -42
+  - Ukuran Gambar OVERSIZE (MAYOR): -10 x 8 = -80
+  - Paragraph Spacing Mismatch (MINOR): -2 x 7 = -14
+  - Caption/Table Spacing Rapat (MINOR): -3 x 5 = -15
+  - Figure Caption Style Mismatch (MINOR): -3 x 6 = -18
+  - First Line Indent Tidak Sesuai (MINOR): -2 x 4 = -8
+  - Tabel Extra Berkonten (MINOR): -5
+  - Formula Alignment Salah (MINOR): -3 x 4 = -12
+  Total Penalty: -194
+  Skor Akhir: 0%

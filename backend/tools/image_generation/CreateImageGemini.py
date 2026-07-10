@@ -80,7 +80,8 @@ log = logging.getLogger(__name__)
 # created lazily on first launch().
 LOG_DIR_ENV = os.environ.get("GEMINI_LOG_DIR")
 if LOG_DIR_ENV:
-    LOG_DIR = Path(LOG_DIR_ENV)
+    _env_log_dir = Path(LOG_DIR_ENV)
+    LOG_DIR = _env_log_dir if _env_log_dir.is_absolute() else REPO_DIR.parent.parent / "log" / _env_log_dir.name
 else:
     # Use backend/log/ for all generation logs
     LOG_DIR = REPO_DIR.parent.parent / "log"
@@ -228,7 +229,7 @@ def _open_image_tool(page, *, timeout_s: int = 30) -> None:
             const btns = composer.querySelectorAll('button');
             const b = [...btns].find(x => {
                 const t = (x.textContent || '').toLowerCase().trim();
-                const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRights().length);
+                const vis = !!(x.offsetWidth || x.offsetHeight || x.getClientRects().length);
                 return vis && (t.includes('upload') || t.includes('alat'));
             });
             if (b) { b.click(); return true; }

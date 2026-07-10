@@ -1,0 +1,283 @@
+============================================================
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+  Base Score: 100 | Penalty: -339 | Final: 0%
+============================================================
+[AUDIT] Scanning: ICONIE.docx vs ICONIE_output.docx
+============================================================
+
+[1] Deep Header/Footer Audit (multi-section, default/first/even)...
+  Sections -- Original: 1, Output: 1
+  Total elemen header/footer rusak (FATAL): 0 | Content diff (MINOR): 0
+  [OK] Semua header/footer (default/first/even) di setiap section terjaga.
+
+[2] Paragraph Style Validity (20 paragraf pertama)...
+  Pasangan ter-alignment: 20 | Original: 20, Output: 20 | Reset ke Normal: 0 | Style berbeda lainnya: 0
+  [OK] Style paragraf jurnal terjaga.
+
+[3] Page Setup & Multi-Column Layout...
+  Section count -- Original: 1, Output: 1
+  [OK] Ukuran halaman, margin, dan jumlah kolom presisi di semua section.
+
+[4] Strict Placeholder & AI Prompt Validation...
+  [A] Gambar fisik (drawing) di Output : 0
+  [B] Prompt AI gambar di Output       : 4 (valid: 0, mismatch: 4 [no penalty])
+  [C] Ekspektasi dari _template.json   : 8
+  Placeholder usang '[Image placeholder]': 0
+  Selisih -> missing: 4, extra: 0
+  Gambar fisik di Original (referensi)  : 0
+  [!] GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 0 gambar konten + 4 prompt AI = 4. Kurang 4 elemen.
+  [!] PROMPT TIDAK COCOK: Paragraf #33 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Diagram blok sistem kendali posisi lengan robot dengan kendali PID. (create an image A block diagram"
+  [!] PROMPT TIDAK COCOK: Paragraf #42 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Arsitektur sistem kendali PID pada lengan robot untuk pengelasan komponen otomotif. (create an image"
+  [!] PROMPT TIDAK COCOK: Paragraf #52 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Diagram alir prosedur penalaan PID dan simulasi. (create an image A flowchart illustrating the PID t"
+  [!] PROMPT TIDAK COCOK: Paragraf #66 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Respons step sistem kendali posisi lengan robot dengan PID, P, dan On-Off. (create an image A line c"
+
+[5] Kebocoran LaTeX/Simbol...
+  [!] Paragraf #5: `$, _2, _3, _5, _1` -- "Presisi pengelasan pada lengan robot industri menjadi faktor krusial dalam produksi komponen otomotif, namun gangguan ek..."
+
+[5a] Text Quality / Mojibake Detection...
+  Paragraf dengan karakter aneh: 0 | Total karakter mencurigakan: 0
+
+[5b] Figure Position Cross-Check...
+  Total drawings: 0 | Figures dengan referensi: 4 | Caption-first valid: 0 | Violations: 0
+  [OK] Semua gambar muncul setelah referensi teks.
+
+[5c] Heading Auto-Numbering Render Check...
+  Total headings: 0 | Level-0: 0 | Format mismatches: 0 | NumIds: orig=2 out=2 | AbstractIds: orig=2 out=2
+  [OK] Heading numbering konsisten.
+
+[5c.2] Section Numbering Format (decimal/roman/letter)...
+  Original headings: 0 | Output headings: 0 | Levels checked: 0 | Format mismatches: 0
+  [OK] Format numbering section konsisten dengan template.
+
+[5g] Double Numbering Detection (numPr + manual prefix)...
+  Violations: 0
+  [OK] Tidak ada double numbering terdeteksi.
+
+[5d] Run Formatting Audit (color/underline/vertAlign/bold/italic)...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Run formatting konsisten.
+
+[5e] Table Content Validation...
+  Total tables: 5 | Low density: 0
+  [OK] Tidak ada tabel placeholder kosong.
+
+[5e2] Table Border Visibility...
+  Tabel data: 5 | OK: 5 | Tanpa border: 0 | Border tipis: 0 | Pattern mismatch: 0
+  Template original pattern: CUSTOM_STYLE
+  [OK] Semua tabel data punya border match dengan template.
+
+[5o] Figure Caption Style Audit (label bold, deskripsi normal)...
+  Caption terdeteksi: 8 (output) | 0 (template) | Mismatches: 0
+  [OK] Semua figure caption mengikuti pola label-bold + deskripsi-normal.
+
+[5f] Font Family Mismatch...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Font family konsisten.
+
+[5f.2] Font Size Consistency...
+  Pasangan diperiksa: 10 | Mismatches: 0
+  [OK] Font size konsisten dengan template.
+
+[5h] Placeholder/Blank Image Detection...
+  Body images (non-decorative): 0 | Placeholder terdeteksi: 0
+  [OK] Tidak ada gambar placeholder/blank terdeteksi.
+
+[5i] Logo Preservation Audit (logo jurnal di body top + headers/footers)...
+  Logo original: 0 total (0 body + 0 header/footer) | Logo output: 0 total (0 body + 0 header/footer)
+  Preservation rate: 100.0% | Missing: 0
+  [OK] Template tidak memiliki logo di body top/headers/footers (skip check).
+
+[5k.3] Paragraph Spacing (space_before/space_after body text)...
+  Paragraf body dicek: 50 | Violations: 12
+  [!] PARA SPACING MISMATCH #0 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Perancangan Sistem Kendali PID pada Lengan Robot Industri un"
+  [!] PARA SPACING MISMATCH #3 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "anabilhisyam@students.undip.ac.id"
+  [!] PARA SPACING MISMATCH #5 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+  [!] PARA SPACING MISMATCH #6 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+  [!] PARA SPACING MISMATCH #27 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "u(t) = Kp e(t) + Ki 0t e() d + Kd (de(t)/dt)    (1)"
+  [!] PARA SPACING MISMATCH #30 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Tii-1 = bmatrix  θi & - θi  αi &  θi  αi & ai  θi \\  θi &  "
+  [!] PARA SPACING MISMATCH #33 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Diagram blok sistem kendali posisi "
+  [!] PARA SPACING MISMATCH #34 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 1. Diagram blok sistem kendali posisi lengan robot deng"
+  [!] PARA SPACING MISMATCH #40 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table I. Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+  [!] PARA SPACING MISMATCH #42 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Arsitektur sistem kendali PID pada "
+  ... dan 2 paragraf lainnya.
+
+[6] Multi-Column XPath Audit (FATAL XML)...
+  Section sectPrs -- Original: 1, Output: 1
+  Section dengan multi-kolom hancur: 0
+  [OK] Semua section multi-kolom utuh (w:cols/@w:num match).
+
+[7] Header Shapes/TextBox XPath Audit (FATAL XML)...
+  Total kerusakan FATAL header shape: 0
+  [OK] Tidak ada drawing/pict/v:shape/textbox header yang hilang.
+
+[7b] Body Table Count Audit...
+  Tabel body -- Original: 2, Output: 5, Expected (orig + JSON): 2 (JSON tables: 0, toleransi: 3) | Missing: 0 | Extra empty: 0 | Extra filled: 3
+  [OK] Jumlah tabel body sesuai (dalam toleransi).
+
+[7c] SectPr Distribution Audit (MAYOR)...
+  Trailing empty sectPr -- Original: 0, Output: 0 (threshold: 2)
+  Bucket multi-col -- Original: [0, 0, 0, 0, 0], Output: [0, 0, 0, 0, 0] (L1 div: 0.00, threshold: 0.4)
+  [OK] Distribusi sectPr inline match dengan template original.
+
+[7d] Empty Section / Blank Page Audit (MAYOR)...
+  Section -- Original: 1, Output: 1 | Original berkonten: 1 section
+  Blank page (section kosong page-breaking): 0 | Konsentrasi konten: 100% (threshold: 85%)
+  [OK] Konten body tersebar benar antar section, tidak ada blank page.
+
+[7e] Structural Position Audit - Level 1 (MAYOR)...
+  Section cols -- Original: [1], Output: [1]
+  Drawings -- Original: 0, Output: 0
+  Dekoratif by cols -- Original: {}, Output: {}
+  Konten by cols -- Original: {}, Output: {}
+  Mismatches -- Deco: 0, Content: 0, Section shift: 0
+  [OK] Semua drawing dekoratif & konten di section layout kolom yang benar.
+
+[7f] Anchor Position Audit - Level 2 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Anchor mismatches -- rId-based: 0, Shape-only: 0 | Tolerance: 72000 EMU
+  [OK] Semua anchor position drawing dekoratif konsisten dengan original.
+
+[7g] Container Context Audit - Level 3 (MINOR)...
+  Dekoratif drawings -- Original: 0, Output: 0
+  Container violations -- rId-based: 0, Shape-only: 0 | Index tolerance: 2
+  [OK] Semua drawing dekoratif di container yang sama dengan original.
+
+[7h] Blank Page & Section Break Waste Audit...
+  Empty sections -- Original: 1, Output: 1 | Extra: 0
+  Trailing sectPr waste -- Original: 0, Output: 0 | Extra: 0
+  [OK] Tidak ada halaman kosong berlebih atau section break waste.
+
+[7i] Formula Alignment Audit (MINOR)...
+  Total formula paragraphs: 0 | Center violations: 0 | Tab violations: 0 | Alignment mismatches (vs template): 0
+  [OK] Semua formula paragraph center-aligned dengan benar.
+
+[7j] Line Spacing Body Text (MINOR)...
+  Paragraf diperiksa: 0 | Mismatch: 0
+  [OK] Semua line spacing body text sesuai template.
+
+============================================================
+[FAIL] AUDIT GAGAL! Ditemukan ketidaksesuaian.
+[COPY TEKS DI BAWAH INI UNTUK PROMPT PERBAIKAN]
+--------------------------------------------------
+Sistem QA mendeteksi kegagalan pada skrip generator `ICONIEgen.py`. Tolong perbaiki kodingan `ICONIEgen.py` untuk mengatasi masalah berikut secara spesifik, tanpa mengubah logika lain yang sudah benar:
+
+- GAMBAR KURANG: JSON mendefinisikan 8 gambar. Output hanya punya 0 gambar konten + 4 prompt AI = 4. Kurang 4 elemen.
+- PROMPT TIDAK COCOK: Paragraf #33 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Diagram blok sistem kendali posisi lengan robot dengan kendali PID. (create an image A block diagram"
+- PROMPT TIDAK COCOK: Paragraf #42 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Arsitektur sistem kendali PID pada lengan robot untuk pengelasan komponen otomotif. (create an image"
+- PROMPT TIDAK COCOK: Paragraf #52 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Diagram alir prosedur penalaan PID dan simulasi. (create an image A flowchart illustrating the PID t"
+- PROMPT TIDAK COCOK: Paragraf #66 berisi prompt AI gambar, tetapi judulnya tidak match data JSON. Konten: "Respons step sistem kendali posisi lengan robot dengan PID, P, dan On-Off. (create an image A line c"
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 1' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 3' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 5' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 7' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 2' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 4' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Figure 6' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- GAMBAR TIDAK EMBEDDED: Figure 'Diagram blok sistem kendali adaptif berbasis fuzzy logic pad' - JSON expect 8 gambar, DOCX hanya punya 0 embedded image(s) + 4 teks prompt AI. Pipeline export belum menyisipkan gambar asli ke DOCX.
+- LATEX BOCOR: Paragraf #5 (15 pattern) tag: `$, _2, _3, _5, _1`. Snippet: "Presisi pengelasan pada lengan robot industri menjadi faktor krusial dalam produksi komponen otomotif, namun gangguan ek..."
+- DOUBLE NUM REF: Paragraf #88 [bracket_bracket] [1] [1] - "[1] [1] Kadir, R. and Sharif, S., "Kendali posisi lengan robot industri mengguna"
+- DOUBLE NUM REF: Paragraf #89 [bracket_bracket] [2] [2] - "[2] [2] Astrom, K. J. and Hagglund, T., Advanced PID Control. Research Triangle "
+- DOUBLE NUM REF: Paragraf #90 [bracket_bracket] [3] [3] - "[3] [3] Visioli, A., Practical PID Control. London, UK: Springer, 2006."
+- DOUBLE NUM REF: Paragraf #91 [bracket_bracket] [4] [4] - "[4] [4] Kim, J. and Lee, S., "PID parameter tuning for robot manipulator using p"
+- DOUBLE NUM REF: Paragraf #92 [bracket_bracket] [5] [5] - "[5] [5] Purnomo, D. and Santoso, B., "Analisis kendali PID pada robot pengelasan"
+- DOUBLE NUM REF: Paragraf #93 [bracket_bracket] [6] [6] - "[6] [6] Smith, J. A. and Brown, M. L., "Adaptive PID control of a 3-DOF robotic "
+- DOUBLE NUM REF: Paragraf #94 [bracket_bracket] [7] [7] - "[7] [7] Chen, Q. and Li, Y., "Neural network based PID control for friction comp"
+- DOUBLE NUM REF: Paragraf #95 [bracket_bracket] [8] [8] - "[8] [8] Kumar, A., Singh, R., and Sharma, P., "Comparison of PID and fuzzy logic"
+- DOUBLE NUM REF: Paragraf #96 [bracket_bracket] [9] [9] - "[9] [9] Gonzalez, L. M. and Patel, R. V., "Robust H-infinity control for robotic"
+- DOUBLE NUM REF: Paragraf #97 [bracket_bracket] [10] [10] - "[10] [10] Park, H. and Kim, S., "PSO-based auto-tuning of PID for SCARA robot tr"
+- DOUBLE NUM REF: Paragraf #98 [bracket_bracket] [11] [11] - "[11] [11] Wang, Z. and Liu, Y., "Kinematic modeling and simulation of a 6-DOF in"
+- DOUBLE NUM REF: Paragraf #99 [bracket_bracket] [12] [12] - "[12] [12] Ogata, K., Modern Control Engineering. Upper Saddle River, NJ, USA: Pr"
+- DOUBLE NUM REF: Paragraf #100 [bracket_bracket] [13] [13] - "[13] [13] Fanuc Corporation. (2021). M-710iC Series Robot Specifications Manual."
+- DOUBLE NUM REF: Paragraf #101 [bracket_bracket] [14] [14] - "[14] [14] Siciliano, B., Sciavicco, L., Villani, L., and Oriolo, G., Robotics: M"
+- DOUBLE NUM REF: Paragraf #102 [bracket_bracket] [15] [15] - "[15] [15] Ziegler, J. G. and Nichols, N. B., "Optimum settings for automatic con"
+- DOUBLE NUM REF: Paragraf #103 [bracket_bracket] [16] [16] - "[16] [16] Franklin, G. F., Powell, J. D., and Workman, M. L., Digital Control of"
+- DOUBLE NUM REF: Paragraf #104 [bracket_bracket] [17] [17] - "[17] [17] Chen, W. and Zhao, J., "Feedforward compensation for PID control of ro"
+- DOUBLE NUM REF: Paragraf #105 [bracket_bracket] [18] [18] - "[18] [18] Liu, X. and Zhang, Q., "Iterative feedback tuning of PID gains for ind"
+- DOUBLE NUM REF: Paragraf #106 [bracket_bracket] [19] [19] - "[19] [19] Nof, S. Y., Handbook of Automation. Berlin, Germany: Springer, 2009."
+- DOUBLE NUM REF: Paragraf #107 [bracket_bracket] [20] [20] - "[20] [20] Craig, J. J., Introduction to Robotics: Mechanics and Control. Upper S"
+- PARA SPACING MISMATCH #0 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Perancangan Sistem Kendali PID pada Lengan Robot Industri un"
+- PARA SPACING MISMATCH #3 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "anabilhisyam@students.undip.ac.id"
+- PARA SPACING MISMATCH #5 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Presisi pengelasan pada lengan robot industri menjadi faktor"
+- PARA SPACING MISMATCH #6 [Normal]: before=0.0pt (orig=0.0pt, delta=0.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Keywords: kendali PID, lengan robot, pengelasan otomotif, pr"
+- PARA SPACING MISMATCH #27 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "u(t) = Kp e(t) + Ki 0t e() d + Kd (de(t)/dt)    (1)"
+- PARA SPACING MISMATCH #30 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Tii-1 = bmatrix  θi & - θi  αi &  θi  αi & ai  θi \\  θi &  "
+- PARA SPACING MISMATCH #33 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Diagram blok sistem kendali posisi "
+- PARA SPACING MISMATCH #34 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 1. Diagram blok sistem kendali posisi lengan robot deng"
+- PARA SPACING MISMATCH #40 [Normal]: before=6.0pt (orig=0.0pt, delta=6.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Table I. Parameter Denavit-Hartenberg Lengan Robot 6-DOF"
+- PARA SPACING MISMATCH #42 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "[PROMPT UNTUK AI GAMBAR: Arsitektur sistem kendali PID pada "
+- PARA SPACING MISMATCH #43 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=6.0pt (orig=0.0pt, delta=6.0pt) — "Fig. 2. Arsitektur sistem kendali PID pada lengan robot untu"
+- PARA SPACING MISMATCH #45 [Normal]: before=3.0pt (orig=0.0pt, delta=3.0pt) after=3.0pt (orig=0.0pt, delta=3.0pt) — "Implementasi dan Prosedur Eksperimen"
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "Parameter a1 sampai a6 merupakan panjang..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "Setelah parameter PID diperoleh (Kp = a4..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "Data pada Tabel III menunjukkan bahwa ke..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "Hasil pada Tabel IV mengindikasikan bahw..."
+- Teks setelah tabel spacing terlalu rapat: 0pt before (min 3pt) - "Data pada Tabel V menunjukkan bahwa kend..."
+- Paragraf #0: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #3: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #5: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #6: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #8: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #9: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #10: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #11: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #12: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #13: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #14: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #15: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #16: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #18: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #23: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #24: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #26: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #27: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #28: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #29: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #30: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #31: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #32: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #37: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #38: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #39: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #41: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #45: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #46: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #47: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #48: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #49: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #51: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #55: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #56: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #57: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #58: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #59: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #61: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #63: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #65: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #69: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #72: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #73: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #74: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #75: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #77: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #78: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #79: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #80: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #81: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #82: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #84: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #85: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+- Paragraf #86: first_line_indent=0.00cm, expected=1.00cm (diff=1.00cm)
+--------------------------------------------------
+
+[SKOR KECOCOKAN: 0%] -> STATUS: GAGAL TOTAL
+Rincian Pemotongan Poin:
+  Base Score: 100
+  - Placeholder/Prompt Gambar Salah (MINOR): -5 x 4 = -20
+  - Gambar Tidak Embedded / Prompt AI (MAYOR): -10 x 8 = -80
+  - Kebocoran LaTeX/Simbol: -2 x 15 = -30
+  - Referensi Double Numbering (MINOR): -3 x 20 = -60
+  - Paragraph Spacing Mismatch (MINOR): -2 x 12 = -24
+  - Caption/Table Spacing Rapat (MINOR): -3 x 5 = -15
+  - First Line Indent Tidak Sesuai (MINOR): -2 x 55 = -110
+  Total Penalty: -339
+  Skor Akhir: 0%

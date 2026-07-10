@@ -312,8 +312,21 @@ _NON_SEARCH_KEYWORDS = {
 
 # Combined: if any of these words (as a whole word) appear in the message,
 # skip ALL intent detection (return empty).
+def _is_platform_guidance_question(message: str) -> bool:
+    """True when user asks where/how to use PaperFull features, not to run search."""
+    msg = f" {message.lower().strip()} "
+    has_where_or_how = any(w in msg for w in (" dimana", " di mana", " kemana", " ke mana", " gimana", " bagaimana", " cara "))
+    has_reference_word = any(w in msg for w in ("referensi", "refrensi", "literatur", "literature", "jurnal", "paper"))
+    # ponytail: simple regex is enough for onboarding prompts; upgrade to route classifier if false positives return.
+    asks_location = bool(re.search(r"\b(?:mencari|cari|nyari|search|find)\b.+\b(?:dimana|di mana|kemana|ke mana|gimana|bagaimana)\b", msg))
+    asks_location = asks_location or bool(re.search(r"\b(?:dimana|di mana|kemana|ke mana|gimana|bagaimana|cara)\b.+\b(?:mencari|cari|nyari|search|find)\b", msg))
+    return has_where_or_how and has_reference_word and asks_location
+
+
 def _has_non_search_keywords(message: str) -> bool:
-    """Check if message contains ANY global non-search keyword (word boundary)."""
+    """Check if message should NOT trigger real-time search."""
+    if _is_platform_guidance_question(message):
+        return True
     msg_lower = message.lower()
     for kw in _NON_SEARCH_KEYWORDS:
         if re.search(r'\b' + re.escape(kw) + r'\b', msg_lower):

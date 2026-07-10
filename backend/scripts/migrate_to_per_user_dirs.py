@@ -34,6 +34,7 @@ def get_user_id_from_db(paper_id: str):
     try:
         from utils.database.models import Paper
         paper = Paper.query.filter_by(id=paper_id).first()
+        # TODO: add user_id filter — migration script runs without user context
         if paper:
             return paper.user_id
         return None

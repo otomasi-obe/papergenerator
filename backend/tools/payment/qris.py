@@ -1,13 +1,16 @@
 """
 Payment Gateway - Xendit QRIS + VA Integration
 """
-import os
 import json
+import os
+import uuid
 import base64
 import httpx
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+
+from utils.database.models import db, User, Payment, safe_commit
 
 payment_bp = Blueprint('payment', __name__, url_prefix='/api/payment')
 
@@ -18,6 +21,17 @@ def _get_xendit_credentials():
     if not api_key:
         raise ValueError('XENDIT_API_KEY not configured')
     return api_key
+
+
+def _verify_xendit_callback() -> bool:
+    """Verify Xendit callback using x-callback-token header (timing-safe)."""
+    expected = os.getenv('XENDIT_CALLBACK_TOKEN', '')
+    if not expected:
+        current_app.logger.error('XENDIT_CALLBACK_TOKEN not configured — rejecting callback')
+        return False
+    received = request.headers.get('x-callback-token', '')
+    import hmac
+    return hmac.compare_digest(received, expected)
 
 
 @payment_bp.route('/qris/generate', methods=['POST'])
@@ -36,21 +50,29 @@ def generate_qris():
         if not amount or int(amount) < 1000:
             return jsonify({'error': 'Amount must be >= 1000 IDR'}), 400
 
-        reference_id = f"PF-{datetime.now().strftime('%Y%m%d%H%M%S')}-{amount}"
-        user_id = get_jwt_identity()
-        email = data.get('email', '')
+        user_id = int(get_jwt_identity())
+        reference_id = f"PF-QRIS-{datetime.now().strftime('%Y%m%d%H%M%S')}-{user_id}-{uuid.uuid4().hex[:8]}"
+        user = User.query.get(user_id)
+        email = data.get('email', user.email if user else '')
+
+        # Map amount → tokens. Never fallback 1:1; client amount is user-controlled.
+        TOKEN_PACKAGES = {1000: 10, 5000: 60, 15000: 200, 150000: 3000}
+        amount = int(amount)
+        if amount not in TOKEN_PACKAGES:
+            return jsonify({'error': 'Invalid token package amount'}), 400
+        tokens = TOKEN_PACKAGES[amount]
 
         payload = {
             'external_id': reference_id,
             'type': 'DYNAMIC',
             'amount': int(amount),
             'qr_description': description[:255],
-            'callback_url': f'{request.host_url.rstrip("/")}/api/payment/qris/callback',
-            'redirect_url': f'{request.host_url.rstrip("/")}/payment/success'
+            'callback_url': 'https://paperfull.app/api/payment/qris/callback',
+            'redirect_url': 'https://paperfull.app/payment/success'
         }
 
         headers = {
-            'Authorization': f'Basic {base64.b64encode(api_key.encode()).decode()}',
+            'Authorization': f'Basic {base64.b64encode(f"{api_key}:".encode()).decode()}',
             'Content-Type': 'application/json',
             'x-idempotency-key': reference_id
         }
@@ -70,13 +92,27 @@ def generate_qris():
             current_app.logger.error(f'Xendit error: {response.status_code} - {response.text}')
             return jsonify({'error': 'Failed to generate QRIS', 'details': result}), 502
 
-        # QRIS expires in 10 minutes
+        # Store payment record
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        payment = Payment(
+            external_id=reference_id,
+            provider='xendit_qris',
+            status='pending',
+            amount=int(amount),
+            tokens=tokens,
+            user_id=user_id,
+            payment_url=result.get('qr_url', ''),
+            expires_at=expires_at,
+            raw_response=json.dumps(result),
+        )
+        db.session.add(payment)
+        safe_commit()
 
         return jsonify({
             'payment_url': result.get('qr_url', ''),
             'qr_string': result.get('qr_string', ''),
             'amount': amount,
+            'tokens': tokens,
             'description': description,
             'transaction_id': reference_id,
             'expires_at': expires_at.isoformat().replace('+00:00', 'Z'),
@@ -96,7 +132,12 @@ def generate_qris():
 @payment_bp.route('/qris/callback', methods=['POST'])
 def qris_callback():
     """Handle Xendit QRIS callback"""
-    data = request.json
+    # 1. Verify Xendit signature
+    if not _verify_xendit_callback():
+        current_app.logger.warning('QRIS callback rejected: invalid token')
+        return jsonify({'status': 'rejected'}), 403
+
+    data = request.get_json(silent=True) or {}
     current_app.logger.info(f'Xendit QRIS callback: {json.dumps(data)}')
 
     try:
@@ -106,11 +147,38 @@ def qris_callback():
 
         if status == 'PAID':
             current_app.logger.info(f'QRIS PAID: {external_id}, amount={amount}')
-            # TODO: Update user token balance
+            payment = Payment.query.filter_by(external_id=external_id).with_for_update().first()
+            if payment:
+                if payment.status == 'paid':
+                    current_app.logger.info(f'QRIS already credited: {external_id}')
+                elif int(amount) != payment.amount:
+                    current_app.logger.error(
+                        f'QRIS AMOUNT MISMATCH: callback={int(amount)}, expected={payment.amount}, ref={external_id}'
+                    )
+                else:
+                    payment.status = 'paid'
+                    payment.raw_response = json.dumps(data)
+                    from sqlalchemy import text as sa_text
+                    db.session.execute(
+                        sa_text("UPDATE users SET token_quota_monthly = COALESCE(token_quota_monthly, 0) + :tokens WHERE id = :uid"),
+                        {"tokens": payment.tokens, "uid": payment.user_id}
+                    )
+                    current_app.logger.info(
+                        f'TOKEN CREDITED: user={payment.user_id}, tokens=+{payment.tokens}, ref={external_id}'
+                    )
+                    safe_commit()
         elif status == 'EXPIRED':
             current_app.logger.info(f'QRIS EXPIRED: {external_id}')
+            payment = Payment.query.filter_by(external_id=external_id).with_for_update().first()
+            if payment:
+                payment.status = 'expired'
+                safe_commit()
         elif status == 'FAILED':
             current_app.logger.error(f'QRIS FAILED: {external_id}')
+            payment = Payment.query.filter_by(external_id=external_id).with_for_update().first()
+            if payment:
+                payment.status = 'failed'
+                safe_commit()
 
         return jsonify({'status': 'received'}), 200
     except Exception as e:
@@ -123,9 +191,14 @@ def qris_callback():
 def check_qris_status(external_id):
     """Check QRIS payment status"""
     try:
+        # IDOR guard: only owner can check status
+        payment = Payment.query.filter_by(external_id=external_id).first()
+        if not payment or str(payment.user_id) != str(get_jwt_identity()):
+            return jsonify({'error': 'Not found'}), 404
+
         api_key = _get_xendit_credentials()
         headers = {
-            'Authorization': f'Basic {base64.b64encode(api_key.encode()).decode()}'
+            'Authorization': f'Basic {base64.b64encode(f"{api_key}:".encode()).decode()}'
         }
 
         with httpx.Client(timeout=30.0) as client:
@@ -178,8 +251,12 @@ def generate_va():
         bank = data.get('bank', 'bca').lower()
         description = data.get('description', 'PaperFull Token Purchase')
 
-        if not amount or int(amount) < 1000:
-            return jsonify({'error': 'Amount must be >= 1000 IDR'}), 400
+        if not amount:
+            return jsonify({'error': 'Amount is required'}), 400
+        amount = int(amount)
+        TOKEN_PACKAGES = {1000: 10, 5000: 60, 15000: 200, 150000: 3000}
+        if amount not in TOKEN_PACKAGES:
+            return jsonify({'error': 'Invalid token package amount'}), 400
 
         if bank not in SUPPORTED_VA_BANKS:
             return jsonify({
@@ -187,9 +264,11 @@ def generate_va():
                 'supported_banks': list(SUPPORTED_VA_BANKS.keys())
             }), 400
 
-        reference_id = f"PF-VA-{datetime.now().strftime('%Y%m%d%H%M%S')}-{amount}"
-        user_email = data.get('email', '')
-        user_name = data.get('name', 'Customer')
+        user_id = int(get_jwt_identity())
+        reference_id = f"PF-VA-{datetime.now().strftime('%Y%m%d%H%M%S')}-{user_id}-{uuid.uuid4().hex[:8]}"
+        user = User.query.get(user_id)
+        user_email = data.get('email', user.email if user else '')
+        user_name = data.get('name', user.name if user else 'Customer')
 
         bank_code = SUPPORTED_VA_BANKS[bank]['code']
 
@@ -213,7 +292,7 @@ def generate_va():
             }
 
         headers = {
-            'Authorization': f'Basic {base64.b64encode(api_key.encode()).decode()}',
+            'Authorization': f'Basic {base64.b64encode(f"{api_key}:".encode()).decode()}',
             'Content-Type': 'application/json',
             'x-idempotency-key': reference_id
         }
@@ -235,12 +314,32 @@ def generate_va():
 
         expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
 
+        # Store payment record
+        TOKEN_PACKAGES = {1000: 10, 5000: 60, 15000: 200, 150000: 3000}
+        tokens = TOKEN_PACKAGES.get(int(amount))
+        if tokens is None:
+            return jsonify({'error': 'Invalid token package amount'}), 400
+        payment = Payment(
+            external_id=reference_id,
+            provider='xendit_va',
+            status='pending',
+            amount=int(amount),
+            tokens=tokens,
+            user_id=user_id,
+            payment_url=result.get('invoice_url', ''),
+            expires_at=expires_at,
+            raw_response=json.dumps(result),
+        )
+        db.session.add(payment)
+        safe_commit()
+
         return jsonify({
             'payment_url': result.get('invoice_url', ''),
             'account_number': result.get('account_number', ''),
             'bank_code': bank_code,
             'bank_name': SUPPORTED_VA_BANKS[bank]['name'],
             'amount': amount,
+            'tokens': tokens,
             'description': description,
             'transaction_id': reference_id,
             'expires_at': expires_at.isoformat().replace('+00:00', 'Z'),
@@ -261,7 +360,11 @@ def generate_va():
 @payment_bp.route('/va/callback', methods=['POST'])
 def va_callback():
     """Handle Xendit VA callback"""
-    data = request.json
+    if not _verify_xendit_callback():
+        current_app.logger.warning('VA callback rejected: invalid token')
+        return jsonify({'status': 'rejected'}), 403
+
+    data = request.get_json(silent=True) or {}
     current_app.logger.info(f'Xendit VA callback: {json.dumps(data)}')
 
     try:
@@ -271,11 +374,38 @@ def va_callback():
 
         if status == 'PAID':
             current_app.logger.info(f'VA PAID: {external_id}, amount={amount}')
-            # TODO: Update user token balance
+            payment = Payment.query.filter_by(external_id=external_id).with_for_update().first()
+            if payment:
+                if payment.status == 'paid':
+                    current_app.logger.info(f'VA already credited: {external_id}')
+                elif int(amount) != payment.amount:
+                    current_app.logger.error(
+                        f'VA AMOUNT MISMATCH: callback={int(amount)}, expected={payment.amount}, ref={external_id}'
+                    )
+                else:
+                    payment.status = 'paid'
+                    payment.raw_response = json.dumps(data)
+                    from sqlalchemy import text as sa_text
+                    db.session.execute(
+                        sa_text("UPDATE users SET token_quota_monthly = COALESCE(token_quota_monthly, 0) + :tokens WHERE id = :uid"),
+                        {"tokens": payment.tokens, "uid": payment.user_id}
+                    )
+                    current_app.logger.info(
+                        f'TOKEN CREDITED: user={payment.user_id}, tokens=+{payment.tokens}, ref={external_id}'
+                    )
+                    safe_commit()
         elif status == 'EXPIRED':
             current_app.logger.info(f'VA EXPIRED: {external_id}')
+            payment = Payment.query.filter_by(external_id=external_id).with_for_update().first()
+            if payment:
+                payment.status = 'expired'
+                safe_commit()
         elif status == 'FAILED':
             current_app.logger.error(f'VA FAILED: {external_id}')
+            payment = Payment.query.filter_by(external_id=external_id).with_for_update().first()
+            if payment:
+                payment.status = 'failed'
+                safe_commit()
 
         return jsonify({'status': 'received'}), 200
     except Exception as e:
@@ -288,9 +418,14 @@ def va_callback():
 def check_va_status(external_id):
     """Check VA payment status"""
     try:
+        # IDOR guard: only owner can check status
+        payment = Payment.query.filter_by(external_id=external_id).first()
+        if not payment or str(payment.user_id) != str(get_jwt_identity()):
+            return jsonify({'error': 'Not found'}), 404
+
         api_key = _get_xendit_credentials()
         headers = {
-            'Authorization': f'Basic {base64.b64encode(api_key.encode()).decode()}'
+            'Authorization': f'Basic {base64.b64encode(f"{api_key}:".encode()).decode()}'
         }
 
         with httpx.Client(timeout=30.0) as client:

@@ -141,7 +141,11 @@ def download_file(s3_key: str) -> Optional[bytes]:
     try:
         client = _get_s3_client()
         response = client.get_object(Bucket=S3_BUCKET_NAME, Key=s3_key)
-        data = response["Body"].read()
+        body = response["Body"]
+        try:
+            data = body.read()
+        finally:
+            body.close()
         log.info("Downloaded file from S3: %s (%d bytes)", s3_key, len(data))
         return data
     except ClientError as e:

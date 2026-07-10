@@ -650,7 +650,6 @@ def add_section_heading(doc, title):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
-    set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
     display = title.upper() if CFG["section_heading_upper"] else title
     run = p.add_run(display)
     set_run_font(run, CFG["font_heading"], CFG["size_heading1"], bold=True, color=CFG["heading_color"])
@@ -661,7 +660,6 @@ def add_subsection_heading(doc, title):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
-    set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
     run = p.add_run(title)
     set_run_font(run, CFG["font_heading"], CFG["size_heading2"], bold=True)
 
@@ -958,24 +956,10 @@ def add_body_text(doc, text):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=0, after_pt=0, line_tw=240)
-    # Detect inline caption references like "Gambar 1 ..." or "Table I ..."
-    caption_ref_re = re.compile(r'^(Gambar|Figure|Fig\.|Tabel|Table)\s+[IVXLCDM\d]+[\.:]?\s*', re.IGNORECASE)
-    m = caption_ref_re.match(cleaned)
-    if m:
-        # Bold the label part to match template pattern
-        label_text = m.group(0).rstrip(" .:")
-        rest = cleaned[m.end():].strip()
+    if CFG["first_line_indent_tw"] > 0:
         set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
-        run_label = p.add_run(label_text)
-        set_run_font(run_label, CFG["font_body"], CFG["size_body"], bold=True)
-        if rest:
-            run_rest = p.add_run(" " + rest)
-            set_run_font(run_rest, CFG["font_body"], CFG["size_body"], italic=True)
-    else:
-        if CFG["first_line_indent_tw"] > 0:
-            set_para_indent(p, first_line_tw=CFG["first_line_indent_tw"])
-        run = p.add_run(cleaned)
-        set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True)
+    run = p.add_run(cleaned)
+    set_run_font(run, CFG["font_body"], CFG["size_body"])
 
 
 def add_figure(doc, fig_data, fig_counter):
@@ -983,10 +967,13 @@ def add_figure(doc, fig_data, fig_counter):
     title = str(fig_data.get("Title", "")).strip()
     if not title:
         title = str(fig_data.get("caption", f"Figure {fig_no}")).strip()
-    if not title:
-        title = f"Figure {fig_no}"
     prompt_hint = str(fig_data.get("Prompt", "")).strip()
     image_path = fig_data.get("Path") or fig_data.get("path") or ""
+    if not title or title.strip().lower() in {f"figure {fig_no}".lower(), f"fig. {fig_no}".lower()}:
+        # ponytail: JSON sometimes has image paths but empty captions; use filename as minimal non-bold caption description.
+        # Upgrade path: require captions in frontend upload metadata.
+        base = os.path.splitext(os.path.basename(str(image_path)))[0].replace("_", " ").replace("-", " ").title()
+        title = f"Figure {fig_no}. {base}" if base else f"Figure {fig_no}. Image"
     image_url = fig_data.get("image_url", fig_data.get("url", ""))
     if not image_url:
         image_url = os.environ.get("PAPER_IMAGE_URL", "")
@@ -1003,17 +990,72 @@ def add_figure(doc, fig_data, fig_counter):
             image_url = image_path
             image_path = ""
         else:
-            # Try relative to TEMPLATE_JSON directory's parent/<paper_id>/image/
-            json_dir = _os.path.dirname(_os.path.abspath(str(TEMPLATE_JSON))) if TEMPLATE_JSON else ""
-            possible_paths = [
-                _os.path.join(json_dir, image_path),
-                _os.path.join(_os.path.dirname(json_dir), "image", image_path) if json_dir else "",
-                _os.path.join(str(_os.path.dirname(_os.path.abspath(__file__))), image_path),
-            ]
-            for p in possible_paths:
-                if p and _os.path.isfile(p):
-                    img_full_path = p
-                    break
+            # Normalise: AI tokenizer sometimes inserts spaces inside filenames
+            # (e.g. "flowchart_t uning.jpg" → "flowchart_tuning.jpg")
+            image_path_norm = image_path.replace(" ", "")
+            
+            # Priority 0: absolute path — check directly
+            if _os.path.isabs(image_path) and _os.path.isfile(image_path):
+                img_full_path = image_path
+            elif _os.path.isabs(image_path_norm) and _os.path.isfile(image_path_norm):
+                img_full_path = image_path_norm
+            
+            # Try relative paths if absolute not found
+            if not img_full_path:
+                # Try relative to TEMPLATE_JSON directory's parent/<paper_id>/image/
+                json_dir = _os.path.dirname(_os.path.abspath(str(TEMPLATE_JSON))) if TEMPLATE_JSON else ""
+                # Build search candidates: original + normalised
+                candidates = []
+                if image_path_norm != image_path:
+                    candidates.append(image_path_norm)  # direct normalised path
+                candidates.extend([
+                    _os.path.join(json_dir, image_path),
+                    _os.path.join(json_dir, image_path_norm) if image_path_norm != image_path else "",
+                    _os.path.join(_os.path.dirname(json_dir), "image", image_path) if json_dir else "",
+                    _os.path.join(_os.path.dirname(json_dir), "image", image_path_norm) if json_dir and image_path_norm != image_path else "",
+                    _os.path.join(str(_os.path.dirname(_os.path.abspath(__file__))), image_path),
+                    _os.path.join(str(_os.path.dirname(_os.path.abspath(__file__))), image_path_norm) if image_path_norm != image_path else "",
+                ])
+                for p in candidates:
+                    if p and _os.path.isfile(p):
+                        img_full_path = p
+                        break
+            
+            # 5. Look for image in user/*/<paper_id>/image/ (legacy) AND user/<paper_id>/image/ (canonical)
+            if not img_full_path:
+                try:
+                    paper_data = load_json()
+                    paper_id = str(paper_data.get("paper_id") or paper_data.get("id") or "").strip()
+                    if not paper_id and isinstance(paper_data.get("paper_data"), dict):
+                        paper_id = str(paper_data["paper_data"].get("paper_id", "")).strip()
+                    if paper_id:
+                        backend_root = _os.path.join(str(_os.path.dirname(_os.path.abspath(__file__))), "..", "..")
+                        user_dir = _os.path.join(backend_root, "user")
+
+                        # Priority 1: user/<paper_id>/image/ (canonical — storage fix 2026-07-04)
+                        canonical_img_dir = _os.path.join(user_dir, paper_id, "image")
+                        if _os.path.isdir(canonical_img_dir):
+                            for name in (image_path, image_path_norm):
+                                candidate = _os.path.join(canonical_img_dir, name)
+                                if _os.path.isfile(candidate):
+                                    img_full_path = candidate
+                                    break
+
+                        # Priority 2: user/<username>/<paper_id>/image/ (legacy)
+                        if not img_full_path:
+                            for username in _os.listdir(user_dir):
+                                dd = _os.path.join(user_dir, username, paper_id, "image")
+                                if _os.path.isdir(dd):
+                                    for name in (image_path, image_path_norm):
+                                        candidate = _os.path.join(dd, name)
+                                        if _os.path.isfile(candidate):
+                                            img_full_path = candidate
+                                            break
+                                if img_full_path:
+                                    break
+                except Exception:
+                    pass
+            
             if not img_full_path:
                 img_full_path = image_path  # fallback
     from docx.shared import Inches, Cm, Emu
@@ -1091,30 +1133,28 @@ def add_figure(doc, fig_data, fig_counter):
         run = p_img.add_run(prompt_text)
         set_run_font(run, CFG["font_body"], CFG["size_body"], italic=True, color=(0xFF, 0x00, 0x00))
 
-    # Caption (always shown)
-        p_cap = doc.add_paragraph()
-        p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        set_para_spacing(p_cap, before_pt=3, after_pt=0, line_tw=240)
-        # Detect if title already has "Gambar N" or "Figure N" prefix
-        caption_prefix_re = re.compile(r'^(Gambar|Figure|Fig\.|Tabel|Table)\s+\d+[\.:]?\s*', re.IGNORECASE)
-        m = caption_prefix_re.match(title)
-        if m:
-            # 3 runs: [label] bold + [space] normal + [description] normal → matches template pattern
-            label_text = m.group(0).rstrip()
-            desc_text = title[m.end():].lstrip()
-            run_label = p_cap.add_run(label_text)
-            set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
-            run_space = p_cap.add_run(" ")
-            set_run_font(run_space, CFG["font_body"], CFG["size_caption"])
-            if desc_text:
-                run_desc = p_cap.add_run(desc_text)
-                set_run_font(run_desc, CFG["font_body"], CFG["size_caption"])
-        else:
-            # No prefix — use CFG fig_prefix
-            run_label = p_cap.add_run(f"{CFG['fig_prefix']} {fig_no}. ")
-            set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
-            run_title = p_cap.add_run(title)
-            set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
+    # Caption (always shown — outside the if-block)
+    p_cap = doc.add_paragraph()
+    p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_para_spacing(p_cap, before_pt=3, after_pt=0, line_tw=240)
+    # Detect if title already has "Gambar N" or "Figure N" prefix
+    caption_prefix_re = re.compile(r'^(Gambar|Figure|Fig\.)\s+\d+[\.:]?\s*', re.IGNORECASE)
+    m = caption_prefix_re.match(title)
+    if m:
+        # 2 runs: [label] bold + [description] normal — matches template pattern
+        label_text = m.group(0).rstrip()
+        desc_text = title[m.end():].lstrip()
+        run_label = p_cap.add_run(label_text + " ")
+        set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
+        if desc_text:
+            run_desc = p_cap.add_run(desc_text)
+            set_run_font(run_desc, CFG["font_body"], CFG["size_caption"])
+    else:
+        # No prefix — use CFG fig_prefix: 2 runs [label bold] + [desc normal]
+        run_label = p_cap.add_run(f"{CFG['fig_prefix']} {fig_no}. ")
+        set_run_font(run_label, CFG["font_body"], CFG["size_caption"], bold=True)
+        run_title = p_cap.add_run(title)
+        set_run_font(run_title, CFG["font_body"], CFG["size_caption"])
 
 
 def add_table_element(doc, tbl_data, tbl_counter, borders=None):
@@ -1326,7 +1366,7 @@ def add_formula(doc, formula_data):
 def add_references(doc, data):
     refs_data = data.get("references", {})
     if isinstance(refs_data, dict):
-        refs_list = refs_data.get("content") or refs_data.get("items") or [])
+        refs_list = refs_data.get("content") or refs_data.get("items") or []
     elif isinstance(refs_data, list):
         refs_list = refs_data
     else:
@@ -1719,6 +1759,44 @@ def generate():
     print("[VERIFY] OK")
     return str(OUTPUT_DOCX)
 
+
+
+def build_pdf(json_path: Path, pdf_path: Path, template_path=None) -> Path:
+    """Build a PDF for this journal template from a paper JSON.
+
+    Writes a temporary .docx via generate(), then converts to .pdf
+    via LibreOffice headless.  Final PDF is written to ``pdf_path``.
+    """
+    import sys as _sys
+    import tempfile as _tf
+
+    _json_path = Path(json_path)
+    _pdf_path = Path(pdf_path)
+    _pdf_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create temp docx path
+    with _tf.NamedTemporaryFile(suffix=".docx", delete=False) as _tmp:
+        _tmp_docx = Path(_tmp.name)
+
+    _mod = _sys.modules[__name__]
+    _saved_in = getattr(_mod, "TEMPLATE_JSON", None)
+    _saved_out = getattr(_mod, "OUTPUT_DOCX", None)
+
+    try:
+        setattr(_mod, "TEMPLATE_JSON", _json_path)
+        setattr(_mod, "OUTPUT_DOCX", _tmp_docx)
+        generate()
+    finally:
+        if _saved_in is not None:
+            setattr(_mod, "TEMPLATE_JSON", _saved_in)
+        if _saved_out is not None:
+            setattr(_mod, "OUTPUT_DOCX", _saved_out)
+
+    try:
+        from ._render_pdf import convert_docx_to_pdf
+        return convert_docx_to_pdf(_tmp_docx, _pdf_path)
+    finally:
+        _tmp_docx.unlink(missing_ok=True)
 
 if __name__ == "__main__":
     generate()
