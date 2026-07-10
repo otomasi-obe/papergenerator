@@ -348,10 +348,7 @@ const themeOptions: ThemeOption[] = [
 ]
 
 function formatNum(n: number | string): string {
- if (typeof n !== 'number') n = Number(n) || 0
- if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
- if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k'
- return String(n)
+  return Number(n || 0).toLocaleString('id-ID')
 }
 
 function doLogout(): void {

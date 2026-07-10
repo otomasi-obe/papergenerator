@@ -1,543 +1,261 @@
+<template>
+  <div v-if="open" class="fixed inset-0 z-[60] flex items-start justify-center p-4 pt-8 sm:pt-10">
+    <div class="fixed inset-0 bg-black/30 transition-opacity z-0" @click="$emit('close')" aria-hidden="true" />
+    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-900 rounded-2xl shadow-xl flex flex-col">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-cream-200 dark:border-ash-700 shrink-0">
+        <h2 class="text-lg font-bold text-ink-900 dark:text-ink-50">Detail Token</h2>
+        <button @click="$emit('close')" class="p-1.5 min-h-[36px] min-w-[36px] rounded-lg text-ink-400 hover:text-ink-600 dark:hover:text-ink-300 hover:bg-cream-100 dark:hover:bg-ash-800 transition-colors" aria-label="Tutup">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-5 py-4 overflow-y-auto space-y-5 flex-1" v-if="!loading && !error">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 gap-3">
+          <div v-for="card in summaryCards" :key="card.label" :class="['p-3 rounded-xl border', card.colorClass]">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-lg">{{ card.icon }}</span>
+              <span class="text-xs font-medium text-ink-500 dark:text-ink-400">{{ card.label }}</span>
+            </div>
+            <div class="text-2xl font-bold">{{ formatNum(card.value) }}</div>
+          </div>
+        </div>
+
+        <!-- Trend Card -->
+        <div class="p-4 rounded-xl bg-cream-50 dark:bg-ash-800 border border-cream-200 dark:border-ash-700">
+          <div class="text-sm font-medium text-ink-700 dark:text-ink-300 mb-2">Trend Harian</div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-2xl font-bold text-ink-900 dark:text-ink-50">{{ formatNum(data?.today_usage || 0) }}</div>
+              <div class="text-xs text-ink-500 dark:text-ink-400">Hari ini</div>
+            </div>
+            <div class="text-right">
+              <div :class="['text-xl font-bold', trendColor]">{{ trendIcon }} {{ trendPct > 0 ? '+' : '' }}{{ trendPct }}%</div>
+              <div class="text-xs text-ink-500 dark:text-ink-400">vs kemarin ({{ formatNum(data?.yesterday_usage || 0) }})</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line Chart -->
+        <div>
+          <div class="text-sm font-medium text-ink-700 dark:text-ink-300 mb-2">Grafik Pemakaian (30 hari)</div>
+          <div v-if="chartPoints.length > 0" class="rounded-xl bg-white dark:bg-ash-900 border border-cream-200 dark:border-ash-700 p-2">
+            <svg width="560" height="180" viewBox="0 0 560 180" class="w-full h-auto">
+              <!-- Grid lines -->
+              <g stroke="#e5e5e5" stroke-width="0.5" class="dark:stroke-ash-700">
+                <line v-for="i in 4" :key="'grid-'+i" :x1="chartPad.left" :y1="chartPad.top + ((i-1)/3)*chartInnerH" :x2="chartPad.left + chartInnerW" :y2="chartPad.top + ((i-1)/3)*chartInnerH" />
+              </g>
+              <!-- Y axis labels -->
+              <g class="text-[10px] text-ink-400 dark:text-ink-500" font-family="monospace">
+                <text v-for="i in 4" :key="'y-'+i" :x="chartPad.left - 8" :y="chartPad.top + ((i-1)/3)*chartInnerH + 4" text-anchor="end" dominant-baseline="middle">{{ formatNum(Math.round(chartMin + (chartRange * (4-i) / 3))) }}</text>
+              </g>
+              <!-- X axis labels (dates, sparse) -->
+              <g class="text-[10px] text-ink-400 dark:text-ink-500" font-family="monospace">
+                <text v-for="(p, i) in sparseXLabels" :key="'x-'+i" :x="getX(i * xLabelStep)" :y="180 - 6" text-anchor="middle" dominant-baseline="hanging">{{ p }}</text>
+              </g>
+              <!-- Axis lines -->
+              <line :x1="chartPad.left" :y1="chartPad.top" :x2="chartPad.left" :y2="chartPad.top + chartInnerH" stroke="#d1d5db" stroke-width="1" class="dark:stroke-ash-600" />
+              <line :x1="chartPad.left" :y1="chartPad.top + chartInnerH" :x2="chartPad.left + chartInnerW" :y2="chartPad.top + chartInnerH" stroke="#d1d5db" stroke-width="1" class="dark:stroke-ash-600" />
+              <!-- Line -->
+              <polyline fill="none" stroke="var(--accent)" stroke-width="2" :points="polylineStr" stroke-linecap="round" stroke-linejoin="round" />
+              <!-- Dots -->
+              <g>
+                <circle v-for="(p, i) in chartPoints" :key="'dot-'+i" :cx="getX(i)" :cy="getY(p.tokens)" r="3" fill="var(--accent)" stroke="white" stroke-width="2" class="dark:stroke-ash-900" />
+              </g>
+            </svg>
+          </div>
+          <div v-else class="h-48 rounded-xl bg-cream-50 dark:bg-ash-800 border border-cream-200 dark:border-ash-700 flex items-center justify-center">
+            <span class="text-ink-500 dark:text-ink-400 text-sm">Belum ada data pemakaian</span>
+          </div>
+        </div>
+
+        <!-- Usage Table (collapsible) -->
+        <div class="border border-cream-200 dark:border-ash-700 rounded-xl overflow-hidden">
+          <button @click="usageOpen = !usageOpen" class="w-full px-4 py-3 bg-cream-50 dark:bg-ash-800 flex items-center justify-between text-left hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors">
+            <span class="font-medium text-ink-900 dark:text-ink-50">Pemakaian per Tanggal</span>
+            <svg class="w-5 h-5 text-ink-400 transition-transform" :class="{ 'rotate-180': usageOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div v-show="usageOpen" class="px-4 pb-4">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-xs text-ink-500 dark:text-ink-400 border-b border-cream-200 dark:border-ash-700"><th class="pb-2 pr-4">Tanggal</th><th class="pb-2 pr-4 text-right">Token</th><th class="pb-2 text-right">Calls</th></tr></thead>
+              <tbody>
+                <tr v-for="(d, i) in displayUsage" :key="'u-'+i" :class="['border-b border-cream-100 dark:border-ash-800', i % 2 === 0 ? 'bg-cream-50/50 dark:bg-ash-800/50' : '']">
+                  <td class="py-2 pr-4 text-ink-900 dark:text-ink-500">{{ formatDate(d.date) }}</td>
+                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-300">{{ formatNum(d.tokens) }}</td>
+                  <td class="py-2 text-right font-mono tabular-nums text-ink-500 dark:text-ink-400">{{ d.calls }}</td>
+                </tr>
+                <tr v-if="displayUsage.length === 0"><td colspan="3" class="py-6 text-center text-ink-400 dark:text-ink-500 text-sm">Belum ada data pemakaian</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Purchase History Table (collapsible) -->
+        <div class="border border-cream-200 dark:border-ash-700 rounded-xl overflow-hidden">
+          <button @click="purchaseOpen = !purchaseOpen" class="w-full px-4 py-3 bg-cream-50 dark:bg-ash-800 flex items-center justify-between text-left hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors">
+            <span class="font-medium text-ink-900 dark:text-ink-50">Riwayat Transaksi</span>
+            <svg class="w-5 h-5 text-ink-400 transition-transform" :class="{ 'rotate-180': purchaseOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div v-show="purchaseOpen" class="px-4 pb-4 overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead><tr class="text-left text-xs text-ink-500 dark:text-ink-400 border-b border-cream-200 dark:border-ash-700"><th class="pb-2 pr-4">Tanggal</th><th class="pb-2 pr-4 text-right">Token</th><th class="pb-2 pr-4 text-right">Nominal</th><th class="pb-2 pr-4">Metode</th><th class="pb-2">Status</th></tr></thead>
+              <tbody>
+                <tr v-for="(d, i) in (data?.purchase_history || [])" :key="'p-'+i" :class="['border-b border-cream-100 dark:border-ash-800', i % 2 === 0 ? 'bg-cream-50/50 dark:bg-ash-800/50' : '']">
+                  <td class="py-2 pr-4 text-ink-900 dark:text-ink-500">{{ formatDate(d.date) }}</td>
+                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-300">{{ formatNum(d.tokens) }}</td>
+                  <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-300">{{ formatIDR(d.amount) }}</td>
+                  <td class="py-2 pr-4 text-ink-600 dark:text-ink-400">{{ d.payment_method || d.provider }}</td>
+                  <td class="py-2"><span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', statusColor(d.status)]">{{ d.status }}</span></td>
+                </tr>
+                <tr v-if="(data?.purchase_history || []).length === 0"><td colspan="5" class="py-6 text-center text-ink-400 dark:text-ink-500 text-sm">Belum ada riwayat transaksi</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div v-if="loading" class="flex items-center justify-center py-12">
+        <div class="w-8 h-8 border-4 border-cream-300 dark:border-ash-600 border-t-[var(--accent)] rounded-full animate-spin"></div>
+      </div>
+
+      <!-- Error -->
+      <div v-if="error" class="flex flex-col items-center justify-center py-12 text-red-600 dark:text-red-400 text-center px-4">
+        <p>{{ error }}</p>
+        <button @click="fetchData" class="mt-3 text-sm underline hover:no-underline">Coba lagi</button>
+      </div>
+
+      <!-- Footer: beli token sudah ada di header, tidak perlu duplikat di sini -->
+    </div>
+  </div>
+</template>
+
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-// @ts-ignore
-import api from '../api/index.ts'
+import api from '../api/index'
 
-const props = defineProps<{
-  open: boolean
-}>()
+interface TokenData {
+  purchase_history: any[]
+  usage_history: any[]
+  trend: string
+  today_usage: number
+  yesterday_usage: number
+  total_spent: number
+  total_spent_month: number
+  total_purchased: number
+  remaining: number
+  base_quota: number
+  bonus_tokens: number
+}
 
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'buy-tokens'): void
-}>()
+const props = defineProps<{ open: boolean }>()
+defineEmits<{ close: [], 'buy-tokens': [] }>()
 
-const loading = ref(false)
+const loading = ref(true)
 const error = ref<string | null>(null)
-const tokenData = ref<any>(null)
+const data = ref<TokenData | null>(null)
+const usageOpen = ref(true)
+const purchaseOpen = ref(true)
 
-// Computed properties from tokenData
-const purchase_history = computed(() => tokenData.value?.purchase_history || [])
-const usage_history = computed(() => tokenData.value?.usage_history || [])
-const trend = computed(() => tokenData.value?.trend || 'stable')
-const today_usage = computed(() => tokenData.value?.today_usage || 0)
-const yesterday_usage = computed(() => tokenData.value?.yesterday_usage || 0)
-const remaining = computed(() => tokenData.value?.remaining || 0)
-const base_quota = computed(() => tokenData.value?.base_quota || 0)
-const bonus_tokens = computed(() => tokenData.value?.bonus_tokens || 0)
-
-// UI state
-// const usageTableExpanded = ref(false) // ponytail: add expandable table state when needed
-
-// Formatters
-function formatNum(n: number | string): string {
-  if (typeof n !== 'number') n = Number(n) || 0
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k'
-  return String(n)
-}
-
-function formatIDR(amountVal: number): string {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amountVal)
-}
-
-function formatDate(dateStr: string): string {
-  const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' }
-  return new Date(dateStr).toLocaleDateString('id-ID', options)
-}
-
-function formatDateTime(dateStr: string): string {
-  const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }
-  return new Date(dateStr).toLocaleDateString('id-ID', options)
-}
-
-async function fetchTokenDetails() {
-  if (!props.open) return
+async function fetchData() {
   loading.value = true
   error.value = null
   try {
-    const res = await api.get('/user/tokens/detail')
-    tokenData.value = res.data.data
+    const res = await api.get('/api/me/token-history')
+    if (res?.data) data.value = res.data
+    else error.value = 'Data tidak valid'
   } catch (e: any) {
-    error.value = e?.response?.data?.message || 'Gagal memuat detail token'
+    error.value = e.response?.data?.message || 'Gagal memuat data token'
   } finally {
     loading.value = false
   }
 }
 
-// Load when open changes
-watch(() => props.open, (val) => {
-  if (val) {
-    fetchTokenDetails()
-  }
+watch(() => props.open, (val) => { if (val) fetchData() })
+
+// Summary cards
+const summaryCards = computed(() => {
+  const d = data.value
+  if (!d) return []
+  const remaining = d.remaining || 0
+  const remainingColor = remaining < 50000 ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
+    : remaining < 150000 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+    : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+  return [
+    { label: 'Sisa Token', value: remaining, icon: '💎', colorClass: remainingColor },
+    { label: 'Base Quota', value: d.base_quota || 0, icon: '📦', colorClass: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
+    { label: 'Bonus', value: d.bonus_tokens || 0, icon: '🎁', colorClass: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
+    { label: 'Total', value: (d.base_quota || 0) + (d.bonus_tokens || 0), icon: '📊', colorClass: 'bg-navy-50 dark:bg-navy-900/20 text-navy-700 dark:text-navy-300 border-navy-200 dark:border-navy-800' },
+  ]
 })
 
-// Initial load
-if (props.open) {
-  fetchTokenDetails()
+// Trend
+const trendColor = computed(() => {
+  const t = data.value?.trend || 'stable'
+  return t === 'up' ? 'text-red-600 dark:text-red-400' : t === 'down' ? 'text-emerald-600 dark:text-emerald-400' : 'text-ink-500 dark:text-ink-400'
+})
+const trendIcon = computed(() => {
+  const t = data.value?.trend || 'stable'
+  return t === 'up' ? '↑' : t === 'down' ? '↓' : '→'
+})
+const trendPct = computed(() => {
+  const today = data.value?.today_usage || 0
+  const yest = data.value?.yesterday_usage || 0
+  if (yest === 0) return 0
+  return Number(((today - yest) / yest * 100).toFixed(1))
+})
+
+// Chart
+const chartPoints = computed(() => {
+  const hist = data.value?.usage_history || []
+  return [...hist].reverse() // chronological
+})
+const chartPad = { top: 20, right: 20, bottom: 30, left: 50 }
+const chartInnerW = 560 - chartPad.left - chartPad.right
+const chartInnerH = 180 - chartPad.top - chartPad.bottom
+const chartMax = computed(() => Math.max(...chartPoints.value.map(p => p.tokens), 1))
+const chartMin = computed(() => Math.min(...chartPoints.value.map(p => p.tokens), 0))
+const chartRange = computed(() => (chartMax.value - chartMin.value) || 1)
+function getX(i: number) { return chartPad.left + (i / (chartPoints.value.length - 1 || 1)) * chartInnerW }
+function getY(val: number) { return chartPad.top + chartInnerH - ((val - chartMin.value) / chartRange.value) * chartInnerH }
+const polylineStr = computed(() => chartPoints.value.map((p, i) => `${getX(i)},${getY(p.tokens)}`).join(' '))
+const xLabelStep = computed(() => Math.ceil(chartPoints.value.length / 6) || 1)
+const sparseXLabels = computed(() => {
+  const pts = chartPoints.value
+  const step = xLabelStep.value
+  const labels: string[] = []
+  for (let i = 0; i < pts.length; i += step) {
+    labels.push(new Date(pts[i].date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }))
+  }
+  if (pts.length > 0 && (pts.length - 1) % step !== 0) {
+    labels.push(new Date(pts[pts.length - 1].date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }))
+  }
+  return labels
+})
+
+// Usage table (last 7 days)
+const displayUsage = computed(() => [...(data.value?.usage_history || [])].reverse().slice(0, 7))
+
+// Helpers
+function formatNum(n: number): string {
+  return Number(n || 0).toLocaleString('id-ID')
+}
+function formatIDR(amount: number): string {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount || 0)
+}
+function formatDate(iso: string): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+function statusColor(status: string): string {
+  const map: Record<string, string> = {
+    paid: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    success: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+    failed: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+  }
+  return map[status] || 'bg-cream-200 dark:bg-ash-700 text-ink-600 dark:text-ink-400'
 }
 </script>
-
-<template>
-  <Teleport to="body">
-    <Transition name="fade-modal">
-      <div v-if="open" class="modal-overlay" @click.self="emit('close')">
-        <div class="modal-container">
-          <div class="modal-header">
-            <h3 class="modal-title">Detail Token</h3>
-            <button class="modal-close" @click="emit('close')" aria-label="Tutup">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6L6 18M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="modal-body" v-if="!loading && !error">
-            <!-- Summary cards -->
-            <div class="token-summary-grid">
-              <div class="summary-card primary">
-                <div class="summary-value">{{ remaining }}</div>
-                <div class="summary-label">Token Tersisa</div>
-                <div class="summary-sub" v-if="bonus_tokens > 0">+{{ bonus_tokens }} bonus</div>
-              </div>
-              <div class="summary-card">
-                <div class="summary-value">{{ base_quota }}</div>
-                <div class="summary-label">Kuota Bulanan</div>
-              </div>
-              <div class="summary-card">
-                <div class="summary-value">{{ today_usage }}</div>
-                <div class="summary-label">Dipakai Hari Ini</div>
-              </div>
-              <div class="summary-card">
-                <div class="summary-value">{{ yesterday_usage }}</div>
-                <div class="summary-label">Dipakai Kemarin</div>
-              </div>
-            </div>
-
-            <!-- Usage trend indicator -->
-            <div class="trend-indicator" :class="trend">
-              <span class="trend-icon">
-                <svg v-if="trend === 'up'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 15l-6-6-6 6"/>
-                </svg>
-                <svg v-else-if="trend === 'down'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-                <span v-else>→</span>
-              </span>
-              <span class="trend-text">
-                Penggunaan <strong>{{ trend === 'up' ? 'meningkat' : trend === 'down' ? 'menurun' : 'stabil' }}</strong>
-              </span>
-            </div>
-
-            <!-- Usage History Table -->
-            <div class="section" v-if="usage_history.length">
-              <div class="section-header">
-                <h4 class="section-title">Riwayat Penggunaan (7 Hari Terakhir)</h4>
-              </div>
-              <div class="table-wrapper">
-                <table class="usage-table">
-                  <thead>
-                    <tr>
-                      <th>Tanggal</th>
-                      <th>Token Dipakai</th>
-                      <th>Sisa Harian</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(item, i) in usage_history" :key="i">
-                      <td>{{ formatDate(item.date) }}</td>
-                      <td>{{ formatNum(item.used) }}</td>
-                      <td>{{ formatNum(item.remaining) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Purchase History -->
-            <div class="section" v-if="purchase_history.length">
-              <div class="section-header">
-                <h4 class="section-title">Riwayat Pembelian</h4>
-              </div>
-              <div class="table-wrapper">
-                <table class="usage-table">
-                  <thead>
-                    <tr>
-                      <th>Tanggal</th>
-                      <th>Paket</th>
-                      <th>Token</th>
-                      <th>Harga</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="(item, i) in purchase_history" :key="i">
-                      <td>{{ formatDateTime(item.created_at) }}</td>
-                      <td>{{ item.package_name || item.plan }}</td>
-                      <td class="text-green">{{ formatNum(item.tokens) }} <span v-if="item.bonus">+{{ item.bonus }}</span></td>
-                      <td>{{ formatIDR(item.amount) }}</td>
-                      <td><span class="status-badge" :class="item.status">{{ item.status }}</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div v-if="!usage_history.length && !purchase_history.length" class="empty-state">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <p>Belum ada aktivitas token</p>
-            </div>
-          </div>
-
-          <div v-else-if="loading" class="modal-loading">
-            <div class="spinner"></div>
-            <p>Memuat detail token...</p>
-          </div>
-
-          <div v-else-if="error" class="modal-error">
-            <p class="error-message">{{ error }}</p>
-            <button class="btn-retry" @click="fetchTokenDetails">Coba Lagi</button>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn-primary" @click="emit('buy-tokens')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-              Beli Token
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
-
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 16px;
-}
-
-.modal-container {
-  width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  background: var(--color-bg-elevated, #1e293b);
-  border: 1px solid var(--color-border, #334155);
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border, #334155);
-  background: var(--color-bg-surface, #0f172a);
-}
-
-.modal-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--color-text-primary, #e2e8f0);
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  color: var(--color-text-muted, #94a3b8);
-  padding: 6px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.15s, background 0.15s;
-}
-
-.modal-close:hover {
-  color: var(--color-text-primary, #e2e8f0);
-  background: var(--color-bg-hover, #1e293b);
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-.token-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.summary-card {
-  background: var(--color-bg-surface, #0f172a);
-  border: 1px solid var(--color-border, #334155);
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-}
-
-.summary-card.primary {
-  background: linear-gradient(135deg, var(--color-accent, #3b82f6), var(--color-accent-dark, #2563eb));
-  border: none;
-  color: #fff;
-}
-
-.summary-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.summary-label {
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #94a3b8);
-  margin-top: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.summary-card.primary .summary-label {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.summary-sub {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.7);
-  margin-top: 4px;
-}
-
-.trend-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 0.8rem;
-  color: var(--color-text-secondary, #cbd5e1);
-  margin-bottom: 20px;
-}
-
-.trend-indicator.up {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-}
-
-.trend-indicator.down {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-}
-
-.trend-icon {
-  display: flex;
-  align-items: center;
-}
-
-.section {
-  margin-bottom: 24px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.section-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text-primary, #e2e8f0);
-}
-
-.table-wrapper {
-  overflow-x: auto;
-  border-radius: 8px;
-  border: 1px solid var(--color-border, #334155);
-}
-
-.usage-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-}
-
-.usage-table th,
-.usage-table td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--color-border, #334155);
-}
-
-.usage-table th {
-  background: var(--color-bg-surface, #0f172a);
-  font-weight: 600;
-  color: var(--color-text-secondary, #cbd5e1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.7rem;
-}
-
-.usage-table td {
-  color: var(--color-text-primary, #e2e8f0);
-}
-
-.usage-table tr:last-child td {
-  border-bottom: none;
-}
-
-.text-green {
-  color: #22c55e;
-  font-weight: 500;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.status-badge.success {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-}
-
-.status-badge.pending {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fbbf24;
-}
-
-.status-badge.failed {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  color: var(--color-text-muted, #94a3b8);
-  text-align: center;
-}
-
-.empty-state svg {
-  margin-bottom: 12px;
-  opacity: 0.6;
-}
-
-.modal-loading,
-.modal-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  color: var(--color-text-secondary, #cbd5e1);
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--color-border, #334155);
-  border-top-color: var(--color-accent, #3b82f6);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.modal-footer {
-  padding: 16px 20px;
-  border-top: 1px solid var(--color-border, #334155);
-  background: var(--color-bg-surface, #0f172a);
-}
-
-.btn-primary {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--color-accent, #3b82f6);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: opacity 0.15s, transform 0.05s;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-retry {
-  margin-top: 12px;
-  padding: 8px 16px;
-  background: var(--color-bg-hover, #1e293b);
-  color: var(--color-text-primary, #e2e8f0);
-  border: 1px solid var(--color-border, #334155);
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-retry:hover {
-  background: var(--color-bg-surface, #0f172a);
-}
-
-.error-message {
-  color: #ef4444;
-  margin-bottom: 8px;
-}
-
-/* Transition */
-.fade-modal-enter-active,
-.fade-modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-modal-enter-from,
-.fade-modal-leave-to {
-  opacity: 0;
-}
-
-.fade-modal-enter-from .modal-container,
-.fade-modal-leave-to .modal-container {
-  transform: scale(0.95) translateY(10px);
-}
-</style>
