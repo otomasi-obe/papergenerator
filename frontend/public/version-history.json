@@ -1,12 +1,12 @@
 {
-  "version": "1.4.0",
+  "version": "1.3.3",
   "released": "2026-07-11",
-  "title": "Update v1.4.0 — AI Assistant Floating Chat Overhaul",
+  "title": "Update v1.3.3 — AI Assistant Floating Chat Overhaul",
   "history": [
     {
-      "version": "1.4.0",
+      "version": "1.3.3",
       "released": "2026-07-11",
-      "title": "Update v1.4.0 — AI Assistant Floating Chat Overhaul",
+      "title": "Update v1.3.3 — AI Assistant Floating Chat Overhaul",
       "changes": [
         { "type": "improvement", "text": "AI Assistant: floating button teal gradient terang + shadow glow, kontras tinggi" },
         { "type": "improvement", "text": "AI Assistant: panel border gradient hijau (teal→emerald) sebagai batas dengan background web" },
