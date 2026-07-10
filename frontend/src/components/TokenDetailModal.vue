@@ -1,7 +1,7 @@
 <template>
   <div v-if="open" class="fixed inset-0 z-[60] flex items-start justify-center p-4 pt-8 sm:pt-10">
     <div class="fixed inset-0 bg-black/30 transition-opacity z-0" @click="$emit('close')" aria-hidden="true" />
-    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-500 rounded-2xl shadow-xl flex flex-col">
+    <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-900 border border-cream-200 dark:border-ash-600 rounded-2xl shadow-xl flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-cream-200 dark:border-ash-600 shrink-0">
         <h2 class="text-lg font-bold text-ink-900 dark:text-ink-50">Detail Token</h2>
@@ -12,6 +12,16 @@
 
       <!-- Body -->
       <div class="px-5 py-4 overflow-y-auto space-y-5 flex-1" v-if="!loading && !error">
+
+        <!-- Low token warning -->
+        <div v-if="showLowTokenWarning" class="flex items-start gap-3 p-3 rounded-xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200">
+          <svg class="w-5 h-5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86l-8.48 14.7A1.5 1.5 0 0 0 3.06 21h17.88a1.5 1.5 0 0 0 1.25-2.44l-8.48-14.7a1.5 1.5 0 0 0-2.62 0z" /></svg>
+          <div class="flex-1">
+            <div class="font-semibold text-sm">Sisa token menipis!</div>
+            <div class="text-xs mt-0.5">Tersisa {{ formatNum(data?.remaining) }} token ({{ remainingPct }}% dari total kuota). Beli paket token sebelum habis.</div>
+            <button @click="$emit('buy-tokens')" class="mt-2 text-xs font-medium underline hover:no-underline">Beli Token Sekarang</button>
+          </div>
+        </div>
         <!-- Summary Cards -->
         <div class="grid grid-cols-3 gap-3">
           <div v-for="card in summaryCards" :key="card.label" :class="['p-3 rounded-xl border', card.colorClass]">
@@ -38,18 +48,18 @@
         <!-- Line Chart -->
         <div>
           <div class="text-sm font-medium text-ink-700 dark:text-ink-50 mb-2">Grafik Pemakaian (30 hari)</div>
-          <div v-if="chartPoints.length > 0" class="rounded-xl bg-white dark:bg-ash-900 border border-cream-200 dark:border-ash-700 p-2">
+          <div v-if="chartPoints.length > 0" class="rounded-xl bg-white dark:bg-ash-800 border border-cream-200 dark:border-ash-700 p-2">
             <svg width="560" height="180" viewBox="0 0 560 180" class="w-full h-auto">
               <!-- Grid lines -->
               <g stroke="#e5e5e5" stroke-width="0.5" class="dark:stroke-ash-700">
                 <line v-for="i in 4" :key="'grid-'+i" :x1="chartPad.left" :y1="chartPad.top + ((i-1)/3)*chartInnerH" :x2="chartPad.left + chartInnerW" :y2="chartPad.top + ((i-1)/3)*chartInnerH" />
               </g>
               <!-- Y axis labels -->
-              <g class="text-[10px] text-ink-400 dark:text-ink-500" font-family="monospace">
+              <g class="text-[10px] text-ink-400 dark:text-ink-300" font-family="monospace">
                 <text v-for="i in 4" :key="'y-'+i" :x="chartPad.left - 8" :y="chartPad.top + ((i-1)/3)*chartInnerH + 4" text-anchor="end" dominant-baseline="middle">{{ formatNum(Math.round(chartMin + (chartRange * (4-i) / 3))) }}</text>
               </g>
               <!-- X axis labels (dates, sparse) -->
-              <g class="text-[10px] text-ink-400 dark:text-ink-500" font-family="monospace">
+              <g class="text-[10px] text-ink-400 dark:text-ink-300" font-family="monospace">
                 <text v-for="(p, i) in sparseXLabels" :key="'x-'+i" :x="getX(i * xLabelStep)" :y="180 - 6" text-anchor="middle" dominant-baseline="hanging">{{ p }}</text>
               </g>
               <!-- Axis lines -->
@@ -76,10 +86,10 @@
           </button>
           <div v-show="usageOpen" class="px-4 pb-4">
             <table class="w-full text-sm">
-              <thead><tr class="text-left text-xs text-ink-500 dark:text-ink-400 border-b border-cream-200 dark:border-ash-700"><th class="pb-2 pr-4">Tanggal</th><th class="pb-2 pr-4 text-right">Token</th><th class="pb-2 text-right">Calls</th></tr></thead>
+              <thead><tr class="text-left text-xs text-ink-500 dark:text-ink-200 border-b border-cream-200 dark:border-ash-700"><th class="pb-2 pr-4">Tanggal</th><th class="pb-2 pr-4 text-right">Token</th><th class="pb-2 text-right">Calls</th></tr></thead>
               <tbody>
                 <tr v-for="(d, i) in displayUsage" :key="'u-'+i" :class="['border-b border-cream-100 dark:border-ash-800', i % 2 === 0 ? 'bg-cream-50/50 dark:bg-ash-800/50' : '']">
-                  <td class="py-2 pr-4 text-ink-900 dark:text-ink-500">{{ formatDate(d.date) }}</td>
+                  <td class="py-2 pr-4 text-ink-900 dark:text-ink-100">{{ formatDate(d.date) }}</td>
                   <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-50">{{ formatNum(d.tokens) }}</td>
                   <td class="py-2 text-right font-mono tabular-nums text-ink-500 dark:text-ink-200">{{ d.calls }}</td>
                 </tr>
@@ -97,13 +107,13 @@
           </button>
           <div v-show="purchaseOpen" class="px-4 pb-4 overflow-x-auto">
             <table class="w-full text-sm">
-              <thead><tr class="text-left text-xs text-ink-500 dark:text-ink-400 border-b border-cream-200 dark:border-ash-700"><th class="pb-2 pr-4">Tanggal</th><th class="pb-2 pr-4 text-right">Token</th><th class="pb-2 pr-4 text-right">Nominal</th><th class="pb-2 pr-4">Metode</th><th class="pb-2">Status</th></tr></thead>
+              <thead><tr class="text-left text-xs text-ink-500 dark:text-ink-200 border-b border-cream-200 dark:border-ash-700"><th class="pb-2 pr-4">Tanggal</th><th class="pb-2 pr-4 text-right">Token</th><th class="pb-2 pr-4 text-right">Nominal</th><th class="pb-2 pr-4">Metode</th><th class="pb-2">Status</th></tr></thead>
               <tbody>
                 <tr v-for="(d, i) in (data?.purchase_history || [])" :key="'p-'+i" :class="['border-b border-cream-100 dark:border-ash-800', i % 2 === 0 ? 'bg-cream-50/50 dark:bg-ash-800/50' : '']">
-                  <td class="py-2 pr-4 text-ink-900 dark:text-ink-500">{{ formatDate(d.date) }}</td>
+                  <td class="py-2 pr-4 text-ink-900 dark:text-ink-100">{{ formatDate(d.date) }}</td>
                   <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-50">{{ formatNum(d.tokens) }}</td>
                   <td class="py-2 pr-4 text-right font-mono tabular-nums text-ink-700 dark:text-ink-50">{{ formatIDR(d.amount) }}</td>
-                  <td class="py-2 pr-4 text-ink-600 dark:text-ink-400">{{ d.payment_method || d.provider }}</td>
+                  <td class="py-2 pr-4 text-ink-600 dark:text-ink-100">{{ d.payment_method || d.provider }}</td>
                   <td class="py-2"><span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', statusColor(d.status)]">{{ d.status }}</span></td>
                 </tr>
                 <tr v-if="(data?.purchase_history || []).length === 0"><td colspan="5" class="py-6 text-center text-ink-400 dark:text-ink-500 text-sm">Belum ada riwayat transaksi</td></tr>
@@ -187,6 +197,15 @@ const summaryCards = computed(() => {
   ]
 })
 
+// Low token warning
+const totalQuota = computed(() => (data.value?.base_quota || 0) + (data.value?.bonus_tokens || 0))
+const remainingPct = computed(() => {
+  const t = totalQuota.value
+  if (t <= 0) return 100 // unlimited / no quota → no warning
+  return Number(((data.value?.remaining || 0) / t * 100).toFixed(1))
+})
+const showLowTokenWarning = computed(() => totalQuota.value > 0 && remainingPct.value < 10)
+
 // Trend
 const trendColor = computed(() => {
   const t = data.value?.trend || 'stable'
@@ -251,6 +270,7 @@ function statusColor(status: string): string {
     success: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
     pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
     failed: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+    cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
   }
   return map[status] || 'bg-cream-200 dark:bg-ash-700 text-ink-600 dark:text-ink-400'
 }
