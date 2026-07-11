@@ -941,15 +941,14 @@ async function handleReviewIntent(intent: any): Promise<void> {
  const items = intent.items as LitItem[]
 
  // Auto-create conversation if none exists yet
- const chatStore = useChatStore()
- if (!chatStore.currentConversationId.value) {
- if (!chatStore.currentPaperId.value) return
- const conv = await chatStore.createConversation(chatStore.currentPaperId.value)
+ if (!currentConversationId.value) {
+ if (!currentPaperId.value) return
+ const conv = await chatStore.createConversation(currentPaperId.value)
  if (conv) {
- chatStore.currentConversationId.value = conv.id
+ currentConversationId.value = conv.id
  await chatStore.openConversation(conv.id)
  }
- if (!chatStore.currentConversationId.value) return
+ if (!currentConversationId.value) return
  }
 
  // Attach all literatures as pre-extracted context files
