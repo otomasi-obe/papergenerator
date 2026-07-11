@@ -125,7 +125,7 @@
       <div
         v-if="visibleContent && isActivelyStreaming"
         class="prose prose-sm max-w-none break-words whitespace-pre-wrap text-ink-900 dark:text-ink-100"
-      >{{ visibleContent }}<span class="inline-block w-1.5 h-4 bg-[var(--accent)]/80 animate-pulse align-middle ml-0.5" /></div>
+      >{{ visibleContent }}<span class="typing-cursor" /></div>
       <div
         v-else-if="visibleContent"
         class="prose prose-sm max-w-none break-words dark:prose-invert dark:text-[color:var(--text-base)]"
@@ -1053,6 +1053,21 @@ html.dark .prose :deep(pre code) {
 /* Strong / emphasis */
 .prose :deep(strong) { font-weight: 600; }
 .prose :deep(em) { font-style: italic; }
+
+.typing-cursor {
+  display: inline-block;
+  width: 0.375rem;
+  height: 1rem;
+  margin-left: 0.125rem;
+  vertical-align: middle;
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+  animation: typing-cursor-pulse 3.2s ease-in-out infinite;
+}
+
+@keyframes typing-cursor-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
 
 /* Prevent leading whitespace from creating <pre> blocks */
 .prose :deep(> *:first-child) { margin-top: 0; }
