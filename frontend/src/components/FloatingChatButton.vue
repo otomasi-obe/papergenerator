@@ -229,72 +229,23 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #0d5c56 100%);
   color: #ffffff; border: none;
   box-shadow:
-    0 4px 24px rgba(13, 148, 136, 0.35),
-    0 0 0 1px rgba(13, 148, 136, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 4px 24px rgba(13, 148, 136, 0.3),
+    0 0 0 1px rgba(13, 148, 136, 0.15);
   cursor: pointer; display: flex; align-items: center; gap: 10px;
   z-index: 9998; font-family: inherit; font-size: 0.9rem; font-weight: 600;
   letter-spacing: 0.01em;
-  overflow: visible;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
-}
-/* SVG ring: flowing dashed line around pill */
-.floating-chat-btn .btn-ring-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-.floating-chat-btn:hover .btn-ring-svg {
-  opacity: 1;
-}
-.floating-chat-btn:hover .btn-ring-svg rect {
-  animation: dash-flow 3s linear infinite;
-}
-@keyframes dash-flow {
-  to { stroke-dashoffset: -1000; }
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .floating-chat-btn:hover {
-  transform: scale(1.08) translateY(-2px);
+  transform: scale(1.06) translateY(-2px);
   box-shadow:
-    0 8px 32px rgba(13, 148, 136, 0.45),
-    0 0 0 1px rgba(13, 148, 136, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    0 8px 32px rgba(13, 148, 136, 0.35),
+    0 0 0 1px rgba(13, 148, 136, 0.2);
   background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
 }
 .floating-chat-btn:active { transform: scale(0.95); }
 .btn-label { white-space: nowrap; }
-
-/* #2: Running ring animation when AI streaming (not just hover) */
-.floating-chat-btn.is-streaming .btn-ring-svg {
-  opacity: 1;
-}
-.floating-chat-btn.is-streaming .btn-ring-svg rect {
-  animation: dash-flow 1.5s linear infinite;
-}
-
-/* #3: Red dot notification when AI finished while panel closed */
-.floating-chat-btn.has-unread::after {
-  content: '';
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 10px;
-  height: 10px;
-  background: #ef4444;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px #ef4444;
-  animation: pulse-dot 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.7; }
-}
 
 /* ── Overlay (non-blocking) ── */
 .floating-chat-overlay {
@@ -309,11 +260,9 @@ onUnmounted(() => {
   max-height: calc(100vh - 32px);
   background: linear-gradient(180deg, #f8f6f2 0%, #f3efe8 100%);
   border-radius: 20px;
-  border: 2px solid #0d9488;
   box-shadow:
-    0 20px 60px rgba(15, 39, 68, 0.25),
-    0 4px 20px rgba(15, 39, 68, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 8px 32px rgba(15, 39, 68, 0.14),
+    0 2px 8px rgba(15, 39, 68, 0.08);
   display: flex; flex-direction: column; overflow: hidden;
   pointer-events: auto;
   position: relative;
@@ -322,22 +271,13 @@ onUnmounted(() => {
 .floating-chat-panel.maximized {
   width: 720px;
 }
-.floating-chat-panel::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 23px;
-  background: linear-gradient(180deg, #238f7f 0%, #0d9488 30%, #059669 60%, #10b981 100%);
-  z-index: -1;
-  opacity: 0.6;
-}
 
 /* ── Header with gradient ── */
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0a1f38 100%);
-  border-bottom: 1px solid rgba(56, 139, 253, 0.2);
+  background: linear-gradient(135deg, #1e3a5f 0%, #1a2f4a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -351,7 +291,7 @@ onUnmounted(() => {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(ellipse at 30% 20%, rgba(56, 139, 253, 0.15) 0%, transparent 50%);
+  background: radial-gradient(ellipse at 30% 20%, rgba(56, 139, 253, 0.08) 0%, transparent 50%);
   pointer-events: none;
 }
 
