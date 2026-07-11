@@ -1061,7 +1061,7 @@ html.dark .prose :deep(pre code) {
   margin-left: 0.125rem;
   vertical-align: middle;
   background: color-mix(in srgb, var(--accent) 80%, transparent);
-  animation: typing-cursor-pulse 3.2s ease-in-out infinite;
+  animation: typing-cursor-pulse 6s ease-in-out infinite;
 }
 
 @keyframes typing-cursor-pulse {
