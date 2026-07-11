@@ -1128,7 +1128,7 @@ function schedulePoll(): void {
       j => j.status === 'running' || j.status === 'pending' || j.status === 'queued'
     )
     await loadJobs()
-    if (hasActive) {
+    if (hasActive && !_userClearedTable) {
       await loadItems()
     }
     schedulePoll()
@@ -1143,6 +1143,7 @@ async function runSLR(): Promise<void> {
   const q = slrQuery.value.trim()
   if (!q || !currentPaperId.value) return
   slrRunning.value = true
+  _userClearedTable = false  // New SLR — allow loading new results
   _slrGraceUntil = Date.now() + 5000
   _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
   slrStreamItems.value = []
@@ -1475,9 +1476,10 @@ function toggleCheckAllVisible(): void {
 }
 
 function clearAllFilters(): void {
-  askConfirm('Kosongkan tabel?', 'Semua literatur akan dihapus dari tampilan tabel. Data tetap aman — muat ulang atau jalankan SLR baru untuk menampilkan lagi.', 'Kosongkan', () => {
+  askConfirm('Kosongkan tabel?', 'Semua literatur akan dihapus permanen dari database. Jalankan SLR baru untuk mengumpulkan ulang.', 'Kosongkan', async () => {
     _userClearedTable = true  // Prevent auto-reload from re-populating
     items.value = []
+    slrStreamItems.value = []
     checkedIds.value = new Set()
     filter.value = ''
     filterSource.value = ''
@@ -1490,6 +1492,10 @@ function clearAllFilters(): void {
     currentPage.value = 1
     if (currentPaperId.value) {
       localStorage.removeItem(filterStorageKey(currentPaperId.value))
+      // Delete from DB so they don't reappear on next loadItems/SLR
+      try {
+        await api.post(`/api/papers/${currentPaperId.value}/literature/clear`)
+      } catch { /* silent — UI already cleared */ }
     }
   })
 }

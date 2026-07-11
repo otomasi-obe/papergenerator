@@ -33,10 +33,11 @@
       <span class="text-xs font-mono text-amber-700 dark:text-amber-300 shrink-0 w-8 text-right">
         {{ job.progress || 0 }}%
       </span>
-      <!-- ETA Display -->
-      <span v-if="job.eta_display && isActive" class="text-xs text-amber-700 dark:text-amber-300 shrink-0 font-mono whitespace-nowrap">
-        ⏱ {{ job.eta_display }}
-      </span>
+    </div>
+
+    <!-- ETA Display (below progress bar) -->
+    <div v-if="job.eta_display && isActive" class="text-xs text-amber-700 dark:text-amber-300 font-mono ml-12">
+      ⏱ {{ job.eta_display }}
     </div>
 
     <!-- Main Progress Message -->
