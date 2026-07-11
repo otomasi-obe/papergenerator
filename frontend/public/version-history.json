@@ -1,8 +1,17 @@
 {
-  "version": "1.3.7",
+  "version": "1.3.8",
   "released": "2026-07-11",
-  "title": "Update v1.3.7 — SLR fetcher fixes: year & abstract",
+  "title": "Update v1.3.8 — VA cancel per-bank channel fix",
   "history": [
+    {
+      "version": "1.3.8",
+      "released": "2026-07-11",
+      "title": "Update v1.3.8 — VA cancel per-bank channel fix",
+      "changes": [
+        { "type": "fix", "text": "cancel-va: read channel dari stored raw_response — cancel kini benar untuk semua bank (bukan hardcode VIRTUAL_ACCOUNT_BRI)" },
+        { "type": "fix", "text": "generate-va: simpan requested channel di raw_response.virtualAccountData.additionalInfo.channel sehingga cancel-va bisa retrieve" }
+      ]
+    },
     {
       "version": "1.3.7",
       "released": "2026-07-11",

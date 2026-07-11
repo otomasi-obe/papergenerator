@@ -623,6 +623,8 @@ def generate_va():
             }), 502
 
         va_data = result.get('virtualAccountData', {})
+        # DOKU does not always echo channel; persist requested channel for cancel/delete-va.
+        va_data.setdefault('additionalInfo', {})['channel'] = channel
         # Use DOKU's returned VA number (they pad customerNo for DGPC)
         va_number = va_data.get('virtualAccountNo', va_no)
         doku_customer_no = va_data.get('customerNo', customer_no)
@@ -900,11 +902,24 @@ def cancel_va():
                 current_app.logger.warning(f'DOKU VA BIN mismatch: parsed={partner_service_id!r} config={va_partner_id!r}')
                 # Continue anyway, as the VA number came from DOKU's own response
 
+        # Extract channel from stored raw_response so cancel uses correct bank channel
+        stored_channel = 'VIRTUAL_ACCOUNT_BRI'  # default fallback
+        if payment.raw_response:
+            try:
+                raw = json.loads(payment.raw_response)
+                stored_channel = (
+                    raw.get('virtualAccountData', {})
+                    .get('additionalInfo', {})
+                    .get('channel', stored_channel)
+                )
+            except Exception:
+                pass
+
         body = {
             'partnerServiceId': partner_service_id,
             'customerNo': customer_no,
             'virtualAccountNo': va_number,
-            'additionalInfo': {'channel': 'VIRTUAL_ACCOUNT_BRI'},
+            'additionalInfo': {'channel': stored_channel},
         }
 
         result = _doku_request('/virtual-accounts/bi-snap-va/v1.1/transfer-va/delete-va', body, method='DELETE')
