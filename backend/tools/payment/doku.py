@@ -552,7 +552,8 @@ def generate_va():
         channel = data.get('channel', 'VIRTUAL_ACCOUNT_BRI')
         valid_channels = [
             'VIRTUAL_ACCOUNT_BRI', 'VIRTUAL_ACCOUNT_BNI', 'VIRTUAL_ACCOUNT_BCA',
-            'VIRTUAL_ACCOUNT_BJB', 'VIRTUAL_ACCOUNT_BNC', 'VIRTUAL_ACCOUNT_MANDIRI'
+            'VIRTUAL_ACCOUNT_BJB', 'VIRTUAL_ACCOUNT_BNC', 'VIRTUAL_ACCOUNT_MANDIRI',
+            'VIRTUAL_ACCOUNT_BANK_PERMATA',
         ]
         if channel not in valid_channels:
             channel = 'VIRTUAL_ACCOUNT_BRI'
@@ -562,15 +563,17 @@ def generate_va():
         # partnerServiceId must be exactly 8 chars (BRI: 6 digits + 2 spaces)
         va_bin_map = {
             'VIRTUAL_ACCOUNT_BNI': (os.getenv('DOKU_VA_BIN_BNI') or '').strip(),
+            'VIRTUAL_ACCOUNT_BANK_PERMATA': (os.getenv('DOKU_VA_BIN_PERMATA') or '').strip(),
         }
         va_partner_id = va_bin_map.get(channel, '').strip() or (os.getenv('DOKU_VA_BIN') or '').strip()
         if not va_partner_id:
             current_app.logger.error('DOKU_VA_BIN not configured in .env')
             return jsonify({'error': 'VA not configured. Contact support.'}), 500
-        # Ensure exactly 8 chars: right-align, truncate left if longer
+        # DOKU SNAP partnerServiceId is 8 chars; dashboard Merchant BIN may be 9 chars.
+        # Use the dashboard Partner Service ID convention: first 8 digits of Merchant BIN.
         if len(va_partner_id) > 8:
-            va_partner_id = va_partner_id[-8:]
-        partner_service_id = va_partner_id.rjust(8, ' ')  # SPACE-pad to 8 chars
+            va_partner_id = va_partner_id[:8]
+        partner_service_id = va_partner_id.rjust(8, ' ')  # SPACE-pad legacy short BINs
 
         current_app.logger.info(
             'DOKU VA generate: channel=%s raw_bin=%s partnerServiceId=%r len=%s',
@@ -651,6 +654,7 @@ def generate_va():
             'VIRTUAL_ACCOUNT_BJB': 'BJB',
             'VIRTUAL_ACCOUNT_BNC': 'BNC',
             'VIRTUAL_ACCOUNT_MANDIRI': 'Mandiri',
+            'VIRTUAL_ACCOUNT_BANK_PERMATA': 'Permata',
         }
         bank_name = channel_map.get(body['additionalInfo']['channel'], 'BRI')
 

@@ -486,7 +486,7 @@ const tokens = ref(0)
 const selectedBank = ref('VIRTUAL_ACCOUNT_BRI')
 const banks = [
   { channel: 'VIRTUAL_ACCOUNT_BRI', label: 'BRI', active: true },
-  { channel: 'VIRTUAL_ACCOUNT_BCA', label: 'BCA', active: false },
+  { channel: 'VIRTUAL_ACCOUNT_BANK_PERMATA', label: 'Permata', active: true },
   { channel: 'VIRTUAL_ACCOUNT_BNI', label: 'BNI', active: true },
   { channel: 'VIRTUAL_ACCOUNT_MANDIRI', label: 'Mandiri', active: false },
 ]
