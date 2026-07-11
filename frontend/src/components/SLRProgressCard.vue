@@ -33,6 +33,10 @@
       <span class="text-xs font-mono text-amber-700 dark:text-amber-300 shrink-0 w-8 text-right">
         {{ job.progress || 0 }}%
       </span>
+      <!-- ETA Display -->
+      <span v-if="job.eta_display && isActive" class="text-xs text-amber-700 dark:text-amber-300 shrink-0 font-mono whitespace-nowrap">
+        ⏱ {{ job.eta_display }}
+      </span>
     </div>
 
     <!-- Main Progress Message -->
@@ -112,6 +116,8 @@ interface SLRJob {
   sources_pending?: string[]
   papers_fetched?: number
   all_papers_count?: number
+  eta_seconds?: number
+  eta_display?: string
 }
 
 const props = defineProps<{

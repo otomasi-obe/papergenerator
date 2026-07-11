@@ -2485,7 +2485,7 @@ class SLRJob:
         "error", "results", "partial_results", "summary_result",
         "sources_completed", "sources_total", "sources_running", "sources_pending",
         "papers_fetched", "all_papers_count",
-        "started_at", "stopped",
+        "started_at", "eta_seconds", "eta_display", "stopped",
         "per_source", "sources",
         "year_from", "year_to",
     )
@@ -2527,6 +2527,9 @@ class SLRJob:
         self.sources = list(sources or [])
         self.year_from = year_from
         self.year_to = year_to
+        # ETA fields
+        self.eta_seconds: int | None = None
+        self.eta_display: str = ""
 
     def to_dict(self) -> dict:
         """Serialize to dict for API responses and Redis.
@@ -3349,6 +3352,28 @@ class SLROrchestrator:
 
     # ── Helpers ─────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _compute_eta(job: SLRJob) -> tuple[int | None, str]:
+        """Compute ETA using simple linear extrapolation."""
+        if job.progress_pct <= 0 or job.progress_pct >= 100:
+            return None, ""
+        try:
+            started = datetime.fromisoformat(job.started_at.replace('Z', '+00:00'))
+            elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+            if elapsed <= 0:
+                return None, ""
+            eta_seconds = min(int((elapsed / job.progress_pct) * (100.0 - job.progress_pct)), 7200)
+            if eta_seconds < 60:
+                return eta_seconds, f"{eta_seconds} detik"
+            if eta_seconds < 3600:
+                mins, secs = divmod(eta_seconds, 60)
+                return eta_seconds, f"{mins}m {secs}s" if secs else f"{mins} menit"
+            hours, rest = divmod(eta_seconds, 3600)
+            mins = rest // 60
+            return eta_seconds, f"{hours}j {mins}m" if mins else f"{hours} jam"
+        except Exception:
+            return None, ""
+
     def _set_stage(
         self, job: SLRJob, stage: str, pct: float, detail: str,
         extra: dict | None = None,
@@ -3365,6 +3390,7 @@ class SLROrchestrator:
             if extra:
                 for k, v in extra.items():
                     setattr(job, k, v)
+            job.eta_seconds, job.eta_display = self._compute_eta(job)
         _push_progress(job)
         # Persist to DB on every stage update so frontend sees real-time progress
         # (Redis push above is fast, DB write ~5-10ms, acceptable overhead)
