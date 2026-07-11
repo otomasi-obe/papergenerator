@@ -701,9 +701,11 @@ def stream_slr_job(job_id: str):
                 "percent": int(job_dict.get("progress_pct", 0)),
                 "status": job_dict.get("status", "running"),
                 "papers_count": job_dict.get("papers_fetched", 0),
+                "eta_seconds": job_dict.get("eta_seconds"),
+                "eta_display": job_dict.get("eta_display"),
             }
         else:
-            snap = {"stage": "queued", "percent": 0, "status": "running", "papers_count": 0}
+            snap = {"stage": "queued", "percent": 0, "status": "running", "papers_count": 0, "eta_seconds": None, "eta_display": ""}
         yield f"event: snapshot\ndata: {json.dumps(snap)}\n\n"
         
         # If already terminal, send done and exit
@@ -2559,6 +2561,8 @@ class SLRJob:
             "all_papers_count": self.all_papers_count,
             "sources": list(self.sources),
             "error": self.error,
+            "eta_seconds": self.eta_seconds,
+            "eta_display": self.eta_display,
             "partial_results": self.partial_results[:PARTIAL_RESULTS_PREVIEW],
             "results": self.results,
         }

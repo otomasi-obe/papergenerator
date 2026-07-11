@@ -525,6 +525,8 @@ interface SLRJob {
     ai_summary_used?: boolean
     [key: string]: any
   }
+  eta_seconds?: number
+  eta_display?: string
 }
 
 interface ManualForm {
@@ -1194,6 +1196,9 @@ function connectSSE(jobId: string): void {
           job.stage = data.stage || job.stage
           job.progress = data.percent || job.progress
           job.papers_fetched = data.papers_count || job.papers_fetched
+          // ETA fields
+          job.eta_seconds = data.eta_seconds ?? job.eta_seconds
+          job.eta_display = data.eta_display ?? job.eta_display
         }
       } catch { /* ignore parse error */ }
     })
@@ -1214,6 +1219,9 @@ function connectSSE(jobId: string): void {
           job.sources_running = data.sources_running || job.sources_running
           job.sources_pending = data.sources_pending || job.sources_pending
           job.sources_total = data.sources_total || job.sources_total
+          // ETA fields
+          job.eta_seconds = data.eta_seconds ?? job.eta_seconds
+          job.eta_display = data.eta_display ?? job.eta_display
           // Also update primarySlrStatus computed
           slrRunning.value = true
         }

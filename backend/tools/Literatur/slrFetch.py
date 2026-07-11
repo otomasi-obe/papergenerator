@@ -112,7 +112,9 @@ _MEDICAL_KEYWORDS = frozenset({
     "epidemiolog", "patholog", "anatomy", "physiolog", "radiolog",
     "oncolog", "cardiolog", "dermatolog", "gastroenterolog", "urolog",
     "ophthalmolog", "neurolog", "psychiatr", "pediatric", "geriatric",
-    "medicine", "nursing", "public health", "biomedical",
+    "medicine", "nursing", "public health", "biomedical", "antibiotic",
+    "antimicrobial", "antibacterial", "pharmaceutical", "pharmacology",
+    "bioactive", "natural product", "compound", "marine", "biota",
 })
 
 # Keywords that indicate CS/AI domain
@@ -138,13 +140,28 @@ _ENGINEERING_KEYWORDS = frozenset({
 
 # Keywords that indicate Indonesian research
 _INDONESIAN_KEYWORDS = frozenset({
+    # Geographic / national
     "indonesia", "indonesian", "nusantara", "jawa", "sumatera", "kalimantan",
     "sulawesi", "papua", "bahasa indonesia", "pancasila", "batik",
+    # Academic / domain
     "pendidikan", "kesehatan", "pertanian", "pembangunan", "masyarakat",
     "pemerintah", "kebijakan", "ekonomi indonesia", "umkm",
     "sistem", "berbasis", "penelitian", "analisis", "metode",
     "teknik", "algoritma", "penerapan", "kajian", "studi",
     "rencana", "pemodelan", "implementasi", "pembuatan", "analisa",
+    # Common Indonesian words (high signal — rarely appear in English titles)
+    "dan", "dari", "untuk", "dengan", "pada", "dalam", "yang", "atau",
+    "terhadap", "antara", "melalui", "tentang", "oleh", "atas", "secara",
+    "menggunakan", "berdasarkan", "mengenai", "sebagai", "menurut",
+    # Science / research verbs & nouns
+    "pengembangan", "peningkatan", "pengaruh", "perancangan", "perbandingan",
+    "penggunaan", "pemanfaatan", "pengolahan", "pemrosesan", "pemantauan",
+    "eksplorasi", "evaluasi", "identifikasi", "karakterisasi", "optimasi",
+    "klasifikasi", "deteksi", "prediksi", "estimasi", "simulasi",
+    "senyawa", "bioaktif", "antibiotik", "organisme", "tanaman", "tumbuhan",
+    "hewan", "laut", "perairan", "lingkungan", "ekosistem", "habitat",
+    "penyakit", "obat", "terapi", "diagnosis", "gejala",
+    "baru", "besar", "kecil", "tinggi", "rendah",
 })
 
 # Indonesian-to-English academic term translation for API queries
@@ -222,6 +239,15 @@ _INDONESIAN_TO_ENGLISH = {
     "tinjauan": "review",
     "survei": "survey",
     "eksplorasi": "exploration",
+    "senyawa": "compound",
+    "senyawa bioaktif": "bioactive compound",
+    "bioaktif": "bioactive",
+    "biota": "biota",
+    "biota laut": "marine biota",
+    "laut": "marine",
+    "antibiotik": "antibiotic",
+    "antibiotik baru": "new antibiotic",
+    "baru": "new",
     "investigasi": "investigation",
     "eksperimen": "experiment",
     "simulasi": "simulation",
@@ -650,8 +676,15 @@ def _validate_analysis(raw: dict, keyword: str) -> dict:
     result: dict = {}
     result["main_keyword"] = keyword
     
-    # Language and scope detection
-    detected_language = raw.get("detected_language") or _detect_language(keyword)
+    # Language and scope detection — validate LLM output against keyword
+    llm_lang = raw.get("detected_language")
+    local_lang = _detect_language(keyword)
+    # If keyword is clearly Indonesian (local detects 'id' or 'mixed') but LLM says 'en',
+    # trust the local detection. LLM can misclassify Indonesian technical terms as English.
+    if local_lang in ("id", "mixed") and llm_lang == "en":
+        detected_language = local_lang
+    else:
+        detected_language = llm_lang or local_lang
     result["detected_language"] = detected_language
     
     research_scope = raw.get("research_scope") or (
@@ -665,7 +698,11 @@ def _validate_analysis(raw: dict, keyword: str) -> dict:
     if not isinstance(domains, list):
         domains = []
     result["domains"] = [d.lower().strip() for d in domains if isinstance(d, str)]
-
+    
+    # If LLM returned no domains, infer from keyword
+    if not result["domains"]:
+        result["domains"] = _detect_domains(keyword)
+    
     # Add "indonesia" domain if Indonesian language detected
     if detected_language in ["id", "mixed"] and "indonesia" not in result["domains"]:
         result["domains"].append("indonesia")
@@ -720,6 +757,10 @@ def _validate_analysis(raw: dict, keyword: str) -> dict:
         if not q or not isinstance(q, str) or not q.strip():
             # Smart query assignment based on fetcher type and language
             q = _get_smart_query_for_fetcher(fetcher, keyword, result["expanded_queries"], detected_language)
+        elif detected_language in ("id", "mixed") and fetcher != "sinta":
+            # LLM gave a query, but if it's Indonesian for an international fetcher, translate
+            if any(w in q.lower().split() for w in ("dari", "untuk", "dengan", "pada", "dalam", "yang", "atau", "dan")):
+                q = _translate_id_to_en(keyword)
         fmap[fetcher] = q.strip()
     result["fetcher_query_map"] = fmap
 
@@ -738,9 +779,11 @@ def _validate_analysis(raw: dict, keyword: str) -> dict:
 
 def _get_smart_query_for_fetcher(fetcher: str, main_keyword: str, expanded_queries: list[str], language: str) -> str:
     """Get appropriate query for specific fetcher based on language and fetcher type."""
-    # For Indonesian databases, use Indonesian query
-    if fetcher == "sinta" and language in ["id", "mixed"]:
-        return main_keyword  # Keep original Indonesian
+    # For Indonesian databases, use Indonesian query. Everything else should be English.
+    if language in ["id", "mixed"]:
+        if fetcher == "sinta":
+            return main_keyword
+        return _translate_id_to_en(main_keyword)
     
     # For international databases, prefer English
     if fetcher in {"scopus", "sciencedirect", "ieee", "pubmed", "europepmc", "pmc"}:
@@ -748,10 +791,16 @@ def _get_smart_query_for_fetcher(fetcher: str, main_keyword: str, expanded_queri
         for q in expanded_queries:
             if not any(word in q.lower() for word in _INDONESIAN_KEYWORDS):
                 return q
+        # If language is Indonesian and no English expanded query found, translate
+        if language in ("id", "mixed"):
+            return _translate_id_to_en(main_keyword)
         return main_keyword  # Fallback
     
     # For broad databases, use main keyword or first expanded
     if fetcher in {"openalex", "crossref", "semantic_scholar"}:
+        # For Indonesian queries, translate for better international coverage
+        if language in ("id", "mixed"):
+            return _translate_id_to_en(main_keyword)
         return expanded_queries[0] if expanded_queries else main_keyword
     
     return main_keyword
@@ -794,14 +843,18 @@ def route_fetchers(analysis: dict) -> dict[str, list[str]]:
             else:
                 route[bf] = [book_q]
 
-    # Also add expanded queries to broad fetchers for wider recall
+    # Also add expanded queries to broad fetchers for wider recall.
+    # For Indonesian topics, keep international fetchers English-only to avoid irrelevant hits.
     expanded = analysis.get("expanded_queries", [])
     broad = {"openalex", "crossref", "semantic_scholar", "scopus"}
+    language = analysis.get("detected_language", "en")
+    international_fetchers = {"scopus", "openalex", "crossref", "semantic_scholar"}
     for fetcher, queries in route.items():
         if fetcher in broad:
             fetcher_query = fmap.get(fetcher, "")
-            # Don't duplicate the main query
             for eq in expanded:
+                if language in ("id", "mixed") and fetcher in international_fetchers:
+                    continue
                 if eq != fetcher_query and eq not in queries:
                     queries.append(eq)
     
