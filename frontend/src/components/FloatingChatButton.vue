@@ -26,6 +26,18 @@
       title="AI Assistant"
       aria-label="Open AI Assistant"
     >
+      <!-- SVG ring: flowing solid line around pill, green + cream gradient -->
+      <svg class="btn-ring-svg" viewBox="0 0 100 50" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1.25" y="1.25" width="97.5" height="47.5" rx="23.75" ry="23.75"
+          stroke="url(#ringGrad)" stroke-width="2.5" stroke-dasharray="1000" stroke-linecap="round"/>
+        <defs>
+          <linearGradient id="ringGrad" x1="0" y1="0" x2="100" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0d9488"/>
+            <stop offset="50%" stop-color="#f5f0e8"/>
+            <stop offset="100%" stop-color="#14b8a6"/>
+          </linearGradient>
+        </defs>
+      </svg>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
       </svg>
@@ -206,23 +218,24 @@ onUnmounted(() => {
   overflow: visible;
   transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
-/* Rotating pill ring on hover — actual border line around the button */
-.floating-chat-btn::before {
-  content: '';
+/* SVG ring: flowing dashed line around pill */
+.floating-chat-btn .btn-ring-svg {
   position: absolute;
-  inset: -4px;
-  border-radius: 29px;
-  border: 2px solid transparent;
-  background:
-    linear-gradient(#0d5c56, #0d5c56) padding-box,
-    conic-gradient(from 0deg, #14b8a6, #0d9488, #10b981, #0d9488, #14b8a6) border-box;
-  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
-.floating-chat-btn:hover::before {
+.floating-chat-btn:hover .btn-ring-svg {
   opacity: 1;
-  animation: btn-ring-spin 1.8s linear infinite;
+}
+.floating-chat-btn:hover .btn-ring-svg rect {
+  animation: dash-flow 3s linear infinite;
+}
+@keyframes dash-flow {
+  to { stroke-dashoffset: -1000; }
 }
 .floating-chat-btn:hover {
   transform: scale(1.08) translateY(-2px);
@@ -234,10 +247,6 @@ onUnmounted(() => {
 }
 .floating-chat-btn:active { transform: scale(0.95); }
 .btn-label { white-space: nowrap; }
-
-@keyframes btn-ring-spin {
-  to { transform: rotate(360deg); }
-}
 
 /* ── Overlay (non-blocking) ── */
 .floating-chat-overlay {
