@@ -608,17 +608,21 @@ def send_message(conv_id: str):
 
     # Inject UI location + paper context from view_context (frontend sends current paper user is viewing)
     try:
-        view_context = request.get_json(silent=True) or {}
-        view_context = view_context.get("view_context", {})
+        req_json = request.get_json(silent=True) or {}
+        view_context = req_json.get("view_context", {})
+        if not isinstance(view_context, dict):
+            view_context = {}
         location = str(view_context.get("location") or ("editor" if conv.paper_id else "dashboard"))
         view_paper_id = view_context.get("paperId")
     except Exception as e:
         log.warning("Failed to parse view_context: %s", e)
+        view_context = {}
         location = "dashboard"
         view_paper_id = None
 
-    # Location context
-    if location == "dashboard" or not conv.paper_id:
+    # Location context — use frontend's view_context.location ONLY (it's authoritative)
+    # conv.paper_id may be null (global chat) but user can be in editor viewing a paper
+    if location == "dashboard":
         system_content += (
             "## Current User Location\n"
             "User sedang di DASHBOARD, bukan di halaman editor.\n"
@@ -633,14 +637,22 @@ def send_message(conv_id: str):
             "User sedang di EDITOR paper. Controls visible: `📝 Editor`, `👁 Preview`, `🛠 Tools`; di dalam Tools ada `Generate Full`, `Journal`, `Literatur`, `Files`, `Data`, `Images`, dan AI tools.\n\n"
         )
 
-    # Paper context: use view_context.paperId (what user is CURRENTLY viewing) over conv.paper_id
-    # This enables global conversations that follow the user across papers
+    # Paper context: frontend in-memory draft wins over DB so unsaved title/section edits are visible immediately.
     effective_paper_id = view_paper_id or conv.paper_id
-    if effective_paper_id:
+    view_paper = view_context.get("paper")
+    if isinstance(view_paper, dict):
+        try:
+            if effective_paper_id:
+                view_paper["_paper_id"] = effective_paper_id
+            paper_block = json.dumps(view_paper, indent=2, ensure_ascii=False)
+            system_content += f"## Paper Context\nBerikut adalah data paper yang sedang user lihat/edit saat ini (realtime dari frontend, termasuk perubahan yang belum tersimpan):\n\n```json\n{paper_block}\n```\n\n"
+        except Exception as e:
+            log.warning("Failed to build frontend paper context: %s", e)
+    elif effective_paper_id:
         try:
             paper_block = get_paper_context(effective_paper_id)
             if paper_block:
-                system_content += f"## Paper Context\nBerikut adalah data JSON lengkap paper user saat ini (selalu up-to-date dari database):\n\n```json\n{paper_block}\n```\n\n"
+                system_content += f"## Paper Context\nBerikut adalah data JSON lengkap paper user saat ini (dari database):\n\n```json\n{paper_block}\n```\n\n"
         except Exception as e:
             log.warning("Failed to build paper context for %s: %s", effective_paper_id, e)
 

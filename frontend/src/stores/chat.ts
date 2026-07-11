@@ -993,13 +993,15 @@ export const useChatStore = defineStore('chat', () => {
                   payload.images = images
                 }
 
-                // [FIX] Inject current paperId as view_context so AI knows:
-                // - user's current paper (title, sections, etc.)
-                // - user's location (dashboard vs editor)
-                // - active tools context
+                // Realtime view context: route/location + in-memory paper draft.
+                // currentPaperId here belongs to chat store; paperStore is the authoritative editor state.
+                const paperStore = usePaperStore()
+                const viewPaperId = paperStore.currentPaperId || currentPaperId.value || null
                 payload.view_context = {
-                  paperId: currentPaperId.value,
-                  location: currentPaperId.value ? 'editor' : 'dashboard',
+                  paperId: viewPaperId,
+                  location: viewPaperId ? 'editor' : 'dashboard',
+                  path: window.location?.pathname || '',
+                  paper: viewPaperId ? paperStore.toPaperJson() : null,
                 }
 
                 // Create timeout that will abort the connection after CONNECTION_TIMEOUT
