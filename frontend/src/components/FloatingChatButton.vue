@@ -22,6 +22,7 @@
     <button
       v-if="auth.isLoggedIn && !isOpen"
       class="floating-chat-btn"
+      :class="{ 'is-streaming': isStreaming, 'has-unread': hasUnread }"
       @click="open"
       title="AI Assistant"
       aria-label="Open AI Assistant"
@@ -90,19 +91,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePaperStore } from '@/stores/paper'
+import { useChatStore } from '@/stores/chat'
 import ChatTab from '@/components/ChatTab.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
 const paperStore = usePaperStore()
+const chatStore = useChatStore()
 
 const isOpen = ref(false)
 const showGreeting = ref(false)
 const isMaximized = ref(false)
+const hasUnread = ref(false)
+
+// #2: running ring when AI streaming
+const isStreaming = computed(() => chatStore.isStreaming)
+
+// #3: red dot when AI finished while panel closed
+watch(isStreaming, (val, oldVal) => {
+  if (oldVal === true && val === false && !isOpen.value) {
+    hasUnread.value = true
+  }
+})
+
+function open() {
+  if (showGreeting.value) dismissGreeting()
+  isOpen.value = true
+  hasUnread.value = false // clear on open
+}
+
+function close() {
+  isOpen.value = false
+}
 
 function toggleMaximize() {
   isMaximized.value = !isMaximized.value
@@ -130,15 +154,6 @@ function dismissGreeting() {
     clearTimeout(greetingTimeout)
     greetingTimeout = null
   }
-}
-
-async function open() {
-  if (showGreeting.value) dismissGreeting()
-  isOpen.value = true
-}
-
-function close() {
-  isOpen.value = false
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -249,6 +264,34 @@ onUnmounted(() => {
 }
 .floating-chat-btn:active { transform: scale(0.95); }
 .btn-label { white-space: nowrap; }
+
+/* #2: Running ring animation when AI streaming (not just hover) */
+.floating-chat-btn.is-streaming .btn-ring-svg {
+  opacity: 1;
+}
+.floating-chat-btn.is-streaming .btn-ring-svg rect {
+  animation: dash-flow 1.5s linear infinite;
+}
+
+/* #3: Red dot notification when AI finished while panel closed */
+.floating-chat-btn.has-unread::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  background: #ef4444;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #ef4444;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+}
 
 /* ── Overlay (non-blocking) ── */
 .floating-chat-overlay {
