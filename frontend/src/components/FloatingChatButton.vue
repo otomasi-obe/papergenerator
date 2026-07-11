@@ -27,18 +27,6 @@
       title="AI Assistant"
       aria-label="Open AI Assistant"
     >
-      <!-- SVG ring: flowing solid line around pill, green + cream gradient -->
-      <svg class="btn-ring-svg" viewBox="0 0 100 50" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1.25" y="1.25" width="97.5" height="47.5" rx="23.75" ry="23.75"
-          stroke="url(#ringGrad)" stroke-width="2.5" stroke-dasharray="1000" stroke-linecap="round"/>
-        <defs>
-          <linearGradient id="ringGrad" x1="0" y1="0" x2="100" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="#0d9488"/>
-            <stop offset="50%" stop-color="#f5f0e8"/>
-            <stop offset="100%" stop-color="#14b8a6"/>
-          </linearGradient>
-        </defs>
-      </svg>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
       </svg>
@@ -188,10 +176,10 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border: 2px solid #fbbf24;
+  background: color-mix(in srgb, var(--accent-warning) 15%, var(--bg-surface) 85%);
+  border: 1px solid color-mix(in srgb, var(--accent-warning) 40%, transparent);
   border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
   z-index: 9997;
   cursor: pointer;
   max-width: 320px;
@@ -200,8 +188,8 @@ onUnmounted(() => {
 
 .greeting-avatar { font-size: 28px; flex-shrink: 0; }
 .greeting-content { flex: 1; min-width: 0; }
-.greeting-text { font-size: 0.95rem; font-weight: 600; color: #92400e; margin: 0 0 4px 0; line-height: 1.3; }
-.greeting-subtext { font-size: 0.8rem; color: #a16207; margin: 0; line-height: 1.4; }
+.greeting-text { font-size: 0.95rem; font-weight: 600; color: var(--accent-warning); margin: 0 0 4px 0; line-height: 1.3; }
+.greeting-subtext { font-size: 0.8rem; color: color-mix(in srgb, var(--accent-warning) 80%, var(--text-secondary)); margin: 0; line-height: 1.4; }
 
 .greeting-close {
   position: absolute; top: 8px; right: 8px;
@@ -226,55 +214,31 @@ onUnmounted(() => {
 .floating-chat-btn {
   position: fixed; bottom: 24px; right: 24px;
   height: 50px; padding: 0 22px; border-radius: 25px;
-  background: linear-gradient(135deg, #0d9488 0%, #0f766e 50%, #0d5c56 100%);
+  background: linear-gradient(135deg, var(--navy-800) 0%, var(--accent-primary) 50%, var(--navy-700) 100%);
   color: #ffffff; border: none;
   box-shadow:
-    0 4px 24px rgba(13, 148, 136, 0.35),
-    0 0 0 1px rgba(13, 148, 136, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 4px 24px color-mix(in srgb, var(--accent-primary) 30%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   cursor: pointer; display: flex; align-items: center; gap: 10px;
   z-index: 9998; font-family: inherit; font-size: 0.9rem; font-weight: 600;
   letter-spacing: 0.01em;
   overflow: visible;
   transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
-/* SVG ring: flowing dashed line around pill */
-.floating-chat-btn .btn-ring-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-.floating-chat-btn:hover .btn-ring-svg {
-  opacity: 1;
-}
-.floating-chat-btn:hover .btn-ring-svg rect {
-  animation: dash-flow 3s linear infinite;
-}
-@keyframes dash-flow {
-  to { stroke-dashoffset: -1000; }
-}
+
+/* Icon + label always white — visible before/after hover in light & dark */
+.floating-chat-btn svg { color: #ffffff; stroke: #ffffff; flex-shrink: 0; }
+.btn-label { white-space: nowrap; color: #ffffff; }
 .floating-chat-btn:hover {
-  transform: scale(1.08) translateY(-2px);
+  transform: scale(1.06) translateY(-2px);
   box-shadow:
-    0 8px 32px rgba(13, 148, 136, 0.45),
-    0 0 0 1px rgba(13, 148, 136, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+    0 8px 32px color-mix(in srgb, var(--accent-primary) 40%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 25%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #082f6a 0%, #0b4088 50%, #1265c8 100%);
 }
 .floating-chat-btn:active { transform: scale(0.95); }
-.btn-label { white-space: nowrap; }
-
-/* #2: Running ring animation when AI streaming (not just hover) */
-.floating-chat-btn.is-streaming .btn-ring-svg {
-  opacity: 1;
-}
-.floating-chat-btn.is-streaming .btn-ring-svg rect {
-  animation: dash-flow 1.5s linear infinite;
-}
 
 /* #3: Red dot notification when AI finished while panel closed */
 .floating-chat-btn.has-unread::after {
@@ -309,50 +273,23 @@ onUnmounted(() => {
   max-height: calc(100vh - 32px);
   background: linear-gradient(180deg, #f8f6f2 0%, #f3efe8 100%);
   border-radius: 20px;
-  border: 2px solid #0d9488;
   box-shadow:
-    0 20px 60px rgba(15, 39, 68, 0.25),
-    0 4px 20px rgba(15, 39, 68, 0.15),
+    0 8px 32px rgba(15, 39, 68, 0.14),
+    0 2px 12px rgba(15, 39, 68, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   display: flex; flex-direction: column; overflow: hidden;
   pointer-events: auto;
   position: relative;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.floating-chat-panel.maximized {
-  width: 720px;
-}
-.floating-chat-panel::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 23px;
-  background: linear-gradient(180deg, #238f7f 0%, #0d9488 30%, #059669 60%, #10b981 100%);
-  z-index: -1;
-  opacity: 0.6;
-}
 
 /* ── Header with gradient ── */
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0a1f38 100%);
-  border-bottom: 1px solid rgba(56, 139, 253, 0.2);
+  background: #0f2744;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Decorative gradient shine */
-.panel-header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(ellipse at 30% 20%, rgba(56, 139, 253, 0.15) 0%, transparent 50%);
-  pointer-events: none;
 }
 
 .header-brand {
@@ -362,9 +299,9 @@ onUnmounted(() => {
 
 .header-avatar {
   width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, #238f7f 0%, #1a7a6d 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--navy-700) 100%);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(35, 143, 127, 0.4);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-primary) 40%, transparent);
   color: #e8f4fd;
 }
 
@@ -406,14 +343,11 @@ onUnmounted(() => {
 .panel-fade-leave-to .floating-chat-panel { transform: translateY(24px) scale(0.95); opacity: 0; }
 
 /* ── Dark mode overrides ── */
-@media (prefers-color-scheme: dark) {
-  .floating-chat-panel {
-    background: linear-gradient(180deg, #1a1f2e 0%, #151a26 100%);
-    border-color: #14b8a6;
-    box-shadow:
-      0 20px 60px rgba(0, 0, 0, 0.5),
-      0 4px 20px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
+html.dark .floating-chat-panel {
+  background: linear-gradient(180deg, #1a1f2e 0%, #151a26 100%);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 </style>

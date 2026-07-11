@@ -6,7 +6,7 @@
         v-for="(prompt, idx) in prompts"
         :key="idx"
         @click="$emit('select', prompt.text)"
-        class="group flex items-start gap-2.5 p-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 hover:bg-cream-100 dark:hover:bg-ash-700 transition-colors text-left active:scale-[0.98]"
+        class="group flex items-start gap-2.5 p-3 rounded-xl border border-cream-200/60 dark:border-ash-600/60 bg-cream-50/50 dark:bg-ash-800/50 hover:bg-cream-100/50 dark:hover:bg-ash-700/50 transition-colors text-left active:scale-[0.98]"
       >
         <span class="text-lg shrink-0 mt-0.5" aria-hidden="true">{{ prompt.icon }}</span>
         <span class="text-sm text-ink-900 dark:text-ink-100 leading-snug group-hover:text-navy-700 dark:group-hover:text-navy-200 transition-colors">

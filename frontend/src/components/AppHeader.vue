@@ -1,6 +1,6 @@
 <template>
  <header class="bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur shadow-sm border-b border-cream-200 dark:border-ash-700 sticky top-0 z-40">
- <div class="w-full px-4 lg:px-8 py-3 flex items-center justify-between">
+ <div class="w-full max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
  <!-- Logo + Nav + Token quota bar (rofiq.txt: kuota tampil kiri atas) -->
  <div class="flex items-center gap-4">
  <router-link to="/dashboard" class="flex items-center gap-2 min-h-[44px] min-w-[44px] text-ink-900 dark:text-ink-50 hover:text-navy-700 dark:hover:text-cream-200 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2 rounded-lg">
@@ -58,7 +58,7 @@
  <!-- Buy Token Package -->
  <button
    @click="purchaseModalOpen = true"
-   class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-semibold transition-all hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
+   class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-400 text-xs font-semibold transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
  >
    Beli Paket Token
  </button>

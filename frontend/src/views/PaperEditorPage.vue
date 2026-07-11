@@ -15,7 +15,7 @@
  >
  ← Kembali ke Dashboard
  </button>
- <span class="text-cream-400 dark:text-ash-600 shrink-0">|</span>
+ <span class="h-5 w-px bg-cream-300 dark:bg-ash-600 shrink-0" aria-hidden="true"></span>
  <input
  v-model="store.paper.title"
  placeholder="Untitled Paper"
@@ -113,7 +113,7 @@
  <!-- TAB: EDITOR -->
  <div v-show="activeTab === 'editor'" role="tabpanel" id="panel-editor" aria-labelledby="tab-editor" class="space-y-4">
  <!-- Title -->
- <div class="card border-l-4 border-l-navy-500">
+ <div class="card" style="border-left: 4px solid #1265c8">
  <label class="label">Title</label>
  <textarea v-model="store.paper.title" v-autosize rows="1"
  ref="titleRef"
@@ -121,7 +121,7 @@
  </div>
 
  <!-- Authors -->
- <div class="card border-l-4 border-l-navy-500">
+ <div class="card" style="border-left: 4px solid #1265c8">
  <div class="flex items-center justify-between mb-3">
  <label class="label !mb-0">Authors</label>
  <button @click="store.addAuthor()" class="btn-add">+ Author</button>
@@ -129,7 +129,7 @@
  <draggable :list="store.paper.authors" :item-key="stableKey" animation="150" handle=".author-drag" class="space-y-2"
  :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
  <template #item="{ element: author, index: i }">
- <div class="group bg-ivory-100 dark:bg-anthracite-800 border border-ivory-300 dark:border-anthracite-500 rounded-lg p-3 flex gap-2 items-start">
+ <div class="group bg-cream-50 dark:bg-ash-800 border border-cream-200/60 dark:border-ash-600/60 rounded-lg p-3 flex gap-2 items-start">
  <span role="button" aria-label="Drag to reorder" class="author-drag cursor-grab active:cursor-grabbing text-ivory-500 dark:text-anthracite-200 hover:text-ink-700 dark:hover:text-anthracite-50 select-none text-xl leading-tight pt-1">⠿</span>
  <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
  <button @click="moveItem(store.paper.authors, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
@@ -154,7 +154,7 @@
  </div>
 
  <!-- Abstract -->
- <div class="card border-l-4 border-l-navy-500">
+ <div class="card" style="border-left: 4px solid #1265c8">
  <label class="label">Abstract</label>
  <textarea v-model="store.paper.abstract" v-autosize rows="2"
  ref="abstractRef"
@@ -162,7 +162,7 @@
  </div>
 
  <!-- Keywords -->
- <div class="card border-l-4 border-l-cream-500">
+ <div class="card" style="border-left: 4px solid #9f7d54">
  <label class="label">Keywords</label>
  <div class="flex flex-wrap gap-1.5 mb-2">
  <span v-for="(_kw, i) in store.paper.keywords" :key="i"
@@ -181,7 +181,7 @@
  <draggable :list="store.paper.sections" :item-key="stableKey" animation="150" handle=".section-drag" class="space-y-4"
  :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
  <template #item="{ element: section, index: sIdx }">
- <div class="group card border-l-4 border-l-cream-600">
+ <div class="group card" style="border-left: 4px solid #806044">
  <div class="flex items-center justify-between mb-3">
  <div class="flex items-center gap-2 flex-1 min-w-0">
  <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none text-xl leading-tight shrink-0">⠿</span>
@@ -252,7 +252,7 @@
  </button>
 
  <!-- References -->
- <div class="card border-l-4 border-l-red-400">
+ <div class="card" style="border-left: 4px solid #f87171">
  <div class="flex items-center justify-between mb-3">
  <label class="label !mb-0">References</label>
  <button @click="store.addReference()" class="btn-add">+ Reference</button>
@@ -957,12 +957,12 @@ function cancelDelete() {
 </script>
 
 <style scoped>
-.card { @apply bg-white dark:bg-ash-800 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_2px_8px_rgba(0,0,0,0.3)] border border-ivory-300 dark:border-anthracite-500 p-5 transition-shadow duration-200; }
+.card { @apply bg-white dark:bg-ash-800 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_2px_8px_rgba(0,0,0,0.3)] border border-cream-200 dark:border-ash-600 p-5 transition-shadow duration-200; }
 .card:hover { box-shadow: 0 1px 0 rgba(15,14,11,0.04), 0 4px 12px rgba(15,14,11,0.1); }
 .dark .card:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.4); }
-.label { @apply block text-sm font-medium font-serif text-ink-900 dark:text-ink-50 mb-1.5; }
-.input { @apply w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
-.input-sm { @apply px-2.5 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
-.btn-add { @apply px-3 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded-lg text-xs font-medium transition active:scale-95 ; }
-.btn-content { @apply px-2.5 py-1 bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 rounded text-xs transition active:scale-95 ; }
+.label { @apply block text-[11px] font-semibold font-sans uppercase tracking-wider text-ink-500 dark:text-ink-200 mb-1.5; }
+.input { @apply w-full px-3 py-2 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-cream-400 dark:placeholder-ash-300 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
+.input-sm { @apply px-2.5 py-1.5 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-cream-400 dark:placeholder-ash-300 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
+.btn-add { @apply px-3 py-1 bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-700 dark:text-cream-50 rounded-lg text-xs font-medium transition active:scale-95 ; }
+.btn-content { @apply px-2.5 py-1 bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-700 dark:text-cream-50 rounded text-xs transition active:scale-95 ; }
 </style>

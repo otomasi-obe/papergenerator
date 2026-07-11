@@ -2,40 +2,40 @@
  <div class="min-h-screen bg-cream-50 dark:bg-ash-850 transition">
  <AppHeader />
 
- <main class="px-4 lg:px-8 py-8">
- <!-- Header -->
- <div class="flex items-center justify-between mb-8">
- <div>
- <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
- <p class="text-ink-700 dark:text-ink-300 text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
- </div>
- <router-link to="/editor"
- class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
- + New Paper
- </router-link>
- </div>
+ <main class="px-4 lg:px-8 py-8 max-w-6xl mx-auto">
+   <!-- Header -->
+   <div class="flex items-center justify-between mb-8">
+     <div>
+       <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
+       <p class="text-ink-700 dark:text-ink-300 text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
+     </div>
+     <router-link to="/editor"
+     class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] border border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-900/30 dark:border-cream-200 dark:hover:bg-cream-100 text-navy-700 dark:text-cream-200 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+       + New Paper
+     </router-link>
+   </div>
 
- <StateView :loading="loading" :error="errorMsg" :is-empty="papers.length === 0" :on-retry="loadPapers">
- <template #loading>
- <div class="text-center py-20 text-ink-600 dark:text-ink-300">
- <div class="text-3xl mb-3 animate-spin" aria-hidden="true">⚙️</div>
- Loading your papers...
- </div>
- </template>
- <template #empty>
- <div class="text-center py-20">
- <div class="text-6xl mb-4" aria-hidden="true">📄</div>
- <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
- <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
- <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
- Create First Paper
- </router-link>
- </div>
- </template>
+   <StateView :loading="loading" :error="errorMsg" :is-empty="papers.length === 0" :on-retry="loadPapers">
+   <template #loading>
+   <div class="text-center py-20 text-ink-600 dark:text-ink-300">
+     <div class="text-3xl mb-3 animate-spin" aria-hidden="true">⚙️</div>
+     Loading your papers...
+   </div>
+   </template>
+   <template #empty>
+   <div class="text-center py-20">
+     <div class="text-6xl mb-4" aria-hidden="true">📄</div>
+     <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
+     <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
+     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center border border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-900/30 dark:border-cream-200 dark:hover:bg-cream-100 text-navy-700 dark:text-cream-200 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+       Create First Paper
+     </router-link>
+   </div>
+   </template>
 
- <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
- <article v-for="paper in papers" :key="paper.id"
- class="bg-cream-50 dark:bg-ash-800 rounded-2xl border border-cream-300 dark:border-ash-700 shadow-sm hover:shadow-md transition-all overflow-hidden group hover:border-navy-500 dark:hover:border-cream-400">
+   <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+     <article v-for="paper in papers" :key="paper.id"
+     class="bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-md transition-all overflow-hidden group hover:border-navy-500 dark:hover:border-cream-400">
  <router-link :to="{ name: 'editor', params: { paperId: paper.id } }" @click="store.currentPaperId = null"
  class="block p-5 pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-t-2xl">
  <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-cream-200 transition">
@@ -51,16 +51,16 @@
 
  <div class="flex items-center gap-2 px-4 pb-4">
  <button @click="openPaper(paper)"
- class="flex-1 px-3 py-1.5 min-h-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+ class="flex-1 px-3 py-1.5 min-h-[44px] border border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-900/30 dark:border-cream-200 dark:hover:bg-cream-100 text-navy-700 dark:text-cream-200 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
  Open
  </button>
  <button @click="copyPaper(paper)" :disabled="copying === paper.id"
- class="px-3 py-1.5 min-h-[44px] min-w-[44px] bg-cream-200 hover:bg-cream-300 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition disabled:opacity-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+ class="px-3 py-1.5 min-h-[44px] min-w-[44px] border border-cream-300 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition disabled:opacity-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
  title="Copy paper">
  {{ copying === paper.id ? '...' : 'Copy' }}
  </button>
  <button @click="confirmDelete(paper)"
- class="px-3 py-1.5 min-h-[44px] min-w-[44px] bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-xs rounded-lg transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+ class="px-3 py-1.5 min-h-[44px] min-w-[44px] border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded-lg transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
  title="Delete paper">
  Delete
  </button>
