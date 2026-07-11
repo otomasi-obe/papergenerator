@@ -25,23 +25,23 @@
  <p v-if="warning" class="max-w-5xl mx-auto mb-3 text-xs text-amber-700 dark:text-amber-300">{{ warning }}</p>
 
  <!-- Generate section -->
- <div class="max-w-5xl mx-auto mb-4 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-sm overflow-hidden">
- <div class="px-4 py-2.5 border-b border-cream-300 dark:border-ash-700 bg-cream-100 dark:bg-ash-850 flex items-center gap-2">
- <span class="text-sm">✨</span>
- <span class="text-xs font-semibold text-ink-700 dark:text-ink-200">Generate Image dengan AI</span>
- </div>
- <div class="p-4 flex gap-3">
- <textarea v-model="genPrompt" rows="2" placeholder="Deskripsikan gambar yang ingin dibuat… (contoh: diagram arsitektur IoT 3 layer, clean professional style)"
- class="flex-1 px-3 py-2 border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-900 text-ink-900 dark:text-ink-50 rounded-lg text-sm outline-none focus:border-navy-400 resize-none"
- @keydown.ctrl.enter="generateImage"
- ></textarea>
- <button @click="generateImage" :disabled="!genPrompt.trim() || generating"
- class="px-4 py-2 bg-navy-600 hover:bg-navy-700 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 active:scale-95 whitespace-nowrap flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
- <span v-if="generating" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
- {{ generating ? 'Generating…' : '✨ Generate' }}
- </button>
- </div>
- </div>
+   <div class="max-w-5xl mx-auto mb-4 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-sm overflow-hidden">
+   <div class="px-4 py-2.5 border-b border-cream-300 dark:border-ash-700 bg-cream-100 dark:bg-ash-850 flex items-center gap-2">
+   <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+   <span class="text-xs font-semibold text-ink-700 dark:text-ink-200">Generate Image dengan AI</span>
+   </div>
+   <div class="p-4 flex gap-3">
+   <textarea v-model="genPrompt" rows="2" placeholder="Deskripsikan gambar yang ingin dibuat… (contoh: diagram arsitektur IoT 3 layer, clean professional style)"
+   class="flex-1 px-3 py-2 border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-900 text-ink-900 dark:text-ink-50 rounded-lg text-sm outline-none focus:border-navy-400 resize-none"
+   @keydown.ctrl.enter="generateImage"
+   ></textarea>
+   <button @click="generateImage" :disabled="!genPrompt.trim() || generating"
+   class="px-4 py-2 bg-navy-600 hover:bg-navy-700 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 active:scale-95 whitespace-nowrap flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
+   <span v-if="generating" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+   {{ generating ? 'Generating…' : 'Generate' }}
+   </button>
+   </div>
+   </div>
 
  <!-- Main layout: list (left) + preview (right) -->
  <div class="max-w-5xl mx-auto grid lg:grid-cols-[280px,1fr] gap-4">

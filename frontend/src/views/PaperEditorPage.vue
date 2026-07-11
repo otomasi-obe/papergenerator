@@ -32,21 +32,21 @@
  <!-- Group B: actions + tabs + AI chat. Wraps to its own line when it no longer fits beside the title group -->
  <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0 flex-[0_1_auto]">
  <div class="flex items-center gap-1 shrink-0">
- <button @click="store.exportDocx()" :disabled="store.loading"
- class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0 active:scale-95"
- title="Export DOCX">
- 📄 DOCX
- </button>
- <button @click="store.undo()" :disabled="!store.canUndo"
- class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0 active:scale-95"
- title="Undo (Ctrl/Cmd+Z)">
- ↶ Undo
- </button>
- <button @click="store.redo()" :disabled="!store.canRedo"
- class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-30 shrink-0 active:scale-95"
- title="Redo (Ctrl/Cmd+Shift+Z)">
- ↷ Redo
- </button>
+   <button @click="store.exportDocx()" :disabled="store.loading"
+   class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0 active:scale-95"
+   title="Export DOCX">
+   📄 DOCX
+   </button>
+   <button @click="store.undo()" :disabled="!store.canUndo"
+   class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-40 shrink-0 active:scale-95"
+   title="Undo (Ctrl/Cmd+Z)">
+   ↶ Undo
+   </button>
+   <button @click="store.redo()" :disabled="!store.canRedo"
+   class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-40 shrink-0 active:scale-95"
+   title="Redo (Ctrl/Cmd+Shift+Z)">
+   ↷ Redo
+   </button>
  <span v-if="store.pendingCount > 0"
  class="text-[11px] px-2 py-0.5 rounded-full bg-cream-200 dark:bg-ash-700 text-ink-700 dark:text-ink-200 border border-cream-300 dark:border-ash-600 shrink-0">
  {{ store.pendingCount }} pending
@@ -105,7 +105,7 @@
  <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
  <!-- LEFT pane: editor / preview. -->
  <div v-show="editorVisible" class="min-w-0 border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="[
- rightPanel || toolsOpen ? 'w-1/2' : 'w-full',
+ rightPanel || toolsOpen ? 'w-1/2 lg:w-3/5 xl:w-2/3' : 'w-full',
  activeTab === 'preview' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'
  ]">
  <div :class="activeTab === 'preview' ? 'p-0 h-full min-h-0 w-full flex flex-col overflow-hidden' : 'px-4 lg:px-8 py-6'">
@@ -286,7 +286,7 @@
  </div>
 
  <!-- RIGHT: Tools menu / Generate Full / Chat / Journal / Literatur / Files / Data / Image / Tool workspace -->
- <div v-if="toolsOpen" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col border-l border-cream-300 dark:border-ash-700">
+ <div v-if="toolsOpen" :class="editorVisible ? 'w-1/2 lg:w-2/5 xl:w-1/3' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col border-l border-cream-300 dark:border-ash-700">
  <div class="px-4 lg:px-8 py-4 space-y-1">
  <div class="grid grid-cols-2 gap-2">
  <!-- Generate Full -->
@@ -329,7 +329,7 @@
  <!-- Writing tools -->
  <button v-for="tool in toolsStore.TOOLS" :key="tool.id" @click="openToolWorkspace(tool)"
  class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">{{ tool.icon }}</span>
+ <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="tool.iconSvg"></svg>
  <span class="text-base font-medium">{{ tool.title }}</span>
  </button>
  </div>
@@ -957,12 +957,12 @@ function cancelDelete() {
 </script>
 
 <style scoped>
-.card { @apply bg-white dark:bg-ash-800 rounded-2xl shadow-[0_1px_0_rgba(15,14,11,0.04),0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.2),0_2px_8px_rgba(0,0,0,0.3)] border border-cream-200 dark:border-ash-600 p-5 transition-shadow duration-200; }
+.card { @apply bg-white dark:bg-ash-800 rounded-2xl shadow-[0_1px_3px_rgba(15,14,11,0.06)] dark:shadow-[0_1px_0_rgba(0,0,0,0.25),0_2px_8px_rgba(0,0,0,0.3)] border border-cream-200/60 dark:border-ash-600/60 p-5 transition-shadow duration-200; }
 .card:hover { box-shadow: 0 1px 0 rgba(15,14,11,0.04), 0 4px 12px rgba(15,14,11,0.1); }
 .dark .card:hover { box-shadow: 0 1px 0 rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.4); }
-.label { @apply block text-[11px] font-semibold font-sans uppercase tracking-wider text-ink-500 dark:text-ink-200 mb-1.5; }
-.input { @apply w-full px-3 py-2 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-cream-400 dark:placeholder-ash-300 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
-.input-sm { @apply px-2.5 py-1.5 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-cream-400 dark:placeholder-ash-300 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
+.label { @apply block text-xs font-semibold font-sans uppercase tracking-wide text-ink-500 dark:text-ink-200 mb-1.5; }
+.input { @apply w-full px-3 py-2 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-ink-400 dark:placeholder-ash-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
+.input-sm { @apply px-2.5 py-1.5 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-ink-400 dark:placeholder-ash-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
 .btn-add { @apply px-3 py-1 bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-700 dark:text-cream-50 rounded-lg text-xs font-medium transition active:scale-95 ; }
 .btn-content { @apply px-2.5 py-1 bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-700 dark:text-cream-50 rounded text-xs transition active:scale-95 ; }
 </style>

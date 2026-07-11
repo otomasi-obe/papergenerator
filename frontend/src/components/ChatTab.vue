@@ -2,12 +2,12 @@
  <div class="flex flex-col h-full overflow-hidden bg-gradient-to-b from-white to-cream-50 dark:from-ash-850 dark:to-ash-900">
  <!-- ─── PICKER VIEW: list of chats only (no active chat yet) ─── -->
  <template v-if="!currentConversationId">
- <header class="px-5 py-3 bg-cream-50 dark:bg-ash-800 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
+ <header class="px-5 py-3 bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 dark:from-ash-850 dark:to-ash-900 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
  <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1">AI Assistant</h3>
  <button
  @click="createNewChat"
  :disabled="creatingChat"
- class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95 "
+ class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 text-ink-900 dark:text-ink-900 rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95"
  >
  <span class="text-sm leading-none">＋</span>
  {{ creatingChat ? 'Creating…' : 'New chat' }}
@@ -77,7 +77,7 @@
  <!-- ─── ACTIVE CHAT VIEW ─── -->
  <template v-else>
  <!-- Header bar with clear chat -->
- <header class="px-4 py-2 bg-gradient-to-r from-cream-50 to-cream-100 dark:from-ash-800 dark:to-ash-750 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
+ <header class="px-4 py-2 bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 dark:from-ash-800 dark:to-ash-750 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
  <button
  @click="currentConversationId = null"
  :disabled="isStreaming"

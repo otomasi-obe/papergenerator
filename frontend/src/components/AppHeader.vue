@@ -1,5 +1,5 @@
 <template>
- <header class="bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur shadow-sm border-b border-cream-200 dark:border-ash-700 sticky top-0 z-40">
+ <header class="bg-gradient-to-b from-cream-200 via-cream-300 to-cream-200/80 dark:from-ash-800/95 dark:via-ash-800/95 dark:to-ash-800/95 backdrop-blur shadow-sm border-b border-cream-300 dark:border-ash-700 sticky top-0 z-40">
  <div class="w-full max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
  <!-- Logo + Nav + Token quota bar (rofiq.txt: kuota tampil kiri atas) -->
  <div class="flex items-center gap-4">
@@ -21,19 +21,17 @@
  <UpdateHistoryButton />
 
  <!-- Token quota bar -->
- <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
- <button type="button" class="flex items-center gap-2 px-3 py-1.5 min-h-[44px] min-w-[44px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" aria-haspopup="dialog" :aria-expanded="quotaOpen" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @focus="quotaOpen = true" @blur="quotaOpen = false" @keydown.escape.stop="quotaOpen = false" @click="detailModalOpen = true">
- <div class="w-24 h-2 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
- <div
- class="h-full transition-all"
- :class="quota.percent >= 90 ? 'bg-red-500' : quota.percent >= 70 ? 'bg-amber-500' : 'bg-emerald-500'"
- :style="{ width: Math.min(100, quota.percent) + '%' }"
- ></div>
- </div>
- <span class="text-[11px] font-mono tabular-nums text-ink-700 dark:text-ink-200">
- {{ formatNum(quota.used_month) }}/{{ formatNum(quota.quota_monthly) }}
- </span>
- </button>
+   <div v-if="quota.quota_monthly > 0" ref="quotaRef" class="relative" :title="`${formatNum(quota.used_month)} / ${formatNum(quota.quota_monthly)} token bulan ini`">
+   <button type="button" class="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2 transition" aria-haspopup="dialog" :aria-expanded="quotaOpen" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @focus="quotaOpen = true" @blur="quotaOpen = false" @keydown.escape.stop="quotaOpen = false" @click="detailModalOpen = true">
+   <div class="w-16 h-1.5 rounded-full bg-cream-300 dark:bg-ash-600 overflow-hidden">
+   <div
+   class="h-full transition-all"
+   :class="quota.percent >= 90 ? 'bg-red-500' : quota.percent >= 70 ? 'bg-amber-500' : 'bg-emerald-500'"
+   :style="{ width: Math.min(100, quota.percent) + '%' }"
+   ></div>
+   </div>
+   <span class="text-[11px] font-mono tabular-nums text-ink-600 dark:text-ink-300">{{ formatNum(quota.remaining) }} sisa</span>
+   </button>
  <!-- Tooltip: detail breakdown -->
  <div v-if="quotaOpen" role="dialog" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @keydown.escape.stop="quotaOpen = false">
  <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Pemakaian token bulan {{ quota.month_key }}</div>
@@ -56,12 +54,12 @@
  </div>
 
  <!-- Buy Token Package -->
- <button
-   @click="purchaseModalOpen = true"
-   class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-400 text-xs font-semibold transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
- >
-   Beli Paket Token
- </button>
+   <button
+     @click="purchaseModalOpen = true"
+     class="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 text-xs font-medium transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+   >
+     Pricing
+   </button>
 
  <!-- Job inbox bell -->
  <div class="bell-wrap relative" ref="bellRef">

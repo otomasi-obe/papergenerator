@@ -2088,6 +2088,7 @@ def generate_stream(paper_id: str):
     reference_texts: list[str] = []
     selected_drafts: list | None = None
     revisi_semua = False
+    regenerate_images = False
     
     # Force log this
     import logging as _log_module
@@ -2107,6 +2108,8 @@ def generate_stream(paper_id: str):
         generate_images = generate_images_raw != "false"
         revisi_semua_raw = request.form.get("revisi_semua", "false").lower()
         revisi_semua = revisi_semua_raw == "true"
+        regenerate_images_raw = request.form.get("regenerate_images", "false").lower()
+        regenerate_images = regenerate_images_raw == "true"
         # Selected chat drafts (list of names) → injected as writing context.
         _sd_raw = request.form.get("selected_drafts")
         if _sd_raw:
@@ -2231,6 +2234,7 @@ def generate_stream(paper_id: str):
         generate_images_raw = str(body.get("generate_images", True)).lower()
         generate_images = generate_images_raw != "false"
         revisi_semua = bool(body.get("revisi_semua", False))
+        regenerate_images = bool(body.get("regenerate_images", False))
         # JSON path: allow pre-extracted texts to be passed directly.
         data_texts = body.get("data_texts") or []
         reference_texts = body.get("reference_texts") or []
@@ -2270,6 +2274,69 @@ def generate_stream(paper_id: str):
 
     if not prompt:
         return jsonify({"error": "prompt required"}), 400
+
+    # ── Handle Re-generate Images only (no paper generation) ────────────
+    if regenerate_images:
+        from utils.database.models import PaperImage, ImageGenJob  # noqa: PLC0415
+        # Same behavior as /api/image-jobs/regenerate, kept inline to support
+        # clients that submit via Generate Full's generate-stream route.
+        import uuid as _uuid  # noqa: PLC0415
+
+        images = PaperImage.query.filter_by(paper_id=paper_id, user_id=user_id).all()
+        if not images:
+            return jsonify({"error": "Tidak ada image untuk di-re-generate"}), 404
+
+        # Recover prompt + target_path from previous completed ImageGenJob
+        _prev = (
+            ImageGenJob.query
+            .filter(ImageGenJob.paper_id == paper_id, ImageGenJob.user_id == user_id, ImageGenJob.status == "done")
+            .order_by(ImageGenJob.finished_at.desc())
+            .all()
+        )
+        _jmap: dict[int, dict] = {}
+        for _j in _prev:
+            if _j.image_id and _j.image_id not in _jmap:
+                _jmap[_j.image_id] = {"prompt": _j.prompt or "", "target_path": _j.target_path or ""}
+
+        _specs = []
+        for img in images:
+            info = _jmap.get(img.id, {})
+            _prompt = info.get("prompt", "")
+            _tpath = info.get("target_path", "") or img.original_name
+            if not _prompt:
+                continue
+            _specs.append({"prompt": _prompt, "target_path": _tpath})
+            # DO NOT delete old PaperImage/file here — worker will replace on success
+
+        if not _specs:
+            return jsonify({"error": "Tidak ada prompt yang bisa di-recover"}), 404
+
+        created_jobs = []
+        for spec in _specs:
+            job = ImageGenJob(
+                id=_uuid.uuid4().hex,
+                user_id=user_id,
+                paper_id=paper_id,
+                prompt=spec["prompt"],
+                target_path=spec["target_path"][:500] if spec["target_path"] else None,
+                status="queued",
+            )
+            db.session.add(job)
+            created_jobs.append(job)
+
+        safe_commit()
+
+        try:
+            from tools.image_generation.worker import submit_now  # noqa: PLC0415
+            for job in created_jobs:
+                submit_now(job.id)
+        except Exception:
+            log.exception("submit_now failed (jobs will still run via dispatcher poll)")
+
+        return jsonify({
+            "jobs": [{"id": j.id, "paper_id": j.paper_id, "status": j.status}
+                     for j in created_jobs]
+        })
 
     # New generate session must not inherit stale Redis snapshot from the previous run.
     # ponytail: key is per-paper; upgrade to per-run ids if concurrent same-paper generate is ever allowed.

@@ -4,8 +4,8 @@
  <div class="mb-4 flex items-start justify-between">
  <div>
  <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">
- <span>{{ store.activeTool?.icon }}</span>
- {{ store.activeTool?.title }}
+   <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="store.activeTool?.iconSvg"></svg>
+   {{ store.activeTool?.title }}
  </h2>
  <p class="text-sm text-ink-500 dark:text-ink-300 mt-1 max-w-[52ch] leading-relaxed">
  {{ store.activeTool?.desc }}
@@ -70,11 +70,19 @@
  </select>
 
  <!-- Engine selector -->
- <select
- v-model="store.selectedEngine"
+  <select
+  v-model="store.selectedEngine"
  class="px-2.5 py-2 border border-cream-300 dark:border-ash-600 rounded-md text-xs bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 outline-none focus:border-navy-500 dark:focus:border-cream-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30"
  >
- <option v-for="eng in engines" :key="eng.value" :value="eng.value">{{ eng.label }}</option>
+ <option v-for="eng in engineOptions" :key="eng.value" :value="eng.value">{{ eng.label }}</option>
+ </select>
+
+ <!-- Domain selector -->
+ <select
+ v-model="store.selectedDomain"
+ class="px-2.5 py-2 border border-cream-300 dark:border-ash-600 rounded-md text-xs bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 outline-none focus:border-navy-500 dark:focus:border-cream-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30"
+ >
+ <option v-for="dom in domainOptions" :key="dom" :value="dom">{{ dom }}</option>
  </select>
  </div>
 
@@ -466,7 +474,11 @@ function swapLanguages() {
  if (out) {
  store.inputText = out
  store.outputText = inp
+ } else {
+ // No output yet — clear input so user re-types with correct source
+ store.inputText = ''
  }
+ store.error = null
 }
 
 const engines = [
@@ -474,6 +486,22 @@ const engines = [
  { value: 'google', label: 'Google (Free)' },
  { value: 'mymemory', label: 'MyMemory (Free)' },
 ]
+
+// Normalize engine options: backend returns strings, fallback has {value,label}
+const engineOptions = computed(() => {
+ const cfg = store.translatorConfig?.engines
+ if (!cfg || !cfg.length) return engines
+ return cfg.map((e: string | {value: string; label: string}) =>
+  typeof e === 'string' ? { value: e, label: e } : e
+ )
+})
+
+// Normalize domain options: backend returns strings
+const domainOptions = computed(() => {
+ const cfg = store.translatorConfig?.domains
+ if (!cfg || !cfg.length) return ['general', 'academic', 'technical', 'casual', 'legal', 'medical']
+ return cfg.map((d: string) => (typeof d === 'string' ? d : d))
+})
 
 function copyOutput() {
  if (!store.outputText) return

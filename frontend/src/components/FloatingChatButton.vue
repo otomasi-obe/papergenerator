@@ -175,7 +175,8 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 18px 18px 16px;
+  min-height: 86px;
   background: color-mix(in srgb, var(--accent-warning) 15%, var(--bg-surface) 85%);
   border: 1px solid color-mix(in srgb, var(--accent-warning) 40%, transparent);
   border-radius: 16px;
@@ -214,31 +215,63 @@ onUnmounted(() => {
 .floating-chat-btn {
   position: fixed; bottom: 24px; right: 24px;
   height: 50px; padding: 0 22px; border-radius: 25px;
-  background: linear-gradient(135deg, var(--navy-800) 0%, var(--accent-primary) 50%, var(--navy-700) 100%);
-  color: #ffffff; border: none;
+  background: linear-gradient(135deg, #f5f0e8 0%, #ffffff 50%, #e6d3b3 100%);
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+  color: #1a1a1a; border: none;
   box-shadow:
-    0 4px 24px color-mix(in srgb, var(--accent-primary) 30%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 4px 24px rgba(214, 196, 168, 0.45),
+    0 0 0 1px rgba(214, 196, 168, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   cursor: pointer; display: flex; align-items: center; gap: 10px;
   z-index: 9998; font-family: inherit; font-size: 0.9rem; font-weight: 600;
   letter-spacing: 0.01em;
   overflow: visible;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-/* Icon + label always white — visible before/after hover in light & dark */
-.floating-chat-btn svg { color: #ffffff; stroke: #ffffff; flex-shrink: 0; }
-.btn-label { white-space: nowrap; color: #ffffff; }
+.floating-chat-btn svg { color: #1a1a1a; stroke: #1a1a1a; flex-shrink: 0; }
+.btn-label { white-space: nowrap; color: #1a1a1a; }
 .floating-chat-btn:hover {
+  transform: scale(1.06) translateY(-2px);
+  box-shadow:
+    0 8px 32px rgba(214, 196, 168, 0.55),
+    0 0 0 1px rgba(214, 196, 168, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.floating-chat-btn:active { transform: scale(0.95); }
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Dark mode: keep navy gradient + white text for contrast */
+html.dark .floating-chat-btn {
+  background: linear-gradient(135deg, var(--navy-800) 0%, var(--accent-primary) 50%, var(--navy-700) 100%);
+  background-size: 200% 200%;
+  animation: gradient-shift-dark 6s ease infinite;
+  color: #ffffff;
+  box-shadow:
+    0 4px 24px color-mix(in srgb, var(--accent-primary) 30%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+html.dark .floating-chat-btn svg { color: #ffffff; stroke: #ffffff; }
+html.dark .btn-label { color: #ffffff; }
+html.dark .floating-chat-btn:hover {
   transform: scale(1.06) translateY(-2px);
   box-shadow:
     0 8px 32px color-mix(in srgb, var(--accent-primary) 40%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-primary) 25%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  background: linear-gradient(135deg, #082f6a 0%, #0b4088 50%, #1265c8 100%);
 }
-.floating-chat-btn:active { transform: scale(0.95); }
+html.dark .floating-chat-btn:active { transform: scale(0.95); }
+
+@keyframes gradient-shift-dark {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
 
 /* #3: Red dot notification when AI finished while panel closed */
 .floating-chat-btn.has-unread::after {
@@ -271,24 +304,28 @@ onUnmounted(() => {
 .floating-chat-panel {
   width: 440px; max-width: 100vw; height: 640px;
   max-height: calc(100vh - 32px);
-  background: linear-gradient(180deg, #f8f6f2 0%, #f3efe8 100%);
+  background: #faf9f6;
   border-radius: 20px;
   box-shadow:
-    0 8px 32px rgba(15, 39, 68, 0.14),
-    0 2px 12px rgba(15, 39, 68, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 12px 40px rgba(15, 39, 68, 0.15),
+    0 4px 16px rgba(15, 39, 68, 0.08);
   display: flex; flex-direction: column; overflow: hidden;
   pointer-events: auto;
   position: relative;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-chat-panel.maximized {
+  width: 720px;
+  height: calc(100vh - 32px);
 }
 
 /* ── Header with gradient ── */
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px;
-  background: #0f2744;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #e8e0d0 0%, #f5f0e8 50%, #e6d3b3 100%);
+  border-bottom: 1px solid rgba(166, 138, 92, 0.3);
   flex-shrink: 0;
 }
 
@@ -299,10 +336,10 @@ onUnmounted(() => {
 
 .header-avatar {
   width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--navy-700) 100%);
+  background: linear-gradient(135deg, #f5f0e8 0%, #e6d3b3 100%);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-primary) 40%, transparent);
-  color: #e8f4fd;
+  box-shadow: 0 2px 8px rgba(166, 138, 92, 0.35);
+  color: #1a1a1a;
 }
 
 .header-text {
@@ -310,26 +347,41 @@ onUnmounted(() => {
 }
 
 .panel-title {
-  font-weight: 700; font-size: 0.95rem; color: #f0f6fc;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-weight: 700; font-size: 0.95rem; color: #1a1610;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
 }
 
 .header-subtitle {
-  font-size: 0.7rem; color: rgba(232, 244, 253, 0.6);
+  font-size: 0.7rem; color: rgba(26, 22, 16, 0.55);
   font-weight: 500;
 }
 
 .panel-header-actions { display: flex; gap: 4px; position: relative; z-index: 1; }
 .panel-btn {
-  background: rgba(255, 255, 255, 0.1); border: none; color: rgba(232, 244, 253, 0.7);
+  background: rgba(255, 255, 255, 0.4); border: none; color: rgba(26, 22, 16, 0.65);
   padding: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center;
   transition: all 0.15s ease;
 }
 .panel-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #e8f4fd;
+  background: rgba(255, 255, 255, 0.7);
+  color: #1a1610;
   transform: translateY(1px);
 }
+
+/* Dark mode: navy gradient header + white text + blue avatar */
+html.dark .panel-header {
+  background: linear-gradient(135deg, #0f2744 0%, #1265c8 50%, #0b4088 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+html.dark .header-avatar {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--navy-700) 100%);
+  color: #e8f4fd;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-primary) 40%, transparent);
+}
+html.dark .panel-title { color: #f0f6fc; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+html.dark .header-subtitle { color: rgba(232, 244, 253, 0.6); }
+html.dark .panel-btn { background: rgba(255, 255, 255, 0.1); color: rgba(232, 244, 253, 0.7); }
+html.dark .panel-btn:hover { background: rgba(255, 255, 255, 0.2); color: #e8f4fd; }
 
 .panel-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 
@@ -344,10 +396,9 @@ onUnmounted(() => {
 
 /* ── Dark mode overrides ── */
 html.dark .floating-chat-panel {
-  background: linear-gradient(180deg, #1a1f2e 0%, #151a26 100%);
+  background: #141821;
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.5),
-    0 4px 20px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 4px 16px rgba(0, 0, 0, 0.3);
 }
 </style>

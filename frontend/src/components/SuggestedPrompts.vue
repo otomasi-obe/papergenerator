@@ -29,10 +29,6 @@ const prompts: Prompt[] = [
   { icon: '📖', text: 'Buatkan kerangka paper tentang topik...' },
   { icon: '🔍', text: 'Carikan referensi paper tentang...' },
   { icon: '✍️', text: 'Tulis pendahuluan untuk paper saya' },
-  { icon: '📊', text: 'Analisis data dan buatkan chart' },
-  { icon: '📝', text: 'Parafrase section Introduction' },
-  { icon: '🔢', text: 'Jelaskan rumus yang cocok untuk metode...' },
   { icon: '📚', text: 'Review paper saya dan beri saran perbaikan' },
-  { icon: '🌐', text: 'Translate paper saya ke Bahasa Inggris' },
 ]
 </script>

@@ -194,7 +194,7 @@ const pdfBlobUrl = ref('')
 const pdfKey = ref(0)
 const pdfProgress = ref(0)
 const htmlRefreshing = ref(false)
-const pdfViewerUrl = computed(() => pdfBlobUrl.value ? pdfBlobUrl.value : '')
+const pdfViewerUrl = computed(() => pdfBlobUrl.value ? `${pdfBlobUrl.value}#toolbar=1&navpanes=0&scrollbar=1&view=FitH&zoom=page-width` : '')
 const pdfFallbackUrl = computed(() => { if (!pdfUrl.value) return ''; const sep = pdfUrl.value.includes('?') ? '&' : '?'; return `${pdfUrl.value}${sep}v=${pdfKey.value}#toolbar=1&navpanes=0&scrollbar=1&view=FitH&zoom=page-width` })
 
 function onImgError(_event: Event, filename: string) {

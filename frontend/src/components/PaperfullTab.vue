@@ -112,13 +112,17 @@
         <input type="checkbox" v-model="enableRevisiSemua" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Revisi Semua</span>
       </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" v-model="enableRegenerateImages" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-amber-600" />
+        <span class="text-ink-800 dark:text-ink-100 font-medium">Re-generate Images</span>
+      </label>
     </div>
 
     <!-- Action buttons -->
     <div class="flex items-center gap-2">
       <button
         @click="generate"
-        :disabled="!topic.trim() || generating || !!activeJob"
+        :disabled="(!topic.trim() && !enableRegenerateImages) || generating || !!activeJob"
         class="flex-1 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
       >
         <span v-if="generating" class="inline-flex items-center gap-1">
@@ -748,6 +752,7 @@ const literatureLoading = ref(false)
 const enablePaperReview = ref(false)
 const enableImageGen = ref(true)
 const enableRevisiSemua = ref(false)
+const enableRegenerateImages = ref(false)  // 4th checkbox: Re-generate Images
 
 async function loadPaperFilesList() {
   if (!store.currentPaperId) { paperFilesList.value = []; return }
@@ -1816,6 +1821,48 @@ async function stopGeneration() {
   }
 }
 
+async function regenerateSelectedImages() {
+  if (!store.currentPaperId) return
+
+  generating.value = true
+  generatingTopic.value = 'Re-generate images'
+  displayProgress.value = 0
+  imageGenProgress.value = { total: 0, done: 0, message: 'Menyiapkan re-generate images...' }
+  startTimeTracker()
+
+  try {
+    const res = await api.post('/api/image-jobs/regenerate', { paper_id: store.currentPaperId })
+    const jobs = res.data?.jobs || []
+    if (!jobs.length) throw new Error('Tidak ada image untuk di-re-generate')
+
+    imageGenProgress.value = { total: jobs.length, done: 0, message: `Re-generating ${jobs.length} images...` }
+
+    const pending = new Set(jobs.map(j => j.id))
+    while (pending.size > 0) {
+      await new Promise(resolve => setTimeout(resolve, 2500))
+      const results = await Promise.all([...pending].map(id => api.get(`/api/image-jobs/${id}`).then(r => r.data).catch(() => null)))
+      for (const job of results) {
+        if (job && ['done', 'error', 'cancelled'].includes(job.status)) pending.delete(job.id)
+      }
+      const done = jobs.length - pending.size
+      imageGenProgress.value = { total: jobs.length, done, message: `Re-generate images ${done}/${jobs.length}` }
+      displayProgress.value = Math.floor((done / jobs.length) * 100)
+    }
+
+    await store.loadPaperFromDb(store.currentPaperId)
+    await store.loadPaperImages?.(store.currentPaperId)
+    store.showToast('Re-generate images selesai.', 'success')
+  } catch (e: any) {
+    store.showToast('Re-generate images gagal: ' + (e.response?.data?.error || e.message || e), 'error')
+  } finally {
+    generating.value = false
+    generatingTopic.value = ''
+    displayProgress.value = 100
+    stopTimeTracker()
+    saveState()
+  }
+}
+
 async function generate() {
   // Prevent double-generate on the same paper
   if (generating.value) {
@@ -1827,6 +1874,14 @@ async function generate() {
     return
   }
   const t = topic.value.trim()
+
+  // ── Re-generate Images branch ───────────────────────────────────────
+  if (enableRegenerateImages.value) {
+    await regenerateSelectedImages()
+    return
+  }
+
+  // ── Normal Generate Full ────────────────────────────────────────────
   if (!t) return
   
   generating.value = true

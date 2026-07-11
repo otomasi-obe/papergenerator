@@ -36,7 +36,7 @@ export const useToolsStore = defineStore('tools', () => {
   const selectedOption = ref('')
   const selectedSource = ref('Indonesian')
   const selectedEngine = ref('ai')
-  const selectedDomain = ref('academic')
+  const selectedDomain = ref('general')
   const translatorConfig = ref({ engines: [] as string[], languages: [] as string[], domains: [] as string[] })
   const error = ref(null)
   let _activeAbortCtrl: AbortController | null = null
@@ -104,14 +104,14 @@ export const useToolsStore = defineStore('tools', () => {
   }
 
   const TOOLS = [
-    { id: 'detector', icon: '🔍', tint: '#d9a718', title: 'AI Detector', desc: 'Estimate how likely a passage reads as AI-generated.' },
-    { id: 'paraphrase', icon: '✍️', tint: '#1265c8', title: 'Paraphrase', desc: 'Rewrite passages in a different tone or strength while keeping the meaning.' },
-    { id: 'translate', icon: '🌐', tint: '#1265c8', title: 'Translator', desc: 'Translate between Indonesian and English — academic register.' },
-    { id: 'humanizer', icon: '🧬', tint: '#2f9d6e', title: 'Humanizer', desc: 'Rework AI-sounding prose to read naturally and pass AI detectors.', modes: ['program', 'ai'] },
-    { id: 'plagiarism', icon: '📋', tint: '#c43655', title: 'Plagiarism Check', desc: 'Multi-mode plagiarism scanner: AI Check, Web Search, Offline analysis, or Full Scan.' },
-    { id: 'grammar', icon: '✨', tint: '#1e6e8f', title: 'Grammar', desc: 'AI-powered grammar correction with inline diff.' },
-    { id: 'summarize', icon: '📝', tint: '#0b4088', title: 'Summarize', desc: 'Condense a section or reference into a TL;DR or abstract.' },
-    { id: 'word-addon', icon: '📄', tint: '#2b579a', title: 'Word Addon', desc: 'Install VIOLA AI assistant untuk Microsoft Word. Chat dengan AI langsung di dokumen Anda.', external: true },
+    { id: 'detector', icon: '🔍', tint: '#d9a718', title: 'AI Detector', desc: 'Estimate how likely a passage reads as AI-generated.', iconSvg: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>' },
+    { id: 'paraphrase', icon: '✍️', tint: '#1265c8', title: 'Paraphrase', desc: 'Rewrite passages in a different tone or strength while keeping the meaning.', iconSvg: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>' },
+    { id: 'translate', icon: '🌐', tint: '#1265c8', title: 'Translator', desc: 'Translate between Indonesian and English — academic register.', iconSvg: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>' },
+    { id: 'humanizer', icon: '🧬', tint: '#2f9d6e', title: 'Humanizer', desc: 'Rework AI-sounding prose to read naturally and pass AI detectors.', modes: ['program', 'ai'], iconSvg: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>' },
+    { id: 'plagiarism', icon: '📋', tint: '#c43655', title: 'Plagiarism Check', desc: 'Multi-mode plagiarism scanner: AI Check, Web Search, Offline analysis, or Full Scan.', iconSvg: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>' },
+    { id: 'grammar', icon: '✨', tint: '#1e6e8f', title: 'Grammar', desc: 'AI-powered grammar correction with inline diff.', iconSvg: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>' },
+    { id: 'summarize', icon: '📝', tint: '#0b4088', title: 'Summarize', desc: 'Condense a section or reference into a TL;DR or abstract.', iconSvg: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>' },
+    { id: 'word-addon', icon: '📄', tint: '#2b579a', title: 'Word Addon', desc: 'Install VIOLA AI assistant untuk Microsoft Word. Chat dengan AI langsung di dokumen Anda.', external: true, iconSvg: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>' },
   ]
 
   function getDefaultOption(toolId) {

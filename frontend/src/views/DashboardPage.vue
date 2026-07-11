@@ -1,20 +1,22 @@
 <template>
- <div class="min-h-screen bg-cream-50 dark:bg-ash-850 transition">
+ <div class="min-h-screen bg-transparent dark:bg-ash-850 transition">
  <AppHeader />
 
- <main class="px-4 lg:px-8 py-8 max-w-6xl mx-auto">
+ <main class="px-4 lg:px-8 py-8 max-w-7xl mx-auto">
    <!-- Header -->
-   <div class="flex items-center justify-between mb-8">
+   <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
      <div>
        <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
        <p class="text-ink-700 dark:text-ink-300 text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
      </div>
      <router-link to="/editor"
-     class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] border border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-900/30 dark:border-cream-200 dark:hover:bg-cream-100 text-navy-700 dark:text-cream-200 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+     class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 text-ink-900 dark:text-ash-900 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+     >
        + New Paper
      </router-link>
    </div>
 
+   <section class="flex-1 min-w-0">
    <StateView :loading="loading" :error="errorMsg" :is-empty="papers.length === 0" :on-retry="loadPapers">
    <template #loading>
    <div class="text-center py-20 text-ink-600 dark:text-ink-300">
@@ -27,7 +29,7 @@
      <div class="text-6xl mb-4" aria-hidden="true">📄</div>
      <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
      <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
-     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center border border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-900/30 dark:border-cream-200 dark:hover:bg-cream-100 text-navy-700 dark:text-cream-200 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 text-ink-900 dark:text-ash-900 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
        Create First Paper
      </router-link>
    </div>
@@ -35,39 +37,44 @@
 
    <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
      <article v-for="paper in papers" :key="paper.id"
-     class="bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-md transition-all overflow-hidden group hover:border-navy-500 dark:hover:border-cream-400">
- <router-link :to="{ name: 'editor', params: { paperId: paper.id } }" @click="store.currentPaperId = null"
- class="block p-5 pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-t-2xl">
- <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-cream-200 transition">
- {{ paper.title || 'Untitled Paper' }}
- </h3>
- <div class="flex flex-wrap gap-2 text-xs text-ink-600 dark:text-ink-300">
- <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">Updated {{ formatDate(paper.updated_at) }}</span>
- <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
- <span v-if="paper.journal" class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">{{ paper.journal }}</span>
- <span v-if="paper.section_count" class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700">{{ paper.section_count }} sections</span>
- </div>
- </router-link>
+     class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_24px_rgba(166,138,92,0.18)] transition-all overflow-hidden group hover:border-cream-400 dark:hover:border-cream-500">
+     <!-- Top accent bar -->
+     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cream-300 via-cream-400 to-cream-300 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+     <router-link :to="{ name: 'editor', params: { paperId: paper.id } }" @click="store.currentPaperId = null"
+     class="block p-5 pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-t-2xl">
+     <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-cream-200 transition">
+     {{ paper.title || 'Untitled Paper' }}
+     </h3>
+     <div class="flex flex-wrap gap-2 text-xs">
+     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-200">Updated {{ formatDate(paper.updated_at) }}</span>
+     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-200"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
+     <span v-if="paper.journal" class="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300">{{ paper.journal }}</span>
+     <span v-if="paper.section_count" class="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">{{ paper.section_count }} sections</span>
+     </div>
+     </router-link>
 
- <div class="flex items-center gap-2 px-4 pb-4">
- <button @click="openPaper(paper)"
- class="flex-1 px-3 py-1.5 min-h-[44px] border border-navy-700 hover:bg-navy-50 dark:hover:bg-navy-900/30 dark:border-cream-200 dark:hover:bg-cream-100 text-navy-700 dark:text-cream-200 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
- Open
- </button>
- <button @click="copyPaper(paper)" :disabled="copying === paper.id"
- class="px-3 py-1.5 min-h-[44px] min-w-[44px] border border-cream-300 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition disabled:opacity-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
- title="Copy paper">
- {{ copying === paper.id ? '...' : 'Copy' }}
- </button>
- <button @click="confirmDelete(paper)"
- class="px-3 py-1.5 min-h-[44px] min-w-[44px] border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded-lg transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
- title="Delete paper">
- Delete
- </button>
- </div>
+     <div class="flex items-center gap-2 px-4 pb-4">
+          <button @click="openPaper(paper)"
+          class="flex-1 px-3 py-1.5 min-h-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 text-ink-900 dark:text-ash-900 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+          >
+          Open
+          </button>
+          <button @click="copyPaper(paper)" :disabled="copying === paper.id"
+          class="px-3 py-1.5 min-h-[44px] min-w-[44px] border border-cream-300 dark:border-ash-600 hover:bg-cream-100 dark:hover:bg-ash-700 text-ink-900 dark:text-ink-50 text-xs rounded-lg transition disabled:opacity-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+          title="Copy paper"
+          >
+          {{ copying === paper.id ? '...' : 'Copy' }}
+          </button>
+          <button @click="confirmDelete(paper)"
+          class="px-3 py-1.5 min-h-[44px] min-w-[44px] border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 text-xs rounded-lg transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+          title="Delete paper">
+          Delete
+          </button>
+          </div>
  </article>
  </div>
  </StateView>
+   </section>
  </main>
 
  <AppDialog v-if="deleteTarget" :open="!!deleteTarget" title="Delete Paper?" @close="deleteTarget = null">
@@ -119,12 +126,19 @@ import TourGuide from '../components/TourGuide.vue'
 import { usePaperStore } from '../stores/paper.js'
 import { useAuthStore } from '../stores/auth.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
+import { useQuotaStore } from '../stores/quota.js'
 
 const router = useRouter()
 const route = useRoute()
 const store = usePaperStore()
 const auth = useAuthStore()
 const jobsStore = usePaperJobsStore()
+const quotaStore = useQuotaStore()
+
+const lastUpdated = computed(() => {
+  const dates = papers.value.map(p => p.updated_at).filter(Boolean).sort()
+  return dates.length ? formatDate(dates[dates.length - 1]) : ''
+})
 
 // Onboarding wizard state
 const showOnboarding = ref(false)
@@ -262,11 +276,12 @@ function goToTokenPurchase() {
 }
 
 onMounted(async () => {
- await checkOnboarding()
- if (!showOnboarding.value) {
- checkTour()
- }
- loadPapers()
+  await checkOnboarding()
+  if (!showOnboarding.value) {
+    checkTour()
+  }
+  quotaStore.fetchQuota()
+  loadPapers()
 })
 
 // Reload papers whenever the route changes (e.g. navigating back from editor)

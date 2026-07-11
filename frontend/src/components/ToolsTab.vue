@@ -2,7 +2,8 @@
   <div v-if="!store.activeTool" class="space-y-4">
     <div class="mb-4">
       <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">
-        🛠 Tools
+        <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Tools
       </h2>
       <p class="text-sm text-ink-500 dark:text-ink-300 mt-1 max-w-[52ch] leading-relaxed">
         AI writing toolkit — paraphrase, translate, humanize, and check your draft before submission. Each tool runs on the selected text or your whole paper.
@@ -17,10 +18,10 @@
         @click="handleToolClick(tool)"
       >
         <div
-          class="w-[38px] h-[38px] rounded-lg flex items-center justify-center text-lg mb-3 text-white"
+          class="w-[38px] h-[38px] rounded-lg flex items-center justify-center mb-3 text-white"
           :style="{ background: tool.tint }"
         >
-          {{ tool.icon }}
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="tool.iconSvg"></svg>
         </div>
         <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 mb-1">{{ tool.title }}</h3>
         <p class="text-xs text-ink-500 dark:text-ink-300 leading-relaxed">{{ tool.desc }}</p>
