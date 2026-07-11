@@ -548,9 +548,21 @@ def generate_va():
         # VA expiry: 10 minutes
         validity = (datetime.now(timezone(timedelta(hours=7))) + timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%S+07:00')
 
+        # Channel selection from frontend (default BRI for backward compat)
+        channel = data.get('channel', 'VIRTUAL_ACCOUNT_BRI')
+        valid_channels = [
+            'VIRTUAL_ACCOUNT_BRI', 'VIRTUAL_ACCOUNT_BNI', 'VIRTUAL_ACCOUNT_BCA',
+            'VIRTUAL_ACCOUNT_BJB', 'VIRTUAL_ACCOUNT_BNC', 'VIRTUAL_ACCOUNT_MANDIRI'
+        ]
+        if channel not in valid_channels:
+            channel = 'VIRTUAL_ACCOUNT_BRI'
+
         # DOKU VA: partnerServiceId = VA Partner Service ID, space-padded to 8 chars
-        # Set DOKU_VA_BIN in .env (from DOKU Dashboard > Payment Methods > Virtual Account)
-        va_partner_id = (os.getenv('DOKU_VA_BIN') or '').strip()
+        # Per-bank BIN: DOKU_VA_BIN (default/BRI), DOKU_VA_BIN_BNI, etc.
+        va_bin_map = {
+            'VIRTUAL_ACCOUNT_BNI': (os.getenv('DOKU_VA_BIN_BNI') or '').strip(),
+        }
+        va_partner_id = va_bin_map.get(channel, '').strip() or (os.getenv('DOKU_VA_BIN') or '').strip()
         if not va_partner_id:
             current_app.logger.error('DOKU_VA_BIN not configured in .env')
             return jsonify({'error': 'VA not configured. Contact support.'}), 500
@@ -561,15 +573,6 @@ def generate_va():
 
         # VA number = partnerServiceId (space-padded) + customerNo
         va_no = f"{partner_service_id}{customer_no}"
-
-        # Channel selection from frontend (default BRI for backward compat)
-        channel = data.get('channel', 'VIRTUAL_ACCOUNT_BRI')
-        valid_channels = [
-            'VIRTUAL_ACCOUNT_BRI', 'VIRTUAL_ACCOUNT_BNI', 'VIRTUAL_ACCOUNT_BCA',
-            'VIRTUAL_ACCOUNT_BJB', 'VIRTUAL_ACCOUNT_BNC', 'VIRTUAL_ACCOUNT_MANDIRI'
-        ]
-        if channel not in valid_channels:
-            channel = 'VIRTUAL_ACCOUNT_BRI'
 
         body = {
             'partnerServiceId': partner_service_id,
