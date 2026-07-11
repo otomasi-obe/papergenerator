@@ -88,6 +88,66 @@ def _parse_esummary(doc: dict) -> Paper | None:
     )
 
 
+def _fetch_abstracts_for_papers(papers: list[Paper], client) -> None:
+    """Enrich papers with abstracts via efetch (JATS XML). Modifies papers in-place."""
+    if not papers:
+        return
+    uids = [p.source_id.replace("PMC", "") for p in papers if p.source_id and p.source_id.startswith("PMC")]
+    if not uids:
+        return
+    api_key = os.getenv("NCBI_API_KEY", "")
+    email = os.getenv("SLR_CONTACT_EMAIL") or "research@example.com"
+    rl = RateLimiter(0.35 if not api_key else 0.12)
+    
+    # efetch with JATS XML to get abstracts
+    rl.wait()
+    fetch_params = {
+        "db": "pmc",
+        "id": ",".join(uids),
+        "retmode": "xml",
+        "tool": "PaperRiset",
+        "email": email,
+    }
+    if api_key:
+        fetch_params["api_key"] = api_key
+    
+    xml_text = fetch_text(client, EFETCH, params=fetch_params)
+    if not xml_text:
+        return
+    
+    # Parse JATS XML for abstracts
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.fromstring(xml_text)
+        # Build map: uid -> abstract text
+        abstract_map = {}
+        for article in root.findall(".//article"):
+            article_id = article.find(".//article-id[@pub-id-type='pmcid']")
+            if article_id is None:
+                article_id = article.find(".//article-id[@pub-id-type='pmcaid']")
+            if article_id is None:
+                continue
+            uid = article_id.text.replace("PMC", "") if article_id.text else ""
+            if not uid:
+                continue
+            # Find abstract
+            abstract_elem = article.find(".//abstract")
+            if abstract_elem is not None:
+                # Extract all text from abstract element
+                abstract_text = "".join(abstract_elem.itertext()).strip()
+                if abstract_text:
+                    abstract_map[uid] = abstract_text
+        
+        # Assign back to papers
+        for p in papers:
+            if p.source_id and p.source_id.startswith("PMC"):
+                uid = p.source_id.replace("PMC", "")
+                if uid in abstract_map and abstract_map[uid]:
+                    p.abstract = abstract_map[uid]
+    except ET.ParseError:
+        pass
+
+
 def search(client, query: str, limit: int = 25, filters: dict | None = None) -> Iterable[Paper]:
     """Search PMC for full-text OA biomedical articles.
 
@@ -158,16 +218,21 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
         result = summary_data.get("result", {})
         uids = result.get("uids", [])
 
+        papers = []
         for uid in uids:
             doc = result.get(uid)
             if not doc or not isinstance(doc, dict):
                 continue
             paper = _parse_esummary(doc)
             if paper:
-                yield paper
-                fetched += 1
-                if fetched >= limit:
-                    return
+                papers.append(paper)
+
+        _fetch_abstracts_for_papers(papers, client)
+        for paper in papers:
+            yield paper
+            fetched += 1
+            if fetched >= limit:
+                return
 
         retstart += len(id_list)
         if retstart >= total_available:

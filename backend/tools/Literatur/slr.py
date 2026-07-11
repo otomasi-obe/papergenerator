@@ -3022,6 +3022,7 @@ class SLROrchestrator:
             fetcher_names = list(fetch_map.keys())
             total_queries = sum(len(qs) for qs in fetch_map.values())
 
+            job.sources = fetcher_names
             job.sources_total = len(fetcher_names)
             job.sources_pending = list(fetcher_names)
 

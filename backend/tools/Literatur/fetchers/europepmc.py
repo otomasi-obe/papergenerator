@@ -88,12 +88,15 @@ def search(client, query: str, limit: int = 25, filters: dict | None = None) -> 
             full_query += " AND OPEN_ACCESS:Y"
         if filters.get("has_abstract"):
             full_query += " AND HAS_ABSTRACT:Y"
+    # Always request HAS_ABSTRACT to avoid empty abstract records
+    full_query += " AND HAS_ABSTRACT:Y"
 
     while fetched < limit:
         rl.wait()
         params = {
             "query": full_query,
             "format": "json",
+            "resultType": "core",  # includes abstractText
             "pageSize": min(per_page, limit - fetched),
             "cursorMark": cursor,
         }

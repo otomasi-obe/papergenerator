@@ -1,8 +1,19 @@
 {
-  "version": "1.3.6",
+  "version": "1.3.7",
   "released": "2026-07-11",
-  "title": "Update v1.3.6 — Permata VA added, BRI/BNI/Permata VA fixes",
+  "title": "Update v1.3.7 — SLR fetcher fixes: year & abstract",
   "history": [
+    {
+      "version": "1.3.7",
+      "released": "2026-07-11",
+      "title": "Update v1.3.7 — SLR fetcher fixes: year & abstract",
+      "changes": [
+        { "type": "fix", "text": "OpenAlex: add publication_year to SELECT_FIELDS — year field now returned for all papers" },
+        { "type": "fix", "text": "PMC: abstract enrichment via efetch JATS XML (pmcid/pmcaid fallback) — abstracts now returned" },
+        { "type": "fix", "text": "EuropePMC: resultType=core + HAS_ABSTRACT:Y filter — no more null abstracts" },
+        { "type": "fix", "text": "SLR job: persist fetcher names to job.sources — UI shows active sources correctly" }
+      ]
+    },
     {
       "version": "1.3.6",
       "released": "2026-07-11",

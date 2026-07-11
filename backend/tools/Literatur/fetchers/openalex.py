@@ -13,7 +13,7 @@ BASE = "https://api.openalex.org/works"
 # Full select parameter to get all needed fields in one call.
 # This avoids N+1 requests for concepts/keywords/language/funders/etc.
 _SELECT_FIELDS = (
-    "id,doi,title,display_name,publication_date,authorships,"
+    "id,doi,title,display_name,publication_date,publication_year,authorships,"
     "abstract_inverted_index,cited_by_count,open_access,locations,"
     "primary_location,concepts,keywords,type,biblio,primary_topic,language,"
     "is_retracted,funders"
