@@ -978,13 +978,11 @@ async function handleReviewIntent(intent: any): Promise<void> {
  } as unknown as AttachedFile)
  }
 
- // Set prompt and auto-send
- showSuggestions.value = false
- inputText.value = 'reviewkan lengkap dan gap riset'
- nextTick(() => {
- handleSend()
- })
-}
+ // Set prompt as draft (do NOT auto-send)
+   showSuggestions.value = false
+   inputText.value = 'reviewkan lengkap dan gap riset'
+   // User will manually click Send after reviewing the draft
+ }
 
 // Watch for review intent — fires when intent is set while ChatTab is already mounted.
 // onMounted handles the case where intent was set BEFORE ChatTab mounted (switch from Literatur).

@@ -1589,10 +1589,9 @@ async function reviewAllChecked(): Promise<void> {
       })),
       query: slrQuery.value || paperTitle.value || '',
     })
-    if (currentPaperId.value) {
-      uiStore.setRightPanel(currentPaperId.value, 'chat')
-    }
-    toast(`Mengirim ${checked.length} literatur ke Chat untuk review...`, 'success')
+    // Open floating AI Assistant (not the old right-panel chat)
+    window.dispatchEvent(new CustomEvent('open-ai-assistant'))
+    toast(`${checked.length} literatur siap di-review di AI Assistant`, 'success')
   }
   
   reviewBusy.value = true

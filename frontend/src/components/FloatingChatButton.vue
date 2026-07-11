@@ -164,6 +164,8 @@ function onKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
+  // Open floating AI Assistant when triggered from LiteratureTab
+  window.addEventListener('open-ai-assistant', open)
   setTimeout(() => {
     showGreetingAnimation()
   }, 1000)
@@ -171,6 +173,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('open-ai-assistant', open)
   if (greetingTimeout) clearTimeout(greetingTimeout)
 })
 </script>
