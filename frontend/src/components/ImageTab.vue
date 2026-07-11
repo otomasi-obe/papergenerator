@@ -8,23 +8,6 @@
  </p>
  </div>
  <div class="flex items-center gap-2">
- <!-- Regenerate buttons -->
- <button
-   v-if="selectedImageIds.size > 0"
-   @click="regenerateSelected"
-   :disabled="regenerating"
-   class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95"
- >
-   🔄 Regenerate ({{ selectedImageIds.size }})
- </button>
- <button
-   v-if="images.length > 0"
-   @click="regenerateAllImages"
-   :disabled="regenerating"
-   class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95"
- >
-   🔄 All
- </button>
  <!-- Upload button -->
  <input ref="uploadInput" type="file" accept="image/*" multiple class="hidden" @change="onUploadChange" />
  <button @click="uploadInput?.click()" :disabled="!store.currentPaperId"
@@ -81,14 +64,6 @@
  ]"
  @click="selectImage(img)"
  >
- <!-- Checkbox for re-generate selection -->
- <input
-   type="checkbox"
-   v-model="selectedImageIds"
-   :value="img.id"
-   class="mt-1 w-4 h-4 rounded border-cream-400 dark:border-ash-500 text-amber-600 focus:ring-amber-500 transition"
-   @click.stop
- />
  <div class="w-10 h-10 rounded border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 flex-shrink-0 overflow-hidden flex items-center justify-center">
  <img v-if="!failedImages.has(img.filename)" :src="imageUrl(img)" :alt="img.original_name || img.filename" class="max-h-full max-w-full object-contain" @error="(e) => onThumbErr(e, img.filename)" />
  <div v-else class="text-[10px] text-ink-400">⚠️</div>
@@ -178,9 +153,6 @@ const loading = ref(false)
 const generating = ref(false)
 const warning = ref('')
 const failedImages = ref(new Set<string>())
-
-const selectedImageIds = ref(new Set<number>())
-const regenerating = ref(false)
 
 watch(() => store.currentPaperId, () => {
  failedImages.value = new Set()

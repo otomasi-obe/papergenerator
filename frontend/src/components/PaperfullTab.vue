@@ -29,7 +29,7 @@
 
     <!-- Generating progress card -->
     <div
-      v-if="generating || activeJob || imagesGenerating"
+      v-if="generating || activeJob"
       class="rounded-xl border border-navy-200/60 dark:border-navy-700/60 bg-gradient-to-br from-navy-50 to-white dark:from-navy-900/40 dark:to-navy-900/20 px-4 py-3 text-xs space-y-2.5 shadow-sm"
     >
       <div class="flex items-center gap-3">
@@ -77,7 +77,7 @@
       <textarea
         v-model="topic"
         rows="4"
-        :disabled="generating || !!activeJob || imagesGenerating"
+        :disabled="generating || !!activeJob"
         placeholder="Masukkan topik paper (mis. 'optimasi rute AGV dengan reinforcement learning')"
         class="w-full px-3 py-2 border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-900 text-ink-900 dark:text-ink-50 rounded-lg text-sm disabled:opacity-50"
       ></textarea>
@@ -101,15 +101,15 @@
     <!-- Generation options -->
     <div class="flex items-center gap-4 px-2 py-2 rounded-lg bg-cream-100 dark:bg-ash-700/50 text-xs">
       <label class="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" v-model="enablePaperReview" :disabled="generating || !!activeJob || imagesGenerating" class="rounded w-4 h-4 accent-navy-600" />
+        <input type="checkbox" v-model="enablePaperReview" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Paper Review</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" v-model="enableImageGen" :disabled="generating || !!activeJob || imagesGenerating" class="rounded w-4 h-4 accent-navy-600" />
+        <input type="checkbox" v-model="enableImageGen" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Generate Images</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" v-model="enableRevisiSemua" :disabled="generating || !!activeJob || imagesGenerating" class="rounded w-4 h-4 accent-navy-600" />
+        <input type="checkbox" v-model="enableRevisiSemua" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Revisi Semua</span>
       </label>
     </div>
@@ -118,7 +118,7 @@
     <div class="flex items-center gap-2">
       <button
         @click="generate"
-        :disabled="!topic.trim() || generating || !!activeJob || imagesGenerating"
+        :disabled="!topic.trim() || generating || !!activeJob"
         class="flex-1 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
       >
         <span v-if="generating" class="inline-flex items-center gap-1">
@@ -150,7 +150,7 @@
           <div class="relative ml-auto">
             <button
               @click.stop="dataPickerOpen = !dataPickerOpen"
-              :disabled="generating || !!activeJob || imagesGenerating"
+              :disabled="generating || !!activeJob"
               class="w-6 h-6 flex items-center justify-center rounded-md text-xs font-bold text-navy-600 dark:text-navy-300 hover:bg-navy-100 dark:hover:bg-ash-600 transition-colors disabled:opacity-40"
               title="Tambah file"
             >＋</button>
@@ -227,7 +227,7 @@
           <div class="relative ml-auto">
             <button
               @click.stop="refPickerOpen = !refPickerOpen"
-              :disabled="generating || !!activeJob || imagesGenerating"
+              :disabled="generating || !!activeJob"
               class="w-6 h-6 flex items-center justify-center rounded-md text-xs font-bold text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-ash-600 transition-colors disabled:opacity-40"
               title="Tambah file/draft"
             >＋</button>
@@ -403,20 +403,6 @@
         <p v-if="imageGenProgress.message" class="text-[11px] text-ink-600 dark:text-ink-300 mt-1.5 animate-pulse">
           {{ imageGenProgress.message }}
         </p>
-        <!-- Re-generate button when complete -->
-        <div v-if="imageGenProgress.done >= imageGenProgress.total && imageGenProgress.total > 0" class="mt-3 pt-3 border-t border-cream-200 dark:border-ash-700">
-          <button
-            @click="regenerateAllImages"
-            :disabled="regeneratingImages"
-            class="w-full px-3 py-2 text-xs font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <span v-if="regeneratingImages" class="inline-flex items-center gap-1">
-              <span class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Re-generating...
-            </span>
-            <span v-else>🔄 Re-generate All Images</span>
-          </button>
-        </div>
       </div>
     </div>
 
@@ -549,8 +535,6 @@ let _progressTimer = null
 const reasoningText = ref('')
 const contentText = ref('')
 const imageGenProgress = ref({ total: 0, done: 0, message: '' })
-const imagesGenerating = ref(false)  // true while image jobs still running after paper content done
-const regeneratingImages = ref(false)  // true while re-generate images request/poll runs
 const reasoningScroll = ref<HTMLElement | null>(null)
 const contentScrollRef = ref<HTMLElement | null>(null)
 const contentRenderEl = ref<HTMLElement | null>(null)
@@ -1725,7 +1709,6 @@ async function manualCheckDb() {
 }
 
 async function finishGeneration(paperData?: any) {
-  imagesGenerating.value = false
   generating.value = false
   displayProgress.value = 100
   generatingTopic.value = ''
@@ -1758,7 +1741,6 @@ function dismissGenerationPanel() {
 
 function cancelGeneration() {
   generating.value = false
-  imagesGenerating.value = false
   generatingTopic.value = ''
   connectionLost.value = false
   jobsStore.setConnectionLost(false)
@@ -1782,7 +1764,6 @@ watch(() => store.currentPaperId, (newId, oldId) => {
     reasoningText.value = ''
     contentText.value = ''
     generating.value = false
-    imagesGenerating.value = false
     generatingTopic.value = ''
     displayProgress.value = 0
     imageGenProgress.value = { total: 0, done: 0, message: '' }
@@ -1835,83 +1816,9 @@ async function stopGeneration() {
   }
 }
 
-// ─── Re-generate images ──────────────────────────────────────────────
-async function regenerateAllImages(): Promise<void> {
-  if (!store.currentPaperId) {
-    store.showToast('Paper ID tidak ditemukan', 'error')
-    return
-  }
-  regeneratingImages.value = true
-  try {
-    const res = await api.post('/api/image-jobs/regenerate', {
-      paper_id: store.currentPaperId,
-      // no image_ids = regenerate all
-    })
-    store.showToast(res.data?.message || 'Re-generate started', 'success')
-    // Reset progress panel
-    imageGenProgress.value = {
-      total: res.data?.job_ids?.length || 0,
-      done: 0,
-      message: `Regenerating ${res.data?.job_ids?.length || 0} images...`,
-    }
-    imagesGenerating.value = true
-    // Poll for completion
-    const jobIds = res.data?.job_ids || []
-    if (jobIds.length > 0) {
-      pollRegenerateJobs(jobIds)
-    }
-  } catch (e: any) {
-    store.showToast('Re-generate gagal: ' + (e?.response?.data?.error || e?.message || 'unknown'), 'error')
-  } finally {
-    regeneratingImages.value = false
-  }
-}
-
-async function pollRegenerateJobs(jobIds: string[]): Promise<void> {
-  if (!jobIds.length) return
-  const total = jobIds.length
-  let done = 0
-  let errors = 0
-  
-  const checkInterval = setInterval(async () => {
-    try {
-      for (const jid of jobIds) {
-        const res = await api.get(`/api/image-jobs/${jid}`)
-        const job = res.data
-        if (job.status === 'done') {
-          done++
-        } else if (job.status === 'error') {
-          done++
-          errors++
-        }
-      }
-      imageGenProgress.value = { total, done, message: `${done}/${total} done${errors ? ` (${errors} errors)` : ''}` }
-      
-      if (done >= total) {
-        clearInterval(checkInterval)
-        imagesGenerating.value = false
-        // Reload paper images
-        if (store.currentPaperId) {
-          await store.loadPaperImages(store.currentPaperId)
-        }
-        if (errors > 0) {
-          store.showToast(`${total - errors}/${total} images regenerated (${errors} errors)`, errors === total ? 'error' : 'warning')
-        } else {
-          store.showToast('All images regenerated!', 'success')
-        }
-      }
-    } catch (e) {
-      console.warn('Poll error:', e)
-    }
-  }, 2000)
-  
-  // Safety timeout: stop polling after 3 minutes
-  setTimeout(() => clearInterval(checkInterval), 180000)
-}
-
 async function generate() {
   // Prevent double-generate on the same paper
-  if (generating.value || imagesGenerating.value) {
+  if (generating.value) {
     store.showToast('Sedang generating, tunggu sampai selesai.', 'warning')
     return
   }
@@ -2353,16 +2260,13 @@ async function consumeSSEStream(res) {
             const imgJobCount = payload.image_jobs ? payload.image_jobs.length : 0
             const totalImgJobs = payload.total_jobs || imgJobCount
             if (totalImgJobs > 0) {
-              contentText.value += `\n✅ Paper content loaded! ${totalImgJobs} image(s) still generating...\n`
-              imagesGenerating.value = true
+              contentText.value += `\n✅ Paper content loaded! ${totalImgJobs} image(s) generating in background...\n`
               // Show initial progress immediately — progress events update incrementally
               imageGenProgress.value = {
                 total: totalImgJobs,
                 done: 0,
                 message: `Generating ${totalImgJobs} images...`,
               }
-            } else {
-              imagesGenerating.value = false
             }
             // Pass paper_data from backend directly to editor (faster than fetching from DB)
             // ponytail: DON'T call finishGeneration() here — it kills _sseCtrl which
@@ -2395,7 +2299,6 @@ async function consumeSSEStream(res) {
             // All images done — reload paper (image paths reconciled) + refresh charts
             const errCount = payload.errors || 0
             const totalCount = payload.total || 0
-            imagesGenerating.value = false
             if (errCount > 0) {
               imageGenProgress.value = { total: totalCount, done: totalCount, message: `${totalCount - errCount}/${totalCount} images — ${errCount} failed!` }
               contentText.value += `\n⚠️ ${totalCount - errCount}/${totalCount} images generated — ${errCount} errors\\n`
@@ -2405,7 +2308,6 @@ async function consumeSSEStream(res) {
             }
             await store.loadPaperFromDb(store.currentPaperId)
             await store.loadPaperCharts(store.currentPaperId)
-            finishGeneration()
             return
           } else if (currentEvent === 'error') {
             doneReceived = true
@@ -2413,7 +2315,6 @@ async function consumeSSEStream(res) {
             store.showToast('Generation error: ' + payload.error, 'error')
             // Clean up generating state — don't leave UI stuck spinning
             generating.value = false
-            imagesGenerating.value = false
             stopProgressTicker()
             stopTimeTracker()
             jobsStore.clearStreamState()

@@ -128,7 +128,7 @@ h1, h2, h3, .display-serif {
 .editable-content {
   min-height: 60px;
   padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--border-strong) 40%, transparent);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   background: var(--bg-surface);
   color: var(--text-strong);
@@ -234,7 +234,6 @@ html {
 html.dark .btn-primary { background: var(--cream-200); color: var(--ash-900); }
 html.dark .btn-primary:hover { background: var(--cream-100); }
 
-@layer components {
 /* ── Dark mode card/input shadow adjustments ── */
 .dark .card {
   background: var(--bg-card);
@@ -247,34 +246,31 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
 
 .card {
   background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--border-soft) 45%, transparent);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(21, 36, 49, 0.04);
+  box-shadow: 0 4px 20px rgba(21, 36, 49, 0.05), 0 1px 3px rgba(21, 36, 49, 0.03);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .card:hover {
-  box-shadow: 0 4px 16px rgba(21, 36, 49, 0.07);
-}
+  box-shadow: 0 6px 28px rgba(21, 36, 49, 0.08), 0 1px 3px rgba(21, 36, 49, 0.04);
 }
 
 /* ─── Shared component classes used across the editor ─── */
 .label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 8px;
-  font-family: var(--font-sans);
 }
 
 .input {
   width: 100%;
   padding: 10px 14px;
   background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--border-soft) 35%, transparent);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
   color: var(--text-strong);
   font-size: 14px;
@@ -286,14 +282,14 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
 }
-.input::placeholder { color: var(--text-muted); opacity: 0.65; }
+.input::placeholder { color: var(--text-muted); opacity: 0.55; }
 
 .input-sm {
   padding: 7px 10px;
   font-size: 13px;
   border-radius: 8px;
   background: var(--bg-surface);
-  border: 1px solid color-mix(in srgb, var(--border-soft) 35%, transparent);
+  border: 1px solid var(--border-soft);
   color: var(--text-strong);
   font-family: var(--font-sans);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -303,7 +299,7 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent);
 }
-.input-sm::placeholder { color: var(--text-muted); opacity: 0.65; }
+.input-sm::placeholder { color: var(--text-muted); opacity: 0.55; }
 
 .btn-add {
   display: inline-flex;
@@ -328,7 +324,7 @@ html.dark .btn-primary:hover { background: var(--cream-100); }
   gap: 4px;
   padding: 6px 12px;
   background: var(--bg-elev);
-  border: 1px solid color-mix(in srgb, var(--border-soft) 35%, transparent);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   color: var(--text-base);
   font-size: 12px;

@@ -58,7 +58,7 @@
  <!-- Buy Token Package -->
  <button
    @click="purchaseModalOpen = true"
-   class="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-lg border border-emerald-600 dark:border-emerald-500 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-xs font-medium transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
+   class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-semibold transition-all hover:shadow-md active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2"
  >
    Beli Paket Token
  </button>

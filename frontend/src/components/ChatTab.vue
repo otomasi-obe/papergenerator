@@ -3,7 +3,7 @@
  <!-- ─── PICKER VIEW: list of chats only (no active chat yet) ─── -->
  <template v-if="!currentConversationId">
  <header class="px-5 py-3 bg-cream-50 dark:bg-ash-800 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
- <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1">AI Assistant</h3>
+ <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1">AI Chat</h3>
  <button
  @click="createNewChat"
  :disabled="creatingChat"
@@ -88,11 +88,11 @@
  <span>Chats</span>
  </button>
  <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1 truncate">
- {{ currentChat?.title || 'AI Assistant' }}
+ {{ currentChat?.title || 'AI Chat' }}
  </h3>
  <button
  @click="chatStore.clearCurrentChat()"
- :disabled="isStreaming || !messages.length"
+ :disabled="isStreaming"
  class="flex items-center gap-1.5 px-2.5 py-1 min-h-[36px] text-[11px] font-medium text-[var(--text-muted)] hover:text-red-500 dark:text-red-400 dark:hover:text-red-400 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-40 transition active:scale-95"
  title="Clear chat — hapus semua pesan"
  >
