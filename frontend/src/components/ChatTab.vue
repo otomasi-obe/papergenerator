@@ -1220,7 +1220,7 @@ onMounted(async () => {
         const stream = chatStore._ensureStream(savedStream.conv_id)
         stream.isStreaming = true
         stream.connectionState = 'reconnecting'
-        stream.streamingMessage = {
+        const restoredMessage = {
           id: null,
           role: 'assistant',
           content: data.content || savedStream.content || '',
@@ -1228,7 +1228,16 @@ onMounted(async () => {
           tool_calls: [],
           created_at: data.started_at || savedStream.started_at,
         }
-        stream.messages.push(stream.streamingMessage)
+        stream.streamingMessage = restoredMessage
+
+        // Minimize closes ChatTab; reopening mounts it again while userState still
+        // contains chat.streaming. Do not append another assistant bubble.
+        const lastMsg = stream.messages[stream.messages.length - 1]
+        if (lastMsg?.role === 'assistant' && lastMsg.id == null) {
+          stream.messages[stream.messages.length - 1] = restoredMessage
+        } else if (!stream.messages.includes(restoredMessage)) {
+          stream.messages.push(restoredMessage)
+        }
         chatStore._syncFromStream(savedStream.conv_id)
 
         // Set current conversation to the streaming one
