@@ -559,6 +559,7 @@ def generate_va():
 
         # DOKU VA: partnerServiceId = VA Partner Service ID, space-padded to 8 chars
         # Per-bank BIN: DOKU_VA_BIN (default/BRI), DOKU_VA_BIN_BNI, etc.
+        # partnerServiceId must be exactly 8 chars (BRI: 6 digits + 2 spaces)
         va_bin_map = {
             'VIRTUAL_ACCOUNT_BNI': (os.getenv('DOKU_VA_BIN_BNI') or '').strip(),
         }
@@ -566,7 +567,15 @@ def generate_va():
         if not va_partner_id:
             current_app.logger.error('DOKU_VA_BIN not configured in .env')
             return jsonify({'error': 'VA not configured. Contact support.'}), 500
+        # Ensure exactly 8 chars: right-align, truncate left if longer
+        if len(va_partner_id) > 8:
+            va_partner_id = va_partner_id[-8:]
         partner_service_id = va_partner_id.rjust(8, ' ')  # SPACE-pad to 8 chars
+
+        current_app.logger.info(
+            'DOKU VA generate: channel=%s raw_bin=%s partnerServiceId=%r len=%s',
+            channel, va_partner_id, partner_service_id, len(partner_service_id)
+        )
 
         # DGPC: customerNo = short prefix, DOKU pads it
         customer_no = str(user_id)

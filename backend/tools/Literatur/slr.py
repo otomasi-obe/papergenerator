@@ -3367,7 +3367,8 @@ class SLROrchestrator:
     @staticmethod
     def _compute_eta(job: SLRJob) -> tuple[int | None, str]:
         """Compute ETA using simple linear extrapolation."""
-        if job.progress_pct <= 0 or job.progress_pct >= 100:
+        # Guard: no ETA at the very start (elapsed too small → huge noisy estimate)
+        if job.progress_pct <= 1.0 or job.progress_pct >= 100:
             return None, ""
         try:
             started = datetime.fromisoformat(job.started_at.replace('Z', '+00:00'))
