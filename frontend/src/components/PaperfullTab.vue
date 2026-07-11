@@ -101,15 +101,15 @@
     <!-- Generation options -->
     <div class="flex items-center gap-4 px-2 py-2 rounded-lg bg-cream-100 dark:bg-ash-700/50 text-xs">
       <label class="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" v-model="enablePaperReview" class="rounded w-4 h-4 accent-navy-600" />
+        <input type="checkbox" v-model="enablePaperReview" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Paper Review</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" v-model="enableImageGen" class="rounded w-4 h-4 accent-navy-600" />
+        <input type="checkbox" v-model="enableImageGen" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Generate Images</span>
       </label>
       <label class="flex items-center gap-2 cursor-pointer">
-        <input type="checkbox" v-model="enableRevisiSemua" class="rounded w-4 h-4 accent-navy-600" />
+        <input type="checkbox" v-model="enableRevisiSemua" :disabled="generating || !!activeJob" class="rounded w-4 h-4 accent-navy-600" />
         <span class="text-ink-800 dark:text-ink-100 font-medium">Revisi Semua</span>
       </label>
     </div>
@@ -1002,6 +1002,7 @@ function clearState() {
 }
 
 // Progress ticker: 0→60% in 10 min, 60→95% in 5 min, stuck at 95% until done
+// ponytail: ticker is a floor — never regress progress from SSE/content events
 function startProgressTicker() {
   stopProgressTicker()
   if (!_startTime) _startTime = Date.now()
@@ -1018,8 +1019,11 @@ function startProgressTicker() {
       // Phase 3: stuck at 95% until done
       pct = 95
     }
-    displayProgress.value = pct
-    jobsStore.updateStreamProgress(pct)
+    // Never regress — SSE content/progress events may have pushed higher
+    if (pct > displayProgress.value) {
+      displayProgress.value = pct
+      jobsStore.updateStreamProgress(pct)
+    }
     saveState()
   }, 5000)
 }
@@ -2239,7 +2243,8 @@ async function consumeSSEStream(res) {
             // Image/chart generation progress (backend waits for images before done)
             if (payload.stage === 'image_generation') {
               const pct = payload.total ? Math.floor((payload.done / payload.total) * 100) : 0
-              displayProgress.value = Math.min(98, pct)
+              // ponytail: never let image progress regress the main bar
+              displayProgress.value = Math.max(displayProgress.value, Math.min(98, pct))
               jobsStore.updateStreamProgress(displayProgress.value)
               // Update separate image progress panel instead of appending to content
               imageGenProgress.value = {
@@ -2264,8 +2269,32 @@ async function consumeSSEStream(res) {
               }
             }
             // Pass paper_data from backend directly to editor (faster than fetching from DB)
-            finishGeneration(payload.paper)
-            // Don't return — continue listening for images_complete event
+            // ponytail: DON'T call finishGeneration() here — it kills _sseCtrl which
+            // aborts the reader loop, so we never receive progress/images_complete.
+            // Do the finish logic inline but keep the stream alive for image events.
+            generating.value = false
+            displayProgress.value = 100
+            generatingTopic.value = ''
+            connectionLost.value = false
+            _startTime = null
+            stopProgressTicker()
+            stopTimeTracker()
+            _stopDbPolling()
+            timeElapsed.value = ''
+            jobsStore.clearStreamState()
+            saveState()
+            if (payload.paper) {
+              store.applyPaperData(payload.paper)
+            } else if (store.currentPaperId) {
+              await store.loadPaperFromDb(store.currentPaperId)
+            }
+            _startChartRefreshPolling()
+            // If no images pending, stop SSE and return
+            if (!totalImgJobs) {
+              stopSSEPolling()
+              return
+            }
+            // Don't return — continue listening for progress/images_complete events
           } else if (currentEvent === 'images_complete') {
             // All images done — reload paper (image paths reconciled) + refresh charts
             const errCount = payload.errors || 0
