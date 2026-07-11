@@ -1275,6 +1275,9 @@ watch(
     chatStore.stopActiveJobPolling()
     if (id) {
       await chatStore.openPaper(id)
+    } else {
+      // Back to dashboard: reload global conversations so the picker shows them
+      await chatStore.loadAllConversations()
     }
   }
 )

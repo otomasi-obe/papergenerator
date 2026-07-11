@@ -565,13 +565,37 @@ def load_prompt() -> str:
 # ---------------------------------------------------------------------------
 
 def _parse_llm_json(text: str) -> dict:
-    """Extract JSON from LLM response, tolerating markdown fences."""
+    """Extract JSON from LLM response, tolerating markdown fences and extra text.
+
+    Finds the first valid JSON object in the response (handles cases where
+    the model adds explanation before/after the JSON).
+    """
     text = text.strip()
-    # Strip ```json ... ``` wrappers
+    
+    # Strip ```json ... ``` wrappers (multiline-aware)
     if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    return json.loads(text)
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.DOTALL)
+        text = re.sub(r"\s*```$", "", text, flags=re.DOTALL)
+        text = text.strip()
+
+    # Try direct parse first
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Fallback: find first {...} block that parses as JSON
+    # Scan for opening brace, try parsing from each position
+    for i, ch in enumerate(text):
+        if ch == '{':
+            for j in range(i + 1, len(text) + 1):
+                candidate = text[i:j]
+                try:
+                    return json.loads(candidate)
+                except json.JSONDecodeError:
+                    continue
+    # Last resort: raise original error with context
+    raise ValueError(f"Could not extract valid JSON from LLM response: {text[:200]}...")
 
 
 def analyze_keyword(

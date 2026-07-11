@@ -590,6 +590,10 @@ export const useChatStore = defineStore('chat', () => {
         // Load messages for the active conversation (it's still the same conv)
         await openConversation(currentConversationId.value)
       }
+      // IMPORTANT: DO NOT call loadConversations(paperId) here!
+      // That would replace the conversations list and lose the global conversation.
+      // The active conversation persists regardless of paperId.
+      return currentChat
     }
 
     // If no active conversation, create one for this paper

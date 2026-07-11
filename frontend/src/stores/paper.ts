@@ -1106,17 +1106,6 @@ export const usePaperStore = defineStore('paper', () => {
     paperImages.value = []
     lsRemove(LS_PAPER)
     lsRemove(LS_JOB)
-
-    // Clear chat state so the new paper doesn't inherit the old conversation.
-    // Lazy import to avoid the chat.js ↔ paper.js circular dep loop.
-    import('./chat.js')
-      .then(({ useChatStore }) => {
-        const chat = useChatStore()
-        chat.reset()
-      })
-      .catch(() => {
-        /* chat store unavailable — silent no-op */
-      })
   }
 
   function uploadJson(file) {
