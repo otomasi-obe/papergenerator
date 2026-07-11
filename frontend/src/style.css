@@ -29,6 +29,13 @@
   --accent-success: #2f9d6e;
   --accent-warning: #d9a718;
   --accent-danger: #c43655;
+  /* Editor accent border colors (adaptive light/dark) */
+  --accent-title: #1265c8;
+  --accent-authors: #1265c8;
+  --accent-abstract: #1265c8;
+  --accent-keywords: #9f7d54;
+  --accent-section: #806044;
+  --accent-references: #f87171;
   --navy-700: #0b4088;
   --navy-800: #082f6a;
   --navy-500: #1265c8;
@@ -74,6 +81,12 @@ html.dark {
   --accent-success: #3db87e;
   --accent-warning: #e0b020;
   --accent-danger: #e04a65;
+  --accent-title: #6db4f0;
+  --accent-authors: #6db4f0;
+  --accent-abstract: #6db4f0;
+  --accent-keywords: #f0cc4a;
+  --accent-section: #b99a6b;
+  --accent-references: #f58a9b;
   --ash-900: #07122a;
   --focus-ring: 0 0 0 3px rgba(92, 196, 180, 0.28);
 }

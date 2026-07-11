@@ -113,7 +113,7 @@
  <!-- TAB: EDITOR -->
  <div v-show="activeTab === 'editor'" role="tabpanel" id="panel-editor" aria-labelledby="tab-editor" class="space-y-4">
  <!-- Title -->
- <div class="card" style="border-left: 4px solid #1265c8">
+ <div class="card" style="border-left: 4px solid var(--accent-title)">
              <label class="label">Title</label>
  <textarea v-model="store.paper.title" v-autosize rows="1"
  ref="titleRef"
@@ -121,7 +121,7 @@
  </div>
 
  <!-- Authors -->
- <div class="card" style="border-left: 4px solid #1265c8">
+ <div class="card" style="border-left: 4px solid var(--accent-authors)">
              <div class="flex items-center justify-between mb-3">
              <label class="label !mb-0">Authors</label>
  <button @click="store.addAuthor()" class="btn-add">+ Author</button>
@@ -154,7 +154,7 @@
  </div>
 
  <!-- Abstract -->
- <div class="card" style="border-left: 4px solid #1265c8">
+ <div class="card" style="border-left: 4px solid var(--accent-abstract)">
              <label class="label">Abstract</label>
  <textarea v-model="store.paper.abstract" v-autosize rows="2"
  ref="abstractRef"
@@ -162,7 +162,7 @@
  </div>
 
  <!-- Keywords -->
- <div class="card" style="border-left: 4px solid #9f7d54">
+ <div class="card" style="border-left: 4px solid var(--accent-keywords)">
  <label class="label">Keywords</label>
  <div class="flex flex-wrap gap-1.5 mb-2">
  <span v-for="(_kw, i) in store.paper.keywords" :key="i"
@@ -181,7 +181,7 @@
  <draggable :list="store.paper.sections" :item-key="stableKey" animation="150" handle=".section-drag" class="space-y-4"
  :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
  <template #item="{ element: section, index: sIdx }">
- <div class="group card" style="border-left: 4px solid #806044">
+ <div class="group card" style="border-left: 4px solid var(--accent-section)">
  <div class="flex items-center justify-between mb-3">
  <div class="flex items-center gap-2 flex-1 min-w-0">
  <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none text-xl leading-tight shrink-0">⠿</span>
@@ -252,7 +252,7 @@
  </button>
 
  <!-- References -->
- <div class="card" style="border-left: 4px solid #f87171">
+ <div class="card" style="border-left: 4px solid var(--accent-references)">
  <div class="flex items-center justify-between mb-3">
  <label class="label !mb-0">References</label>
  <button @click="store.addReference()" class="btn-add">+ Reference</button>
