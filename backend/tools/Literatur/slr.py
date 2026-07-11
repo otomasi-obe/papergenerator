@@ -265,6 +265,14 @@ def _filter_relevant_papers(keyword: str, papers: list[Any]) -> list[Any]:
     """
     kw = (keyword or "").lower()
     required = {t for t in re.findall(r"[a-z0-9]+", kw) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+
+    # If keyword is Indonesian, also include English translation terms for bilingual filtering
+    from tools.Literatur.slrFetch import _detect_language, _translate_id_to_en
+    if _detect_language(keyword) in ("id", "mixed"):
+        en_kw = _translate_id_to_en(keyword)
+        en_terms = {t for t in re.findall(r"[a-z0-9]+", en_kw.lower()) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+        required |= en_terms
+
     # Domain anchors for common engineering/control queries; these must not be drowned by generic words.
     anchors = {"scada", "iot", "plc", "hmi", "supervisory", "automation", "sensor", "actuator"}
     active_anchors = required & anchors
