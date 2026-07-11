@@ -8,8 +8,8 @@
       "released": "2026-07-11",
       "title": "Fix SLR Review Selected → AI Assistant",
       "changes": [
-        "Fix: selected SLR references now auto-attach to AI Assistant draft when clicking Review Selected",
-        "Root cause: Pinia auto-unwrap mismatch — chatStore.x.value was undefined because store proxy already unwraps refs"
+        {"text": "Fix: selected SLR references now auto-attach to AI Assistant draft when clicking Review Selected", "type": "fix"},
+        {"text": "Root cause: Pinia auto-unwrap mismatch — chatStore.x.value was undefined because store proxy already unwraps refs", "type": "fix"}
       ]
     },
     {
