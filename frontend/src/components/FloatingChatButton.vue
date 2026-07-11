@@ -226,7 +226,7 @@ onUnmounted(() => {
 .floating-chat-btn {
   position: fixed; bottom: 24px; right: 24px;
   height: 50px; padding: 0 22px; border-radius: 25px;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent) 50%, var(--navy-800) 100%);
+  background: linear-gradient(135deg, var(--navy-800) 0%, var(--accent-primary) 50%, var(--navy-700) 100%);
   color: #ffffff; border: none;
   box-shadow:
     0 4px 24px color-mix(in srgb, var(--accent-primary) 35%, transparent),
@@ -242,10 +242,23 @@ onUnmounted(() => {
   box-shadow:
     0 8px 32px color-mix(in srgb, var(--accent-primary) 40%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-primary) 20%, transparent);
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-primary) 50%, var(--navy-700) 100%);
+  background: linear-gradient(135deg, var(--navy-700) 0%, var(--accent) 50%, var(--navy-600) 100%);
 }
 .floating-chat-btn:active { transform: scale(0.95); }
 .btn-label { white-space: nowrap; }
+
+/* Ring animation */
+.btn-ring-svg {
+  position: absolute; inset: 0; pointer-events: none;
+  overflow: visible;
+}
+@keyframes ring-flow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 1000; }
+}
+.floating-chat-btn.is-streaming .btn-ring-svg rect {
+  animation: ring-flow 2s linear infinite;
+}
 
 /* ── Overlay (non-blocking) ── */
 .floating-chat-overlay {
@@ -302,9 +315,9 @@ onUnmounted(() => {
 
 .header-avatar {
   width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, #238f7f 0%, #1a7a6d 100%);
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--navy-700) 100%);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(35, 143, 127, 0.4);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-primary) 40%, transparent);
   color: #e8f4fd;
 }
 
