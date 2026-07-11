@@ -3032,6 +3032,10 @@ class SLROrchestrator:
                 f"domains: {', '.join(analysis.get('domains', ['general']))}",
             )
 
+            # ── Post-filter year range BEFORE any DB save ─────────────────
+            # Applied after all papers fetched, before first _save_to_db call.
+            # (Fetchers also receive year_from/year_to for native filtering)
+
             # ── Stage 2: Parallel fetch (10-70%) ──────────────────────
             self._set_stage(job, "fetching", 10.0, "Starting parallel fetchers...")
 
@@ -3097,9 +3101,9 @@ class SLROrchestrator:
                         partial_dicts.append({"title": p.title, "source": p.source})
                 if partial_dicts:
                     _stream_partial_results(job, partial_dicts)
-                    # Save each fetcher batch immediately so Literature tab updates
-                    # without waiting for all sources + final grouping.
-                    self._save_to_db(job, partial_dicts)
+                    # ponytail: do NOT save partial fetcher batches to DB here.
+                    # Year filter + relevance filter run after all fetchers finish (line ~3144).
+                    # Saving pre-filter items means old/off-topic papers persist and reappear.
 
                 pct_progress = 10.0 + (completed_count / len(fetcher_names)) * 60.0
                 self._set_stage(
@@ -3520,6 +3524,9 @@ class SLROrchestrator:
                             existing.review = review
                         if gap and not (existing.gap_riset or "").strip():
                             existing.gap_riset = gap
+                        # Always update relevance score for final ranked papers
+                        if p.get("relevance_score") is not None:
+                            existing.score_total = p.get("relevance_score")
                         existing.slr_job_id = job.job_id
                         skipped += 1
                         continue

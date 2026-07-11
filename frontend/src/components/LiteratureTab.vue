@@ -732,7 +732,14 @@ const displayedItems = computed<LiteratureItem[]>(() => {
     arr.sort((a, b) => {
       const sa = a.score_total ?? -Infinity
       const sb = b.score_total ?? -Infinity
-      return sb - sa
+      if (sa !== sb) return sb - sa
+      // Fallback: year desc → citations desc when score_total is equal/null
+      const ya = a.year ?? -Infinity
+      const yb = b.year ?? -Infinity
+      if (ya !== yb) return yb - ya
+      const ca = a.citations ?? -Infinity
+      const cb = b.citations ?? -Infinity
+      return cb - ca
     })
     return arr
   }
