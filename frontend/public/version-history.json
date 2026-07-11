@@ -1,8 +1,17 @@
 {
-  "version": "1.3.4",
+  "version": "1.3.5",
   "released": "2026-07-11",
-  "title": "Update v1.3.4 — AI Assistant Button Animation & Panel Border",
+  "title": "Update v1.3.5 — AI Chat dedup + Generate Full rename",
   "history": [
+    {
+      "version": "1.3.5",
+      "released": "2026-07-11",
+      "title": "Update v1.3.5 — AI Chat dedup + Generate Full rename",
+      "changes": [
+        { "type": "fix", "text": "PaperEditorPage: hapus tombol 'AI Chat' di Tools grid (dead code) — AI Assistant sudah global floating" },
+        { "type": "improvement", "text": "PaperfullTab → Generate Full: rename label, h2, alt text ke 'Generate Full' — konsisten dengan branding" }
+      ]
+    },
     {
       "version": "1.3.4",
       "released": "2026-07-11",

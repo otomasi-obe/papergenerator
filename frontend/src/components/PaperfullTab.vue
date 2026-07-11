@@ -1,13 +1,12 @@
 <template>
   <div class="space-y-4">
     <div class="flex items-center gap-2">
-      <img src="/assets/logo.png" alt="Paperfull" class="h-8 w-8 rounded-md object-contain" />
-      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Paperfull</h2>
+      <img src="/assets/logo.png" alt="Generate Full" class="h-8 w-8 rounded-md object-contain" />
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
     </div>
 
     <p class="text-sm text-ink-600 dark:text-ink-300">
-      Buat paper utuh dari sebuah topik. AI akan menghasilkan kerangka, mengisi section, lalu
-      menyimpannya ke paper aktif.
+      Buat paper utuh dari sebuah topik. AI akan menghasilkan kerangka, mengisi section, lalu menyimpannya ke paper aktif.
     </p>
 
     <!-- Hidden file inputs: Data + File (PDF/DOCX/Excel/CSV) -->

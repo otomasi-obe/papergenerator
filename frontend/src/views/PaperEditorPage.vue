@@ -285,22 +285,17 @@
  </div>
  </div>
 
- <!-- RIGHT: Tools menu / Paperfull / Chat / Journal / Literatur / Files / Data / Image / Tool workspace -->
+ <!-- RIGHT: Tools menu / Generate Full / Chat / Journal / Literatur / Files / Data / Image / Tool workspace -->
  <div v-if="toolsOpen" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col border-l border-cream-300 dark:border-ash-700">
  <div class="px-4 lg:px-8 py-4 space-y-1">
  <div class="grid grid-cols-2 gap-2">
- <!-- Paperfull -->
+ <!-- Generate Full -->
  <button @click="openRightPanel('paperfull')"
  class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
  <span class="text-xl">📝</span>
- <span class="text-base font-medium">Paperfull</span>
+ <span class="text-base font-medium">Generate Full</span>
  </button>
- <!-- Chat -->
- <button @click="openRightPanel('chat')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">💬</span>
- <span class="text-base font-medium">AI Chat</span>
- </button>
+
  <!-- Journal -->
  <button @click="openRightPanel('journal')"
  class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
