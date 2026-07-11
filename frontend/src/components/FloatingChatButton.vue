@@ -93,10 +93,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePaperStore } from '@/stores/paper'
 import ChatTab from '@/components/ChatTab.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
+const paperStore = usePaperStore()
 
 const isOpen = ref(false)
 const showGreeting = ref(false)
@@ -106,11 +108,11 @@ function toggleMaximize() {
   isMaximized.value = !isMaximized.value
 }
 
-const currentPaperId = computed(() => {
-  if (route.params.paperId) return route.params.paperId as string
-  if (route.query.paperId) return route.query.paperId as string
-  return null
-})
+// [FIX] Read from paperStore (authoritative), NOT route params.
+// Route may change before paper is loaded (dashboard→editor navigation).
+// paperStore.currentPaperId is set AFTER loadPaperFromDb completes,
+// so it stays consistent across navigation.
+const currentPaperId = computed(() => paperStore.currentPaperId || null)
 
 let greetingTimeout: ReturnType<typeof setTimeout> | null = null
 

@@ -1267,19 +1267,16 @@ onBeforeUnmount(() => {
 })
 
 watch(
- () => props.paperId,
- async (id) => {
- if (!id) {
- currentPaperId.value = null
- currentConversationId.value = null
- messages.value = []
- chatStore.stopActiveJobPolling()
- return
- }
- if (id !== currentPaperId.value) {
- await chatStore.openPaper(id)
- }
- }
+  () => props.paperId,
+  async (id) => {
+    // [FIX] paperId change is view context update, NOT conversation boundary.
+    // Never reset active conversation when paperId changes (including null = dashboard).
+    // openPaper() already handles preserving the conversation.
+    chatStore.stopActiveJobPolling()
+    if (id) {
+      await chatStore.openPaper(id)
+    }
+  }
 )
 
 const userIsNearBottom = ref(true)

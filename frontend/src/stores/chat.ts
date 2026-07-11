@@ -567,61 +567,55 @@ export const useChatStore = defineStore('chat', () => {
     if (_activeJobTimer) { clearInterval(_activeJobTimer); _activeJobTimer = null }
   }
 
-  /**
-   * Open a paper: load its chats, then open the latest chat
-   * (or auto-create one if none exist).
-   */
   let _openPaperGen = 0
   async function openPaper(paperId) {
     if (!paperId) return null
     const gen = ++_openPaperGen
-    // Abort any in-flight streaming fetch from the previous paper.
-    // Without this, the old fetch keeps running in background and mutates
-    // an orphaned stream object that is no longer in `streams.value`.
-    // BUG 13: Only abort streams from the OLD paper; preserve other data.
-    const oldPaperId = currentPaperId.value
-    const oldConvIds = new Set(conversations.value.map(c => c.id))
-    for (const convId in streams.value) {
-      const s = streams.value[convId]
-      if (oldConvIds.has(convId) && s?.abortCtrl && !s.abortCtrl.signal.aborted) {
-        try { s.abortCtrl.abort() } catch { /* ignore */ }
-      }
-      if (oldConvIds.has(convId)) _stopResumePoll(convId)
-    }
-    // Only wipe streams for old paper's conversations; preserve others
-    for (const convId of oldConvIds) {
-      delete streams.value[convId]
-    }
-    // Immediately wipe all paper-scoped state BEFORE any async work so the
-    // UI never shows conversations/messages from the previous paper.
+
+    // [FIX] paperId = view context only. NEVER reset active conversation.
+    // The conversation persists across navigation (dashboard ↔ editor).
+    // Only update currentPaperId and sync the active conversation's messages.
+
+    const prevPaperId = currentPaperId.value
     currentPaperId.value = paperId
-    closeConversation()
-    conversations.value = []
-    // streams.value preserved for non-old-paper conversations (BUG 13)
 
-    await loadConversations(paperId)
-    if (gen !== _openPaperGen) return null
-
+    // Start job polling for this paper
     startActiveJobPolling(paperId)
 
-    let target = null
-    // Restore last active conversation ID from localStorage
-    try {
-      const savedConvId = localStorage.getItem('chat_last_conv_id')
-      if (savedConvId) {
-        target = conversations.value.find(c => c.id === savedConvId) || null
+    // If we don't have messages loaded for the current conversation,
+    // load them (they were from a different conversation or empty).
+    if (currentConversationId.value) {
+      const stream = streams.value[currentConversationId.value]
+      if (!stream || stream.messages.length === 0) {
+        // Load messages for the active conversation (it's still the same conv)
+        await openConversation(currentConversationId.value)
       }
-    } catch { /* ignore */ }
-    if (!target) {
-      target = conversations.value[0]
     }
-    if (!target) {
-      target = await createConversation(paperId)
+
+    // If no active conversation, create one for this paper
+    if (!currentConversationId.value) {
+      await loadConversations(paperId)
+      if (gen !== _openPaperGen) return null
+
+      let target = null
+      try {
+        const savedConvId = localStorage.getItem('chat_last_conv_id')
+        if (savedConvId) {
+          target = conversations.value.find(c => c.id === savedConvId) || null
+        }
+      } catch { /* ignore */ }
+      if (!target) {
+        target = conversations.value[0]
+      }
+      if (!target) {
+        target = await createConversation(paperId)
+      }
+      if (target) {
+        await openConversation(target.id)
+      }
     }
-    if (target) {
-      await openConversation(target.id)
-    }
-    return target
+
+    return currentChat
   }
 
   // ── Resume poller for streams reconnected after a page refresh ────────────
@@ -988,14 +982,23 @@ export const useChatStore = defineStore('chat', () => {
       const CONNECTION_TIMEOUT = 540000 // 9 minutes
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        try {
-          const csrf = (document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
-          const payload: any = { content }
-          if (images && images.length) {
-            payload.images = images
-          }
+              try {
+                const csrf = (document.cookie.match(/(?:^|;\\s*)csrf_access_token=([^;]+)/) || [])[1] || ''
+                const payload: any = { content }
+                if (images && images.length) {
+                  payload.images = images
+                }
 
-          // Create timeout that will abort the connection after CONNECTION_TIMEOUT
+                // [FIX] Inject current paperId as view_context so AI knows:
+                // - user's current paper (title, sections, etc.)
+                // - user's location (dashboard vs editor)
+                // - active tools context
+                payload.view_context = {
+                  paperId: currentPaperId.value,
+                  location: currentPaperId.value ? 'editor' : 'dashboard',
+                }
+
+                // Create timeout that will abort the connection after CONNECTION_TIMEOUT
           const timeoutId = setTimeout(() => {
             if (stream.abortCtrl && !stream.abortCtrl.signal.aborted) {
               stream.abortCtrl.abort(new Error('Connection timeout'))

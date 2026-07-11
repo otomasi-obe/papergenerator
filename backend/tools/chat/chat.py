@@ -606,33 +606,43 @@ def send_message(conv_id: str):
     except Exception as e:
         log.warning("Failed to inject user preferences into system prompt: %s", e)
 
-    # Inject UI location so the assistant does not point dashboard users to editor-only controls.
+    # Inject UI location + paper context from view_context (frontend sends current paper user is viewing)
     try:
+        view_context = request.get_json(silent=True) or {}
+        view_context = view_context.get("view_context", {})
         location = str(view_context.get("location") or ("editor" if conv.paper_id else "dashboard"))
-        if location == "dashboard" or not conv.paper_id:
-            system_content += (
-                "## Current User Location\n"
-                "User sedang di DASHBOARD, bukan di halaman editor.\n"
-                "Dashboard controls visible: tombol `+ New Paper` untuk membuat paper/editor baru, dan floating `AI Chat`.\n"
-                "Editor-only controls like `🛠 Tools`, `Generate Full`, `Literatur`, `Preview`, and paper sections are NOT visible yet.\n"
-                "Jika user ingin membuat jurnal dari dashboard: instruksikan klik `+ New Paper` dulu, lalu di editor klik `🛠 Tools` → `Generate Full`.\n"
-                "Jika user bilang tidak melihat Tools, jangan ulangi lokasi Tools; akui karena mereka masih di dashboard dan arahkan ke `+ New Paper`.\n\n"
-            )
-        else:
-            system_content += (
-                "## Current User Location\n"
-                "User sedang di EDITOR paper. Controls visible: `📝 Editor`, `👁 Preview`, `🛠 Tools`; di dalam Tools ada `Generate Full`, `Journal`, `Literatur`, `Files`, `Data`, `Images`, dan AI tools.\n\n"
-            )
+        view_paper_id = view_context.get("paperId")
     except Exception as e:
-        log.warning("Failed to inject view context: %s", e)
+        log.warning("Failed to parse view_context: %s", e)
+        location = "dashboard"
+        view_paper_id = None
 
-    if conv.paper_id:
+    # Location context
+    if location == "dashboard" or not conv.paper_id:
+        system_content += (
+            "## Current User Location\n"
+            "User sedang di DASHBOARD, bukan di halaman editor.\n"
+            "Dashboard controls visible: tombol `+ New Paper` untuk membuat paper/editor baru, dan floating `AI Chat`.\n"
+            "Editor-only controls like `🛠 Tools`, `Generate Full`, `Literatur`, `Preview`, and paper sections are NOT visible yet.\n"
+            "Jika user ingin membuat jurnal dari dashboard: instruksikan klik `+ New Paper` dulu, lalu di editor klik `🛠 Tools` → `Generate Full`.\n"
+            "Jika user bilang tidak melihat Tools, jangan ulangi lokasi Tools; akui karena mereka masih di dashboard dan arahkan ke `+ New Paper`.\n\n"
+        )
+    else:
+        system_content += (
+            "## Current User Location\n"
+            "User sedang di EDITOR paper. Controls visible: `📝 Editor`, `👁 Preview`, `🛠 Tools`; di dalam Tools ada `Generate Full`, `Journal`, `Literatur`, `Files`, `Data`, `Images`, dan AI tools.\n\n"
+        )
+
+    # Paper context: use view_context.paperId (what user is CURRENTLY viewing) over conv.paper_id
+    # This enables global conversations that follow the user across papers
+    effective_paper_id = view_paper_id or conv.paper_id
+    if effective_paper_id:
         try:
-            paper_block = get_paper_context(conv.paper_id)
+            paper_block = get_paper_context(effective_paper_id)
             if paper_block:
                 system_content += f"## Paper Context\nBerikut adalah data JSON lengkap paper user saat ini (selalu up-to-date dari database):\n\n```json\n{paper_block}\n```\n\n"
         except Exception as e:
-            log.warning("Failed to build paper context for %s: %s", conv.paper_id, e)
+            log.warning("Failed to build paper context for %s: %s", effective_paper_id, e)
 
     # Resolve language: paper data > user pref > journal template > default "id"
     # Paper language (set by user in JournalTab) takes highest priority,
