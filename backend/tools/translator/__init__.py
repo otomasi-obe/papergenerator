@@ -7,8 +7,6 @@ import sys
 from pathlib import Path
 from typing import Generator
 
-from utils.ai_tools.model_config import get_primary_chat_model
-
 _PROMPT_PATH = Path(__file__).resolve().parent / "translator_prompt.txt"
 
 _FALLBACK_SYSTEM = (
@@ -118,6 +116,7 @@ def _stream_ai(system_prompt: str, user_prompt: str) -> Generator[dict, None, No
     with a 'text' key."""
     import requests
     from utils.ai_tools.ai_client import stream_chat as _chain_stream
+    from utils.ai_tools.model_config import get_primary_chat_model
 
     messages = [
         {"role": "system", "content": system_prompt},
