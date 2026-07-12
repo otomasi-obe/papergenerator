@@ -215,14 +215,14 @@ onUnmounted(() => {
 .floating-chat-btn {
   position: fixed; bottom: 24px; right: 24px;
   height: 50px; padding: 0 22px; border-radius: 25px;
-  background: linear-gradient(135deg, #c9b896 0%, #e8d5b7 25%, #f5f0e8 50%, #ffffff 75%, #e8d5b7 100%);
+  background: linear-gradient(135deg, #f5f0e8 0%, #ffffff 50%, #e6d3b3 100%);
   background-size: 200% 200%;
-  animation: gradient-shift 8s linear infinite;
+  animation: gradient-shift 6s ease infinite;
   color: #1a1a1a; border: none;
   box-shadow:
-    0 4px 24px rgba(180, 155, 120, 0.5),
-    0 0 0 1px rgba(180, 155, 120, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    0 4px 24px rgba(214, 196, 168, 0.45),
+    0 0 0 1px rgba(214, 196, 168, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
   cursor: pointer; display: flex; align-items: center; gap: 10px;
   z-index: 9998; font-family: inherit; font-size: 0.9rem; font-weight: 600;
   letter-spacing: 0.01em;
@@ -235,15 +235,15 @@ onUnmounted(() => {
 .floating-chat-btn:hover {
   transform: scale(1.06) translateY(-2px);
   box-shadow:
-    0 8px 32px rgba(180, 155, 120, 0.6),
-    0 0 0 1px rgba(180, 155, 120, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 8px 32px rgba(214, 196, 168, 0.55),
+    0 0 0 1px rgba(214, 196, 168, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .floating-chat-btn:active { transform: scale(0.95); }
 
 @keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 100% 50%; }
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 /* Dark mode: keep navy gradient + white text for contrast */

@@ -100,17 +100,15 @@
  class="shrink-0 px-2.5 py-1 rounded text-xs font-medium border border-cream-400 dark:border-ash-500 hover:bg-cream-200 dark:hover:bg-ash-600 active:scale-95 ">Cancel</button>
  </div>
 
- <!-- Split layout: LEFT tools sidebar + RIGHT chat panel.
- Tools sidebar is always visible; chat is always on the right. -->
+ <!-- Split layout: LEFT editor (max 60%) + RIGHT tools (40%) -->
  <div ref="splitRoot" class="flex flex-1 min-h-0 overflow-hidden relative">
- <!-- LEFT pane: editor / preview. -->
- <div v-show="editorVisible" class="min-w-0 border-r border-cream-300 dark:border-ash-700 bg-cream-50/50 dark:bg-ash-850/50" :class="[
- rightPanel || toolsOpen ? 'w-1/2 lg:w-3/5 xl:w-2/3' : 'w-full',
- activeTab === 'preview' ? 'overflow-hidden flex flex-col min-h-0' : 'overflow-y-auto'
- ]">
- <div :class="activeTab === 'preview' ? 'p-0 h-full min-h-0 w-full flex flex-col overflow-hidden' : 'px-4 lg:px-8 py-6'">
+   <!-- LEFT pane: editor / preview -->
+   <div v-show="editorVisible" class="min-w-0 overflow-hidden bg-cream-50/50 dark:bg-ash-850/50"
+        :style="leftStyle"
+        :class="[activeTab === 'preview' ? 'flex flex-col min-h-0' : 'overflow-y-auto', (!toolsOpen && !rightPanel) ? 'flex-1' : '']">
+          <div :class="activeTab === 'preview' ? 'p-0 h-full min-h-0 w-full flex flex-col overflow-hidden' : 'px-4 lg:px-8 py-6'">
 
- <!-- TAB: EDITOR -->
+        <!-- TAB: EDITOR -->
  <div v-show="activeTab === 'editor'" role="tabpanel" id="panel-editor" aria-labelledby="tab-editor" class="space-y-4">
  <!-- Title -->
  <div class="card" style="border-left: 4px solid #1265c8">
@@ -285,84 +283,61 @@
  </div>
  </div>
 
- <!-- RIGHT: Tools menu / Generate Full / Chat / Journal / Literatur / Files / Data / Image / Tool workspace -->
- <div v-if="toolsOpen" :class="editorVisible ? 'w-1/2 lg:w-2/5 xl:w-1/3' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-4 space-y-1">
- <div class="grid grid-cols-2 gap-2">
- <!-- Generate Full -->
- <button @click="openRightPanel('paperfull')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">📝</span>
- <span class="text-base font-medium">Generate Full</span>
- </button>
+ <!-- DIVIDER (draggable) -->
+ <div
+   v-if="editorVisible && (toolsOpen || rightPanel)"
+   class="w-1 hover:w-1.5 bg-cream-300 dark:bg-ash-700 hover:bg-[#2969ac] dark:hover:bg-[#2969ac] cursor-col-resize transition-all shrink-0 select-none"
+   @mousedown="startResize"
+ ></div>
 
- <!-- Journal -->
- <button @click="openRightPanel('journal')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">📚</span>
- <span class="text-base font-medium">Journal</span>
- </button>
- <!-- Literatur -->
- <button @click="openRightPanel('literature')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">📖</span>
- <span class="text-base font-medium">Literatur</span>
- </button>
- <!-- Files -->
- <button @click="openRightPanel('files')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">📂</span>
- <span class="text-base font-medium">Files</span>
- </button>
- <!-- Data -->
- <button @click="openRightPanel('data')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">📊</span>
- <span class="text-base font-medium">Data</span>
- </button>
- <!-- Image -->
- <button @click="openRightPanel('image')"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <span class="text-xl">🖼</span>
- <span class="text-base font-medium">Image</span>
- </button>
- <!-- Writing tools -->
- <button v-for="tool in toolsStore.TOOLS" :key="tool.id" @click="openToolWorkspace(tool)"
- class="flex items-center gap-3 px-4 py-3 rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-700 dark:text-ink-200 hover:border-navy-500 dark:hover:border-cream-400 transition text-left active:scale-[0.98]">
- <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="tool.iconSvg"></svg>
- <span class="text-base font-medium">{{ tool.title }}</span>
- </button>
- </div>
- </div>
- </div>
+ <!-- RIGHT PANEL (animated slide-in) -->
+ <Transition name="panel-slide">
+ <div v-if="toolsOpen || rightPanel" :style="editorVisible ? rightStyle : undefined" :class="editorVisible ? '' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col">
 
- <div v-else-if="rightPanel === 'paperfull'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-6"><PaperfullTab /></div>
- </div>
+   <!-- Back button (shown in sub-panels, not tools grid) -->
+   <div v-if="!toolsOpen && rightPanel" class="sticky top-0 z-10 bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur-sm border-b border-cream-200/60 dark:border-ash-700/60 px-4 lg:px-6 py-2">
+     <button @click="backToTools" class="flex items-center gap-1.5 text-sm text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50 transition active:scale-95">
+       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+       Tools
+     </button>
+   </div>
 
- <div v-else-if="rightPanel === 'journal'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-6"><JournalTab /></div>
- </div>
+   <!-- Tools grid -->
+   <template v-if="toolsOpen">
+     <ToolsTab @openPanel="openRightPanel" />
+   </template>
 
- <div v-else-if="rightPanel === 'literature'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <LiteratureTab />
- </div>
+   <!-- Sub-panels -->
+   <template v-else-if="rightPanel === 'paperfull'">
+     <div class="px-4 lg:px-8 py-6"><PaperfullTab /></div>
+   </template>
 
- <div v-else-if="rightPanel === 'files'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-6"><FilesTab /></div>
- </div>
+   <template v-else-if="rightPanel === 'journal'">
+     <div class="px-4 lg:px-8 py-6"><JournalTab /></div>
+   </template>
 
- <div v-else-if="rightPanel === 'data'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-6"><DataTab /></div>
- </div>
+   <template v-else-if="rightPanel === 'literature'">
+     <LiteratureTab />
+   </template>
 
- <div v-else-if="rightPanel === 'image'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-6"><ImageTab /></div>
- </div>
+   <template v-else-if="rightPanel === 'files'">
+     <div class="px-4 lg:px-8 py-6"><FilesTab /></div>
+   </template>
 
- <div v-else-if="rightPanel === 'tool-workspace'" :class="editorVisible ? 'w-1/2' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto flex flex-col border-l border-cream-300 dark:border-ash-700">
- <div class="px-4 lg:px-8 py-6"><ToolsTab /></div>
+   <template v-else-if="rightPanel === 'data'">
+     <div class="px-4 lg:px-8 py-6"><DataTab /></div>
+   </template>
+
+   <template v-else-if="rightPanel === 'image'">
+     <div class="px-4 lg:px-8 py-6"><ImageTab /></div>
+   </template>
+
+   <template v-else-if="rightPanel === 'tool-workspace'">
+     <div class="px-4 lg:px-8 py-6"><ToolsTab @openPanel="openRightPanel" /></div>
+   </template>
+
  </div>
+ </Transition>
  </div>
 
  <!-- Toast -->
@@ -517,11 +492,54 @@ const editorVisible = computed({
 
 const showWordAddonModal = ref(false)
 
+// ─── Split pane percentage (persisted, draggable divider) ─────────────────
+const splitRoot = ref<HTMLElement | null>(null)
+const rightPanelPercent = computed({
+  get: () => ui.getRightPanelPercent(store.currentPaperId || ''),
+  set: (val: number) => ui.setRightPanelPercent(store.currentPaperId || '', val),
+})
+const leftStyle = computed(() => {
+  if (!editorVisible.value) return undefined
+  if (!toolsOpen.value && !rightPanel.value) return undefined
+  return { flex: `0 0 calc(${100 - rightPanelPercent.value}% - 2px)` }
+})
+const rightStyle = computed(() => {
+  if (!editorVisible.value) return undefined
+  return { flex: `0 0 calc(${rightPanelPercent.value}% - 2px)` }
+})
+const isResizing = ref(false)
+
+function startResize(e: MouseEvent) {
+  e.preventDefault()
+  isResizing.value = true
+  const root = splitRoot.value
+  if (!root) return
+  const onMove = (ev: MouseEvent) => {
+    const rect = root.getBoundingClientRect()
+    const pct = ((ev.clientX - rect.left) / rect.width) * 100
+    // pct is where divider is from left → right panel = 100 - pct
+    rightPanelPercent.value = 100 - pct
+  }
+  const onUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
 function openRightPanel(panel) {
  toolsOpen.value = false
  rightPanel.value = panel
  if (!activeTab.value) activeTab.value = 'editor'
  // Don't force editor open — respect user's last close state
+}
+
+function backToTools() {
+ toolsOpen.value = true
+ rightPanel.value = ''
+ toolsStore.clearActiveTool()
 }
 
 function openToolWorkspace(tool) {
@@ -689,14 +707,36 @@ const shortcuts: KeyboardShortcut[] = [
  description: 'Add new section'
  },
  {
- key: '/',
- ctrl: true,
- handler: () => {
- showShortcutsHelp.value = true
+   key: '/',
+   ctrl: true,
+   handler: () => {
+     showShortcutsHelp.value = true
+   },
+   description: 'Show keyboard shortcuts help'
  },
- description: 'Show keyboard shortcuts help'
+ {
+   key: 'ArrowLeft',
+   ctrl: true,
+   shift: true,
+   handler: () => {
+     if (toolsOpen.value || rightPanel.value) {
+       rightPanelPercent.value = rightPanelPercent.value - 5
+     }
+   },
+   description: 'Shrink right panel'
+ },
+ {
+   key: 'ArrowRight',
+   ctrl: true,
+   shift: true,
+   handler: () => {
+     if (toolsOpen.value || rightPanel.value) {
+       rightPanelPercent.value = rightPanelPercent.value + 5
+     }
+   },
+   description: 'Expand tools panel width'
  }
-]
+ ]
 
 useKeyboardShortcuts(shortcuts)
 
@@ -965,4 +1005,10 @@ function cancelDelete() {
 .input-sm { @apply px-2.5 py-1.5 border border-cream-200/60 dark:border-ash-600/60 rounded-lg text-sm bg-white dark:bg-ash-900 text-ink-900 dark:text-cream-50 placeholder-ink-400 dark:placeholder-ash-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-cream-300 outline-none transition duration-150; }
 .btn-add { @apply px-3 py-1 bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-700 dark:text-cream-50 rounded-lg text-xs font-medium transition active:scale-95 ; }
 .btn-content { @apply px-2.5 py-1 bg-cream-100 hover:bg-cream-200 dark:bg-ash-700 dark:hover:bg-ash-600 text-ink-700 dark:text-cream-50 rounded text-xs transition active:scale-95 ; }
+
+/* Panel slide-in animation */
+.panel-slide-enter-active { transition: transform 0.25s ease-out, opacity 0.2s ease-out; }
+.panel-slide-leave-active { transition: transform 0.15s ease-in, opacity 0.15s ease-in; }
+.panel-slide-enter-from { transform: translateX(24px); opacity: 0; }
+.panel-slide-leave-to { transform: translateX(12px); opacity: 0; }
 </style>

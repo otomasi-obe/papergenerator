@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <div class="flex items-center gap-2">
-      <img src="/assets/logo.png" alt="Generate Full" class="h-8 w-8 rounded-md object-contain" />
+      <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
     </div>
 
@@ -1883,6 +1883,13 @@ async function generate() {
 
   // ── Normal Generate Full ────────────────────────────────────────────
   if (!t) return
+
+  // ── Confirm overwrite if paper already has content ──────────────────
+  const hasContent = store.paper?.sections?.some((s: any) => s.content?.length > 0)
+    || (store.paper?.abstract && store.paper.abstract.length > 20)
+  if (hasContent && !confirm('Paper sudah memiliki konten. Generate Full akan menimpa seluruh isi paper.\n\nLanjutkan?')) {
+    return
+  }
   
   generating.value = true
   generatingTopic.value = t
@@ -2278,7 +2285,13 @@ async function consumeSSEStream(res) {
           const payload = JSON.parse(line.slice(6))
           
           if (currentEvent === 'thinking') {
-            reasoningText.value += payload.token ?? ''
+            // Filter out internal system markers (e.g. "[Starting generation with MODEL...]")
+            const tok = payload.token ?? ''
+            if (payload.stage === 'start' && tok.startsWith('[')) {
+              // skip system marker — don't show to user
+            } else {
+              reasoningText.value += tok
+            }
             // Sync to store every ~2 seconds via timer (reliable, not lossy)
             _syncStreamIfNeeded()
             // Auto-scroll
@@ -2343,6 +2356,8 @@ async function consumeSSEStream(res) {
             } else if (store.currentPaperId) {
               await store.loadPaperFromDb(store.currentPaperId)
             }
+            // Hint about placeholder values
+            store.showToast('💡 Paper berhasil di-generate! Periksa dan ganti nilai placeholder (X1, X2, a1, b1, dll.) dengan data asli Anda.', 'info', 8000)
             _startChartRefreshPolling()
             // If no images pending, stop SSE and return
             if (!totalImgJobs) {

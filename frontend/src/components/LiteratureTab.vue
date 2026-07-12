@@ -3,8 +3,11 @@
     <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6 space-y-5">
       <!-- Header -->
       <div class="flex items-start justify-between gap-3 flex-wrap">
-        <div class="min-w-0">
-          <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif">📚 Literatur</h2>
+              <div class="min-w-0">
+                <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2">
+                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 8v8"/></svg>
+                  Literatur
+                </h2>
           <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
             Tabel referensi paper. Klik baris untuk check/uncheck. Hasil SLR otomatis tersimpan di sini.
           </p>

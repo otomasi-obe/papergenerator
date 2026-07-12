@@ -1,8 +1,18 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "released": "2026-07-12",
-  "title": "Update v1.4.0 — Fix Translate Tool Circular Import",
+  "title": "Update v1.4.1 — Tools Panel UX Polish",
   "history": [
+    {
+      "version": "1.4.1",
+      "released": "2026-07-12",
+      "title": "Tools Panel UX Polish",
+      "changes": [
+        {"text": "Animasi smooth slide-in saat Tools panel kebuka (Transition 250ms ease-out)", "type": "new"},
+        {"text": "Tombol '← Tools' di atas setiap sub-panel (Literatur, Journal, dll) untuk navigasi balik ke grid", "type": "new"},
+        {"text": "Fix: split pane divider resize kedua arah (kiri+kanan) — percentage-based 25–75%, default 60/40", "type": "fix"}
+      ]
+    },
     {
       "version": "1.4.0",
       "released": "2026-07-12",

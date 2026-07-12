@@ -2,7 +2,7 @@
   <div class="p-6 max-w-5xl mx-auto">
     <!-- Header -->
     <div class="mb-4">
-      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Data</h2>
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Data</h2>
       <p class="text-sm text-ink-600 dark:text-ink-300 mt-0.5">
         Unggah file data — AI akan mengekstrak, memformat, menganalisis, dan membuat grafik secara otomatis.
         Anda bisa mengedit tabel setelah data ditampilkan.

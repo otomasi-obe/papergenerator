@@ -15,7 +15,7 @@
 
  <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
  <div>
- <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Files</h2>
+ <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Files</h2>
  <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD / XLSX / XLS / CSV / PPTX — tanpa batasan ukuran file. Bisa upload banyak file sekaligus. Drag & drop dari desktop.</p>
  </div>
  <div class="flex items-center gap-2">

@@ -30,18 +30,18 @@
    :style="{ width: Math.min(100, quota.percent) + '%' }"
    ></div>
    </div>
-   <span class="text-[11px] font-mono tabular-nums text-ink-600 dark:text-ink-300">{{ formatNum(quota.remaining) }} sisa</span>
+   <span class="text-[11px] font-mono tabular-nums text-ink-600 dark:text-ink-300">{{ formatNum(quota.remaining) }} token</span>
    </button>
  <!-- Tooltip: detail breakdown -->
  <div v-if="quotaOpen" role="dialog" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @keydown.escape.stop="quotaOpen = false">
- <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Pemakaian token bulan {{ quota.month_key }}</div>
+ <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Token usage for {{ quota.month_key }}</div>
  <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
- <span>Hari ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
- <span>Bulan ini</span><span class="text-right tabular-nums">{{ formatNum(quota.used_month) }}</span>
- <span>Sisa</span><span class="text-right tabular-nums">{{ formatNum(quota.remaining) }}</span>
+ <span>Today</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
+ <span>This month</span><span class="text-right tabular-nums">{{ formatNum(quota.used_month) }}</span>
+ <span>Remaining</span><span class="text-right tabular-nums">{{ formatNum(quota.remaining) }}</span>
  </div>
  <div v-if="quota.input_tokens || quota.output_tokens" class="mt-2 pt-2 border-t border-cream-300 dark:border-ash-600">
- <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Breakdown input/output</div>
+ <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Input / Output breakdown</div>
  <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-ink-300">
  <span>Input</span><span class="text-right tabular-nums">{{ formatNum(quota.input_tokens || 0) }}</span>
  <span>Output</span><span class="text-right tabular-nums">{{ formatNum(quota.output_tokens || 0) }}</span>

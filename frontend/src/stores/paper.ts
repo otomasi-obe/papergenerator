@@ -758,13 +758,13 @@ export const usePaperStore = defineStore('paper', () => {
   // applyPaperData is called before images are loaded.
 
   let _toastTimer: ReturnType<typeof setTimeout> | null = null
-  function showToast(message, type = 'info') {
+  function showToast(message, type = 'info', duration = 3500) {
     if (_toastTimer) clearTimeout(_toastTimer)
     toast.value = { show: true, message, type }
     _toastTimer = setTimeout(() => {
       toast.value.show = false
       _toastTimer = null
-    }, 3500)
+    }, duration)
   }
 
   // ─── Auto Numbering ────────────────────────────────────────────────────

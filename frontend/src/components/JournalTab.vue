@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-3xl">
     <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6">
-      <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif">Journal</h2>
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Journal</h2>
       <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
         Pilih jurnal/template tujuan untuk export DOCX. Gunakan kotak pencarian untuk menyaring.
       </p>

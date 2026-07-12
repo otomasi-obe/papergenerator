@@ -2597,8 +2597,13 @@ def _run_libreoffice_pdf(source_path: Path, output_path: Path) -> None:
             stderr=subprocess.PIPE,
             timeout=120,
         )
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("LibreOffice PDF conversion timed out (120s)")
+    except subprocess.TimeoutExpired as e:
+        # Kill any orphaned soffice processes for this file
+        try:
+            subprocess.run(["pkill", "-f", str(source_path)], timeout=5)
+        except Exception:
+            pass
+        raise RuntimeError(f"LibreOffice PDF conversion timed out (120s): {source_path.name}")
 
     expected_pdf = output_dir / (source_path.stem + ".pdf")
 

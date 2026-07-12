@@ -10,10 +10,10 @@
        <p class="text-ink-700 dark:text-ink-300 text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
      </div>
      <router-link to="/editor"
-     class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 text-ink-900 dark:text-ash-900 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
-     >
-       + New Paper
-     </router-link>
+         class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-ash-900 dark:from-cream-300 dark:via-cream-400 dark:to-cream-300 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+         >
+           + New Paper
+         </router-link>
    </div>
 
    <section class="flex-1 min-w-0">
@@ -29,9 +29,9 @@
      <div class="text-6xl mb-4" aria-hidden="true">📄</div>
      <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
      <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
-     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 text-ink-900 dark:text-ash-900 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
-       Create First Paper
-     </router-link>
+     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-ash-900 dark:from-cream-300 dark:via-cream-400 dark:to-cream-300 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+           Create First Paper
+         </router-link>
    </div>
    </template>
 
@@ -55,7 +55,7 @@
 
      <div class="flex items-center gap-2 px-4 pb-4">
           <button @click="openPaper(paper)"
-          class="flex-1 px-3 py-1.5 min-h-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 text-ink-900 dark:text-ash-900 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+          class="flex-1 px-3 py-1.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-ash-900 dark:from-cream-300 dark:via-cream-400 dark:to-cream-300 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
           >
           Open
           </button>

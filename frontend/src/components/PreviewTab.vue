@@ -77,14 +77,14 @@
         ></iframe>
         <div class="absolute top-3 right-3 flex items-center gap-1.5">
           <button @click="downloadPdf"
-            class="px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-            Ekspor PDF
+          class="px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export PDF
           </button>
           <button @click="store.exportDocx()" :disabled="store.loading"
-            class="px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1 disabled:opacity-50">
-            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-            Ekspor DOCX
+          class="px-2.5 py-1.5 bg-white/90 text-navy-700 rounded text-xs font-medium shadow-sm border border-cream-300 hover:bg-white transition flex items-center gap-1 disabled:opacity-50">
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          Export DOCX
           </button>
         </div>
       </div>
@@ -100,7 +100,7 @@
       <!-- Initial state — waiting for auto-render -->
       <div v-else class="h-full w-full bg-cream-50 dark:bg-ash-900 flex flex-col items-center justify-center gap-4">
         <svg class="w-10 h-10 text-ink-300 dark:text-ash-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-        <p class="text-sm text-ink-500 dark:text-ash-400">Menyiapkan preview...</p>
+        <p class="text-sm text-ink-500 dark:text-ash-400">Preparing preview...</p>
       </div>
     </div>
 
@@ -503,6 +503,10 @@ async function renderPdf() {
       pdfProgress.value = 100
       pdfUrl.value = resultUrl
       pdfKey.value++
+    } else {
+      // API returned 200 but no pdf_url — treat as error
+      pdfError.value = true
+      pdfErrorMessage.value = res.data?.error || 'Server tidak mengembalikan PDF (mungkin konversi DOCX→PDF gagal)'
     }
     pdfLoading.value = false
   } catch (err: any) {

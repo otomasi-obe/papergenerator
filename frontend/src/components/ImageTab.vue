@@ -2,7 +2,10 @@
  <div class="p-6">
  <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
  <div>
- <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Images</h2>
+ <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2">
+ <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3-3.086a1 1 0 0 0-1.414 0L9 18"/></svg>
+ Images
+ </h2>
  <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">
  Generate gambar dengan AI, upload gambar, dan kelola semua gambar paper di satu tempat.
  </p>
