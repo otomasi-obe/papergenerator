@@ -1,10 +1,10 @@
 {
-  "version": "1.3.10",
+  "version": "1.4.0",
   "released": "2026-07-12",
-  "title": "Update v1.3.10 — Fix Translate Tool Circular Import",
+  "title": "Update v1.4.0 — Fix Translate Tool Circular Import",
   "history": [
     {
-      "version": "1.3.10",
+      "version": "1.4.0",
       "released": "2026-07-12",
       "title": "Fix Translate Tool Circular Import",
       "changes": [
@@ -47,11 +47,11 @@
       "released": "2026-07-11",
       "title": "Update v1.3.6 — Permata VA added, BRI/BNI/Permata VA fixes",
       "changes": [
-        { "type": "new", "text": "Permata Bank VA: DOKU VA integration working (Merchant BIN 896599, channel VIRTUAL_ACCOUNT_BANK_PERMATA)" },
-        { "type": "fix", "text": "DOKU VA: use Merchant BIN (6-digit) space-padded to 8 chars for partnerServiceId — not Partner Service ID" },
+        { "type": "new", "text": "Permata Bank VA: DOKU VA integration enabled" },
+        { "type": "fix", "text": "DOKU VA: use correct BIN format for partnerServiceId" },
         { "type": "fix", "text": "BRI VA confirmed working; BNI VA still pending DOKU dashboard propagation (error 4032701)" },
         { "type": "improvement", "text": "TokenPurchaseModal: replace BCA (inactive) with Permata (active) in VA bank selector" },
-        { "type": "fix", "text": "Backend: correct channel names VIRTUAL_ACCOUNT_BANK_PERMATA, add to valid_channels, va_bin_map, channel_map" }
+        { "type": "fix", "text": "Backend: correct Permata channel names added to valid_channels, va_bin_map, channel_map" }
       ]
     },
     {
