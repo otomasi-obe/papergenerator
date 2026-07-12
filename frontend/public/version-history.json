@@ -1,8 +1,18 @@
 {
-  "version": "1.3.9",
-  "released": "2026-07-11",
-  "title": "Update v1.3.9 — Fix SLR Review Selected → AI Assistant",
+  "version": "1.3.10",
+  "released": "2026-07-12",
+  "title": "Update v1.3.10 — Fix Translate Tool Circular Import",
   "history": [
+    {
+      "version": "1.3.10",
+      "released": "2026-07-12",
+      "title": "Fix Translate Tool Circular Import",
+      "changes": [
+        {"text": "Fix: Translate tool circular import (tools.translator ↔ utils.ai_tools.tools_api) — moved model_config import inside _stream_ai()", "type": "fix"},
+        {"text": "All 7 AI tools verified working: paraphrase, translate, humanizer, detector, plagiarism, grammar, summarize", "type": "improvement"},
+        {"text": "Generate Full, Literature, Data, Journal, Files, Chat — routes & imports healthy", "type": "improvement"}
+      ]
+    },
     {
       "version": "1.3.9",
       "released": "2026-07-11",
