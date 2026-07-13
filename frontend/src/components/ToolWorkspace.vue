@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-4">
+  <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6 space-y-4">
     <!-- Tool header -->
     <div class="mb-4">
       <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">

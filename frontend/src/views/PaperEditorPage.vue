@@ -156,7 +156,9 @@
  <label class="label">Abstract</label>
  <textarea v-model="store.paper.abstract" v-autosize rows="2"
  ref="abstractRef"
- class="input resize-none overflow-hidden min-h-[4.5rem]" placeholder="Paper abstract..."></textarea>
+ class="input resize-none overflow-hidden min-h-[4.5rem]"
+ placeholder="Paper abstract..."
+ :class="{ 'highlight-bg': isAbstractHighlighted }"></textarea>
  </div>
 
  <!-- Keywords -->
@@ -197,7 +199,7 @@
  class="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 dark:text-red-400 px-2 py-1 ml-2 shrink-0">✕</button>
  </div>
 
- <ContentList :items="section.content" :store="store" />
+ <ContentList :items="section.content" :store="store" :section-title="section.title" />
  <div class="flex gap-2 mt-3 flex-wrap">
  <button @click="store.addContent(section.content, 'text')" class="btn-content">+ Text</button>
  <button @click="store.addContent(section.content, 'gambar')" class="btn-content">+ Image</button>
@@ -225,7 +227,7 @@
  <button @click="confirmDeleteSubsection(sIdx, subIdx)"
  class="text-xs text-red-400 hover:text-red-600 dark:hover:text-red-300 dark:text-red-400 px-2 py-1 ml-2 shrink-0">✕</button>
  </div>
- <ContentList :items="sub.content" :store="store" />
+ <ContentList :items="sub.content" :store="store" :section-title="section.title + ' > ' + sub.title" />
  <div class="flex gap-2 mt-2 flex-wrap">
  <button @click="store.addContent(sub.content, 'text')" class="btn-content text-xs">+ Text</button>
  <button @click="store.addContent(sub.content, 'gambar')" class="btn-content text-xs">+ Image</button>
@@ -433,6 +435,9 @@ const quotaStore = useQuotaStore()
 const userState = useUserStateStore()
 const route = useRoute()
 const router = useRouter()
+
+// Highlight for Abstract (AI stabilo effect)
+const isAbstractHighlighted = computed(() => store.highlightedBlocks?.abstract?.includes(0))
 
 // Display helper for references — handles strings and structured objects
 function displayRef(ref: any): string {

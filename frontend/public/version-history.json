@@ -13,7 +13,10 @@
         {"type": "fix", "text": "paper.ts: tambah method getSignedImageUrl() (signed URL untuk image gallery) — sebelumnya duplicate key shorthand causing ReferenceError → 'Cannot read properties of undefined (reading title)'"},
         {"type": "feat", "text": "ContentList.vue: signed image URL cache (avoid repeated API calls)"},
         {"type": "chore", "text": "Pre-commit hook: skip pytest jika test_openapi_spec.py tidak ada (hindari false failure)"},
-        {"type": "reference", "text": "git HEAD: restore commit e84f663 + fix 9877d50 + 71e570d + chore 0017f1e"}
+        {"type": "reference", "text": "git HEAD: restore commit e84f663 + fix 9877d50 + 71e570d + chore 0017f1e"},
+        {"type": "improvement", "text": "UI: Single sticky cream-padded back button di PaperEditorPage untuk SEMUA panel (termasuk Generate Full)"},
+        {"type": "improvement", "text": "UI: White responsive card background (bg-white dark:bg-anthracite-700 rounded-2xl border shadow-sm) pada Journal/Literatur/Files/Data/Image/ToolWorkspace"},
+        {"type": "improvement", "text": "UI: Generate Full (PaperfullTab) dikecualikan dari wrapper padding — langsung container putih internal"}
       ]
     },
     {
