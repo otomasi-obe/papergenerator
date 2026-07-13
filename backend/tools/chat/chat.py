@@ -644,6 +644,21 @@ def send_message(conv_id: str):
         try:
             if effective_paper_id:
                 view_paper["_paper_id"] = effective_paper_id
+
+            # Frontend toPaperJson() stores body as section1, section2, section1a, etc.
+            # Normalize it before prompt injection so the AI sees the same readable
+            # `sections: [{title, content, subsections}]` shape as DB fallback context.
+            try:
+                from tools.chat.tools import normalize_paper_to_array
+                normalize_paper_to_array(view_paper)
+                import re as _re
+                for key in list(view_paper.keys()):
+                    if _re.match(r'^section\d+[a-z]?$', key):
+                        del view_paper[key]
+                view_paper.pop("_section_keys", None)
+            except Exception as normalize_err:
+                log.warning("Failed to normalize frontend paper context: %s", normalize_err)
+
             paper_block = json.dumps(view_paper, indent=2, ensure_ascii=False)
             system_content += f"## Paper Context\nBerikut adalah data paper yang sedang user lihat/edit saat ini (realtime dari frontend, termasuk perubahan yang belum tersimpan):\n\n```json\n{paper_block}\n```\n\n"
         except Exception as e:

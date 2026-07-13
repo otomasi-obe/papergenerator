@@ -1328,11 +1328,13 @@ def generate():
             return jsonify({"error": "Prompt is required"}), 400
 
         # AI Mocking for testing (rate limiting still enforced by decorator)
-        from tests.helpers.mock_ai import get_mock_generate_response, should_mock_ai
-
-        if should_mock_ai():
-            mock_response = get_mock_generate_response(prompt=prompt, section=section)
-            return jsonify(mock_response)
+        try:
+            from tests.helpers.mock_ai import get_mock_generate_response, should_mock_ai
+            if should_mock_ai():
+                mock_response = get_mock_generate_response(prompt=prompt, section=section)
+                return jsonify(mock_response)
+        except ImportError:
+            pass
 
         from utils.ai_tools.model_config import get_endpoint_chain
         _chain = get_endpoint_chain(heavy=True)
@@ -2010,12 +2012,14 @@ def generate_full():
             return jsonify({"error": "Prompt is required"}), 400
 
         # AI Mocking for testing (rate limiting still enforced by decorator)
-        from tests.helpers.mock_ai import get_mock_generate_full_response, should_mock_ai
-
-        if should_mock_ai():
-            job_id = uuid.uuid4().hex[:12]
-            mock_response = get_mock_generate_full_response(prompt=prompt, job_id=job_id)
-            return jsonify(mock_response)
+        try:
+            from tests.helpers.mock_ai import get_mock_generate_full_response, should_mock_ai
+            if should_mock_ai():
+                job_id = uuid.uuid4().hex[:12]
+                mock_response = get_mock_generate_full_response(prompt=prompt, job_id=job_id)
+                return jsonify(mock_response)
+        except ImportError:
+            pass
 
         if model is not None:
             allowed_models = {"VIOLA-CHAT", "VIOLA-GENERATE"}
@@ -2559,7 +2563,7 @@ def _paper_file_path(paper_id, paper_title: str, journal_code: str, ext: str, *,
     When title or journal changes, old files of the same extension are removed.
     Falls back to ``user/<paper_id>/`` if user_id not provided (legacy compat).
     """
-    safe_title = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(paper_title or "paper")).strip("_")[:60]
+    safe_title = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(paper_title or "paper")).strip("_")[:60].rstrip("_")
     if not safe_title:
         safe_title = "paper"
     safe_journal = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(journal_code or "journal")).strip("_") or "journal"
@@ -2796,28 +2800,26 @@ def serve_paper_pdf_preview(paper_id: str):
     journal_code = flask_request.args.get("journal", "")
     title = flask_request.args.get("title", "")
 
-    # Sanitize title and journal_code before they touch the filesystem
-    safe_title = re.sub(r"[^a-zA-Z0-9_\-\s]+", "_", (title or "paper").strip())[:120]
-    safe_journal = re.sub(r"[^a-zA-Z0-9_-]+", "_", (journal_code or "journal").strip())[:40]
-
+    # Let _paper_file_path handle ALL sanitization to avoid filename mismatches.
+    # Previously this did its own regex (keeping \s, 120-char limit) which diverged
+    # from _paper_file_path's regex (no \s, 60-char limit, strip("_")).
     file_path = None
 
     if journal_code:
-        # Primary: new paper_dir path (safe — _paper_file_path sanitizes internally)
+        # Primary: canonical paper_dir path (_paper_file_path sanitizes internally)
         from utils.database.models import Paper
         paper = Paper.query.filter_by(id=paper_id).first()
-        # TODO: add user_id filter — preview endpoint is possession-based (URL = proof)
         if paper:
-            file_path = _paper_file_path(paper_id, safe_title, journal_code, ext, cleanup_old=False, user_id=paper.user_id)
+            file_path = _paper_file_path(paper_id, title or "paper", journal_code, ext, cleanup_old=False, user_id=paper.user_id)
             if not file_path.exists():
                 file_path = None
 
     if file_path is None or not file_path.exists():
         # Legacy fallback: user/<paper_id>/ (old path before per-user fix)
-        legacy_path = USER_BASE / paper_id / f"{safe_title}_{safe_journal}.{ext}"
-        if legacy_path.exists():
-            file_path = legacy_path
-        if file_path is None or not file_path.exists():
+        legacy_candidate = _paper_file_path(paper_id, title or "paper", journal_code or "journal", ext, cleanup_old=False)
+        if legacy_candidate.exists():
+            file_path = legacy_candidate
+        else:
             file_path = None
 
     if file_path is None or not file_path.exists():

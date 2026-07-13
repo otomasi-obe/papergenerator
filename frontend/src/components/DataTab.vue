@@ -2,14 +2,6 @@
   <div class="p-6 max-w-5xl mx-auto">
     <!-- Header -->
     <div class="mb-4">
-      <button
-        @click="backToTools"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
-        title="Back to Tools"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Tools
-      </button>
       <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Data</h2>
       <p class="text-sm text-ink-600 dark:text-ink-300 mt-0.5">
         Unggah file data — AI akan mengekstrak, memformat, menganalisis, dan membuat grafik secara otomatis.
@@ -667,21 +659,11 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import chartsApi, { type AIFormatResult } from '../api/charts'
 import { usePaperStore } from '../stores/paper'
 import { useUserStateStore } from '../stores/userState'
-import { useToolsStore } from '../stores/tools'
-import { useUiStore } from '../stores/ui'
 import AppDialog from './AppDialog.vue'
 
 const store = usePaperStore()
-const toolsStore = useToolsStore()
-const uiStore = useUiStore()
 const paperId = computed(() => store.currentPaperId)
 const userState = useUserStateStore()
-
-function backToTools(): void {
-  toolsStore.clearActiveTool()
-  uiStore.setToolsOpen(paperId.value || '', true)
-  uiStore.setRightPanel(paperId.value || '', '')
-}
 
 // ─── Model ─────────────────────────────────────────────────────────────
 let _uid = 0

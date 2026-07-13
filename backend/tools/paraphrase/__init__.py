@@ -135,3 +135,91 @@ PRESERVE_TERMS = [
     "API", "REST", "JSON", "XML", "HTML", "CSS", "SQL", "NoSQL",
     "CPU", "GPU", "RAM", "SSD", "OS", "UI", "UX", "SaaS", "PaaS", "IaaS",
 ]
+
+
+# ── Program-only runner (rule-based synonym swap) ─────────────────────────────
+import re
+from typing import Dict, List, Tuple
+
+_SYNONYMS = {
+    "standard": [
+        (r"\bimportant\b", "significant"),
+        (r"\bshow\b", "demonstrate"),
+        (r"\buse\b", "utilize"),
+        (r"\bhelp\b", "assist"),
+        (r"\bmake\b", "create"),
+        (r"\bget\b", "obtain"),
+        (r"\bneed\b", "require"),
+        (r"\bwant\b", "desire"),
+        (r"\bthink\b", "believe"),
+        (r"\blook at\b", "examine"),
+    ],
+    "academic": [
+        (r"\bshow\b", "demonstrate"),
+        (r"\bprove\b", "establish"),
+        (r"\bfind\b", "observe"),
+        (r"\bthink\b", "hypothesize"),
+        (r"\bcheck\b", "verify"),
+        (r"\btest\b", "evaluate"),
+        (r"\buse\b", "employ"),
+        (r"\bmake\b", "construct"),
+        (r"\bchange\b", "modify"),
+        (r"\bfix\b", "rectify"),
+    ],
+    "formal": [
+        (r"\bmake\b", "construct"),
+        (r"\bdo\b", "perform"),
+        (r"\bget\b", "obtain"),
+        (r"\bshow\b", "demonstrate"),
+        (r"\bhelp\b", "facilitate"),
+        (r"\bneed\b", "require"),
+        (r"\bcheck\b", "verify"),
+    ],
+    "casual": [
+        (r"\bdemonstrate\b", "show"),
+        (r"\butilize\b", "use"),
+        (r"\bemploy\b", "use"),
+        (r"\bfacilitate\b", "help"),
+        (r"\bobtain\b", "get"),
+        (r"\brequire\b", "need"),
+        (r"\bconstruct\b", "make"),
+    ],
+    "simple": [
+        (r"\bdemonstrate\b", "show"),
+        (r"\butilize\b", "use"),
+        (r"\bemploy\b", "use"),
+        (r"\bfacilitate\b", "help"),
+        (r"\bobtain\b", "get"),
+        (r"\brequire\b", "need"),
+        (r"\bconstruct\b", "make"),
+        (r"\bmodify\b", "change"),
+        (r"\brectify\b", "fix"),
+        (r"\bevaluate\b", "test"),
+    ],
+}
+
+
+def _apply_synonyms(text: str, style: str) -> str:
+    rules = _SYNONYMS.get(style.lower(), _SYNONYMS["standard"])
+    for pattern, repl in rules:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+    return text
+
+
+def run_paraphrase(data: dict) -> dict:
+    """Program-only paraphrase. NO LLM. Uses synonym swaps per style."""
+    text = (data.get("text") or "").strip()
+    option = (data.get("option") or "Standard").strip().lower()
+    if not text:
+        raise ValueError("No text provided")
+
+    paraphrased = _apply_synonyms(text, option)
+    return {
+        "text": paraphrased,
+        "original": text,
+        "option": option,
+        "changes": text != paraphrased,
+    }
+
+
+__all__ = ["PROMPT", "STYLE_CONFIGS", "CITATION_PATTERNS", "PRESERVE_TERMS", "run_paraphrase"]

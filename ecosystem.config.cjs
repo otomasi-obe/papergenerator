@@ -21,6 +21,21 @@ module.exports = {
       }
     },
     {
+      name: 'paper-worker',
+      cwd: '/home/sirobo/papergenerator/backend',
+      script: '/home/sirobo/papergenerator/backend/.venv/bin/python',
+      args: 'worker.py',
+      interpreter: 'none',
+      exec_mode: 'fork',
+      max_restarts: 10,
+      min_uptime: '30s',
+      restart_delay: 5000,
+      env: {
+        DATABASE_URL: 'postgresql://papergenerator@/papergenerator',
+        REDIS_URL: 'redis://:5b393a50e4a92d7d2713967c5d4fa38a458994980a0e4572582809f7479c18e3@localhost:6379/0',
+      }
+    },
+    {
       name: 'paper-proxy-server',
       cwd: '/home/sirobo/papergenerator/frontend',
       script: 'proxy-server.cjs',
@@ -34,21 +49,5 @@ module.exports = {
         BACKEND_PORT: '8001',
       }
     },
-    {
-      name: 'paper-image-worker',
-      cwd: '/home/sirobo/papergenerator/backend',
-      script: '/home/sirobo/papergenerator/backend/.venv/bin/python',
-      args: '-m tools.image_generation.worker_runner',
-      interpreter: 'none',
-      exec_mode: 'fork',
-      max_restarts: 10,
-      min_uptime: '30s',
-      restart_delay: 5000,
-      env: {
-        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://papergenerator@/papergenerator',
-        REDIS_URL: process.env.REDIS_URL || '',
-        IMAGE_GEN_PROVIDERS: process.env.IMAGE_GEN_PROVIDERS || 'alibaba,ag,cloudflare',
-      }
-    },
-  ]
+    ]
 };

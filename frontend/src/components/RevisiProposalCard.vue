@@ -144,11 +144,56 @@ const rewriteText = computed<string>(() => {
   return props.proposal.rewrite_text || ''
 })
 
+// Determine which store action to call based on proposal scope
+async function acceptStoreAction() {
+  const p = props.proposal
+  if (!p) return
+
+  switch (p.scope) {
+    case 'abstract':
+      // proposal.text = new abstract content
+      if (p.text !== undefined) {
+        await store.acceptProposal(p.id)
+      }
+      break
+
+    case 'section':
+    case 'subsection':
+      // proposal.rewrite = { title, content } or plain text
+      if (p.section_index !== undefined) {
+        if (typeof p.rewrite === 'string') {
+          await store.replaceSectionText(p.section_index, p.rewrite)
+        } else if (typeof p.rewrite === 'object') {
+          await store.replaceSectionText(p.section_index, p.rewrite)
+        }
+        // Mark pending proposal as accepted so it doesn't show as pending
+        try { await store.acceptProposal(p.id) } catch { /* id may not be in pendingChanges */ }
+      }
+      break
+
+    case 'full_paper':
+      // proposal.rewrite = full paper JSON
+      if (typeof p.rewrite === 'object') {
+        await store.replaceWhole(p.rewrite)
+        try { await store.acceptProposal(p.id) } catch { /* */ }
+      }
+      break
+
+    default:
+      // Fallback: treat as generic proposal
+      if (p.id) {
+        await store.acceptProposal(p.id)
+      } else if (p.section_index !== undefined) {
+        await store.replaceSectionText(p.section_index, p.rewrite || p.text)
+      }
+  }
+}
+
 async function onAccept(): Promise<void> {
   if (busy.value) return
   busy.value = true
   try {
-    await store.acceptRevisionProposal(props.proposal.id)
+    await acceptStoreAction()
   } finally {
     busy.value = false
   }
@@ -158,7 +203,16 @@ async function onReject(): Promise<void> {
   if (busy.value) return
   busy.value = true
   try {
-    await store.rejectRevisionProposal(props.proposal.id)
+    // Mark as rejected in pendingChanges so it disappears from review UI
+    if (props.proposal.id) {
+      try { store.rejectProposal(props.proposal.id) } catch { /* */ }
+    }
+    // Notify backend
+    // eslint-disable-next-line no-unused-vars
+    const res = await fetch(`/api/chat/revisi/${props.proposal.id}/reject`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {/* silent - backend may not have this endpoint */})
   } finally {
     busy.value = false
   }

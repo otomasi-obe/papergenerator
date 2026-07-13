@@ -303,7 +303,7 @@ html.dark .floating-chat-btn:active { transform: scale(0.95); }
 
 .floating-chat-panel {
   width: 440px; max-width: 100vw; height: 640px;
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 96px);
   background: #faf9f6;
   border-radius: 20px;
   box-shadow:
@@ -317,7 +317,7 @@ html.dark .floating-chat-btn:active { transform: scale(0.95); }
 
 .floating-chat-panel.maximized {
   width: 720px;
-  height: calc(100vh - 96px);
+  height: calc(100vh - 32px);
 }
 
 /* ── Header with gradient ── */

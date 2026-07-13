@@ -199,6 +199,27 @@ def run_detector(data: Dict[str, Any]) -> Dict[str, Any]:
             "text": sent,
             **analysis,
         })
+    
+    # 3. Blend overall score with sentence-level severity
+    # If many sentences flagged high, boost overall score
+    if sentence_results:
+        flagged_high = sum(1 for s in sentence_results if s["severity"] == "high")
+        flagged_moderate = sum(1 for s in sentence_results if s["severity"] == "moderate")
+        flagged_low = sum(1 for s in sentence_results if s["severity"] == "low")
+        total_sentences = len(sentence_results)
+        
+        # Calculate sentence-based score (0-100)
+        sentence_score = (
+            (flagged_high * 100 + flagged_moderate * 50 + flagged_low * 25) / total_sentences
+            if total_sentences > 0 else 0
+        )
+        
+        # Blend: 70% engine ensemble, 30% sentence-level
+        blended_score = (overall_score * 0.7) + (sentence_score * 0.3)
+        overall_score = round(blended_score, 1)
+        details["final_score"] = overall_score
+        details["sentence_score"] = round(sentence_score, 1)
+        details["blend_weights"] = {"ensemble": 0.7, "sentence": 0.3}
 
     # 3. Engine breakdown
     engines_raw = details.get("engines", {})
@@ -251,6 +272,10 @@ def run_detector(data: Dict[str, Any]) -> Dict[str, Any]:
         "stats": stats,
         "mode": mode,
     }
+    # Include sentence blend info for debugging/UI
+    if "sentence_score" in details:
+        result["sentence_score"] = details["sentence_score"]
+        result["blend_weights"] = details.get("blend_weights", {})
     if llm_result:
         result["llm"] = llm_result
 

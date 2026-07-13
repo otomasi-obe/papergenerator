@@ -278,7 +278,7 @@
 
  <!-- TAB: PREVIEW -->
  <div v-show="activeTab === 'preview'" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview" class="h-full min-h-0 w-full flex flex-col overflow-hidden">
- <PreviewTab :show-zoom="!rightPanel && !toolsOpen && editorVisible" />
+ <PreviewTab ref="previewTabRef" :show-zoom="!rightPanel && !toolsOpen && editorVisible" />
  </div>
  </div>
  </div>
@@ -294,8 +294,16 @@
  <Transition name="panel-slide">
  <div v-if="toolsOpen || rightPanel" :style="editorVisible ? rightStyle : undefined" :class="editorVisible ? '' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col">
 
-    <!-- Tools grid -->
-    <template v-if="toolsOpen">
+   <!-- Back button (shown in sub-panels, not tools grid) -->
+   <div v-if="!toolsOpen && rightPanel" class="sticky top-0 z-10 bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur-sm border-b border-cream-200/60 dark:border-ash-700/60 px-4 lg:px-6 py-2">
+     <button @click="backToTools" class="flex items-center gap-1.5 text-sm text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50 transition active:scale-95">
+       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+       Tools
+     </button>
+   </div>
+
+   <!-- Tools grid -->
+   <template v-if="toolsOpen">
      <ToolsTab @openPanel="openRightPanel" />
    </template>
 
@@ -459,6 +467,7 @@ const newKeyword = ref('')
 const titleRef = ref<HTMLTextAreaElement | null>(null)
 const abstractRef = ref<HTMLTextAreaElement | null>(null)
 const saveStatus = ref('saved')
+const previewTabRef = ref<InstanceType<typeof PreviewTab> | null>(null)
 const lastSavedAt = ref<number | null>(null)
 const nowTick = ref(Date.now())
 
@@ -484,9 +493,12 @@ const editorVisible = computed({
 
 const showWordAddonModal = ref(false)
 
-// ─── Split pane percentage (session-local, non-persisted) ──────────────────
+// ─── Split pane percentage (persisted, draggable divider) ─────────────────
 const splitRoot = ref<HTMLElement | null>(null)
-const rightPanelPercent = ref(40)  // ponytail: expose to localStorage/userState if persistence needed later
+const rightPanelPercent = computed({
+  get: () => ui.getRightPanelPercent(store.currentPaperId || ''),
+  set: (val: number) => ui.setRightPanelPercent(store.currentPaperId || '', val),
+})
 const leftStyle = computed(() => {
   if (!editorVisible.value) return undefined
   if (!toolsOpen.value && !rightPanel.value) return undefined
@@ -507,7 +519,7 @@ function startResize(e: MouseEvent) {
     const rect = root.getBoundingClientRect()
     const pct = ((ev.clientX - rect.left) / rect.width) * 100
     // pct is where divider is from left → right panel = 100 - pct
-    rightPanelPercent.value = Math.max(25, Math.min(75, 100 - pct))
+    rightPanelPercent.value = 100 - pct
   }
   const onUp = () => {
     isResizing.value = false
@@ -547,22 +559,13 @@ function openToolWorkspace(tool) {
 
 function toggleTools() {
  if (toolsOpen.value) {
-   // Already at Writing Tools grid → close panel
-   toolsOpen.value = false
-   if (!rightPanel.value) editorVisible.value = true
- } else if (rightPanel.value === 'tool-workspace') {
-   // From Writing Tool detail → back to Writing Tools grid
-   toolsStore.clearActiveTool()
-   rightPanel.value = ''
-   toolsOpen.value = true
- } else if (rightPanel.value) {
-   // From Paper sub-panel (journal/literature/files/data/image) → show Writing Tools grid
-   rightPanel.value = ''
-   toolsOpen.value = true
+ toolsOpen.value = false
+ // If no right panel is open, re-show editor so page isn't blank
+ if (!rightPanel.value) editorVisible.value = true
  } else {
-   // From editor/preview closed → open Writing Tools grid
-   rightPanel.value = ''
-   toolsOpen.value = true
+ rightPanel.value = ''
+ toolsOpen.value = true
+ // Don't re-show editor — user wants tools full-width
  }
 }
 
@@ -588,6 +591,8 @@ function togglePreview() {
  } else {
  editorVisible.value = true
  activeTab.value = 'preview'
+ // Auto-refresh PDF when switching to Preview tab
+ nextTick(() => previewTabRef.value?.renderPdf())
  }
 }
 

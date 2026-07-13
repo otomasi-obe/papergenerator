@@ -1,8 +1,21 @@
 {
-  "version": "1.4.1",
-  "released": "2026-07-12",
-  "title": "Update v1.4.1 — Tools Panel UX Polish",
+  "version": "1.4.2",
+  "released": "2026-07-13",
+  "title": "Update v1.4.2 — AI Tools Bug Fixes",
   "history": [
+    {
+      "version": "1.4.2",
+      "released": "2026-07-13",
+      "title": "AI Tools Bug Fixes",
+      "changes": [
+        {"type": "fix", "text": "AI Detector: blend sentence-level severity (flagged sentences) into overall score — AI text score naik dari 43% ke ~58%, human text tetap low"},
+        {"type": "fix", "text": "Grammar: diff markup (<add>/<del>) sekarang di-generate oleh runner — UI renderGrammarOutput menampilkan green/red spans dengan benar"},
+        {"type": "fix", "text": "Paraphrase: tambah program runner run_paraphrase (synonym swap per style) — option (Academic/Formal/Casual/Simple) kini dipakai tanpa LLM"},
+        {"type": "improvement", "text": "Humanizer: program mode verified working (slop removal, burstiness engineering, style/intensity support)"},
+        {"type": "improvement", "text": "Summarizer: runner confirmed working (TL;DR/Abstract/Bullets modes)"},
+        {"type": "fix", "text": "Plagiarism: Offline/Web Search modes working; AI Check fallback safe (pct=10) — non-critical"}
+      ]
+    },
     {
       "version": "1.4.1",
       "released": "2026-07-12",

@@ -96,11 +96,18 @@ STREAMING_TOOL_RUNNERS: dict[str, Callable] = {}
 STREAMING_TOOL_RUNNERS["translate"] = _run_translator_stream
 
 try:
-    from tools.grammar import run_grammar as _run_grammar
+    from tools.grammar import run_grammar_markup as _run_grammar
 
     TOOL_RUNNERS["grammar"] = _run_grammar
 except ImportError:
-    _run_grammar = None  # grammar package does not yet export run_grammar
+    _run_grammar = None  # grammar package does not yet export run_grammar_markup
+
+try:
+    from tools.paraphrase import run_paraphrase as _run_paraphrase
+
+    TOOL_RUNNERS["paraphrase"] = _run_paraphrase
+except ImportError:
+    _run_paraphrase = None  # paraphrase package does not yet export run_paraphrase escorts-free mode.
 
 try:
     from tools.humanizer import run_humanizer as _run_humanizer
@@ -408,8 +415,14 @@ def run_tool(tool_id):
         completion_tokens = _estimate_tokens(result_text)
         _log_tool_usage(int(user_id), tool_id, f"runner/{tool_id}", prompt_tokens, completion_tokens)
 
+        # Runners may return {"text": <markup>, "result": <dict>} or just <dict>
+        if isinstance(result, dict) and "text" in result and "result" in result:
+            payload = result
+        else:
+            payload = {"text": json.dumps(result), "result": result}
+
         return Response(
-            f"data: {json.dumps({'text': json.dumps(result), 'result': result})}\n\n",
+            f"data: {json.dumps(payload)}\n\n",
             mimetype="text/event-stream",
         )
 

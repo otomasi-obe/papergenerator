@@ -1,18 +1,8 @@
 <template>
-  <div class="space-y-4 pb-24">
-    <div>
-      <button
-        @click="backToTools"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
-        title="Back to Tools"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Tools
-      </button>
-      <div class="flex items-center gap-2">
-        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
-      </div>
+  <div class="space-y-4">
+    <div class="flex items-center gap-2">
+      <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
     </div>
 
     <p class="text-sm text-ink-600 dark:text-ink-300">
@@ -368,7 +358,7 @@
 
     <!-- Content output box (separate from reasoning) -->
     <div
-      v-if="contentText && !generating"
+      v-if="contentText"
       class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
     >
       <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-emerald-50 to-cream-50 dark:from-emerald-900/20 dark:to-ash-800">
@@ -528,23 +518,12 @@ import { usePaperStore } from '../stores/paper'
 import { useAuthStore } from '../stores/auth'
 import { usePaperJobsStore } from '../stores/paperJobs'
 import { useImageGenStore } from '../stores/imageGen'
-import { useToolsStore } from '../stores/tools'
-import { useUiStore } from '../stores/ui'
 import api from '../api'
 import AppDialog from './AppDialog.vue'
 
 const store = usePaperStore()
 const auth = useAuthStore()
 const jobsStore = usePaperJobsStore()
-const toolsStore = useToolsStore()
-const uiStore = useUiStore()
-
-function backToTools(): void {
-  toolsStore.clearActiveTool()
-  uiStore.setToolsOpen(store.currentPaperId || '', true)
-  uiStore.setRightPanel(store.currentPaperId || '', '')
-}
-
 const topic = ref('')
 const generating = ref(false)
 const generatingTopic = ref('')
@@ -572,20 +551,9 @@ const { sanitizeHtml } = useSanitize()
 
 const renderedContentHtml = computed(() => {
   if (!contentText.value) return ''
+  // During streaming, render raw text (no KaTeX) to avoid O(n²) re-render per token
+  // KaTeX applied on completion via finishGeneration()
   let text = contentText.value
-  
-  // Filter out raw JSON paper structure (backend may stream it for debug/recovery)
-  // Match ```json...``` or {...} blocks that look like full paper structure
-  text = text.replace(/```json\s*\{[\s\S]*?"sections"[\s\S]*?\}\s*```/gi, '[Paper JSON structure hidden]')
-  
-  // Also filter standalone JSON objects that span multiple lines with "sections" key
-  text = text.replace(/^\s*\{[\s\S]*?"sections"[\s\S]*?\}\s*$/gm, '[Paper structure received]')
-  
-  // Filter individual streamed section objects (tables, formulas, etc.)
-  // Pattern: {"id": "...", "TableNumber": "..."} or {"id": "...", "latex": "..."} etc.
-  text = text.replace(/```json\s*\{[\s\S]*?"(?:TableNumber|FormulaNumber|Headers|Rows|latex)"[\s\S]*?\}\s*```/gi, '[Section data hidden]')
-  text = text.replace(/^\s*\{[\s\S]*?"(?:TableNumber|FormulaNumber|Headers|Rows|latex)"[\s\S]*?\}\s*$/gm, '[Section data received]')
-  
   // Always use rich text render (handles LaTeX, escapes HTML), then sanitize via DOMPurify
   return sanitizeHtml(renderRichText(text))
 })
@@ -1917,16 +1885,8 @@ async function generate() {
   if (!t) return
 
   // ── Confirm overwrite if paper already has content ──────────────────
-  // Only warn if saved paper has real written content, not empty default blocks.
-  const hasSectionContent = store.paper?.sections?.some((s: any) =>
-    s.content?.some((b: any) => String(b?.text || b || '').trim().length > 20)
-    || s.subsections?.some((sub: any) =>
-      sub.content?.some((b: any) => String(b?.text || b || '').trim().length > 20)
-    )
-  )
-  const hasContent = store.currentPaperId && (
-    hasSectionContent || String(store.paper?.abstract || '').trim().length > 20
-  )
+  const hasContent = store.paper?.sections?.some((s: any) => s.content?.length > 0)
+    || (store.paper?.abstract && store.paper.abstract.length > 20)
   if (hasContent && !confirm('Paper sudah memiliki konten. Generate Full akan menimpa seluruh isi paper.\n\nLanjutkan?')) {
     return
   }
@@ -2325,36 +2285,34 @@ async function consumeSSEStream(res) {
           const payload = JSON.parse(line.slice(6))
           
           if (currentEvent === 'thinking') {
-            // Backend should no longer send reasoning, but ignore it defensively.
-            continue
-          } else if (currentEvent === 'content') {
+            // Filter out internal system markers (e.g. "[Starting generation with MODEL...]")
             const tok = payload.token ?? ''
-            // Strip markdown code fences from streamed content.
-            // AI sometimes streams ```json...``` blocks which pollute the UI.
-            const cleanTok = tok.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '')
-            contentText.value += cleanTok
-            // Token-based progress with monotonic guard
-            if (payload.total_tokens) {
-              const tokenPct = Math.min(85, Math.floor(payload.total_tokens / 1000))
-              displayProgress.value = Math.max(displayProgress.value, tokenPct)
-              jobsStore.updateStreamProgress(displayProgress.value)
+            if (payload.stage === 'start' && tok.startsWith('[')) {
+              // skip system marker — don't show to user
+            } else {
+              reasoningText.value += tok
             }
+            // Sync to store every ~2 seconds via timer (reliable, not lossy)
+            _syncStreamIfNeeded()
+            // Auto-scroll
+            nextTick(() => {
+              const panel = document.querySelector('.reasoning-panel')
+              if (panel) panel.scrollTop = panel.scrollHeight
+            })
+          } else if (currentEvent === 'content') {
+            contentText.value += payload.token ?? ''
+            if (payload.total_tokens && (payload.total_tokens / 10) > displayProgress.value) displayProgress.value = Math.min(95, Math.floor(payload.total_tokens / 10))
+            jobsStore.updateStreamProgress(displayProgress.value)
             // Sync to store every ~2 seconds via timer (reliable, not lossy)
             _syncStreamIfNeeded()
             // Try to detect completed sections and push to editor
             tryLiveUpdateEditor()
           } else if (currentEvent === 'progress') {
-            if (typeof payload.percent === 'number') {
-              displayProgress.value = Math.max(displayProgress.value, Math.min(98, payload.percent))
-              jobsStore.updateStreamProgress(displayProgress.value)
-            }
             // Image/chart generation progress (backend waits for images before done)
             if (payload.stage === 'image_generation') {
               const pct = payload.total ? Math.floor((payload.done / payload.total) * 100) : 0
               // ponytail: never let image progress regress the main bar
-              // Allow 100% only when all images done (done === total)
-              const maxPct = (payload.done >= payload.total && payload.total > 0) ? 100 : 98
-              displayProgress.value = Math.max(displayProgress.value, Math.min(maxPct, pct))
+              displayProgress.value = Math.max(displayProgress.value, Math.min(98, pct))
               jobsStore.updateStreamProgress(displayProgress.value)
               // Update separate image progress panel instead of appending to content
               imageGenProgress.value = {
@@ -2377,20 +2335,14 @@ async function consumeSSEStream(res) {
                 done: 0,
                 message: `Generating ${totalImgJobs} images...`,
               }
-              // Keep progress at 95% while images generate (will reach 100 on images_complete)
-              displayProgress.value = Math.max(displayProgress.value, 95)
-              jobsStore.updateStreamProgress(displayProgress.value)
-              // DON'T set generating=false yet — keep panel visible until images complete
-              generatingTopic.value = 'Generating images...'
-            } else {
-              // No images — generation fully complete
-              displayProgress.value = 100
-              jobsStore.updateStreamProgress(100)
-              // No images pending, safe to stop generating state
-              generating.value = false
-              generatingTopic.value = ''
-              await store.loadPaperImages(store.currentPaperId)
             }
+            // Pass paper_data from backend directly to editor (faster than fetching from DB)
+            // ponytail: DON'T call finishGeneration() here — it kills _sseCtrl which
+            // aborts the reader loop, so we never receive progress/images_complete.
+            // Do the finish logic inline but keep the stream alive for image events.
+            generating.value = false
+            displayProgress.value = 100
+            generatingTopic.value = ''
             connectionLost.value = false
             _startTime = null
             stopProgressTicker()
@@ -2419,22 +2371,13 @@ async function consumeSSEStream(res) {
             const totalCount = payload.total || 0
             if (errCount > 0) {
               imageGenProgress.value = { total: totalCount, done: totalCount, message: `${totalCount - errCount}/${totalCount} images — ${errCount} failed!` }
-              contentText.value += `\n⚠️ ${totalCount - errCount}/${totalCount} images generated — ${errCount} errors\n`
+              contentText.value += `\n⚠️ ${totalCount - errCount}/${totalCount} images generated — ${errCount} errors\\n`
             } else {
               imageGenProgress.value = { total: totalCount, done: totalCount, message: 'All images complete!' }
               contentText.value += `\n✅ All images generated and embedded!\n`
             }
-            // NOW set generating=false and progress=100
-            generating.value = false
-            generatingTopic.value = ''
-            displayProgress.value = 100
-            jobsStore.updateStreamProgress(100)
-            jobsStore.clearStreamState()
-            saveState()
             await store.loadPaperFromDb(store.currentPaperId)
-            await store.loadPaperImages(store.currentPaperId)
             await store.loadPaperCharts(store.currentPaperId)
-            stopSSEPolling()
             return
           } else if (currentEvent === 'error') {
             doneReceived = true

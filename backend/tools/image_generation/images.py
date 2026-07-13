@@ -383,6 +383,8 @@ def get_paper_image(paper_id: str, filename: str):
 
     if not filepath.is_file():
         stem = sanitized.rsplit(".", 1)[0]
+        if not paper_dir.is_dir():
+            return jsonify({"error": "Image not found"}), 404
         for alt in sorted(paper_dir.iterdir()):
             if alt.is_file() and alt.stem == stem:
                 filepath = alt

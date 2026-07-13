@@ -325,9 +325,21 @@ _ACADEMIC_MISSPELLINGS = {
 }
 
 _COMMON_GRAMMAR_ERRORS = [
+    # Plural subjects with "is" → "are"
     (r'\b(they|we|these|those|the authors|the results)\s+(is)\b', r'\1 are', 'subject-verb agreement'),
+    # Singular subjects with "are" → "is"
     (r'\b(he|she|it|this|that|the study|the paper|the model)\s+(are)\b', r'\1 is', 'subject-verb agreement'),
+    # Common nouns (singular) with "are" → "is"
+    (r'\b(the|The)\s+(cat|dog|book|person|student|teacher|system|method|approach|result|finding|data|analysis|experiment)\s+(are)\b', r'\1 \2 is', 'subject-verb agreement'),
+    # Singular noun phrase with "are"
     (r'\b(The|the)\s+(\w+)\s+(of|for|in)\s+(\w+)\s+(are)\b', r'\1 \2 \3 \4 is', 'subject-verb agreement'),
+    # Irregular third-person singular forms first
+    (r'\b(he|He|she|She|it|It)\s+(go)\b', r'\1 goes', 'subject-verb agreement'),
+    (r'\b(he|He|she|She|it|It)\s+(do)\b', r'\1 does', 'subject-verb agreement'),
+    (r'\b(he|He|she|She|it|It)\s+(have)\b', r'\1 has', 'subject-verb agreement'),
+    # Regular third-person singular with base verb forms
+    (r'\b(he|He|she|She|it|It)\s+(run|walk|talk|think|work|come|make|take|give|know|see|use|find|need|want)\b', r'\1 \2s', 'subject-verb agreement'),
+    # ponytail: This covers common verbs only; add a morphology table if users need broad ESL correction.
     (r'\b(have|has)\s+(beened|haden|wenten)\b', r'\1 been', 'verb tense'),
     (r"\b(ain't|don't|doesn't|didn't|won't|can't|couldn't|wouldn't|shouldn't|needn't)\s+(no|none|nothing|nobody|nowhere|never)\b",
      r'\1 any', 'double negative'),

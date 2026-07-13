@@ -21,56 +21,32 @@
     </div>
 
     <div class="shrink-0 flex items-center justify-between gap-3 border-b border-cream-300 bg-cream-50/90 px-4 py-3 dark:border-ash-700 dark:bg-ash-900/90">
-      <div class="flex items-center gap-3">
-        <!-- Journal search dropdown -->
-        <div class="relative" ref="wrapRef">
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-ink-700 dark:text-ash-300 font-medium">Template:</span>
-            <div class="flex items-center gap-1.5">
-              <input
-                v-model="search"
-                @focus="open = true"
-                @input="open = true"
-                @keydown.escape="open = false"
-                @keydown.down.prevent="moveHighlight(1)"
-                @keydown.up.prevent="moveHighlight(-1)"
-                @keydown.enter.prevent="pickHighlighted"
-                type="text"
-                role="combobox"
-                :aria-expanded="open"
-                aria-controls="journal-preview-list"
-                aria-haspopup="listbox"
-                :placeholder="journalLabel"
-                class="px-2 py-1 border border-cream-300 dark:border-ash-600 rounded-lg text-sm font-semibold bg-white dark:bg-ash-800 text-navy-700 dark:text-cream-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 outline-none min-w-[120px] max-w-[200px]"
-              />
-              <svg v-if="open" @click="open = false" class="w-4 h-4 text-ink-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-              <svg v-else class="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-            </div>
-          </div>
-          <ul v-if="open && filtered.length"
-            id="journal-preview-list"
-            role="listbox"
-            class="absolute z-50 mt-1 w-64 bg-white dark:bg-ash-800 border border-cream-300 dark:border-ash-600 rounded-xl shadow-lg max-h-64 overflow-y-auto text-sm">
-            <li
-              v-for="(j, idx) in filtered"
-              :key="j"
-              @click="pick(j)"
-              @mouseenter="$event.currentTarget.classList.add('hovering')"
-              @mouseleave="$event.currentTarget.classList.remove('hovering')"
-              role="option"
-              :aria-selected="store.paper.journal === j"
+      <div class="flex items-center gap-3 relative">
+        <div class="relative">
+          <input
+            v-model="journalSearch"
+            @focus="journalDropdownOpen = true"
+            @blur="onJournalBlur"
+            @click="journalSearch = ''"
+            @keydown.down.prevent="journalHighlight = Math.min(journalHighlight + 1, filteredJournals.length - 1)"
+            @keydown.up.prevent="journalHighlight = Math.max(journalHighlight - 1, 0)"
+            @keydown.enter.prevent="selectHighlighted"
+            @keydown.escape="journalDropdownOpen = false"
+            class="w-48 px-2.5 py-1.5 text-sm font-semibold rounded border border-cream-300 bg-white text-ink-900 focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-navy-400 dark:border-ash-600 dark:bg-ash-800 dark:text-ink-50"
+            placeholder="Cari template..."
+          />
+          <div v-if="journalDropdownOpen && filteredJournals.length"
+            class="absolute z-50 top-full left-0 mt-1 w-56 max-h-60 overflow-y-auto rounded-lg border border-cream-300 bg-white shadow-lg dark:border-ash-600 dark:bg-ash-800">
+            <button v-for="(j, i) in filteredJournals" :key="j"
+              @mousedown.prevent="selectJournal(j)"
               :class="[
-                'px-3 py-2 cursor-pointer flex items-center justify-between transition-all duration-150',
-                store.paper.journal === j || highlightedIndex === idx ? 'bg-cream-100 dark:bg-ash-700 font-medium text-navy-700 dark:text-cream-200 translate-x-1' : 'text-ink-800 dark:text-ash-100 hover:bg-cream-100 hover:dark:bg-ash-700 hover:translate-x-1 hover:font-medium hover:text-navy-700 hover:dark:text-cream-200',
-              ]"
-            >
-              <span>{{ j }}</span>
-              <span v-if="store.paper.journal === j" class="text-xs text-[#238f7f] dark:text-[#4eb2a3]">✓</span>
-            </li>
-          </ul>
-          <p v-if="open && search && filtered.length === 0" class="absolute mt-1 text-xs text-ink-600 dark:text-ash-300 z-50 bg-white dark:bg-ash-800 border border-cream-300 dark:border-ash-600 rounded-lg px-3 py-2 shadow">
-            Tidak ada template "{{ search }}"
-          </p>
+                'w-full text-left px-3 py-2 text-sm transition',
+                j === store.paper.journal ? 'font-bold text-navy-700 bg-cream-100 dark:text-cream-200 dark:bg-ash-700' : 'text-ink-700 dark:text-ink-200',
+                i === journalHighlight ? 'bg-cream-200 dark:bg-ash-600' : 'hover:bg-cream-100 dark:hover:bg-ash-700'
+              ]">
+              {{ j }}
+            </button>
+          </div>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -118,6 +94,7 @@
           :src="pdfViewerUrl"
           :key="pdfKey"
           class="block h-full w-full border-0"
+          style="transform: scale(0.9); transform-origin: top center;"
           title="PDF preview"
           @error="onIframeError"
         ></iframe>
@@ -139,6 +116,7 @@
           :src="pdfFallbackUrl"
           :key="'fb-' + pdfKey"
           class="block h-full w-full border-0"
+          style="transform: scale(0.9); transform-origin: top center;"
           title="PDF preview"
         ></iframe>
       </div>
@@ -224,7 +202,6 @@
 // @ts-nocheck
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePaperStore } from '../stores/paper'
-import { useUiStore } from '../stores/ui'
 import DiffBlock from './DiffBlock.vue'
 import { renderLatex, renderRichText } from '../composables/useMathRender'
 import { useSanitize } from '../composables/useSanitize'
@@ -273,46 +250,50 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const store = usePaperStore()
-const uiStore = useUiStore()
 const journalLabel = computed(() => store.paper.journal || 'IEEE')
 
-// Journal search dropdown
-const search = ref<string>('')
-const open = ref<boolean>(false)
-const wrapRef = ref<HTMLElement | null>(null)
-const highlightedIndex = ref<number>(-1)
+// ─── Searchable journal combobox ─────────────────────────────────────────────
+const journalSearch = ref(store.paper.journal || 'IEEE')
+const journalDropdownOpen = ref(false)
+const journalHighlight = ref(0)
 
-const filtered = computed<string[]>(() => {
-  if (!search.value.trim()) return store.availableJournals || []
-  const q = search.value.toLowerCase()
-  return (store.availableJournals || []).filter((j: string) => j.toLowerCase().includes(q))
+// Sync search text when store journal changes externally
+watch(() => store.paper.journal, (v) => {
+  if (!journalDropdownOpen.value) journalSearch.value = v || 'IEEE'
 })
 
-function pick(journal: string): void {
-  store.paper.journal = journal
-  open.value = false
-  search.value = ''
-  highlightedIndex.value = -1
-  // Auto render dengan template baru
+const filteredJournals = computed(() => {
+  const q = (journalSearch.value || '').trim().toLowerCase()
+  const list = store.availableJournals || []
+  if (!q) return list
+  return list.filter((j: string) => j.toLowerCase().includes(q))
+})
+
+function selectJournal(j: string) {
+  store.paper.journal = j
+  journalSearch.value = j
+  journalDropdownOpen.value = false
+  // Auto-refresh preview with new template
   nextTick(() => renderPdf())
 }
 
-function moveHighlight(delta: number): void {
-  if (!filtered.value.length) return
-  highlightedIndex.value = Math.max(0, Math.min(filtered.value.length - 1, highlightedIndex.value + delta))
-}
-
-function pickHighlighted(): void {
-  if (highlightedIndex.value >= 0 && highlightedIndex.value < filtered.value.length) {
-    pick(filtered.value[highlightedIndex.value])
+function selectHighlighted() {
+  if (filteredJournals.value.length > 0) {
+    selectJournal(filteredJournals.value[journalHighlight.value])
   }
 }
 
-function handleClickOutside(e: MouseEvent): void {
-  if (wrapRef.value && !wrapRef.value.contains(e.target as Node)) {
-    open.value = false
-  }
+function onJournalBlur() {
+  // Delay close so mousedown on option fires first
+  setTimeout(() => {
+    journalDropdownOpen.value = false
+    // Reset search to current journal if no selection was made
+    journalSearch.value = store.paper.journal || 'IEEE'
+  }, 150)
 }
+
+// Fetch journals on mount
+onMounted(() => { store.fetchJournals() })
 
 // ─── Journal layout ──────────────────────────────────────────────────────────
 const jl = computed(() => getJournalLayout(store.paper.journal))
@@ -657,16 +638,10 @@ function downloadPdf() {
 // User triggers PDF manually via the PDF button
 
 // Trigger handled by watch with immediate:true
-onMounted(() => {
-  store.fetchJournals()
-  document.addEventListener('click', handleClickOutside)
-})
-
 onUnmounted(() => {
   if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
   if (renderDebounceTimer) { clearTimeout(renderDebounceTimer); renderDebounceTimer = null }
   clearPdfBlobUrl()
-  document.removeEventListener('click', handleClickOutside)
 })
 
 // Expose renderPdf for external use

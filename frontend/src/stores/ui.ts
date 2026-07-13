@@ -9,6 +9,7 @@ interface PaperUiState {
   rightPanel: string
   toolsOpen: boolean
   editorVisible: boolean
+  rightPanelPercent: number
 }
 
 interface UiState {
@@ -25,7 +26,7 @@ function load(): UiState {
       const v1 = JSON.parse(rawV1)
       const migrated: Record<string, PaperUiState> = {}
       for (const [k, v] of Object.entries(v1.perPaper || {})) {
-        migrated[k] = { activeTab: (v as any).activeTab || 'editor', rightPanel: '', toolsOpen: false, editorVisible: true }
+        migrated[k] = { activeTab: (v as any).activeTab || 'editor', rightPanel: '', toolsOpen: false, editorVisible: true, rightPanelPercent: 40 }
       }
       localStorage.removeItem('pg_ui_state_v1')
       return { perPaper: migrated }
@@ -56,7 +57,7 @@ export const useUiStore = defineStore('ui', () => {
   function _entry(paperId: string | null | undefined): PaperUiState | null {
     if (!paperId) return null
     if (!perPaper.value[paperId]) {
-      perPaper.value[paperId] = { activeTab: 'editor', rightPanel: '', toolsOpen: false, editorVisible: true }
+      perPaper.value[paperId] = { activeTab: 'editor', rightPanel: '', toolsOpen: false, editorVisible: true, rightPanelPercent: 40 }
     }
     return perPaper.value[paperId]
   }
@@ -110,6 +111,18 @@ export const useUiStore = defineStore('ui', () => {
     if (paperId) userState.set('ui.editor_visible', paperId, visible)
   }
 
+  function getRightPanelPercent(paperId: string): number {
+    const fromServer = userState.get('ui.right_panel_pct', paperId, null)
+    if (fromServer !== null) return fromServer
+    return _entry(paperId)?.rightPanelPercent ?? 40
+  }
+
+  function setRightPanelPercent(paperId: string, pct: number): void {
+    const clamped = Math.max(25, Math.min(75, pct))
+    const e = _entry(paperId)
+    if (e) e.rightPanelPercent = clamped
+    if (paperId) userState.set('ui.right_panel_pct', paperId, clamped)
+  }
 
   function switchToTab(paperId: string, tabId: string): void {
     setTab(paperId, tabId)
@@ -127,7 +140,8 @@ export const useUiStore = defineStore('ui', () => {
     setToolsOpen,
     getEditorVisible,
     setEditorVisible,
-
+    getRightPanelPercent,
+    setRightPanelPercent,
     switchToTab,
   }
 })
