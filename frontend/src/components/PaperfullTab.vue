@@ -118,6 +118,22 @@
       </label>
     </div>
 
+    <!-- Language Selector -->
+    <div>
+      <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">🌐 Bahasa Paper</label>
+      <select
+        v-model="store.paper.language"
+        :disabled="generating || !!activeJob"
+        class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none disabled:opacity-50"
+      >
+        <option value="id">🇮🇩 Bahasa Indonesia</option>
+        <option value="en">🔤 English</option>
+      </select>
+      <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-1">
+        Bahasa untuk penulisan paper hasil generate.
+      </p>
+    </div>
+
     <!-- Action buttons -->
     <div class="flex items-center gap-2">
       <button
