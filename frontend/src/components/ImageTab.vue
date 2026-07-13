@@ -1,5 +1,5 @@
 <template>
- <div class="p-6">
+  <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6">
  <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
  <div>
  <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2">

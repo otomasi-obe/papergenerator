@@ -512,20 +512,43 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                     sec = _find_section(data.get("sections", []), target)
                 if sec is not None:
                     if isinstance(content, str):
-                        # Merge: replace text of existing text blocks, append new text block
-                        # Preserve non-text blocks (gambar, rumus, tabel, equation)
+                        # Split into paragraphs on blank lines / single newlines so a
+                        # full-section rewrite replaces ALL paragraphs, not just the first.
+                        # Preserve non-text blocks (gambar, rumus, tabel, equation) by
+                        # inserting new text blocks where the originals were.
+                        paras = [p.strip() for p in re.split(r"\n\s*\n|\n", content) if p.strip()]
                         existing = sec.get("content", [])
-                        if isinstance(existing, list):
-                            new_content = list(existing)  # copy
-                            replaced = False
-                            for i, block in enumerate(new_content):
+                        if isinstance(existing, list) and any(
+                            isinstance(b, dict) and b.get("id") == "text" for b in existing
+                        ):
+                            new_content = []
+                            para_iter = iter(paras)
+                            used_all = False
+                            for block in existing:
                                 if isinstance(block, dict) and block.get("id") == "text":
-                                    new_content[i] = {"id": "text", "text": content}
-                                    replaced = True
-                                    break
-                            if not replaced:
-                                new_content.append({"id": "text", "text": content})
+                                    if not used_all:
+                                        try:
+                                            new_content.append({"id": "text", "text": next(para_iter)})
+                                        except StopIteration:
+                                            used_all = True
+                                            # No more new paragraphs — drop this empty text block
+                                            continue
+                                    else:
+                                        # More new paragraphs than old text blocks:
+                                        # append the rest as additional text blocks
+                                        for rest in para_iter:
+                                            new_content.append({"id": "text", "text": rest})
+                                        used_all = True
+                                else:
+                                    # Preserve non-text block (image/table/equation)
+                                    new_content.append(block)
+                            # If there were leftover new paragraphs after consuming
+                            # all existing blocks, append them.
+                            for rest in para_iter:
+                                new_content.append({"id": "text", "text": rest})
                             sec["content"] = new_content
+                        elif paras:
+                            sec["content"] = [{"id": "text", "text": p} for p in paras]
                         else:
                             sec["content"] = [{"id": "text", "text": content}]
                     elif isinstance(content, list):

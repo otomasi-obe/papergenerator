@@ -294,10 +294,10 @@
  <Transition name="panel-slide">
  <div v-if="toolsOpen || rightPanel" :style="editorVisible ? rightStyle : undefined" :class="editorVisible ? '' : 'w-full'" class="bg-cream-50 dark:bg-ash-800 shrink-0 overflow-y-auto min-h-0 flex flex-col">
 
-   <!-- Back button (shown in sub-panels, not tools grid) -->
-   <div v-if="!toolsOpen && rightPanel" class="sticky top-0 z-10 bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur-sm border-b border-cream-200/60 dark:border-ash-700/60 px-4 lg:px-6 py-2">
-     <button @click="backToTools" class="flex items-center gap-1.5 text-sm text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50 transition active:scale-95">
-       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+   <!-- Single cream-padded back button (ALL sub-panels incl. Generate Full) -->
+   <div v-if="!toolsOpen && rightPanel" class="sticky top-0 z-10 bg-cream-50/95 dark:bg-ash-800/95 backdrop-blur-sm border-b border-cream-200/60 dark:border-ash-700/60 px-4 lg:px-6 py-3">
+     <button @click="backToTools" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95">
+       <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
        Tools
      </button>
    </div>
@@ -317,7 +317,7 @@
    </template>
 
    <template v-else-if="rightPanel === 'literature'">
-     <LiteratureTab />
+     <div class="px-4 lg:px-8 py-6"><LiteratureTab /></div>
    </template>
 
    <template v-else-if="rightPanel === 'files'">

@@ -1,18 +1,8 @@
 <template>
   <div class="space-y-4 pb-24">
-    <div>
-      <button
-        @click="backToTools"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
-        title="Back to Tools"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Tools
-      </button>
-      <div class="flex items-center gap-2">
-        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
-      </div>
+    <div class="flex items-center gap-2">
+      <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
     </div>
 
     <p class="text-sm text-ink-600 dark:text-ink-300">
@@ -554,12 +544,6 @@ const auth = useAuthStore()
 const jobsStore = usePaperJobsStore()
 const toolsStore = useToolsStore()
 const uiStore = useUiStore()
-
-function backToTools(): void {
-  toolsStore.clearActiveTool()
-  uiStore.setToolsOpen(store.currentPaperId || '', true)
-  uiStore.setRightPanel(store.currentPaperId || '', '')
-}
 
 const topic = ref('')
 const generating = ref(false)
@@ -1933,8 +1917,13 @@ async function generate() {
   if (!t) return
 
   // ── Confirm overwrite if paper already has content ──────────────────
-  const hasContent = store.paper?.sections?.some((s: any) => s.content?.length > 0)
-    || (store.paper?.abstract && store.paper.abstract.length > 20)
+  // content is an array of blocks: check for non-empty text, not just array length.
+  // Skip image/table placeholder blocks (id='gambar'/'tabel').
+  const hasContent = store.paper?.sections?.some((s: any) =>
+    (s.content || []).some((block: any) =>
+      block.id === 'text' && typeof block.text === 'string' && block.text.trim().length > 0
+    )
+  ) || (store.paper?.abstract && store.paper.abstract.trim().length > 20)
   if (hasContent && !confirm('Paper sudah memiliki konten. Generate Full akan menimpa seluruh isi paper.\n\nLanjutkan?')) {
     return
   }

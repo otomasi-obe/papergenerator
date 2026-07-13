@@ -304,6 +304,8 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
     which is where the LLM actually puts them.
 
     Matching strategy (in priority order):
+    0. ImageGenJob.target_path semantic match (PRIMARY) — match Title/Caption tokens
+       against canonical target_path from ImageGenJob table; pick newest mtime for retries.
     1. Filename contains the gambar's ImageNumber (e.g., "fig1_architecture.jpg" → ImageNumber=1)
     2. Filename matches the gambar's original Path base (e.g., "fig1.png" → "fig1_architecture.jpg")
     3. Fallback: oldest unused image by mtime
@@ -338,6 +340,42 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
     # Sort by mtime as fallback
     image_files.sort(key=lambda f: f.stat().st_mtime)
     log.info("[reconcile_sections] Found %d images for paper %s", len(image_files), paper_id)
+
+    # ── Strategy 0: Build target_path index from ImageGenJob (canonical source of truth) ───
+    target_to_newest: dict[str, Path] = {}
+    # Track per-target: has_success, failed_count
+    target_status: dict[str, dict] = {}  # stem -> {'has_success': bool, 'failed_count': int}
+    try:
+        from utils.database.models import ImageGenJob, db
+        img_jobs = ImageGenJob.query.filter_by(paper_id=paper_id).all()
+        for job in img_jobs:
+            target = str(job.target_path or "").strip()
+            if not target:
+                continue
+            target_stem = Path(target).stem.lower()
+            if target_stem not in target_status:
+                target_status[target_stem] = {'has_success': False, 'failed_count': 0}
+            if job.status in ("error", "failed"):
+                target_status[target_stem]['failed_count'] += 1
+            else:
+                target_status[target_stem]['has_success'] = True
+
+        # Now build target_to_newest only for targets that have at least one success
+        for target_stem, status in target_status.items():
+            if not status['has_success']:
+                # All jobs for this target failed - skip
+                log.debug("[reconcile_sections] target_path %s skipped: all %d jobs failed",
+                         target_stem, status['failed_count'])
+                continue
+            # Find newest file for this target stem (exact or with _N suffix)
+            candidates = [f for f in image_files if f.stem.lower() == target_stem or f.stem.lower().startswith(target_stem + "_")]
+            if candidates:
+                newest = max(candidates, key=lambda f: f.stat().st_mtime)
+                target_to_newest[target_stem] = newest
+                log.debug("[reconcile_sections] target_path %s -> %s (mtime=%s)",
+                         target_stem, newest.name, newest.stat().st_mtime)
+    except Exception as e:
+        log.warning("[reconcile_sections] ImageGenJob query failed: %s", e)
 
     # Build filename index for fast matching
     filename_index = {f.name.lower(): f for f in image_files}
@@ -375,7 +413,25 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
         """Find the best matching image file for a gambar item."""
         img_num = _extract_img_number(item)
         orig_path = str(item.get("Path") or item.get("path") or "")
-        
+        item_title = str(item.get("Title") or item.get("Caption") or item.get("title") or "").lower()
+        item_caption = str(item.get("Caption") or item.get("caption") or "").lower()
+        item_tokens = set((item_title + " " + item_caption).split())
+
+        # Strategy 0 (PRIMARY): Semantic match via ImageGenJob.target_path
+        # Score Title+Caption tokens against each target_path stem; best score ≥ 1 wins
+        if target_to_newest and item_tokens:
+            best_stem: str | None = None
+            best_score = 0
+            for stem, img_file in target_to_newest.items():
+                if img_file.name in used_images:
+                    continue
+                score = sum(1 for tok in item_tokens if tok in stem or stem in tok)
+                if score > best_score:
+                    best_score = score
+                    best_stem = stem
+            if best_stem and best_score >= 1:
+                return target_to_newest[best_stem]
+
         # Strategy 1: Match by ImageNumber in filename (e.g., "fig1_architecture.jpg" for ImageNumber=1)
         if img_num:
             for img_file in image_files:

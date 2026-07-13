@@ -1210,46 +1210,53 @@ onMounted(async () => {
     const savedStream = userState.get('chat.streaming', null, null)
 
     if (savedStream && savedStream.conv_id) {
-      const { data } = await api.get(`/api/chat/conversations/${savedStream.conv_id}/stream-status`)
+      const { data } = await api.get(`/api/chat/conversations/${savedStream.conv_id}/stream-status`).catch(() => ({ data: null }))
 
-      if (data.status === 'streaming') {
-        // Backend still streaming - reconnect
-        const stream = chatStore._ensureStream(savedStream.conv_id)
-        stream.isStreaming = true
-        stream.connectionState = 'reconnecting'
-        const restoredMessage = {
-          id: null,
-          role: 'assistant',
-          content: data.content || savedStream.content || '',
-          thinking: data.thinking || savedStream.thinking || '',
-          tool_calls: [],
-          created_at: data.started_at || savedStream.started_at,
+      if (!data) {
+        // Backend check failed — clear stale state
+        userState.deleteKey('chat.streaming', null)
+      } else if (data.status === 'streaming') {
+        // Skip restore if the Pinia store already restored this stream
+        // (_restoreStreamsFromSession runs before Vue mount). In that case
+        // stream.messages already contains the assistant bubble — don't push a second one.
+        const existing = chatStore._ensureStream(savedStream.conv_id)
+        const alreadyRestored =
+          existing.streamingMessage &&
+          existing.messages.length > 0 &&
+          existing.messages[existing.messages.length - 1]?.role === 'assistant' &&
+          existing.messages[existing.messages.length - 1]?.id == null
+
+        if (!alreadyRestored) {
+          // Store hasn't restored yet (e.g. userState but no sessionStorage match)
+          existing.isStreaming = true
+          existing.connectionState = 'reconnecting'
+          const restoredMessage = {
+            id: null,
+            role: 'assistant',
+            content: data.content || savedStream.content || '',
+            thinking: data.thinking || savedStream.thinking || '',
+            tool_calls: [],
+            created_at: data.started_at || savedStream.started_at,
+          }
+          existing.streamingMessage = restoredMessage
+          existing.messages.push(restoredMessage)
         }
-        stream.streamingMessage = restoredMessage
 
-        // Minimize closes ChatTab; reopening mounts it again while userState still
-        // contains chat.streaming. Do not append another assistant bubble.
-        const lastMsg = stream.messages[stream.messages.length - 1]
-        if (lastMsg?.role === 'assistant' && lastMsg.id == null) {
-          stream.messages[stream.messages.length - 1] = restoredMessage
-        } else if (!stream.messages.includes(restoredMessage)) {
-          stream.messages.push(restoredMessage)
-        }
-        chatStore._syncFromStream(savedStream.conv_id)
-
-        // Set current conversation to the streaming one
+        // Switch to this conversation
         if (currentConversationId.value !== savedStream.conv_id) {
           await chatStore.openConversation(savedStream.conv_id)
+        } else {
+          chatStore._syncFromStream(savedStream.conv_id)
         }
 
         showToast('Melanjutkan streaming yang terputus...', 'info')
       } else if (data.status === 'done' && data.message_id) {
-        // Backend finished - fetch the complete message
+        // Backend finished — fetch the complete message
         await chatStore.openConversation(savedStream.conv_id)
         userState.deleteKey('chat.streaming', null)
         showToast('Streaming selesai saat Anda refresh', 'success')
       } else {
-        // Clear stale streaming state
+        // Stream ended/cancelled — clear stale state
         userState.deleteKey('chat.streaming', null)
       }
     }

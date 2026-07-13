@@ -63,8 +63,7 @@ import { useToolsStore } from '../stores/tools.ts'
 import ToolWorkspace from './ToolWorkspace.vue'
 import WordAddonInstallModal from './WordAddonInstallModal.vue'
 
-defineEmits<{ openPanel: [panel: string] }>()
-
+const emit = defineEmits<{ openPanel: [panel: string] }>()
 const store = useToolsStore()
 const showWordAddonModal = ref(false)
 
@@ -85,5 +84,6 @@ function handleToolClick(tool) {
     return
   }
   store.setActiveTool(tool)
+  emit('openPanel', 'tool-workspace')
 }
 </script>

@@ -42,6 +42,42 @@ CFG = {
     "section_heading_upper": True,
 }
 
+
+def _set_table_width_full(table) -> None:
+    """Set table width to full page width for 2-column layouts."""
+    if CFG.get("columns", 1) <= 1:
+        return
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement("w:tblPr")
+        tbl.insert(0, tbl_pr)
+
+    tbl_w = tbl_pr.find(qn("w:tblW"))
+    if tbl_w is None:
+        tbl_w = OxmlElement("w:tblW")
+        tbl_pr.append(tbl_w)
+    # pct (percentage) = relative to page width, NOT absolute twips.
+    # 5000 = 100% page width. This makes Word treat the table as spanning
+    # full page width even in a multi-column section (prevents column-split).
+    tbl_w.set(qn("w:w"), "5000")
+    tbl_w.set(qn("w:type"), "pct")
+
+    # Center alignment
+    jc = tbl_pr.find(qn("w:jc"))
+    if jc is None:
+        jc = OxmlElement("w:jc")
+        tbl_pr.append(jc)
+    jc.set(qn("w:val"), "center")
+
+    # Fixed layout for consistent column widths
+    tbl_layout = tbl_pr.find(qn("w:tblLayout"))
+    if tbl_layout is None:
+        tbl_layout = OxmlElement("w:tblLayout")
+        tbl_pr.append(tbl_layout)
+    tbl_layout.set(qn("w:type"), "fixed")
+
+
 def _format_reference(item) -> str:
     """Format a reference dict into a citation string."""
     if isinstance(item, str):
@@ -779,6 +815,7 @@ def add_table_element(doc, tbl_data, tbl_counter):
     table = doc.add_table(rows=n_rows, cols=n_cols)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(table, CFG["table_borders"])
+    _set_table_width_full(table)
 
     # Header row
     if headers:

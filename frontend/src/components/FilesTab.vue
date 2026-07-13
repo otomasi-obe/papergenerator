@@ -1,8 +1,8 @@
 <template>
- <div class="p-6"
-  @dragover.prevent="dragging = true"
-  @dragleave.self="dragging = false"
-  @drop.prevent="onDrop">
+  <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6"
+       @dragover.prevent="dragging = true"
+       @dragleave.self="dragging = false"
+       @drop.prevent="onDrop">
 
   <!-- Drag overlay -->
   <div v-if="dragging" class="fixed inset-0 z-50 bg-[#238f7f]/10 dark:bg-[#238f7f]/20 flex items-center justify-center pointer-events-none">

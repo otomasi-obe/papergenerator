@@ -164,6 +164,18 @@ def load_paper(paper_id: str):
 
     data = dict(paper.data or {})
 
+    # Reconcile section images so gambar items get actual file paths
+    try:
+        from tools.editor.utils import safe_paper_image_dir
+        from tools.paperfull.jobs import _reconcile_section_images
+        _image_dir = safe_paper_image_dir(paper_id)
+        if _image_dir and _image_dir.exists():
+            # _reconcile_section_images expects the paper root dir, not image subdir
+            _paper_root = _image_dir.parent
+            _reconcile_section_images(data, paper_id, _paper_root)
+    except Exception:
+        log.debug("[load_paper] image reconciliation skipped/failed", exc_info=True)
+
     # Clean LaTeX → Unicode in all string values for preview readability.
     # DOCX export has its own OMML pipeline; this is read-only view only.
     try:
