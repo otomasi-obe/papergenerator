@@ -1212,21 +1212,22 @@ def send_message(conv_id: str):
                         }
                     content = parsed["cleaned_text"] or content
 
+                # NOTE: Don't inject "**Editor:** ✓ X" into the assistant message.
+                # The model reads it back in the next turn and learns to emit
+                # prose "**Editor:** ✓ X" WITHOUT [APPLY_PAPER] tags → apply fails
+                # → DB never changes → infinite "updated" loop.
+                # Confirmation goes ONLY via the SSE `paper_applied` event
+                # (frontend highlight + toast), never into saved history.
                 status_lines = []
-                if out.get("paper_applied") and out["paper_applied"].get("operations"):
-                    ops = out["paper_applied"].get("operations") or []
-                    results = out["paper_applied"].get("results") or []
-                    errors = out["paper_applied"].get("errors") or []
-                    success = bool(out["paper_applied"].get("success") and ops and not errors)
-                    if success:
-                        status_lines.append("**Editor:** " + "; ".join(results))
-                    elif ops and errors:
-                        status_lines.append("**Editor - Failed:** " + "; ".join(errors))
-                    elif ops and results:
-                        status_lines.append("**Editor:** " + "; ".join(results))
-
-                if status_lines:
-                    content = (content or "").rstrip() + "\n\n" + "\n".join(status_lines)
+                # Optional debug-only; kept off by default to avoid poisoning.
+                # if out.get("paper_applied") and out["paper_applied"].get("operations"):
+                #     ops = out["paper_applied"].get("operations") or []
+                #     results = out["paper_applied"].get("results") or []
+                #     errors = out["paper_applied"].get("errors") or []
+                #     if ops and errors:
+                #         status_lines.append("**Editor - Failed:** " + "; ".join(errors))
+                # if status_lines:
+                #     content = (content or "").rstrip() + "\n\n" + "\n".join(status_lines)
                 if parsed["has_ask_user"] and parsed["ask_user"]:
                     out["ask_user"] = parsed["ask_user"]
                     if parsed["cleaned_text"]:
@@ -1492,7 +1493,7 @@ def send_message(conv_id: str):
                     "messages": messages_phase1,
                     "stream": True,
                     "max_tokens": 65536,
-                    "reasoning": {"effort": "high"},
+                    "reasoning": {"effort": "low"},
                 },
                 stream=True,
                 timeout=1800,
@@ -1618,15 +1619,47 @@ def send_message(conv_id: str):
                 except Exception as e:
                     log.warning("Fallback search tag generation failed: %s", e)
 
-            # ── If no search tags → single-phase: stream phase 1 directly ─
+            # ── If no search tags → single-phase: stream phase 1 directly ──
             if not search_tags:
                 # Signal composing phase, then stream text in chunks
                 assistant_content = phase1_text
                 yield _sse("composing_start", {})
 
-                # Stream text in small chunks (not all at once)
+                # ── Live [APPLY_PAPER] intercept ──
+                # Parse incrementally so edits apply + UI highlights AS the model
+                # emits the tag (not only after the stream closes, when the client
+                # may have already navigated away and missed the finalize event).
+                try:
+                    _live_parsed = parse_completion(phase1_text)
+                    if _live_parsed["has_operations"] and conv.paper_id and not _finalized:
+                        try:
+                            _live_result = apply_operations(
+                                conv.paper_id, _live_parsed["operations"], user_id=user_id
+                            )
+                            _fin_live = {
+                                "operations": _live_parsed["operations"],
+                                "results": _live_result.get("results", []),
+                                "errors": _live_result.get("errors", []),
+                                "success": _live_result.get("success", False),
+                                "changed_blocks": _live_result.get("changed_blocks", []),
+                            }
+                            yield _sse("paper_applied", _fin_live)
+                            log.info("Live paper_applied during stream conv=%s", conv_id)
+                        except Exception as _live_e:
+                            log.exception("Live apply_operations failed conv=%s", conv_id)
+                except Exception as _lp_e:
+                    log.warning("Live parse_completion failed conv=%s: %s", conv_id, _lp_e)
+
+                # Stream text in small chunks (not all at once).
+                # Stream the CLEANED text (tags stripped) so users never see raw
+                # [APPLY_PAPER]...[/APPLY_PAPER] blocks in the chat — the edit is
+                # confirmed only via the `paper_applied` SSE event (highlight+toast).
                 _chunk_size = 8
-                _text_to_stream = phase1_text
+                try:
+                    _stream_parsed = parse_completion(phase1_text)
+                    _text_to_stream = _stream_parsed.get("cleaned_text") or phase1_text
+                except Exception:
+                    _text_to_stream = phase1_text
                 # Persist thinking up-front so a refresh mid-replay can render
                 # the reasoning block immediately (it's already complete here).
                 if phase1_thinking:
@@ -2006,7 +2039,12 @@ def send_message(conv_id: str):
                         {"role": "user", "content": _combined_thinking[-4000:]},
                     ]
                     fb_resp, _ = route_chat_call(
-                        json={"messages": fallback_messages, "stream": False, "max_tokens": 65536},
+                        json={
+                            "messages": fallback_messages,
+                            "stream": False,
+                            "max_tokens": 65536,
+                            "reasoning": {"effort": "low"},
+                        },
                         stream=False,
                         timeout=1800,
                     )
@@ -2084,6 +2122,7 @@ def send_message(conv_id: str):
                     "operations": _fin["paper_applied"].get("operations"),
                     "results": _fin["paper_applied"].get("results"),
                     "errors": _fin["paper_applied"].get("errors"),
+                    "changed_blocks": _fin["paper_applied"].get("changed_blocks"),
                 })
                 yield _sse("replace_text", {"content": _fin["content"]})
 

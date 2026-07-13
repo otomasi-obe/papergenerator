@@ -462,7 +462,11 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
         {
             "success": bool,
             "results": [...],  # list of status messages per operation
-            "errors": [...]
+            "errors": [...],
+            "changed_blocks": {  # section_title -> list of block indices changed (for highlight)
+                "PENDAHULUAN": [0, 3, 5],
+                "abstract": [0]
+            }
         }
     """
     query = Paper.query.filter_by(id=paper_id)
@@ -476,6 +480,9 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
         paper.data = {}
 
     data = paper.data
+
+    # Track which blocks changed per section for highlight animation
+    changed_blocks: dict[str, set[int]] = {}
 
     # Normalize keyed sections (section1, section2) → "sections" array for operations
     normalize_paper_to_array(data)
@@ -496,6 +503,9 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
 
             elif action == "update_abstract":
                 data["abstract"] = content
+                # Track changed_blocks for highlight
+                changed_blocks.setdefault("abstract", set())
+                changed_blocks["abstract"].add(0)
                 results.append("✓ Abstract updated")
 
             elif action == "update_section":
@@ -554,6 +564,12 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                     elif isinstance(content, list):
                         sec["content"] = content
                     results.append(f"✓ Section '{target}' updated")
+                    # Track all text block indices as changed
+                    if isinstance(sec.get("content"), list):
+                        changed_blocks.setdefault(target, set())
+                        for _i, _b in enumerate(sec["content"]):
+                            if isinstance(_b, dict) and _b.get("id") == "text":
+                                changed_blocks[target].add(_i)
                 else:
                     errors.append(f"✗ Section '{target}' not found")
 
@@ -587,6 +603,9 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                         blocks.extend(content)
                         sec["content"] = blocks
                     results.append(f"✓ Section '{target}' appended")
+                    # Track the new block index
+                    changed_blocks.setdefault(target, set())
+                    changed_blocks[target].add(len(sec["content"]) - 1)
                 else:
                     errors.append(f"✗ Section '{target}' not found")
 
@@ -605,6 +624,9 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                             blocks = []
                         sec["content"] = content + blocks
                     results.append(f"✓ Section '{target}' prepended")
+                    # Track the prepended block (index 0)
+                    changed_blocks.setdefault(target, set())
+                    changed_blocks[target].add(0)
                 else:
                     errors.append(f"✗ Section '{target}' not found")
 
@@ -642,6 +664,12 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                                     replaced_count += 1
                         if replaced_count > 0:
                             results.append(f"✓ Text replaced in section '{target}' ({replaced_count} occurrences)")
+                            # Track changed block indices
+                            changed_blocks.setdefault(target, set())
+                            for _i, block in enumerate(blocks):
+                                if isinstance(block, dict) and block.get("id") == "text":
+                                    if find_text in block.get("text", ""):
+                                        changed_blocks[target].add(_i)
                         else:
                             errors.append(f"✗ Text not found in section '{target}'")
                     else:
@@ -767,6 +795,7 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
         "success": len(errors) == 0,
         "results": results,
         "errors": errors,
+        "changed_blocks": {k: sorted(v) for k, v in changed_blocks.items()},
     }
 
 
