@@ -34,12 +34,14 @@
             <div
               v-for="pkg in packages"
               :key="pkg.id"
-              @click="selectedPackageId = pkg.id"
+              @click="pkg.price !== 1000 && (selectedPackageId = pkg.id)"
               :class="[
-                'relative cursor-pointer rounded-xl border-2 p-3 sm:p-4 transition-all',
-                selectedPackageId === pkg.id
+                'relative rounded-xl border-2 p-3 sm:p-4 transition-all',
+                pkg.price === 1000
+                  ? 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 opacity-60 cursor-not-allowed'
+                  : selectedPackageId === pkg.id
                   ? 'border-[var(--accent)] bg-cream-50 dark:bg-ash-800 shadow-lg'
-                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]'
+                  : 'cursor-pointer border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]'
               ]"
             >
               <div
@@ -47,6 +49,12 @@
                 class="absolute -top-2 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-xs font-bold px-2 py-0.5 rounded-full"
               >
                 Populer
+              </div>
+              <div
+                v-if="pkg.price === 1000"
+                class="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+              >
+                Maintenance
               </div>
               <div class="text-center">
                 <div class="text-2xl mb-1">{{ pkg.icon }}</div>
@@ -89,7 +97,9 @@
               disabled
               :class="[
                 'w-full rounded-xl border-2 p-4 transition-all text-left opacity-60 cursor-not-allowed',
-                'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
+                method === 'qris'
+                  ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700'
+                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
               ]"
             >
               <div class="flex items-center gap-4">
@@ -97,11 +107,11 @@
                   <span class="text-white font-black text-sm tracking-tight">QRIS</span>
                 </div>
                 <div class="flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
+                  <div class="flex items-center gap-2">
                     <h4 class="font-bold text-ink-900 dark:text-ink-50">QRIS</h4>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Maintenance</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 rounded-full">Maintenance</span>
                   </div>
-                  <p class="text-xs text-ink-500 dark:text-ink-400">Layanan QRIS DOKU belum aktif</p>
+                  <p class="text-xs text-ink-500 dark:text-ink-400">Scan QR untuk bayar instan</p>
                 </div>
                 <div
                   :class="[
@@ -407,6 +417,22 @@ interface Package {
 }
 
 const packages: Package[] = [
+  {
+    id: 'testing',
+    name: 'Testing QRIS',
+    duration: 'Sekali Pakai',
+    price: 1000,
+    tokens: 10,
+    icon: '🧪',
+    popular: false,
+    benefits: [
+      'Paket khusus test QRIS DOKU',
+      'Harga Rp1.000',
+      '10 token testing'
+    ],
+    fullGenEstimate: 0,
+    slrEstimate: 0
+  },
   {
     id: 'daily',
     name: 'Harian',

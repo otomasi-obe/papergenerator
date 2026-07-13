@@ -207,11 +207,13 @@ async function generatePayment() {
   paymentData.value = null
 
   try {
-    const response = await api.post('/api/payment/ipaymu/generate', {
+    const endpoint = method.value === 'va' ? '/api/payment/doku/generate-va' : '/api/payment/doku/generate'
+    const payload: Record<string, unknown> = {
       amount: amount.value,
-      description: `Token ${packageName.value} - ${tokens.value} tokens`,
-      method: method.value
-    })
+      tokens: tokens.value
+    }
+    if (method.value === 'va') payload.channel = 'VIRTUAL_ACCOUNT_BRI'
+    const response = await api.post(endpoint, payload)
     paymentData.value = response.data
     if (response.data.expires_at) {
       startCountdown(new Date(response.data.expires_at))

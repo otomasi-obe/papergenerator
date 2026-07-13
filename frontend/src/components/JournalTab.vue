@@ -1,6 +1,14 @@
 <template>
   <div class="max-w-3xl">
     <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6">
+      <button
+        @click="backToTools"
+        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
+        title="Back to Tools"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Tools
+      </button>
       <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Journal</h2>
       <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
         Pilih jurnal/template tujuan untuk export DOCX. Gunakan kotak pencarian untuk menyaring.
@@ -158,8 +166,12 @@
 // @ts-nocheck
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePaperStore } from '../stores/paper'
+import { useToolsStore } from '../stores/tools'
+import { useUiStore } from '../stores/ui'
 
 const store = usePaperStore()
+const toolsStore = useToolsStore()
+const uiStore = useUiStore()
 const search = ref<string>('')
 const open = ref<boolean>(false)
 const wrapRef = ref<HTMLElement | null>(null)
@@ -170,6 +182,12 @@ const mdpiSearch = ref<string>('')
 const mdpiOpen = ref<boolean>(false)
 const mdpiWrapRef = ref<HTMLElement | null>(null)
 const mdpiHighlightedIndex = ref<number>(-1)
+
+function backToTools(): void {
+  toolsStore.clearActiveTool()
+  uiStore.setToolsOpen(store.currentPaperId || '', true)
+  uiStore.setRightPanel(store.currentPaperId || '', '')
+}
 
 const isMDPI = computed<boolean>(() => {
   const j = store.paper.journal || ''

@@ -182,14 +182,13 @@ async function generateQRIS() {
   error.value = null
   
   try {
-    // Use api instance instead of raw fetch (includes withCredentials)
-    const response = await api.post('/api/payment/qris/generate', {
+    const response = await api.post('/api/payment/doku/generate', {
       amount: form.value.amount,
-      description: form.value.description || undefined
+      payment_method: 'qris'
     })
 
     qrisData.value = response.data
-    startCountdown(new Date(response.data.expired_at))
+    startCountdown(new Date(response.data.expires_at))
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Failed to generate QRIS'
   } finally {

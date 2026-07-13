@@ -317,7 +317,7 @@ html.dark .floating-chat-btn:active { transform: scale(0.95); }
 
 .floating-chat-panel.maximized {
   width: 720px;
-  height: calc(100vh - 32px);
+  height: calc(100vh - 96px);
 }
 
 /* ── Header with gradient ── */

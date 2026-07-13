@@ -3,11 +3,20 @@
     <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6 space-y-5">
       <!-- Header -->
       <div class="flex items-start justify-between gap-3 flex-wrap">
-              <div class="min-w-0">
-                <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2">
-                  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 8v8"/></svg>
-                  Literatur
-                </h2>
+        <div class="min-w-0">
+          <!-- Back to Tools button (above title) -->
+          <button
+            @click="backToTools"
+            class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 shrink-0 mb-3"
+            title="Back to Tools"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Tools
+          </button>
+          <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2">
+            <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 8v8"/></svg>
+            Literatur
+          </h2>
           <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
             Tabel referensi paper. Klik baris untuk check/uncheck. Hasil SLR otomatis tersimpan di sini.
           </p>
@@ -472,6 +481,7 @@ import { storeToRefs } from 'pinia'
 import { usePaperStore } from '../stores/paper'
 import { useLiteratureStore } from '../stores/literature'
 import { useUiStore } from '../stores/ui'
+import { useToolsStore } from '../stores/tools'
 import api from '../api/index'
 import AppDialog from './AppDialog.vue'
 import SLRProgressCard from './SLRProgressCard.vue'
@@ -552,6 +562,7 @@ interface FilterState {
 const store = usePaperStore()
 const litStore = useLiteratureStore()
 const uiStore = useUiStore()
+const toolsStore = useToolsStore()
 const { currentPaperId } = storeToRefs(store)
 
 const items = ref<LiteratureItem[]>([])
@@ -643,6 +654,12 @@ const duplicateCount = computed(() => duplicateIds.value.size)
 
 const reviewingId = ref<number | null>(null)
 const reviewBusy = ref(false)
+
+function backToTools(): void {
+  toolsStore.clearActiveTool()
+  uiStore.setToolsOpen(currentPaperId.value || '', true)
+  uiStore.setRightPanel(currentPaperId.value || '', '')
+}
 
 const paperTitle = computed<string>(() => store.paper?.title || '')
 

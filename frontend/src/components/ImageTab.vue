@@ -2,13 +2,16 @@
  <div class="p-6">
  <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
  <div>
- <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2">
- <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3-3.086a1 1 0 0 0-1.414 0L9 18"/></svg>
- Images
- </h2>
- <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">
- Generate gambar dengan AI, upload gambar, dan kelola semua gambar paper di satu tempat.
- </p>
+   <button
+     @click="backToTools"
+     class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
+     title="Back to Tools"
+   >
+     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+     Tools
+   </button>
+   <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2"><svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3-3.086a1 1 0 0 0-1.414 0L9 18"/></svg>Images</h2>
+   <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">Generate gambar dengan AI, upload gambar, dan kelola semua gambar paper di satu tempat.</p>
  </div>
  <div class="flex items-center gap-2">
  <!-- Upload button -->
@@ -136,6 +139,8 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import { useImageGenStore } from '../stores/imageGen'
 import { useUserStateStore } from '../stores/userState'
+import { useToolsStore } from '../stores/tools'
+import { useUiStore } from '../stores/ui'
 import api from '../api/index'
 import AppDialog from './AppDialog.vue'
 
@@ -150,6 +155,14 @@ interface ImageItem {
 const store = usePaperStore()
 const imageGen = useImageGenStore()
 const userState = useUserStateStore()
+const toolsStore = useToolsStore()
+const uiStore = useUiStore()
+
+function backToTools(): void {
+ toolsStore.clearActiveTool()
+ uiStore.setToolsOpen(store.currentPaperId || '', true)
+ uiStore.setRightPanel(store.currentPaperId || '', '')
+}
 
 const images = ref<ImageItem[]>([])
 const loading = ref(false)

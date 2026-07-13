@@ -15,6 +15,14 @@
 
  <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
  <div>
+ <button
+ @click="backToTools"
+ class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
+ title="Back to Tools"
+ >
+ <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+ Tools
+ </button>
  <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Files</h2>
  <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">PDF / DOCX / DOC / TXT / MD / XLSX / XLS / CSV / PPTX — tanpa batasan ukuran file. Bisa upload banyak file sekaligus. Drag & drop dari desktop.</p>
  </div>
@@ -159,6 +167,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
+import { useToolsStore } from '../stores/tools'
+import { useUiStore } from '../stores/ui'
 import api from '../api/index'
 import AppDialog from './AppDialog.vue'
 
@@ -175,6 +185,14 @@ interface FileItem {
 }
 
 const store = usePaperStore()
+const toolsStore = useToolsStore()
+const uiStore = useUiStore()
+
+function backToTools(): void {
+ toolsStore.clearActiveTool()
+ uiStore.setToolsOpen(store.currentPaperId || '', true)
+ uiStore.setRightPanel(store.currentPaperId || '', '')
+}
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1024 // 1GB per file (unrestricted)
 
