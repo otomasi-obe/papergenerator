@@ -6,9 +6,11 @@
 .hypothesis/
 .kilo/
 tools_repo/
+.hermes/
 
-# Backend env files
-backend/.env
+# Local dev junk
+backend/cookies.txt
+frontend/src/components/*.backup
 backend/.env.*
 !backend/.env.example
 
