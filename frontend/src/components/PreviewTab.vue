@@ -272,7 +272,6 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const store = usePaperStore()
-const uiStore = useUiStore()
 const journalLabel = computed(() => store.paper.journal || 'IEEE')
 
 // Journal search dropdown

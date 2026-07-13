@@ -1508,5 +1508,20 @@ export const usePaperStore = defineStore('paper', () => {
       api.post(`${API_BASE}/upload-pdfs`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       }),
+
+    async getSignedImageUrl(filename: string): Promise<string> {
+      if (!currentPaperId.value) return ''
+      try {
+        const res = await api.post(`${API_BASE}/papers/${currentPaperId.value}/sign`, {
+          scope: 'image',
+          resource_id: filename,
+          ttl_seconds: 3600
+        })
+        return res.data.url
+      } catch {
+        // Fallback to unsigned URL (may fail on cross-origin)
+        return `/api/images/${currentPaperId.value}/${encodeURIComponent(filename)}`
+      }
+    },
   }
 })
