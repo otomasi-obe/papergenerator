@@ -254,8 +254,12 @@ const generating: Record<string, boolean> = reactive({})
 const galleryOpen: Record<string, boolean> = reactive({})
 const failedImages = ref(new Set<string>())
 
+// Cache for signed image URLs to avoid repeated API calls
+const signedUrlCache = ref(new Map<string, string>())
+
 watch(() => store.currentPaperId, () => {
   failedImages.value = new Set()
+  signedUrlCache.value.clear()
 })
 
 const insertOpen = ref(-1)
@@ -413,6 +417,25 @@ function thumbUrl(filename: string, item?: any): string {
   const pid = store.currentPaperId
   if (!pid || pid === 'null' || pid === 'undefined' || !filename) return ''
   const base = resolvedImageFilename(filename, item)
+  
+  // Check cache first
+  const cached = signedUrlCache.value.get(base)
+  if (cached) return cached
+  
+  // Try to get signed URL async (fire-and-forget with fallback)
+  if (pid) {
+    store.getSignedImageUrl(base).then(url => {
+      if (url) {
+        signedUrlCache.value.set(base, url)
+        // Force re-render by triggering a small change
+        store.$patch({})
+      }
+    }).catch(() => {
+      // Fallback will be used
+    })
+  }
+  
+  // Return unsigned URL as immediate fallback (may fail on cross-origin)
   return `/api/images/${pid}/${encodeURIComponent(base)}`
 }
 
