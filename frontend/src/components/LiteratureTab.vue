@@ -128,6 +128,19 @@
               />
               <button v-if="slrYearFrom" @click="slrYearFrom = null" class="ml-2 text-[10px] text-red-500 hover:underline">Reset</button>
             </div>
+            <!-- Year-to input -->
+            <div class="mt-2">
+              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun akhir:</div>
+              <input
+                v-model.number="slrYearTo"
+                type="number"
+                :min="1900"
+                :max="new Date().getFullYear() + 1"
+                placeholder="Contoh: 2024"
+                class="w-28 px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+              />
+              <button v-if="slrYearTo" @click="slrYearTo = null" class="ml-2 text-[10px] text-red-500 hover:underline">Reset</button>
+            </div>
             <!-- Page size selector -->
             <div>
               <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tampilkan:</div>
@@ -592,6 +605,7 @@ const availableSources = ref([
 ])
 const slrSources = ref<string[]>([])
 const slrYearFrom = ref<number | null>(null)
+const slrYearTo = ref<number | null>(null)
 
 const manualForm = ref<ManualForm>({
   title: '', authors_str: '', year: null,
@@ -687,7 +701,8 @@ const expandedAbstract = ref<Set<number>>(new Set())
 function isLongText(text: string | undefined): boolean {
   if (!text) return false
   const lines = text.split('\n')
-  return lines.length > 5 || (lines.length > 4 && text.length > 220)
+  // Expand toggle if many lines OR very long single line
+  return lines.length > 4 || text.length > 220
 }
 
 function toggleExpand(field: 'abstract', id: number): void {
@@ -1161,9 +1176,9 @@ async function runSLR(): Promise<void> {
     const res = await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
       query: q,
       top_k: slrTopK.value,
-      ai_summarize: true,
-      sources: slrSources.value.length > 0 && slrSources.value.length < availableSources.value.length ? slrSources.value : null,
+      sources: slrSources.value.length ? slrSources.value : undefined,
       year_from: slrYearFrom.value || null,
+      year_to: slrYearTo.value || null,
     })
     // Connect SSE for real-time streaming
     const jobId = res.data?.job_id || res.data?.id

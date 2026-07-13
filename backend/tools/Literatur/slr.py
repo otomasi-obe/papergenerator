@@ -3692,6 +3692,7 @@ def slr_start(paper_id):
     top_k = int(data.get("top_k", data.get("top_n", 10)))
     sources = data.get("sources") or None
     year_from = data.get("year_from")
+    year_to = data.get("year_to")
     ai_summarize = bool(data.get("ai_summarize", False))
     per_source = _safe_per_source(data.get("per_source"))
 
@@ -3700,12 +3701,16 @@ def slr_start(paper_id):
     if top_k > 200:
         top_k = 200
 
+    # Validate year range
+    if year_from and year_to and year_to < year_from:
+        return _err("year_to must be >= year_from", "YEAR_RANGE_INVALID", 400)
+
     log.info("slr.orch.create user=%d paper=%s query=%s top_k=%d", user_id, paper_id, query[:60], top_k)
 
     job_id = _orchestrator.start_job(
         paper_id=paper_id, keyword=query, top_n=top_k,
         user_id=user_id, sources=sources,
-        year_from=year_from, ai_summarize=ai_summarize,
+        year_from=year_from, year_to=year_to, ai_summarize=ai_summarize,
         per_source=per_source,
     )
 

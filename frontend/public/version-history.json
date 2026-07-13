@@ -1,12 +1,22 @@
 {
-  "version": "1.4.3",
-  "released": "2026-07-13",
-  "title": "Update v1.4.3 — Restore UI State (back button + journal search + language selector)",
+  "version": "1.4.4",
+  "released": "2026-07-14",
+  "title": "Update v1.4.4 — SLR Literature Bug Fixes",
   "history": [
+    {
+      "version": "1.4.4",
+      "released": "2026-07-14",
+      "title": "SLR Literature Bug Fixes",
+      "changes": [
+        {"type": "fix", "text": "SLR: hapus ai_summarize=true dari payload frontend — field tidak dipakai backend (summarize programmatic-only), menghilangkan noise di request log"},
+        {"type": "fix", "text": "SLR: isLongText threshold expand abstract disederhanakan (lines>5 || (lines>4 && len>220) → lines>4 || len>220) — abstract panjang kini konsisten bisa di-expand/collapse"},
+        {"type": "fix", "text": "SLR: tambah filter tahun akhir (year_to) — input di Setting panel + diteruskan ke backend endpoint + validasi year_from ≤ year_to"}
+      ]
+    },
     {
       "version": "1.4.3",
       "released": "2026-07-13",
-      "title": "Restore UI State after Broken Revert",
+      "title": "Update v1.4.3 — Restore UI State (back button + journal search + language selector)",
       "changes": [
         {"type": "restore", "text": "Revert commit 1453592 yang menghapus fitur: back button di semua Tools tab, advanced journal search dropdown, JSON filter, language selector di PaperfullTab"},
         {"type": "fix", "text": "PreviewTab: hapus const uiStore = useUiStore() yang tidak dipakai (source 670b22b broken, @ts-nocheck nutupi) — runtime error 'useUiStore is not defined' resolved"},
