@@ -33,6 +33,7 @@ try:
     _HAS_HTTPX = True
 except ImportError:
     _HAS_HTTPX = False
+    httpx = None  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -151,6 +152,7 @@ def _call_httpx(prompt: str, model: str, timeout_s: int) -> bytes:
     if not _HAS_HTTPX:
         # Fallback to curl
         return _call_ag(prompt, model, timeout_s)  # reuse curl logic
+    assert httpx is not None
     url = f"{API_URL}/v1/images/generations"
     payload = {
         "model": model,
@@ -186,9 +188,34 @@ def _call_httpx(prompt: str, model: str, timeout_s: int) -> bytes:
 
 
 def _call_provider(provider: str, prompt: str, model: str, timeout_s: int) -> bytes:
-    if provider == "ag":
-        return _call_ag(prompt, model, timeout_s)
-    return _call_httpx(prompt, model, timeout_s)
+    """Try `model`, then rotate through remaining models in the same provider.
+
+    Intra-provider failover: if the round-robin-picked model errors (429/502/timeout),
+    the next configured model for that provider is attempted before the provider is
+    marked failed. The outer concurrent first-wins race still handles inter-provider
+    failover.
+    """
+    models = [m for m in PROVIDER_MODELS.get(provider, []) if m]
+    if not models:
+        raise RuntimeError(f"No models configured for provider {provider}")
+    try:
+        start = models.index(model)
+    except ValueError:
+        start = 0
+    ordered = models[start:] + models[:start]
+    last_err: Optional[Exception] = None
+    for m in ordered:
+        try:
+            if provider == "ag":
+                return _call_ag(prompt, m, timeout_s)
+            return _call_httpx(prompt, m, timeout_s)
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            log.warning("image_api_v2: %s/%s failed (intra-provider retry): %s",
+                        provider, m, exc)
+    raise RuntimeError(
+        f"All models for provider {provider} failed. Last error: {last_err}"
+    ) from last_err
 
 
 # ── Public API ──────────────────────────────────────────────────────────
