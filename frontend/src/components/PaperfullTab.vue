@@ -1,18 +1,8 @@
 <template>
-  <div class="space-y-4 pb-24">
-    <div>
-      <button
-        @click="backToTools"
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
-        title="Back to Tools"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Tools
-      </button>
-      <div class="flex items-center gap-2">
-        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
-      </div>
+  <div class="space-y-4">
+    <div class="flex items-center gap-2">
+      <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50">Generate Full</h2>
     </div>
 
     <p class="text-sm text-ink-600 dark:text-ink-300">
@@ -384,7 +374,7 @@
 
     <!-- Content output box (separate from reasoning) -->
     <div
-      v-if="contentText && !generating"
+      v-if="contentText"
       class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
     >
       <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-emerald-50 to-cream-50 dark:from-emerald-900/20 dark:to-ash-800">
@@ -546,21 +536,10 @@ import { usePaperJobsStore } from '../stores/paperJobs'
 import { useImageGenStore } from '../stores/imageGen'
 import api from '../api'
 import AppDialog from './AppDialog.vue'
-import { useToolsStore } from '../stores/tools'
-import { useUiStore } from '../stores/ui'
 
 const store = usePaperStore()
 const auth = useAuthStore()
 const jobsStore = usePaperJobsStore()
-const toolsStore = useToolsStore()
-const uiStore = useUiStore()
-
-function backToTools(): void {
-  toolsStore.clearActiveTool()
-  uiStore.setToolsOpen(store.currentPaperId || '', true)
-  uiStore.setRightPanel(store.currentPaperId || '', '')
-}
-
 const topic = ref('')
 const generating = ref(false)
 const generatingTopic = ref('')
@@ -588,20 +567,9 @@ const { sanitizeHtml } = useSanitize()
 
 const renderedContentHtml = computed(() => {
   if (!contentText.value) return ''
+  // During streaming, render raw text (no KaTeX) to avoid O(n²) re-render per token
+  // KaTeX applied on completion via finishGeneration()
   let text = contentText.value
-  
-  // Filter out raw JSON paper structure (backend may stream it for debug/recovery)
-  // Match ```json...``` or {...} blocks that look like full paper structure
-  text = text.replace(/```json\s*\{[\s\S]*?"sections"[\s\S]*?\}\s*```/gi, '[Paper JSON structure hidden]')
-  
-  // Also filter standalone JSON objects that span multiple lines with "sections" key
-  text = text.replace(/^\s*\{[\s\S]*?"sections"[\s\S]*?\}\s*$/gm, '[Paper structure received]')
-  
-  // Filter individual streamed section objects (tables, formulas, etc.)
-  // Pattern: {"id": "...", "TableNumber": "..."} or {"id": "...", "latex": "..."} etc.
-  text = text.replace(/```json\s*\{[\s\S]*?"(?:TableNumber|FormulaNumber|Headers|Rows|latex)"[\s\S]*?\}\s*```/gi, '[Section data hidden]')
-  text = text.replace(/^\s*\{[\s\S]*?"(?:TableNumber|FormulaNumber|Headers|Rows|latex)"[\s\S]*?\}\s*$/gm, '[Section data received]')
-  
   // Always use rich text render (handles LaTeX, escapes HTML), then sanitize via DOMPurify
   return sanitizeHtml(renderRichText(text))
 })

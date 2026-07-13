@@ -1,35 +1,29 @@
 <template>
-  <div class="space-y-4">
-    <!-- Tool header -->
-    <div class="mb-4">
-      <button
-        class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-navy-700 dark:text-cream-200 bg-cream-100 dark:bg-ash-700 hover:bg-cream-200 dark:hover:bg-ash-600 border border-cream-300 dark:border-ash-600 transition active:scale-95 mb-3"
-        @click="store.clearActiveTool()"
-        title="Back to Tools"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Tools
-      </button>
-      <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">
-        <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="store.activeTool?.iconSvg"></svg>
-        {{ store.activeTool?.title }}
-      </h2>
-      <p class="text-sm text-ink-500 dark:text-ink-300 mt-1 max-w-[52ch] leading-relaxed">
-        {{ store.activeTool?.desc }}
-      </p>
-      <!-- Clear button -->
-      <button
-        v-if="store.inputText || store.outputText || store.toolResult"
-        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 transition active:scale-95 shrink-0 mt-2"
-        @click="store.clearToolData()"
-        title="Clear input & output"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        Clear
-              </button>
-            </div>
+ <div class="space-y-4">
+ <!-- Tool header -->
+ <div class="mb-4 flex items-start justify-between">
+ <div>
+ <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">
+   <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="store.activeTool?.iconSvg"></svg>
+   {{ store.activeTool?.title }}
+ </h2>
+ <p class="text-sm text-ink-500 dark:text-ink-300 mt-1 max-w-[52ch] leading-relaxed">
+ {{ store.activeTool?.desc }}
+ </p>
+ </div>
+ <!-- Clear button -->
+ <button
+ v-if="store.inputText || store.outputText || store.toolResult"
+ class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 transition active:scale-95 shrink-0 mt-1"
+ @click="store.clearToolData()"
+ title="Clear input & output"
+ >
+ <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+ Clear
+ </button>
+ </div>
 
-        <!-- Tool-specific controls -->
+ <!-- Tool-specific controls -->
  <div class="flex flex-wrap gap-2.5 items-center">
  <!-- Paraphrase options -->
  <div v-if="store.activeTool?.id === 'paraphrase'" class="inline-flex gap-1 bg-cream-100 dark:bg-ash-700 rounded-md p-0.5">
