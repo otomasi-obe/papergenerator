@@ -290,14 +290,11 @@ def run_translator(data: dict) -> Generator[dict, None, None]:
     if compare_mode or engine == "compare":
         compare_list = data.get("compare_engines") or ["google", "deepl", "mymemory", "lingvanex"]
         for chunk in _compare_engines(text, source_detected, option, compare_list):
+            if "text" in chunk and placeholder_map:
+                chunk["text"] = _restore_glossary(chunk["text"], placeholder_map)
             yield chunk
             if "error" in chunk:
                 return
-        # Restore glossary
-        if placeholder_map:
-            # We need to restore glossary in the last text chunk - but since compare yields text directly,
-            # we handle it by noting glossary was applied
-            pass
         yield {"engine_used": "compare", "source_detected": source_detected}
         return
 
@@ -312,6 +309,8 @@ def run_translator(data: dict) -> Generator[dict, None, None]:
         user_prompt = f"Translate the following text from {source_detected} to {option}:\n\n{text}"
 
         for chunk in _stream_ai(system, user_prompt):
+            if "text" in chunk and placeholder_map:
+                chunk["text"] = _restore_glossary(chunk["text"], placeholder_map)
             yield chunk
             if "error" in chunk:
                 return

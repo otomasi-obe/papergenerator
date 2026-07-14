@@ -1334,6 +1334,10 @@ export const useChatStore = defineStore('chat', () => {
           }))
         }
         if (data?.success !== false && paperStore.currentPaperId) {
+          // Highlight FIRST, then reload paper so highlight survives reload
+          if (data?.changed_blocks && typeof data.changed_blocks === 'object') {
+            paperStore.setHighlightedBlocks(data.changed_blocks)
+          }
           await paperStore.loadPaperFromDb(paperStore.currentPaperId)
         }
       } catch { /* defensive: never break the SSE loop */ }

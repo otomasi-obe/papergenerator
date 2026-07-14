@@ -1,19 +1,21 @@
-"""
-Unified round-robin image generation via TopRouter API.
+""""
+Unified round-robin image generation via TopRouter API + OpenAI Codex.
 
-Priority: ag → cloudflare → alibaba
-Round-robin across provider models with 10s timeout auto-switch.
-Uses subprocess/curl for AG (large base64 responses), httpx for others.
+Priority (default): ag → codex
+Round-robin across provider models with configurable timeout auto-switch.
+Uses subprocess/curl for AG (large base64 responses), httpx for Codex/others.
+
+Providers are controlled by IMAGE_GEN_PROVIDERS (comma-separated).
+Supported providers: ag, codex  (cloudflare/alibaba retained for backwards-compat).
 
 Env:
-  IMAGE_GEN_API_KEY           — required Bearer token
+  IMAGE_GEN_API_KEY           — required Bearer token (shared by ag/codex toprouter)
   IMAGE_GEN_API_URL           — upstream base URL (default https://ai.otomasi.app)
-  IMAGE_GEN_PROVIDERS         — comma-separated (default ag,cloudflare,alibaba)
+  IMAGE_GEN_PROVIDERS         — comma-separated (default ag,codex)
   IMAGE_GEN_AG_MODELS         — comma-separated AG models
-  IMAGE_GEN_CF_MODELS         — comma-separated Cloudflare models
-  IMAGE_GEN_ALIBABA_MODELS    — comma-separated Alibaba models
-  IMAGE_GEN_TIMEOUT           — seconds per request (default 10)
-"""
+  IMAGE_GEN_CODEX_MODELS      — comma-separated Codex/OpenAI models (default gpt-image-1)
+  IMAGE_GEN_TIMEOUT           — seconds per request (default 30)
+"""""
 
 from __future__ import annotations
 
@@ -41,11 +43,16 @@ log = logging.getLogger(__name__)
 API_URL = os.environ.get("IMAGE_GEN_API_URL") or os.environ.get("ALIBABA_IMAGE_TOPROUTER_URL", "https://ai.otomasi.app")
 API_URL = API_URL.rstrip("/")
 API_KEY = os.environ.get("IMAGE_GEN_API_KEY") or os.environ.get("ALIBABA_IMAGE_TOPROUTER_KEY", "")
-PROVIDERS_ENV = os.environ.get("IMAGE_GEN_PROVIDERS", "ag,cloudflare,alibaba")
-TIMEOUT_S = int(os.environ.get("IMAGE_GEN_TIMEOUT", "10"))
+# User requirement: generate image with AG and Codex only.
+PROVIDERS_ENV = os.environ.get("IMAGE_GEN_PROVIDERS", "ag,codex")
+TIMEOUT_S = int(os.environ.get("IMAGE_GEN_TIMEOUT", "30"))
 
 AG_MODELS = [m.strip() for m in os.environ.get(
     "IMAGE_GEN_AG_MODELS", "ag/gemini-3.1-flash-image"
+).split(",") if m.strip()]
+
+CODEX_MODELS = [m.strip() for m in os.environ.get(
+    "IMAGE_GEN_CODEX_MODELS", "gpt-image-1"
 ).split(",") if m.strip()]
 
 CF_MODELS = [m.strip() for m in os.environ.get(
@@ -58,6 +65,7 @@ ALIBABA_MODELS = [m.strip() for m in os.environ.get(
 
 PROVIDER_MODELS = {
     "ag": AG_MODELS,
+    "codex": CODEX_MODELS,
     "cloudflare": CF_MODELS,
     "alibaba": ALIBABA_MODELS,
 }
@@ -116,6 +124,8 @@ def _available(provider: str) -> bool:
 
 def _call_ag(prompt: str, model: str, timeout_s: int) -> bytes:
     """AG Gemini returns base64 JSON — use subprocess curl for reliability."""
+    if not API_KEY:
+        raise RuntimeError("IMAGE_GEN_API_KEY is not set (required for AG provider)")
     url = f"{API_URL}/v1/images/generations"
     payload = json.dumps({
         "model": model,
@@ -145,6 +155,42 @@ def _call_ag(prompt: str, model: str, timeout_s: int) -> bytes:
     if not b64:
         raise RuntimeError("No b64_json in response")
     return base64.b64decode(b64)
+
+
+def _call_codex(prompt: str, model: str, timeout_s: int) -> bytes:
+    """OpenAI Codex / gpt-image-1 via httpx (OpenAI-compatible images API)."""
+    if not _HAS_HTTPX:
+        raise RuntimeError("httpx not installed (required for codex provider)")
+    assert httpx is not None
+    url = f"{API_URL}/v1/images/generations"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024",
+        "quality": "auto",
+    }
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    }
+    with httpx.Client(timeout=timeout_s) as client:
+        resp = client.post(url, headers=headers, json=payload)
+        if resp.status_code != 200:
+            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+        data = resp.json()
+        images = data.get("data") or []
+        if not images:
+            raise RuntimeError("No image data")
+        b64 = images[0].get("b64_json")
+        if b64:
+            return base64.b64decode(b64)
+        image_url = images[0].get("url")
+        if image_url:
+            img_resp = client.get(image_url)
+            img_resp.raise_for_status()
+            return img_resp.content
+        raise RuntimeError("No image bytes")
 
 
 def _call_httpx(prompt: str, model: str, timeout_s: int) -> bytes:
@@ -208,6 +254,8 @@ def _call_provider(provider: str, prompt: str, model: str, timeout_s: int) -> by
         try:
             if provider == "ag":
                 return _call_ag(prompt, m, timeout_s)
+            if provider == "codex":
+                return _call_codex(prompt, m, timeout_s)
             return _call_httpx(prompt, m, timeout_s)
         except Exception as exc:  # noqa: BLE001
             last_err = exc

@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -8,6 +9,11 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+  test: {
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['e2e/**', 'node_modules/**'],
+    passWithNoTests: true
   },
   server: {
     port: 8000,
@@ -44,7 +50,7 @@ export default defineConfig({
           'katex': ['katex']
         },
         assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.')
+          const info = (assetInfo.name ?? '').split('.')
           const ext = info[info.length - 1]
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
             return `assets/images/[name]-[hash][extname]`

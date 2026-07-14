@@ -153,23 +153,52 @@
  </div>
 
  <!-- Grammar options -->
- <div v-if="store.activeTool?.id === 'grammar'" class="inline-flex gap-1 bg-cream-100 dark:bg-ash-700 rounded-md p-0.5">
- <button
- v-for="opt in ['Standard','Grammar','Spelling','Style','Clarity','Academic','Indonesian']"
- :key="opt"
- :class="[
- 'text-xs px-3 py-1.5 rounded font-medium transition',
- store.selectedOption === opt
- ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
- : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
- ]"
- @click="store.selectedOption = opt"
- >
- {{ opt }}
- </button>
- </div>
+   <div v-if="store.activeTool?.id === 'grammar'" class="inline-flex gap-1 bg-cream-100 dark:bg-ash-700 rounded-md p-0.5">
+     <button
+       v-for="opt in ['Standard','Grammar','Spelling','Style','Clarity','Academic','Indonesian']"
+       :key="opt"
+       :class="[
+       'text-xs px-3 py-1.5 rounded font-medium transition',
+       store.selectedOption === opt
+       ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
+       : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+     ]"
+       @click="store.selectedOption = opt"
+     >
+       {{ opt }}
+     </button>
+   </div>
 
- <!-- Run button -->
+   <!-- Rubric options -->
+   <div v-if="store.activeTool?.id === 'rubric'" class="flex flex-wrap gap-2 items-center">
+     <div class="inline-flex gap-1 bg-cream-100 dark:bg-ash-700 rounded-md p-0.5">
+       <button
+         v-for="opt in ['4 Level (Kurang-Cukup-Baik-Sangat Baik)', '5 Level (Sangat Kurang-Kurang-Cukup-Baik-Sangat Baik)']"
+         :key="opt"
+         :class="[
+         'text-xs px-3 py-1.5 rounded font-medium transition',
+         store.selectedOption === opt
+         ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
+         : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+       ]"
+         @click="store.selectedOption = opt"
+       >
+         {{ opt }}
+       </button>
+     </div>
+     <div class="inline-flex items-center gap-1.5 text-xs text-ink-600 dark:text-ink-300">
+       <label class="flex items-center gap-1.5 cursor-pointer">
+         <input type="checkbox" v-model="rubricOptions.include_grading_notes" class="rounded border-cream-300 dark:border-ash-600 text-navy-600 focus:ring-navy-500" />
+         Catatan pengorek
+       </label>
+       <label class="flex items-center gap-1.5 cursor-pointer">
+         <input type="checkbox" v-model="rubricOptions.auto_weight" class="rounded border-cream-300 dark:border-ash-600 text-navy-600 focus:ring-navy-500" />
+         Bobot otomatis
+       </label>
+     </div>
+   </div>
+
+   <!-- Run button -->
  <button
  class="px-4 py-2 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-95 "
  :disabled="store.isProcessing || !store.inputText.trim()"
@@ -396,10 +425,84 @@
  </div>
 
  <!-- Plain output (paraphrase, translate, humanizer, summarize) -->
- <div v-else-if="store.outputText" class="whitespace-pre-wrap">{{ store.outputText }}</div>
+   <div v-else-if="store.outputText && store.activeTool?.id !== 'rubric'" class="whitespace-pre-wrap">{{ store.outputText }}</div>
 
- <!-- Fallback -->
- <span v-else-if="!store.isProcessing && store.toolResult" class="text-ink-500 dark:text-ink-300">Done — see the report above.</span>
+   <!-- Rubric output: structured table + JSON export -->
+   <div v-else-if="store.activeTool?.id === 'rubric' && store.toolResult" class="space-y-4">
+     <div class="flex items-center justify-between">
+       <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50">Rubrik Soal</h3>
+       <button
+         class="px-3 py-1.5 text-xs font-medium rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 transition active:scale-95"
+         @click="exportRubricJson"
+       >
+         Export JSON
+       </button>
+     </div>
+
+     <!-- Question summary -->
+     <div class="p-3 rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600">
+       <div class="text-xs text-ink-600 dark:text-ink-300 mb-1">Soal</div>
+       <div class="text-sm text-ink-900 dark:text-ink-50 whitespace-pre-wrap">{{ store.toolResult.question }}</div>
+     </div>
+
+     <!-- Rubric table -->
+     <div class="overflow-x-auto">
+       <table class="w-full text-sm border-collapse">
+         <thead>
+           <tr class="bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-300">
+             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Kriteria</th>
+             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Bobot (%)</th>
+             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Level</th>
+             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Skor</th>
+             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Deskripsi</th>
+             <th v-if="rubricOptions.include_grading_notes" class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Catatan Pengorek</th>
+           </tr>
+         </thead>
+         <tbody>
+           <tr v-for="(criterion, ci) in store.toolResult.criteria" :key="ci">
+             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 font-medium text-ink-900 dark:text-ink-50" :rowspan="criterion.levels.length">{{ criterion.name }}</td>
+             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center font-medium text-ink-900 dark:text-ink-50" :rowspan="criterion.levels.length">{{ criterion.weight }}%</td>
+             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-800 dark:text-ink-100">{{ criterion.levels[0].name }}</td>
+             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center text-ink-800 dark:text-ink-100">{{ criterion.levels[0].score }}</td>
+             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-700 dark:text-ink-200">{{ criterion.levels[0].description }}</td>
+             <td v-if="rubricOptions.include_grading_notes" class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-600 dark:text-ink-300 text-xs">{{ criterion.levels[0].grading_notes || '-' }}</td>
+             <tr v-for="(level, li) in criterion.levels.slice(1)" :key="li">
+               <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-800 dark:text-ink-100">{{ level.name }}</td>
+               <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center text-ink-800 dark:text-ink-100">{{ level.score }}</td>
+               <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-700 dark:text-ink-200">{{ level.description }}</td>
+               <td v-if="rubricOptions.include_grading_notes" class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-600 dark:text-ink-300 text-xs">{{ level.grading_notes || '-' }}</td>
+             </tr>
+           </tr>
+         </tbody>
+       </table>
+     </div>
+
+     <!-- Summary -->
+     <div class="p-3 rounded-lg bg-cream-50 dark:bg-ash-800 border border-cream-200 dark:border-ash-700">
+       <div class="text-xs font-semibold text-ink-700 dark:text-ink-200 mb-1">Ringkasan Bobot</div>
+       <div class="flex flex-wrap gap-4 text-sm">
+         <span v-for="(c, i) in store.toolResult.criteria" :key="i" class="px-2 py-1 rounded bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600">
+           {{ c.name }}: {{ c.weight }}%
+         </span>
+       </div>
+       <div class="mt-2 text-xs text-ink-600 dark:text-ink-300">
+         Total: {{ store.toolResult.criteria.reduce((sum: number, c: any) => sum + c.weight, 0) }}%
+       </div>
+     </div>
+
+     <!-- Bloom's Taxonomy tagging if present -->
+     <div v-if="store.toolResult.bloom" class="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+       <div class="text-xs font-semibold text-purple-900 dark:text-purple-200 mb-1">Taksonomi Bloom (C1-C6)</div>
+       <div class="flex flex-wrap gap-2 text-xs">
+         <span v-for="(b, i) in store.toolResult.bloom" :key="i" class="px-2 py-1 rounded bg-purple-100 dark:bg-purple-800/30 border border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-200">
+           {{ b }}
+         </span>
+       </div>
+     </div>
+   </div>
+
+   <!-- Fallback -->
+   <span v-else-if="!store.isProcessing && store.toolResult" class="text-ink-500 dark:text-ink-300">Done — see the report above.</span>
  </div>
  </div>
  </div>
@@ -407,12 +510,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onMounted } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, reactive } from 'vue'
 import { useToolsStore } from '../stores/tools.ts'
 import ToolGauge from './ToolGauge.vue'
 
 const store = useToolsStore()
 const inputTextarea = ref<HTMLTextAreaElement | null>(null)
+
+// Rubric options state
+const rubricOptions = reactive({
+  include_grading_notes: true,
+  auto_weight: true,
+})
 
 const wordCount = computed(() => {
  const text = store.inputText.trim()
@@ -421,15 +530,16 @@ const wordCount = computed(() => {
 })
 
 const processingLabel = computed(() => {
- const id = store.activeTool?.id
- if (id === 'detector') return 'Analyzing text…'
- if (id === 'plagiarism') return 'Scanning…'
- if (id === 'translate') return 'Translating…'
- if (id === 'summarize') return 'Summarizing…'
- if (id === 'grammar') return 'Checking grammar…'
- if (id === 'paraphrase') return 'Rewriting…'
- if (id === 'humanizer') return 'Humanizing…'
- return 'Processing…'
+  const id = store.activeTool?.id
+  if (id === 'detector') return 'Analyzing text…'
+  if (id === 'plagiarism') return 'Scanning…'
+  if (id === 'translate') return 'Translating…'
+  if (id === 'summarize') return 'Summarizing…'
+  if (id === 'grammar') return 'Checking grammar…'
+  if (id === 'paraphrase') return 'Rewriting…'
+  if (id === 'humanizer') return 'Humanizing…'
+  if (id === 'rubric') return 'Generating rubric…'
+  return 'Processing…'
 })
 
 function autoResizeTextarea() {
@@ -552,9 +662,22 @@ function sentenceClass(sent: { severity: string }) {
 }
 
 function engineBarColor(score: number) {
- if (score >= 70) return '#dc2626'
- if (score >= 50) return '#f59e0b'
- if (score >= 30) return '#eab308'
- return '#2f9d6e'
+  if (score >= 70) return '#dc2626'
+  if (score >= 50) return '#f59e0b'
+  if (score >= 30) return '#eab308'
+  return '#2f9d6e'
+}
+
+// ── Rubric export ────────────────────────────────────────────────────────────
+
+function exportRubricJson() {
+  if (!store.toolResult) return
+  const blob = new Blob([JSON.stringify(store.toolResult, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `rubrik-soal-${Date.now()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 </script>

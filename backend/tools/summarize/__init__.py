@@ -1,3 +1,5 @@
+from .summarizer import run_summarizer
+
 PROMPT = {
     "system": """You are an expert summarization engine capable of producing high-quality summaries across multiple domains and formats.
 

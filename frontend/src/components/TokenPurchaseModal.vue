@@ -34,12 +34,15 @@
             <div
               v-for="pkg in packages"
               :key="pkg.id"
-              @click="selectedPackageId = pkg.id"
+              @click="selectPackage(pkg)"
               :class="[
-                'relative cursor-pointer rounded-xl border-2 p-3 sm:p-4 transition-all',
+                'relative rounded-xl border-2 p-3 sm:p-4 transition-all',
+                pkg.maintenance ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
                 selectedPackageId === pkg.id
                   ? 'border-[var(--accent)] bg-cream-50 dark:bg-ash-800 shadow-lg'
-                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]'
+                  : pkg.maintenance
+                    ? 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
+                    : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]'
               ]"
             >
               <div
@@ -47,6 +50,12 @@
                 class="absolute -top-2 left-1/2 -translate-x-1/2 bg-[var(--accent)] text-white text-xs font-bold px-2 py-0.5 rounded-full"
               >
                 Populer
+              </div>
+              <div
+                v-if="pkg.maintenance"
+                class="absolute -top-2 right-2 bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+              >
+                Maintenance
               </div>
               <div class="text-center">
                 <div class="text-2xl mb-1">{{ pkg.icon }}</div>
@@ -86,10 +95,13 @@
           <div class="space-y-3 max-w-xl mx-auto">
             <!-- QRIS -->
             <button
-              disabled
+              @click="method = 'qris'"
+              :disabled="true"
               :class="[
-                'w-full rounded-xl border-2 p-4 transition-all text-left opacity-60 cursor-not-allowed',
-                'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
+                'w-full rounded-xl border-2 p-4 transition-all text-left hover:shadow-md',
+                method === 'qris'
+                  ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700'
+                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 opacity-50 cursor-not-allowed'
               ]"
             >
               <div class="flex items-center gap-4">
@@ -101,7 +113,7 @@
                     <h4 class="font-bold text-ink-900 dark:text-ink-50">QRIS</h4>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Maintenance</span>
                   </div>
-                  <p class="text-xs text-ink-500 dark:text-ink-400">Layanan QRIS belum aktif</p>
+                  <p class="text-xs text-ink-500 dark:text-ink-400">Bayar instan dengan QRIS</p>
                 </div>
                 <div
                   :class="[
@@ -383,6 +395,7 @@ interface Package {
   tokens: number
   icon: string
   popular?: boolean
+  maintenance?: boolean
 }
 
 const props = defineProps<{
@@ -401,12 +414,29 @@ interface Package {
   tokens: number
   icon: string
   popular?: boolean
+  maintenance?: boolean
   benefits: string[]
   fullGenEstimate: number
   slrEstimate: number
 }
 
 const packages: Package[] = [
+  {
+    id: 'test',
+    name: 'Test 1k',
+    duration: '24 Jam',
+    price: 1000,
+    tokens: 10,
+    icon: '🧪',
+    popular: false,
+    maintenance: true,
+    benefits: [
+      'Paket testing QRIS',
+      '10 token',
+    ],
+    fullGenEstimate: 0,
+    slrEstimate: 0
+  },
   {
     id: 'daily',
     name: 'Harian',
@@ -487,11 +517,16 @@ const selectedBank = ref('VIRTUAL_ACCOUNT_BRI')
 const banks = [
   { channel: 'VIRTUAL_ACCOUNT_BRI', label: 'BRI', active: true },
   { channel: 'VIRTUAL_ACCOUNT_BANK_PERMATA', label: 'Permata', active: true },
-  { channel: 'VIRTUAL_ACCOUNT_BNI', label: 'BNI', active: true },
+  { channel: 'VIRTUAL_ACCOUNT_BNI', label: 'BNI', active: false },
   { channel: 'VIRTUAL_ACCOUNT_MANDIRI', label: 'Mandiri', active: false },
 ]
 
 const selectedPkg = computed(() => packages.find(p => p.id === selectedPackageId.value) || null)
+
+function selectPackage(pkg: Package) {
+  if (pkg.maintenance) return
+  selectedPackageId.value = pkg.id
+}
 
 function close() {
   cleanup()

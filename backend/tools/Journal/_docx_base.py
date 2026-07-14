@@ -839,11 +839,39 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
     elif item_id in ("tabel", "table"):
         table_number = str(item.get("TableNumber", "")).strip()
         title = str(item.get("Title", "")).strip()
-        headers = list(item.get("Headers", []))
-        rows = list(item.get("Rows", []))
+        headers = [str(h) for h in (item.get("Headers") or item.get("headers") or [])]
+        rows = [list(r) for r in (item.get("Rows") or item.get("rows") or [])]
 
-        if not headers:
+        # Guard: a table with no usable data should not crash the renderer.
+        if not rows and not headers:
             return
+
+        # Normalise headers: if missing, synthesize "Column 1..N" from the
+        # widest row so the table still renders (previously a header-less
+        # table was silently dropped → "preview PDF many tables wrong").
+        n_cols = len(headers)
+        if n_cols == 0 and rows:
+            n_cols = max(len(r) for r in rows if isinstance(r, (list, tuple))) or 1
+            headers = [f"Column {i + 1}" for i in range(n_cols)]
+        if n_cols == 0:
+            n_cols = 1
+            headers = ["Column 1"]
+
+        # Normalise every row to exactly n_cols: pad short rows with "",
+        # truncate long rows. Without this, rows shorter than the header left
+        # empty cells and rows longer than the header lost data when rendered
+        # by LibreOffice → misaligned / broken tables.
+        norm_rows = []
+        for r in rows:
+            if not isinstance(r, (list, tuple)):
+                r = [str(r)]
+            r = list(r)
+            if len(r) < n_cols:
+                r = r + [""] * (n_cols - len(r))
+            elif len(r) > n_cols:
+                r = r[:n_cols]
+            norm_rows.append(r)
+        rows = norm_rows
 
         if table_auto_label:
             caption = para(doc, style_id=table_head_style)
@@ -854,7 +882,7 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
             text = f"{label}. {title}" if title else label
             append_rich_text(caption, text)
 
-        table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
+        table = doc.add_table(rows=len(rows) + 1, cols=n_cols)
         table.style = "Normal Table"
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.autofit = True
@@ -871,8 +899,6 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
 
         for row_index, row_data in enumerate(rows, start=1):
             for column_index, value in enumerate(row_data):
-                if column_index >= len(headers):
-                    break
                 cell = table.rows[row_index].cells[column_index]
                 cell.text = ""
                 paragraph = cell.paragraphs[0]

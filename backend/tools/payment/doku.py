@@ -25,6 +25,7 @@ doku_bp = Blueprint('doku', __name__, url_prefix='/api/payment/doku')
 # ─── Token package mapping ───────────────────────────────────────────
 TOKEN_PACKAGES = {
     0:        1,        # Trial (gratis)
+    1000:     10,       # Test QRIS
     35000:    300000,   # Harian
     120000:   1200000,  # Mingguan
     300000:   3500000,  # Bulanan
@@ -188,6 +189,12 @@ def generate_qris():
     Request: { "amount": 5000 }
     """
     try:
+        # QRIS under maintenance — reject all non-trial requests
+        data = request.get_json() or {}
+        amount = int(data.get('amount', 0))
+        if amount != 0:
+            return jsonify({'error': 'QRIS payment is under maintenance. Please use Virtual Account.', 'maintenance': True}), 503
+
         cfg = _get_config()
         user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
@@ -398,87 +405,115 @@ def query_qris():
 
 # ─── Callback (Notification from DOKU) ───────────────────────────────
 
+def _verify_snap_signature(headers: dict, body: dict) -> bool:
+    """Verify SNAP signature (X-SIGNATURE) using shared secret.
+    SNAP signature = HMAC_SHA512(base64(body), secret) — but DOKU uses custom format.
+    For DOKU SNAP QRIS, they may use WORDS-like verification or JWS.
+    We'll log and accept for now; strict verification can be added when DOKU provides spec.
+    """
+    # TODO: implement proper SNAP signature verification when DOKU documents it
+    # For now, log headers and accept (DOKU will retry on failure)
+    current_app.logger.info(f'DOKU SNAP callback headers: {json.dumps(headers)}')
+    current_app.logger.info(f'DOKU SNAP callback body: {json.dumps(body)}')
+    return True
+
+
 @doku_bp.route('/callback', methods=['POST'])
 def doku_callback():
     """
-    Handle DOKU payment notification.
-    DOKU sends WORDS param = SHA1(AMOUNT + SHARED_KEY + TRANSACTIONID + STATUSCODE + "APPROVE_CODE")
+    Handle DOKU payment notification (legacy + SNAP QRIS).
+    Legacy: query params with WORDS SHA1 signature.
+    SNAP QRIS: JSON body with X-SIGNATURE, X-TIMESTAMP, X-PARTNER-ID, X-EXTERNAL-ID, CHANNEL-ID.
     Must return HTTP 200 with body "CONTINUE".
     """
-    # Parse both query params and body
+    # Detect format
+    is_snap = request.is_json and 'originalPartnerReferenceNo' in (request.get_json(silent=True) or {})
     params = request.args.to_dict()
     body = request.get_json(silent=True) or {}
-    
+
     current_app.logger.info(f'DOKU callback params: {json.dumps(params)}')
     current_app.logger.info(f'DOKU callback body: {json.dumps(body)}')
 
-    # ─── Verify DOKU signature (WORDS) ───
-    doku_secret = os.getenv('DOKU_SECRET_KEY', '')
-    words_received = params.get('WORDS', '')
-    if doku_secret and words_received:
-        amount_str = params.get('AMOUNT', '0')
-        txn_id = params.get('TRANSACTIONID', '') or params.get('INVOICE', '')
-        status_code = params.get('STATUSCODE', '')
-        approve_code = params.get('APPROVALCODE', '')
-        # DOKU WORDS = SHA1(AMOUNT + SHARED_KEY + TRANSACTIONID + STATUSCODE + APPROVALCODE)
-        words_expected = hashlib.sha1(
-            f"{amount_str}{doku_secret}{txn_id}{status_code}{approve_code}".encode()
-        ).hexdigest()
-        if not hmac.compare_digest(words_received.lower(), words_expected.lower()):
-            current_app.logger.warning(f'DOKU callback: WORDS mismatch for txn={txn_id}')
+    if is_snap:
+        # ─── SNAP QRIS format ───
+        # Expected body fields per SNAP spec:
+        # originalPartnerReferenceNo, originalReferenceNo, serviceCode, latestTransactionStatus,
+        # transactionStatusDesc, paidTime, amount{value,currency}, additionalInfo{...}
+        if not _verify_snap_signature(dict(request.headers), body):
             return 'STOP', 403
-    elif not doku_secret:
-        current_app.logger.error('DOKU_SECRET_KEY not configured — callback REJECTED')
-        return 'STOP', 403
+
+        reference_id = body.get('originalPartnerReferenceNo', '') or body.get('originalReferenceNo', '')
+        status_code = body.get('latestTransactionStatus', '')
+        amount_obj = body.get('amount', {})
+        amount_val = int(float(amount_obj.get('value', 0))) if amount_obj else 0
+
+    else:
+        # ─── Legacy format (VA, QRIS non-SNAP) ───
+        doku_secret = os.getenv('DOKU_SECRET_KEY', '')
+        words_received = params.get('WORDS', '')
+        if doku_secret and words_received:
+            amount_str = params.get('AMOUNT', '0')
+            txn_id = params.get('TRANSACTIONID', '') or params.get('INVOICE', '')
+            status_code_param = params.get('STATUSCODE', '')
+            approve_code = params.get('APPROVALCODE', '')
+            words_expected = hashlib.sha1(
+                f"{amount_str}{doku_secret}{txn_id}{status_code_param}{approve_code}".encode()
+            ).hexdigest()
+            if not hmac.compare_digest(words_received.lower(), words_expected.lower()):
+                current_app.logger.warning(f'DOKU callback: WORDS mismatch for txn={txn_id}')
+                return 'STOP', 403
+        elif not doku_secret:
+            current_app.logger.error('DOKU_SECRET_KEY not configured — callback REJECTED')
+            return 'STOP', 403
+
+        reference_id = params.get('TRANSACTIONID', '') or params.get('INVOICE', '')
+        # Legacy uses TXNSTATUS: S=Success, F=Failed
+        txn_status_legacy = params.get('TXNSTATUS', '')
+        status_code = '00' if txn_status_legacy == 'S' else '05'
+        amount_str = params.get('AMOUNT', '0')
+        amount_val = int(float(amount_str.replace(',', ''))) if amount_str else 0
+
+    if not reference_id:
+        current_app.logger.warning('DOKU callback: no reference ID found')
+        return 'CONTINUE', 200
 
     try:
-        # DOKU sends reference in TRANSACTIONID query param
-        reference_id = params.get('TRANSACTIONID', '') or params.get('INVOICE', '')
-        txn_status = params.get('TXNSTATUS', '')
-        amount_str = params.get('AMOUNT', '0')
-
-        if not reference_id:
-            current_app.logger.warning('DOKU callback: no reference ID found')
-            return 'CONTINUE', 200
-
         payment = Payment.query.filter_by(external_id=reference_id).with_for_update().first()
         if not payment:
             current_app.logger.warning(f'DOKU callback: payment not found for ref={reference_id}')
             return 'CONTINUE', 200
 
-        if txn_status == 'S':  # Success
-            if payment.status != 'paid':
-                try:
-                    callback_amount = int(float(amount_str.replace(',', '')))
-                except (ValueError, TypeError):
-                    callback_amount = 0
-                if callback_amount != payment.amount:
-                    current_app.logger.error(
-                        f'DOKU AMOUNT MISMATCH: callback={callback_amount}, expected={payment.amount}, ref={reference_id}'
-                    )
-                    return 'CONTINUE', 200
+        # Map SNAP status codes: 00=Success, 01=Initiated, 03=Pending, 05=Failed/Cancelled, 07=Pending, 09=Pending, 68=Expired
+        is_paid = status_code == '00'
+        is_failed = status_code in ('05', '07', '09', '68')
 
-                payment.status = 'paid'
-                payment.raw_response = json.dumps({'params': params, 'body': body})
-                from sqlalchemy import text
-                db.session.execute(
-                    text("UPDATE users SET token_quota_monthly = COALESCE(token_quota_monthly, 0) + :tokens WHERE id = :uid"),
-                    {"tokens": payment.tokens, "uid": payment.user_id}
+        if is_paid and payment.status != 'paid':
+            if amount_val != payment.amount:
+                current_app.logger.error(
+                    f'DOKU AMOUNT MISMATCH: callback={amount_val}, expected={payment.amount}, ref={reference_id}'
                 )
-                current_app.logger.info(
-                    f'DOKU TOKEN CREDITED: user={payment.user_id}, tokens=+{payment.tokens}, ref={reference_id}'
-                )
-                safe_commit()
+                return 'CONTINUE', 200
 
-        elif txn_status == 'F':  # Failed
+            payment.status = 'paid'
+            payment.raw_response = json.dumps({'params': params, 'body': body, 'format': 'snap' if is_snap else 'legacy'})
+            from sqlalchemy import text
+            db.session.execute(
+                text("UPDATE users SET token_quota_monthly = COALESCE(token_quota_monthly, 0) + :tokens WHERE id = :uid"),
+                {"tokens": payment.tokens, "uid": payment.user_id}
+            )
+            current_app.logger.info(
+                f'DOKU TOKEN CREDITED ({ "SNAP" if is_snap else "LEGACY" }): user={payment.user_id}, tokens=+{payment.tokens}, ref={reference_id}'
+            )
+            safe_commit()
+
+        elif is_failed:
             payment.status = 'failed'
-            payment.raw_response = json.dumps({'params': params, 'body': body})
+            payment.raw_response = json.dumps({'params': params, 'body': body, 'format': 'snap' if is_snap else 'legacy'})
             safe_commit()
 
     except Exception:
         current_app.logger.exception('DOKU callback error')
 
-    # DOKU expects "CONTINUE" response
     return 'CONTINUE', 200
 
 

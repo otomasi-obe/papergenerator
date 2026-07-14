@@ -34,6 +34,7 @@ from tools.ai_detectors import PROMPT as _detector
 from tools.plagiarism import PROMPT as _plagiarism, run_plagiarism as _run_plagiarism
 from tools.grammar import PROMPT as _grammar
 from tools.summarize import PROMPT as _summarize
+from tools.rubric import stream_rubric as _stream_rubric
 
 try:
     from tools.summarize.summarizer import run_summarizer as _run_summarize
@@ -533,3 +534,93 @@ def get_translator_config():
         "languages": _TRANSLATOR_LANGUAGES,
         "domains": _TRANSLATOR_DOMAINS,
     })
+
+
+@tools_api.route("/api/tools/rubric", methods=["POST"])
+@jwt_required()
+def run_rubric():
+    """Generate rubric for exam question via SSE streaming."""
+    user_id = get_jwt_identity()
+    if not user_id:
+        return Response(
+            f"data: {json.dumps({'error': 'Unauthorized'})}\n\n",
+            status=401,
+            mimetype="text/event-stream",
+        )
+
+    exceeded, info = quota_exceeded(int(user_id))
+    if exceeded:
+        return Response(
+            f"data: {json.dumps({'error': 'Kuota token habis. Silakan beli paket token untuk melanjutkan.', **info})}\n\n",
+            status=429,
+            mimetype="text/event-stream",
+        )
+
+    data = request.get_json(silent=True) or {}
+    question = (data.get("question") or "").strip()
+    options = data.get("options") or {}
+
+    if not question:
+        return Response(
+            f"data: {json.dumps({'error': 'Soal tidak boleh kosong'})}\n\n",
+            status=400,
+            mimetype="text/event-stream",
+        )
+
+    def _generate():
+        accumulated = ""
+        try:
+            for chunk in _stream_rubric(question, options):
+                if isinstance(chunk, str):
+                    accumulated += chunk
+                    yield f"data: {json.dumps({'text': chunk})}\n\n"
+                elif isinstance(chunk, dict):
+                    if chunk.get("text"):
+                        accumulated += chunk["text"]
+                    yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            log.exception("Rubric tool failed")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            if accumulated:
+                prompt_tokens = _estimate_tokens(question + json.dumps(options))
+                completion_tokens = _estimate_tokens(accumulated)
+                _log_tool_usage(int(user_id), "rubric", "stream/rubric", prompt_tokens, completion_tokens)
+
+    return Response(
+        stream_with_context(_generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@tools_api.route("/api/tools/rubric/sync", methods=["POST"])
+@jwt_required()
+def run_rubric_sync():
+    """Non-streaming rubric generation for programmatic use."""
+    user_id = get_jwt_identity()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    exceeded, info = quota_exceeded(int(user_id))
+    if exceeded:
+        return jsonify({"error": "Kuota token habis. Silakan beli paket token untuk melanjutkan.", **info}), 429
+
+    data = request.get_json(silent=True) or {}
+    question = (data.get("question") or "").strip()
+    options = data.get("options") or {}
+
+    if not question:
+        return jsonify({"error": "Soal tidak boleh kosong"}), 400
+
+    from tools.rubric import generate_rubric_sync as _sync
+    result = _sync(question, options)
+
+    # log token usage
+    prompt_tokens = _estimate_tokens(question + json.dumps(options))
+    completion_tokens = _estimate_tokens(json.dumps(result))
+    _log_tool_usage(int(user_id), "rubric", "sync/rubric", prompt_tokens, completion_tokens)
+
+    if "error" in result:
+        return jsonify(result), 500
+    return jsonify(result)

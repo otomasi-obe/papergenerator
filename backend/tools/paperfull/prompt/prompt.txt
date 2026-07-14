@@ -183,27 +183,28 @@ When the user prompt contains "## 📊 DATA SUMBER — INI DATA BENERAN":
 
 When NO "## DATA SUMBER" exists in the user prompt:
 
-  RULE P1 — Descriptive variables, NOT generic X₁/X₂.
-    Use self-documenting names that show what the variable represents:
-      ✅ P_PV, P_TRC, η_total, ΔT_night, E_daily, J_sc
-      ❌ X₁, X₂, X₃ (meaningless to reader)
+  RULE P1 — Use explicit sequential placeholders x1, x2, x3, dst.
+    If the paper needs a results table, chart, variable, or formula value but the
+    user did NOT provide real data, use placeholders instead of fabricated values:
+      ✅ x1, x2, x3, x4, ...
+      ✅ X1, X2, X3 only for formula variables if defined clearly
+      ❌ 94.5%, N=120, p=0.03, 2.26 W/m², dataset names, sample counts, time windows
+         that are not present in user data.
 
-    For tables with many cells, use sequential notation:
-      ✅ a₁, a₂, … for table-specific values (defined in table caption)
-      ❌ Generic X₁, X₂ repeated across different tables
+    Placeholder table rule:
+      - Every missing numeric cell MUST be x1, x2, x3, dst in order.
+      - Define the placeholders in the table caption or following paragraph.
+      - Do NOT reuse the same placeholder for different values unless it represents
+        the same variable.
 
-    Approximate benchmark values (~) are allowed for readability:
-      ✅ "TRC menghasilkan ~2 W/m²" (approximate known value from literature)
-      ❌ "TRC menghasilkan 2.26 W/m²" (precise fabricated number — BANNED)
+  RULE P2 — Every placeholder MUST be defined on first use.
+    Example: "x1 denotes the first observed performance value that must be filled
+    from user data before empirical interpretation."
 
-  RULE P2 — Every variable MUST be defined on first use.
-    "P_TRC is the thermoradiative power density (W/m²)" in narrative.
-    Table variables defined in table caption: "a₁ = PV power, a₂ = TRC power".
-
-  RULE P3 — Charts use descriptive specs:
-    Prompt field describes chart type + axes + descriptive variable names.
-    Example: "A bar chart comparing P_TRC across 4 materials. X-axis: 'Material'.
-    Y-axis: 'P_TRC (W/m²)'. White background."
+  RULE P3 — Charts use placeholder specs, not fake data:
+    Prompt field must describe chart type + axes + placeholder data series.
+    Example: "A bar chart comparing Method A=x1, Method B=x2, Method C=x3.
+    X-axis: 'Method'. Y-axis: 'Performance value'. White background."
 
 ── A0.3 HALLUCINATION DETECTION CHECKLIST ─────────────────────────────────
 
@@ -216,7 +217,7 @@ Before output, scan the ENTIRE paper for ANY of these violations:
     result? → REPLACE with proper data or variable placeholder.
   □ Did I invent a DOI, author, or paper title? → REMOVE IT.
   □ Did I write data in section 4 when ## DATA SUMBER was absent? → REPLACE
-    ALL specific numbers with descriptive variables (P_PV, η, ~2 W/m²).
+    ALL specific numbers with sequential placeholders x1, x2, x3, dst.
 
 ================================================================================
 A1. ⛔ DIRECTION COMPLIANCE — FOLLOW USER'S UPLOADED FILES
@@ -426,7 +427,7 @@ FIGURE DISTRIBUTION (all via id "gambar", rendered by image generator):
 ── B3. Tables ──────────────────────────────────────────────────────────────────
 
 TableNumber: Roman numerals ("I", "II"). Bold cells: \\\\b...\\\\b toggle.
-User data → EXACT. No data → "x" placeholder.
+User data → EXACT. No data → sequential placeholders "x1", "x2", "x3", dst.
 Minimum 4 rows; 6–8 rows for comparisons.
 Consistency: table numbers = text numbers = abstract numbers.
 

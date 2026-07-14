@@ -261,7 +261,7 @@ def programmatic_rank(papers: list[dict], query: str) -> list[dict]:
         if year >= current_year - 5:
             recency = 1.0
         elif year > 0:
-            recency = max(0.0, (year - 2000) / (current_year - 5 - 2000))
+            recency = min(1.0, max(0.0, (year - 2000) / (current_year - 5 - 2000)))
         else:
             recency = 0.3  # unknown year → mild default
 
@@ -602,8 +602,14 @@ def summarize(
     stats["groups_with_min_papers"] = grouped.get("groups_with_min_papers", 0)
     stats["groups_below_min_papers"] = grouped.get("groups_below_min_papers", 0)
     
-    # If LLM reviewed, use the reviewed papers from grouped (they have new_rank + review)
-    reviewed_papers = grouped["groups"][0].get("papers", []) if grouped.get("groups") else []
+    # If LLM reviewed, use the reviewed papers from grouped (they have new_rank + review).
+    # Flatten ALL groups (programmatic fallback produces multiple groups; the LLM
+    # path already wraps every reviewed paper in a single group). Taking only
+    # groups[0] previously dropped every paper outside the first group.
+    reviewed_papers = [
+        p for g in (grouped.get("groups") or [])
+        for p in g.get("papers", [])
+    ]
     
     method_dist = {g["label"]: g["count"] for g in grouped["groups"]}
 

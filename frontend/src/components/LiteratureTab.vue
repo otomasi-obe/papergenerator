@@ -115,32 +115,34 @@
                 <button @click="slrSources = []" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">Hapus semua</button>
               </div>
             </div>
-            <!-- Year input -->
-            <div>
-              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun terakhir:</div>
-              <input
-                v-model.number="slrYearFrom"
-                type="number"
-                :min="1900"
-                :max="new Date().getFullYear() + 1"
-                placeholder="Contoh: 2020"
-                class="w-28 px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
-              />
-              <button v-if="slrYearFrom" @click="slrYearFrom = null" class="ml-2 text-[10px] text-red-500 hover:underline">Reset</button>
+            <!-- Year range inputs (horizontal) -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun awal:</div>
+                <input
+                  v-model.number="slrYearFrom"
+                  type="number"
+                  :min="1900"
+                  :max="slrYearTo || new Date().getFullYear() + 1"
+                  placeholder="Contoh: 2019"
+                  class="w-full px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+                  @blur="validateYearRange"
+                />
+              </div>
+              <div>
+                <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun akhir:</div>
+                <input
+                  v-model.number="slrYearTo"
+                  type="number"
+                  :min="slrYearFrom || 1900"
+                  :max="new Date().getFullYear() + 1"
+                  placeholder="Contoh: 2024"
+                  class="w-full px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+                  @blur="validateYearRange"
+                />
+              </div>
             </div>
-            <!-- Year-to input -->
-            <div class="mt-2">
-              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun akhir:</div>
-              <input
-                v-model.number="slrYearTo"
-                type="number"
-                :min="1900"
-                :max="new Date().getFullYear() + 1"
-                placeholder="Contoh: 2024"
-                class="w-28 px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
-              />
-              <button v-if="slrYearTo" @click="slrYearTo = null" class="ml-2 text-[10px] text-red-500 hover:underline">Reset</button>
-            </div>
+            <div v-if="yearRangeError" class="text-[10px] text-red-500 mt-1">Tahun awal harus ≤ Tahun akhir</div>
             <!-- Page size selector -->
             <div>
               <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tampilkan:</div>
@@ -606,6 +608,11 @@ const availableSources = ref([
 const slrSources = ref<string[]>([])
 const slrYearFrom = ref<number | null>(null)
 const slrYearTo = ref<number | null>(null)
+const yearRangeError = ref(false)
+
+const validateYearRange = () => {
+  yearRangeError.value = slrYearFrom.value !== null && slrYearTo.value !== null && slrYearFrom.value > slrYearTo.value
+}
 
 const manualForm = ref<ManualForm>({
   title: '', authors_str: '', year: null,

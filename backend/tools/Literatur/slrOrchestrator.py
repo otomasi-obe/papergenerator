@@ -177,6 +177,7 @@ def run_slr(
     llm_call: Optional[Callable[[str, str], str]] = None,
     max_workers: int = MAX_WORKERS_DEFAULT,
     year_from: Optional[int] = None,
+    year_to: Optional[int] = None,
 ) -> dict:
     """Run full SLR pipeline: analyze → fetch all → dedup → rank → group → summarize.
     
@@ -260,6 +261,8 @@ def run_slr(
     filters: dict = {}
     if year_from:
         filters["year_from"] = year_from
+    if year_to:
+        filters["year_to"] = year_to
     
     all_papers: list[Paper] = []
     seen_keys: dict[str, int] = {}  # dedup_key → index
@@ -446,6 +449,42 @@ def run_slr(
     )
     
     return result
+
+
+def fetch_titles(
+    query: str,
+    sources: list | None = None,
+    max_total: int = 1000,
+    use_cache: bool = True,
+    progress_cb: Callable | None = None,
+):
+    """Backward-compatible thin wrapper used by ``pipeline.py`` API fallback.
+
+    ``pipeline.py`` historically imported ``fetch_titles`` from
+    ``.orchestrator``; that module was renamed to ``slrOrchestrator`` and the
+    function was folded into ``run_slr``. This wrapper restores the old symbol
+    and returns a flat ``list[Paper]`` (what pipeline.py expects) instead of the
+    nested ``run_slr`` result dict.
+
+    Parameters unrecognized by ``run_slr`` (``sources``, ``use_cache``) are
+    accepted for compatibility and ignored — ``run_slr`` already performs its
+    own DB-first fetching internally.
+    """
+    result = run_slr(keyword=query, top_n=max(10, min(max_total // 10, 50)))
+    papers: list[Paper] = []
+    for group in result.get("groups", []) or []:
+        for p in group.get("papers", []) or []:
+            if isinstance(p, Paper):
+                papers.append(p)
+            elif isinstance(p, dict):
+                try:
+                    papers.append(Paper(**{k: v for k, v in p.items()
+                                           if k in Paper.__dataclass_fields__}))
+                except Exception:
+                    continue
+            if len(papers) >= max_total:
+                return papers
+    return papers
 
 
 if __name__ == "__main__":

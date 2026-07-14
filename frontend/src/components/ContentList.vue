@@ -25,15 +25,16 @@
         </div>
 
         <!-- TEXT -->
-        <template v-if="item.id === 'text'">
-          <textarea :value="item.text"
-            @input="item.text = ($event.target as HTMLTextAreaElement).value"
-            v-autosize
-            rows="2"
-             class="content-textarea-auto w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-navy-400 outline-none break-words resize-none overflow-hidden"
-            placeholder="Write text content... Use [1], [2] for citations."></textarea>
-        </template>
-
+                <template v-if="item.id === 'text'">
+                  <textarea :value="item.text"
+                    @input="item.text = ($event.target as HTMLTextAreaElement).value"
+                    v-autosize
+                    rows="2"
+                     class="content-textarea-auto w-full px-2.5 py-2 border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-800 text-navy-900 dark:text-anthracite-50 dark:placeholder-anthracite-300 rounded text-sm focus:ring-2 focus:ring-cream-200 focus:border-navy-400 outline-none break-words resize-none overflow-hidden"
+                    :class="{ 'highlight-bg': isHighlighted(idx) }"
+                    placeholder="Write text content... Use [1], [2] for citations."
+                  ></textarea>
+                </template>
         <!-- IMAGE / GAMBAR -->
         <template v-else-if="item.id === 'gambar'">
           <div class="space-y-2">
@@ -240,12 +241,20 @@ interface ContentItem {
 interface Props {
   items: ContentItem[]
   store: any
+  sectionTitle?: string
 }
 
 const props = defineProps<Props>()
 
 const store = usePaperStore()
 const imageGenStore = useImageGenStore()
+
+// Highlight blocks that the AI just changed (3–5s stabilo effect)
+function isHighlighted(blockIdx: number): boolean {
+  if (!props.sectionTitle) return false
+  const blocks = store.highlightedBlocks?.[props.sectionTitle]
+  return Array.isArray(blocks) && blocks.includes(blockIdx)
+}
 
 const listRoot = ref<any>(null)
 

@@ -37,7 +37,7 @@
       class="mt-1.5 pl-5 border-l-2 border-[var(--accent)]/25 thinking-content"
     >
       <p class="text-xs text-ink-500 dark:text-cream-200 whitespace-pre-wrap leading-relaxed">
-        {{ content || '...' }}
+        {{ cleanContent || '...' }}
       </p>
       <!-- Streaming cursor when content is being received -->
       <span
@@ -86,6 +86,14 @@ const isThinkingDone = computed(() => {
 const thinkingActive = computed(() => {
   return isThinking.value || (props.isStreaming && !isThinkingDone.value)
 })
+
+// Strip [APPLY_PAPER]...[/APPLY_PAPER] tags so users don't see raw internal tags
+const cleanContent = computed(() =>
+  props.content.replace(/\[APPLY_PAPER\][\s\S]*?\[\/APPLY_PAPER\]/g, '').trim()
+)
+
+// Ensure cleanContent is not tree-shaken by Terser (used in template)
+;(() => cleanContent)
 </script>
 
 <style scoped>

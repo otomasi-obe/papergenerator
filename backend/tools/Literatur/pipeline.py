@@ -383,6 +383,7 @@ def run(
     query: str,
     top_k: int = 50,
     year_from: int | None = None,
+    year_to: int | None = None,
     sources: list[str] | None = None,
     ai_model: str | None = None,
     progress_cb: Callable[[str, dict], None] | None = None,
@@ -426,13 +427,14 @@ def run(
         query=search_query,
         limit=fetch_limit,
         year_from=year_from,
+        year_to=year_to,
         sources=sources,
     )
     log.info("tool_literatur.db_search: got %d papers from paper_database (search_query='%s')", len(papers), search_query[:80])
 
     # Year post-filter (search_papers sudah filter di SQL, safety net)
-    if year_from:
-        papers = [p for p in papers if p.year and p.year >= year_from]
+    if year_from or year_to:
+        papers = [p for p in papers if p.year and (not year_from or p.year >= year_from) and (not year_to or p.year <= year_to)]
 
     # ── 1b. API FALLBACK: fetch if DB insufficient ───────────────────────
     if len(papers) < MIN_FETCH_TARGET:
@@ -445,7 +447,7 @@ def run(
             })
 
         try:
-            from .orchestrator import fetch_titles
+            from .slrOrchestrator import fetch_titles
             api_papers = fetch_titles(
                 query=search_query,  # Use preprocessed query for API too
                 sources=sources,
@@ -505,12 +507,30 @@ def run(
             if progress_cb:
                 progress_cb("snowballing", {"seed_count": 10})
             try:
-                from .snowball import snowball
+                from .snowball import Snowballer
                 top_seeds = [sp.paper for sp in scored_results[:10]]
-                snowball_papers = snowball(
-                    top_seeds, query,
-                    top_n_seeds=10, max_per_seed=10, max_total=100,
-                )
+                _seed_dicts = [
+                    {"id": (p.source_id or p.doi or p.title), "doi": p.doi, "title": p.title}
+                    for p in top_seeds
+                ]
+                _snowballer = Snowballer()
+                _sb_result = _snowballer.run_iteration(_seed_dicts, iteration=0)
+                snowball_papers = []
+                _sb_seen = set()
+                for _c in (_sb_result.scored_candidates or []):
+                    if not isinstance(_c, dict):
+                        continue
+                    try:
+                        _p = Paper(**{k: v for k, v in _c.items() if k in Paper.__dataclass_fields__})
+                    except Exception:
+                        continue
+                    _k = _p.dedup_key()
+                    if _k in _sb_seen:
+                        continue
+                    _sb_seen.add(_k)
+                    snowball_papers.append(_p)
+                    if len(snowball_papers) >= 100:
+                        break
                 if snowball_papers:
                     # Score snowball papers
                     snowball_scored = score_papers_with_feedback(

@@ -266,6 +266,10 @@ export const usePaperStore = defineStore('paper', () => {
 
   // Current paper DB id (null = unsaved new paper)
   const currentPaperId = ref(null)
+  // Blocks that the AI Assistant just changed — keyed by section title
+  // (or 'abstract'), value = list of block indices to highlight (3–5s stabilo).
+  const highlightedBlocks = ref<Record<string, number[]>>({})
+  let _highlightTimer: ReturnType<typeof setTimeout> | null = null
   // Paper images for the current paper
   const paperImages = ref([])
   // Charts generated from the Data/Charts tab (usable as figure sources)
@@ -1314,6 +1318,23 @@ export const usePaperStore = defineStore('paper', () => {
     }
   }
 
+  /**
+   * Trigger the stabilo/highlight effect on blocks that the AI just changed.
+   * Resets automatically after 4 seconds (CSS animation handles the fade).
+   * @param blocks  Record<sectionTitle, blockIndices[]>  e.g. { "PENDAHULUAN": [0, 3, 5], "abstract": [0] }
+   */
+  function setHighlightedBlocks(blocks: Record<string, number[]>) {
+    if (_highlightTimer) {
+      clearTimeout(_highlightTimer)
+      _highlightTimer = null
+    }
+    highlightedBlocks.value = blocks
+    // Auto-clear after 4 seconds so the highlight fades
+    _highlightTimer = setTimeout(() => {
+      highlightedBlocks.value = {}
+    }, 4000)
+  }
+
   // Apply paper data directly (e.g., from SSE done event) without fetching from DB
   function applyPaperData(data) {
     if (!data) return
@@ -1422,6 +1443,8 @@ export const usePaperStore = defineStore('paper', () => {
     aiLoadingMessage,
     toast,
     currentPaperId,
+    highlightedBlocks,
+    setHighlightedBlocks,
     paperImages,
     figureSources,
     figureSourceUsage,

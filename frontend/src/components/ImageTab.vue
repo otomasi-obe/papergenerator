@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import { useImageGenStore } from '../stores/imageGen'
 import { useUserStateStore } from '../stores/userState'
@@ -203,6 +203,9 @@ watch(() => store.currentPaperId, () => {
 })
 
 onMounted(loadImages)
+// [FIX] Stop the image-job poller when leaving the tab so it doesn't keep
+// running (and holding a setInterval) if a job was still queued/running.
+onUnmounted(() => imageGen.stopPoller())
 
 function selectImage(img: ImageItem): void {
  activeImageId.value = img.id

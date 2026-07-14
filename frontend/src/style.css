@@ -423,3 +423,16 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
     transform: none;
   }
 }
+
+/* ─── AI Highlight (stabilo) — 4s yellow fade ─── */
+@keyframes ai-highlight-fade {
+  0%   { background: #fff8b0; }   /* warm yellow start */
+  30%  { background: #fff8b0; }   /* hold */
+  70%  { background: transparent; } /* begin fade */
+  100% { background: transparent; } /* end */
+}
+.highlight-bg {
+  animation: ai-highlight-fade 4s ease forwards;
+  /* ensure the animation overrides any existing bg */
+  background-color: transparent !important;
+}

@@ -234,6 +234,9 @@ def detect_language(text: str) -> str:
         return "it"
     if re.search(r'[ãõç]', sample, re.IGNORECASE):
         return "pt"
+    # Default to English for Latin script text
+    if re.search(r'[a-zA-Z]', sample):
+        return "en"
     return "auto"
 
 

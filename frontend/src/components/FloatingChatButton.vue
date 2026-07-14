@@ -69,7 +69,7 @@
 
             <!-- Body: ChatTab directly (handles paperId or global) -->
             <div class="panel-body">
-              <ChatTab :paper-id="currentPaperId" />
+              <ChatTab :paper-id="currentPaperId" @open-preview="onOpenPreview" />
             </div>
           </div>
         </div>
@@ -85,14 +85,28 @@ import { useAuthStore } from '@/stores/auth'
 import { usePaperStore } from '@/stores/paper'
 import { useChatStore } from '@/stores/chat'
 import ChatTab from '@/components/ChatTab.vue'
+import { useUiStore } from '@/stores/ui'
 
 const auth = useAuthStore()
 const route = useRoute()
 const paperStore = usePaperStore()
 const chatStore = useChatStore()
+const ui = useUiStore()
 
-const isOpen = ref(false)
+const currentPaperId = computed(() => paperStore.currentPaperId || null)
+
+// [FIX] Wire ChatTab's `open-preview` event so the "Buka Preview" button
+// actually switches to the preview tab. Previously the event was emitted but
+// no parent handler caught it, so the button did nothing.
+function onOpenPreview(): void {
+  if (!currentPaperId.value) return
+  ui.setTab(currentPaperId.value, 'preview')
+  // Bump the signal so PaperEditorPage's computed re-evaluates even if the
+  // tab id is unchanged.
+  ui.tabSwitchSignal++
+}
 const showGreeting = ref(false)
+const isOpen = ref(false)
 const isMaximized = ref(false)
 const hasUnread = ref(false)
 
@@ -124,7 +138,6 @@ function toggleMaximize() {
 // Route may change before paper is loaded (dashboard→editor navigation).
 // paperStore.currentPaperId is set AFTER loadPaperFromDb completes,
 // so it stays consistent across navigation.
-const currentPaperId = computed(() => paperStore.currentPaperId || null)
 
 let greetingTimeout: ReturnType<typeof setTimeout> | null = null
 

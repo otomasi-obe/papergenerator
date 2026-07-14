@@ -2142,7 +2142,7 @@ def generate_stream(paper_id: str):
     # Parse request body
     data_texts: list[str] = []
     reference_texts: list[str] = []
-    selected_drafts: list | None = None
+    selected_drafts: list | str | None = None
     revisi_semua = False
     regenerate_images = False
     
@@ -2151,8 +2151,7 @@ def generate_stream(paper_id: str):
     _log_module.getLogger(__name__).warning(f"=== GENERATE-STREAM CALLED for paper {paper_id} ===")
     _log_module.getLogger(__name__).warning(f"content_type: {request.content_type}")
     
-    log.info(f"[paperfull] content_type: {request.content_type}")
-    print(f"[paperfull DEBUG] content_type: {request.content_type}", flush=True)
+    log.info("[paperfull] content_type: %s", request.content_type)
     if request.content_type and "multipart/form-data" in request.content_type:
         prompt = (request.form.get("prompt") or "").strip()
         topic = request.form.get("topic") or None
@@ -2166,13 +2165,14 @@ def generate_stream(paper_id: str):
         revisi_semua = revisi_semua_raw == "true"
         regenerate_images_raw = request.form.get("regenerate_images", "false").lower()
         regenerate_images = regenerate_images_raw == "true"
-        # Selected chat drafts (list of names) → injected as writing context.
+        # Selected chat drafts. Accept JSON list (legacy) or plain text block
+        # from PaperfullTab when multipart upload is used.
         _sd_raw = request.form.get("selected_drafts")
         if _sd_raw:
             try:
                 selected_drafts = json.loads(_sd_raw)
             except (json.JSONDecodeError, TypeError):
-                selected_drafts = None
+                selected_drafts = _sd_raw
         # Two separate buckets:
         #   data_files      → docx/csv/xlsx/pdf yang berisi DATA mentah (untuk
         #                      tabel/grafik). Diproses sebagai sumber data.
@@ -2186,14 +2186,10 @@ def generate_stream(paper_id: str):
             data_uploads = request.files.getlist("data_files")
             ref_uploads = request.files.getlist("reference_files")
             legacy_uploads = request.files.getlist("files")
-            log.info(f"[paperfull] data_uploads: {len(data_uploads)} files, ref_uploads: {len(ref_uploads)} files")
-            print(f"[paperfull DEBUG] data_uploads: {len(data_uploads)} files: {[f.filename for f in data_uploads]}")
+            log.info("[paperfull] data_uploads: %d files, ref_uploads: %d files", len(data_uploads), len(ref_uploads))
             if data_uploads:
                 data_texts = _extract_texts_from_files(data_uploads)
-                log.info(f"[paperfull] extracted {len(data_texts)} data_texts from files, total chars: {sum(len(t) for t in data_texts)}")
-                print(f"[paperfull DEBUG] data_texts extracted: {len(data_texts)} items, total chars: {sum(len(t) for t in data_texts)}")
-                for i, t in enumerate(data_texts[:2]):
-                    print(f"[paperfull DEBUG]   [{i}] preview: {t[:200]}...")
+                log.info("[paperfull] extracted %d data_texts from files, total chars: %d", len(data_texts), sum(len(t) for t in data_texts))
                 # Write to debug log
                 import logging as _log_module2
                 _log_module2.getLogger(__name__).warning(f"data_uploads: {len(data_uploads)} files, data_texts: {len(data_texts)} items")
@@ -2563,6 +2559,31 @@ def generate_stream(paper_id: str):
                         if resolved.is_relative_to((prompt_dir / "style").resolve()):
                             system_parts.append(f"## CITATION STYLE GUIDE — {style_key}\n" + resolved.read_text(encoding="utf-8"))
 
+            # Paper review mode: only active when the UI explicitly sends paper_kind=review
+            # or the title/prompt asks for a review article. Reference PDFs alone must not
+            # turn a regular paper into a paper review.
+            _review_intent_text = f"{prompt} {custom_prompt or ''}".lower()
+            _review_keywords = (
+                "paper review", "review paper", "systematic review", "narrative review",
+                "scoping review", "bibliometric review", "meta-analysis", "meta analysis",
+                "review artikel", "review literatur", "studi pustaka", "kajian pustaka",
+            )
+            _is_review_mode = paper_kind == "review" or any(k in _review_intent_text for k in _review_keywords)
+            if _is_review_mode:
+                review_file = prompt_dir / "topic" / "review.txt"
+                if review_file.exists():
+                    system_parts.append("## TOPIC GUIDE (PAPER REVIEW MODE — WAJIB REVIEW, BUKAN REGULAR PAPER)\n" + review_file.read_text(encoding="utf-8"))
+            else:
+                system_parts.append(
+                    "## REGULAR PAPER MODE — NOT A PAPER REVIEW\n"
+                    "Reference PDFs and checked literature are citation/context sources only. "
+                    "Do NOT structure the manuscript as a paper review, systematic review, SLR, "
+                    "or literature-review article unless paper_kind=review is explicitly set. "
+                    "Do NOT write phrases such as 'this review', 'paper review', 'systematic review', "
+                    "'summary of papers', or 'reviewed studies' in Abstract/Methods/Results. "
+                    "Use normal sections: Introduction, Literature Review, Methodology, Results and Discussion, Conclusion.\n"
+                )
+
             # Topic guide
             if topic:
                 # Whitelist: only allow known topic slugs
@@ -2678,12 +2699,13 @@ def generate_stream(paper_id: str):
                         "3. ⛔ INI BUKAN DATA untuk section 4 (Results)!\n"
                         "   JANGAN gunakan angka/hasil dari referensi sebagai data tabel/grafik di section 4.\n"
                         "   Section 4 HANYA boleh pakai data dari ## DATA SUMBER.\n"
-                        "   Jika ## DATA SUMBER TIDAK muncul → section 4 WAJIB pakai placeholder (X1, X2, a1).\n"
+                        "   Jika ## DATA SUMBER TIDAK muncul → section 4 WAJIB pakai placeholder (x1, x2, x3, dst).\n"
                         "4. Kutipan data dari referensi TETAP BOLEH di narasi Literature Review (section 2)\n"
                         "   sebagai perbandingan metode/state-of-the-art — TAPI JANGAN sebagai data eksperimen.\n"
-                        "5. JANGAN abaikan isi referensi — sintesis kritis, bukan ringkasan\n"
-                        "6. Setiap paragraf sitasi minimal 1-3 paper dari referensi ini\n"
-                        "7. WAJIB: Total references section minimal 36 paper (Regular Article)\n\n"
+                        "5. JANGAN abaikan isi referensi, tetapi tetap tulis REGULAR PAPER jika paper_kind bukan review.\n"
+                        "6. Setiap paragraf sitasi minimal 1-3 paper dari referensi ini.\n"
+                        "7. Untuk REGULAR PAPER: jangan menyebut output sebagai review/ringkasan paper.\n"
+                        "8. WAJIB: Total references section minimal 36 paper (Regular Article)\n\n"
                         + _ref_blob
                     )
 
@@ -2718,6 +2740,8 @@ def generate_stream(paper_id: str):
                     user_parts.append(
                         "## LITERATUR (CHECKED — WAJIB DIGUNAKAN SEBAGAI REFERENSI)\n"
                         f"User telah men-checklist {len(_checked_lit)} paper dari tab Literatur. "
+                        "Jika paper_kind=review, manuscript WAJIB benar-benar mereview semua paper ini secara kritis. "
+                        "Jika paper_kind bukan review, gunakan sebagai referensi pendukung saja, bukan mengubah artikel menjadi paper review. "
                         "WAJIB:\n"
                         "1. Gunakan SEMUA paper ini sebagai SUMBER SITASI di References section\n"
                         "2. Sitasi paper ini di narasi sesuai konteks yang relevan\n"

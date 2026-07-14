@@ -462,6 +462,7 @@ def _run_job(app, job_id: str):
                 query=job.query,
                 top_k=int(job.top_k) if job.top_k is not None else 50,
                 year_from=job.year_from,
+                year_to=job.year_to,
                 sources=(job.sources or None),
                 ai_model=job.ai_model or None,
                 progress_cb=progress,
