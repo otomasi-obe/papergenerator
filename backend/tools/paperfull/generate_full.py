@@ -332,8 +332,19 @@ def _inject_structured_content(paper_data: dict) -> dict:
                     fig_item["Title"] = fig_item.get("caption", fig.get("caption_ref", f"Figure {i+1}"))
                 if "ImageNumber" not in fig_item:
                     fig_item["ImageNumber"] = i+1
-                if "Prompt" not in fig_item:
-                    fig_item["Prompt"] = fig_item.get("prompt", "")
+                if "Prompt" not in fig_item or not str(fig_item.get("Prompt", "")).strip():
+                    # Fallback: use caption, title, or auto-generate from paper context
+                    fallback = (
+                        fig_item.get("prompt", "")
+                        or fig_item.get("caption", "")
+                        or fig_item.get("title", "")
+                        or fig_item.get("Title", "")
+                    ).strip()
+                    if not fallback:
+                        # Auto-generate a descriptive prompt from paper title + figure number
+                        paper_title = paper.get("title", "")
+                        fallback = f"Scientific illustration for Figure {i+1} of paper: {paper_title}" if paper_title else f"Scientific conceptual diagram for Figure {i+1}"
+                    fig_item["Prompt"] = fallback
                 content.append(fig_item)
 
             # Inject tables as type="tabel"

@@ -179,6 +179,27 @@ def _collect_gambar_prompts(paper_data: dict, paper_kind: Optional[str] = None) 
                 walk(item, current_section=current_section)
 
     walk(paper_data)
+
+    # Also scan top-level figures[] (IEEE/flat format — no id:"gambar")
+    paper_title = paper_data.get("title", "")
+    for i, fig in enumerate(paper_data.get("figures", [])):
+        if not isinstance(fig, dict):
+            continue
+        p = (fig.get("Prompt") or fig.get("prompt") or fig.get("caption") or fig.get("title") or "").strip()
+        existing_path = str(fig.get("Path") or fig.get("path") or fig.get("url") or "").strip()
+        if existing_path and os.path.isabs(existing_path) and os.path.exists(existing_path):
+            continue
+        if not p:
+            p = f"Scientific illustration for Figure {i+1} of paper: {paper_title}" if paper_title else f"Scientific conceptual diagram for Figure {i+1}"
+        if p not in {item["prompt"] for item in prompts}:
+            prompts.append({
+                "prompt": p,
+                "image_number": fig.get("ImageNumber") or fig.get("imageNumber") or str(i+1),
+                "title": fig.get("Title") or fig.get("title") or fig.get("caption") or f"Figure {i+1}",
+                "original_path": fig.get("Path") or fig.get("path") or "",
+                "_section": "",
+            })
+
     # Deduplicate by prompt text (keep first occurrence)
     seen = set()
     unique = []
@@ -2711,6 +2732,7 @@ def generate_stream(paper_id: str):
 
             # Auto-inject CHECKED LITERATURE (dari tab Literatur).
             # User hanya perlu check di tab Literatur — otomatis masuk prompt.
+            _checked_lit_refs = []
             try:
                 from utils.database.models import LiteratureItem as LitItem
                 _checked_lit = LitItem.query.filter_by(
@@ -2726,6 +2748,15 @@ def generate_stream(paper_id: str):
                         _pub_str = _lit.publisher or _lit.venue or "—"
                         _doi_str = _lit.doi or "—"
                         _abstract_str = _lit.abstract or "—"
+                        _checked_lit_refs.append({
+                            "authors": _lit.authors or [],
+                            "year": _lit.year or "",
+                            "title": _lit.title or "Untitled",
+                            "type": "journal",
+                            "journal": _lit.venue or _lit.publisher or "",
+                            "doi": _lit.doi or "",
+                            "url": getattr(_lit, "url", "") or "",
+                        })
                         _lit_parts.append(
                             f"--- Literatur: {_lit.title} ---\n"
                             f"Judul: {_lit.title}\n"
@@ -3100,6 +3131,24 @@ def generate_stream(paper_id: str):
             if _lang:
                 paper_data["language"] = _lang
 
+            def _refs_empty(data):
+                refs = data.get("references") if isinstance(data, dict) else None
+                if isinstance(refs, dict):
+                    return not (refs.get("items") or refs.get("content"))
+                return not refs
+
+            if _refs_empty(paper_data) and _checked_lit_refs:
+                # The model sometimes emits valid repaired JSON that stops before references.
+                # Use checked literature as the authoritative fallback instead of saving a ref-less paper.
+                # ponytail: reference-file PDF parsing fallback can be added when citation metadata extraction exists.
+                paper_data["references"] = {"items": _checked_lit_refs}
+                log.warning("[paperfull] Filled missing references from %d checked literature items for paper %s", len(_checked_lit_refs), paper_id)
+            elif _refs_empty(paper_data):
+                _update_bell_job("error", 100, error="Generation incomplete: references missing")
+                _pf_snapshot("error", reasoning_acc, full_content, error="Generation incomplete: references missing", force=True)
+                yield f"event: error\ndata: {_json.dumps({'error': 'Generation incomplete: references missing. Please retry; the model stopped before the References section.'})}\n\n"
+                return
+
             # ── Post-process: fix mojibake + clean LaTeX artifacts ────
             from tools.paperfull.text_cleaner import clean_paper_data
             paper_data = clean_paper_data(paper_data)
@@ -3212,6 +3261,10 @@ def generate_stream(paper_id: str):
                 )
             except Exception as _tok_e:
                 log.warning("GENERATE_FULL_TOKEN_DEDUCT_FAILED user=%s paper=%s: %s", user_id, paper_id, _tok_e)
+
+            # Paper text generation is complete here. Image generation starts after this point
+            # and reports through separate image_generation progress events.
+            yield f"event: progress\ndata: {_json.dumps({'stage': 'paper_generation', 'message': 'Paper text generation complete', 'total': 1, 'done': 1})}\n\n"
 
             # ── Auto-enqueue image generation jobs (section 2/3 conceptual) ──
             image_job_ids = []
