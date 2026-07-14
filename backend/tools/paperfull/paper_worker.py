@@ -363,11 +363,66 @@ def run_generate_paper(
             raise
 
 
+def _collect_all_gambar(paper_data: dict) -> list[dict]:
+    """Walk paper_data and collect ALL gambar items from sections + top-level figures.
+
+    Returns list of dicts with keys: Prompt, Title, ImageNumber, Path, id, source.
+    Deduplicates by (ImageNumber, Title) to avoid double-enqueueing same figure.
+    """
+    results = []
+
+    def walk(obj, path=""):
+        if isinstance(obj, dict):
+            if obj.get("id") == "gambar":
+                prompt = str(obj.get("Prompt") or obj.get("prompt") or "").strip()
+                if prompt:
+                    results.append({
+                        "Prompt": prompt,
+                        "Title": obj.get("Title") or obj.get("title") or "",
+                        "ImageNumber": obj.get("ImageNumber") or obj.get("imageNumber") or "",
+                        "Path": obj.get("Path") or obj.get("path") or "",
+                        "id": obj.get("id") or "",
+                        "source": path,
+                    })
+            for k, v in obj.items():
+                walk(v, f"{path}.{k}" if path else k)
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                walk(item, f"{path}[{i}]")
+
+    # 1. Top-level figures (existing behavior)
+    for fig in paper_data.get("figures", []):
+        prompt = str(fig.get("Prompt") or fig.get("prompt") or "").strip()
+        if prompt:
+            results.append({
+                "Prompt": prompt,
+                "Title": fig.get("Title") or fig.get("title") or "",
+                "ImageNumber": fig.get("ImageNumber") or fig.get("imageNumber") or "",
+                "Path": fig.get("Path") or fig.get("path") or "",
+                "id": fig.get("id") or "",
+                "source": "figures[]",
+            })
+
+    # 2. Section gambar items (the fix)
+    walk(paper_data)
+
+    # Deduplicate by (ImageNumber, Title) — keep first occurrence
+    seen = set()
+    unique = []
+    for f in results:
+        key = (str(f["ImageNumber"]), f["Title"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(f)
+    return unique
+
+
 def _auto_enqueue_figure_images(
     paper_id: str, user_id: int, paper_data: dict
 ) -> None:
-    """Enqueue image generation jobs for all figure prompts in paper_data.
+    """Enqueue image generation jobs for ALL figure prompts in paper_data.
 
+    Scans both top-level figures[] AND section content for gambar items.
     Only visual/illustration figures (diagrams, architectures, system drawings)
     are enqueued here — they go through Gemini image generation.
 
@@ -385,10 +440,10 @@ def _auto_enqueue_figure_images(
 
     logger = logging.getLogger(__name__)
 
-    figures = paper_data.get("figures", [])
+    figures = _collect_all_gambar(paper_data)
     if not figures:
         logger.info(
-            "[auto_image] No figures in paper_data for paper_id=%s", paper_id
+            "[auto_image] No figures with prompts in paper_data for paper_id=%s", paper_id
         )
         return
 
