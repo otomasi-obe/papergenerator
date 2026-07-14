@@ -7,10 +7,10 @@
    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
      <div>
        <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
-       <p class="text-ink-700 dark:text-ink-300 text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
+       <p class="text-ink-700 dark:text-[#7eb8e0] text-sm mt-1">{{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}</p>
      </div>
      <router-link to="/editor"
-         class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-ash-900 dark:from-cream-300 dark:via-cream-400 dark:to-cream-300 rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+         class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
          >
            + New Paper
          </router-link>
@@ -19,7 +19,7 @@
    <section class="flex-1 min-w-0">
    <StateView :loading="loading" :error="errorMsg" :is-empty="papers.length === 0" :on-retry="loadPapers">
    <template #loading>
-   <div class="text-center py-20 text-ink-600 dark:text-ink-300">
+   <div class="text-center py-20 text-ink-600 dark:text-[#7eb8e0]">
      <div class="text-3xl mb-3 animate-spin" aria-hidden="true">⚙️</div>
      Loading your papers...
    </div>
@@ -28,8 +28,8 @@
    <div class="text-center py-20">
      <div class="text-6xl mb-4" aria-hidden="true">📄</div>
      <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
-     <p class="text-ink-700 dark:text-ink-300 mb-6">Create your first paper with AI assistance</p>
-     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-ash-900 dark:from-cream-300 dark:via-cream-400 dark:to-cream-300 rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+     <p class="text-ink-700 dark:text-[#7eb8e0] mb-6">Create your first paper with AI assistance</p>
+     <router-link to="/editor" class="px-6 py-3 min-h-[44px] inline-flex items-center bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] rounded-xl font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
            Create First Paper
          </router-link>
    </div>
@@ -37,17 +37,17 @@
 
    <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
      <article v-for="paper in papers" :key="paper.id"
-     class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_24px_rgba(166,138,92,0.18)] transition-all overflow-hidden group hover:border-cream-400 dark:hover:border-cream-500">
+     class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_24px_rgba(166,138,92,0.18)] dark:hover:shadow-[0_8px_24px_rgba(37,99,168,0.25)] transition-all overflow-hidden group hover:border-cream-400 dark:hover:border-[#2563a8]/50">
      <!-- Top accent bar -->
-     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cream-300 via-cream-400 to-cream-300 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+     <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cream-300 via-cream-400 to-cream-300 dark:from-[#1a4470] dark:via-[#3b82f6] dark:to-[#1a4470] opacity-0 group-hover:opacity-100 transition-opacity"></div>
      <router-link :to="{ name: 'editor', params: { paperId: paper.id } }" @click="store.currentPaperId = null"
      class="block p-5 pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-t-2xl">
-     <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-cream-200 transition">
+     <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-[#6db4f0] transition">
      {{ paper.title || 'Untitled Paper' }}
      </h3>
      <div class="flex flex-wrap gap-2 text-xs">
-     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-200">Updated {{ formatDate(paper.updated_at) }}</span>
-     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-200"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
+     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]">Updated {{ formatDate(paper.updated_at) }}</span>
+     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
      <span v-if="paper.journal" class="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300">{{ paper.journal }}</span>
      <span v-if="paper.section_count" class="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">{{ paper.section_count }} sections</span>
      </div>
@@ -55,7 +55,7 @@
 
      <div class="flex items-center gap-2 px-4 pb-4">
           <button @click="openPaper(paper)"
-          class="flex-1 px-3 py-1.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-ash-900 dark:from-cream-300 dark:via-cream-400 dark:to-cream-300 text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+          class="flex-1 px-3 py-1.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] text-xs rounded-lg transition font-medium active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
           >
           Open
           </button>
@@ -78,7 +78,7 @@
  </main>
 
  <AppDialog v-if="deleteTarget" :open="!!deleteTarget" title="Delete Paper?" @close="deleteTarget = null">
- <p class="text-ink-700 dark:text-ink-200 text-sm">
+ <p class="text-ink-700 dark:text-[#8ec5eb] text-sm">
  "<strong>{{ deleteTarget.title || 'Untitled Paper' }}</strong>" and all its images will be permanently deleted.
  </p>
  <template #actions>
@@ -94,7 +94,7 @@
  </AppDialog>
 
  <Teleport to="body">
- <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-cream-200 dark:text-ash-900">{{ toastMsg }}</div>
+ <div v-if="toastMsg" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg text-white text-sm bg-ink-900 dark:bg-[#1a4470] dark:text-white">{{ toastMsg }}</div>
  </Teleport>
 
  <!-- Onboarding Wizard for new users -->

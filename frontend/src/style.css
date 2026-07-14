@@ -48,24 +48,24 @@
 }
 
 html.dark {
-  /* ── Proper hierarchy: app < surface < card < elev ── */
-  --bg-app: #07122a;
-  --bg-surface: #0d1f3c;
-  --bg-card: #142a4a;
-  --bg-elev: #1b3558;
-  --bg-panel: #10254a;
-  --surface-user: #1e4070;
+  /* ── Near-black base with subtle blue tint ── */
+  --bg-app: #060810;
+  --bg-surface: #0c1018;
+  --bg-card: #12161f;
+  --bg-elev: #181d28;
+  --bg-panel: #0e1218;
+  --surface-user: #1a2030;
   --surface-user-text: #eef3fb;
-  --surface-ai: #0d1f3c;
+  --surface-ai: #0c1018;
 
   /* ── Text: brighter base, softer muted ── */
   --text-strong: #f0f5fb;
   --text-base: #d4e2f4;
-  --text-muted: #7da4c8;
+  --text-muted: #8aa4be;
 
   /* ── Borders: visible but subtle ── */
-  --border-soft: #2a4a72;
-  --border-strong: #3d6090;
+  --border-soft: #253348;
+  --border-strong: #3a4f6a;
 
   /* ── Accents: slightly brighter for dark bg ── */
   --accent: #5cc4b4;
@@ -74,7 +74,7 @@ html.dark {
   --accent-success: #3db87e;
   --accent-warning: #e0b020;
   --accent-danger: #e04a65;
-  --ash-900: #07122a;
+  --ash-900: #060810;
   --focus-ring: 0 0 0 3px rgba(92, 196, 180, 0.28);
 }
 
@@ -91,6 +91,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+html.dark body {
+  background-color: #060810;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(30, 58, 110, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(20, 48, 90, 0.10) 0%, transparent 55%);
 }
 
 h1, h2, h3, .display-serif {
@@ -113,10 +120,10 @@ h1, h2, h3, .display-serif {
   background: var(--accent);
 }
 .dark ::-webkit-scrollbar-track {
-  background: #0d1f3c;
+  background: #10151f;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #2a4a72;
+  background: #253348;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
@@ -178,7 +185,7 @@ h1, h2, h3, .display-serif {
 }
 
 .dark .paper-preview {
-  background: #142a4a;
+  background: #161c28;
   color: #e8f0fa;
   box-shadow: 0 4px 32px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.25);
 }

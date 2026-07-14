@@ -3,7 +3,7 @@
   <div class="relative" ref="rootRef">
     <button
       @click="togglePanel"
-      class="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-600 active:scale-95 transition text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+      class="flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 text-ink-700 dark:text-[#fde68a] hover:bg-cream-200 dark:hover:bg-ash-700 active:scale-95 transition text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
       :title="`Update v${currentVersion?.version || 'baru'}`"
       aria-label="Riwayat update"
       aria-haspopup="true"
@@ -35,7 +35,7 @@
           <div class="flex items-center gap-2">
             <span class="text-sm">📋</span>
             <span class="text-sm font-bold text-ink-900 dark:text-ink-50">Riwayat Update</span>
-            <span class="text-[11px] text-ink-600 dark:text-ink-300">{{ versions.length }} versi</span>
+            <span class="text-[11px] text-ink-600 dark:text-[#fbbf24]">{{ versions.length }} versi</span>
           </div>
           <button @click="closePanel" class="p-1 rounded text-ink-500 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-50 hover:bg-cream-200 dark:hover:bg-ash-600 transition" aria-label="Tutup">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -50,10 +50,10 @@
                 <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">v{{ v.version }}</span>
                 <span class="text-sm font-semibold text-ink-900 dark:text-ink-50">{{ v.title || `v${v.version}` }}</span>
               </div>
-              <span class="text-[10px] text-ink-600 dark:text-ink-300 whitespace-nowrap">{{ formatDate(v.released) }}</span>
+              <span class="text-[10px] text-ink-600 dark:text-[#fbbf24] whitespace-nowrap">{{ formatDate(v.released) }}</span>
             </div>
             <ul v-if="v.changes?.length" class="space-y-1 pl-1">
-              <li v-for="(c, i) in v.changes" :key="i" class="flex items-start gap-2 text-xs leading-relaxed text-ink-800 dark:text-ink-200">
+              <li v-for="(c, i) in v.changes" :key="i" class="flex items-start gap-2 text-xs leading-relaxed text-ink-800 dark:text-[#fde68a]">
                 <span :class="badgeClass(c.type)" class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase flex-shrink-0 mt-0.5">
                   {{ c.type === 'new' ? '✦ NEW' : c.type === 'fix' ? '🔧 FIX' : '⚡ UPD' }}
                 </span>
@@ -61,12 +61,12 @@
               </li>
             </ul>
           </div>
-          <div v-if="!versions.length" class="text-center py-6 text-ink-600 dark:text-ink-300 text-sm">Belum ada riwayat update</div>
+          <div v-if="!versions.length" class="text-center py-6 text-ink-600 dark:text-[#fbbf24] text-sm">Belum ada riwayat update</div>
         </div>
 
         <!-- Footer -->
         <div class="px-3 py-2 bg-cream-50 dark:bg-ash-700 border-t border-cream-200 dark:border-ash-600 shrink-0 flex items-center justify-between">
-          <span class="text-[10px] text-ink-600 dark:text-ink-300">Dicek: {{ lastChecked }}</span>
+          <span class="text-[10px] text-ink-600 dark:text-[#fbbf24]">Dicek: {{ lastChecked }}</span>
           <button @click="refresh" class="text-[11px] font-medium text-[var(--accent)] hover:underline" :disabled="loading">{{ loading ? 'Memuat...' : 'Cek ulang' }}</button>
         </div>
       </div>
