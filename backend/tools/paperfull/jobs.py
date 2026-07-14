@@ -182,6 +182,11 @@ def _collect_gambar_prompts(paper_data: dict, paper_kind: Optional[str] = None) 
 
     # Also scan top-level figures[] (IEEE/flat format — no id:"gambar")
     paper_title = paper_data.get("title", "")
+    top_figures = paper_data.get("figures", [])
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    _log.info("[_collect_gambar_prompts] walk found %d prompts, top-level figures=%d, paper_title=%s",
+              len(prompts), len(top_figures), paper_title[:60] if paper_title else "none")
     for i, fig in enumerate(paper_data.get("figures", [])):
         if not isinstance(fig, dict):
             continue
@@ -3269,9 +3274,11 @@ def generate_stream(paper_id: str):
 
             # ── Auto-enqueue image generation jobs (section 2/3 conceptual) ──
             image_job_ids = []
+            log.info("[paperfull] generate_images=%s for paper %s", generate_images, paper_id)
             if generate_images:
                 try:
                     image_prompts = _collect_gambar_prompts(paper_data, paper_kind=paper_kind)
+                    log.info("[paperfull] _collect_gambar_prompts returned %d prompts for paper %s", len(image_prompts), paper_id)
                     if image_prompts:
                         from tools.image_generation.worker import submit_now as _img_submit
                         for idx, item in enumerate(image_prompts):
