@@ -2355,7 +2355,7 @@ def generate_stream(paper_id: str):
 
     # ── Handle Re-generate Images only (no paper generation) ────────────
     if regenerate_images:
-        from utils.database.models import PaperImage, ImageGenJob  # noqa: PLC0415
+        from utils.database.models import PaperImage  # noqa: PLC0415
         # Same behavior as /api/image-jobs/regenerate, kept inline to support
         # clients that submit via Generate Full's generate-stream route.
         import uuid as _uuid  # noqa: PLC0415
