@@ -650,35 +650,52 @@ def apply_operations(paper_id: str, operations: list[dict], user_id: int | None 
                     errors.append(f"✗ Section '{target}' not found")
 
             elif action == "replace_text":
-                sec = _find_section(data.get("sections", []), target)
-                if sec is not None and isinstance(content, dict):
-                    find_text = content.get("find", "")
-                    replace_text = content.get("replace", "")
-                    if find_text:
-                        blocks = sec.get("content", [])
-                        replaced_count = 0
-                        for block in blocks:
-                            if isinstance(block, dict) and block.get("id") == "text":
-                                if find_text in block.get("text", ""):
-                                    block["text"] = block["text"].replace(find_text, replace_text)
-                                    replaced_count += 1
-                        if replaced_count > 0:
-                            results.append(f"✓ Text replaced in section '{target}' ({replaced_count} occurrences)")
-                            # Track changed block indices
-                            changed_blocks.setdefault(target, set())
-                            for _i, block in enumerate(blocks):
+                # Allow target="abstract" or empty target to mean abstract
+                if target in ("", "abstract", "Abstract", "ABSTRACT"):
+                    if isinstance(content, dict):
+                        find_text = content.get("find", "")
+                        replace_text = content.get("replace", "")
+                        if find_text:
+                            if find_text in data.get("abstract", ""):
+                                data["abstract"] = data["abstract"].replace(find_text, replace_text)
+                                results.append("✓ Text replaced in abstract")
+                                changed_blocks.setdefault("abstract", set())
+                                changed_blocks["abstract"].add(0)
+                            else:
+                                errors.append(f"✗ Text not found in abstract")
+                        else:
+                            errors.append("✗ replace_text requires 'find' field")
+                    else:
+                        errors.append("✗ replace_text requires object content with 'find' and 'replace' fields")
+                else:
+                    sec = _find_section(data.get("sections", []), target)
+                    if sec is not None and isinstance(content, dict):
+                        find_text = content.get("find", "")
+                        replace_text = content.get("replace", "")
+                        if find_text:
+                            blocks = sec.get("content", [])
+                            replaced_count = 0
+                            for block in blocks:
                                 if isinstance(block, dict) and block.get("id") == "text":
                                     if find_text in block.get("text", ""):
-                                        changed_blocks[target].add(_i)
+                                        block["text"] = block["text"].replace(find_text, replace_text)
+                                        replaced_count += 1
+                            if replaced_count > 0:
+                                results.append(f"✓ Text replaced in section '{target}' ({replaced_count} occurrences)")
+                                changed_blocks.setdefault(target, set())
+                                for _i, block in enumerate(blocks):
+                                    if isinstance(block, dict) and block.get("id") == "text":
+                                        if find_text in block.get("text", ""):
+                                            changed_blocks[target].add(_i)
+                            else:
+                                errors.append(f"✗ Text not found in section '{target}'")
                         else:
-                            errors.append(f"✗ Text not found in section '{target}'")
+                            errors.append(f"✗ replace_text requires 'find' field")
                     else:
-                        errors.append(f"✗ replace_text requires 'find' field")
-                else:
-                    if sec is None:
-                        errors.append(f"✗ Section '{target}' not found")
-                    else:
-                        errors.append(f"✗ replace_text requires object content with 'find' and 'replace' fields")
+                        if sec is None:
+                            errors.append(f"✗ Section '{target}' not found")
+                        else:
+                            errors.append(f"✗ replace_text requires object content with 'find' and 'replace' fields")
 
             elif action == "reorder_sections":
                 sections = data.get("sections", [])

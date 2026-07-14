@@ -1174,6 +1174,7 @@ def send_message(conv_id: str):
         response_p2 = None
         _phase = 0           # 1 = collecting phase-1, 2 = synthesizing phase-2
         _finalized = False   # guard so finalization runs at most once
+        _live_applied_ops = []  # ops already applied live — skip in finalize
 
         def _persist_chat_final(final_content: str, thinking: str) -> dict:
             """Parse ops + apply to paper + save assistant message to DB/FS +
@@ -1194,21 +1195,35 @@ def send_message(conv_id: str):
                 parsed = parse_completion(final_content or "")
                 content = final_content or ""
                 if parsed["has_operations"] and conv.paper_id:
-                    try:
-                        result = apply_operations(conv.paper_id, parsed["operations"], user_id=user_id)
+                    # Filter out operations already applied live
+                    pending_ops = [op for op in parsed["operations"] if op not in _live_applied_ops]
+                    if pending_ops:
+                        try:
+                            result = apply_operations(conv.paper_id, pending_ops, user_id=user_id)
+                            out["paper_applied"] = {
+                                "operations": parsed["operations"],
+                                "results": result.get("results", []),
+                                "errors": result.get("errors", []),
+                                "success": result.get("success", False),
+                                "changed_blocks": result.get("changed_blocks", {}),
+                            }
+                        except Exception as e:
+                            log.exception("apply_operations failed during finalize")
+                            out["paper_applied"] = {
+                                "operations": parsed["operations"],
+                                "results": [],
+                                "errors": ["Apply gagal: Internal server error"],
+                                "success": False,
+                                "changed_blocks": {},
+                            }
+                    else:
+                        # All ops already applied live — just signal success
                         out["paper_applied"] = {
                             "operations": parsed["operations"],
-                            "results": result.get("results", []),
-                            "errors": result.get("errors", []),
-                            "success": result.get("success", False),
-                        }
-                    except Exception as e:
-                        log.exception("apply_operations failed during finalize")
-                        out["paper_applied"] = {
-                            "operations": parsed["operations"],
-                            "results": [],
-                            "errors": ["Apply gagal: Internal server error"],
-                            "success": False,
+                            "results": ["Already applied via live stream"],
+                            "errors": [],
+                            "success": True,
+                            "changed_blocks": {},
                         }
                     content = parsed["cleaned_text"] or content
 
@@ -1641,9 +1656,11 @@ def send_message(conv_id: str):
                                 "results": _live_result.get("results", []),
                                 "errors": _live_result.get("errors", []),
                                 "success": _live_result.get("success", False),
-                                "changed_blocks": _live_result.get("changed_blocks", []),
+                                "changed_blocks": _live_result.get("changed_blocks", {}),
                             }
                             yield _sse("paper_applied", _fin_live)
+                            # Track applied ops to skip in finalize (prevents double-apply)
+                            _live_applied_ops.extend(_live_parsed["operations"])
                             log.info("Live paper_applied during stream conv=%s", conv_id)
                         except Exception as _live_e:
                             log.exception("Live apply_operations failed conv=%s", conv_id)
@@ -1657,7 +1674,10 @@ def send_message(conv_id: str):
                 _chunk_size = 8
                 try:
                     _stream_parsed = parse_completion(phase1_text)
-                    _text_to_stream = _stream_parsed.get("cleaned_text") or phase1_text
+                    _cleaned = _stream_parsed.get("cleaned_text", "")
+                    # If model emits ONLY tags (no prose), don't fall back to raw —
+                    # stream nothing (user sees clean chat), tag effect still fires.
+                    _text_to_stream = _cleaned if _cleaned is not None else phase1_text
                 except Exception:
                     _text_to_stream = phase1_text
                 # Persist thinking up-front so a refresh mid-replay can render
