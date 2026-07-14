@@ -1497,6 +1497,24 @@ def _extract_texts_from_files(files):
     return texts
 
 
+def _wait_for_images(paper_id, user_id, timeout_s=900):
+    """Block generate-full completion until image jobs are no longer queued/running."""
+    from utils.database.models import ImageGenJob  # noqa: PLC0415
+
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        with app.app_context():
+            pending = ImageGenJob.query.filter(
+                ImageGenJob.paper_id == paper_id,
+                ImageGenJob.user_id == int(user_id),
+                ImageGenJob.status.in_(["queued", "running"]),
+            ).count()
+        if pending == 0:
+            return
+        time.sleep(5)
+    log.warning("image generation wait timed out for paper_id=%s", paper_id)
+
+
 def _run_generate_full_job(
     job_id,
     prompt,
@@ -1831,6 +1849,17 @@ def _run_generate_full_job(
                     db.session.rollback()
                 except Exception:
                     pass
+
+        # Before final checkpoint: auto-enqueue figure images + wait until they finish
+        # so progress bar only hits 100% once images are generated.
+        if uid is not None and paper_id:
+            _checkpoint("generating_figures", 95)
+            try:
+                from tools.paperfull.paper_worker import _auto_enqueue_figure_images
+                _auto_enqueue_figure_images(paper_id, int(uid), paper_data)
+                _wait_for_images(paper_id, uid)
+            except Exception:
+                log.exception("[job:%s] auto-enqueue figures failed", job_id)
 
         # Single end-of-run checkpoint — stage="complete", progress=100.
         _checkpoint("complete", 100)
