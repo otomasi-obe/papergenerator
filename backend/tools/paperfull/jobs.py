@@ -3043,6 +3043,46 @@ def generate_stream(paper_id: str):
                                 _update_bell_job("done", 100)
                                 _pf_snapshot("done", reasoning_acc, full_content, force=True)
                                 log.info("Background save completed for paper %s after client disconnect", paper_id)
+                                # Auto-enqueue image generation (same as normal path)
+                                if generate_images:
+                                    try:
+                                        _bg_prompts = _collect_gambar_prompts(pd2, paper_kind=paper_kind)
+                                        log.info("[paperfull] BG disconnect: _collect_gambar_prompts returned %d prompts for paper %s", len(_bg_prompts), paper_id)
+                                        if _bg_prompts:
+                                            import uuid as _uuid_bg
+                                            from tools.image_generation.worker import submit_now as _img_submit_bg
+                                            for _idx_bg, _item_bg in enumerate(_bg_prompts):
+                                                _p_text = _item_bg["prompt"] if isinstance(_item_bg, dict) else _item_bg
+                                                _tp = None
+                                                if isinstance(_item_bg, dict):
+                                                    _in = _item_bg.get("image_number", "")
+                                                    _tt = _item_bg.get("title", "")
+                                                    import re as _re_bg
+                                                    if _in:
+                                                        _tp = f"fig{_in}.jpg"
+                                                    elif _tt:
+                                                        _slug = _re_bg.sub(r'[^a-z0-9]+', '_', _tt.lower().strip())[:50].strip('_')
+                                                        _tp = f"{_slug}.jpg" if _slug else f"fig_{_idx_bg+1}.jpg"
+                                                    if not _tp:
+                                                        _tp = f"fig_{_idx_bg+1}.jpg"
+                                                _ij = ImageGenJob(
+                                                    id=_uuid_bg.uuid4().hex,
+                                                    user_id=user_id,
+                                                    paper_id=paper_id,
+                                                    prompt=_p_text[:2000],
+                                                    status="queued",
+                                                    target_path=_tp[:500] if _tp else None,
+                                                )
+                                                db.session.add(_ij)
+                                            safe_commit()
+                                            for _ij2 in ImageGenJob.query.filter_by(paper_id=paper_id, status="queued").all():
+                                                try:
+                                                    _img_submit_bg(_ij2.id)
+                                                except Exception:
+                                                    pass
+                                            log.info("[paperfull] BG disconnect: enqueued %d image jobs for paper %s", len(_bg_prompts), paper_id)
+                                    except Exception as _img_bg_e:
+                                        log.warning("[paperfull] BG disconnect: image enqueue failed for paper %s: %s", paper_id, _img_bg_e)
                             else:
                                 _update_bell_job("error", 100, error="Background save failed")
                                 _pf_snapshot("error", reasoning_acc, full_content, error="Background save failed", force=True)
