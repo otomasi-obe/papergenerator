@@ -374,7 +374,7 @@
 
     <!-- Content output box (separate from reasoning) -->
     <div
-      v-if="contentText && !generating"
+      v-if="contentText"
       class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
     >
       <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-emerald-50 to-cream-50 dark:from-emerald-900/20 dark:to-ash-800">
@@ -2347,10 +2347,8 @@ async function consumeSSEStream(res) {
           } else if (currentEvent === 'progress') {
             // Image/chart generation progress (backend waits for images before done)
             if (payload.stage === 'image_generation') {
-              const pct = payload.total ? Math.floor((payload.done / payload.total) * 100) : 0
-              // ponytail: never let image progress regress the main bar
-              displayProgress.value = Math.max(displayProgress.value, Math.min(98, pct))
-              jobsStore.updateStreamProgress(displayProgress.value)
+              // Image generation has its own progress bar. The main 0–100 bar is only for paper text generation.
+              // ponytail: keep one SSE stream; split into two UI progress models.
               // Update separate image progress panel instead of appending to content
               imageGenProgress.value = {
                 total: payload.total || 0,
@@ -2394,10 +2392,11 @@ async function consumeSSEStream(res) {
               await store.loadPaperFromDb(store.currentPaperId)
             }
             // Hint about placeholder values
-            store.showToast('💡 Paper berhasil di-generate! Periksa dan ganti nilai placeholder (X1, X2, a1, b1, dll.) dengan data asli Anda.', 'info', 8000)
+            store.showToast('💡 Paper berhasil di-generate! Periksa dan ganti nilai placeholder (x1, x2, x3, dst.) dengan data asli Anda.', 'info', 8000)
             _startChartRefreshPolling()
             // If no images pending, stop SSE and return
             if (!totalImgJobs) {
+              imageGenProgress.value = { total: 0, done: 0, message: '' }
               stopSSEPolling()
               return
             }
@@ -2415,6 +2414,7 @@ async function consumeSSEStream(res) {
             }
             await store.loadPaperFromDb(store.currentPaperId)
             await store.loadPaperCharts(store.currentPaperId)
+            stopSSEPolling()
             return
           } else if (currentEvent === 'error') {
             doneReceived = true
