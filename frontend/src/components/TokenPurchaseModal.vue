@@ -101,7 +101,7 @@
                     <h4 class="font-bold text-ink-900 dark:text-ink-50">QRIS</h4>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Maintenance</span>
                   </div>
-                  <p class="text-xs text-ink-500 dark:text-ink-400">Layanan QRIS DOKU belum aktif</p>
+                  <p class="text-xs text-ink-500 dark:text-ink-400">Layanan QRIS belum aktif</p>
                 </div>
                 <div
                   :class="[
