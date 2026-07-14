@@ -3437,36 +3437,27 @@ def generate_stream(paper_id: str):
 
                     _time.sleep(3)
 
-            # ── Launch background image reconciliation (daemon thread) ───────────
-            # This runs even if GeneratorExit fires (client disconnects).
-            # Reconciliation is I/O bound (DB + filesystem) so a daemon thread is fine.
-            def _bg_reconcile():
-                try:
-                    from flask import current_app
-                    with current_app.app_context():
-                        from tools.image_generation.reconcile import reconcile_figure_images
-                        from utils.core.storage_helper import get_user_dir
-                        _upload_base = get_user_dir(int(user_id), "uploads")
+            # ── Reconcile + persist image paths BEFORE sending images_complete ──
+            # Must be SYNCHRONOUS: frontend reloads paper from DB on this event.
+            # A background thread raced with the reload and left stale .png paths.
+            try:
+                from flask import current_app
+                with current_app.app_context():
+                    from tools.image_generation.reconcile import reconcile_figure_images
+                    from tools.editor.utils import safe_paper_image_dir
+                    _upl = safe_paper_image_dir(paper_id)
+                    _upload_base = _upl.parent if _upl else None
+                    if _upload_base is not None:
                         reconcile_figure_images(paper_id, paper_data, _upload_base)
-                        # Collect resolved paths from figures to prevent double-assignment
-                        _used_by_figures: set[str] = set()
-                        for fig in paper_data.get("figures", []):
-                            if isinstance(fig, dict):
-                                p = str(fig.get("Path") or fig.get("path") or "")
-                                if p and os.path.isabs(p) and os.path.exists(p):
-                                    _used_by_figures.add(p)
                         # Also walk sections for gambar items (not just top-level figures)
                         _reconcile_section_images(paper_data, paper_id, _upload_base)
                         # Re-save updated paper_data with resolved image paths
                         ok_rec, rec_err = _persist_paper_data(paper_id, user_id, paper_data)
                         if not ok_rec:
                             log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
-                        log.info("[paperfull] Background image reconciliation complete for paper %s", paper_id)
-                except Exception as _bg_e:
-                    log.warning("[paperfull] Background image reconciliation failed for paper %s: %s", paper_id, _bg_e)
-
-            _reconcile_thread = threading.Thread(target=_bg_reconcile, daemon=True)
-            _reconcile_thread.start()
+                        log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
+            except Exception as _bg_e:
+                log.warning("[paperfull] Image reconciliation failed for paper %s: %s", paper_id, _bg_e)
 
             # ── Count errors for images_complete event ────────────────────────
             error_count = 0
