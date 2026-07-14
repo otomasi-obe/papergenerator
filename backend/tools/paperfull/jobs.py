@@ -3051,6 +3051,7 @@ def generate_stream(paper_id: str):
                                         if _bg_prompts:
                                             import uuid as _uuid_bg
                                             from tools.image_generation.worker import submit_now as _img_submit_bg
+                                            from utils.database.models import ImageGenJob as _ImageGenJob_bg
                                             for _idx_bg, _item_bg in enumerate(_bg_prompts):
                                                 _p_text = _item_bg["prompt"] if isinstance(_item_bg, dict) else _item_bg
                                                 _tp = None
@@ -3065,7 +3066,7 @@ def generate_stream(paper_id: str):
                                                         _tp = f"{_slug}.jpg" if _slug else f"fig_{_idx_bg+1}.jpg"
                                                     if not _tp:
                                                         _tp = f"fig_{_idx_bg+1}.jpg"
-                                                _ij = ImageGenJob(
+                                                _ij = _ImageGenJob_bg(
                                                     id=_uuid_bg.uuid4().hex,
                                                     user_id=user_id,
                                                     paper_id=paper_id,
@@ -3075,7 +3076,7 @@ def generate_stream(paper_id: str):
                                                 )
                                                 db.session.add(_ij)
                                             safe_commit()
-                                            for _ij2 in ImageGenJob.query.filter_by(paper_id=paper_id, status="queued").all():
+                                            for _ij2 in _ImageGenJob_bg.query.filter_by(paper_id=paper_id, status="queued").all():
                                                 try:
                                                     _img_submit_bg(_ij2.id)
                                                 except Exception:
