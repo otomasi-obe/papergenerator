@@ -181,13 +181,19 @@ def load_paper(paper_id: str):
     try:
         from tools.Journal._math_omml import clean_latex_for_preview as _clfp
 
-        def _walk(obj):
+        # Keys whose values are file paths / identifiers — NOT LaTeX text.
+        _PATH_KEYS = frozenset({"Path", "path", "Prompt", "prompt", "id", "filename"})
+
+        def _walk(obj, key=None):
             if isinstance(obj, str):
+                # Skip file paths and identifiers
+                if key in _PATH_KEYS:
+                    return obj
                 return _clfp(obj)
             if isinstance(obj, dict):
-                return {k: _walk(v) for k, v in obj.items()}
+                return {k: _walk(v, k) for k, v in obj.items()}
             if isinstance(obj, list):
-                return [_walk(v) for v in obj]
+                return [_walk(v, key) for v in obj]
             return obj
 
         data = _walk(data)

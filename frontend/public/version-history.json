@@ -1,8 +1,31 @@
 {
-  "version": "1.4.6",
+  "version": "1.4.7",
   "released": "2026-07-14",
-  "title": "Update v1.4.6 — Auto Image Generation & Embed Fix",
+  "title": "Update v1.4.7 — Image Loading Fix (Gambar Gagal Dimuat)",
   "history": [
+    {
+      "version": "1.4.7",
+      "released": "2026-07-14",
+      "title": "Image Loading Fix — Gambar Gagal Dimuat",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Fix gambar gagal dimuat: clean_latex_for_preview was corrupting filenames (e.g. system_architecture → system_a rchitecture) — Path/id/filename keys are now excluded from LaTeX cleanup"
+        },
+        {
+          "type": "fix",
+          "text": "Reconcile now stores basename only (not full server absolute path) — prevents leaking server directory structure to frontend"
+        },
+        {
+          "type": "fix",
+          "text": "Frontend signed URL flow: don't cache unsigned fallback URL on sign failure, deduplicate in-flight sign requests, key failedImages by basename to prevent permanent error state"
+        },
+        {
+          "type": "fix",
+          "text": "DB migration: 239 papers normalized — absolute paths and gambar/ prefixes stripped to clean basenames"
+        }
+      ]
+    },
     {
       "version": "1.4.6",
       "released": "2026-07-14",

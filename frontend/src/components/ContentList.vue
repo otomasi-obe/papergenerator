@@ -43,9 +43,9 @@
 
             <!-- Thumbnail (always rendered when there's a path or live preview from current job) -->
             <div v-if="item.Path" class="rounded border border-cream-300 dark:border-anthracite-500 bg-cream-50 dark:bg-anthracite-700 overflow-hidden flex items-center justify-center" style="max-height:280px">
-              <img v-if="!failedImages.has(thumbUrl(item.Path, item))" :src="thumbUrl(item.Path, item)" :alt="item.Title || 'image'"
+              <img v-if="!failedImages.has(imageBaseName(item.Path))" :src="thumbUrl(item.Path, item)" :alt="item.Title || 'image'"
                    class="max-h-[280px] max-w-full object-contain"
-                   @error="onThumbError($event, thumbUrl(item.Path, item))" />
+                   @error="onThumbError($event, item.Path)" />
               <div v-else class="h-28 flex items-center justify-center text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 w-full">
                 ⚠️ Gambar gagal dimuat
               </div>
@@ -265,6 +265,8 @@ const failedImages = ref(new Set<string>())
 
 // Cache for signed image URLs to avoid repeated API calls
 const signedUrlCache = ref(new Map<string, string>())
+// Track in-flight sign requests to avoid duplicates
+const pendingSigns = ref(new Set<string>())
 
 watch(() => store.currentPaperId, () => {
   failedImages.value = new Set()
@@ -442,19 +444,25 @@ function thumbUrl(filename: string, item?: any): string {
   if (cached) return cached
   
   // Try to get signed URL async (fire-and-forget with fallback)
-  if (pid) {
+  // Use pendingSigns to avoid duplicate in-flight requests
+  if (pid && !pendingSigns.value.has(base)) {
+    pendingSigns.value.add(base)
     store.getSignedImageUrl(base).then(url => {
       if (url) {
         signedUrlCache.value.set(base, url)
-        // Force re-render by triggering a small change
+        // Successful sign — clear any previous failure for this base
+        failedImages.value.delete(base)
+        // Force re-render
         store.$patch({})
       }
     }).catch(() => {
       // Fallback will be used
+    }).finally(() => {
+      pendingSigns.value.delete(base)
     })
   }
   
-  // Return unsigned URL as immediate fallback (may fail on cross-origin)
+  // Return unsigned URL as immediate fallback
   return `/api/images/${pid}/${encodeURIComponent(base)}`
 }
 
@@ -463,7 +471,10 @@ function basename(path: string): string {
 }
 
 function onThumbError(e: Event, filename: string): void {
-  if (filename) failedImages.value.add(filename)
+  // Key by resolved basename, not full URL — so signed URL can clear
+  // the failure after it resolves.
+  const base = imageBaseName(filename)
+  if (base) failedImages.value.add(base)
 }
 
 async function uploadContentImage(e: Event, item: ContentItem): Promise<void> {

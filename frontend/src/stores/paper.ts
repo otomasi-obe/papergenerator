@@ -1542,8 +1542,10 @@ export const usePaperStore = defineStore('paper', () => {
         })
         return res.data.url
       } catch {
-        // Fallback to unsigned URL (may fail on cross-origin)
-        return `/api/images/${currentPaperId.value}/${encodeURIComponent(filename)}`
+        // Return empty so thumbUrl knows sign failed — don't cache the
+        // unsigned fallback (it's already returned synchronously by thumbUrl
+        // and would pollute the signed-URL cache).
+        return ''
       }
     },
   }

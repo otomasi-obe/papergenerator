@@ -78,12 +78,17 @@ def reconcile_figure_images(paper_id: str, paper_data: dict, upload_base: Path) 
             if not isinstance(fig, dict):
                 continue
             current_path = str(fig.get("Path") or fig.get("path") or "").strip()
-            if current_path and os.path.isabs(current_path) and os.path.exists(current_path):
-                continue  # already absolute & valid
+            # Normalise absolute paths to basename
+            if current_path and os.path.isabs(current_path):
+                base = os.path.basename(current_path).replace(" ", "")
+                fig["Path"] = base
+                if os.path.exists(current_path) or base in file_map:
+                    used_images.add(base)
+                    continue  # already resolved
 
             matched = _match_image(current_path, fig.get("Title", ""), file_map, used_images, image_files)
             if matched:
-                fig["Path"] = str(matched)
+                fig["Path"] = matched.name  # basename only
                 used_images.add(matched.name)
 
     # ── 2. Patch section content gambar items ───────────────────────────
@@ -245,7 +250,13 @@ def _patch_section_gambar_paths(paper_data: dict, file_map: dict[str, Path]) -> 
 
 
 def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
-    """Patch gambar items in a content list. Returns count patched."""
+    """Patch gambar items in a content list. Returns count patched.
+
+    All resolved paths are stored as **basename only** (e.g. ``fig1.jpg``),
+    never absolute server paths.  The frontend builds the API URL from the
+    basename + paper_id; journal DOCX generators already call
+    ``os.path.basename()`` before resolving on disk, so basename is safe.
+    """
     patched = 0
     for item in content:
         if not isinstance(item, dict):
@@ -262,37 +273,37 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
                 for fname, fpath in file_map.items():
                     num_in_name = re.search(r'(\d+)', fname)
                     if num_in_name and num_in_name.group(1) == str(img_num):
-                        item["Path"] = str(fpath)
+                        item["Path"] = fpath.name  # basename only
                         patched += 1
                         log.debug("[reconcile] Patched content gambar via ImageNumber %s: → %s", img_num, item["Path"])
                         break
             continue
 
-        # Skip if already absolute and exists
-        if os.path.isabs(path_text) and os.path.exists(path_text):
-            continue
-
-        # Corrupt absolute path (exists on disk but not at this exact path)?
-        # Happens when AI introduces spaces inside filenames.
-        # Try matching against the real image files on disk.
-        if os.path.isabs(path_text) and not os.path.exists(path_text):
+        # Normalise existing absolute paths to basename even if file exists.
+        # Frontend only needs the filename; serving uses paper_id to locate.
+        if os.path.isabs(path_text):
             fname = os.path.basename(path_text)
             if fname:
-                # Normalise: remove spaces from the stored filename
+                # Normalise: remove spaces AI models insert mid-token
                 normalised = fname.replace(" ", "")
                 if normalised in file_map:
-                    item["Path"] = str(file_map[normalised])
+                    item["Path"] = normalised
                     patched += 1
-                    log.debug("[reconcile] Corrupt path fixed: %s → %s", fname, item["Path"])
+                    log.debug("[reconcile] Abs path → basename: %s → %s", fname, item["Path"])
                     continue
                 # Also try stem match with spaces removed
                 stem = os.path.splitext(normalised)[0]
                 for fkey, fpath in file_map.items():
                     if os.path.splitext(fkey)[0] == stem:
-                        item["Path"] = str(fpath)
+                        item["Path"] = fpath.name
                         patched += 1
-                        log.debug("[reconcile] Corrupt path stem-matched: %s → %s", fname, item["Path"])
+                        log.debug("[reconcile] Abs path stem-matched: %s → %s", fname, item["Path"])
                         break
+                else:
+                    # File not in file_map but normalise to basename anyway
+                    item["Path"] = normalised
+                    patched += 1
+                    log.debug("[reconcile] Abs path stripped to basename: %s → %s", path_text, item["Path"])
                 continue
 
         # Try to resolve the bare filename against the upload folder.
@@ -311,7 +322,7 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
                 # including normalised (spaces removed) stem match.
                 matched_path = _normalised_stem_match(stem, file_map, set())
             if matched_path:
-                item["Path"] = str(matched_path)
+                item["Path"] = matched_path.name  # basename only
                 patched += 1
                 log.debug("[reconcile] Patched content gambar: %s → %s", fname, item["Path"])
                 continue
@@ -322,7 +333,7 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
             for fname_cand, fpath in file_map.items():
                 num_in_name = re.search(r'(\d+)', fname_cand)
                 if num_in_name and num_in_name.group(1) == str(img_num):
-                    item["Path"] = str(fpath)
+                    item["Path"] = fpath.name  # basename only
                     patched += 1
                     log.debug("[reconcile] Patched content gambar via ImageNumber %s: → %s", img_num, item["Path"])
                     break

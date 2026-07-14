@@ -511,13 +511,17 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
         if isinstance(obj, dict):
             if obj.get("id") == "gambar":
                 current_path = str(obj.get("Path") or obj.get("path") or "").strip()
-                # Skip if already has absolute path to existing file
-                if current_path and os.path.isabs(current_path) and os.path.exists(current_path):
-                    return
+                # Normalise existing absolute path → basename
+                if current_path and os.path.isabs(current_path):
+                    base = os.path.basename(current_path).replace(" ", "")
+                    if os.path.exists(current_path) or base in {f.name for f in image_files}:
+                        obj["Path"] = base
+                        used_images.add(base)
+                        return
                 # Find matching image
                 matched = _find_matching_image(obj)
                 if matched:
-                    obj["Path"] = str(matched)
+                    obj["Path"] = matched.name  # basename only
                     used_images.add(matched.name)
                     log.debug("[reconcile_sections] Mapped gambar to %s", matched.name)
             # Recurse into all dict values
