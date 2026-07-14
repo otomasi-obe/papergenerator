@@ -1858,6 +1858,25 @@ def _run_generate_full_job(
                 from tools.paperfull.paper_worker import _auto_enqueue_figure_images
                 _auto_enqueue_figure_images(paper_id, int(uid), paper_data)
                 _wait_for_images(paper_id, uid)
+                # BUG-FIX: reconcile generated image paths back into paper_data
+                # BEFORE persisting to DB, so the editor sees real .jpg paths
+                # instead of the placeholder .png prompts.
+                # Two targets: top-level figures[] + section gambar items.
+                try:
+                    from tools.editor.utils import safe_paper_image_dir
+                    from tools.image_generation.reconcile import reconcile_figure_images
+                    from tools.paperfull.jobs import _reconcile_section_images
+                    _upl = safe_paper_image_dir(paper_id)
+                    if _upl and _upl.exists():
+                        reconcile_figure_images(paper_id, paper_data, _upl.parent)
+                        _reconcile_section_images(paper_data, paper_id, _upl.parent)
+                        log.info("[job:%s] reconciled %d figures + %d section images",
+                                 job_id,
+                                 len(paper_data.get("figures", [])),
+                                 sum(1 for s in paper_data.get("sections", [])
+                                     for c in s.get("content", []) if c.get("id") == "gambar"))
+                except Exception:
+                    log.warning("[job:%s] image path reconciliation failed", job_id, exc_info=True)
             except Exception:
                 log.exception("[job:%s] auto-enqueue figures failed", job_id)
 
