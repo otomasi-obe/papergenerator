@@ -2494,6 +2494,7 @@ def generate_stream(paper_id: str):
         # Early-init accumulators so GeneratorExit handler can always reference them (BUG-35).
         full_content = ""
         reasoning_acc = ""
+        custom_prompt = ""  # not used in SSE path but referenced by review-mode detection
 
         try:
             # ── Load prompt files (language-aware) ─────────────────────
