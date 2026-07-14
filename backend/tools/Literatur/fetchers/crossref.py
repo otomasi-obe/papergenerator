@@ -330,7 +330,9 @@ def _fetch_members(
     fetched = 0
     year_filter = ""
     if filters and filters.get("year_from"):
-        year_filter = f",from-pub-date:{filters['year_from']}-01-01"
+        year_filter += f",from-pub-date:{filters['year_from']}-01-01"
+    if filters and filters.get("year_to"):
+        year_filter += f",until-pub-date:{filters['year_to']}-12-31"
 
     resolver = _get_unpaywall_resolver()
 
@@ -397,6 +399,8 @@ def _fetch_ssrn(
     full_filter = f"prefix:{SSRN_PREFIX}"
     if filters and filters.get("year_from"):
         full_filter += f",from-pub-date:{filters['year_from']}-01-01"
+    if filters and filters.get("year_to"):
+        full_filter += f",until-pub-date:{filters['year_to']}-12-31"
 
     resolver = _get_unpaywall_resolver()
 

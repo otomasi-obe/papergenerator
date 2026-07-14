@@ -254,6 +254,12 @@ _RELEVANCE_STOPWORDS = {
     "dataset", "datasets", "benchmark", "benchmarks", "accuracy",
     "precision", "scalable", "adaptive", "embedded", "embedding",
     "embeddings",
+    # Indonesian academic filler words that appear everywhere and drown relevance
+    "metode", "menggunakan", "berbasis", "karakterisasi", "pengembangan",
+    "sistem", "aplikasi", "perancangan", "analisis", "studi", "penelitian",
+    "implementasi", "desain", "model", "pendekatan", "teknik", "proses",
+    "hasil", "data", "informasi", "teknologi", "website", "web", "android",
+    "berbasis", "online", "digital", "otomatis", "otomatisasi",
 }
 
 
@@ -545,6 +551,10 @@ def create_slr_job(paper_id: str):
     year_to, year_to_err = _validate_year(body.get("year_to"))
     if year_to_err:
         return year_to_err
+
+    # Validate year range
+    if year_from and year_to and year_to < year_from:
+        return _err("year_to must be >= year_from", "YEAR_RANGE_INVALID", 400)
 
     ai_summarize = bool(body.get("ai_summarize", True))
     ai_model = (body.get("ai_model") or get_primary_generate_model()).strip()
@@ -2675,6 +2685,8 @@ def _persist_job_to_db(job: SLRJob):
             db_job.updated_at = now  # CRITICAL: eksplisit set untuk long-poll detection
             if job.status == "done":
                 db_job.finished_at = now
+                # Persist the final summary result (grouped output) to DB
+                db_job.result = job.summary_result or {}
             elif job.status == "error":
                 db_job.error = job.error or ""
                 db_job.finished_at = now
@@ -2902,7 +2914,7 @@ class SLROrchestrator:
         thread = threading.Thread(
             target=self._run_pipeline,
             args=(job, keyword, top_n, sources, year_from, year_to, ai_summarize, inline_fetch_map, plain_keyword),
-            daemon=True,
+            daemon=False,
             name=f"slr-run-{job_id}",
         )
         thread.start()
@@ -3041,10 +3053,11 @@ class SLROrchestrator:
             self._set_stage(job, "fetching", 10.0, "Starting parallel fetchers...")
 
             filters: dict = {}
-            if year_from:
-                filters["year_from"] = year_from
-            if year_to:
-                filters["year_to"] = year_to
+            # NOTE: year_from/year_to are deliberately NOT passed to native fetchers.
+            # Native API year filters (Crossref from-pub-date, OpenAlex from_publication_date, etc.)
+            # shrink the fetch pool drastically for niche topics. Instead, we fetch broadly
+            # (like the no-filter run) and apply year range as a post-fetch safety filter
+            # (line ~3152) so it acts as a true SUBSET of the unfiltered results.
 
             all_papers: list[Paper] = []
             seen_keys: dict[str, int] = {}  # dedup_key → index in all_papers
