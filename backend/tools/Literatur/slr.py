@@ -263,25 +263,138 @@ _RELEVANCE_STOPWORDS = {
 }
 
 
-def _filter_relevant_papers(keyword: str, papers: list[Any]) -> list[Any]:
+def _extract_core_topics(keyword: str, llm_call: Callable | None = None) -> list[str]:
+    """Use LLM to extract core topic terms from a research query.
+
+    Returns a list of domain-specific terms that represent the MAIN SUBJECT,
+    not generic academic words. Falls back to regex extraction if LLM unavailable.
+    """
+    if not keyword or not keyword.strip():
+        return []
+
+    if llm_call is None:
+        # Fallback: regex extraction (old behavior)
+        kw = keyword.lower()
+        terms = {t for t in re.findall(r"[a-z0-9]+", kw) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+        from tools.Literatur.slrFetch import _detect_language, _translate_id_to_en
+        if _detect_language(keyword) in ("id", "mixed"):
+            en_kw = _translate_id_to_en(keyword)
+            en_terms = {t for t in re.findall(r"[a-z0-9]+", en_kw.lower()) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+            terms |= en_terms
+        return list(terms)
+
+    system_prompt = (
+        "You are a research topic analyzer. Given a research title/query, extract ONLY the core domain-specific terms "
+        "that define the MAIN SUBJECT of the research. Exclude generic academic words like 'method', 'analysis', 'system', "
+        "'development', 'design', 'based', 'using', etc.\n\n"
+        "Rules:\n"
+        "1. Extract 3-8 core terms that are UNIQUE to this specific research domain\n"
+        "2. Include BOTH the original language terms AND their English equivalents\n"
+        "3. A paper is relevant ONLY if it discusses these specific topics\n"
+        "4. Think about what makes this research DIFFERENT from unrelated papers\n"
+        "5. Focus on NOUNS and domain jargon, not verbs or methodology words\n"
+        "6. Do NOT split compound terms that only make sense together (e.g. keep 'space telescope' as one term, "
+        "do NOT extract 'space' or 'luar angkasa' alone — they are too generic without the full phrase)\n"
+        "7. Each term should be specific enough that finding it in a paper title/abstract strongly suggests the paper "
+        "is about your research topic. If a term could appear in many unrelated fields, it's too generic\n\n"
+        "Example:\n"
+        "Query: 'Karakterisasi Eksoplanet Berbasis Metode Transit menggunakan Data Fotometri Teleskop Luar Angkasa'\n"
+        "Core terms: exoplanet, eksoplanet, transit photometry, fotometri transit, planetary transit, "
+        "planetary atmosphere, atmosfer planet\n"
+        "NOT: karakterisasi, metode, berbasis, menggunakan, data, luar, angkasa, space, telescope\n\n"
+        "Example:\n"
+        "Query: 'Pengaruh Pemberian Pupuk Organik terhadap Pertumbuhan Tanaman Padi'\n"
+        "Core terms: pupuk organik, organic fertilizer, padi, rice, plant growth, pertumbuhan tanaman\n"
+        "NOT: pengaruh, pemberian, terhadap, tanaman (too generic alone)\n\n"
+        "Example:\n"
+        "Query: 'Optimasi SCADA untuk Monitoring Distribusi Air Bersih'\n"
+        "Core terms: scada, water distribution, distribusi air, supervisory control, clean water, air bersih\n"
+        "NOT: optimasi, monitoring, untuk, sistem\n\n"
+        "Return ONLY a JSON object: {\"core_terms\": [\"term1\", \"term2\", ...]}\n"
+        "No explanation, no markdown, just the JSON."
+    )
+
+    try:
+        raw = llm_call(system_prompt, f"Query: {keyword}")
+        # Parse JSON from response
+        data = _parse_core_terms_json(raw)
+        terms = data.get("core_terms", [])
+        if isinstance(terms, list) and len(terms) >= 2:
+            # Lowercase and deduplicate
+            clean = list({t.lower().strip() for t in terms if isinstance(t, str) and len(t.strip()) >= 2})
+            log.info("LLM extracted %d core terms for '%s': %s", len(clean), keyword[:50], clean)
+            return clean
+    except Exception as exc:
+        log.warning("_extract_core_topics LLM failed (%s), using regex fallback", exc)
+
+    # Fallback
+    return _extract_core_topics(keyword, llm_call=None)
+
+
+def _parse_core_terms_json(text: str) -> dict:
+    """Extract JSON from LLM response, tolerating markdown fences."""
+    text = text.strip()
+    # Strip markdown code fences
+    if text.startswith("```"):
+        lines = text.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        text = "\n".join(lines).strip()
+    # Try direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # Find first { ... }
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+
+def _filter_relevant_papers(keyword: str, papers: list[Any], core_terms: list[str] | None = None) -> list[Any]:
     """Drop clearly off-topic search hits before ranking/saving.
 
-    ponytail: lexical gate catches bad scraper/search results; upgrade with embedding rerank
-    when a vector model is available.
+    When core_terms (from LLM) are provided, uses semantic matching against
+    domain-specific terms. Falls back to regex when core_terms is empty.
     """
-    kw = (keyword or "").lower()
-    required = {t for t in re.findall(r"[a-z0-9]+", kw) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+    if not core_terms:
+        # Legacy fallback: regex extraction
+        kw = (keyword or "").lower()
+        required = {t for t in re.findall(r"[a-z0-9]+", kw) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+        from tools.Literatur.slrFetch import _detect_language, _translate_id_to_en
+        if _detect_language(keyword) in ("id", "mixed"):
+            en_kw = _translate_id_to_en(keyword)
+            en_terms = {t for t in re.findall(r"[a-z0-9]+", en_kw.lower()) if len(t) >= 3} - _RELEVANCE_STOPWORDS
+            required |= en_terms
+        core_terms = list(required)
 
-    # If keyword is Indonesian, also include English translation terms for bilingual filtering
-    from tools.Literatur.slrFetch import _detect_language, _translate_id_to_en
-    if _detect_language(keyword) in ("id", "mixed"):
-        en_kw = _translate_id_to_en(keyword)
-        en_terms = {t for t in re.findall(r"[a-z0-9]+", en_kw.lower()) if len(t) >= 3} - _RELEVANCE_STOPWORDS
-        required |= en_terms
+    if not core_terms:
+        return papers  # no terms = keep all
 
-    # Domain anchors for common engineering/control queries; these must not be drowned by generic words.
+    # Separate single-word terms from multi-word phrases
+    single_terms = set()
+    phrase_terms = []
+    for t in core_terms:
+        t = t.lower().strip()
+        words = t.split()
+        if len(words) > 1:
+            phrase_terms.append(t)
+        else:
+            if len(t) >= 2:
+                single_terms.add(t)
+
+    # Domain anchors for common engineering/control queries
     anchors = {"scada", "iot", "plc", "hmi", "supervisory", "automation", "sensor", "actuator"}
-    active_anchors = required & anchors
+    active_anchors = single_terms & anchors
+
+    # Threshold: LLM terms are already domain-specific → 1 hit is enough
+    # Regex fallback terms are noisy → need min 3 (handled in fallback path)
+    min_hits = 1 if core_terms is not None else max(1, min(3, len(single_terms) + len(phrase_terms)))
+
     kept: list[Paper] = []
     for p in papers:
         hay = " ".join([
@@ -293,8 +406,14 @@ def _filter_relevant_papers(keyword: str, papers: list[Any]) -> list[Any]:
             continue
         if active_anchors and not any(a in hay for a in active_anchors):
             continue
-        hits = sum(1 for t in required if t in hay)
-        if hits >= max(1, min(3, len(required))):
+
+        # Count single-word term matches
+        single_hits = sum(1 for t in single_terms if t in hay)
+        # Count phrase matches (each phrase = 1 hit, independent of singles)
+        phrase_hits = sum(1 for pt in phrase_terms if pt in hay)
+        total_score = single_hits + phrase_hits
+
+        if total_score >= min_hits:
             kept.append(p)
     return kept
 
@@ -2847,7 +2966,14 @@ def _get_llm_call(user_id: int | None = None) -> Callable[[str, str], str] | Non
             timeout=120,
         )
         # resp is a requests.Response — extract message content
-        data = resp.json()
+        # Some providers append SSE "data: [DONE]\n\n" to the response body;
+        # strip it before JSON parsing.
+        raw_text = resp.text.strip()
+        if raw_text.endswith("data: [DONE]"):
+            raw_text = raw_text[:raw_text.rfind("data: [DONE]")].strip()
+        # Also strip trailing \n\n or whitespace
+        raw_text = raw_text.rstrip()
+        data = json.loads(raw_text)
         content = data["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("LLM returned non-string content")
@@ -3011,6 +3137,10 @@ class SLROrchestrator:
             else:
                 analysis = guess_fetchers(routing_keyword)
                 self._set_stage(job, "analyzing", 8.0, "Fetcher AI unavailable; using local fallback...")
+
+            # Extract core topic terms via LLM (parallel with fetcher routing, reuse same llm_call)
+            core_terms = _extract_core_topics(keyword, llm_call=llm_for_fetch)
+            log.info("Core topic terms for relevance filter: %s", core_terms)
             
             fetch_map = route_fetchers(analysis)
             if not fetch_map:
@@ -3168,7 +3298,7 @@ class SLROrchestrator:
                     log.info("Post-filter removed %d papers outside year range %s-%s", removed_year, year_from, year_to)
 
             before_filter = len(all_papers)
-            all_papers = _filter_relevant_papers(keyword, all_papers)
+            all_papers = _filter_relevant_papers(keyword, all_papers, core_terms=core_terms)
             removed_irrelevant = before_filter - len(all_papers)
 
             if not all_papers:

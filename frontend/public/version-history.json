@@ -1,8 +1,27 @@
 {
-  "version": "1.4.7",
+  "version": "1.4.8",
   "released": "2026-07-14",
-  "title": "Update v1.4.7 — Image Loading Fix (Gambar Gagal Dimuat)",
+  "title": "Update v1.4.8 — SLR Smart Topic Relevance",
   "history": [
+    {
+      "version": "1.4.8",
+      "released": "2026-07-14",
+      "title": "SLR Smart Topic Relevance — LLM Core Topic Filter",
+      "changes": [
+        {
+          "type": "new",
+          "text": "SLR relevance now uses LLM core-topic extraction to understand the main research discussion, not only raw keyword overlap"
+        },
+        {
+          "type": "fix",
+          "text": "Off-topic literature results are filtered using domain-specific terms and phrase matching, preventing generic matches like 'luar angkasa' or 'metode' from passing"
+        },
+        {
+          "type": "fix",
+          "text": "Fixed model-router JSON parsing when providers append SSE data: [DONE] markers, so SLR AI analysis no longer falls back unnecessarily"
+        }
+      ]
+    },
     {
       "version": "1.4.7",
       "released": "2026-07-14",
