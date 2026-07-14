@@ -271,6 +271,16 @@ watch(() => store.currentPaperId, () => {
   signedUrlCache.value.clear()
 })
 
+// Clear failed image cache when paper data reloads (e.g. after images_complete
+// reconciles paths). Without this, 404s cached during generation persist even
+// after correct paths are saved to DB.
+watch(() => props.items, () => {
+  if (failedImages.value.size) {
+    failedImages.value = new Set()
+    signedUrlCache.value.clear()
+  }
+})
+
 const insertOpen = ref(-1)
 
 let scrollRoot: HTMLElement | null = null

@@ -2496,6 +2496,12 @@ def generate_stream(paper_id: str):
         import time as _time
         from pathlib import Path as _Path
 
+        # Capture Flask app reference NOW while request context is alive.
+        # Later in the generator (after long image waits), request context may
+        # be torn down, making current_app unavailable.
+        from flask import current_app as _ca
+        _app = _ca._get_current_object()
+
         # Early-init accumulators so GeneratorExit handler can always reference them (BUG-35).
         full_content = ""
         reasoning_acc = ""
@@ -3012,11 +3018,7 @@ def generate_stream(paper_id: str):
                     resp = None
                 # Try to parse and save even if incomplete
                 # Wrap in app_context since Flask may have torn down on GeneratorExit
-                try:
-                    from flask import current_app
-                    _bg_app = current_app._get_current_object()
-                except Exception:
-                    _bg_app = None
+                _bg_app = _app  # captured at gen() entry
                 _bg_ctx = _bg_app.app_context() if _bg_app else None
                 if _bg_ctx:
                     _bg_ctx.__enter__()
@@ -3275,8 +3277,7 @@ def generate_stream(paper_id: str):
             except RuntimeError as _ctx_err:
                 # May fail if working outside of application context
                 log.warning("_persist_paper_data failed outside app context: %s", _ctx_err)
-                from flask import current_app
-                with current_app.app_context():
+                with _app.app_context():
                     ok, save_err = _persist_paper_data(paper_id, user_id, paper_data)
             if not ok:
                 _update_bell_job("error", 100, error=f"DB save failed: {save_err}")
@@ -3441,8 +3442,7 @@ def generate_stream(paper_id: str):
             # Must be SYNCHRONOUS: frontend reloads paper from DB on this event.
             # A background thread raced with the reload and left stale .png paths.
             try:
-                from flask import current_app
-                with current_app.app_context():
+                with _app.app_context():
                     from tools.image_generation.reconcile import reconcile_figure_images
                     from tools.editor.utils import safe_paper_image_dir
                     _upl = safe_paper_image_dir(paper_id)
