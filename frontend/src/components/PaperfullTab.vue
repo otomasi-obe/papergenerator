@@ -2338,7 +2338,11 @@ async function consumeSSEStream(res) {
             })
           } else if (currentEvent === 'content') {
             contentText.value += payload.token ?? ''
-            if (payload.total_tokens && (payload.total_tokens / 10) > displayProgress.value) displayProgress.value = Math.min(95, Math.floor(payload.total_tokens / 10))
+            // Scale progress by expected ~8000 tokens for a full paper (5–90% range)
+            if (payload.total_tokens) {
+              const pct = Math.min(90, 5 + Math.floor((payload.total_tokens / 8000) * 85))
+              if (pct > displayProgress.value) displayProgress.value = pct
+            }
             jobsStore.updateStreamProgress(displayProgress.value)
             // Sync to store every ~2 seconds via timer (reliable, not lossy)
             _syncStreamIfNeeded()
