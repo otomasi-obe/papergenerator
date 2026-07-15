@@ -60,18 +60,18 @@
               <div class="text-center">
                 <div class="text-2xl mb-1">{{ pkg.icon }}</div>
                 <h3 class="font-semibold text-ink-900 dark:text-ink-50 text-sm">{{ pkg.name }}</h3>
-                <p class="text-xs text-ink-500 dark:text-ink-400 mb-2">{{ pkg.duration }}</p>
+                <p class="text-xs text-ink-500 dark:text-[#fef9c3] mb-2">{{ pkg.duration }}</p>
                 <div class="text-base sm:text-lg font-bold text-ink-900 dark:text-ink-50">{{ formatIDR(pkg.price) }}</div>
-                <p class="text-xs text-ink-400">{{ pkg.tokens }} token</p>
+                <p class="text-xs font-bold text-[#fef08a]">{{ formatTokenShort(pkg.tokens) }} token</p>
                 <!-- Benefits -->
-                <ul class="mt-3 text-left text-xs text-ink-600 dark:text-ink-300 space-y-1 border-t border-cream-200 dark:border-ash-700 pt-3">
+                <ul class="mt-3 text-left text-xs text-ink-600 dark:text-[#fef9c3] space-y-1 border-t border-cream-200 dark:border-ash-700 pt-3">
                   <li v-for="b in pkg.benefits" :key="b" class="flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                     {{ b }}
                   </li>
                 </ul>
                 <!-- Estimates -->
-                <div class="mt-2 pt-2 border-t border-cream-200 dark:border-ash-700 text-xs text-ink-500 dark:text-ink-400 space-y-1">
+                <div class="mt-2 pt-2 border-t border-cream-200 dark:border-ash-700 text-xs text-ink-500 dark:text-[#fef9c3] space-y-1">
                   <div>Generate Full ~{{ pkg.fullGenEstimate }}x</div>
                   <div>SLR ~{{ pkg.slrEstimate }}x</div>
                 </div>
@@ -441,7 +441,7 @@ const packages: Package[] = [
     id: 'daily',
     name: 'Harian',
     duration: '24 Jam',
-    price: 35000,
+    price: 41000,
     tokens: 300000,
     icon: '⚡',
     popular: false,
@@ -458,7 +458,7 @@ const packages: Package[] = [
     id: 'weekly',
     name: 'Mingguan',
     duration: '7 Hari',
-    price: 120000,
+    price: 125000,
     tokens: 1200000,
     icon: '📅',
     popular: true,
@@ -476,7 +476,7 @@ const packages: Package[] = [
     id: 'monthly',
     name: 'Bulanan',
     duration: '30 Hari',
-    price: 300000,
+    price: 315000,
     tokens: 3500000,
     icon: '🗓️',
     benefits: [
@@ -545,6 +545,12 @@ function cleanup() {
 
 function formatIDR(amountVal: number): string {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amountVal)
+}
+
+function formatTokenShort(tokens: number): string {
+  if (tokens >= 1000000) return (tokens / 1000000).toFixed(1).replace('.0', '') + 'M'
+  if (tokens >= 1000) return (tokens / 1000).toFixed(1).replace('.0', '') + 'K'
+  return tokens.toString()
 }
 
 function confirmMethod() {

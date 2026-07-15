@@ -1,5 +1,5 @@
 <template>
- <header class="bg-gradient-to-b from-cream-200 via-cream-300 to-cream-200/80 dark:from-[#0c1628] dark:via-[#1a4470] dark:to-[#0c1628]/95 backdrop-blur shadow-sm border-b border-cream-300 dark:border-ash-700 sticky top-0 z-40">
+ <header class="bg-gradient-to-b from-cream-200/90 via-cream-300/80 to-cream-200/70 dark:from-[#0c1628]/95 dark:via-[#1a4470]/80 dark:to-[#0c1628]/90 backdrop-blur-xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_4px_16px_rgba(0,0,0,0.2)] border-b border-cream-300/60 dark:border-white/[0.08] sticky top-0 z-40 transition-colors duration-200">
  <div class="w-full max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
  <!-- Logo + Nav + Token quota bar (rofiq.txt: kuota tampil kiri atas) -->
  <div class="flex items-center gap-4">
@@ -35,14 +35,14 @@
  <!-- Tooltip: detail breakdown -->
  <div v-if="quotaOpen" role="dialog" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg p-3 z-50 text-xs" @mouseenter="quotaOpen = true" @mouseleave="quotaOpen = false" @keydown.escape.stop="quotaOpen = false">
  <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Token usage for {{ quota.month_key }}</div>
-<div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-[#7eb8e0]">
+<div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-[#fef08a]">
 <span>Today</span><span class="text-right tabular-nums">{{ formatNum(quota.used_today) }}</span>
 <span>This month</span><span class="text-right tabular-nums">{{ formatNum(quota.used_month) }}</span>
 <span>Remaining</span><span class="text-right tabular-nums">{{ formatNum(quota.remaining) }}</span>
 </div>
 <div v-if="quota.input_tokens || quota.output_tokens" class="mt-2 pt-2 border-t border-cream-300 dark:border-ash-600">
  <div class="font-semibold text-ink-900 dark:text-ink-50 mb-1">Input / Output breakdown</div>
- <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-[#7eb8e0]">
+ <div class="grid grid-cols-2 gap-1 text-ink-600 dark:text-[#fef08a]">
  <span>Input</span><span class="text-right tabular-nums">{{ formatNum(quota.input_tokens || 0) }}</span>
  <span>Output</span><span class="text-right tabular-nums">{{ formatNum(quota.output_tokens || 0) }}</span>
  </div>
@@ -56,7 +56,7 @@
  <!-- Buy Token Package -->
    <button
      @click="purchaseModalOpen = true"
-     class="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 text-ink-700 dark:text-ink-200 hover:bg-cream-200 dark:hover:bg-ash-700 text-xs font-medium transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+     class="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-cream-100 dark:bg-ash-700 border border-cream-300 dark:border-ash-600 text-ink-700 dark:text-[#fef9c3] hover:bg-cream-200 dark:hover:bg-ash-700 text-xs font-medium transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
    >
      Pricing
    </button>
@@ -68,7 +68,7 @@
  aria-haspopup="menu"
  :aria-expanded="bellOpen"
  :title="recentCount > 0 ? `${activeJobs.length} diproses, ${failedJobs.length} gagal, ${recentDone.length} selesai` : 'Belum ada paper yang diproses'">
- <svg class="w-5 h-5 text-ink-700 dark:text-[#8ec5eb]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+ <svg class="w-5 h-5 text-ink-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
  </svg>
@@ -86,7 +86,7 @@
  <div class="max-h-80 overflow-y-auto p-2">
  <!-- Active SSE streaming (Paperfull) -->
  <div v-if="streamState && streamState.generating" class="mb-2">
- <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#7eb8e0] font-semibold">Streaming</div>
+ <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#fef08a] font-semibold">Streaming</div>
  <div class="block p-2 rounded-lg text-sm bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 mb-1 cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-800/30"
  @click="navigateToStreamPaper">
  <div class="flex items-center gap-2">
@@ -105,7 +105,7 @@
 
  <!-- Active (in-progress) jobs -->
  <div v-if="activeJobs.length" class="mb-2">
- <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#7eb8e0] font-semibold">Sedang diproses</div>
+ <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#fef08a] font-semibold">Sedang diproses</div>
  <div v-for="j in activeJobs" :key="'active-' + j.id"
  class="block p-2 rounded-lg text-sm bg-navy-50 dark:bg-navy-900/30 border border-navy-200 dark:border-navy-700 mb-1"
  :class="j.paper_id ? 'cursor-pointer hover:bg-navy-100 dark:hover:bg-navy-800/40' : ''"
@@ -162,7 +162,7 @@
  higher precedence and would evaluate `j.paper_id` before `j`
  is bound, throwing "Cannot read properties of undefined". -->
  <div v-if="recentDone.length">
- <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#7eb8e0] font-semibold">Selesai</div>
+ <div class="px-2 py-1 text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#fef08a] font-semibold">Selesai</div>
  <template v-for="j in recentDone" :key="j.id">
  <router-link v-if="j && j.paper_id"
  :to="{ name: 'editor', params: { paperId: j.paper_id } }"
@@ -172,13 +172,13 @@
  <span class="text-emerald-600 dark:text-emerald-400 shrink-0">✓</span>
  <div class="font-medium truncate">{{ j.result?.partial_paper?.title || j.paper_title || 'Untitled' }}</div>
  </div>
- <div class="text-[10px] text-ink-500 dark:text-[#7eb8e0] ml-5">{{ formatTime(j.updated_at) }}</div>
+ <div class="text-[10px] text-ink-500 dark:text-[#fef08a] ml-5">{{ formatTime(j.updated_at) }}</div>
  </router-link>
  </template>
  </div>
 
  <!-- Empty state -->
- <div v-if="!activeJobs.length && !failedJobs.length && !recentDone.length" class="text-xs text-ink-500 dark:text-[#7eb8e0] p-3 text-center">
+ <div v-if="!activeJobs.length && !failedJobs.length && !recentDone.length" class="text-xs text-ink-500 dark:text-[#fef08a] p-3 text-center">
  Belum ada paper yang diproses.
  </div>
  </div>
@@ -195,20 +195,20 @@
  {{ auth.user?.name?.[0]?.toUpperCase() || 'U' }}
  </span>
  <span class="hidden md:inline font-medium">{{ auth.user?.name || 'User' }}</span>
- <span class="text-ink-500 dark:text-[#7eb8e0]">▾</span>
+ <span class="text-ink-500 dark:text-[#fef08a]">▾</span>
  </button>
 
  <!-- Dropdown -->
  <div v-if="menuOpen" role="menu" class="absolute right-0 top-full mt-1 w-56 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50" tabindex="-1">
  <div class="px-4 py-3 border-b border-cream-200 dark:border-ash-700">
  <p class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ auth.user?.name }}</p>
- <p class="text-xs text-ink-600 dark:text-[#7eb8e0]">{{ auth.user?.email }}</p>
+ <p class="text-xs text-ink-600 dark:text-[#fef08a]">{{ auth.user?.email }}</p>
  <span v-if="auth.isAdmin" class="text-xs bg-navy-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50 px-1.5 py-0.5 rounded-full mt-1 inline-block">Admin</span>
  </div>
 
  <!-- Theme switcher -->
  <div class="px-3 py-2.5 border-b border-cream-200 dark:border-ash-700">
- <div class="text-[11px] uppercase tracking-wider text-ink-500 dark:text-[#7eb8e0] font-semibold mb-1.5 px-1">Theme</div>
+ <div class="text-[11px] uppercase tracking-wider text-ink-500 dark:text-[#fef08a] font-semibold mb-1.5 px-1">Theme</div>
  <div class="grid grid-cols-3 gap-1 bg-cream-100 dark:bg-ash-700 p-1 rounded-lg">
  <button
  v-for="opt in themeOptions"
@@ -218,7 +218,7 @@
  'flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-medium transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2',
  mode === opt.value
  ? 'bg-cream-50 dark:bg-ash-850 text-ink-900 dark:text-ink-50 shadow-sm border border-cream-300 dark:border-ash-600'
- : 'text-ink-600 dark:text-[#7eb8e0] hover:text-ink-900 dark:hover:text-ink-50',
+ : 'text-ink-600 dark:text-[#fef08a] hover:text-ink-900 dark:hover:text-ink-50',
  ]"
  :title="opt.label"
  >
