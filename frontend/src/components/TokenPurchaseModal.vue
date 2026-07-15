@@ -36,13 +36,13 @@
               :key="pkg.id"
               @click="selectPackage(pkg)"
               :class="[
-                'relative rounded-xl border-2 p-3 sm:p-4 transition-all',
+                'relative rounded-xl border-2 p-3 sm:p-4 transition-all duration-300',
                 pkg.maintenance ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
                 selectedPackageId === pkg.id
-                  ? 'border-[var(--accent)] bg-cream-50 dark:bg-ash-800 shadow-lg'
+                  ? 'border-[var(--accent)] bg-cream-50 dark:bg-ash-800 shadow-lg dark:shadow-[0_0_24px_rgba(130,200,255,0.45)]'
                   : pkg.maintenance
                     ? 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
-                    : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]'
+                    : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)] hover:shadow-[0_0_22px_rgba(130,200,255,0.35)] dark:hover:shadow-[0_0_22px_rgba(130,200,255,0.5)]'
               ]"
             >
               <div
