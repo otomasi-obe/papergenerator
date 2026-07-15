@@ -1,8 +1,23 @@
 {
-  "version": "1.4.8",
-  "released": "2026-07-14",
-  "title": "Update v1.4.8 — SLR Smart Topic Relevance",
+  "version": "1.4.9",
+  "released": "2026-07-15",
+  "title": "Update v1.4.9 — Image Retry Progress Visibility",
   "history": [
+    {
+      "version": "1.4.9",
+      "released": "2026-07-15",
+      "title": "Image Retry Progress — See Auto-Retry in Real Time",
+      "changes": [
+        {
+          "type": "new",
+          "text": "Progress bar now shows when failed images are being auto-retried — amber indicator with '🔄 Retrying Failed Images...' and attempt count (e.g. 'attempt 2/3')"
+        },
+        {
+          "type": "fix",
+          "text": "Users no longer see generation appear stuck when images fail and retry — progress bar updates in real time with retry status"
+        }
+      ]
+    },
     {
       "version": "1.4.8",
       "released": "2026-07-14",
