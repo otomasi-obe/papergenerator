@@ -405,9 +405,15 @@
       class="rounded-xl border border-cream-300/60 dark:border-ash-600/60 bg-white dark:bg-ash-900 overflow-hidden shadow-sm"
     >
       <div class="flex items-center gap-2 px-4 py-2.5 border-b border-cream-300/60 dark:border-ash-600/60 bg-gradient-to-r from-blue-50 to-cream-50 dark:from-blue-900/20 dark:to-ash-800">
-        <span class="w-2 h-2 rounded-full" :class="imageGenProgress.done < imageGenProgress.total ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'"></span>
-        <span class="text-xs font-semibold text-blue-800 dark:text-blue-200">
-          {{ imageGenProgress.done < imageGenProgress.total ? '🖼️ Generating Images...' : '✅ Images Complete' }}
+        <span class="w-2 h-2 rounded-full" :class="
+          imageGenProgress.retrying > 0 ? 'bg-amber-500 animate-pulse' :
+          imageGenProgress.done < imageGenProgress.total ? 'bg-blue-500 animate-pulse' : 'bg-emerald-500'
+        "></span>
+        <span class="text-xs font-semibold" :class="
+          imageGenProgress.retrying > 0 ? 'text-amber-700 dark:text-amber-300' :
+          imageGenProgress.done < imageGenProgress.total ? 'text-blue-800 dark:text-blue-200' : 'text-emerald-700 dark:text-emerald-300'
+        ">
+          {{ imageGenProgress.retrying > 0 ? '🔄 Retrying Failed Images...' : imageGenProgress.done < imageGenProgress.total ? '🖼️ Generating Images...' : '✅ Images Complete' }}
         </span>
         <span class="text-[10px] text-blue-600 dark:text-blue-400 font-medium ml-auto tabular-nums">
           {{ imageGenProgress.done }}/{{ imageGenProgress.total }}
@@ -416,7 +422,8 @@
       <div class="p-4">
         <div class="w-full bg-cream-200 dark:bg-ash-700 rounded-full h-2.5 mb-2">
           <div 
-            class="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out" 
+            class="h-2.5 rounded-full transition-all duration-500 ease-out" 
+            :class="imageGenProgress.retrying > 0 ? 'bg-amber-500' : 'bg-blue-600'"
             :style="{ width: `${imageGenProgress.total ? Math.floor((imageGenProgress.done / imageGenProgress.total) * 100) : 0}%` }"
           ></div>
         </div>
@@ -559,7 +566,7 @@ let _progressTimer = null
 // Streaming output — split into reasoning (thinking) and content (output)
 const reasoningText = ref('')
 const contentText = ref('')
-const imageGenProgress = ref({ total: 0, done: 0, message: '' })
+const imageGenProgress = ref({ total: 0, done: 0, message: '', retrying: 0 })
 const reasoningScroll = ref<HTMLElement | null>(null)
 const contentScrollRef = ref<HTMLElement | null>(null)
 const contentRenderEl = ref<HTMLElement | null>(null)
@@ -1803,7 +1810,7 @@ watch(() => store.currentPaperId, (newId, oldId) => {
     generating.value = false
     generatingTopic.value = ''
     displayProgress.value = 0
-    imageGenProgress.value = { total: 0, done: 0, message: '' }
+    imageGenProgress.value = { total: 0, done: 0, message: '', retrying: 0 }
     _startTime = null
     _resetLiveState()
     jobsStore.clearStreamState()
@@ -1859,7 +1866,7 @@ async function regenerateSelectedImages() {
   generating.value = true
   generatingTopic.value = 'Re-generate images'
   displayProgress.value = 0
-  imageGenProgress.value = { total: 0, done: 0, message: 'Menyiapkan re-generate images...' }
+  imageGenProgress.value = { total: 0, done: 0, message: 'Menyiapkan re-generate images...', retrying: 0 }
   startTimeTracker()
 
   try {
@@ -1867,7 +1874,7 @@ async function regenerateSelectedImages() {
     const jobs = res.data?.jobs || []
     if (!jobs.length) throw new Error('Tidak ada image untuk di-re-generate')
 
-    imageGenProgress.value = { total: jobs.length, done: 0, message: `Re-generating ${jobs.length} images...` }
+    imageGenProgress.value = { total: jobs.length, done: 0, message: `Re-generating ${jobs.length} images...`, retrying: 0 }
 
     const pending = new Set(jobs.map(j => j.id))
     while (pending.size > 0) {
@@ -1877,7 +1884,7 @@ async function regenerateSelectedImages() {
         if (job && ['done', 'error', 'cancelled'].includes(job.status)) pending.delete(job.id)
       }
       const done = jobs.length - pending.size
-      imageGenProgress.value = { total: jobs.length, done, message: `Re-generate images ${done}/${jobs.length}` }
+      imageGenProgress.value = { total: jobs.length, done, message: `Re-generate images ${done}/${jobs.length}`, retrying: 0 }
       displayProgress.value = Math.floor((done / jobs.length) * 100)
     }
 
@@ -1933,7 +1940,7 @@ async function generate() {
   displayProgress.value = 0
   reasoningText.value = ''
   contentText.value = ''
-  imageGenProgress.value = { total: 0, done: 0, message: '' }
+  imageGenProgress.value = { total: 0, done: 0, message: '', retrying: 0 }
   _startTime = Date.now()
   _resetLiveState()  // Reset incremental section parser
   startProgressTicker()
@@ -2358,6 +2365,7 @@ async function consumeSSEStream(res) {
                 total: payload.total || 0,
                 done: payload.done || 0,
                 message: payload.message || '',
+                retrying: payload.retrying || 0,
               }
             }
           } else if (currentEvent === 'done') {
@@ -2373,6 +2381,7 @@ async function consumeSSEStream(res) {
                 total: totalImgJobs,
                 done: 0,
                 message: `Generating ${totalImgJobs} images...`,
+                retrying: 0,
               }
             }
             // Pass paper_data from backend directly to editor (faster than fetching from DB)
@@ -2400,7 +2409,7 @@ async function consumeSSEStream(res) {
             _startChartRefreshPolling()
             // If no images pending, stop SSE and return
             if (!totalImgJobs) {
-              imageGenProgress.value = { total: 0, done: 0, message: '' }
+              imageGenProgress.value = { total: 0, done: 0, message: '', retrying: 0 }
               stopSSEPolling()
               return
             }
@@ -2410,10 +2419,10 @@ async function consumeSSEStream(res) {
             const errCount = payload.errors || 0
             const totalCount = payload.total || 0
             if (errCount > 0) {
-              imageGenProgress.value = { total: totalCount, done: totalCount, message: `${totalCount - errCount}/${totalCount} images — ${errCount} failed!` }
+              imageGenProgress.value = { total: totalCount, done: totalCount, message: `${totalCount - errCount}/${totalCount} images — ${errCount} failed!`, retrying: 0 }
               contentText.value += `\n⚠️ ${totalCount - errCount}/${totalCount} images generated — ${errCount} errors\\n`
             } else {
-              imageGenProgress.value = { total: totalCount, done: totalCount, message: 'All images complete!' }
+              imageGenProgress.value = { total: totalCount, done: totalCount, message: 'All images complete!', retrying: 0 }
               contentText.value += `\n✅ All images generated and embedded!\n`
             }
             await store.loadPaperFromDb(store.currentPaperId)

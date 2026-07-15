@@ -3408,6 +3408,8 @@ def generate_stream(paper_id: str):
                         # Check ImageGenJob (Gemini) statuses
                         _img_done = 0
                         _img_errors = 0
+                        _img_retrying = 0
+                        _max_retry_attempt = 0
                         for _jid in image_job_ids:
                             _img = ImageGenJob.query.get(_jid)
                             if _img:
@@ -3416,6 +3418,13 @@ def generate_stream(paper_id: str):
                                 elif _img.status in ("error", "failed"):
                                     _img_done += 1
                                     _img_errors += 1
+                                elif _img.status == "queued" and (_img.retry_count or 0) > 0:
+                                    # Re-queued for retry — not done yet
+                                    _img_retrying += 1
+                                    _max_retry_attempt = max(_max_retry_attempt, _img.retry_count or 0)
+                                elif _img.status == "running" and (_img.retry_count or 0) > 0:
+                                    _img_retrying += 1
+                                    _max_retry_attempt = max(_max_retry_attempt, _img.retry_count or 0)
 
                         _all_done = _img_done
                         _pending = _total_jobs - _all_done
@@ -3423,9 +3432,11 @@ def generate_stream(paper_id: str):
                         # Emit progress every 3 seconds at most
                         if _time.time() - _last_progress_emit > 3:
                             msg_parts = [f'Generating images: {_all_done}/{_total_jobs} done']
-                            if _img_errors > 0:
+                            if _img_retrying > 0:
+                                msg_parts.append(f'({_img_retrying} retrying, attempt {_max_retry_attempt}/3)')
+                            elif _img_errors > 0:
                                 msg_parts.append(f'({_img_errors} errors)')
-                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': ' '.join(msg_parts), 'total': _total_jobs, 'done': _all_done, 'errors': _img_errors})}\n\n"
+                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': ' '.join(msg_parts), 'total': _total_jobs, 'done': _all_done, 'errors': _img_errors, 'retrying': _img_retrying})}\n\n"
                             _last_progress_emit = _time.time()
 
                         if _pending <= 0:
