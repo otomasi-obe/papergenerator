@@ -1,10 +1,45 @@
-/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    {
+      name: 'check-localhost-leak',
+      apply: 'build',
+      async closeBundle() {
+        const fs = await import('fs')
+        const path = await import('path')
+        const distDir = path.resolve(__dirname, 'dist')
+        const checkDir = (dir: string) => {
+          for (const file of fs.readdirSync(dir)) {
+            const full = path.join(dir, file)
+            const stat = fs.statSync(full)
+            if (stat.isDirectory()) checkDir(full)
+            else if (file.endsWith('.js') || file.endsWith('.css')) {
+              const content = fs.readFileSync(full, 'utf-8')
+              if (content.includes('localhost:')) {
+                const lines = content.split('\n')
+                for (let i = 0; i < lines.length; i++) {
+                  if (lines[i].includes('localhost:')) {
+                    console.error(`\n❌ BUILD FAILED: Found localhost reference in ${full}:${i + 1}`)
+                    console.error(lines[i].slice(0, 200))
+                    process.exit(1)
+                  }
+                }
+              }
+            }
+          }
+        }
+        checkDir(distDir)
+      }
+    }
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
