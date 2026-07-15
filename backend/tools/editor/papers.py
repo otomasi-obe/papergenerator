@@ -88,7 +88,7 @@ def list_papers():
 
     return jsonify(
         {
-            "papers": [p.to_dict(image_count=image_counts.get(p.id, 0)) for p in papers],
+            "papers": [p.to_dict(image_count=image_counts.get(p.id, 0), include_snippet=True) for p in papers],
             "pagination": {
                 "limit": limit,
                 "offset": offset,

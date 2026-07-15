@@ -141,7 +141,7 @@ class Paper(db.Model):
         "ProjectMemory", backref="paper", lazy=True, cascade="all, delete-orphan"
     )
 
-    def to_dict(self, include_data=False, image_count=None):
+    def to_dict(self, include_data=False, image_count=None, include_snippet=False):
         # BUG-22: image_count query causes N+1 when listing many papers.
         # Pass pre-loaded image_count to skip the per-row query.
         if image_count is None:
@@ -154,6 +154,9 @@ class Paper(db.Model):
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
+        if include_snippet and isinstance(self.data, dict):
+            abstract = (self.data.get("abstract") or "").strip()
+            result["snippet"] = abstract[:150] if abstract else ""
         if include_data:
             result["data"] = self.data
         return result

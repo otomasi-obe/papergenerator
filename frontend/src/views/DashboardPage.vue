@@ -8,7 +8,8 @@
       <div>
         <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
         <p class="text-ink-700 dark:text-[#7eb8e0] text-sm mt-1">
-          {{ papers.length }} paper{{ papers.length === 1 ? '' : 's' }}
+          {{ filteredPapers.length }} paper{{ filteredPapers.length === 1 ? '' : 's' }}
+          <span v-if="searchQuery && filteredPapers.length !== papers.length" class="text-ink-500 dark:text-ink-400"> of {{ papers.length }}</span>
           <span v-if="lastUpdated" class="text-ink-500 dark:text-ink-400"> · Last updated {{ lastUpdated }}</span>
         </p>
       </div>
@@ -17,6 +18,24 @@
          >
            + New Paper
          </router-link>
+   </div>
+
+   <!-- Search + Sort -->
+   <div v-if="papers.length > 3" class="flex flex-wrap items-center gap-3 mb-4">
+     <input
+       v-model="searchQuery"
+       type="search"
+       placeholder="Search papers..."
+       class="flex-1 min-w-[200px] max-w-md px-4 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 placeholder-ink-400 dark:placeholder-ink-500 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent"
+     />
+     <select
+       v-model="sortBy"
+       class="px-3 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent"
+     >
+       <option value="updated">Last updated</option>
+       <option value="created">Newest first</option>
+       <option value="title">Title A–Z</option>
+     </select>
    </div>
 
    <section class="flex-1 min-w-0">
@@ -40,7 +59,7 @@
    </template>
 
    <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-     <article v-for="paper in papers" :key="paper.id"
+     <article v-for="paper in filteredPapers" :key="paper.id"
       class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_30px_rgba(166,138,92,0.2)] dark:hover:shadow-[0_8px_30px_rgba(37,99,168,0.3)] transition-all duration-300 overflow-hidden group hover:border-cream-400 dark:hover:border-[#2563a8]/50 hover:-translate-y-0.5">
       <!-- Top accent bar -->
       <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 dark:from-[#1a4470] dark:via-[#3b82f6] dark:to-[#1a4470] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -49,8 +68,9 @@
      <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-[#6db4f0] transition">
      {{ paper.title || 'Untitled Paper' }}
      </h3>
+     <p v-if="paper.snippet" class="text-xs text-ink-500 dark:text-ink-400 line-clamp-2 mb-2 leading-relaxed">{{ paper.snippet }}</p>
      <div class="flex flex-wrap gap-2 text-xs">
-     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]">Updated {{ formatDate(paper.updated_at) }}</span>
+     <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]" :title="'Updated: ' + new Date(paper.updated_at).toLocaleString('id-ID') + '\nCreated: ' + new Date(paper.created_at).toLocaleString('id-ID')">Updated {{ formatDate(paper.updated_at) }}</span>
      <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
      <span v-if="paper.journal" class="px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300">{{ paper.journal }}</span>
      <span v-if="paper.section_count" class="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">{{ paper.section_count }} sections</span>
@@ -191,6 +211,24 @@ function onOnboardingComplete() {
 const papers = ref([])
 const loading = ref(true)
 const deleteTarget = ref(null)
+const searchQuery = ref('')
+const sortBy = ref('updated')
+
+const filteredPapers = computed(() => {
+  let list = papers.value
+  const q = searchQuery.value.toLowerCase().trim()
+  if (q) {
+    list = list.filter(p =>
+      (p.title || '').toLowerCase().includes(q) ||
+      (p.snippet || '').toLowerCase().includes(q)
+    )
+  }
+  return [...list].sort((a, b) => {
+    if (sortBy.value === 'title') return (a.title || '').localeCompare(b.title || '')
+    if (sortBy.value === 'created') return new Date(b.created_at) - new Date(a.created_at)
+    return new Date(b.updated_at) - new Date(a.updated_at)
+  })
+})
 const copying = ref(null)
 const errorMsg = ref('')
 const toastMsg = ref('')
