@@ -103,19 +103,34 @@
 
  <!-- Humanizer options -->
  <div v-if="store.activeTool?.id === 'humanizer'" class="inline-flex gap-1 bg-cream-100 dark:bg-ash-700 rounded-md p-0.5">
- <button
- v-for="opt in ['Light', 'Standard', 'Aggressive']"
- :key="opt"
- :class="[
- 'text-xs px-3 py-1.5 rounded font-medium transition',
- store.selectedOption === opt
- ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
- : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
- ]"
- @click="store.selectedOption = opt"
- >
- {{ opt }}
- </button>
+   <!-- Mode toggle: program vs ai -->
+   <button
+     v-for="m in ['program', 'ai']"
+     :key="m"
+     :class="[
+       'text-xs px-3 py-1.5 rounded font-medium transition',
+       store.mode === m
+         ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
+         : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+     ]"
+     @click="store.setMode(m)"
+   >
+     {{ m === 'program' ? 'Program (Rule-based)' : 'AI (LLM)' }}
+   </button>
+   <!-- Intensity options -->
+   <button
+     v-for="opt in ['Light', 'Standard', 'Aggressive']"
+     :key="opt"
+     :class="[
+       'text-xs px-3 py-1.5 rounded font-medium transition',
+       store.selectedOption === opt
+         ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
+         : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+     ]"
+     @click="store.selectedOption = opt"
+   >
+     {{ opt }}
+   </button>
  </div>
 
  <!-- Plagiarism options -->
@@ -199,14 +214,22 @@
    </div>
 
    <!-- Run button -->
- <button
- class="px-4 py-2 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-95 "
- :disabled="store.isProcessing || !store.inputText.trim()"
- @click="store.processTool()"
- >
- {{ store.isProcessing ? 'Working…' : (store.activeTool?.id === 'detector' || store.activeTool?.id === 'plagiarism' ? 'Scan' : 'Run') }}
- </button>
- </div>
+   <button
+   class="px-4 py-2 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-95 "
+   :disabled="store.isProcessing || !store.inputText.trim()"
+   @click="store.processTool()"
+   >
+   {{ store.isProcessing ? 'Working…' : (store.activeTool?.id === 'detector' || store.activeTool?.id === 'plagiarism' ? 'Scan' : 'Run') }}
+   </button>
+   <!-- Cancel button -->
+   <button
+   v-if="store.isProcessing"
+   class="px-4 py-2 rounded-lg text-xs font-semibold border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition active:scale-95"
+   @click="store.cancelTool()"
+   >
+   Cancel
+   </button>
+   </div>
 
  <!-- Detector Report -->
  <div
@@ -320,15 +343,15 @@
  <span class="text-xs text-ink-400 dark:text-ink-300">{{ processingLabel }}</span>
  </div>
 
+ <!-- Error (must be checked before placeholder/output so it's always visible) -->
+         <div v-else-if="store.error" class="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs mb-2">
+           ⚠ {{ store.error }}
+         </div>
+
  <!-- Placeholder -->
  <span v-else-if="!store.isProcessing && !store.outputText && !store.toolResult" class="text-ink-500 dark:text-ink-300">
  Click {{ store.activeTool?.id === 'detector' || store.activeTool?.id === 'plagiarism' ? '"Scan"' : '"Run"' }} to process the input on the left.
  </span>
-
- <!-- Error -->
- <div v-if="store.error" class="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs mb-2">
- ⚠ {{ store.error }}
- </div>
 
  <!-- Grammar: inline diff -->
  <span v-else-if="store.activeTool?.id === 'grammar' && store.outputText" v-html="renderGrammarOutput(store.outputText)"></span>
@@ -449,31 +472,33 @@
      <div class="overflow-x-auto">
        <table class="w-full text-sm border-collapse">
          <thead>
-           <tr class="bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-300">
-             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Kriteria</th>
-             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Bobot (%)</th>
-             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Level</th>
-             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Skor</th>
-             <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Deskripsi</th>
-             <th v-if="rubricOptions.include_grading_notes" class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Catatan Pengorek</th>
-           </tr>
-         </thead>
-         <tbody>
-           <tr v-for="(criterion, ci) in store.toolResult.criteria" :key="ci">
-             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 font-medium text-ink-900 dark:text-ink-50" :rowspan="criterion.levels.length">{{ criterion.name }}</td>
-             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center font-medium text-ink-900 dark:text-ink-50" :rowspan="criterion.levels.length">{{ criterion.weight }}%</td>
-             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-800 dark:text-ink-100">{{ criterion.levels[0].name }}</td>
-             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center text-ink-800 dark:text-ink-100">{{ criterion.levels[0].score }}</td>
-             <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-700 dark:text-ink-200">{{ criterion.levels[0].description }}</td>
-             <td v-if="rubricOptions.include_grading_notes" class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-600 dark:text-ink-300 text-xs">{{ criterion.levels[0].grading_notes || '-' }}</td>
-             <tr v-for="(level, li) in criterion.levels.slice(1)" :key="li">
-               <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-800 dark:text-ink-100">{{ level.name }}</td>
-               <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center text-ink-800 dark:text-ink-100">{{ level.score }}</td>
-               <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-700 dark:text-ink-200">{{ level.description }}</td>
-               <td v-if="rubricOptions.include_grading_notes" class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-600 dark:text-ink-300 text-xs">{{ level.grading_notes || '-' }}</td>
-             </tr>
-           </tr>
-         </tbody>
+                   <tr class="bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-300">
+                     <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Kriteria</th>
+                     <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Bobot (%)</th>
+                     <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Level</th>
+                     <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Skor</th>
+                     <th class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Deskripsi</th>
+                     <th v-if="rubricOptions.include_grading_notes" class="px-3 py-2 text-left font-semibold border-b border-cream-300 dark:border-ash-600">Catatan Pengorek</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   <template v-for="(criterion, ci) in store.toolResult.criteria" :key="ci">
+                     <tr>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 font-medium text-ink-900 dark:text-ink-50" :rowspan="criterion.levels.length">{{ criterion.name }}</td>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center font-medium text-ink-900 dark:text-ink-50" :rowspan="criterion.levels.length">{{ criterion.weight }}%</td>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-800 dark:text-ink-100">{{ criterion.levels[0].name }}</td>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center text-ink-800 dark:text-ink-100">{{ criterion.levels[0].score }}</td>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-700 dark:text-ink-200">{{ criterion.levels[0].description }}</td>
+                       <td v-if="rubricOptions.include_grading_notes" class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-600 dark:text-ink-300 text-xs">{{ criterion.levels[0].grading_notes || '-' }}</td>
+                     </tr>
+                     <tr v-for="(level, li) in criterion.levels.slice(1)" :key="li">
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-800 dark:text-ink-100">{{ level.name }}</td>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-center text-ink-800 dark:text-ink-100">{{ level.score }}</td>
+                       <td class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-700 dark:text-ink-200">{{ level.description }}</td>
+                       <td v-if="rubricOptions.include_grading_notes" class="px-3 py-2 border-b border-cream-200 dark:border-ash-600 text-ink-600 dark:text-ink-300 text-xs">{{ level.grading_notes || '-' }}</td>
+                     </tr>
+                   </template>
+                 </tbody>
        </table>
      </div>
 

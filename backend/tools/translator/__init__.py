@@ -277,7 +277,7 @@ def run_translator(data: dict) -> Generator[dict, None, None]:
                     "Do not add any explanation or punctuation."
                 )
                 detect_prompt = f"What language is the following text written in?\n\n{text[:500]}"
-                source_detected = ai_generate(detect_system, detect_prompt, max_tokens=50, temperature=0.0).strip().rstrip(".")
+                source_detected = ai_generate(detect_prompt, detect_system, max_tokens=50, temperature=0.0).strip().rstrip(".")
         except Exception:
             source_detected = "unknown"
 

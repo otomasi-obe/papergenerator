@@ -272,7 +272,32 @@ _SYNONYMS = {
 def _apply_synonyms(text: str, style: str) -> str:
     rules = _SYNONYMS.get(style.lower(), _SYNONYMS["standard"])
     for pattern, repl in rules:
-        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+        # ponytail: inflection-aware swap — proper English morphology
+        # Build inflected regex: e-final verbs drop 'e' before -ing/-ed
+        base_pat = pattern[:-2]  # strip trailing \b
+        if base_pat.endswith("e"):
+            # e.g. \butilize → \butiliz(?:e|es|ed|ing|ed)\b
+            stem = base_pat[:-1]
+            inflected = stem + r"(?:e|es|ed|ing)\b"
+        else:
+            inflected = base_pat + r"(?:es|ed|ing|s|d)?\b"
+        def _repl(m, _r=repl):
+            word = m.group(0)
+            lower = word.lower()
+            if lower.endswith("ing"):
+                result = (_r[:-1] if _r.endswith("e") else _r) + "ing"
+            elif lower.endswith("es"):
+                result = _r + "es" if _r[-1] in "sxzho" else _r + "s"
+            elif lower.endswith("ed"):
+                result = _r + "d" if _r.endswith("e") else _r + "ed"
+            elif lower.endswith("s") and not lower.endswith("ss"):
+                result = _r + "es" if _r[-1] in "sxzho" else _r + "s"
+            else:
+                result = _r
+            if word[0].isupper():
+                result = result[0].upper() + result[1:]
+            return result
+        text = re.sub(inflected, _repl, text, flags=re.IGNORECASE)
     return text
 
 
@@ -286,9 +311,12 @@ def run_paraphrase(data: dict) -> dict:
     paraphrased = _apply_synonyms(text, option)
     return {
         "text": paraphrased,
-        "original": text,
-        "option": option,
-        "changes": text != paraphrased,
+        "result": {
+            "text": paraphrased,
+            "original": text,
+            "option": option,
+            "changes": text != paraphrased,
+        },
     }
 
 

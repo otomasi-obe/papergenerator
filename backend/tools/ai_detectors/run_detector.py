@@ -279,4 +279,7 @@ def run_detector(data: Dict[str, Any]) -> Dict[str, Any]:
     if llm_result:
         result["llm"] = llm_result
 
-    return result
+    # tools_api.py contract: text + result
+    pct = round(overall_score, 1)
+    summary = f"AI Probability: {pct}% ({details.get('verdict', '')})\nFlagged: {stats['flagged_sentences']}/{stats['sentences']} sentences"
+    return {"text": summary, "result": result}

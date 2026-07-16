@@ -82,7 +82,10 @@ def _load_prompt() -> dict:
 PROMPT = _load_prompt()
 
 
+# Wrap for tools_api.py contract
 def run_plagiarism(data: dict) -> dict:
+    """Main runner with text+result payload for frontend."""
+    # Original implementation
     from tools.plagiarism.plagiarism_checker import (
         run_offline_check,
         run_web_search_check,
@@ -94,17 +97,20 @@ def run_plagiarism(data: dict) -> dict:
     option = (data.get("option") or "AI Check").strip()
 
     if not text:
-        return {"error": "No text provided", "pct": 0}
+        result = {"error": "No text provided", "pct": 0}
+        return {"text": "No text provided", "result": result}
 
     option_lower = option.lower()
 
     if option_lower == "offline" or option == "Offline":
-        return run_offline_check(text)
+        result = run_offline_check(text)
     elif option_lower in ("web", "web search", "web_search") or option == "Web Search":
-        return run_web_search_check(text)
+        result = run_web_search_check(text)
     elif option_lower in ("full", "full scan", "full_scan") or option == "Full Scan":
-        return run_full_scan(text, PROMPT)
+        result = run_full_scan(text, PROMPT)
     elif option_lower == "ai" or option == "AI Check":
-        return run_ai_check(text, PROMPT, option)
+        result = run_ai_check(text, PROMPT, option)
     else:
-        return run_ai_check(text, PROMPT, option)
+        result = run_ai_check(text, PROMPT, option)
+
+    return {"text": f"Plagiarism Score: {result.get('pct', 0)}% — {result.get('reasons', [''])[0] if result.get('reasons') else 'Analyzed'}", "result": result}
