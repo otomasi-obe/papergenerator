@@ -14,7 +14,7 @@
         </p>
       </div>
      <router-link to="/editor"
-         class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] rounded-xl font-medium transition shadow-sm active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
+         class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] rounded-xl font-medium transition-all duration-300 shadow-sm dark:hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
          >
            + New Paper
          </router-link>
@@ -27,7 +27,7 @@
          v-model="searchQuery"
          type="search"
          placeholder="Search papers..."
-         class="flex-1 min-w-[200px] max-w-md px-4 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 placeholder-ink-400 dark:placeholder-ink-500 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent pr-10"
+         class="w-full px-4 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-[#2d5a8a]/60 bg-white dark:bg-ash-800/80 text-ink-900 dark:text-ink-50 placeholder-ink-400 dark:placeholder-ink-500 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent focus:dark:border-[#3b82f6] focus:dark:shadow-[0_0_16px_rgba(59,130,246,0.25)] pr-10"
        />
        <button
          v-if="searchQuery"
@@ -89,7 +89,7 @@
      <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-[#6db4f0] transition">
      {{ paper.title || 'Untitled Paper' }}
      </h3>
-     <p v-if="paper.snippet" class="text-xs text-ink-500 dark:text-ink-400 line-clamp-2 mb-2 leading-relaxed">{{ paper.snippet }}</p>
+     <p class="text-xs text-ink-500 dark:text-ink-400 line-clamp-2 mb-2 leading-relaxed italic">{{ paper.snippet || 'No abstract yet...' }}</p>
      <div class="flex flex-wrap gap-2 text-xs">
      <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]" :title="'Updated: ' + new Date(paper.updated_at).toLocaleString('id-ID') + '\nCreated: ' + new Date(paper.created_at).toLocaleString('id-ID')">Updated {{ formatDate(paper.updated_at) }}</span>
      <span class="px-2 py-0.5 rounded-full bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-[#8ec5eb]"><span aria-hidden="true">🖼️</span> {{ paper.image_count || 0 }} image{{ paper.image_count === 1 ? '' : 's' }}</span>
