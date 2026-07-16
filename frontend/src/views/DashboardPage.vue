@@ -22,12 +22,25 @@
 
    <!-- Search + Sort -->
    <div v-if="papers.length > 3" class="flex flex-wrap items-center gap-3 mb-4">
-     <input
-       v-model="searchQuery"
-       type="search"
-       placeholder="Search papers..."
-       class="flex-1 min-w-[200px] max-w-md px-4 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 placeholder-ink-400 dark:placeholder-ink-500 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent"
-     />
+     <div class="relative flex-1 min-w-[200px] max-w-md">
+       <input
+         v-model="searchQuery"
+         type="search"
+         placeholder="Search papers..."
+         class="flex-1 min-w-[200px] max-w-md px-4 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 placeholder-ink-400 dark:placeholder-ink-500 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent pr-10"
+       />
+       <button
+         v-if="searchQuery"
+         @click="searchQuery = ''"
+         class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-ink-400 dark:text-ink-500 hover:text-ink-600 dark:hover:text-ink-300 transition rounded-md hover:bg-cream-100 dark:hover:bg-ash-700"
+         aria-label="Clear search"
+         title="Clear search"
+       >
+         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+         </svg>
+       </button>
+     </div>
      <select
        v-model="sortBy"
        class="px-3 py-2.5 min-h-[44px] rounded-xl border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#238f7f] focus:border-transparent"
@@ -58,7 +71,15 @@
     </div>
    </template>
 
-   <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+   <!-- Empty search result -->
+   <div v-if="searchQuery && filteredPapers.length === 0" class="text-center py-20">
+     <div class="text-5xl mb-4" aria-hidden="true">🔍</div>
+     <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 mb-2">Tidak ditemukan</h2>
+     <p class="text-ink-600 dark:text-[#7eb8e0] text-sm max-w-sm mx-auto">Tidak ada paper yang cocok dengan "<strong>{{ searchQuery }}</strong>"</p>
+     <button @click="searchQuery = ''" class="mt-4 px-4 py-2 text-sm font-medium text-[var(--accent)] hover:underline">Hapus pencarian</button>
+   </div>
+
+   <div v-if="!searchQuery || filteredPapers.length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
      <article v-for="paper in filteredPapers" :key="paper.id"
       class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_30px_rgba(166,138,92,0.2)] dark:hover:shadow-[0_8px_30px_rgba(37,99,168,0.3)] transition-all duration-300 overflow-hidden group hover:border-cream-400 dark:hover:border-[#2563a8]/50 hover:-translate-y-0.5">
       <!-- Top accent bar -->
