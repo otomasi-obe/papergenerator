@@ -359,9 +359,18 @@
  <!-- Plagiarism report -->
  <div v-else-if="store.activeTool?.id === 'plagiarism' && store.toolResult" class="space-y-3">
  <div v-if="store.toolResult.breakdown" class="flex gap-2 text-xs text-ink-600 dark:text-ink-300 mb-2">
+ <!-- Full scan shows offline/web/ai breakdown -->
+ <template v-if="store.toolResult.breakdown.offline_pct != null">
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">Offline: {{ store.toolResult.breakdown.offline_pct }}%</span>
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">Web: {{ store.toolResult.breakdown.web_pct }}%</span>
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">AI: {{ store.toolResult.breakdown.ai_pct }}%</span>
+ </template>
+ <!-- Other modes show verbatim/paraphrased/idea -->
+ <template v-else>
+ <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">Verbatim: {{ store.toolResult.breakdown.verbatim_pct || 0 }}%</span>
+ <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">Paraphrased: {{ store.toolResult.breakdown.paraphrased_pct || 0 }}%</span>
+ <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">Idea: {{ store.toolResult.breakdown.idea_pct || 0 }}%</span>
+ </template>
  </div>
  <div v-if="store.toolResult.reasons?.length" class="text-xs">
  <div class="font-semibold text-ink-700 dark:text-ink-200 mb-1">Findings:</div>
