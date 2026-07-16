@@ -325,21 +325,46 @@ _ACADEMIC_MISSPELLINGS = {
 }
 
 _COMMON_GRAMMAR_ERRORS = [
-    # Plural subjects with "is" → "are"
+    # Plural subjects with "is/was" → "are/were"
     (r'\b(they|we|these|those|the authors|the results)\s+(is)\b', r'\1 are', 'subject-verb agreement'),
-    # Singular subjects with "are" → "is"
+    (r'\b(they|we|these|those|the authors|the results)\s+(was)\b', r'\1 were', 'subject-verb agreement'),
+    # Singular subjects with "are/were" → "is/was"
     (r'\b(he|she|it|this|that|the study|the paper|the model)\s+(are)\b', r'\1 is', 'subject-verb agreement'),
-    # Common nouns (singular) with "are" → "is"
+    (r'\b(he|she|it|this|that|the study|the paper|the model)\s+(were)\b', r'\1 was', 'subject-verb agreement'),
+    # Common nouns (singular) with "are/were" → "is/was"
     (r'\b(the|The)\s+(cat|dog|book|person|student|teacher|system|method|approach|result|finding|data|analysis|experiment)\s+(are)\b', r'\1 \2 is', 'subject-verb agreement'),
-    # Singular noun phrase with "are"
+    (r'\b(the|The)\s+(cat|dog|book|person|student|teacher|system|method|approach|result|finding|data|analysis|experiment)\s+(were)\b', r'\1 \2 was', 'subject-verb agreement'),
+    # Singular noun phrase with "are/were"
     (r'\b(The|the)\s+(\w+)\s+(of|for|in)\s+(\w+)\s+(are)\b', r'\1 \2 \3 \4 is', 'subject-verb agreement'),
+    (r'\b(The|the)\s+(\w+)\s+(of|for|in)\s+(\w+)\s+(were)\b', r'\1 \2 \3 \4 was', 'subject-verb agreement'),
+    # "its a/an/the" → "it's" (possessive vs contraction)
+    (r'\b[Ii]ts\s+(a|an|the)\b', r"It's \1", 'confused word'),
     # Irregular third-person singular forms first
     (r'\b(he|He|she|She|it|It)\s+(go)\b', r'\1 goes', 'subject-verb agreement'),
     (r'\b(he|He|she|She|it|It)\s+(do)\b', r'\1 does', 'subject-verb agreement'),
     (r'\b(he|He|she|She|it|It)\s+(have)\b', r'\1 has', 'subject-verb agreement'),
     # Regular third-person singular with base verb forms
     (r'\b(he|He|she|She|it|It)\s+(run|walk|talk|think|work|come|make|take|give|know|see|use|find|need|want)\b', r'\1 \2s', 'subject-verb agreement'),
-    # ponytail: This covers common verbs only; add a morphology table if users need broad ESL correction.
+    # Singular "the NOUN" subjects with base verb form (3rd person singular)
+    (r'\b(the|The)\s+(study|paper|model|system|method|approach|result|finding|analysis|experiment|research|framework|algorithm|network|process|technique|data|evidence|literature|theory)\s+(demonstrate|indicate|show|suggest|reveal|provide|require|involve|include|represent|contain|produce|generate|support|confirm|establish|examine|explore|illustrate|highlight|describe|explain|present|address|propose|assume|determine|evaluate|identify|assess|measure|compare|predict|classify|define|perform|achieve|contribute)\b', r'\1 \2 \3s', 'subject-verb agreement'),
+    # ponytail: covers common academic verbs only; add morphology table for broader ESL coverage.
+    # Missing contractions — common ESL errors
+    (r'\b(I|you|You|we|We|they|They)\s+dont\b', r"\1 don't", 'missing apostrophe'),
+    (r'\b(he|He|she|She|it|It)\s+dont\b', r"\1 doesn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+cant\b', r"\1 can't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+wont\b', r"\1 won't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+didnt\b', r"\1 didn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+doesnt\b', r"\1 doesn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+shouldnt\b', r"\1 shouldn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+wouldnt\b', r"\1 wouldn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+couldnt\b', r"\1 couldn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+isnt\b', r"\1 isn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+arent\b', r"\1 aren't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+wasnt\b', r"\1 wasn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+werent\b', r"\1 weren't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+hasnt\b', r"\1 hasn't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+havent\b', r"\1 haven't", 'missing apostrophe'),
+    (r'\b(I|you|You|we|We|they|They|he|He|she|She|it|It)\s+hadnt\b', r"\1 hadn't", 'missing apostrophe'),
     (r'\b(have|has)\s+(beened|haden|wenten)\b', r'\1 been', 'verb tense'),
     (r"\b(ain't|don't|doesn't|didn't|won't|can't|couldn't|wouldn't|shouldn't|needn't)\s+(no|none|nothing|nobody|nowhere|never)\b",
      r'\1 any', 'double negative'),
