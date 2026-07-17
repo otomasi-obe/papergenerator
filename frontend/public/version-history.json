@@ -1,8 +1,71 @@
 {
-  "version": "1.4.9",
-  "released": "2026-07-15",
-  "title": "Update v1.4.9 — Image Retry Progress Visibility",
+  "version": "1.5.0",
+  "released": "2026-07-17",
+  "title": "Update v1.5.0 — Tools Bugfix Batch + Dashboard UX + Dark Mode",
   "history": [
+    {
+      "version": "1.5.0",
+      "released": "2026-07-17",
+      "title": "Tools Bugfix Batch + Dashboard UX + Dark Mode",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Login redirect ke localhost:9001 — stale Vite build cache dari sesi dev sebelumnya. Clean rebuild memperbaiki. Build-time localhost leak check ditambahkan untuk mencegah regression"
+        },
+        {
+          "type": "fix",
+          "text": "Translator: ai_generate args swap — system prompt masuk ke slot prompt dan sebaliknya. AI detect bahasa mendapat instruksi bukan teks"
+        },
+        {
+          "type": "fix",
+          "text": "Paraphrase: _apply_synonyms selalu return changes:false — regex hanya match base form exact. Fix: inflection-aware regex (demonstrates→shows, utilizing→using, utilized→used)"
+        },
+        {
+          "type": "fix",
+          "text": "Plagiarism: payload contract — run_plagiarism tidak return text+result, frontend dapat JSON string. Fix: tambah text summary + result object"
+        },
+        {
+          "type": "fix",
+          "text": "Plagiarism breakdown display: mode non-fullscan (Offline/Web/AI) menampilkan undefined%. Fix: tampilkan Verbatim/Paraphrased/Idea untuk non-fullscan"
+        },
+        {
+          "type": "fix",
+          "text": "AI Detector: payload contract sama dengan plagiarism — tambah text summary + result object"
+        },
+        {
+          "type": "fix",
+          "text": "Grammar: subject-verb agreement hanya match is/are, tidak was/were → 'results was' lolos. Fix: tambah pattern was/were + rule its/it's"
+        },
+        {
+          "type": "fix",
+          "text": "Error v-if priority di ToolWorkspace — error tidak tampil karena output lama masih ada. Fix: error check dipindah sebelum placeholder/output"
+        },
+        {
+          "type": "fix",
+          "text": "SLR: enforce top_n cap, fix orphan workers, fix token deduction"
+        },
+        {
+          "type": "fix",
+          "text": "Dark mode: floating AI chat + token detail chart + Open button border + token package hover glow"
+        },
+        {
+          "type": "new",
+          "text": "Dashboard UX: snippet preview, search, sort, date tooltip, clear search button, empty search state"
+        },
+        {
+          "type": "new",
+          "text": "Token packages: pricing update + UI colors"
+        },
+        {
+          "type": "new",
+          "text": "Build-time localhost leak check: Vite plugin yang fail build kalau ada localhost reference di output"
+        },
+        {
+          "type": "chore",
+          "text": "Rubric tool disabled — bukan untuk PaperFull (journal generation), cocok untuk VIOLA (OBE/RPS). Backend code tetap, hanya di-hide di frontend"
+        }
+      ]
+    },
     {
       "version": "1.4.9",
       "released": "2026-07-15",
