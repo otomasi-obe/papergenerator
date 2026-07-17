@@ -63,15 +63,18 @@
             class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
             :disabled="slrRunning"
           />
-          <input
+          <select
             v-model.number="slrTopK"
-            type="number"
-            min="5"
-            max="500"
-            class="w-20 px-2 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
+            class="w-24 px-2 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
             :disabled="slrRunning"
-            title="Jumlah paper yang ditampilkan (fetch N×10 dari database)"
-          />
+            title="Jumlah referensi yang ditampilkan dan di-review AI"
+          >
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+            <option :value="150">150</option>
+            <option :value="200">200</option>
+          </select>
           <button
             @click="runSLR"
             :disabled="slrRunning || !slrQuery.trim()"
@@ -1174,31 +1177,41 @@ function _onVisibilityChange(): void {
 async function runSLR(): Promise<void> {
   const q = slrQuery.value.trim()
   if (!q || !currentPaperId.value) return
-  slrRunning.value = true
-  _userClearedTable = false  // New SLR — allow loading new results
-  _slrGraceUntil = Date.now() + 5000
-  _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
-  slrStreamItems.value = []
-  try {
-    const res = await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
-      query: q,
-      top_k: slrTopK.value,
-      sources: slrSources.value.length ? slrSources.value : undefined,
-      year_from: slrYearFrom.value || null,
-      year_to: slrYearTo.value || null,
-    })
-    // Connect SSE for real-time streaming
-    const jobId = res.data?.job_id || res.data?.id
-    if (jobId) {
-      connectSSE(jobId)
-    }
-    await loadJobs()
-    schedulePoll()
-  } catch (e: any) {
-    const msg = e?.response?.data?.error || e?.message || 'SLR failed'
-    toast('SLR error: ' + msg, 'error')
-    slrRunning.value = false
-  }
+  // Token estimation: top_n papers × ~150 tokens/paper (400ch abstract + review)
+  const estTokens = slrTopK.value * 150
+  const estTokensStr = estTokens >= 1000 ? `${(estTokens / 1000).toFixed(1)}K` : `${estTokens}`
+  askConfirm(
+    'Konfirmasi SLR',
+    `Topik: "${q}"\nJumlah referensi: ${slrTopK.value}\nEstimasi token: ~${estTokensStr} (prompt + AI review untuk ${slrTopK.value} paper teratas)\n\nToken aktual dihitung per referensi yang berhasil di-fetch (bisa lebih sedikit).`,
+    'Jalankan SLR',
+    async () => {
+      slrRunning.value = true
+      _userClearedTable = false
+      _slrGraceUntil = Date.now() + 5000
+      _knownIdsBeforeSlr = new Set(items.value.map(i => i.id))
+      slrStreamItems.value = []
+      try {
+        const res = await api.post(`/api/papers/${currentPaperId.value}/slr/jobs`, {
+          query: q,
+          top_k: slrTopK.value,
+          sources: slrSources.value.length ? slrSources.value : undefined,
+          year_from: slrYearFrom.value || null,
+          year_to: slrYearTo.value || null,
+        })
+        const jobId = res.data?.job_id || res.data?.id
+        if (jobId) {
+          connectSSE(jobId)
+        }
+        await loadJobs()
+        schedulePoll()
+      } catch (e: any) {
+        const msg = e?.response?.data?.error || e?.message || 'SLR failed'
+        toast('SLR error: ' + msg, 'error')
+        slrRunning.value = false
+      }
+    },
+    () => { /* user cancelled — do nothing */ }
+  )
 }
 
 async function cancelJob(jobId: string): Promise<void> {

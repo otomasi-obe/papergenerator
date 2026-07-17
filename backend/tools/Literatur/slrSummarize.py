@@ -545,6 +545,16 @@ def _build_statistics(papers: list[dict]) -> dict:
     }
 
 
+# ── Config ─────────────────────────────────────────────────────────────────
+
+# Cap papers sent to LLM for review to control token cost.
+# Programmatic rank filters first, then only top-N get LLM review.
+LLM_REVIEW_CAP = int(os.getenv("SLR_LLM_REVIEW_CAP", "75"))
+
+# Abstract truncation length for LLM input (was 800).
+LLM_ABSTRACT_MAX_CHARS = int(os.getenv("SLR_LLM_ABSTRACT_MAX_CHARS", "400"))
+
+
 # ── Main summarize function ────────────────────────────────────────────────
 
 def summarize(
@@ -576,9 +586,9 @@ def summarize(
     # Step 2: Rank
     ranked_papers = programmatic_rank(unique_papers, query)
 
-    # Step 3: Assign no (rank order) to ALL papers
-    # IMPORTANT: Do NOT limit to top_n × 5 here — save all ranked papers to DB
-    # so papers from all fetchers are preserved (proportional representation)
+    # Step 3: Assign no (rank order), cap at top_n
+    # Only process/return top_n papers as requested by user
+    ranked_papers = ranked_papers[:top_n]
     for idx, p in enumerate(ranked_papers, 1):
         p["no"] = idx
 
@@ -609,15 +619,15 @@ def summarize(
     reviewed_papers = [
         p for g in (grouped.get("groups") or [])
         for p in g.get("papers", [])
-    ]
-    
+    ][:top_n]  # cap at user-requested count
+
     method_dist = {g["label"]: g["count"] for g in grouped["groups"]}
 
     # Build raw_papers: original paper data before AI review (used for display)
-    # Preserve order from ranked_papers (relevance-sorted)
+    # Preserve order from ranked_papers (relevance-sorted), cap at top_n
     paper_no_map = {p.get("no"): p for p in ranked_papers}
     raw_papers = []
-    for p in ranked_papers:
+    for p in ranked_papers[:top_n]:
         no = p.get("no")
         raw_papers.append({
             "no": no,
@@ -649,28 +659,33 @@ def _llm_group(
     llm_call: Callable[[str, str], str],
     top_n: int = 20,
 ) -> dict:
-    """Use LLM to review ALL papers: title, abstract, year, citations → review + relevance.
+    """Use LLM to review top papers by programmatic rank, skip rest to save tokens.
 
-    Sends compact paper data (no, title, abstract, year, citations) to LLM in batches.
-    Returns dict with ALL reviewed papers containing review text and relevance score.
-    Falls back to programmatic summary on parse errors.
+    Only the top LLM_REVIEW_CAP papers (sorted by programmatic relevance_score)
+    are sent to the LLM. Papers beyond the cap keep their programmatic rank
+    but get no AI review text — they still appear in results.
 
-    Processes ALL papers in batches of 50, not just top 50.
+    Abstracts are truncated to LLM_ABSTRACT_MAX_CHARS to further reduce tokens.
     """
-    log.info("=== _llm_group START: %d papers for query '%s' ===", len(papers), query[:80])
+    total_all = len(papers)
+
+    # ponytail: hard cap on LLM-reviewed papers. Raise SLR_LLM_REVIEW_CAP env if needed.
+    llm_papers = papers[:top_n]  # review only what user requested
+    skipped = total_all - len(llm_papers)
+    log.info("=== _llm_group START: %d papers total, %d sent to LLM (top_n=%d, skipped=%d) for query '%s' ===",
+             total_all, len(llm_papers), top_n, skipped, query[:80])
 
     prompt = load_prompt()
     log.info("Prompt loaded: %d chars", len(prompt))
 
-    # Process ALL papers in batches of 50
     BATCH_SIZE = 50
     all_reviewed = []
-    total_batches = (len(papers) + BATCH_SIZE - 1) // BATCH_SIZE
+    total_batches = (len(llm_papers) + BATCH_SIZE - 1) // BATCH_SIZE
 
     for batch_idx in range(total_batches):
         start = batch_idx * BATCH_SIZE
-        end = min(start + BATCH_SIZE, len(papers))
-        batch = papers[start:end]
+        end = min(start + BATCH_SIZE, len(llm_papers))
+        batch = llm_papers[start:end]
         log.info("Batch %d/%d: papers %d-%d", batch_idx + 1, total_batches, start + 1, end)
 
         # Sort batch by relevance_score DESC for best ordering
@@ -683,8 +698,8 @@ def _llm_group(
         compact = []
         for p in batch_sorted:
             abstract = p.get("abstract") or ""
-            if len(abstract) > 800:
-                abstract = abstract[:800] + "..."
+            if len(abstract) > LLM_ABSTRACT_MAX_CHARS:
+                abstract = abstract[:LLM_ABSTRACT_MAX_CHARS] + "..."
             compact.append({
                 "no_urut_awal": p.get("no", papers.index(p) + 1),
                 "title": p.get("title", "Untitled"),
@@ -781,9 +796,9 @@ def _llm_group(
             value = 10**9
         return value if value > 0 else 10**9
 
-    # Apply reviews + AI order back to ALL papers
+    # Apply reviews + AI order back to papers, cap at top_n
     reviewed_papers = []
-    for p in papers:
+    for p in papers[:top_n]:  # only return top_n papers
         no = p.get("no")
         rev = review_map.get(no, {})
         reviewed_papers.append({

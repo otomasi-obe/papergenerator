@@ -3,9 +3,8 @@
     <!-- Header: Icon + Query + Cancel Button -->
     <div class="flex items-center justify-between gap-2">
       <span class="font-medium text-amber-900 dark:text-amber-100 truncate flex items-center gap-2">
-        <span :class="{ 'animate-spin': isActive }" class="inline-block text-lg">
-          {{ stageIcon }}
-        </span>
+        <div v-if="isActive" class="w-5 h-5 border-2 border-[var(--accent)]/30 border-t-[var(--accent)] rounded-full animate-spin shrink-0" aria-hidden="true"></div>
+        <span v-else class="inline-block text-lg">{{ stageIcon }}</span>
         <span class="truncate">{{ job.query }}</span>
       </span>
       <button

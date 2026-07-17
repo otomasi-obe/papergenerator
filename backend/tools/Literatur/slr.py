@@ -66,6 +66,7 @@ REDIS_KEY_PREFIX = "slr_new:"
 REDIS_PROGRESS_TTL = 10800  # 3 hours (SLR jobs can take 15+ min)
 ANALYZE_TIMEOUT_SEC = int(os.getenv("SLR_ANALYZE_TIMEOUT_SEC", "12"))
 _push_count = 0  # throttle counter for DB persistence in _push_progress
+_push_count_lock = threading.Lock()  # BUG-B1: protect counter from race under MAX_WORKERS=6 threads
 
 # In-memory job store
 _jobs: dict[str, "SLRJob"] = {}
@@ -658,8 +659,8 @@ def create_slr_job(paper_id: str):
     per_source = _safe_per_source(body.get("per_source"))
     top_k = _safe_top_k(body.get("top_k"))
 
-    # Per fetcher = topK × 5. Total across all fetchers = topK × 5 × N.
-    # Example: topK=50, 3 fetchers → per_source=250, total=750 papers.
+    # Per fetcher = topK × 5. More candidates = better ranking. Return capped to topK.
+    # Example: topK=100, 3 fetchers → per_source=500, total=1500 fetched, return 100.
     if not body.get("per_source"):
         per_source = top_k * 5
 
@@ -1897,13 +1898,12 @@ def run_slr_legacy(paper_id: str):
         top_k = 50
     per_source = _safe_per_source(body.get("per_source"))
 
-    # N×10 fetch strategy: ambil top_k × 10 paper untuk AI re-ranking
+    # Per fetcher = topK × 5. More candidates = better ranking. Return capped to topK.
     if not body.get("per_source"):
         default_source_count = 5
         active_sources = body.get("sources") or None
         source_count = max(len(active_sources) if active_sources else default_source_count, 1)
-        n_x10 = top_k * 10
-        per_source = max(per_source, (n_x10 // source_count) + 1)
+        per_source = max(per_source, (top_k * 5 // source_count) + 1)
 
     year_from, year_err = _validate_year(body.get("year_from"))
     if year_err:
@@ -2601,12 +2601,10 @@ except Exception as e:
     _redis = None
 
 # ── In-memory job store ──────────────────────────────────────────────────
-
-_jobs: dict[str, "SLRJob"] = {}
-_jobs_lock = threading.Lock()
-
-# Per-fetcher rate limiters (shared across workers)
-_rate_limiters: dict[str, RateLimiter] = {}
+# BUG-B2 FIX: _jobs/_jobs_lock/_rate_limiters declared at module top-level (lines 71-75).
+# Removed duplicate declarations here — re-declaring would replace the dicts with empty ones
+# at module load, causing endpoint handlers (which import the top-level refs) to never see
+# jobs created by the orchestrator section below.
 
 
 # ── Job tracking class ────────────────────────────────────────────────────
@@ -2736,8 +2734,10 @@ def _push_progress(job: SLRJob):
         pass
     # Throttled DB persistence: every 5th push (keeps job row fresh across restarts)
     global _push_count
-    _push_count += 1
-    if _push_count % 5 == 0:
+    with _push_count_lock:  # BUG-B1 FIX: thread-safe counter increment
+        _push_count += 1
+        do_persist = (_push_count % 5 == 0)
+    if do_persist:
         _persist_job_to_db(job)
 
 
@@ -2997,6 +2997,50 @@ class SLROrchestrator:
             max_workers=MAX_WORKERS,
             thread_name_prefix="slr-fetch",
         )
+        self._swept = False
+
+    def _sweep_orphaned_jobs(self):
+        """Reset jobs stuck as 'running' in DB/Redis from a dead process."""
+        if self._swept:
+            return
+        self._swept = True
+        # Use raw SQL — may run before DB is fully ready in some workers.
+        try:
+            import psycopg2
+            db_url = os.environ.get("DATABASE_URL", "")
+            if not db_url:
+                return
+            conn = psycopg2.connect(db_url)
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE slr_jobs SET status='error', stage='error', "
+                "progress_message='Job interrupted by server restart. Please run SLR again.' "
+                "WHERE status IN ('running', 'queued', 'pending')"
+            )
+            count = cur.rowcount
+            conn.commit()
+            cur.close()
+            conn.close()
+            if count:
+                log.info("slr.sweep: reset %d orphaned jobs to error", count)
+        except Exception as e:
+            # Table not ready yet (e.g., first worker import) — skip silently
+            if "UndefinedTable" not in str(type(e)):
+                log.exception("slr.sweep failed")
+        # Also clean Redis keys for orphaned jobs
+        try:
+            if _redis is not None:
+                for key in _redis.scan_iter("slr_new:slr_*"):
+                    try:
+                        data = _redis.get(key)
+                        if data:
+                            d = json.loads(data)
+                            if d.get("status") in ("running", "queued", "pending"):
+                                _redis.delete(key)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
 
     def start_job(
         self,
@@ -3013,6 +3057,9 @@ class SLROrchestrator:
         plain_keyword: str | None = None,
     ) -> str:
         """Create and start a new SLR job. Returns job_id string."""
+        # Lazy sweep — runs once per worker process on first job start
+        self._sweep_orphaned_jobs()
+        
         job_id = f"slr_{uuid.uuid4().hex[:12]}"
 
         with _jobs_lock:
@@ -3353,7 +3400,11 @@ class SLROrchestrator:
             # Local summarize only. slrSummarizePrompt.txt batch-review sent the same
             # system prompt multiple times in one SLR run; keep one AI call for fetcher
             # selection only, then dedup/rank/group locally.
+            # Dynamic timeout: 60s base + 1s per 100 papers (capped at 300s)
             summarize_timeout = int(os.getenv("SLR_SUMMARIZE_TIMEOUT_SEC", "60"))
+            dynamic_timeout = min(60 + len(paper_dicts) // 100, 300)
+            summarize_timeout = max(summarize_timeout, dynamic_timeout)
+            
             self._set_stage(
                 job, "summarizing", 78.0,
                 f"Deduplicating, ranking and grouping {len(paper_dicts)} papers...",
@@ -3361,7 +3412,7 @@ class SLROrchestrator:
 
             # Call slrSummarize.summarize() — returns top_n × 5 grouped results.
             # Never let this block the whole SLR job; fallback ranking is better than 78% stuck.
-            summarize_llm = None
+            summarize_llm = _get_llm_call(job.user_id)
             summary_result = None
             summarize_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="slr-summarize")
             summarize_future = summarize_executor.submit(
@@ -3377,9 +3428,18 @@ class SLROrchestrator:
                 log.warning("summarize_papers timeout after %ss, building fallback", summarize_timeout)
                 summarize_future.cancel()
                 summary_result = self._fallback_summarize(paper_dicts, keyword, top_n)
+                # Update progress so UI doesn't stay stuck at 78%
+                self._set_stage(
+                    job, "summarizing", 85.0,
+                    f"Fallback summarization complete ({summary_result.get('total_unique', 0)} unique)"
+                )
             except Exception as exc:
                 log.warning("summarize_papers failed (%s), building fallback", exc)
                 summary_result = self._fallback_summarize(paper_dicts, keyword, top_n)
+                self._set_stage(
+                    job, "summarizing", 85.0,
+                    f"Fallback summarization complete ({summary_result.get('total_unique', 0)} unique)"
+                )
             finally:
                 # ponytail: summarize may call a slow upstream LLM; process isolation would kill it harder.
                 summarize_executor.shutdown(wait=False, cancel_futures=True)
@@ -3409,8 +3469,8 @@ class SLROrchestrator:
                 all_result_papers.extend(group.get("papers", []))
 
             # Best-effort DB save (non-blocking)
-            # Save ALL ranked papers to DB so papers from all fetchers are preserved
-            self._save_to_db(job, all_result_papers)
+            # Save only top_n papers to DB (capped by user request)
+            self._save_to_db(job, all_result_papers[:top_n])
 
             # Build final results list (flat, top_n for compatibility)
             final_results = all_result_papers[:top_n]
@@ -3438,13 +3498,21 @@ class SLROrchestrator:
                 from flask import current_app
                 if current_app:
                     with current_app.app_context():
-                        import json as _json
                         from utils.database.models import ApiUsageLog, User as _SlrUser
                         from utils.database.models import db as _slr_db, safe_commit as _slr_commit
-                        _summary_text = _json.dumps(summary_result, ensure_ascii=False) if summary_result else ""
+                        # Estimate actual LLM tokens used (not the full result JSON)
+                        # Prompt: keyword + ~75 papers × 400 chars abstract ≈ 30k chars / 4 = 7.5k tokens
+                        # Completion: ~75 reviews × 200 chars ≈ 15k chars / 4 = 3.75k tokens
+                        # Only count if LLM was actually called (summarize_llm not None)
                         _prompt_t = max(1, len(keyword) // 4)
-                        _comp_t = max(1, len(_summary_text) // 4)
-                        _total = _prompt_t + _comp_t
+                        _comp_t = 0
+                        _total = _prompt_t
+                        if summarize_llm is not None:
+                            # Token estimate: top_n papers × 400 chars abstract / 4 + top_n reviews × 200 chars / 4
+                            _batches = (top_n + 49) // 50  # ceil(top_n / 50)
+                            _prompt_t = min(8000, max(1, (len(keyword) + top_n * 400) // 4))
+                            _comp_t = max(1, (top_n * 200) // 4)
+                            _total = _prompt_t + _comp_t
                         _log_entry = ApiUsageLog(
                             user_id=int(job.user_id),
                             endpoint="/api/papers/slr/jobs",
@@ -3471,13 +3539,15 @@ class SLROrchestrator:
                     try:
                         from main import app as _main_app
                         with _main_app.app_context():
-                            import json as _json
                             from utils.database.models import ApiUsageLog, User as _SlrUser
                             from utils.database.models import db as _slr_db, safe_commit as _slr_commit
-                            _summary_text = _json.dumps(summary_result, ensure_ascii=False) if summary_result else ""
                             _prompt_t = max(1, len(keyword) // 4)
-                            _comp_t = max(1, len(_summary_text) // 4)
-                            _total = _prompt_t + _comp_t
+                            _comp_t = 0
+                            _total = _prompt_t
+                            if summarize_llm is not None:
+                                _prompt_t = min(8000, max(1, (len(keyword) + top_n * 400) // 4))
+                                _comp_t = max(1, (top_n * 200) // 4)
+                                _total = _prompt_t + _comp_t
                             _log_entry = ApiUsageLog(
                                 user_id=int(job.user_id),
                                 endpoint="/api/papers/slr/jobs",
@@ -3567,17 +3637,15 @@ class SLROrchestrator:
 
     @staticmethod
     def _fallback_summarize(paper_dicts: list[dict], keyword: str, top_n: int) -> dict:
-        """Fallback when slrSummarize fails — basic dedup + rank."""
-        from tools.Literatur.slrSummarize import programmatic_dedup, programmatic_rank
+        """Fallback when slrSummarize fails — fast rank only (assumes upstream already deduped)."""
+        from tools.Literatur.slrSummarize import programmatic_rank
 
         try:
-            unique = programmatic_dedup(paper_dicts)
-            ranked = programmatic_rank(unique, keyword)
-            limit = top_n * 5
-            top = ranked[:limit]
+            ranked = programmatic_rank(paper_dicts, keyword)
+            top = ranked[:top_n]
             return {
                 "total_fetched": len(paper_dicts),
-                "total_unique": len(unique),
+                "total_unique": len(paper_dicts),
                 "total_returned": len(top),
                 "groups": [{"label": "All Results", "description": "Ranked papers", "count": len(top), "papers": top}],
                 "method_distribution": {"All Results": len(top)},
@@ -3587,9 +3655,9 @@ class SLROrchestrator:
             return {
                 "total_fetched": len(paper_dicts),
                 "total_unique": len(paper_dicts),
-                "total_returned": min(len(paper_dicts), top_n * 5),
-                "groups": [{"label": "All Results", "description": "", "count": len(paper_dicts[:top_n * 5]), "papers": paper_dicts[:top_n * 5]}],
-                "method_distribution": {"All Results": min(len(paper_dicts), top_n * 5)},
+                "total_returned": min(len(paper_dicts), top_n),
+                "groups": [{"label": "All Results", "description": "", "count": min(len(paper_dicts), top_n), "papers": paper_dicts[:top_n]}],
+                "method_distribution": {"All Results": min(len(paper_dicts), top_n)},
                 "statistics": {},
             }
 
