@@ -93,10 +93,25 @@ export const useToolsStore = defineStore('tools', () => {
       const cappedOutputs: Record<string, string> = {}
       for (const [k, v] of Object.entries(toolInputs.value)) cappedInputs[k] = (v || '').slice(0, 50000)
       for (const [k, v] of Object.entries(toolOutputs.value)) cappedOutputs[k] = (v || '').slice(0, 50000)
+      // Cap results (JSON) to 100KB each
+      const cappedResults: Record<string, any> = {}
+      for (const [k, v] of Object.entries(toolResults.value)) {
+        try {
+          const json = JSON.stringify(v)
+          if (json.length > 100000) {
+            // keep only essential keys if too large
+            cappedResults[k] = { ...v, sentences: v.sentences?.slice(0, 50), highlighted_sentences: v.highlighted_sentences?.slice(0, 20), sources: v.sources?.slice(0, 10) }
+          } else {
+            cappedResults[k] = v
+          }
+        } catch {
+          cappedResults[k] = v
+        }
+      }
       savePersistedState({
         _inputs: cappedInputs,
         _outputs: cappedOutputs,
-        _results: toolResults.value,
+        _results: cappedResults,
         _options: toolOptions.value,
         _sources: toolSources.value,
       })
@@ -110,8 +125,8 @@ export const useToolsStore = defineStore('tools', () => {
         { id: 'humanizer', icon: '🧬', tint: '#2f9d6e', title: 'Humanizer', desc: 'Rework AI-sounding prose to read naturally and pass AI detectors.', modes: ['program', 'ai'], iconSvg: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>' },
         { id: 'plagiarism', icon: '📋', tint: '#c43655', title: 'Plagiarism Check', desc: 'Multi-mode plagiarism scanner: AI Check, Web Search, Offline analysis, or Full Scan.', iconSvg: '<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>' },
         { id: 'grammar', icon: '✨', tint: '#1e6e8f', title: 'Grammar', desc: 'AI-powered grammar correction with inline diff.', iconSvg: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>' },
-        { id: 'summarize', icon: '📝', tint: '#0b4088', title: 'Summarize', desc: 'Condense a section or reference into a TL;DR or abstract.', iconSvg: '<path d="M4 12h16"/><path d="M4 18h12"/><path d="m15 5-3 3-3-3"/><path d="M12 2v6"/>' },
-        { id: 'word-addon', icon: '📄', tint: '#2b579a', title: 'Word Addon', desc: 'Install the PaperFull AI assistant for Microsoft Word and chat with AI inside your document.', external: true, iconSvg: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>' },
+                { id: 'summarize', icon: '📝', tint: '#0b4088', title: 'Summarize', desc: 'Condense a section or reference into a TL;DR or abstract.', iconSvg: '<path d="M4 12h16"/><path d="M4 18h12"/><path d="m15 5-3 3-3-3"/><path d="M12 2v6"/>' },
+                { id: 'word-addon', icon: '📄', tint: '#2b579a', title: 'Word Addon', desc: 'Install the PaperFull AI assistant for Microsoft Word and chat with AI inside your document.', external: true, iconSvg: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>' },
               ]
 
           function getDefaultOption(toolId) {
@@ -123,14 +138,12 @@ export const useToolsStore = defineStore('tools', () => {
       case 'plagiarism': return 'AI Check'
       case 'summarize': return 'TL;DR'
       case 'detector': return 'Fast'
-      case 'rubric': return 'Standard'
       default: return 'Standard'
     }
   }
 
   function getDefaultSource(toolId) {
     if (toolId === 'translate') return 'Indonesian'
-    if (toolId === 'rubric') return 'Esai/Terbuka'
     return ''
   }
 
@@ -238,7 +251,14 @@ export const useToolsStore = defineStore('tools', () => {
       })
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        // Try to read error body for better message
+        let errMsg = `HTTP ${response.status}`
+        try {
+          const errData = await response.json()
+          if (errData.error) errMsg = errData.error
+          else if (errData.message) errMsg = errData.message
+        } catch { /* ignore */ }
+        throw new Error(errMsg)
       }
 
       if (!response.body) {
@@ -278,7 +298,12 @@ export const useToolsStore = defineStore('tools', () => {
         }
       }
     } catch (e) {
-      error.value = (e instanceof Error ? e.message : String(e)) || 'Terjadi kesalahan saat memproses'
+      // AbortError from cancelTool() should be silent
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        // silently ignore
+      } else {
+        error.value = (e instanceof Error ? e.message : String(e)) || 'Terjadi kesalahan saat memproses'
+      }
     } finally {
       _activeAbortCtrl = null
       isProcessing.value = false
