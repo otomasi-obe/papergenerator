@@ -214,6 +214,16 @@ onUnmounted(() => {
 }
 .greeting-close:hover { background: rgba(251, 191, 36, 0.4); }
 
+html.dark .greeting-bubble {
+  background: linear-gradient(135deg, #0c1018 0%, #121d2c 55%, #0a0e18 100%);
+  border-color: rgba(109, 180, 240, 0.35);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(109, 180, 240, 0.12);
+}
+html.dark .greeting-text { color: #8ec5eb; }
+html.dark .greeting-subtext { color: #6db4f0; }
+html.dark .greeting-close { background: rgba(109, 180, 240, 0.12); color: #d8efff; }
+html.dark .greeting-close:hover { background: rgba(109, 180, 240, 0.22); }
+
 .greeting-slide-enter-active { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 .greeting-slide-leave-active { transition: all 0.3s ease-in; }
 .greeting-slide-enter-from { opacity: 0; transform: translateY(20px) scale(0.9); }
@@ -409,7 +419,7 @@ html.dark .panel-btn:hover { background: rgba(255, 255, 255, 0.2); color: #e8f4f
 
 /* ── Dark mode overrides ── */
 html.dark .floating-chat-panel {
-  background: #141821;
+  background: #1c2a3e;
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.45),
     0 4px 16px rgba(0, 0, 0, 0.3);

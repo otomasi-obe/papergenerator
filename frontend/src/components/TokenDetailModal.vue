@@ -55,12 +55,12 @@
                 <line v-for="i in 4" :key="'grid-'+i" :x1="chartPad.left" :y1="chartPad.top + ((i-1)/3)*chartInnerH" :x2="chartPad.left + chartInnerW" :y2="chartPad.top + ((i-1)/3)*chartInnerH" />
               </g>
               <!-- Y axis labels -->
-              <g class="text-[10px] text-ink-400 dark:text-ink-300" font-family="monospace">
+              <g class="text-[11px]" font-family="monospace" fill="var(--text-muted)">
                 <text v-for="i in 4" :key="'y-'+i" :x="chartPad.left - 8" :y="chartPad.top + ((i-1)/3)*chartInnerH + 4" text-anchor="end" dominant-baseline="middle">{{ formatNum(Math.round(chartMin + (chartRange * (4-i) / 3))) }}</text>
               </g>
               <!-- X axis labels (dates, sparse) -->
-              <g class="text-[10px] text-ink-400 dark:text-ink-300" font-family="monospace">
-                <text v-for="(p, i) in sparseXLabels" :key="'x-'+i" :x="getX(i * xLabelStep)" :y="180 - 6" text-anchor="middle" dominant-baseline="hanging">{{ p }}</text>
+              <g class="text-[11px]" font-family="monospace" fill="var(--text-muted)">
+                <text v-for="(p, i) in sparseXLabels" :key="'x-'+i" :x="getX(i * xLabelStep)" :y="chartPad.top + chartInnerH + 14" text-anchor="middle" dominant-baseline="hanging">{{ p }}</text>
               </g>
               <!-- Axis lines -->
               <line :x1="chartPad.left" :y1="chartPad.top" :x2="chartPad.left" :y2="chartPad.top + chartInnerH" stroke="#d1d5db" stroke-width="1" class="dark:stroke-ash-600" />
@@ -227,7 +227,7 @@ const chartPoints = computed(() => {
   const hist = data.value?.usage_history || []
   return [...hist].reverse() // chronological
 })
-const chartPad = { top: 20, right: 20, bottom: 30, left: 50 }
+const chartPad = { top: 20, right: 20, bottom: 36, left: 68 }
 const chartInnerW = 560 - chartPad.left - chartPad.right
 const chartInnerH = 180 - chartPad.top - chartPad.bottom
 const chartMax = computed(() => Math.max(...chartPoints.value.map(p => p.tokens), 1))

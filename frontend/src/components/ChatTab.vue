@@ -1,13 +1,13 @@
 <template>
- <div class="flex flex-col h-full overflow-hidden bg-gradient-to-b from-white to-cream-50 dark:from-ash-850 dark:to-ash-900">
+ <div class="flex flex-col h-full overflow-hidden bg-gradient-to-b from-white to-cream-50 dark:from-ash-800 dark:to-ash-850">
  <!-- ─── PICKER VIEW: list of chats only (no active chat yet) ─── -->
  <template v-if="!currentConversationId">
- <header class="px-5 py-3 bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 dark:from-ash-850 dark:to-ash-900 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
+ <header class="px-5 py-3 bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 dark:from-ash-800 dark:to-ash-850 border-b border-cream-300 dark:border-ash-700 flex items-center gap-2">
  <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 flex-1">AI Assistant</h3>
  <button
  @click="createNewChat"
  :disabled="creatingChat"
- class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 dark:from-cream-500 dark:via-cream-400 dark:to-cream-500 text-ink-900 dark:text-ink-900 rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95"
+ class="flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] min-w-[44px] bg-gradient-to-r from-cream-400 via-cream-500 to-cream-400 hover:from-cream-500 hover:via-cream-600 hover:to-cream-500 dark:from-blue-600 dark:via-blue-400 dark:to-blue-600 dark:hover:from-blue-500 dark:hover:via-blue-300 dark:hover:to-blue-500 text-ink-900 dark:text-white rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95"
  >
  <span class="text-sm leading-none">＋</span>
  {{ creatingChat ? 'Creating…' : 'New chat' }}
@@ -27,11 +27,11 @@
        v-for="(conv, idx) in conversations"
        :key="conv.id"
        :class="[
-         'group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all',
-         conv.id === currentConversationId
-         ? 'bg-navy-100 dark:bg-ash-700 border-l-4 border-navy-600 dark:border-cream-400 shadow-sm'
-         : 'hover:bg-[var(--bg-surface)] hover:shadow-sm border border-transparent hover:border-[var(--border-soft)]'
-       ]"
+                     'group flex items-center gap-2 rounded-lg px-3 py-2.5 cursor-pointer transition-all conv-item',
+                     conv.id === currentConversationId
+                     ? 'bg-navy-100 dark:bg-ash-700 border-l-4 border-navy-600 dark:border-cream-400 shadow-sm'
+                     : 'hover:bg-[var(--bg-surface)] hover:shadow-sm border border-transparent hover:border-[var(--border-soft)] dark:bg-ash-800/60 dark:border-ash-700/50'
+                   ]"
        @click="handleSelectConversation(conv.id)"
      >
  <span class="text-base leading-none">
@@ -208,7 +208,7 @@
  </div>
 
  <!-- Suggestion chips -->
- <div v-if="showSuggestions && !inputText" class="px-4 pt-2 bg-cream-50 dark:bg-ash-800 border-t border-cream-300 dark:border-ash-700">
+ <div v-if="showSuggestions && !inputText" class="px-4 pt-2 bg-cream-50 dark:bg-ash-750 border-t border-cream-300 dark:border-ash-700">
  <div class="flex flex-wrap gap-2 mb-2">
  <button
  v-for="s in quickSuggestions"
@@ -261,7 +261,7 @@
 
  <!-- Input with drag-and-drop zone -->
  <div
- class="px-4 pb-3 bg-cream-50 dark:bg-ash-800 relative"
+ class="px-4 pb-3 bg-cream-50 dark:bg-ash-750 relative"
  @dragenter="onDragEnter"
  @dragleave="onDragLeave"
  @dragover="onDragOver"
@@ -270,7 +270,7 @@
  <!-- Drag overlay -->
  <div
  v-if="isDragOver"
- class="absolute inset-0 z-20 flex items-center justify-center rounded-lg border-2 border-dashed border-navy-500 dark:border-navy-400 bg-navy-50/90 dark:bg-ash-800/90 pointer-events-none"
+ class="absolute inset-0 z-20 flex items-center justify-center rounded-lg border-2 border-dashed border-navy-500 dark:border-navy-400 bg-navy-50/90 dark:bg-ash-750/90 pointer-events-none"
  >
  <div class="text-center">
  <div class="text-2xl mb-1">📂</div>
@@ -2073,6 +2073,13 @@ function openPreview(): void {
   color: var(--text-strong, #111);
   border: 1px solid var(--border-soft, #e5e7eb);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Conversation item glow on hover (dark mode) ── */
+html.dark .conv-item:not(.bg-navy-100):hover {
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 0 12px rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.3) !important;
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 /* Scroll button transition */
