@@ -13,15 +13,17 @@
     >
       <div class="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-600 text-white shadow-lg border-b border-amber-800/50">
         <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-md bg-white/15 ring-1 ring-white/40 flex items-center justify-center backdrop-blur-sm">
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.094-4.165a3.75 3.75 0 11-5.304 5.304m5.304-5.304L21 7.5m-5.304 5.304L17.25 13.5"/>
+          <!-- Logo -->
+          <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-white/20 ring-1 ring-white/40 flex items-center justify-center backdrop-blur-sm">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
           </div>
           <div class="flex-1 text-xs sm:text-sm leading-snug font-medium">
-            <span class="font-bold">Pemberitahuan:</span>
-            Sistem penyisihan dan penyesuaian badge serta benefit untuk semua akun sedang dalam pemeliharaan dan akan diterapkan pada waktu yang akan ditentukan.
-            <span class="block sm:inline opacity-95 mt-0.5 sm:mt-0 sm:ml-1">— Terima kasih, Paperfull Developer Tim</span>
+            <span class="font-bold">Pemeliharaan:</span>
+            Pemeliharaan sistem akan segera di lakukan mulai sekarang sampai waktu yang akan di tentukan.
+            Mohon maaf jika ada sistem yang tidak bisa di gunakan sementara.
           </div>
           <button
             @click="dismiss"
