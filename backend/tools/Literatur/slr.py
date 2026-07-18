@@ -620,11 +620,31 @@ def create_slr_job(paper_id: str):
     if user_id is None:
         return _err("Unauthorized", "UNAUTHORIZED", 401)
 
-    # ── Quota gate ────────────────────────────────────────────────────
-    from utils.quota import quota_exceeded
+    # ── Quota gate: monthly limit ────────────────────────────────────────
+    from utils.quota import quota_exceeded, _quota_can_cover_minimum_charge
     exceeded, info = quota_exceeded(user_id)
     if exceeded:
         return jsonify(info), 429
+
+    # ── Pre-check: estimated SLR token cost ──────────────────────────────
+    # Estimate: prompt ≈ (len(query) + top_k * 400) // 4 + 500 (system prompt overhead)
+    #           completion ≈ (top_k * 250) // 4  (actual review ~100 chars/paper = 25 tokens, + JSON overhead)
+    # Only if ai_summarize=True (default). If False, only prompt tokens (~query/4).
+    body = request.get_json(silent=True) or {}
+    top_k = _safe_top_k(body.get("top_k"))
+    ai_summarize = bool(body.get("ai_summarize", True))
+    query_text = (body.get("query") or body.get("topic") or "").strip()
+    
+    if ai_summarize and top_k > 0:
+        est_prompt = max(1, (len(query_text) + top_k * 400) // 4 + 500)
+        est_comp = max(1, (top_k * 250) // 4)
+        est_total = est_prompt + est_comp
+    else:
+        est_total = max(1, len(query_text) // 4)
+    
+    can_cover, shortage = _quota_can_cover_minimum_charge(user_id, est_total)
+    if can_cover:
+        return jsonify(shortage), 429
 
     # F-28: simple per-user in-memory rate limit (10 jobs/minute).
     ok, retry_after = _check_rate_limit(user_id, "create_slr_job")
@@ -3517,17 +3537,16 @@ class SLROrchestrator:
                         from utils.database.models import ApiUsageLog, User as _SlrUser
                         from utils.database.models import db as _slr_db, safe_commit as _slr_commit
                         # Estimate actual LLM tokens used (not the full result JSON)
-                        # Prompt: keyword + ~75 papers × 400 chars abstract ≈ 30k chars / 4 = 7.5k tokens
-                        # Completion: ~75 reviews × 200 chars ≈ 15k chars / 4 = 3.75k tokens
+                        # Prompt: keyword + top_n papers × 400 chars abstract / 4 + 500 system prompt
+                        # Completion: top_n reviews × ~250 chars (review + JSON) / 4
                         # Only count if LLM was actually called (summarize_llm not None)
                         _prompt_t = max(1, len(keyword) // 4)
                         _comp_t = 0
                         _total = _prompt_t
                         if summarize_llm is not None:
-                            # Token estimate: top_n papers × 400 chars abstract / 4 + top_n reviews × 200 chars / 4
-                            _batches = (top_n + 49) // 50  # ceil(top_n / 50)
-                            _prompt_t = min(8000, max(1, (len(keyword) + top_n * 400) // 4))
-                            _comp_t = max(1, (top_n * 200) // 4)
+                            # Token estimate: top_n papers × 400 chars abstract / 4 + 500 system + top_n reviews × 250 chars / 4
+                            _prompt_t = min(8000, max(1, (len(keyword) + top_n * 400) // 4 + 500))
+                            _comp_t = max(1, (top_n * 250) // 4)
                             _total = _prompt_t + _comp_t
                         _log_entry = ApiUsageLog(
                             user_id=int(job.user_id),
@@ -3561,8 +3580,8 @@ class SLROrchestrator:
                             _comp_t = 0
                             _total = _prompt_t
                             if summarize_llm is not None:
-                                _prompt_t = min(8000, max(1, (len(keyword) + top_n * 400) // 4))
-                                _comp_t = max(1, (top_n * 200) // 4)
+                                _prompt_t = min(8000, max(1, (len(keyword) + top_n * 400) // 4 + 500))
+                                _comp_t = max(1, (top_n * 250) // 4)
                                 _total = _prompt_t + _comp_t
                             _log_entry = ApiUsageLog(
                                 user_id=int(job.user_id),

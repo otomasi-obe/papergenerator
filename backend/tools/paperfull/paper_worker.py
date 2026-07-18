@@ -255,6 +255,15 @@ def run_generate_paper(
                 elapsed=int(time.time() - t0),
             )
 
+            # ── Pre-check: ensure user has enough quota for minimum charge ──────────
+            # Generate Full floors to 120K tokens minimum. Prevent negative balance.
+            from utils.quota import _quota_can_cover_minimum_charge
+            can_cover, cover_info = _quota_can_cover_minimum_charge(int(user_id), 120_000)
+            if not can_cover:
+                # Insufficient quota - would go negative
+                _checkpoint(job_id, "error", 100, status="error", error=cover_info.get("error", "insufficient tokens"))
+                return {"status": "error", "error": cover_info.get("error", "insufficient tokens"), "details": cover_info}
+
             # ── Token deduction for Generate Full ───────────────────────────
             # Full generation is intentionally charged from generated content/context.
             try:

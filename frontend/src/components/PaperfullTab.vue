@@ -2060,6 +2060,16 @@ async function generate() {
     
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}))
+      // 429 = quota exceeded
+      if (res.status === 429 && errData.needs_purchase) {
+        const remaining = errData.remaining ?? 0
+        const needed = errData.needed ?? 120000
+        const shortfall = errData.shortfall ?? (needed - remaining)
+        const msg = `Token tidak cukup. Butuh min ${(needed/1000).toFixed(0)}K token, sisa: ${(remaining/1000).toFixed(0)}K. Kurang: ${(shortfall/1000).toFixed(0)}K. Silakan top up.`
+        store.showToast(msg, 'error')
+        generating.value = false
+        return
+      }
       throw new Error(errData.error || `HTTP ${res.status}`)
     }
     

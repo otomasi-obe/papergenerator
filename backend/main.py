@@ -1833,6 +1833,17 @@ def _run_generate_full_job(
         # Stop progress ticker
         _ticker_stop.set()
 
+        # ── Pre-check: ensure user has enough quota for minimum charge ──────────
+        # Generate Full floors to 120K tokens minimum. Prevent negative balance.
+        if uid is not None and paper_data:
+            from utils.quota import _quota_can_cover_minimum_charge
+            can_cover, cover_info = _quota_can_cover_minimum_charge(int(uid), 120_000)
+            if not can_cover:
+                # Insufficient quota - would go negative
+                log.warning("GENERATE_FULL_QUOTA_BLOCKED uid=%s details=%s", uid, cover_info)
+                # Don't deduct tokens, just log and continue (fallback path is deprecated)
+                pass
+
         # ── Token deduction for Generate Full (fallback single-shot path) ────
         # This mirrors the deduction in paper_worker.py chunked path.
         if uid is not None and paper_data:

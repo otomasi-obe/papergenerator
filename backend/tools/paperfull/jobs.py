@@ -1298,9 +1298,15 @@ def enqueue_generate(paper_id: str):
         return jsonify({"error": "Invalid paper id"}), 400
 
     # ── Quota gate ────────────────────────────────────────────────────────
-    from utils.quota import quota_exceeded
+    from utils.quota import quota_exceeded, _quota_can_cover_minimum_charge
     exceeded, info = quota_exceeded(user_id)
     if exceeded:
+        return jsonify(info), 429
+
+    # Also check if user can cover the minimum charge (120K tokens for Generate Full)
+    insufficient, info = _quota_can_cover_minimum_charge(user_id, 120_000)
+    if insufficient:
+        info["needs_purchase"] = "true"
         return jsonify(info), 429
 
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
@@ -2154,12 +2160,18 @@ def generate_stream(paper_id: str):
         return jsonify({"error": "Invalid paper id"}), 400
 
     # ── Quota gate — block generate if insufficient tokens ────────────
-    from utils.quota import quota_exceeded
+    from utils.quota import quota_exceeded, _quota_can_cover_minimum_charge
     exceeded, info = quota_exceeded(user_id)
     if exceeded:
         _info = dict(info) if isinstance(info, dict) else {"error": str(info)}
         _info["needs_purchase"] = "true"
         return jsonify(_info), 429
+
+    # Also check if user can cover the minimum charge (120K tokens for Generate Full)
+    insufficient, info = _quota_can_cover_minimum_charge(user_id, 120_000)
+    if insufficient:
+        info["needs_purchase"] = "true"
+        return jsonify(info), 429
 
     paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
     if not paper:
