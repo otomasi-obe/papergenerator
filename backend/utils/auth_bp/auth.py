@@ -894,6 +894,22 @@ def logout():
     return resp
 
 
+@auth.route("/heartbeat", methods=["POST"])
+@jwt_required()
+def heartbeat():
+    """Update last_login timestamp for realtime online status."""
+    user_id = int(get_jwt_identity())
+    try:
+        u = User.query.get(user_id)
+        if u:
+            u.last_login = datetime.now(timezone.utc)
+            db.session.commit()
+        return jsonify({"success": True})
+    except Exception:
+        db.session.rollback()
+        return jsonify({"success": False}), 500
+
+
 @auth.route("/contact", methods=["POST"])
 def submit_contact():
     """Contact form: validate, rate-limit, save to JSONL, optionally email."""

@@ -81,5 +81,21 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.href = '/'
   }
 
-  return { user, isLoggedIn, isAdmin, setUser, fetchMe, loginWithGoogle, logout, _loaded }
+  let _heartbeatTimer: ReturnType<typeof setInterval> | null = null
+
+  function startHeartbeat(): void {
+    stopHeartbeat()
+    _heartbeatTimer = setInterval(() => {
+      api.post('/api/auth/heartbeat').catch(() => {})
+    }, 15_000) // 15s interval
+  }
+
+  function stopHeartbeat(): void {
+    if (_heartbeatTimer) {
+      clearInterval(_heartbeatTimer)
+      _heartbeatTimer = null
+    }
+  }
+
+  return { user, isLoggedIn, isAdmin, setUser, fetchMe, loginWithGoogle, logout, startHeartbeat, stopHeartbeat, _loaded }
 })

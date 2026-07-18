@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
 import { useUserStateStore } from './stores/userState'
 import { useAuthStore } from './stores/auth'
@@ -16,10 +16,17 @@ if (typeof window !== 'undefined') {
 }
 
 onMounted(async () => {
+  // load userState if logged in
   if (auth.isLoggedIn) {
     await userState.loadFromServer()
   }
 })
+
+// Heartbeat: start when logged in, stop when logged out
+watch(() => auth.isLoggedIn, (val) => {
+  if (val) auth.startHeartbeat()
+  else auth.stopHeartbeat()
+}, { immediate: true })
 </script>
 
 <template>
