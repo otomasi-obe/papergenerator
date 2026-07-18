@@ -6,13 +6,13 @@ Worker (worker.py) handles queueing + infinite retry on total failure.
 Env:
   IMAGE_GEN_API_KEY  — Bearer token (required)
   IMAGE_GEN_API_URL  — base URL (default https://ai.otomasi.app)
-  IMAGE_GEN_MODELS   — comma-separated model list (default: cx/gpt-5.5-image,ag/gemini-3.1-flash-image,alibaba-media/wan2.6-t2i)
+  IMAGE_GEN_MODELS   — comma-separated model list (default: cx/gpt-5.5-image)
 
-Badge-tier model mapping (fallback if badge provided):
-  Elite:    GPT-Image + SDXL
-  Pro:      Flux 2 + Dreamshaper + SDXL
-  Starter:  SDXL Lightning + Flux 2
-  Trial:    SDXL Lightning + Dreamshaper
+Badge-tier model mapping (tried in order until one succeeds):
+  Elite:    cx/gpt-5.5-image (GPT-Image, paid) → SDXL (free fallback)
+  Pro:      Flux 2 → Dreamshaper → SDXL (all free, Cloudflare)
+  Starter:  SDXL Lightning → Flux 2 (all free, Cloudflare)
+  Trial:    SDXL Lightning → Dreamshaper (all free, Cloudflare)
 """
 
 from __future__ import annotations
@@ -30,32 +30,11 @@ API_URL = (os.environ.get("IMAGE_GEN_API_URL") or "https://ai.otomasi.app").rstr
 API_KEY = os.environ.get("IMAGE_GEN_API_KEY") or ""
 
 # Default fallback models (used when no badge or unknown badge)
-_DEFAULT_MODELS = "cx/gpt-5.5-image,ag/gemini-3.1-flash-image,alibaba-media/wan2.6-t2i"
+_DEFAULT_MODELS = "cx/gpt-5.5-image"
 MODELS = [m.strip() for m in os.environ.get("IMAGE_GEN_MODELS", _DEFAULT_MODELS).split(",") if m.strip()]
 
-# Badge-tier model mapping (all free Cloudflare models except GPT-Image)
-BADGE_MODELS = {
-    "elite": [
-        "cx/gpt-5.5-image",
-        "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
-    ],
-    "pro": [
-        "cf/@cf/black-forest-labs/flux-2-klein-9b",
-        "cf/@cf/lykon/dreamshaper-8-lcm",
-        "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
-    ],
-    "starter": [
-        "cf/@cf/bytedance/stable-diffusion-xl-lightning",
-        "cf/@cf/black-forest-labs/flux-2-klein-9b",
-    ],
-    "trial": [
-        "cf/@cf/bytedance/stable-diffusion-xl-lightning",
-        "cf/@cf/lykon/dreamshaper-8-lcm",
-    ],
-}
-
-# ponytail: no timeout — user requirement. API can take minutes for complex prompts.
-_TIMEOUT = int(os.environ.get("IMAGE_GEN_TIMEOUT_S", "0")) or None
+# Use centralized badge tier config
+from config.badge_tiers import get_image_models  # noqa: PLC0415
 
 
 def generate_image(
@@ -84,16 +63,15 @@ def generate_image(
     except ImportError:
         raise RuntimeError("httpx not installed")
 
-    timeout_val = generate_timeout_s or _TIMEOUT
+    timeout_val = generate_timeout_s
     timeout = httpx.Timeout(timeout_val) if timeout_val else httpx.Timeout(None)
 
     # Select model list based on badge
-    if badge and badge.lower() in BADGE_MODELS:
-        models = BADGE_MODELS[badge.lower()]
+    models = get_image_models(badge)
+    if badge:
         log.info("image_api: badge=%s, using tier models: %s", badge, models)
     else:
-        models = MODELS
-        log.info("image_api: no badge or unknown badge='%s', using default models: %s", badge, models)
+        log.info("image_api: no badge, using default models: %s", models)
 
     last_error: Optional[str] = None
 

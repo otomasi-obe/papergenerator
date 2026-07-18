@@ -3,19 +3,25 @@ export const BADGE_TIERS = {
     label: 'Trial',
     color: 'bg-slate-500',
     textColor: 'text-white',
-    benefits: ['Coba fitur dasar', '1 job paralel', 'Template standar']
+    benefits: ['Coba fitur dasar', '1 job paralel', 'Template standar'],
+    imageModels: ['SDXL Lightning', 'Dreamshaper (fallback)'],
+    imageQuality: 'Cepat, kualitas standar'
   },
   starter: {
     label: 'Starter',
     color: 'bg-amber-500',
     textColor: 'text-white',
-    benefits: ['Antrian normal', 'Template standar', '1 revisi gratis', '1 job paralel']
+    benefits: ['Antrian normal', 'Template standar', '1 revisi gratis', '1 job paralel'],
+    imageModels: ['SDXL Lightning', 'Flux 2 (fallback)'],
+    imageQuality: 'Cepat, kualitas baik'
   },
   pro: {
     label: 'Pro',
     color: 'bg-indigo-600',
     textColor: 'text-white',
-    benefits: ['Prioritas tinggi', 'Template premium (sebagian jurnal)', '3 revisi gratis', '2 job paralel', 'Support email prioritas']
+    benefits: ['Prioritas tinggi', 'Template premium (sebagian jurnal)', '3 revisi gratis', '2 job paralel', 'Support email prioritas'],
+    imageModels: ['Flux 2', 'Dreamshaper', 'SDXL (fallback)'],
+    imageQuality: 'Excellent, model Flux 2 + Dreamshaper'
   },
   elite: {
     label: 'Elite',
@@ -31,7 +37,9 @@ export const BADGE_TIERS = {
       'Early access fitur beta',
       '+10% token bonus tiap pembelian',
       'Support chat prioritas'
-    ]
+    ],
+    imageModels: ['GPT-Image (OpenAI)', 'SDXL (fallback)'],
+    imageQuality: 'Best overall - GPT-Image + SDXL fallback'
   }
 } as const
 
