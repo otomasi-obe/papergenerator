@@ -33,13 +33,12 @@ export const BADGE_TIERS = {
       '3 job paralel',
       'Semua template jurnal unlocked',
       'Akses humanizer',
-      'Kuota image generation lebih besar',
       'Early access fitur beta',
       '+10% token bonus tiap pembelian',
       'Support chat prioritas'
     ],
-    imageModels: ['GPT-Image (OpenAI)', 'SDXL (fallback)'],
-    imageQuality: 'Best overall - GPT-Image + SDXL fallback'
+    imageModels: ['GPT-Image (OpenAI)', 'Flux 2 (fallback)'],
+    imageQuality: 'Best overall - GPT-Image + Flux 2 fallback'
   }
 } as const
 

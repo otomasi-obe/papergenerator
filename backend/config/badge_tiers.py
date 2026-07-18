@@ -76,8 +76,8 @@ BADGE_TIERS: dict[str, BadgeTierConfig] = {
     "elite": {
         "label": "Elite",
         "token_quota_monthly": 10_000_000,
-        "image_models": ["GPT-Image (OpenAI)", "SDXL (fallback)"],
-        "image_quality": "Best overall - GPT-Image + SDXL fallback",
+        "image_models": ["GPT-Image (OpenAI)", "Flux 2 (fallback)"],
+        "image_quality": "Best overall - GPT-Image + Flux 2 fallback",
         "image_quota_monthly": 500,
         "max_parallel_jobs": 3,
         "max_free_revisions": -1,  # unlimited
@@ -88,12 +88,11 @@ BADGE_TIERS: dict[str, BadgeTierConfig] = {
             "3 job paralel",
             "Semua template jurnal unlocked",
             "Akses humanizer",
-            "Kuota image generation lebih besar",
             "Early access fitur beta",
             "+10% token bonus tiap pembelian",
             "Support chat prioritas",
         ],
-    },
+    }
 }
 
 
@@ -135,7 +134,7 @@ def get_image_models(badge: str | None) -> list[str]:
     if badge == "elite":
         return [
             "cx/gpt-5.5-image",
-            "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
+            "cf/@cf/black-forest-labs/flux-2-klein-9b",
         ]
     elif badge == "pro":
         return [
