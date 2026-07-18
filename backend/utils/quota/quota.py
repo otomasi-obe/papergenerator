@@ -96,10 +96,7 @@ def my_quota():
 
 
 def quota_exceeded(user_id: int) -> tuple[bool, dict]:
-    # SEMENTARA: quota enforcement dinonaktifkan — semua user tetap bisa pakai AI
-    # ponytail: re-enable dengan menghapus 2 baris ini dan uncomment blok enforcement di bawah
-    return False, {}
-
+    """Check if user has exceeded their token quota."""
     if not has_app_context():
         from utils.job_core import get_core_app
         _ctx = get_core_app().app_context()
@@ -130,6 +127,47 @@ def quota_exceeded(user_id: int) -> tuple[bool, dict]:
                 "reset_at": int(reset_epoch),
             }
         return False, {}
+    finally:
+        if _ctx:
+            _ctx.__exit__(None, None, None)
+
+
+def _quota_can_cover_minimum_charge(user_id: int, min_charge: int = 120_000) -> tuple[bool, dict]:
+    """
+    Check if user has enough remaining quota to cover the minimum charge.
+    Prevents negative balance when Generate Full floors to min_charge tokens.
+    Returns (True, info_dict) if CANNOT cover (insufficient), (False, {}) if CAN cover (OK).
+    """
+    if not has_app_context():
+        from utils.job_core import get_core_app
+        _ctx = get_core_app().app_context()
+        _ctx.__enter__()
+    else:
+        _ctx = None
+    try:
+        user = User.query.get(int(user_id))
+        if not user:
+            return True, {"error": "user not found"}
+        if user.role == "admin":
+            return False, {}
+        quota_val = int(user.token_quota_monthly or 0)
+        used = int(user.token_used_month or 0)
+        remaining = quota_val - used
+        # Allow if no quota cap (quota_val == 0 means unlimited)
+        # or if remaining >= min_charge (can cover minimum charge, no negative)
+        if quota_val == 0:
+            return False, {}  # OK, unlimited
+        if remaining >= min_charge:
+            return False, {}  # OK, enough to cover min charge
+        # Insufficient: would go negative
+        return True, {
+            "error": "insufficient tokens for this operation",
+            "quota": quota_val,
+            "used": used,
+            "remaining": remaining,
+            "needed": min_charge,
+            "shortfall": min_charge - remaining,
+        }
     finally:
         if _ctx:
             _ctx.__exit__(None, None, None)
