@@ -29,6 +29,50 @@ load_dotenv(_ROOT_ENV, override=False)
 
 from tools.Literatur.fetchers import ALL, SOURCE_TOPICS
 
+# ── Synonym expansion for fallback query expansion ─────────────────────────
+# Maps common terms to related terms for broader recall
+_SYNONYM_MAP: dict[str, list[str]] = {
+    # AI/ML
+    "deep learning": ["neural network", "transformer", "cnn", "rnn", "lstm", "bert", "gpt"],
+    "machine learning": ["ml", "supervised learning", "unsupervised learning", "reinforcement learning"],
+    "neural network": ["deep learning", "ann", "dnn", "multilayer perceptron"],
+    "transformer": ["attention mechanism", "bert", "gpt", "llm", "large language model"],
+    "computer vision": ["image processing", "cv", "object detection", "image classification"],
+    "natural language processing": ["nlp", "text mining", "text classification", "sentiment analysis"],
+    "large language model": ["llm", "gpt", "bert", "transformer", "foundation model"],
+    "artificial intelligence": ["ai", "machine learning", "deep learning"],
+    
+    # Medical/Health
+    "medical imaging": ["radiology", "diagnostic imaging", "medical image analysis"],
+    "drug discovery": ["pharmaceutical research", "drug development", "compound screening"],
+    "clinical trial": ["clinical study", "randomized controlled trial", "rct"],
+    
+    # Engineering
+    "optimization": ["optimisation", "parameter tuning", "hyperparameter optimization"],
+    "control system": ["control theory", "feedback control", "pid controller"],
+    "signal processing": ["digital signal processing", "dsp", "filtering"],
+    
+    # General academic
+    "review": ["survey", "systematic review", "literature review", "meta-analysis"],
+    "analysis": ["evaluation", "assessment", "comparison"],
+    "method": ["methodology", "approach", "technique", "framework"],
+    "application": ["use case", "implementation", "deployment"],
+    "model": ["modeling", "modelling", "algorithm", "architecture"],
+    "data": ["dataset", "database", "data mining", "big data"],
+}
+
+def _expand_query_with_synonyms(query: str) -> list[str]:
+    """Expand query with synonyms for broader recall."""
+    expanded = [query]
+    q_lower = query.lower()
+    for term, synonyms in _SYNONYM_MAP.items():
+        if term in q_lower:
+            for syn in synonyms[:3]:  # limit to top 3 synonyms per term
+                new_q = q_lower.replace(term, syn)
+                if new_q != q_lower and new_q not in expanded:
+                    expanded.append(new_q)
+    return expanded[:5]  # cap at 5 expanded queries
+
 log = logging.getLogger(__name__)
 
 # Setup logging directory (absolute path from file location)
@@ -620,11 +664,37 @@ def analyze_keyword(
     system_prompt = load_prompt()
     user_msg = f"Keyword: {keyword}"
 
+    # LLM call with 5s timeout to prevent hanging
+    import threading
+    result_container: dict[str, object] = {"raw": None, "error": None}
+    
+    def call_llm():
+        try:
+            result_container["raw"] = llm_call(system_prompt, user_msg)
+        except Exception as e:
+            result_container["error"] = e
+    
+    thread = threading.Thread(target=call_llm)
+    thread.start()
+    thread.join(timeout=5.0)
+    
+    if thread.is_alive():
+        log.warning("LLM call timed out (5s), falling back to guess_fetchers")
+        return guess_fetchers(keyword)
+    
+    if result_container["error"]:
+        log.warning("LLM call failed (%s), falling back to guess_fetchers", result_container["error"])
+        return guess_fetchers(keyword)
+    
+    raw = result_container["raw"]
+    if raw is None:
+        log.warning("LLM returned None, falling back to guess_fetchers")
+        return guess_fetchers(keyword)
+
     try:
-        raw = llm_call(system_prompt, user_msg)
-        result = _parse_llm_json(raw)
+        result = _parse_llm_json(str(result_container["raw"]))
     except Exception as exc:
-        log.warning("LLM call failed (%s), falling back to guess_fetchers", exc)
+        log.warning("LLM JSON parse failed (%s), falling back to guess_fetchers", exc)
         return guess_fetchers(keyword)
 
     # Validate & sanitize
@@ -963,6 +1033,14 @@ def guess_fetchers(keyword: str) -> dict:
     selected: list[str] = list(BASE_FETCHERS_INDONESIAN if is_indonesian else BASE_FETCHERS_INTERNATIONAL)
     seen = set(selected)
 
+    # Ensure top 3 broad fetchers are always present (OpenAlex, Crossref, Semantic Scholar)
+    # These have the widest coverage across all domains
+    BROAD_FETCHERS = ["openalex", "crossref", "semantic_scholar"]
+    for bf in BROAD_FETCHERS:
+        if bf not in seen and bf in ALL:
+            selected.append(bf)
+            seen.add(bf)
+
     # Add domain-specific fetchers with tier-based priority
     for domain in domains:
         domain_fetchers = _DOMAIN_FETCHERS.get(domain, [])
@@ -1013,20 +1091,28 @@ def guess_fetchers(keyword: str) -> dict:
         else:
             fmap[f] = keyword
 
-    # Expanded queries for long keywords (5+ words)
-    expanded = [keyword]
+    # Expanded queries — use synonym expansion for ALL queries (not just 5+ words)
+    expanded = _expand_query_with_synonyms(keyword)
+    
+    # Also add broader/specific variants for longer queries
     if word_count >= 5:
-        # Broader: remove least important words
         words = keyword.split()
         if len(words) > 5:
             broader = " ".join(words[:4])
-            expanded.append(broader)
-        # Add variants
+            if broader not in expanded:
+                expanded.append(broader)
         kw_lower = keyword.lower()
         if "review" not in kw_lower and "survey" not in kw_lower:
-            expanded.append(keyword + " review")
+            review_q = keyword + " review"
+            if review_q not in expanded:
+                expanded.append(review_q)
         if "systematic" not in kw_lower:
-            expanded.append("systematic " + keyword)
+            sys_q = "systematic " + keyword
+            if sys_q not in expanded:
+                expanded.append(sys_q)
+
+    # Cap expanded queries at 5
+    expanded = expanded[:5]
 
     book_query = _make_book_query(keyword) if include_books else ""
 

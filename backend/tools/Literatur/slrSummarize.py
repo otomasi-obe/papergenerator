@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -210,39 +211,94 @@ def _paper_quality(paper: dict) -> int:
 # ── Programmatic rank ──────────────────────────────────────────────────────
 
 def programmatic_rank(papers: list[dict], query: str) -> list[dict]:
-    """Rank papers by relevance to query.
+    """Rank papers by relevance to query using BM25 + signals.
 
     Scoring weights:
-      - Title contains query words: 40%
-      - Abstract contains query words: 30%
-      - Citations (normalized 0-1): 20%
+      - BM25 title score: 40%
+      - BM25 abstract score: 30%
+      - Citations (log-normalized 0-1): 20%
       - Recency (2020+ boost): 10%
+      - Phrase bonus (exact query phrase in title): +15%
     """
     if not query:
         return papers
 
-    query_words = set(re.findall(r'\w+', query.lower()))
+    query_words = [w for w in re.findall(r'\w+', query.lower()) if w]
     if not query_words:
         return papers
 
-    # Pre-compute max citations for normalization
+    query_lower = query.lower()
+
+    # Pre-compute max citations for log-normalization
     max_citations = max((p.get("citations", 0) or 0 for p in papers), default=1)
     if max_citations == 0:
         max_citations = 1
+    # Log-scale: log(citations+1) / log(max_citations+1) → prevents single paper dominating
+    max_log_cit = math.log(max_citations + 1)
 
+    # ── Build corpus statistics for BM25 (title + abstract) ──────────────
+    # Combine title + abstract as document text
+    docs = []
+    for p in papers:
+        title = (p.get("title") or "").lower()
+        abstract = (p.get("abstract") or "").lower()
+        docs.append(title + " " + abstract)
+
+    # Tokenize all documents
+    doc_tokens = [re.findall(r'\w+', d) for d in docs]
+    doc_lens = [len(toks) for toks in doc_tokens]
+    avg_dl = sum(doc_lens) / len(doc_lens) if doc_lens else 1.0
+
+    # Term frequency per doc + document frequency
+    from collections import Counter
+    term_doc_freq: Counter[str] = Counter()
+    term_freq_per_doc: list[Counter[str]] = []
+    for toks in doc_tokens:
+        tf = Counter(toks)
+        term_freq_per_doc.append(tf)
+        term_doc_freq.update(tf.keys())
+
+    N = len(docs)
+    # IDF: log((N - df + 0.5) / (df + 0.5) + 1)  (BM25+ variant, never negative)
+    idf = {term: math.log((N - df + 0.5) / (df + 0.5) + 1.0) for term, df in term_doc_freq.items()}
+
+    # BM25 params
+    k1 = 1.5
+    b = 0.75
+
+    def bm25_score(query_terms: list[str], tf: Counter[str], dl: int) -> float:
+        score = 0.0
+        for term in query_terms:
+            if term not in tf:
+                continue
+            tf_val = tf[term]
+            idf_val = idf.get(term, 0.0)
+            # BM25 formula: idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * dl / avg_dl))
+            denom = tf_val + k1 * (1 - b + b * dl / avg_dl)
+            score += idf_val * (tf_val * (k1 + 1)) / denom
+        return score
+
+    # ── Score each paper ─────────────────────────────────────────────────
     scored: list[tuple[float, dict]] = []
-    for paper in papers:
-        title_words = set(re.findall(r'\w+', (paper.get("title") or "").lower()))
-        abstract_words = set(re.findall(r'\w+', (paper.get("abstract") or "").lower()))
+    for i, paper in enumerate(papers):
+        title = (paper.get("title") or "").lower()
+        abstract = (paper.get("abstract") or "").lower()
+        title_words = set(re.findall(r'\w+', title))
+        abstract_words = set(re.findall(r'\w+', abstract))
 
-        # Title match (40%): fraction of query words found in title
-        title_match = len(query_words & title_words) / len(query_words) if query_words else 0
+        # BM25 scores (title weight 2x abstract via separate scoring)
+        title_tf = Counter(re.findall(r'\w+', title))
+        abstract_tf = Counter(re.findall(r'\w+', abstract))
+        bm25_title = bm25_score(query_words, title_tf, len(title_tf))
+        bm25_abstract = bm25_score(query_words, abstract_tf, len(abstract_tf))
 
-        # Abstract match (30%): fraction of query words found in abstract
-        abstract_match = len(query_words & abstract_words) / len(query_words) if query_words else 0
+        # Normalize BM25 to 0-1 range (empirical: max BM25 ~3-5)
+        norm_bm25_title = min(bm25_title / 5.0, 1.0)
+        norm_bm25_abstract = min(bm25_abstract / 5.0, 1.0)
 
-        # Citations (20%): normalized to 0-1
-        cit_norm = (paper.get("citations", 0) or 0) / max_citations
+        # Citations (20%): log-normalized to 0-1
+        citations = paper.get("citations", 0) or 0
+        cit_norm = math.log(citations + 1) / max_log_cit if max_log_cit > 0 else 0
 
         # Recency (10%): 2020+ gets full score, older gets linear decay
         year = paper.get("year", 0) or 0
@@ -258,7 +314,10 @@ def programmatic_rank(papers: list[dict], query: str) -> list[dict]:
         type_bonus = {"journal_article": 0.05, "conference": 0.03, "book": 0.02, "preprint": 0.0}
         prestige = type_bonus.get(paper.get("type", ""), 0.0)
 
-        score = (title_match * 0.40) + (abstract_match * 0.30) + (cit_norm * 0.20) + (recency * 0.10) + prestige
+        # Phrase bonus: exact query phrase (>=2 words) in title → +0.15
+        phrase_bonus = 0.15 if len(query_words) >= 2 and query_lower in title else 0.0
+
+        score = (norm_bm25_title * 0.40) + (norm_bm25_abstract * 0.30) + (cit_norm * 0.20) + (recency * 0.10) + prestige + phrase_bonus
         paper["relevance_score"] = round(min(score, 1.0), 4)
         scored.append((score, paper))
 
