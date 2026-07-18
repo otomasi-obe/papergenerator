@@ -55,6 +55,27 @@ window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => 
   }
 })
 
+// Version-based cache-bust: if a new build deployed, force reload once.
+// Guards against stale index.html (browser cache) serving old chunks that
+// still exist on disk (Vite keeps old hashed chunks) → no ChunkLoadError,
+// user just silently runs old code. Compare deploy VERSION to localStorage.
+const PF_VERSION_KEY = 'pf_version'
+fetch(`${import.meta.env.BASE_URL}version-history.json`, { cache: 'no-store' })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((data) => {
+    const v = data?.version
+    if (!v) return
+    const stored = localStorage.getItem(PF_VERSION_KEY)
+    if (stored && stored !== v && !_chunkReloaded) {
+      _chunkReloaded = true
+      localStorage.setItem(PF_VERSION_KEY, v)
+      window.location.reload()
+    } else {
+      localStorage.setItem(PF_VERSION_KEY, v)
+    }
+  })
+  .catch(() => { /* offline / 404 → skip, chunk-error handler is backup */ })
+
 logger.info('Application initialized', {
   mode: import.meta.env.MODE,
   base: import.meta.env.BASE_URL

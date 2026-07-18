@@ -1,7 +1,7 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "released": "2026-07-18",
-  "title": "Update v1.5.1 — Stale Chunk Auto-Reload + Badge Tiers + Maintenance Banner + SLR PRISMA/DOI",
+  "title": "Update v1.5.2 — Generate Full SSE indicators (reasoning/image progress) + version cache-bust",
   "history": [
     {
       "version": "1.5.1",
