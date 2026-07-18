@@ -23,8 +23,8 @@
  title="Klik untuk mengubah judul paper"
  aria-label="Paper title"
  />
- <span v-if="store.loading" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0">Saving…</span>
- <button v-else-if="saveStatus === 'saving'" class="text-[11px] text-ink-600 dark:text-anthracite-200 animate-pulse shrink-0 active:scale-95 " type="button">Saving…</button>
+ <span v-if="store.loading" class="text-[11px] text-ink-600 dark:text-ash-300 animate-pulse shrink-0">Saving…</span>
+ <button v-else-if="saveStatus === 'saving'" class="text-[11px] text-ink-600 dark:text-ash-300 animate-pulse shrink-0 active:scale-95 " type="button">Saving…</button>
  <button v-else-if="saveStatus === 'saved'" class="text-[11px] text-ink-700 dark:text-ink-200 shrink-0 active:scale-95 " type="button">Saved · {{ savedRelative }}</button>
  <button v-else-if="saveStatus === 'error'" @click="retrySave" class="text-[11px] text-red-600 dark:text-red-300 hover:underline shrink-0 active:scale-95 " type="button">Save failed</button>
  </div>
@@ -33,18 +33,18 @@
  <div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 min-w-0 flex-[0_1_auto]">
  <div class="flex items-center gap-1 shrink-0">
    <button @click="store.exportDocx()" :disabled="store.loading"
-   class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-50 shrink-0 active:scale-95"
-   title="Export DOCX">
+     class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-ash-600 disabled:opacity-50 shrink-0 active:scale-95"
+     title="Export DOCX">
    📄 DOCX
    </button>
    <button @click="store.undo()" :disabled="!store.canUndo"
-   class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-40 shrink-0 active:scale-95"
-   title="Undo (Ctrl/Cmd+Z)">
+     class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-ash-600 disabled:opacity-40 shrink-0 active:scale-95"
+     title="Undo (Ctrl/Cmd+Z)">
    ↶ Undo
    </button>
    <button @click="store.redo()" :disabled="!store.canRedo"
-   class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600 disabled:opacity-40 shrink-0 active:scale-95"
-   title="Redo (Ctrl/Cmd+Shift+Z)">
+     class="px-3 py-1.5 rounded-lg text-xs font-medium transition text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-ash-600 disabled:opacity-40 shrink-0 active:scale-95"
+     title="Redo (Ctrl/Cmd+Shift+Z)">
    ↷ Redo
    </button>
  <span v-if="store.pendingCount > 0"
@@ -58,23 +58,23 @@
  <button @click="toggleEditor"
  :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap active:scale-95',
  activeTab === 'editor' && editorVisible
- ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
- : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
+ ? 'bg-ivory-200 dark:bg-ash-600 text-ink-900 dark:text-ink-50'
+ : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-ash-600']">
  📝 Editor
  </button>
  <button @click="togglePreview"
  :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap active:scale-95',
  activeTab === 'preview' && editorVisible
- ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
- : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
+ ? 'bg-ivory-200 dark:bg-ash-600 text-ink-900 dark:text-ink-50'
+ : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-ash-600']">
  👁 Preview
  </button>
 
  <button @click="toggleTools"
  :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 shrink-0 whitespace-nowrap active:scale-95',
  toolsOpen || rightPanel
- ? 'bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-ink-50'
- : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-anthracite-600']">
+ ? 'bg-ivory-200 dark:bg-ash-600 text-ink-900 dark:text-ink-50'
+ : 'text-ink-700 dark:text-ink-200 hover:bg-ivory-200 dark:hover:bg-ash-600']">
  🛠 Tools
  </button>
  </div>
@@ -128,14 +128,14 @@
  :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
  <template #item="{ element: author, index: i }">
  <div class="group bg-cream-50 dark:bg-ash-800 border border-cream-200/60 dark:border-ash-600/60 rounded-lg p-3 flex gap-2 items-start">
- <span role="button" aria-label="Drag to reorder" class="author-drag cursor-grab active:cursor-grabbing text-ivory-500 dark:text-anthracite-200 hover:text-ink-700 dark:hover:text-anthracite-50 select-none text-xl leading-tight pt-1">⠿</span>
+ <span role="button" aria-label="Drag to reorder" class="author-drag cursor-grab active:cursor-grabbing text-ivory-500 dark:text-ash-300 hover:text-ink-700 dark:hover:text-ash-100 select-none text-xl leading-tight pt-1">⠿</span>
  <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
- <button @click="moveItem(store.paper.authors, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
- <button @click="moveItem(store.paper.authors, i, i + 1)" :disabled="i === store.paper.authors.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
+ <button @click="moveItem(store.paper.authors, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move up">↑</button>
+ <button @click="moveItem(store.paper.authors, i, i + 1)" :disabled="i === store.paper.authors.length - 1" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move down">↓</button>
  </div>
  <div class="flex-1">
  <div class="flex justify-between mb-2">
- <span class="text-xs text-ink-700 dark:text-anthracite-100 font-medium">Author {{ i + 1 }}</span>
+ <span class="text-xs text-ink-700 dark:text-ash-100 font-medium">Author {{ i + 1 }}</span>
  <button v-if="store.paper.authors.length > 1" @click="store.removeAuthor(i)"
  class="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">✕</button>
  </div>
@@ -184,10 +184,10 @@
  <div class="group card" style="border-left: 4px solid #806044">
  <div class="flex items-center justify-between mb-3">
  <div class="flex items-center gap-2 flex-1 min-w-0">
- <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none text-xl leading-tight shrink-0">⠿</span>
+ <span role="button" aria-label="Drag to reorder" class="section-drag cursor-grab active:cursor-grabbing text-ivory-500 dark:text-ash-300 hover:text-navy-500 dark:hover:text-ash-100 select-none text-xl leading-tight shrink-0">⠿</span>
  <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
- <button @click="moveItem(store.paper.sections, sIdx, sIdx - 1)" :disabled="sIdx === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
- <button @click="moveItem(store.paper.sections, sIdx, sIdx + 1)" :disabled="sIdx === store.paper.sections.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
+ <button @click="moveItem(store.paper.sections, sIdx, sIdx - 1)" :disabled="sIdx === 0" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move up">↑</button>
+ <button @click="moveItem(store.paper.sections, sIdx, sIdx + 1)" :disabled="sIdx === store.paper.sections.length - 1" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move down">↓</button>
  </div>
  <span class="text-[10px] text-ink-500 dark:text-ink-300 font-medium uppercase tracking-wide bg-transparent border-l-2 border-ivory-300 pl-2 shrink-0">
  Section {{ toRoman(sIdx + 1) }}
@@ -215,8 +215,8 @@
  <div class="flex items-center gap-2 flex-1 min-w-0">
  <span role="button" aria-label="Drag to reorder" class="sub-drag cursor-grab active:cursor-grabbing text-cream-400 dark:text-ash-400 hover:text-navy-500 dark:hover:text-cream-300 select-none shrink-0">⠿</span>
  <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
- <button @click="moveItem(section.subsections, subIdx, subIdx - 1)" :disabled="subIdx === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
- <button @click="moveItem(section.subsections, subIdx, subIdx + 1)" :disabled="subIdx === section.subsections.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
+ <button @click="moveItem(section.subsections, subIdx, subIdx - 1)" :disabled="subIdx === 0" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move up">↑</button>
+ <button @click="moveItem(section.subsections, subIdx, subIdx + 1)" :disabled="subIdx === section.subsections.length - 1" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move down">↓</button>
  </div>
  <span class="text-[10px] text-ink-500 dark:text-ink-300 font-medium uppercase tracking-wide bg-transparent border-l-2 border-ivory-300 pl-2 shrink-0">
  {{ String.fromCharCode(65 + subIdx) }}
@@ -261,12 +261,12 @@
  :scroll-sensitivity="200" :scroll-speed="22" :bubble-scroll="true">
  <template #item="{ element: ref, index: i }">
  <div class="group flex gap-2 items-center">
- <span role="button" aria-label="Drag to reorder" class="ref-drag cursor-grab active:cursor-grabbing text-ink-300 dark:text-anthracite-300 hover:text-ink-500 dark:hover:text-anthracite-200 select-none shrink-0">⠿</span>
+ <span role="button" aria-label="Drag to reorder" class="ref-drag cursor-grab active:cursor-grabbing text-ink-300 dark:text-ash-300 hover:text-ink-500 dark:hover:text-ash-100 select-none shrink-0">⠿</span>
  <div class="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100">
- <button @click="moveItem(store.paper.references, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move up">↑</button>
- <button @click="moveItem(store.paper.references, i, i + 1)" :disabled="i === store.paper.references.length - 1" class="text-[10px] text-ink-500 dark:text-anthracite-200 disabled:opacity-30" aria-label="Move down">↓</button>
+ <button @click="moveItem(store.paper.references, i, i - 1)" :disabled="i === 0" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move up">↑</button>
+ <button @click="moveItem(store.paper.references, i, i + 1)" :disabled="i === store.paper.references.length - 1" class="text-[10px] text-ink-500 dark:text-ash-300 disabled:opacity-30" aria-label="Move down">↓</button>
  </div>
- <span class="text-[11px] text-ink-400 dark:text-anthracite-300 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
+ <span class="text-[11px] text-ink-400 dark:text-ash-300 w-7 text-right shrink-0">[{{ i + 1 }}]</span>
  <input :value="displayRef(ref)" @input="store.paper.references[i] = $event.target.value"
  class="input-sm flex-1 text-xs" placeholder="Reference text..." />
  <button @click="store.removeReference(i)" class="text-red-300 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 text-xs shrink-0">✕</button>

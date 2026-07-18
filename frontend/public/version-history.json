@@ -1,8 +1,99 @@
 {
-  "version": "1.5.0",
-  "released": "2026-07-17",
-  "title": "Update v1.5.0 — Tools Bugfix Batch + Dashboard UX + Dark Mode",
+  "version": "1.5.1",
+  "released": "2026-07-18",
+  "title": "Update v1.5.1 — Stale Chunk Auto-Reload + Badge Tiers + Maintenance Banner + SLR PRISMA/DOI",
   "history": [
+    {
+      "version": "1.5.1",
+      "released": "2026-07-18",
+      "title": "Stale Chunk Auto-Reload + Badge Tiers + Maintenance Banner + SLR PRISMA/DOI",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "Stale chunk auto-reload: main.ts + router catch ChunkLoadError/Failed to fetch dynamically imported module → auto reload once after deploy"
+        },
+        {
+          "type": "fix",
+          "text": "Nginx no-cache: move no-cache headers to location / (cover all SPA routes)"
+        },
+        {
+          "type": "fix",
+          "text": "Vite localhost leak: skip vue-vendor/katex in localhost scan"
+        },
+        {
+          "type": "fix",
+          "text": ".env production: VITE_API_URL empty (endpoints already prefixed /api)"
+        },
+        {
+          "type": "fix",
+          "text": "Last_seen throttle: in-memory 60s throttle per worker (ponytail: Redis upgrade)"
+        },
+        {
+          "type": "fix",
+          "text": "Admin delete-log: PaperDeleteLog model + /admin/delete-log endpoint, audit log before delete (title, user snapshot), online status dot (Active/last Xm/offline)"
+        },
+        {
+          "type": "fix",
+          "text": "Image-gen multi-model fallback: cx/gpt-5.5-image → ag/gemini → alibaba/wan fallback with logging per attempt"
+        },
+        {
+          "type": "fix",
+          "text": "Dispatcher stuck jobs: _dispatched set cleanup every poll cycle (fix stuck jobs <256)"
+        },
+        {
+          "type": "fix",
+          "text": "SameFileError: fix when out_path == dest (same dir)"
+        },
+        {
+          "type": "fix",
+          "text": "Dark mode UI: ChatTab ash-800/60 bg + border + hover glow, FloatingChatButton panel bg lighten, TokenDetailModal SVG labels + padding + clip fix"
+        },
+        {
+          "type": "fix",
+          "text": "Login redirect localhost: clean rebuild fix (cache issue)"
+        },
+        {
+          "type": "new",
+          "text": "Badge tier system: Trial/Starter/Pro/Elite with JOURNAL_TIERS (10/19/36/49), BadgeTier.vue component, locked items (🔒), auto-switch to IEEE on downgrade"
+        },
+        {
+          "type": "new",
+          "text": "MaintenanceBanner component: site-wide maintenance notice"
+        },
+        {
+          "type": "new",
+          "text": "AdminPage improvements: client-side pagination 50/page, search all users (limit=2000), Role+Tier badge chip, Delete Log tab with search"
+        },
+        {
+          "type": "new",
+          "text": "PRISMA flow in SLR: statistics in job result"
+        },
+        {
+          "type": "new",
+          "text": "DOI dedup priority chain: DOI→PMID→PMC→arXiv→S2→OpenAlex→Crossref→title fuzzy"
+        },
+        {
+          "type": "new",
+          "text": "Canonical merge: multi-source attribution, sources list, external IDs"
+        },
+        {
+          "type": "new",
+          "text": "reuse_port=False: prevents orphan gunicorn workers"
+        },
+        {
+          "type": "new",
+          "text": "Token deduction fix: actual LLM calls not json.dumps"
+        },
+        {
+          "type": "new",
+          "text": "SLR improvements: cap enforcement, dynamic timeout, orphan job sweep"
+        },
+        {
+          "type": "removed",
+          "text": "Rubric tool: disabled from frontend TOOLS array, UI, and store logic"
+        }
+      ]
+    },
     {
       "version": "1.5.0",
       "released": "2026-07-17",

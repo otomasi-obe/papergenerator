@@ -1,12 +1,12 @@
 <template>
-  <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6 space-y-4">
+  <div class="bg-white dark:bg-ash-700 rounded-2xl border border-ivory-300 dark:border-ash-500 shadow-sm p-6 space-y-4">
     <!-- Tool header -->
     <div class="mb-4">
       <h2 class="text-lg font-bold font-serif text-ink-900 dark:text-ink-50 flex items-center gap-2">
-        <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="store.activeTool?.iconSvg"></svg>
+        <svg class="w-5 h-5 text-navy-700 dark:text-navy-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="store.activeTool?.iconSvg"></svg>
         {{ store.activeTool?.title }}
       </h2>
-      <p class="text-sm text-ink-500 dark:text-ink-300 mt-1 max-w-[52ch] leading-relaxed">
+      <p class="text-sm text-ink-500 dark:text-gold-200 mt-1 max-w-[52ch] leading-relaxed">
         {{ store.activeTool?.desc }}
       </p>
       <!-- Clear button -->
@@ -32,7 +32,7 @@
  'text-xs px-3 py-1.5 rounded font-medium transition',
  store.selectedOption === opt
  ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
- : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+ : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
  ]"
  @click="store.selectedOption = opt"
  >
@@ -53,7 +53,7 @@
  <!-- Swap button -->
  <button
  @click="swapLanguages"
- class="p-2 rounded-full border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-300 hover:bg-cream-200 dark:hover:bg-ash-600 transition active:scale-90"
+ class="p-2 rounded-full border border-cream-300 dark:border-ash-600 bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ash-300 hover:bg-cream-200 dark:hover:bg-ash-600 transition active:scale-90"
  title="Swap languages"
  >
  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
@@ -93,7 +93,7 @@
  'text-xs px-3 py-1.5 rounded font-medium transition',
  store.selectedOption === opt
  ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
- : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+ : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
  ]"
  @click="store.selectedOption = opt"
  >
@@ -111,7 +111,7 @@
        'text-xs px-3 py-1.5 rounded font-medium transition',
        store.mode === m
          ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
-         : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+         : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
      ]"
      @click="store.setMode(m)"
    >
@@ -125,7 +125,7 @@
        'text-xs px-3 py-1.5 rounded font-medium transition',
        store.selectedOption === opt
          ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
-         : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+         : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
      ]"
      @click="store.selectedOption = opt"
    >
@@ -142,7 +142,7 @@
  'text-xs px-3 py-1.5 rounded font-medium transition',
  store.selectedOption === opt
  ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
- : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+ : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
  ]"
  @click="store.selectedOption = opt"
  >
@@ -159,7 +159,7 @@
  'text-xs px-3 py-1.5 rounded font-medium transition',
  store.selectedOption === opt
  ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
- : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+ : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
  ]"
  @click="store.selectedOption = opt"
  >
@@ -176,7 +176,7 @@
        'text-xs px-3 py-1.5 rounded font-medium transition',
        store.selectedOption === opt
        ? 'bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-50 border border-cream-300 dark:border-ash-700'
-       : 'text-ink-500 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50'
+       : 'text-ink-500 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50'
      ]"
        @click="store.selectedOption = opt"
      >
@@ -188,7 +188,7 @@
 
    <!-- Run button -->
    <button
-   class="px-4 py-2 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-95 "
+   class="px-4 py-2 rounded-lg text-xs font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-95 "
    :disabled="store.isProcessing || !store.inputText.trim()"
    @click="store.processTool()"
    >
@@ -223,17 +223,17 @@
  <div class="text-sm font-bold text-ink-900 dark:text-ink-50">
  {{ store.toolResult.verdict }}
  </div>
- <div class="text-xs text-ink-500 dark:text-ink-300 mt-0.5">
+ <div class="text-xs text-ink-500 dark:text-ash-300 mt-0.5">
  {{ detectorSubtitle }}
  </div>
  <div v-if="store.toolResult.model?.attributed && store.toolResult.model.attributed !== 'Unknown'" class="mt-1">
  <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-cream-200 dark:bg-ash-600 text-ink-700 dark:text-ink-200">
  🤖 {{ store.toolResult.model.attributed }}
- <span class="text-ink-400 dark:text-ink-300">({{ store.toolResult.model.confidence }}%)</span>
+ <span class="text-ink-400 dark:text-ash-300">({{ store.toolResult.model.confidence }}%)</span>
  </span>
  </div>
  </div>
- <div v-if="store.toolResult.stats" class="flex gap-2 text-xs text-ink-500 dark:text-ink-300 shrink-0">
+ <div v-if="store.toolResult.stats" class="flex gap-2 text-xs text-ink-500 dark:text-ash-300 shrink-0">
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">{{ store.toolResult.stats.words }} words</span>
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">{{ store.toolResult.stats.sentences }} sentences</span>
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">{{ store.toolResult.stats.flagged_sentences }} flagged</span>
@@ -242,7 +242,7 @@
 
  <!-- Engine breakdown (collapsible) -->
  <details class="group">
- <summary class="cursor-pointer text-xs font-semibold text-ink-600 dark:text-ink-300 hover:text-ink-900 dark:hover:text-ink-50 select-none">
+ <summary class="cursor-pointer text-xs font-semibold text-ink-600 dark:text-ash-300 hover:text-ink-900 dark:hover:text-ink-50 select-none">
  ▸ Engine breakdown ({{ store.toolResult.engines?.length || 0 }} engines)
  </summary>
  <div class="mt-2 space-y-1.5 pl-1">
@@ -251,14 +251,14 @@
  :key="eng.id"
  class="flex items-center gap-2 text-xs"
  >
- <span class="w-32 text-ink-600 dark:text-ink-300 truncate">{{ eng.label }}</span>
+ <span class="w-32 text-ink-600 dark:text-ash-300 truncate">{{ eng.label }}</span>
  <div class="flex-1 h-2 rounded-full bg-cream-200 dark:bg-ash-600 overflow-hidden">
  <div
  class="h-full rounded-full transition-all duration-500"
  :style="{ width: eng.score + '%', background: engineBarColor(eng.score) }"
  ></div>
  </div>
- <span class="w-10 text-right font-mono text-ink-500 dark:text-ink-300">{{ Math.round(eng.score) }}%</span>
+ <span class="w-10 text-right font-mono text-ink-500 dark:text-ash-300">{{ Math.round(eng.score) }}%</span>
  </div>
  </div>
  </details>
@@ -279,7 +279,7 @@
  <div class="bg-white dark:bg-ash-800 rounded-xl border border-cream-300 dark:border-ash-700 flex flex-col overflow-hidden">
  <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-cream-300 dark:border-ash-700 bg-cream-100 dark:bg-ash-700 text-xs font-semibold text-ink-900 dark:text-ink-50">
  <span>Input</span>
- <span class="font-normal text-ink-500 dark:text-ink-300">{{ wordCount }} words</span>
+ <span class="font-normal text-ink-500 dark:text-ash-300">{{ wordCount }} words</span>
  </div>
  <textarea
  ref="inputTextarea"
@@ -313,7 +313,7 @@
  <i class="w-1.5 h-1.5 rounded-full bg-ink-500 dark:bg-ink-300 animate-bounce" style="animation-delay: 150ms"></i>
  <i class="w-1.5 h-1.5 rounded-full bg-ink-500 dark:bg-ink-300 animate-bounce" style="animation-delay: 300ms"></i>
  </div>
- <span class="text-xs text-ink-400 dark:text-ink-300">{{ processingLabel }}</span>
+ <span class="text-xs text-ink-400 dark:text-ash-300">{{ processingLabel }}</span>
  </div>
 
  <!-- Error (must be checked before placeholder/output so it's always visible) -->
@@ -322,7 +322,7 @@
          </div>
 
  <!-- Placeholder -->
- <span v-else-if="!store.isProcessing && !store.outputText && !store.toolResult" class="text-ink-500 dark:text-ink-300">
+ <span v-else-if="!store.isProcessing && !store.outputText && !store.toolResult" class="text-ink-500 dark:text-ash-300">
  Click {{ store.activeTool?.id === 'detector' || store.activeTool?.id === 'plagiarism' ? '"Scan"' : '"Run"' }} to process the input on the left.
  </span>
 
@@ -331,7 +331,7 @@
 
  <!-- Plagiarism report -->
  <div v-else-if="store.activeTool?.id === 'plagiarism' && store.toolResult" class="space-y-3">
- <div v-if="store.toolResult.breakdown" class="flex gap-2 text-xs text-ink-600 dark:text-ink-300 mb-2">
+ <div v-if="store.toolResult.breakdown" class="flex gap-2 text-xs text-ink-600 dark:text-ash-300 mb-2">
  <!-- Full scan shows offline/web/ai breakdown -->
  <template v-if="store.toolResult.breakdown.offline_pct != null">
  <span class="px-2 py-0.5 rounded bg-cream-200 dark:bg-ash-600">Offline: {{ store.toolResult.breakdown.offline_pct }}%</span>
@@ -347,7 +347,7 @@
  </div>
  <div v-if="store.toolResult.reasons?.length" class="text-xs">
  <div class="font-semibold text-ink-700 dark:text-ink-200 mb-1">Findings:</div>
- <ul class="list-disc list-inside space-y-0.5 text-ink-600 dark:text-ink-300">
+ <ul class="list-disc list-inside space-y-0.5 text-ink-600 dark:text-ash-300">
  <li v-for="(r, i) in store.toolResult.reasons" :key="i">{{ r }}</li>
  </ul>
  </div>
@@ -362,22 +362,22 @@
  'border-blue-400 bg-blue-50/50 dark:bg-blue-900/20': h.severity === 'low',
  }">
  <span class="text-ink-800 dark:text-ink-100">"{{ h.text }}"</span>
- <div class="text-ink-500 dark:text-ink-300 mt-0.5">{{ h.issue }}<span v-if="h.note"> — {{ h.note }}</span></div>
+ <div class="text-ink-500 dark:text-ash-300 mt-0.5">{{ h.issue }}<span v-if="h.note"> — {{ h.note }}</span></div>
  </li>
  </ul>
  </div>
  <div v-if="store.toolResult.sources?.length" class="text-xs">
  <div class="font-semibold text-ink-700 dark:text-ink-200 mb-1">Potential sources:</div>
  <ul class="space-y-1">
- <li v-for="(s, i) in store.toolResult.sources" :key="i" class="text-ink-600 dark:text-ink-300">
- <a :href="s.url" target="_blank" rel="noopener" class="text-navy-600 dark:text-cream-300 underline hover:no-underline">{{ s.title || s.url }}</a>
+ <li v-for="(s, i) in store.toolResult.sources" :key="i" class="text-ink-600 dark:text-ash-300">
+ <a :href="s.url" target="_blank" rel="noopener" class="text-navy-600 dark:text-navy-300 underline hover:no-underline">{{ s.title || s.url }}</a>
  <span v-if="s.match_pct" class="ml-1 text-red-500 dark:text-red-400 font-medium">{{ s.match_pct }}% match</span>
  </li>
  </ul>
  </div>
  <div v-if="store.toolResult.suggestions?.length" class="text-xs">
  <div class="font-semibold text-ink-700 dark:text-ink-200 mb-1">Suggestions:</div>
- <ul class="list-disc list-inside space-y-0.5 text-ink-600 dark:text-ink-300">
+ <ul class="list-disc list-inside space-y-0.5 text-ink-600 dark:text-ash-300">
  <li v-for="(s, i) in store.toolResult.suggestions" :key="i">{{ s }}</li>
  </ul>
  </div>
@@ -385,7 +385,7 @@
 
  <!-- Detector: sentence highlighting -->
  <div v-else-if="store.activeTool?.id === 'detector' && store.toolResult?.sentences?.length" class="space-y-3">
- <div class="text-xs text-ink-500 dark:text-ink-300 leading-relaxed">
+ <div class="text-xs text-ink-500 dark:text-ash-300 leading-relaxed">
  Sentences are color-coded by AI likelihood.
  <span class="inline-flex items-center gap-1.5 ml-2">
  <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span> High
@@ -407,7 +407,7 @@
  <span
  v-for="(r, j) in sent.reasons"
  :key="j"
- class="text-[10px] px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ash-600 text-ink-500 dark:text-ink-300"
+ class="text-[10px] px-1.5 py-0.5 rounded bg-ink-100 dark:bg-ash-600 text-ink-500 dark:text-ash-300"
  >{{ r }}</span>
  </div>
  </div>
@@ -417,12 +417,12 @@
  <div class="text-xs font-semibold text-ink-700 dark:text-ink-200 mb-1.5">
  🤖 LLM Analysis ({{ store.toolResult.llm.pct }}%)
  </div>
- <ul v-if="store.toolResult.llm.reasons?.length" class="list-disc list-inside space-y-0.5 text-xs text-ink-600 dark:text-ink-300">
+ <ul v-if="store.toolResult.llm.reasons?.length" class="list-disc list-inside space-y-0.5 text-xs text-ink-600 dark:text-ash-300">
  <li v-for="(r, i) in store.toolResult.llm.reasons" :key="i">{{ r }}</li>
  </ul>
  <div v-if="store.toolResult.llm.suggestions?.length" class="mt-2">
  <div class="text-xs font-semibold text-ink-700 dark:text-ink-200 mb-1">Suggestions:</div>
- <ul class="list-disc list-inside space-y-0.5 text-xs text-ink-600 dark:text-ink-300">
+ <ul class="list-disc list-inside space-y-0.5 text-xs text-ink-600 dark:text-ash-300">
  <li v-for="(s, i) in store.toolResult.llm.suggestions" :key="i">{{ s }}</li>
  </ul>
  </div>
@@ -433,7 +433,7 @@
    <div v-else-if="store.outputText" class="whitespace-pre-wrap">{{ store.outputText }}</div>
 
    <!-- Fallback -->
-   <span v-else-if="!store.isProcessing && store.toolResult" class="text-ink-500 dark:text-ink-300">Done — see the report above.</span>
+   <span v-else-if="!store.isProcessing && store.toolResult" class="text-ink-500 dark:text-ash-300">Done — see the report above.</span>
  </div>
  </div>
  </div>

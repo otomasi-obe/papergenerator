@@ -1,6 +1,6 @@
 <template>
   <div
-    class="group bg-cream-100/50 dark:bg-ash-850/50 border border-cream-300 dark:border-ash-700 rounded-xl p-4 hover:border-navy-400 dark:hover:border-cream-400 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+    class="group bg-cream-100/50 dark:bg-ash-850/50 border border-cream-300 dark:border-ash-700 rounded-xl p-4 hover:border-navy-400 dark:hover:border-navy-400 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
     @click="handleClick"
     role="button"
     :tabindex="passwordGated ? 0 : -1"
@@ -37,7 +37,7 @@
       </div>
     </div>
     <!-- Hover indicator -->
-    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-navy-500 dark:bg-cream-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-center rounded-b-xl" />
+    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-navy-500 dark:bg-navy-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-center rounded-b-xl" />
   </div>
 </template>
 

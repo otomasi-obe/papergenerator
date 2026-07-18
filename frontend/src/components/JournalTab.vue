@@ -1,19 +1,19 @@
 <template>
   <div class="max-w-3xl">
-    <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6">
-      <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Journal</h2>
-      <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
+    <div class="bg-white dark:bg-ash-700 rounded-2xl border border-ivory-300 dark:border-ash-500 shadow-sm p-6">
+      <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 font-serif flex items-center gap-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Journal</h2>
+      <p class="text-sm text-ink-700 dark:text-ash-300 mt-1">
         Pilih jurnal/template tujuan untuk export DOCX. Gunakan kotak pencarian untuk menyaring.
       </p>
 
       <div class="mt-5">
-        <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">Export format</label>
+        <label class="block text-sm font-medium text-ink-900 dark:text-ink-50 mb-2">Export format</label>
 
         <!-- Search + selected pill -->
         <div class="relative max-w-md" ref="wrapRef">
           <div class="flex items-center gap-2 mb-1.5">
-            <span class="text-xs text-ink-700 dark:text-anthracite-100">Saat ini:</span>
-            <span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-ivory-200 dark:bg-anthracite-600 text-ink-900 dark:text-anthracite-50">
+            <span class="text-xs text-ink-700 dark:text-ash-300">Saat ini:</span>
+            <span class="px-2 py-0.5 rounded-md text-xs font-semibold bg-ivory-200 dark:bg-ash-600 text-ink-900 dark:text-ink-50">
               {{ displayJournal }}
             </span>
           </div>
@@ -33,14 +33,14 @@
             aria-controls="journal-list"
             aria-haspopup="listbox"
             placeholder="🔍 Cari jurnal (contoh: IEEE, JOKI, JNTETI…)"
-            class="w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
+            class="w-full px-3 py-2 border border-ivory-300 dark:border-ash-500 rounded-xl text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 placeholder-ivory-500 dark:placeholder-ash-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
             :disabled="store.journalsLoading"
           />
 
           <ul v-if="open && filtered.length"
             id="journal-list"
             role="listbox"
-            class="absolute z-50 mt-1 w-full bg-white dark:bg-anthracite-700 border border-ivory-300 dark:border-anthracite-500 rounded-xl shadow-lg max-h-72 overflow-y-auto text-sm">
+            class="absolute z-50 mt-1 w-full bg-white dark:bg-ash-700 border border-ivory-300 dark:border-ash-500 rounded-xl shadow-lg max-h-72 overflow-y-auto text-sm">
             <li
               v-for="(j, idx) in filtered"
               :key="j"
@@ -52,7 +52,7 @@
                 isLocked(j)
                   ? 'cursor-not-allowed opacity-50'
                   : 'cursor-pointer',
-                store.paper.journal === j || highlightedIndex === idx ? 'bg-ivory-200 dark:bg-anthracite-600 font-medium text-ink-900 dark:text-anthracite-50' : 'text-ink-800 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-600',
+                store.paper.journal === j || highlightedIndex === idx ? 'bg-ivory-200 dark:bg-ash-600 font-medium text-ink-900 dark:text-ink-50' : 'text-ink-800 dark:text-ash-100 hover:bg-ivory-100 dark:hover:bg-ash-600',
               ]"
             >
               <span class="flex items-center gap-2">
@@ -63,19 +63,19 @@
               </span>
               <span class="flex items-center gap-1">
                 <span v-if="isLocked(j)" class="text-xs">🔒</span>
-                <span v-if="store.paper.journal === j" class="text-ink-700 dark:text-anthracite-100 text-xs">✓ active</span>
+                <span v-if="store.paper.journal === j" class="text-ink-700 dark:text-ash-100 text-xs">✓ active</span>
               </span>
             </li>
           </ul>
 
-          <p v-if="open && search && filtered.length === 0" class="absolute mt-1 text-xs text-ink-700 dark:text-anthracite-200">
+          <p v-if="open && search && filtered.length === 0" class="absolute mt-1 text-xs text-ink-700 dark:text-ash-300">
             Tidak ada jurnal yang cocok dengan "<strong>{{ search }}</strong>"
           </p>
         </div>
 
         <!-- MDPI Sub-Journal Dropdown -->
         <div v-if="isMDPI" class="mt-4">
-          <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">
+          <label class="block text-sm font-medium text-ink-900 dark:text-ink-50 mb-2">
             🏷️ Pilih Jurnal Spesifik MDPI ({{ store.mdpiSubJournals.length }} tersedia)
           </label>
           <div class="relative max-w-md" ref="mdpiWrapRef">
@@ -89,49 +89,49 @@
               @keydown.enter.prevent="pickMdpiHighlighted"
               type="text"
               placeholder="🔍 Cari jurnal MDPI (contoh: energies, ijms, sensors…)"
-              class="w-full px-3 py-2 border border-[#238f7f]/30 dark:border-[#4eb2a3]/30 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-[#238f7f] dark:focus:border-[#4eb2a3] outline-none"
+              class="w-full px-3 py-2 border border-[#238f7f]/30 dark:border-[#4eb2a3]/30 rounded-xl text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 placeholder-ivory-500 dark:placeholder-ash-400 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-[#238f7f] dark:focus:border-[#4eb2a3] outline-none"
               :disabled="store.mdpiSubJournalsLoading"
             />
 
             <ul v-if="mdpiOpen && filteredMdpi.length"
               id="mdpi-journal-list"
               role="listbox"
-              class="absolute z-50 mt-1 w-full bg-white dark:bg-anthracite-700 border border-[#238f7f]/30 dark:border-[#4eb2a3]/30 rounded-xl shadow-lg max-h-72 overflow-y-auto text-sm">
+              class="absolute z-50 mt-1 w-full bg-white dark:bg-ash-700 border border-[#238f7f]/30 dark:border-[#4eb2a3]/30 rounded-xl shadow-lg max-h-72 overflow-y-auto text-sm">
               <li
-                v-for="(j, idx) in filteredMdpi"
-                :key="j.key"
-                @click="pickMdpi(j)"
-                role="option"
-                :aria-selected="isMdpiSelected(j)"
-                :class="[
-                  'px-3 py-2 cursor-pointer flex items-center justify-between transition-colors',
-                  isMdpiSelected(j) || mdpiHighlightedIndex === idx ? 'bg-[#238f7f]/10 dark:bg-[#4eb2a3]/20 font-medium text-ink-900 dark:text-anthracite-50' : 'text-ink-800 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-600',
-                ]"
-              >
+                              v-for="(j, idx) in filteredMdpi"
+                              :key="j.key"
+                              @click="pickMdpi(j)"
+                              role="option"
+                              :aria-selected="store.paper.mdpiJournal === j.key"
+                              :class="[
+                                'px-3 py-2 flex items-center justify-between transition-colors cursor-pointer',
+                                store.paper.mdpiJournal === j.key || mdpiHighlightedIndex === idx ? 'bg-ivory-200 dark:bg-ash-600 font-medium text-ink-900 dark:text-ink-50' : 'text-ink-800 dark:text-ash-100 hover:bg-ivory-100 dark:hover:bg-ash-600',
+                              ]"
+                            >
                 <div>
                   <span class="font-medium">{{ j.short_name }}</span>
-                  <span class="text-xs text-ink-700 dark:text-anthracite-200 ml-2">({{ j.year }}, Vol. {{ j.volume }})</span>
+                  <span class="text-xs text-ink-700 dark:text-ash-300 ml-2">({{ j.year }}, Vol. {{ j.volume }})</span>
                 </div>
                 <span v-if="isMdpiSelected(j)" class="text-[#238f7f] dark:text-[#4eb2a3] text-xs">✓ active</span>
               </li>
             </ul>
 
-            <p v-if="mdpiOpen && mdpiSearch && filteredMdpi.length === 0" class="absolute mt-1 text-xs text-ink-700 dark:text-anthracite-200">
+            <p v-if="mdpiOpen && mdpiSearch && filteredMdpi.length === 0" class="absolute mt-1 text-xs text-ink-700 dark:text-ash-300">
               Tidak ada jurnal MDPI yang cocok dengan "<strong>{{ mdpiSearch }}</strong>"
             </p>
           </div>
         </div>
 
-        <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-3">
+        <p class="text-xs text-ink-700 dark:text-ash-300 mt-3">
           Pilihan ini menentukan template generator yang dipakai saat klik "Export DOCX".
         </p>
 
         <!-- Citation Style Selector -->
         <div class="mt-6">
-          <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">Gaya Sitasi</label>
+          <label class="block text-sm font-medium text-ink-900 dark:text-ink-50 mb-2">Gaya Sitasi</label>
           <select
             v-model="store.paper.citation_style"
-            class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
+            class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-ash-500 rounded-xl text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
           >
             <option value="ieee">IEEE — Nomor dalam kurung [1,2]</option>
             <option value="apa">APA 7th — Author (Year)</option>
@@ -141,22 +141,22 @@
             <option value="vancouver">Vancouver — Nomor berurutan (medis)</option>
             <option value="acs">ACS — Nomor superscript [1,2]</option>
           </select>
-          <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-2">
-            Gaya sitasi menentukan format referensi dalam teks dan daftar pustaka.
-          </p>
+          <p class="text-xs text-ink-700 dark:text-ash-300 mt-2">
+                    Gaya sitasi menentukan format referensi dalam teks dan daftar pustaka.
+                  </p>
         </div>
 
         <!-- Language Selector -->
         <div class="mt-6">
-          <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">🌐 Bahasa Paper</label>
+          <label class="block text-sm font-medium text-ink-900 dark:text-ink-50 mb-2">🌐 Bahasa Paper</label>
           <select
             v-model="store.paper.language"
-            class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
+            class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-ash-500 rounded-xl text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none"
           >
             <option value="id">🇮🇩 Bahasa Indonesia</option>
             <option value="en">🔤 English</option>
           </select>
-          <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-2">
+          <p class="text-xs text-ink-700 dark:text-ash-300 mt-2">
             Bahasa untuk penulisan paper dan respons chat. Diskusi tetap bisa dalam bahasa apapun — editor output akan mengikuti pilihan ini.
           </p>
         </div>

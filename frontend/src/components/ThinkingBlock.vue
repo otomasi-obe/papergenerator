@@ -36,7 +36,7 @@
       v-show="isOpen"
       class="mt-1.5 pl-5 border-l-2 border-[var(--accent)]/25 thinking-content"
     >
-      <p class="text-xs text-ink-500 dark:text-cream-200 whitespace-pre-wrap leading-relaxed">
+      <p class="text-xs text-ink-500 dark:text-ink-50 whitespace-pre-wrap leading-relaxed">
         {{ cleanContent || '...' }}
       </p>
       <!-- Streaming cursor when content is being received -->

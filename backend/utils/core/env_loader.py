@@ -60,8 +60,8 @@ def normalize_aiotomasi_aliases() -> None:
     The canonical ``.env`` declares provider slots
     (``AIOTOMASI_API1/2/3``, ``AIOTOMASI_APIKEY1/2/3``) but every call site
     reads the BASE names (``AIOTOMASI_API`` / ``AIOTOMASI_APIKEY``). When the
-    base name is unset, fall back to slot 1 so the upstream gateway URL/key
-    resolve. Idempotent; never clobbers an explicitly-set base value.
+    base name is unset, fall back to the first available slot so the upstream
+    gateway URL/key resolve. Idempotent; never clobbers an explicitly-set base value.
     """
     for base, slot in (
         ("AIOTOMASI_API", "AIOTOMASI_API1"),
@@ -69,6 +69,18 @@ def normalize_aiotomasi_aliases() -> None:
     ):
         if not os.getenv(base) and os.getenv(slot):
             os.environ[base] = os.environ[slot]
+    
+    # Also bridge slot 2 or 3 if slot 1 is missing
+    if not os.getenv("AIOTOMASI_API"):
+        for i in (2, 3):
+            if os.getenv(f"AIOTOMASI_API{i}"):
+                os.environ["AIOTOMASI_API"] = os.environ[f"AIOTOMASI_API{i}"]
+                break
+    if not os.getenv("AIOTOMASI_APIKEY"):
+        for i in (2, 3):
+            if os.getenv(f"AIOTOMASI_APIKEY{i}"):
+                os.environ["AIOTOMASI_APIKEY"] = os.environ[f"AIOTOMASI_APIKEY{i}"]
+                break
 
 
 def load_app_env() -> None:

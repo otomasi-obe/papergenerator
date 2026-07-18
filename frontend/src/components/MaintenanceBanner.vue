@@ -22,8 +22,7 @@
           </div>
           <div class="flex-1 text-xs sm:text-sm leading-snug font-medium">
             <span class="font-bold">Pemeliharaan:</span>
-            Pemeliharaan sistem akan segera di lakukan mulai sekarang sampai waktu yang akan di tentukan.
-            Mohon maaf jika ada sistem yang tidak bisa di gunakan sementara.
+            Pemeliharaan sistem sedang berlangsung. Mohon maaf jika terjadi kendala atau gangguan pada pekerjaan anda. Terima kasih.
           </div>
           <button
             @click="dismiss"
@@ -35,23 +34,19 @@
             </svg>
           </button>
         </div>
+        <div class="max-w-7xl mx-auto px-4 pb-2 text-right">
+          <span class="text-[10px] text-amber-200/70 italic">— Paperfull Developer Team</span>
+        </div>
       </div>
     </div>
   </transition>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
 const DISMISSED_KEY = 'maintenance-banner-dismissed'
-const visible = ref(false)
-
-onMounted(() => {
-  const dismissed = localStorage.getItem(DISMISSED_KEY)
-  if (!dismissed) {
-    visible.value = true
-  }
-})
+const visible = ref(true)
 
 function dismiss() {
   visible.value = false

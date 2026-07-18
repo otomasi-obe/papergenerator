@@ -3474,27 +3474,6 @@ def generate_stream(paper_id: str):
 
                     _time.sleep(3)
 
-            # ── Reconcile + persist image paths BEFORE sending images_complete ──
-            # Must be SYNCHRONOUS: frontend reloads paper from DB on this event.
-            # A background thread raced with the reload and left stale .png paths.
-            try:
-                with _app.app_context():
-                    from tools.image_generation.reconcile import reconcile_figure_images
-                    from tools.editor.utils import safe_paper_image_dir
-                    _upl = safe_paper_image_dir(paper_id)
-                    _upload_base = _upl.parent if _upl else None
-                    if _upload_base is not None:
-                        reconcile_figure_images(paper_id, paper_data, _upload_base)
-                        # Also walk sections for gambar items (not just top-level figures)
-                        _reconcile_section_images(paper_data, paper_id, _upload_base)
-                        # Re-save updated paper_data with resolved image paths
-                        ok_rec, rec_err = _persist_paper_data(paper_id, user_id, paper_data)
-                        if not ok_rec:
-                            log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
-                        log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
-            except Exception as _bg_e:
-                log.warning("[paperfull] Image reconciliation failed for paper %s: %s", paper_id, _bg_e)
-
             # ── Count errors for images_complete event ────────────────────────
             error_count = 0
             if generate_images:
@@ -3509,12 +3488,40 @@ def generate_stream(paper_id: str):
             # ── Send images_complete event ─────────────────────────────
             yield f"event: images_complete\ndata: {_json.dumps({'image_jobs': image_job_ids, 'errors': error_count, 'total': len(image_job_ids) })}\n\n"
 
+            # ── Reconcile image paths AFTER images_complete ──────────────────
+            # Runs in background thread so it survives GeneratorExit (client disconnect).
+            # Frontend reloads on images_complete, so reconciliation MUST complete
+            # before the user reloads. We start it here and detach.
+            if generate_images and _all_job_ids:
+                import threading
+                def _reconcile_bg():
+                    try:
+                        with _app.app_context():
+                            from tools.image_generation.reconcile import reconcile_figure_images
+                            from tools.editor.utils import safe_paper_image_dir
+                            _upl = safe_paper_image_dir(paper_id)
+                            _upload_base = _upl.parent if _upl else None
+                            if _upload_base is not None:
+                                # Need fresh paper_data for reconciliation
+                                _p = Paper.query.get(paper_id)
+                                if _p and _p.data:
+                                    reconcile_figure_images(paper_id, _p.data, _upload_base)
+                                    _reconcile_section_images(_p.data, paper_id, _upload_base)
+                                    ok_rec, rec_err = _persist_paper_data(paper_id, user_id, _p.data)
+                                    if not ok_rec:
+                                        log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
+                                    log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
+                    except Exception as _bg_e:
+                        log.warning("[paperfull] Background image reconciliation failed for paper %s: %s", paper_id, _bg_e)
+                _t = threading.Thread(target=_reconcile_bg, daemon=True)
+                _t.start()
+
         except GeneratorExit:
             # Client disconnected before SSE finished. Do NOT try to write to
             # the response stream (yields RuntimeError). Just ensure any
             # in-flight DB state is cleaned up.
             log.warning("[paperfull] GeneratorExit: client disconnected before SSE completed for paper %s. "
-                        "Image reconciliation may have been skipped.", paper_id)
+                        "Background reconciliation will still run.", paper_id)
             # Best-effort: snapshot whatever we accumulated so the user doesn't lose everything.
             try:
                 _pf_snapshot("error", reasoning_acc, full_content,

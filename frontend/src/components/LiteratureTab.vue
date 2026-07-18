@@ -1,14 +1,14 @@
 <template>
   <div class="w-full">
-    <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6 space-y-5">
+    <div class="bg-white dark:bg-ash-700 rounded-2xl border border-ivory-300 dark:border-ash-500 shadow-sm p-6 space-y-5">
       <!-- Header -->
       <div class="flex items-start justify-between gap-3 flex-wrap">
               <div class="min-w-0">
-                <h2 class="text-lg font-semibold text-ink-900 dark:text-anthracite-50 font-serif flex items-center gap-2">
+                <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 font-serif flex items-center gap-2">
                   <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 8v8"/></svg>
                   Literatur
                 </h2>
-          <p class="text-sm text-ink-700 dark:text-anthracite-100 mt-1">
+          <p class="text-sm text-ink-700 dark:text-ash-300 mt-1">
             Tabel referensi paper. Klik baris untuk check/uncheck. Hasil SLR otomatis tersimpan di sini.
           </p>
         </div>
@@ -16,7 +16,7 @@
           <button
             @click="triggerPdfUpload"
             :disabled="loading"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-900 dark:text-anthracite-50 disabled:opacity-50"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-ivory-200 hover:bg-ivory-300 dark:bg-ash-600 dark:hover:bg-ash-500 text-ink-900 dark:text-ink-50 disabled:opacity-50"
             title="Upload file PDF untuk ekstraksi metadata dan sinkronisasi"
           >📄 Upload File PDF</button>
           <input
@@ -29,7 +29,7 @@
           />
           <button
             @click="showAddManual = !showAddManual"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
           >＋ Tambah Manual</button>
         </div>
       </div>
@@ -49,8 +49,8 @@
       <!-- Run SLR -->
       <div ref="slrCardRef" class="rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 p-4">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50 font-serif">🔍 Jalankan SLR</h3>
-          <span class="text-[10px] text-ink-500 dark:text-anthracite-200">Multi-source (OpenAlex · Crossref · arXiv · IEEE · SINTA · ...)</span>
+          <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 font-serif">🔍 Jalankan SLR</h3>
+          <span class="text-[10px] text-ink-500 dark:text-ash-300">Multi-source (OpenAlex · Crossref · arXiv · IEEE · SINTA · ...)</span>
         </div>
         <div class="flex flex-col sm:flex-row gap-2">
           <input
@@ -60,12 +60,12 @@
             type="text"
             autocomplete="off"
             placeholder="Ketik topik (mis. 'reinforcement learning untuk navigasi AGV')"
-            class="flex-1 px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
+            class="flex-1 px-3 py-2 border border-ivory-300 dark:border-ash-500 rounded-lg text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 placeholder-ivory-500 dark:placeholder-ash-400 focus:ring-2 focus:ring-[#238f7f]/30 outline-none"
             :disabled="slrRunning"
           />
           <select
             v-model.number="slrTopK"
-            class="w-24 px-2 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
+            class="w-24 px-2 py-2 border border-ivory-300 dark:border-ash-500 rounded-lg text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-center"
             :disabled="slrRunning"
             title="Jumlah referensi yang ditampilkan dan di-review AI"
           >
@@ -78,7 +78,7 @@
           <button
             @click="runSLR"
             :disabled="slrRunning || !slrQuery.trim()"
-            class="px-4 py-2 rounded-lg text-sm font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform"
+            class="px-4 py-2 rounded-lg text-sm font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform"
           >
             <span v-if="slrRunning" class="flex items-center gap-1.5">
               <span class="animate-spin inline-block">🔬</span>
@@ -92,23 +92,23 @@
         <div class="mt-2">
           <button
             @click="showSlrSettings = !showSlrSettings"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-ivory-200 hover:bg-ivory-300 dark:bg-anthracite-600 dark:hover:bg-anthracite-500 text-ink-700 dark:text-anthracite-100 active:scale-95 transition-transform"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium bg-ivory-200 hover:bg-ivory-300 dark:bg-ash-600 dark:hover:bg-ash-500 text-ink-700 dark:text-ink-50 active:scale-95 transition-transform"
           >⚙️ Setting {{ showSlrSettings ? '▲' : '▼' }}</button>
-          <div v-if="showSlrSettings" class="mt-2 rounded-lg border border-cream-300 dark:border-ash-600 bg-white dark:bg-anthracite-700 p-3 space-y-3">
+          <div v-if="showSlrSettings" class="mt-2 rounded-lg border border-cream-300 dark:border-ash-600 bg-white dark:bg-ash-700 p-3 space-y-3">
             <!-- Source checkboxes -->
             <div>
-              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Source:</div>
+              <div class="text-xs font-medium text-ink-700 dark:text-ash-300 mb-1">Source:</div>
               <div class="flex flex-wrap gap-2">
                 <label
                   v-for="src in availableSources"
                   :key="src"
-                  class="flex items-center gap-1 text-[11px] text-ink-700 dark:text-anthracite-100 cursor-pointer"
+                  class="flex items-center gap-1 text-[11px] text-ink-700 dark:text-ash-300 cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     :value="src"
                     v-model="slrSources"
-                    class="rounded border-ivory-300 dark:border-anthracite-500"
+                    class="rounded border-ivory-300 dark:border-ash-500"
                   />
                   {{ src }}
                 </label>
@@ -121,26 +121,26 @@
             <!-- Year range inputs (horizontal) -->
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun awal:</div>
+                <div class="text-xs font-medium text-ink-700 dark:text-ash-300 mb-1">Tahun awal:</div>
                 <input
                   v-model.number="slrYearFrom"
                   type="number"
                   :min="1900"
                   :max="slrYearTo || new Date().getFullYear() + 1"
                   placeholder="Contoh: 2019"
-                  class="w-full px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+                  class="w-full px-2 py-1 border border-ivory-300 dark:border-ash-500 rounded-lg text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50"
                   @blur="validateYearRange"
                 />
               </div>
               <div>
-                <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tahun akhir:</div>
+                <div class="text-xs font-medium text-ink-700 dark:text-ash-300 mb-1">Tahun akhir:</div>
                 <input
                   v-model.number="slrYearTo"
                   type="number"
                   :min="slrYearFrom || 1900"
                   :max="new Date().getFullYear() + 1"
                   placeholder="Contoh: 2024"
-                  class="w-full px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+                  class="w-full px-2 py-1 border border-ivory-300 dark:border-ash-500 rounded-lg text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50"
                   @blur="validateYearRange"
                 />
               </div>
@@ -148,13 +148,13 @@
             <div v-if="yearRangeError" class="text-[10px] text-red-500 mt-1">Tahun awal harus ≤ Tahun akhir</div>
             <!-- Page size selector -->
             <div>
-              <div class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mb-1">Tampilkan:</div>
+              <div class="text-xs font-medium text-ink-700 dark:text-ash-300 mb-1">Tampilkan:</div>
               <input
                 v-model="pageSizeInput"
                 type="number"
                 min="5"
                 max="500"
-                class="w-20 px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 text-center"
+                class="w-20 px-2 py-1 border border-ivory-300 dark:border-ash-500 rounded-lg text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 text-center"
               />
             </div>
           </div>
@@ -173,7 +173,7 @@
 
       <!-- Add manual form -->
       <div v-if="showAddManual" class="rounded-xl border border-cream-300 dark:border-ash-600 bg-cream-50 dark:bg-ash-800 p-4 space-y-2">
-        <h3 class="text-sm font-semibold text-ink-900 dark:text-anthracite-50 font-serif">＋ Tambah Literatur Manual</h3>
+        <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 font-serif">＋ Tambah Literatur Manual</h3>
         <input v-model="manualForm.title" placeholder="Judul *" autocomplete="off" class="input-sm w-full" />
         <input v-model="manualForm.authors_str" placeholder="Authors (pisah koma)" autocomplete="off" class="input-sm w-full" />
         <div class="grid grid-cols-2 gap-2">
@@ -191,7 +191,7 @@
 
       <!-- Review Pinned + Counts + Delete Checked -->
       <div class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="text-[11px] text-ink-500 dark:text-anthracite-200 flex items-center gap-2">
+        <div class="text-[11px] text-ink-500 dark:text-ash-300 flex items-center gap-2">
           <button
             @click="reviewAllChecked"
             :disabled="reviewBusy || checkedCount === 0"
@@ -220,11 +220,11 @@
           v-model="filter"
           type="text"
           placeholder="Cari judul, penulis, venue..."
-          class="flex-1 min-w-[200px] px-2 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 outline-none focus:ring-1 focus:ring-[#238f7f]/30"
+          class="flex-1 min-w-[200px] px-2 py-1.5 border border-ivory-300 dark:border-ash-500 rounded-lg text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 placeholder-ivory-500 dark:placeholder-ash-400 outline-none focus:ring-1 focus:ring-[#238f7f]/30"
         />
         <select
           v-model="filterSource"
-          class="px-2 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50"
+          class="px-2 py-1.5 border border-ivory-300 dark:border-ash-500 rounded-lg text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50"
         >
           <option value="">Semua sumber</option>
           <option v-for="src in availableSources" :key="src" :value="src">{{ src }}</option>
@@ -235,20 +235,20 @@
           placeholder="Min tahun"
           :min="1900"
           :max="new Date().getFullYear() + 1"
-          class="w-24 px-2 py-1.5 border border-ivory-300 dark:border-anthracite-500 rounded-lg text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500"
+          class="w-24 px-2 py-1.5 border border-ivory-300 dark:border-ash-500 rounded-lg text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 placeholder-ivory-500"
         />
       </div>
 
       <!-- Quick sort buttons -->
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-xs font-medium text-ink-700 dark:text-anthracite-100 mr-1">Filter:</span>
+        <span class="text-xs font-medium text-ink-700 dark:text-ash-300 mr-1">Filter:</span>
         <div class="flex items-center gap-1">
           <button @click="setSort('year')" class="sort-btn" :class="{ active: sortKey === 'year' }">Tahun {{ sortIndicator('year') }}</button>
           <button @click="setSort('citations')" class="sort-btn" :class="{ active: sortKey === 'citations' }">Sitasi {{ sortIndicator('citations') }}</button>
           <button @click="setSort('title')" class="sort-btn" :class="{ active: sortKey === 'title' }">Judul A-Z {{ sortIndicator('title') }}</button>
           <button @click="setSort('authors')" class="sort-btn" :class="{ active: sortKey === 'authors' }">Penulis A-Z {{ sortIndicator('authors') }}</button>
         </div>
-        <span class="text-ink-300 dark:text-anthracite-400 select-none">|</span>
+        <span class="text-ink-300 dark:text-ash-300 select-none">|</span>
         <div class="flex items-center gap-1">
           <button
             v-if="duplicateCount > 0"
@@ -269,43 +269,43 @@
 
       <!-- Pagination bar (top) -->
       <div v-if="totalPages > 1" class="flex items-center justify-end gap-2 flex-wrap">
-        <div class="text-[11px] text-ink-500 dark:text-anthracite-200">
+        <div class="text-[11px] text-ink-500 dark:text-ash-300">
           Baris {{ pageOffset + 1 }}–{{ Math.min(pageOffset + pageSize, filteredItems.length) }} dari {{ filteredItems.length }}
         </div>
         <div class="flex items-center gap-1">
           <button
             @click="currentPage = 1"
             :disabled="currentPage <= 1"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >««</button>
           <button
             @click="currentPage--"
             :disabled="currentPage <= 1"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >« Prev</button>
           <template v-for="p in visiblePageNumbers" :key="'top-' + p">
             <button
               v-if="p !== '...'"
               @click="currentPage = p as number"
-              :class="['px-2 py-1 rounded text-[10px] font-medium border transition-colors', currentPage === p ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']"
+              :class="['px-2 py-1 rounded text-[10px] font-medium border transition-colors', currentPage === p ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-navy-700 dark:text-ash-900 dark:border-navy-600' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700']"
             >{{ p }}</button>
-            <span v-else class="px-1 text-[10px] text-ink-400 dark:text-anthracite-300">…</span>
+            <span v-else class="px-1 text-[10px] text-ink-400 dark:text-ash-300">…</span>
           </template>
           <button
             @click="currentPage++"
             :disabled="currentPage >= totalPages"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >Next »</button>
           <button
             @click="currentPage = totalPages"
             :disabled="currentPage >= totalPages"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >»»</button>
         </div>
       </div>
 
       <!-- Table -->
-      <div class="overflow-x-auto rounded-xl border border-ivory-300 dark:border-anthracite-500">
+      <div class="overflow-x-auto rounded-xl border border-ivory-300 dark:border-ash-500">
         <table class="w-full table-fixed text-sm border-collapse" style="min-width: 1200px;">
           <colgroup>
             <col style="width: 28px" />
@@ -314,7 +314,7 @@
             <col style="width: 52%" />
             <col style="width: 26%" />
           </colgroup>
-          <thead class="bg-ivory-100 dark:bg-anthracite-800 text-ink-700 dark:text-anthracite-100 sticky top-0 z-10">
+          <thead class="bg-ivory-100 dark:bg-ash-700 text-ink-700 dark:text-ash-100 sticky top-0 z-10">
             <tr>
               <th class="px-1 py-2.5 text-left w-5">
                 <input
@@ -333,22 +333,22 @@
           </thead>
           <tbody>
             <tr v-if="loading && items.length === 0">
-              <td colspan="5" class="px-3 py-6 text-center text-ink-500 dark:text-anthracite-200">Memuat…</td>
+              <td colspan="5" class="px-3 py-6 text-center text-ink-500 dark:text-ash-300">Memuat…</td>
             </tr>
             <tr v-else-if="items.length === 0">
-              <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-ash-300">
                 <div class="space-y-3">
                   <div>Belum ada literatur. Jalankan SLR atau tambah manual untuk mulai.</div>
                   <button
                     v-if="paperTitle"
                     @click="startSLRFromPaperTopic"
-                    class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
+                    class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 active:scale-95 transition-transform"
                   >Jalankan SLR otomatis dari topik paper ini</button>
                 </div>
               </td>
             </tr>
             <tr v-else-if="filteredItems.length === 0">
-              <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-anthracite-200">
+              <td colspan="5" class="px-3 py-8 text-center text-ink-500 dark:text-ash-300">
                 Tidak ada literatur yang cocok dengan filter ini. Coba ubah / kosongkan filter.
               </td>
             </tr>
@@ -368,17 +368,17 @@
                     class="w-3 h-3 mt-0.5"
                   />
                 </td>
-                <td class="px-1 py-2.5 align-top text-center text-ink-500 dark:text-anthracite-300 font-mono text-[11px] pt-1">{{ pageOffset + i + 1 }}</td>
+                <td class="px-1 py-2.5 align-top text-center text-ink-500 dark:text-ash-300 font-mono text-[11px] pt-1">{{ pageOffset + i + 1 }}</td>
                 <!-- Judul dan Informasi -->
                 <td class="px-2 py-2 align-top cursor-pointer">
-                  <div class="font-medium text-sm text-ink-900 dark:text-anthracite-50 leading-snug break-words mb-1">
+                  <div class="font-medium text-sm text-ink-900 dark:text-ink-50 leading-snug break-words mb-1">
                     {{ it.title }}
                   </div>
-                  <div class="text-[11px] text-ink-500 dark:text-anthracite-400 space-x-2">
+                  <div class="text-[11px] text-ink-500 dark:text-ash-300">
                     <span v-if="it.year" class="inline-block">{{ it.year }}</span>
                     <span v-if="it.citations !== null && it.citations !== undefined" class="inline-block">⚡ {{ it.citations }} sitasi</span>
                     <span v-if="it.authors && it.authors.length" class="inline-block" :title="safeAuthorsJoin(it.authors)">👤 {{ formatAuthors(normalizeAuthors(it.authors)) }}</span>
-                    <span v-if="it.venue || it.publisher" class="inline-block text-ink-400 dark:text-anthracite-500 italic">{{ it.venue || it.publisher }}</span>
+                    <span v-if="it.venue || it.publisher" class="inline-block text-ink-400 dark:text-ash-500 italic">{{ it.venue || it.publisher }}</span>
                   </div>
                   <div v-if="it.doi || it.pdf_url || it.url" class="flex flex-wrap gap-1 mt-1">
                     <button
@@ -399,7 +399,7 @@
                   </div>
                 </td>
                 <!-- Abstract -->
-                <td class="px-2 py-2 align-top text-xs text-ink-700 dark:text-anthracite-100 leading-relaxed">
+                <td class="px-2 py-2 align-top text-xs text-ink-700 dark:text-ash-300 leading-relaxed">
                   <div v-if="it.abstract">
                     <div class="whitespace-pre-wrap break-words" :class="expandedAbstract.has(it.id) ? '' : 'line-clamp-4'">{{ it.abstract }}</div>
                     <button
@@ -408,21 +408,21 @@
                       class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline mt-0.5"
                     >{{ expandedAbstract.has(it.id) ? '▲ Ciutkan' : '▼ Selengkapnya' }}</button>
                   </div>
-                  <span v-else class="text-ink-400 dark:text-anthracite-300 italic">—</span>
+                  <span v-else class="text-ink-400 dark:text-ash-400 italic">—</span>
                 </td>
                 <!-- Review & Gap -->
                 <td class="px-2 py-2 align-top text-xs leading-relaxed">
                   <div v-if="it.summary || it.gap_riset" class="space-y-2">
-                    <div v-if="it.summary" class="text-ink-800 dark:text-anthracite-100">
+                    <div v-if="it.summary" class="text-ink-800 dark:text-ash-200">
                       <span class="font-semibold text-purple-700 dark:text-purple-300">Review:</span>
                       <span class="block mt-0.5">{{ it.summary }}</span>
                     </div>
-                    <div v-if="it.gap_riset" class="text-ink-800 dark:text-anthracite-100">
+                    <div v-if="it.gap_riset" class="text-ink-800 dark:text-ash-200">
                       <span class="font-semibold text-orange-700 dark:text-orange-300">Gap:</span>
                       <span class="block mt-0.5 italic">{{ it.gap_riset }}</span>
                     </div>
                   </div>
-                  <span v-else class="text-ink-400 dark:text-anthracite-300 italic text-[11px]">Belum direview</span>
+                  <span v-else class="text-ink-400 dark:text-ash-400 italic text-[11px]">Belum direview</span>
                 </td>
               </tr>
             </template>
@@ -432,44 +432,44 @@
 
       <!-- Pagination bar -->
       <div v-if="totalPages > 1" class="flex items-center justify-between gap-2 flex-wrap">
-        <div class="text-[11px] text-ink-500 dark:text-anthracite-200">
+        <div class="text-[11px] text-ink-500 dark:text-ash-300">
           Baris {{ pageOffset + 1 }}–{{ Math.min(pageOffset + pageSize, filteredItems.length) }} dari {{ filteredItems.length }}
         </div>
         <div class="flex items-center gap-1">
           <button
             @click="currentPage = 1"
             :disabled="currentPage <= 1"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >««</button>
           <button
             @click="currentPage--"
             :disabled="currentPage <= 1"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >« Prev</button>
           <template v-for="p in visiblePageNumbers" :key="'bottom-' + p">
             <button
               v-if="p !== '...'"
               @click="currentPage = p as number"
-              :class="['px-2 py-1 rounded text-[10px] font-medium border transition-colors', currentPage === p ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-cream-200 dark:text-ash-900 dark:border-cream-200' : 'border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700']"
+              :class="['px-2 py-1 rounded text-[10px] font-medium border transition-colors', currentPage === p ? 'bg-navy-700 text-cream-50 border-navy-700 dark:bg-navy-700 dark:text-ash-900 dark:border-navy-600' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700']"
             >{{ p }}</button>
-            <span v-else class="px-1 text-[10px] text-ink-400 dark:text-anthracite-300">…</span>
+            <span v-else class="px-1 text-[10px] text-ink-400 dark:text-ash-300">…</span>
           </template>
           <button
             @click="currentPage++"
             :disabled="currentPage >= totalPages"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >Next »</button>
           <button
             @click="currentPage = totalPages"
             :disabled="currentPage >= totalPages"
-            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 disabled:opacity-40"
+            class="px-2 py-1 rounded text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 disabled:opacity-40"
           >»»</button>
         </div>
       </div>
 
-      <p class="text-[11px] text-ink-500 dark:text-anthracite-200">
+      <div class="text-[11px] text-ink-500 dark:text-ash-300">
         💡 <strong>Tip:</strong> Klik baris untuk check/uncheck paper. Paper yang di-check bisa direview atau dihapus massal.
-      </p>
+      </div>
     </div>
   </div>
 
@@ -1715,10 +1715,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-anthracite-500 rounded text-xs bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 placeholder-ivory-500 dark:placeholder-anthracite-200 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
-.btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-cream-200 hover:bg-navy-800 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform; }
-.btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700; }
-.sort-btn { @apply px-2 py-1 rounded-lg text-[10px] font-medium border border-ivory-300 dark:border-anthracite-500 text-ink-700 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-700 active:scale-95 transition-transform; }
-.sort-btn.active { @apply bg-navy-700 dark:bg-cream-200 text-cream-50 dark:text-ash-900 border-navy-700 dark:border-cream-200; }
+.input-sm { @apply px-2 py-1 border border-ivory-300 dark:border-ash-500 rounded text-xs bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 placeholder-ivory-500 dark:placeholder-ash-400 outline-none focus:ring-1 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30; }
+.btn-primary { @apply px-3 py-1.5 rounded-lg text-xs font-semibold bg-navy-700 dark:bg-navy-700 hover:bg-navy-800 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 disabled:opacity-50 active:scale-95 transition-transform; }
+.btn-cancel { @apply px-3 py-1.5 rounded-lg text-xs font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700; }
+.sort-btn { @apply px-2 py-1 rounded-lg text-[10px] font-medium border border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700 active:scale-95 transition-transform; }
+.sort-btn.active { @apply bg-navy-700 dark:bg-navy-700 text-cream-50 dark:text-ash-900 border-navy-700 dark:border-navy-600; }
 .line-clamp-4 { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

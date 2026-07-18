@@ -1,8 +1,8 @@
 <template>
-  <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6"
+  <div class="bg-white dark:bg-ash-700 rounded-2xl border border-ivory-300 dark:border-ash-500 shadow-sm p-6">
        @dragover.prevent="dragging = true"
        @dragleave.self="dragging = false"
-       @drop.prevent="onDrop">
+       @drop.prevent="onDrop_(@event)">
 
   <!-- Drag overlay -->
   <div v-if="dragging" class="fixed inset-0 z-50 bg-[#238f7f]/10 dark:bg-[#238f7f]/20 flex items-center justify-center pointer-events-none">
@@ -258,11 +258,12 @@ async function onFileChange(e: Event): Promise<void> {
  await uploadFiles(list)
 }
 
-async function onDrop(e: DragEvent): Promise<void> {
- dragging.value = false
- const list = Array.from(e.dataTransfer?.files || [])
- if (!list.length || !store.currentPaperId) return
- await uploadFiles(list)
+// @ts-ignore - used in template
+function onDrop_(e: DragEvent): void {
+  dragging.value = false
+  const list = Array.from(e.dataTransfer?.files || [])
+  if (!list.length || !store.currentPaperId) return
+  uploadFiles(list)
 }
 
 function onDragStart(e: DragEvent, _f: FileItem): void {

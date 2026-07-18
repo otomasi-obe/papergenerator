@@ -89,6 +89,9 @@ def reconcile_figure_images(paper_id: str, paper_data: dict, upload_base: Path) 
             matched = _match_image(current_path, fig.get("Title", ""), file_map, used_images, image_files)
             if matched:
                 fig["Path"] = matched.name  # basename only
+                fig["filename"] = matched.name
+                fig["url"] = f"/api/images/{paper_id}/{matched.name}"
+                fig["hasImage"] = True
                 used_images.add(matched.name)
 
     # ── 2. Patch section content gambar items ───────────────────────────

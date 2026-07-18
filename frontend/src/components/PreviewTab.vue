@@ -15,7 +15,7 @@
           <span :class="c.status === 'accepted' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'">
             {{ c.status === 'accepted' ? '✓' : '✕' }}
           </span>
-          <span class="font-medium text-ink-600 dark:text-anthracite-100">{{ kindLabel(c.kind) }}</span>
+          <span class="font-medium text-ink-600 dark:text-ash-100">{{ kindLabel(c.kind) }}</span>
         </div>
       </div>
     </div>
@@ -41,7 +41,7 @@
                 aria-controls="journal-preview-list"
                 aria-haspopup="listbox"
                 :placeholder="journalLabel"
-                class="px-2 py-1 border border-cream-300 dark:border-ash-600 rounded-lg text-sm font-semibold bg-white dark:bg-ash-800 text-navy-700 dark:text-cream-200 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 outline-none min-w-[120px] max-w-[200px]"
+                class="px-2 py-1 border border-cream-300 dark:border-ash-600 rounded-lg text-sm font-semibold bg-white dark:bg-ash-800 text-navy-700 dark:text-ink-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 outline-none min-w-[120px] max-w-[200px]"
               />
               <svg v-if="open" @click="open = false" class="w-4 h-4 text-ink-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
               <svg v-else class="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
@@ -64,7 +64,7 @@
                 isLocked(j)
                   ? 'cursor-not-allowed opacity-50'
                   : 'cursor-pointer',
-                store.paper.journal === j || highlightedIndex === idx ? 'bg-cream-100 dark:bg-ash-700 font-medium text-navy-700 dark:text-cream-200 translate-x-1' : 'text-ink-800 dark:text-ash-100 hover:bg-cream-100 hover:dark:bg-ash-700 hover:translate-x-1 hover:font-medium hover:text-navy-700 hover:dark:text-cream-200',
+                store.paper.journal === j || highlightedIndex === idx ? 'bg-cream-100 dark:bg-ash-700 font-medium text-navy-700 dark:text-ink-50 translate-x-1' : 'text-ink-800 dark:text-ash-100 hover:bg-cream-100 hover:dark:bg-ash-700 hover:translate-x-1 hover:font-medium hover:text-navy-700 hover:dark:text-ink-50',
               ]"
             >
               <span class="flex items-center gap-2 min-w-0">

@@ -2,22 +2,22 @@
   <div v-if="!store.activeTool" class="space-y-5 px-4 lg:px-6 py-4 pb-20">
     <!-- Paper Tools section -->
     <div>
-      <h2 class="text-sm font-semibold text-ink-600 dark:text-ink-300 uppercase tracking-wide mb-3">Paper Tools</h2>
+      <h2 class="text-sm font-semibold text-ink-600 dark:text-gold-200 uppercase tracking-wide mb-3">Paper Tools</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           v-for="pt in PAPER_TOOLS"
           :key="pt.id"
           type="button"
-          class="group bg-white/90 dark:bg-ash-800/80 rounded-2xl border border-cream-200/80 dark:border-ash-600/70 p-4 text-left cursor-pointer hover:border-navy-500/70 dark:hover:border-cream-300/80 hover:-translate-y-0.5 transition-all active:scale-[0.98] shadow-[0_1px_0_rgba(15,14,11,0.04),0_8px_24px_rgba(15,14,11,0.04)] hover:shadow-[0_1px_0_rgba(15,14,11,0.05),0_12px_30px_rgba(15,14,11,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-500/35 dark:focus-visible:ring-cream-300/35"
+          class="group bg-white/90 dark:bg-ash-700/90 rounded-2xl border border-cream-200/80 dark:border-ash-500/80 p-4 text-left cursor-pointer hover:border-navy-500/70 dark:hover:border-navy-400/80 hover:-translate-y-0.5 transition-all active:scale-[0.98] shadow-[0_1px_0_rgba(15,14,11,0.04),0_8px_24px_rgba(15,14,11,0.04)] hover:shadow-[0_1px_0_rgba(15,14,11,0.05),0_12px_30px_rgba(15,14,11,0.08)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_6px_28px_rgba(0,0,0,0.4),0_1px_3px_rgba(0,0,0,0.25)] focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-500/35 dark:focus-visible:ring-navy-400/35"
           @click="$emit('openPanel', pt.panel)"
         >
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-navy-700 dark:text-cream-200 bg-cream-100/80 dark:bg-ash-700/80 ring-1 ring-cream-200/70 dark:ring-ash-600/70 shrink-0 group-hover:bg-cream-200/80 dark:group-hover:bg-ash-600/80 transition-colors">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-navy-700 dark:text-navy-200 bg-cream-100/80 dark:bg-ash-600/90 ring-1 ring-cream-200/70 dark:ring-ash-500/80 shrink-0 group-hover:bg-cream-200/80 dark:group-hover:bg-ash-500/90 transition-colors">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="pt.iconSvg"></svg>
             </div>
             <div class="min-w-0">
               <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 mb-1">{{ pt.title }}</h3>
-              <p class="text-xs text-ink-500 dark:text-ink-300 leading-relaxed">{{ pt.desc }}</p>
+              <p class="text-xs text-ink-500 dark:text-gold-200 leading-relaxed">{{ pt.desc }}</p>
             </div>
           </div>
         </button>
@@ -26,22 +26,22 @@
 
     <!-- Writing Tools section -->
     <div>
-      <h2 class="text-sm font-semibold text-ink-600 dark:text-ink-300 uppercase tracking-wide mb-3">Writing Tools</h2>
+      <h2 class="text-sm font-semibold text-ink-600 dark:text-gold-200 uppercase tracking-wide mb-3">Writing Tools</h2>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           v-for="tool in store.TOOLS"
           :key="tool.id"
           type="button"
-          class="group bg-white/90 dark:bg-ash-800/80 rounded-2xl border border-cream-200/80 dark:border-ash-600/70 p-4 text-left cursor-pointer hover:border-navy-500/70 dark:hover:border-cream-300/80 hover:-translate-y-0.5 transition-all active:scale-[0.98] shadow-[0_1px_0_rgba(15,14,11,0.04),0_8px_24px_rgba(15,14,11,0.04)] hover:shadow-[0_1px_0_rgba(15,14,11,0.05),0_12px_30px_rgba(15,14,11,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-500/35 dark:focus-visible:ring-cream-300/35"
+          class="group bg-white/90 dark:bg-ash-700/90 rounded-2xl border border-cream-200/80 dark:border-ash-500/80 p-4 text-left cursor-pointer hover:border-navy-500/70 dark:hover:border-navy-400/80 hover:-translate-y-0.5 transition-all active:scale-[0.98] shadow-[0_1px_0_rgba(15,14,11,0.04),0_8px_24px_rgba(15,14,11,0.04)] hover:shadow-[0_1px_0_rgba(15,14,11,0.05),0_12px_30px_rgba(15,14,11,0.08)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)] dark:hover:shadow-[0_6px_28px_rgba(0,0,0,0.4),0_1px_3px_rgba(0,0,0,0.25)] focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-500/35 dark:focus-visible:ring-navy-400/35"
           @click="handleToolClick(tool)"
         >
           <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-navy-700 dark:text-cream-200 bg-cream-100/80 dark:bg-ash-700/80 ring-1 ring-cream-200/70 dark:ring-ash-600/70 shrink-0 group-hover:bg-cream-200/80 dark:group-hover:bg-ash-600/80 transition-colors">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-navy-700 dark:text-navy-200 bg-cream-100/80 dark:bg-ash-600/90 ring-1 ring-cream-200/70 dark:ring-ash-500/80 shrink-0 group-hover:bg-cream-200/80 dark:group-hover:bg-ash-500/90 transition-colors">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" v-html="tool.iconSvg"></svg>
             </div>
             <div class="min-w-0">
               <h3 class="text-sm font-semibold text-ink-900 dark:text-ink-50 mb-1">{{ tool.title }}</h3>
-              <p class="text-xs text-ink-500 dark:text-ink-300 leading-relaxed">{{ tool.desc }}</p>
+              <p class="text-xs text-ink-500 dark:text-gold-200 leading-relaxed">{{ tool.desc }}</p>
             </div>
           </div>
         </button>

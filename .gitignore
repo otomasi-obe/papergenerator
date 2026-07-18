@@ -183,3 +183,6 @@ deploy/pgbouncer.ini
 # Python lock file (too large for GitHub)
 backend/uv.lock
 trash/
+
+# one-off test scripts
+backend/_scratch/

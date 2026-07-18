@@ -1,12 +1,12 @@
 <template>
-  <div class="bg-white dark:bg-anthracite-700 rounded-2xl border border-ivory-300 dark:border-anthracite-500 shadow-sm p-6">
+  <div class="bg-white dark:bg-ash-700 rounded-2xl border border-ivory-300 dark:border-ash-500 shadow-sm p-6">
  <div class="flex items-center justify-between mb-4 max-w-5xl mx-auto">
  <div>
  <h2 class="text-lg font-semibold text-ink-900 dark:text-ink-50 flex items-center gap-2">
  <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3-3.086a1 1 0 0 0-1.414 0L9 18"/></svg>
  Images
  </h2>
- <p class="text-xs text-ink-600 dark:text-ink-300 mt-0.5">
+ <p class="text-xs text-ink-600 dark:text-ash-300 mt-0.5">
  Generate gambar dengan AI, upload gambar, dan kelola semua gambar paper di satu tempat.
  </p>
  </div>
@@ -14,8 +14,8 @@
  <!-- Upload button -->
  <input ref="uploadInput" type="file" accept="image/*" multiple class="hidden" @change="onUploadChange" />
  <button @click="uploadInput?.click()" :disabled="!store.currentPaperId"
- class="px-3 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
- ＋ Upload Gambar
+ class="px-3 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 rounded-lg text-xs font-medium disabled:opacity-50 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-navy-500/30"
+ >Upload Gambar
  </button>
  <!-- Refresh -->
  <button @click="refreshImages"
@@ -30,7 +30,7 @@
  <!-- Generate section -->
    <div class="max-w-5xl mx-auto mb-4 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-sm overflow-hidden">
    <div class="px-4 py-2.5 border-b border-cream-300 dark:border-ash-700 bg-cream-100 dark:bg-ash-850 flex items-center gap-2">
-   <svg class="w-5 h-5 text-navy-700 dark:text-cream-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+   <svg class="w-5 h-5 text-navy-700 dark:text-navy-200 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
    <span class="text-xs font-semibold text-ink-700 dark:text-ink-200">Generate Image dengan AI</span>
    </div>
    <div class="p-4 flex gap-3">
@@ -39,9 +39,10 @@
    @keydown.ctrl.enter="generateImage"
    ></textarea>
    <button @click="generateImage" :disabled="!genPrompt.trim() || generating"
-   class="px-4 py-2 bg-navy-600 hover:bg-navy-700 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 active:scale-95 whitespace-nowrap flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
-   <span v-if="generating" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
-   {{ generating ? 'Generating…' : 'Generate' }}
+     class="px-4 py-2 bg-navy-600 hover:bg-navy-700 dark:bg-navy-600 dark:hover:bg-navy-500 text-cream-50 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 active:scale-95 whitespace-nowrap flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
+   >
+     <span v-if="generating" class="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+     {{ generating ? 'Generating…' : 'Generate' }}
    </button>
    </div>
    </div>
@@ -53,8 +54,8 @@
  <div class="px-3 py-2 border-b border-cream-300 dark:border-ash-700 text-xs font-semibold text-ink-700 dark:text-ink-200 bg-cream-100 dark:bg-ash-850">
  {{ images.length }} image{{ images.length === 1 ? '' : 's' }}
  </div>
- <div v-if="loading" class="px-3 py-6 text-center text-xs text-ink-500 dark:text-ink-300">Loading…</div>
- <div v-else-if="!images.length" class="px-3 py-12 text-center text-xs text-ink-500 dark:text-ink-300">
+ <div v-if="loading" class="px-3 py-6 text-center text-xs text-ink-500 dark:text-ash-300">Loading…</div>
+ <div v-else-if="!images.length" class="px-3 py-12 text-center text-xs text-ink-500 dark:text-ash-300">
  Belum ada gambar.<br/>Generate atau upload di atas.
  </div>
  <ul v-else class="divide-y divide-cream-200 dark:divide-ash-700 max-h-[60vh] overflow-y-auto">
@@ -80,13 +81,13 @@
  class="w-full text-xs bg-transparent border-0 border-b border-transparent hover:border-cream-400 dark:hover:border-ash-500 focus:border-navy-400 dark:focus:border-cream-300 text-ink-700 dark:text-ink-100 font-medium outline-none truncate px-0 py-0"
  :title="img.original_name || img.filename"
  />
- <div class="text-[10px] text-ink-500 dark:text-ink-300 mt-0.5">
+ <div class="text-[10px] text-ink-500 dark:text-ash-300 mt-0.5">
  {{ formatDate(img.created_at) }}
  </div>
  </div>
  <button
  @click.stop="removeImage(img)"
- class="opacity-0 group-hover:opacity-100 text-ink-400 dark:text-ink-300 hover:text-rose-500 text-xs px-1"
+ class="opacity-0 group-hover:opacity-100 text-ink-400 dark:text-ash-300 hover:text-rose-500 text-xs px-1"
  title="Hapus"
  >🗑</button>
  </li>
@@ -111,7 +112,7 @@
  </div>
  </header>
 
- <div v-if="!activeImage" class="flex-1 flex items-center justify-center text-xs text-ink-500 dark:text-ink-300">
+ <div v-if="!activeImage" class="flex-1 flex items-center justify-center text-xs text-ink-500 dark:text-ash-300">
  Pilih gambar di kiri untuk melihat preview.
  </div>
 

@@ -120,16 +120,16 @@
 
     <!-- Language Selector -->
     <div>
-      <label class="block text-sm font-medium text-ink-900 dark:text-anthracite-50 mb-2">🌐 Bahasa Paper</label>
+      <label class="block text-sm font-medium text-ink-900 dark:text-ink-50 mb-2">🌐 Bahasa Paper</label>
       <select
         v-model="store.paper.language"
         :disabled="generating || !!activeJob"
-        class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-anthracite-500 rounded-xl text-sm bg-white dark:bg-anthracite-800 text-ink-900 dark:text-anthracite-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none disabled:opacity-50"
+        class="max-w-md w-full px-3 py-2 border border-ivory-300 dark:border-ash-500 rounded-xl text-sm bg-white dark:bg-ash-700 text-ink-900 dark:text-ink-50 focus:ring-2 focus:ring-[#238f7f]/30 dark:focus:ring-[#4eb2a3]/30 focus:border-navy-500 dark:focus:border-navy-400 outline-none disabled:opacity-50"
       >
         <option value="id">🇮🇩 Bahasa Indonesia</option>
         <option value="en">🔤 English</option>
       </select>
-      <p class="text-xs text-ink-700 dark:text-anthracite-200 mt-1">
+      <p class="text-xs text-ink-700 dark:text-ash-300 mt-1">
         Bahasa untuk penulisan paper hasil generate.
       </p>
     </div>
@@ -139,7 +139,7 @@
       <button
         @click="generate"
         :disabled="(!topic.trim() && !enableRegenerateImages) || generating || !!activeJob"
-        class="flex-1 px-4 py-2 bg-navy-600 hover:bg-navy-700 text-cream-50 dark:bg-cream-200 dark:hover:bg-cream-100 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
+        class="flex-1 px-4 py-2 bg-navy-600 hover:bg-navy-700 dark:bg-navy-600 dark:hover:bg-navy-500 text-cream-50 dark:text-ash-900 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30"
       >
         <span v-if="generating" class="inline-flex items-center gap-1">
           <span class="w-3 h-3 border-2 border-cream-200 border-t-transparent rounded-full animate-spin"></span>
@@ -210,7 +210,7 @@
           <button
             v-if="pickedDataFiles.length"
             @click="confirmDataFiles"
-            class="mt-1.5 w-full px-2 py-1 text-[10px] font-semibold rounded-md bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 transition-colors"
+            class="mt-1.5 w-full px-2 py-1 text-[10px] font-semibold rounded-md bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 transition-colors"
           >Tambah Data ({{ pickedDataFiles.length }})</button>
         </div>
         <div v-if="dataFiles.length" class="flex flex-wrap gap-1.5 mt-2">
@@ -463,7 +463,7 @@
         <button
           @click="confirmExistingFiles"
           :disabled="!pickedExistingFiles.length"
-          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40"
+          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 disabled:opacity-40"
         >Tambah ({{ pickedExistingFiles.length }})</button>
       </template>
     </AppDialog>
@@ -490,7 +490,7 @@
         <button
           @click="confirmDraftPicker"
           :disabled="!pickedDrafts.length"
-          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40"
+          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 disabled:opacity-40"
         >Tambah ({{ pickedDrafts.length }})</button>
       </template>
     </AppDialog>
@@ -527,7 +527,7 @@
         <button
           @click="confirmDataAnalysisPicker"
           :disabled="!dataAnalysisSelected.size"
-          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 disabled:opacity-40"
+          class="px-3 py-1.5 text-sm rounded-lg bg-navy-700 hover:bg-navy-800 dark:bg-navy-700 dark:hover:bg-navy-600 text-cream-50 dark:text-ash-900 disabled:opacity-40"
         >Tambah ({{ dataAnalysisSelected.size }})</button>
       </template>
     </AppDialog>
@@ -2429,8 +2429,9 @@ async function consumeSSEStream(res) {
             const errCount = payload.errors || 0
             const totalCount = payload.total || 0
             if (errCount > 0) {
-              imageGenProgress.value = { total: totalCount, done: totalCount, message: `${totalCount - errCount}/${totalCount} images — ${errCount} failed!`, retrying: 0 }
-              contentText.value += `\n⚠️ ${totalCount - errCount}/${totalCount} images generated — ${errCount} errors\\n`
+              const successCount = totalCount - errCount
+              imageGenProgress.value = { total: totalCount, done: totalCount, message: `${successCount}/${totalCount} images — ${errCount} failed!`, retrying: 0 }
+              contentText.value += `\n⚠️ ${successCount}/${totalCount} images generated — ${errCount} errors\n`
             } else {
               imageGenProgress.value = { total: totalCount, done: totalCount, message: 'All images complete!', retrying: 0 }
               contentText.value += `\n✅ All images generated and embedded!\n`
