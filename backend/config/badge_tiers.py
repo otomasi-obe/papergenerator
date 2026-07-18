@@ -99,12 +99,40 @@ BADGE_TIERS: dict[str, BadgeTierConfig] = {
 # Default tier for users without badge
 DEFAULT_TIER = "trial"
 
+# Tier rank: higher = more access (used for badge upgrade logic)
+TIER_RANK: dict[str, int] = {"trial": 0, "starter": 1, "pro": 2, "elite": 3}
+
+# Map payment amount (IDR) → badge tier
+AMOUNT_TO_BADGE: dict[int, str] = {
+    1000: "trial",      # Test 1k
+    41000: "starter",   # Harian
+    125000: "pro",      # Mingguan (Pro)
+    315000: "elite",    # Bulanan (Elite)
+}
+
 
 def get_tier_config(badge: str | None) -> BadgeTierConfig:
     """Get tier config for a badge, fallback to trial."""
     if badge and badge in BADGE_TIERS:
         return BADGE_TIERS[badge]
     return BADGE_TIERS[DEFAULT_TIER]
+
+
+def upgrade_user_badge(user, amount: int) -> str | None:
+    """
+    Upgrade user badge based on payment amount.
+    Never downgrades. Returns new badge if changed, else None.
+    """
+    new_badge = AMOUNT_TO_BADGE.get(amount)
+    if not new_badge:
+        return None
+    current_rank = TIER_RANK.get(user.badge or DEFAULT_TIER, 0)
+    new_rank = TIER_RANK.get(new_badge, 0)
+    if new_rank > current_rank:
+        user.badge = new_badge
+        user.badge_expires_at = None  # paid tier: no expiry until token runs out (ponytail: add expiry on tier downgrade)
+        return new_badge
+    return None
 
 
 def get_token_quota(badge: str | None) -> int:
@@ -159,7 +187,10 @@ def get_image_models(badge: str | None) -> list[str]:
 __all__ = [
     "BADGE_TIERS",
     "DEFAULT_TIER",
+    "TIER_RANK",
+    "AMOUNT_TO_BADGE",
     "get_tier_config",
+    "upgrade_user_badge",
     "get_token_quota",
     "get_image_quota",
     "get_max_parallel_jobs",

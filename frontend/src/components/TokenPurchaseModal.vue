@@ -104,12 +104,11 @@
             <!-- QRIS -->
             <button
               @click="method = 'qris'"
-              :disabled="true"
               :class="[
                 'w-full rounded-xl border-2 p-4 transition-all text-left hover:shadow-md',
                 method === 'qris'
                   ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700'
-                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 opacity-50 cursor-not-allowed'
+                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
               ]"
             >
               <div class="flex items-center gap-4">
@@ -119,7 +118,7 @@
                 <div class="flex-1">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h4 class="font-bold text-ink-900 dark:text-ink-50">QRIS</h4>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Maintenance</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold">Active</span>
                   </div>
                   <p class="text-xs text-ink-500 dark:text-ink-400">Bayar instan dengan QRIS</p>
                 </div>
@@ -479,7 +478,6 @@ const packages: Package[] = [
     tokens: 10,
     icon: '🧪',
     popular: false,
-    maintenance: true,
     badge: 'trial',
     fullGenEstimate: 0,
     slrEstimate: 0
@@ -635,6 +633,10 @@ function startStatusPolling(refId: string | null) {
       if (data.status === 'paid') {
         paymentStatus.value = 'paid'
         window.dispatchEvent(new CustomEvent('quota:refresh'))
+        // Refresh user badge from server
+        const { useAuthStore } = await import('@/stores/auth')
+        const auth = useAuthStore()
+        await auth.fetchMe()
         if (statusInterval) { clearInterval(statusInterval); statusInterval = null }
       } else if (data.status === 'failed' || data.doku_status === '68') {
         paymentStatus.value = 'failed'

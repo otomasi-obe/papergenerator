@@ -166,6 +166,14 @@ def qris_callback():
                     current_app.logger.info(
                         f'TOKEN CREDITED: user={payment.user_id}, tokens=+{payment.tokens}, ref={external_id}'
                     )
+                    
+                    # Upgrade user badge based on amount
+                    from config.badge_tiers import upgrade_user_badge
+                    user = User.query.get(payment.user_id)
+                    if user:
+                        upgrade_user_badge(user, payment.amount)
+                        current_app.logger.info(f'QRIS badge upgraded: user={user.id}, badge={user.badge}')
+                    
                     safe_commit()
         elif status == 'EXPIRED':
             current_app.logger.info(f'QRIS EXPIRED: {external_id}')
@@ -393,6 +401,14 @@ def va_callback():
                     current_app.logger.info(
                         f'TOKEN CREDITED: user={payment.user_id}, tokens=+{payment.tokens}, ref={external_id}'
                     )
+                    
+                    # Upgrade user badge based on amount
+                    from config.badge_tiers import upgrade_user_badge
+                    user = User.query.get(payment.user_id)
+                    if user:
+                        upgrade_user_badge(user, payment.amount)
+                        current_app.logger.info(f'QRIS badge upgraded: user={user.id}, badge={user.badge}')
+                    
                     safe_commit()
         elif status == 'EXPIRED':
             current_app.logger.info(f'VA EXPIRED: {external_id}')

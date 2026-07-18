@@ -28,8 +28,8 @@ TOKEN_PACKAGES = {
     0:        500000,   # Trial (gratis) - 500K token
     1000:     10,       # Test QRIS
     41000:    300000,   # Harian
-    125000:   1200000,  # Mingguan
-    315000:   3500000,  # Bulanan
+    125000:   1200000,  # Mingguan (Pro)
+    315000:   3500000,  # Bulanan (Elite)
 }
 
 # ─── In-memory B2B token cache ────────────────────────────────────────
@@ -333,8 +333,8 @@ def query_qris():
         if not ref:
             return jsonify({'error': 'transaction_id required'}), 400
 
-        # IDOR guard: only owner can query
-        payment = Payment.query.filter_by(external_id=ref).with_for_update().first()
+        # IDOR guard: only owner can query (read-only, no row lock to avoid deadlock with callback)
+        payment = Payment.query.filter_by(external_id=ref).first()
         if not payment or str(payment.user_id) != str(get_jwt_identity()):
             return jsonify({'error': 'Not found'}), 404
 
@@ -377,8 +377,16 @@ def query_qris():
                     )
                     payment.status = 'paid'
                     payment.raw_response = json.dumps(result)
-                    safe_commit()
                     current_app.logger.info(f'DOKU QRIS TOKEN CREDITED (query): user={payment.user_id}, tokens=+{payment.tokens}, ref={ref}')
+                    
+                    # Upgrade user badge based on amount
+                    from config.badge_tiers import upgrade_user_badge
+                    user = User.query.get(payment.user_id)
+                    if user:
+                        upgrade_user_badge(user, payment.amount)
+                        current_app.logger.info(f'DOKU badge upgraded (query): user={user.id}, badge={user.badge}')
+                    
+                    safe_commit()
                 except Exception:
                     current_app.logger.exception('Failed to credit token on query')
 
@@ -599,6 +607,14 @@ def doku_callback():
             current_app.logger.info(
                 f'DOKU TOKEN CREDITED ({ "SNAP" if is_snap else "LEGACY" }): user={payment.user_id}, tokens=+{payment.tokens}, ref={reference_id}'
             )
+            
+            # Upgrade user badge based on new token quota
+            from config.badge_tiers import upgrade_user_badge
+            user = User.query.get(payment.user_id)
+            if user:
+                upgrade_user_badge(user, payment.amount)
+                current_app.logger.info(f'DOKU badge upgraded: user={user.id}, badge={user.badge}')
+            
             safe_commit()
 
         elif is_failed:

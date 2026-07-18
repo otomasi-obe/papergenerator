@@ -3,6 +3,35 @@
 All notable changes to PaperFull (papergenerator) are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.1] — 2026-07-18
+
+### Fixed
+- **stale chunk auto-reload**: `main.ts` + router catch `ChunkLoadError`/`Failed to fetch dynamically imported module` → auto reload once after deploy
+- **nginx no-cache**: move no-cache headers to `location /` (cover all SPA routes)
+- **vite localhost leak**: skip vue-vendor/katex in localhost scan
+- **.env production**: `VITE_API_URL` empty (endpoints already prefixed `/api`)
+- **last_seen throttle**: in-memory 60s throttle per worker (ponytail: Redis upgrade)
+- **admin delete-log**: PaperDeleteLog model + `/admin/delete-log` endpoint, audit log before delete (title, user snapshot), online status dot (Active/last Xm/offline)
+- **image-gen multi-model fallback**: cx/gpt-5.5-image → ag/gemini → alibaba/wan fallback with logging per attempt
+- **dispatcher stuck jobs**: `_dispatched` set cleanup every poll cycle (fix stuck jobs <256)
+- **SameFileError**: fix when out_path == dest (same dir)
+- **dark mode UI**: ChatTab ash-800/60 bg + border + hover glow, FloatingChatButton panel bg lighten, TokenDetailModal SVG labels + padding + clip fix
+- **login redirect localhost**: clean rebuild fix (cache issue)
+
+### Added
+- **badge tier system**: Trial/Starter/Pro/Elite with JOURNAL_TIERS (10/19/36/49), BadgeTier.vue component, locked items (🔒), auto-switch to IEEE on downgrade
+- **MaintenanceBanner component**: site-wide maintenance notice
+- **AdminPage improvements**: client-side pagination 50/page, search all users (limit=2000), Role+Tier badge chip, Delete Log tab with search
+- **PRISMA flow in SLR**: statistics in job result
+- **DOI dedup priority chain**: DOI→PMID→PMC→arXiv→S2→OpenAlex→Crossref→title fuzzy
+- **canonical merge**: multi-source attribution, sources list, external IDs
+- **reuse_port=False**: prevents orphan gunicorn workers
+- **token deduction fix**: actual LLM calls not json.dumps
+- **SLR improvements**: cap enforcement, dynamic timeout, orphan job sweep
+
+### Removed
+- **Rubric tool**: disabled from frontend TOOLS array, UI, and store logic
+
 ## [1.5.0] — 2026-07-17
 
 ### Fixed
