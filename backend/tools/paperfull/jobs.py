@@ -3344,6 +3344,15 @@ def generate_stream(paper_id: str):
             log.info("[paperfull] generate_images=%s for paper %s", generate_images, paper_id)
             if generate_images:
                 try:
+                    # Resolve user badge for tier-based model selection in the worker
+                    user_badge = None
+                    try:
+                        from utils.database.models import User as _User
+                        _u = _User.query.get(int(user_id))
+                        if _u:
+                            user_badge = _u.badge
+                    except Exception:
+                        pass
                     image_prompts = _collect_gambar_prompts(paper_data, paper_kind=paper_kind)
                     log.info("[paperfull] _collect_gambar_prompts returned %d prompts for paper %s", len(image_prompts), paper_id)
                     if image_prompts:
@@ -3384,6 +3393,7 @@ def generate_stream(paper_id: str):
                                 prompt=prompt_text[:2000],
                                 status="queued",
                                 target_path=target_path[:500] if target_path else None,
+                                badge=user_badge,
                             )
                             db.session.add(img_job)
                             image_job_ids.append(img_job.id)

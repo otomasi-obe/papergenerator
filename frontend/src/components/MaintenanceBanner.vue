@@ -11,18 +11,20 @@
       v-if="visible"
       class="fixed top-0 inset-x-0 z-[1000] pointer-events-auto"
     >
-      <div class="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-600 text-white shadow-lg border-b border-amber-800/50">
-        <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
+      <div class="bg-gradient-to-r from-navy-700 via-navy-800 to-navy-700 text-white shadow-lg border-b border-navy-900/50">
+        <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-start gap-3">
           <!-- Logo -->
-          <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-white/20 ring-1 ring-white/40 flex items-center justify-center backdrop-blur-sm">
+          <div class="flex-shrink-0 w-8 h-8 mt-0.5 rounded-lg bg-white/20 ring-1 ring-white/40 flex items-center justify-center backdrop-blur-sm">
             <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
           </div>
-          <div class="flex-1 text-xs sm:text-sm leading-snug font-medium">
-            <span class="font-bold">Pemeliharaan:</span>
-            Pemeliharaan sistem sedang berlangsung. Mohon maaf jika terjadi kendala atau gangguan pada pekerjaan anda. Terima kasih.
+          <div class="flex-1 text-xs sm:text-sm leading-relaxed font-medium space-y-1">
+            <p><span class="font-bold">Perbaikan sistem sedang berlangsung.</span> Kami mohon maaf jika pekerjaan Anda terganggu atau terkendala karena perubahan sistem.</p>
+            <p>Kami menyarankan untuk menggunakan <span class="font-semibold">Tema Terang (Light)</span> pada tampilan website dikarenakan Tema Gelap (Dark) sedang dalam perbaikan.</p>
+            <p>Untuk penerapan sistem klasifikasi benefit tiap tier badge akan diterapkan mulai <span class="font-semibold">Hari Senin pukul 00.00 WIB</span>.</p>
+            <p>Terima kasih.<br/><span class="text-navy-200/80 italic">— Paperfull Developer Team</span></p>
           </div>
           <button
             @click="dismiss"
@@ -33,9 +35,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
-        </div>
-        <div class="max-w-7xl mx-auto px-4 pb-2 text-right">
-          <span class="text-[10px] text-amber-200/70 italic">— Paperfull Developer Team</span>
         </div>
       </div>
     </div>
