@@ -3397,6 +3397,12 @@ class SLROrchestrator:
                         "citations": p.citations,
                     })
 
+            # ── PRISMA statistics collection ──────────────────────
+            from tools.Literatur.dedup import PRISMAStats
+            prisma = PRISMAStats()
+            prisma.records_identified = len(paper_dicts)  # total raw fetched (pre-dedup)
+            prisma.records_excluded_title = removed_irrelevant  # filtered by relevance/keyword
+
             # Local summarize only. slrSummarizePrompt.txt batch-review sent the same
             # system prompt multiple times in one SLR run; keep one AI call for fetcher
             # selection only, then dedup/rank/group locally.
@@ -3475,6 +3481,14 @@ class SLROrchestrator:
             # Build final results list (flat, top_n for compatibility)
             final_results = all_result_papers[:top_n]
 
+            # ── Fill PRISMA stats from summarize result ────────────
+            total_fetched = summary_result.get("total_fetched", len(paper_dicts))
+            total_unique = summary_result.get("total_unique", 0)
+            prisma.duplicates_removed = total_fetched - total_unique
+            prisma.records_screened = total_unique
+            prisma.abstracts_assessed = min(top_n, total_unique)  # papers sent to LLM
+            prisma.studies_included = len(final_results)
+
             with _jobs_lock:
                 job.results = final_results
                 job.summary_result = summary_result
@@ -3489,6 +3503,8 @@ class SLROrchestrator:
                     f"{summary_result.get('total_unique', 0)} unique)"
                 )
                 job.partial_results = final_results[:PARTIAL_RESULTS_PREVIEW]
+                # Attach PRISMA stats to summary_result for API response
+                summary_result["prisma"] = prisma.to_dict()
 
             _push_progress(job)
             _persist_job_to_db(job)  # persist completion to DB

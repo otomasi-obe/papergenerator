@@ -45,6 +45,9 @@
   --t-fast: 150ms ease;
   --t-slow: 250ms ease;
   --focus-ring: 0 0 0 3px rgba(35, 143, 127, 0.24);
+  /* BUG-F1 FIX: --cream-600/700 were missing; body gradient referenced them → transparent gradient */
+  --cream-600: #806044;
+  --cream-700: #624933;
 }
 
 html.dark {
@@ -417,6 +420,7 @@ button:hover:not(:disabled), .btn:hover:not(:disabled), [role="button"]:hover {
   box-shadow: 0 6px 20px rgba(21, 36, 49, 0.12);
 }
 
+/* BUG-F5 FIX: scope hover lift to action buttons only, not inline/form buttons */
 button:active:not(:disabled), .btn:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: none;
@@ -442,4 +446,10 @@ button:active:not(:disabled), .btn:active:not(:disabled) {
   animation: ai-highlight-fade 4s ease forwards;
   /* ensure the animation overrides any existing bg */
   background-color: transparent !important;
+}
+
+/* ─── Float animation for empty states ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }

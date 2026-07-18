@@ -102,41 +102,30 @@ def _jaro_winkler_sim(s1: str, s2: str) -> float:
 # ── Programmatic dedup using dedup.Deduplicator ───────────────────────────
 
 def programmatic_dedup(papers: list[dict]) -> list[dict]:
-    """Deduplicate papers using dedup.Deduplicator class.
-    
-    Two-stage dedup:
-    1. DOI exact match (most accurate)
-    2. Jaro-Winkler title similarity with threshold 0.88/0.92
-    Keeps the paper with more citations or more complete data.
+    """Deduplicate papers using dedup.Deduplicator with ID priority chain.
+
+    Priority: DOI → PMID → PMC → arXiv → S2 → OpenAlex → Crossref → title fuzzy.
+    Canonical merge: duplicate sources merged into canonical record.
     """
     try:
         from tools.Literatur.dedup import Deduplicator
-        dedup = Deduplicator(jw_threshold=0.88, jw_title_threshold=0.92)
-        
-        # Prepare papers for deduplication — map idx → paper for round-trip
+        dedup = Deduplicator(auto_dup_threshold=0.95, review_dup_threshold=0.90)
+
+        # Pass full paper dicts — Deduplicator extracts IDs from source/source_id automatically
         paper_data = []
-        idx_to_paper = {}
         for idx, paper in enumerate(papers):
-            paper_id = paper.get("source_id") or f"paper_{idx}"
-            paper_data.append({
-                "id": paper_id,
-                "doi": paper.get("doi"),
-                "title": paper.get("title"),
-            })
-            idx_to_paper[paper_id] = idx
-        
-        # Run deduplication
+            p = dict(paper)  # shallow copy
+            p.setdefault("id", p.get("source_id") or f"paper_{idx}")
+            paper_data.append(p)
+
         unique_papers, duplicates = dedup.deduplicate(paper_data)
-        
-        # Map back to original papers using idx_to_paper
-        unique_indices = {idx_to_paper[p["id"]] for p in unique_papers if p["id"] in idx_to_paper}
-        result = [papers[i] for i in sorted(unique_indices) if i < len(papers)]
-        
+
+        # unique_papers already has merged sources from duplicates
         log.info("Dedup: %d → %d unique (removed %d duplicates)",
-                 len(papers), len(result), len(duplicates))
-        return result
-        
-    except ImportError:
+                 len(papers), len(unique_papers), len(duplicates))
+        return unique_papers
+
+    except Exception:
         # Fallback to simple implementation
         return _fallback_dedup(papers)
 

@@ -539,10 +539,66 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
     json_relative = json_path.parent / path
     if json_relative.exists():
         return json_relative
-    cwd_path = path
-    if cwd_path.exists():
-        return cwd_path
+
+    # Also try the image/ subdirectory next to the JSON (correct for preview: user/<username>/<paper_id>/image/)
+    image_relative = json_path.parent / "image" / path
+    if image_relative.exists():
+        return image_relative
+
+    # Derive paper_id correctly: json_path.parent is usually paper_dir (user/<username>/<paper_id>/)
+    # But for preview/export it might be in export/ subfolder
+    if json_path.parent.name == "export":
+        paper_id = json_path.parent.parent.name
+    else:
+        paper_id = json_path.parent.name
+
+    # Try safe_paper_image_dir for canonical user/<username>/<paper_id>/image/ location
+    try:
+        from tools.editor.utils import safe_paper_image_dir
+        img_dir = safe_paper_image_dir(paper_id)
+        if img_dir and img_dir.exists():
+            # Try direct match
+            candidate = img_dir / path
+            if candidate.is_file():
+                return candidate
+            # Try with just the filename
+            fname = path.name
+            candidate = img_dir / fname
+            if candidate.is_file():
+                return candidate
+            # Extension-insensitive match (JSON may say .png but disk has .jpg)
+            stem = Path(fname).stem
+            for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                candidate = img_dir / (stem + ext)
+                if candidate.is_file():
+                    return candidate
+            # Glob fallback
+            for match in img_dir.glob(f"{stem}.*"):
+                if match.is_file():
+                    return match
+            # Also try img_dir/image/ subdirectory
+            if img_dir.name != "image":
+                img_dir2 = img_dir / "image"
+                if img_dir2.is_dir():
+                    candidate = img_dir2 / path
+                    if candidate.is_file():
+                        return candidate
+                    candidate = img_dir2 / fname
+                    if candidate.is_file():
+                        return candidate
+                    for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                        candidate = img_dir2 / (stem + ext)
+                        if candidate.is_file():
+                            return candidate
+                    for match in img_dir2.glob(f"{stem}.*"):
+                        if match.is_file():
+                            return match
+    except Exception:
+        pass
+
     return BASE_DIR / path
+
+
 
 def _text_of_run(run_el: etree._Element) -> str:
     return "".join(t.text or "" for t in run_el.findall(_wq("t")))
@@ -1001,6 +1057,22 @@ def _add_prompt_box(doc: Document, text: str, samples: dict[str, etree._Element 
     _set_table_width(table, 8503.5, 1)
     cell = table.cell(0, 0)
     _set_cell_format(cell, header=False)
+    # Enable word wrap so long prompts wrap inside the cell
+    tblPr = table._tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement(qn('w:tblPr'))
+        table._tbl.append(tblPr)
+    tblLayout = OxmlElement(qn('w:tblLayout'))
+    tblLayout.set(qn('w:type'), 'autofit')
+    tblPr.append(tblLayout)
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcW = OxmlElement(qn('w:tcW'))
+    tcW.set(qn('w:type'), 'auto')
+    tcPr.append(tcW)
+    vAlign = OxmlElement(qn('w:vAlign'))
+    vAlign.set(qn('w:val'), 'top')
+    tcPr.append(vAlign)
     paragraph = cell.paragraphs[0]
     _apply_sample_ppr(paragraph, samples["body_ppr"])
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1047,6 +1119,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path, samples: dict[str, e
             prompt_text = f"{title}. {prompt}"
         else:
             prompt_text = prompt or title or f"Gambar {number}"
+        # Truncate long prompts to prevent overflow in DOCX
+        if len(prompt_text) > 300:
+            prompt_text = prompt_text[:297] + "..."
         _add_prompt_box(doc, f"[PROMPT UNTUK AI GAMBAR: {prompt_text}]", samples)
 
     if title:

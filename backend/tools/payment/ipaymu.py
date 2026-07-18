@@ -19,9 +19,9 @@ ipaymu_bp = Blueprint('ipaymu', __name__, url_prefix='/api/payment/ipaymu')
 
 # ─── Token package mapping ───────────────────────────────────────────
 TOKEN_PACKAGES = {
-    35000:   300000,   # Harian
-    120000:  1200000,  # Mingguan
-    300000:  3500000,  # Bulanan
+    41000:   300000,   # Harian
+    125000:  1200000,  # Mingguan
+    315000:  3500000,  # Bulanan
 }
 
 

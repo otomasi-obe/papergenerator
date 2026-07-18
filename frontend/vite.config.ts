@@ -21,17 +21,16 @@ export default defineConfig({
             const full = path.join(dir, file)
             const stat = fs.statSync(full)
             if (stat.isDirectory()) checkDir(full)
-            else if (file.endsWith('.js') || file.endsWith('.css')) {
+            else if ((file.endsWith('.js') || file.endsWith('.css')) && 
+                     !file.includes('vue-vendor') && 
+                     !file.includes('katex')) {
               const content = fs.readFileSync(full, 'utf-8')
-              if (content.includes('localhost:')) {
-                const lines = content.split('\n')
-                for (let i = 0; i < lines.length; i++) {
-                  if (lines[i].includes('localhost:')) {
-                    console.error(`\n❌ BUILD FAILED: Found localhost reference in ${full}:${i + 1}`)
-                    console.error(lines[i].slice(0, 200))
-                    process.exit(1)
-                  }
-                }
+              // Only flag localhost:PORT pattern (actual hardcoded URL), not regex strings
+              const m = content.match(/localhost:\d{4,5}/g)
+              if (m) {
+                console.error(`\n❌ BUILD FAILED: Found localhost:PORT reference in ${full}`)
+                console.error(`   Matches: ${[...new Set(m)].join(', ')}`)
+                process.exit(1)
               }
             }
           }

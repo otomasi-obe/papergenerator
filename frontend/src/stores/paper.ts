@@ -944,10 +944,9 @@ export const usePaperStore = defineStore('paper', () => {
       title: 'REFERENCES',
       content: p.references,
     }
-    // Persist figure metadata so it survives save/load round-trips
-    if (Array.isArray(p.figures) && p.figures.length) {
-      json.figures = p.figures
-    }
+    // Always include figures key (even if empty) so backend knows the frontend
+    // sent complete paper data and doesn't fall back to stale DB version.
+    json.figures = Array.isArray(p.figures) ? p.figures : []
     return json
   }
 

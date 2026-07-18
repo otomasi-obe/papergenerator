@@ -89,11 +89,17 @@ def my_quota():
             ],
             "is_unlimited": user.role == "admin",
             "total_purchased": total_purchased,
+            "badge": user.badge,
+            "badge_expires_at": user.badge_expires_at.isoformat() if user.badge_expires_at else None,
         }
     )
 
 
 def quota_exceeded(user_id: int) -> tuple[bool, dict]:
+    # SEMENTARA: quota enforcement dinonaktifkan — semua user tetap bisa pakai AI
+    # ponytail: re-enable dengan menghapus 2 baris ini dan uncomment blok enforcement di bawah
+    return False, {}
+
     if not has_app_context():
         from utils.job_core import get_core_app
         _ctx = get_core_app().app_context()
@@ -259,4 +265,6 @@ def token_history():
         "remaining": remaining,
         "base_quota": admin_base,
         "bonus_tokens": bonus_tokens,
+        "badge": user.badge,
+        "badge_expires_at": user.badge_expires_at.isoformat() if user.badge_expires_at else None,
     })

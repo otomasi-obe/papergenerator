@@ -473,10 +473,68 @@ def _resolve_path(path_text: str, json_path: Path) -> Path:
     path = Path(path_text)
     if path.is_absolute():
         return path
-    candidate = json_path.parent / path
-    if candidate.exists():
-        return candidate
+    json_relative = json_path.parent / path
+    if json_relative.exists():
+        return json_relative
+
+    # Also try the image/ subdirectory next to the JSON (correct for preview: user/<username>/<paper_id>/image/)
+    image_relative = json_path.parent / "image" / path
+    if image_relative.exists():
+        return image_relative
+
+    # Derive paper_id correctly: json_path.parent is usually paper_dir (user/<username>/<paper_id>/)
+    # But for preview/export it might be in export/ subfolder
+    if json_path.parent.name == "export":
+        paper_id = json_path.parent.parent.name
+    else:
+        paper_id = json_path.parent.name
+
+    # Try safe_paper_image_dir for canonical user/<username>/<paper_id>/image/ location
+    try:
+        from tools.editor.utils import safe_paper_image_dir
+        img_dir = safe_paper_image_dir(paper_id)
+        if img_dir and img_dir.exists():
+            # Try direct match
+            candidate = img_dir / path
+            if candidate.is_file():
+                return candidate
+            # Try with just the filename
+            fname = path.name
+            candidate = img_dir / fname
+            if candidate.is_file():
+                return candidate
+            # Extension-insensitive match (JSON may say .png but disk has .jpg)
+            stem = Path(fname).stem
+            for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                candidate = img_dir / (stem + ext)
+                if candidate.is_file():
+                    return candidate
+            # Glob fallback
+            for match in img_dir.glob(f"{stem}.*"):
+                if match.is_file():
+                    return match
+            # Also try img_dir/image/ subdirectory
+            if img_dir.name != "image":
+                img_dir2 = img_dir / "image"
+                if img_dir2.is_dir():
+                    candidate = img_dir2 / path
+                    if candidate.is_file():
+                        return candidate
+                    candidate = img_dir2 / fname
+                    if candidate.is_file():
+                        return candidate
+                    for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                        candidate = img_dir2 / (stem + ext)
+                        if candidate.is_file():
+                            return candidate
+                    for match in img_dir2.glob(f"{stem}.*"):
+                        if match.is_file():
+                            return match
+    except Exception:
+        pass
+
     return BASE_DIR / path
+
 
 
 def _set_cell_shading(cell, fill: str = "D9D9D9") -> None:
@@ -779,6 +837,20 @@ def _add_prompt_box(doc: Document, text: str) -> None:
         el.set(qn("w:sz"), "4")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "auto")
+    # Enable word wrap so long prompts wrap inside the cell
+    tblPr = table._tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement(qn('w:tblPr'))
+        table._tbl.append(tblPr)
+    tblLayout = OxmlElement(qn('w:tblLayout'))
+    tblLayout.set(qn('w:type'), 'autofit')
+    tblPr.append(tblLayout)
+    tcW = OxmlElement(qn('w:tcW'))
+    tcW.set(qn('w:type'), 'auto')
+    tc_pr.append(tcW)
+    vAlign = OxmlElement(qn('w:vAlign'))
+    vAlign.set(qn('w:val'), 'top')
+    tc_pr.append(vAlign)
     p = cell.paragraphs[0]
     _set_para_style(p, "icsm_heading1")
     _sp0(p)
@@ -817,6 +889,9 @@ def _add_figure(doc: Document, item: dict, json_path: Path) -> None:
         p_img.add_run().add_picture(str(image_path), width=Cm(width_cm))
     else:
         fallback = prompt if prompt else f"[Gambar {image_number}: {title}]"
+        # Truncate long prompts to prevent overflow in DOCX
+        if len(fallback) > 300:
+            fallback = fallback[:297] + "..."
         _add_prompt_box(doc, fallback)
 
     if image_number and title:

@@ -16,8 +16,9 @@ backlog = 4096  # Doubled for 1000+ concurrent users; nginx queues overflow
 workers = 24
 worker_class = "gevent"
 worker_connections = 100
-# SO_REUSEPORT: prevent orphan workers from blocking new gunicorn on port 8001
-reuse_port = True
+# SO_REUSEPORT disabled: with True, old workers survive PM2 restart on port 8001,
+# causing orphan processes that block the new master from binding.
+reuse_port = False
 
 # === Timeouts ===
 timeout = 1800       # 30min for AI generation tasks

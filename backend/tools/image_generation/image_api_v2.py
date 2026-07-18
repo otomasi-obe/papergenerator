@@ -1,21 +1,13 @@
-""""
-Unified round-robin image generation via TopRouter API + OpenAI Codex.
+"""Image generation via ai.otomasi.app with multi-model fallback.
 
-Priority (default): ag → codex
-Round-robin across provider models with configurable timeout auto-switch.
-Uses subprocess/curl for AG (large base64 responses), httpx for Codex/others.
-
-Providers are controlled by IMAGE_GEN_PROVIDERS (comma-separated).
-Supported providers: ag, codex  (cloudflare/alibaba retained for backwards-compat).
+Tries each model in sequence until one succeeds. Logs every attempt.
+Worker (worker.py) handles queueing + infinite retry on total failure.
 
 Env:
-  IMAGE_GEN_API_KEY           — required Bearer token (shared by ag/codex toprouter)
-  IMAGE_GEN_API_URL           — upstream base URL (default https://ai.otomasi.app)
-  IMAGE_GEN_PROVIDERS         — comma-separated (default ag,codex)
-  IMAGE_GEN_AG_MODELS         — comma-separated AG models
-  IMAGE_GEN_CODEX_MODELS      — comma-separated Codex/OpenAI models (default gpt-image-1)
-  IMAGE_GEN_TIMEOUT           — seconds per request (default 30)
-"""""
+  IMAGE_GEN_API_KEY  — Bearer token (required)
+  IMAGE_GEN_API_URL  — base URL (default https://ai.otomasi.app)
+  IMAGE_GEN_MODELS   — comma-separated model list (default: cx/gpt-5.5-image,ag/gemini-3.1-flash-image,alibaba-media/wan2.6-t2i)
+"""
 
 from __future__ import annotations
 
@@ -23,250 +15,22 @@ import base64
 import json
 import logging
 import os
-import subprocess
-import threading
-import time
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+import re
 from pathlib import Path
 from typing import Optional
 
-try:
-    import httpx
-    _HAS_HTTPX = True
-except ImportError:
-    _HAS_HTTPX = False
-    httpx = None  # type: ignore
-
 log = logging.getLogger(__name__)
 
-# ── Config ──────────────────────────────────────────────────────────────
-API_URL = os.environ.get("IMAGE_GEN_API_URL") or os.environ.get("ALIBABA_IMAGE_TOPROUTER_URL", "https://ai.otomasi.app")
-API_URL = API_URL.rstrip("/")
-API_KEY = os.environ.get("IMAGE_GEN_API_KEY") or os.environ.get("ALIBABA_IMAGE_TOPROUTER_KEY", "")
-# User requirement: generate image with AG and Codex only.
-PROVIDERS_ENV = os.environ.get("IMAGE_GEN_PROVIDERS", "ag,codex")
-TIMEOUT_S = int(os.environ.get("IMAGE_GEN_TIMEOUT", "30"))
+API_URL = (os.environ.get("IMAGE_GEN_API_URL") or "https://ai.otomasi.app").rstrip("/")
+API_KEY = os.environ.get("IMAGE_GEN_API_KEY") or ""
 
-AG_MODELS = [m.strip() for m in os.environ.get(
-    "IMAGE_GEN_AG_MODELS", "ag/gemini-3.1-flash-image"
-).split(",") if m.strip()]
+# Multi-model fallback list — tried in order until one succeeds
+_DEFAULT_MODELS = "cx/gpt-5.5-image,ag/gemini-3.1-flash-image,alibaba-media/wan2.6-t2i"
+MODELS = [m.strip() for m in os.environ.get("IMAGE_GEN_MODELS", _DEFAULT_MODELS).split(",") if m.strip()]
 
-CODEX_MODELS = [m.strip() for m in os.environ.get(
-    "IMAGE_GEN_CODEX_MODELS", "gpt-image-1"
-).split(",") if m.strip()]
+# ponytail: no timeout — user requirement. API can take minutes for complex prompts.
+_TIMEOUT = int(os.environ.get("IMAGE_GEN_TIMEOUT_S", "0")) or None
 
-CF_MODELS = [m.strip() for m in os.environ.get(
-    "IMAGE_GEN_CF_MODELS", "cf/@cf/black-forest-labs/flux-2-klein-9b"
-).split(",") if m.strip()]
-
-ALIBABA_MODELS = [m.strip() for m in os.environ.get(
-    "IMAGE_GEN_ALIBABA_MODELS", "alibaba-media/qwen-image"
-).split(",") if m.strip()]
-
-PROVIDER_MODELS = {
-    "ag": AG_MODELS,
-    "codex": CODEX_MODELS,
-    "cloudflare": CF_MODELS,
-    "alibaba": ALIBABA_MODELS,
-}
-PROVIDER_ORDER = [p.strip() for p in PROVIDERS_ENV.split(",") if p.strip()]
-
-# ── State ───────────────────────────────────────────────────────────────
-_lock = threading.Lock()
-_cursor = {p: 0 for p in PROVIDER_ORDER}
-_health: dict[str, dict] = {}
-
-
-def _ensure_health(provider: str) -> dict:
-    with _lock:
-        if provider not in _health:
-            _health[provider] = {
-                "success": 0,
-                "fail": 0,
-                "consecutive_fails": 0,
-                "backoff_until": 0.0,
-            }
-        return _health[provider]
-
-
-def _next_model(provider: str) -> Optional[str]:
-    models = [m for m in PROVIDER_MODELS.get(provider, []) if m]
-    if not models:
-        return None
-    with _lock:
-        idx = _cursor.get(provider, 0) % len(models)
-        _cursor[provider] = (idx + 1) % len(models)
-        return models[idx]
-
-
-def _mark_success(provider: str) -> None:
-    h = _ensure_health(provider)
-    with _lock:
-        h["success"] += 1
-        h["consecutive_fails"] = 0
-        h["backoff_until"] = 0.0
-
-
-def _mark_failure(provider: str, backoff_s: float = 60.0) -> None:
-    h = _ensure_health(provider)
-    with _lock:
-        h["fail"] += 1
-        h["consecutive_fails"] += 1
-        delay = min(backoff_s * (2 ** max(h["consecutive_fails"] - 1, 0)), 3600)
-        h["backoff_until"] = time.time() + delay
-
-
-def _available(provider: str) -> bool:
-    return time.time() >= _ensure_health(provider)["backoff_until"]
-
-
-# ── Provider-specific API calls ─────────────────────────────────────────
-
-def _call_ag(prompt: str, model: str, timeout_s: int) -> bytes:
-    """AG Gemini returns base64 JSON — use subprocess curl for reliability."""
-    if not API_KEY:
-        raise RuntimeError("IMAGE_GEN_API_KEY is not set (required for AG provider)")
-    url = f"{API_URL}/v1/images/generations"
-    payload = json.dumps({
-        "model": model,
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-        "quality": "auto",
-        "background": "auto",
-        "image_detail": "high",
-        "output_format": "png",
-    })
-    cmd = [
-        "curl", "-s", "-f", "--max-time", str(timeout_s),
-        "-X", "POST", url,
-        "-H", f"Authorization: Bearer {API_KEY}",
-        "-H", "Content-Type: application/json",
-        "-d", payload,
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s + 5)
-    if result.returncode != 0:
-        raise RuntimeError(f"curl failed: {result.stderr[:200]}")
-    data = json.loads(result.stdout)
-    images = data.get("data") or []
-    if not images:
-        raise RuntimeError("No image data")
-    b64 = images[0].get("b64_json")
-    if not b64:
-        raise RuntimeError("No b64_json in response")
-    return base64.b64decode(b64)
-
-
-def _call_codex(prompt: str, model: str, timeout_s: int) -> bytes:
-    """OpenAI Codex / gpt-image-1 via httpx (OpenAI-compatible images API)."""
-    if not _HAS_HTTPX:
-        raise RuntimeError("httpx not installed (required for codex provider)")
-    assert httpx is not None
-    url = f"{API_URL}/v1/images/generations"
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-        "quality": "auto",
-    }
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    }
-    with httpx.Client(timeout=timeout_s) as client:
-        resp = client.post(url, headers=headers, json=payload)
-        if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
-        data = resp.json()
-        images = data.get("data") or []
-        if not images:
-            raise RuntimeError("No image data")
-        b64 = images[0].get("b64_json")
-        if b64:
-            return base64.b64decode(b64)
-        image_url = images[0].get("url")
-        if image_url:
-            img_resp = client.get(image_url)
-            img_resp.raise_for_status()
-            return img_resp.content
-        raise RuntimeError("No image bytes")
-
-
-def _call_httpx(prompt: str, model: str, timeout_s: int) -> bytes:
-    """CF/Alibaba: use httpx (fast, reliable)."""
-    if not _HAS_HTTPX:
-        # Fallback to curl
-        return _call_ag(prompt, model, timeout_s)  # reuse curl logic
-    assert httpx is not None
-    url = f"{API_URL}/v1/images/generations"
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-        "quality": "auto",
-        "background": "auto",
-        "image_detail": "high",
-        "output_format": "png",
-    }
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    }
-    with httpx.Client(timeout=timeout_s) as client:
-        resp = client.post(url, headers=headers, json=payload)
-        if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
-        data = resp.json()
-        images = data.get("data") or []
-        if not images:
-            raise RuntimeError("No image data")
-        image_url = images[0].get("url")
-        b64 = images[0].get("b64_json")
-        if b64:
-            return base64.b64decode(b64)
-        if image_url:
-            img_resp = client.get(image_url)
-            img_resp.raise_for_status()
-            return img_resp.content
-        raise RuntimeError("No image bytes")
-
-
-def _call_provider(provider: str, prompt: str, model: str, timeout_s: int) -> bytes:
-    """Try `model`, then rotate through remaining models in the same provider.
-
-    Intra-provider failover: if the round-robin-picked model errors (429/502/timeout),
-    the next configured model for that provider is attempted before the provider is
-    marked failed. The outer concurrent first-wins race still handles inter-provider
-    failover.
-    """
-    models = [m for m in PROVIDER_MODELS.get(provider, []) if m]
-    if not models:
-        raise RuntimeError(f"No models configured for provider {provider}")
-    try:
-        start = models.index(model)
-    except ValueError:
-        start = 0
-    ordered = models[start:] + models[:start]
-    last_err: Optional[Exception] = None
-    for m in ordered:
-        try:
-            if provider == "ag":
-                return _call_ag(prompt, m, timeout_s)
-            if provider == "codex":
-                return _call_codex(prompt, m, timeout_s)
-            return _call_httpx(prompt, m, timeout_s)
-        except Exception as exc:  # noqa: BLE001
-            last_err = exc
-            log.warning("image_api_v2: %s/%s failed (intra-provider retry): %s",
-                        provider, m, exc)
-    raise RuntimeError(
-        f"All models for provider {provider} failed. Last error: {last_err}"
-    ) from last_err
-
-
-# ── Public API ──────────────────────────────────────────────────────────
 
 def generate_image(
     prompt: str,
@@ -274,71 +38,105 @@ def generate_image(
     *,
     compress: bool = True,
     max_size_mb: float = 1.0,
-    generate_timeout_s: int = TIMEOUT_S,
+    generate_timeout_s: int = 0,
 ) -> dict:
-    """Generate image using API round-robin providers."""
+    """Generate image via ai.otomasi.app SSE endpoint. Multi-model fallback."""
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
     if not API_KEY:
         raise RuntimeError("IMAGE_GEN_API_KEY is not set")
 
-    attempts: list[tuple[str, str]] = []
-    for provider in PROVIDER_ORDER:
-        if not _available(provider):
-            continue
-        model = _next_model(provider)
-        if model:
-            attempts.append((provider, model))
-
-    if not attempts:
-        raise RuntimeError("No image providers available")
-
-    # Try providers concurrently. Do not use ThreadPoolExecutor as a context
-    # manager here: __exit__ calls shutdown(wait=True), which re-hangs on slow
-    # upstream HTTP calls after our deadline fires.
-    executor = ThreadPoolExecutor(max_workers=len(attempts))
-    futures = {
-        executor.submit(_call_provider, provider, prompt, model, generate_timeout_s): (provider, model)
-        for provider, model in attempts
-    }
-    last_error: Optional[Exception] = None
-    deadline = time.time() + max(generate_timeout_s + 10, 15)
     try:
-        while futures and time.time() < deadline:
-            done, not_done = wait(futures, timeout=max(1, deadline - time.time()),
-                                  return_when=FIRST_COMPLETED)
-            if not done:
-                break
-            for future in done:
-                provider, model = futures.pop(future)
+        import httpx
+    except ImportError:
+        raise RuntimeError("httpx not installed")
+
+    timeout_val = generate_timeout_s or _TIMEOUT
+    timeout = httpx.Timeout(timeout_val) if timeout_val else httpx.Timeout(None)
+
+    last_error: Optional[str] = None
+
+    for i, model in enumerate(MODELS):
+        attempt = i + 1
+        log.info("image_api: attempt %d/%d model=%s", attempt, len(MODELS), model)
+        try:
+            result = _try_model(model, prompt, out, timeout, httpx)
+            if compress:
+                _try_compress(out, max_size_mb)
+            log.info("image_api: success model=%s (%d bytes) after %d attempt(s)", model, out.stat().st_size, attempt)
+            return result
+        except Exception as e:
+            last_error = f"model={model}: {e}"
+            log.warning("image_api: attempt %d/%d model=%s FAILED: %s", attempt, len(MODELS), model, str(e)[:300])
+            # Clean up partial file
+            if out.exists():
                 try:
-                    image_bytes = future.result(timeout=1)
-                    if not image_bytes or len(image_bytes) < 400:
-                        raise RuntimeError(f"Image too small: {len(image_bytes or b'')} bytes")
+                    out.unlink()
+                except Exception:
+                    pass
 
-                    out.write_bytes(image_bytes)
-                    if compress:
-                        _try_compress(out, max_size_mb)
+    raise RuntimeError(f"All {len(MODELS)} models failed. Last error: {last_error}")
 
-                    _mark_success(provider)
-                    return {
-                        "path": str(out),
-                        "provider": provider,
-                        "model": model,
-                        "size": out.stat().st_size,
-                        "cached": False,
-                    }
-                except Exception as exc:
-                    last_error = exc
-                    _mark_failure(provider)
-                    log.warning("image_api_v2: %s/%s failed: %s", provider, model, exc)
-            if not not_done:
-                break
-    finally:
-        executor.shutdown(wait=False, cancel_futures=True)
 
-    raise RuntimeError(f"All image providers failed. Last error: {last_error}") from last_error
+def _try_model(model: str, prompt: str, out: Path, timeout, httpx) -> dict:
+    """Try generating with a single model. Raises on failure."""
+    url = f"{API_URL}/v1/images/generations"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "n": 1,
+        "size": "auto",
+        "quality": "auto",
+        "background": "auto",
+        "image_detail": "high",
+        "output_format": "png",
+    }
+
+    image_bytes: Optional[bytes] = None
+
+    with httpx.Client(timeout=timeout) as client:
+        with client.stream("POST", url, headers=headers, json=payload) as resp:
+            if resp.status_code != 200:
+                body = resp.read().decode("utf-8", errors="replace")[:500]
+                raise RuntimeError(f"HTTP {resp.status_code}: {body}")
+
+            # Parse SSE stream: collect last b64_json from any event
+            last_b64: Optional[str] = None
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                if line.startswith("data:"):
+                    data_str = line[5:].strip()
+                    try:
+                        data = json.loads(data_str)
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+                    b64 = data.get("b64_json")
+                    if b64:
+                        last_b64 = b64
+
+    if not last_b64:
+        raise RuntimeError("No b64_json in SSE response")
+
+    image_bytes = base64.b64decode(last_b64)
+    if not image_bytes or len(image_bytes) < 400:
+        raise RuntimeError(f"Image too small: {len(image_bytes or b'')} bytes")
+
+    out.write_bytes(image_bytes)
+    log.info("image_api: generated %s (%d bytes) model=%s", out.name, len(image_bytes), model)
+    return {
+        "path": str(out),
+        "provider": "otomasi",
+        "model": model,
+        "size": out.stat().st_size,
+        "cached": False,
+    }
 
 
 def _try_compress(path: Path, max_size_mb: float) -> None:
@@ -350,18 +148,15 @@ def _try_compress(path: Path, max_size_mb: float) -> None:
 
 
 def get_provider_status() -> dict:
-    """Return provider health + model cursor for diagnostics."""
-    result = {}
-    with _lock:
-        for provider in PROVIDER_ORDER:
-            h = _health.get(provider, {})
-            result[provider] = {
-                "models": PROVIDER_MODELS.get(provider, []),
-                "model_cursor": _cursor.get(provider, 0),
-                "success": h.get("success", 0),
-                "fail": h.get("fail", 0),
-                "consecutive_fails": h.get("consecutive_fails", 0),
-                "backoff_remaining_s": max(0, int(h.get("backoff_until", 0.0) - time.time())),
-                "available": _available(provider),
-            }
-    return result
+    """Return provider health for diagnostics."""
+    return {
+        "otomasi": {
+            "models": MODELS,
+            "model_cursor": 0,
+            "success": 0,
+            "fail": 0,
+            "consecutive_fails": 0,
+            "backoff_remaining_s": 0,
+            "available": True,
+        }
+    }

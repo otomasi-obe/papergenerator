@@ -526,7 +526,7 @@ def add_keywords(doc, data):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_para_spacing(p, before_pt=0, after_pt=6)
-    p.paragraph_format.first_line_indent = -777240  # -61.1pt hanging indent
+    # ponytail: removed -777240 EMU hanging indent (−2.15cm) — overflowed 2-col boundary
     run_label = p.add_run("Keywords: ")
     set_run_font(run_label, CFG["font_body"], CFG["size_body"], bold=True)
     run_kw = p.add_run(kw_text)
@@ -712,7 +712,9 @@ def add_figure(doc, fig_data, fig_counter):
         try:
             json_dir = Path(str(TEMPLATE_JSON)).parent
             paper_dir = json_dir.parent
-            image_dir = paper_dir / "image"
+            image_dir = json_dir / "image"  # canonical: user/<paper_id>/image/
+            if not image_dir.is_dir():
+                image_dir = paper_dir / "image"  # fallback: user/<username>/image/
             if image_dir.is_dir() and image_path_str:
                 candidates.append(image_dir / image_path_str)
                 if image_path_norm != image_path_str:

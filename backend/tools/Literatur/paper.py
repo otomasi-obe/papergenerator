@@ -93,6 +93,16 @@ class Paper:
     is_retracted: Optional[bool] = None
     funders: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
+    # Multi-source attribution: paper found in multiple fetchers
+    sources: list[str] = field(default_factory=list)  # e.g. ["openalex", "crossref"]
+    source_ranks: dict[str, int] = field(default_factory=dict)  # {"openalex": 4, "crossref": 12}
+    # External IDs for dedup priority chain
+    pmid: Optional[str] = None
+    pmcid: Optional[str] = None
+    arxiv_id: Optional[str] = None
+    s2_id: Optional[str] = None  # Semantic Scholar
+    openalex_id: Optional[str] = None
+    crossref_id: Optional[str] = None
 
     def __post_init__(self):
         # Normalize fields that downstream code treats as strings. Upstream
@@ -128,6 +138,16 @@ class Paper:
             self.is_retracted = str(self.is_retracted).lower() in ("true", "1", "yes")
         self.year = _coerce_int(self.year)
         self.citations = _coerce_int(self.citations)
+        # External ID normalization
+        self.pmid = _coerce_str(self.pmid)
+        self.pmcid = _coerce_str(self.pmcid)
+        self.arxiv_id = _coerce_str(self.arxiv_id)
+        self.s2_id = _coerce_str(self.s2_id)
+        self.openalex_id = _coerce_str(self.openalex_id)
+        self.crossref_id = _coerce_str(self.crossref_id)
+        # Auto-populate sources list if not set
+        if not self.sources and self.source:
+            self.sources = [self.source]
 
     def dedup_key(self) -> str:
         if self.doi:

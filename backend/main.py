@@ -534,6 +534,10 @@ def _auth_flow_rate_limit_exempt():
 
 
 # ─── Correlation ID + JWT cache middleware ────────────────────────────────
+# ponytail: in-memory last-seen throttle. Per-worker cache → tiap worker
+#   throttle 60s sendiri. Cukup akurat untuk indikator "online" di admin.
+_LAST_SEEN_CACHE: dict[int, float] = {}
+
 @app.before_request
 def add_correlation_id():
     g.correlation_id = str(uuid.uuid4())
@@ -564,6 +568,23 @@ def add_correlation_id():
                 g._jwt_claims = claims
             except Exception:
                 g._renew_jwt = False
+            # ponytail: update last_seen throttle 60s via in-memory cache.
+            #   Ceiling: jika concurrency tinggi dan multi-worker, cache per-worker
+            #   → update DB lebih sering dari 60s tapi tetap jauh lebih hemat dari
+            #   tiap request. Upgrade: pindah ke Redis jika ada.
+            try:
+                import time as _t2
+                now = _t2.time()
+                last = _LAST_SEEN_CACHE.get(g.user_id, 0)
+                if now - last >= 60:
+                    _LAST_SEEN_CACHE[g.user_id] = now
+                    from utils.database.models import User as _U
+                    u = _U.query.get(g.user_id)
+                    if u:
+                        u.last_login = datetime.now(timezone.utc)
+                        db.session.commit()
+            except Exception:
+                logging.debug("last_seen update failed", exc_info=True)
     except Exception as e:
         # Don't fail the request on a bad/expired token here (optional auth),
         # but don't swallow it silently either — log at debug for diagnostics.
@@ -2457,22 +2478,25 @@ def export_docx():
                 if _pid:
                     from tools.image_generation.reconcile import reconcile_figure_images
                     from sqlalchemy.orm.attributes import flag_modified
-                    _user_upload_dir = _get_user_dir(int(get_jwt_identity()), "uploads")
-                    reconcile_figure_images(_pid, paper, _user_upload_dir)
+                    # Use correct image directory where images are actually stored
+                    from tools.editor.utils import safe_paper_image_dir
+                    _user_image_dir = safe_paper_image_dir(_pid)
+                    if _user_image_dir:
+                        reconcile_figure_images(_pid, paper, _user_image_dir)
 
-                    # Also reconcile section images (handles inline gambar items)
-                    from tools.paperfull.jobs import _reconcile_section_images
-                    _reconcile_section_images(paper, _pid, _user_upload_dir)
+                        # Also reconcile section images (handles inline gambar items)
+                        from tools.paperfull.jobs import _reconcile_section_images
+                        _reconcile_section_images(paper, _pid, _user_image_dir)
 
-                    # Persist the reconciled paths back to the database
-                    try:
-                        db_paper = Paper.query.filter_by(id=_pid, user_id=int(get_jwt_identity())).first()
-                        if db_paper:
-                            db_paper.data = paper
-                            flag_modified(db_paper, "data")
-                            safe_commit()
-                    except Exception as persist_err:
-                        log.warning("[export] Failed to persist reconciled paths to DB: %s", persist_err)
+                        # Persist the reconciled paths back to the database
+                        try:
+                            db_paper = Paper.query.filter_by(id=_pid, user_id=int(get_jwt_identity())).first()
+                            if db_paper:
+                                db_paper.data = paper
+                                flag_modified(db_paper, "data")
+                                safe_commit()
+                        except Exception as persist_err:
+                            log.warning("[export] Failed to persist reconciled paths to DB: %s", persist_err)
         except Exception:
             log.warning("figure image reconciliation failed", exc_info=True)
 
@@ -2765,11 +2789,14 @@ def paper_pdf_preview(paper_id: str):
         try:
             _pid = str(paper.get("id") or paper_id or "").strip()
             if _pid and user_id:
-                _user_upload_dir = _get_user_dir(int(user_id), "uploads")
-                from tools.image_generation.reconcile import reconcile_figure_images
-                from tools.paperfull.jobs import _reconcile_section_images
-                reconcile_figure_images(_pid, paper, _user_upload_dir)
-                _reconcile_section_images(paper, _pid, _user_upload_dir)
+                # Use correct image directory where images are actually stored
+                from tools.editor.utils import safe_paper_image_dir
+                _user_image_dir = safe_paper_image_dir(_pid)
+                if _user_image_dir:
+                    from tools.image_generation.reconcile import reconcile_figure_images
+                    from tools.paperfull.jobs import _reconcile_section_images
+                    reconcile_figure_images(_pid, paper, _user_image_dir)
+                    _reconcile_section_images(paper, _pid, _user_image_dir)
         except Exception:
             log.warning("preview pdf figure reconcile failed", exc_info=True)
 

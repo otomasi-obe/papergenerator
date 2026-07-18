@@ -1001,8 +1001,11 @@ html.dark .prose :deep(pre code) {
   color: #cbc7ba;
 }
 
-/* Tables */
+/* Tables — display:block + overflow-x:auto so wide tables scroll
+   inside the bubble instead of overflowing past the bubble edge. */
 .prose :deep(table) {
+  display: block;
+  overflow-x: auto;
   width: 100%;
   border-collapse: collapse;
   margin: 0.75rem 0;

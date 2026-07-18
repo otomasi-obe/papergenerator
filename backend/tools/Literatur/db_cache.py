@@ -21,7 +21,7 @@ import os
 import re
 import threading
 from datetime import datetime
-from typing import Iterable
+from typing import Final, Iterable
 
 import psycopg2
 from psycopg2 import pool
@@ -376,7 +376,8 @@ _SCORE_EXPR = """\
     -- citations + recency disabled per user request — pure title/abstract relevance only
 """
 
-_COLUMNS = """
+# SEC-3 FIX: Final prevents accidental reassignment — safe for f-string SQL interpolation
+_COLUMNS: Final[str] = """
     doi, title, authors, year, venue, venue_type, abstract,
     citations, is_open_access, url, pdf_url, source, source_id,
     paper_type, publisher

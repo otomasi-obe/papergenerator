@@ -68,12 +68,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/TestPaymentPage.vue'),
     meta: { requiresAuth: true }
   },
-  {
-    path: '/tokens/purchase',
-    name: 'token-purchase',
-    component: () => import('../views/TokenPurchasePage.vue'),
-    meta: { requiresAuth: true }
-  },
+  
   {
     path: '/tokens/checkout',
     name: 'token-checkout',
@@ -162,6 +157,17 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   next()
+})
+
+// Catch chunk load failures (stale hash after deploy) → reload once
+let _reloaded = false
+router.onError((error) => {
+  const isChunkLoad = error?.message?.includes('Failed to fetch dynamically imported module')
+    || error?.name === 'ChunkLoadError'
+  if (isChunkLoad && !_reloaded) {
+    _reloaded = true
+    window.location.reload()
+  }
 })
 
 export default router

@@ -15,7 +15,7 @@ import re
 import secrets
 import smtplib
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -410,6 +410,10 @@ def register():
         role="user",
     )
     user.set_password(password)
+    # Assign Trial badge on registration (500K tokens, no expiry — habis token = habis trial)
+    user.token_quota_monthly = 500000  # Trial tokens
+    user.badge = "trial"
+    user.badge_expires_at = None  # Trial: no expiry, token habis = badge hilang
     _claim_admin_atomically(user)
     db.session.add(user)
     safe_commit()
@@ -614,6 +618,9 @@ def google_callback():
                     avatar_url=avatar_url,
                     role="user",
                     oauth_provider="google",
+                    token_quota_monthly=500000,
+                    badge="trial",
+                    badge_expires_at=None,  # Trial: no expiry, token habis = badge hilang
                 )
                 _claim_admin_atomically(user)
                 db.session.add(user)

@@ -4,7 +4,10 @@
     <div class="relative z-[70] w-full max-w-2xl h-[85vh] sm:h-[90vh] bg-cream-50 dark:bg-ash-900 border border-cream-200 dark:border-ash-600 rounded-2xl shadow-xl flex flex-col">
       <!-- Header -->
       <div class="flex items-center justify-between px-5 py-4 border-b border-cream-200 dark:border-ash-600 shrink-0">
-        <h2 class="text-lg font-bold text-ink-900 dark:text-ink-50">Detail Token</h2>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-bold text-ink-900 dark:text-ink-50">Detail Token</h2>
+          <BadgeTier v-if="data?.badge" :badge="data.badge as string" size="sm" />
+        </div>
         <button @click="$emit('close')" class="p-1.5 min-h-[36px] min-w-[36px] rounded-lg text-ink-400 hover:text-ink-600 dark:hover:text-ink-300 hover:bg-cream-100 dark:hover:bg-ash-800 transition-colors" aria-label="Tutup">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
@@ -55,12 +58,12 @@
                 <line v-for="i in 4" :key="'grid-'+i" :x1="chartPad.left" :y1="chartPad.top + ((i-1)/3)*chartInnerH" :x2="chartPad.left + chartInnerW" :y2="chartPad.top + ((i-1)/3)*chartInnerH" />
               </g>
               <!-- Y axis labels -->
-              <g class="text-[10px] text-ink-400 dark:text-ink-300" font-family="monospace">
+              <g class="text-[11px]" font-family="monospace" fill="var(--text-muted)">
                 <text v-for="i in 4" :key="'y-'+i" :x="chartPad.left - 8" :y="chartPad.top + ((i-1)/3)*chartInnerH + 4" text-anchor="end" dominant-baseline="middle">{{ formatNum(Math.round(chartMin + (chartRange * (4-i) / 3))) }}</text>
               </g>
               <!-- X axis labels (dates, sparse) -->
-              <g class="text-[10px] text-ink-400 dark:text-ink-300" font-family="monospace">
-                <text v-for="(p, i) in sparseXLabels" :key="'x-'+i" :x="getX(i * xLabelStep)" :y="180 - 6" text-anchor="middle" dominant-baseline="hanging">{{ p }}</text>
+              <g class="text-[11px]" font-family="monospace" fill="var(--text-muted)">
+                <text v-for="(p, i) in sparseXLabels" :key="'x-'+i" :x="getX(i * xLabelStep)" :y="chartPad.top + chartInnerH + 14" text-anchor="middle" dominant-baseline="hanging">{{ p }}</text>
               </g>
               <!-- Axis lines -->
               <line :x1="chartPad.left" :y1="chartPad.top" :x2="chartPad.left" :y2="chartPad.top + chartInnerH" stroke="#d1d5db" stroke-width="1" class="dark:stroke-ash-600" />
@@ -142,6 +145,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import api from '../api/index'
+import BadgeTier from './BadgeTier.vue'
 
 interface TokenData {
   purchase_history: any[]
@@ -155,6 +159,8 @@ interface TokenData {
   remaining: number
   base_quota: number
   bonus_tokens: number
+  badge?: string
+  badge_expires_at?: string
 }
 
 const props = defineProps<{ open: boolean }>()
@@ -227,7 +233,7 @@ const chartPoints = computed(() => {
   const hist = data.value?.usage_history || []
   return [...hist].reverse() // chronological
 })
-const chartPad = { top: 20, right: 20, bottom: 30, left: 50 }
+const chartPad = { top: 20, right: 20, bottom: 36, left: 68 }
 const chartInnerW = 560 - chartPad.left - chartPad.right
 const chartInnerH = 180 - chartPad.top - chartPad.bottom
 const chartMax = computed(() => Math.max(...chartPoints.value.map(p => p.tokens), 1))

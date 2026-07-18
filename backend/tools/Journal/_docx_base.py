@@ -587,75 +587,103 @@ def roman(number) -> str:
 
 
 def _resolve_path(path_text: str, json_path: Path) -> Path:
-    """Resolve an image path to an actual file on disk.
+    path = Path(path_text)
+    if path.is_absolute():
+        return path
+    json_relative = json_path.parent / path
+    if json_relative.exists():
+        return json_relative
 
-    Tries (in order):
-      1. Absolute path as-is (with space-normalisation fallback)
-      2. Relative to json_path.parent (legacy behaviour)
-      3. Relative to an ``image/`` subfolder of json_path.parent's parent
-         (covers the user/<username>/<paper_id>/export/ → …/image/ case)
-      4. ``safe_paper_image_dir()`` lookup by paper_id (best effort)
-      5. BASE_DIR fallback
+    # Also try the image/ subdirectory next to the JSON (correct for preview: user/<username>/<paper_id>/image/)
+    image_relative = json_path.parent / "image" / path
+    if image_relative.exists():
+        return image_relative
 
-    AI tokenizer sometimes inserts stray spaces inside filenames
-    (e.g. "flowchart_t uning.jpg" → "flowchart_tuning.jpg").
-    All lookups try the original path first, then a space-normalised variant.
-    """
-    p = Path(path_text)
-    p_norm = Path(path_text.replace(" ", "")) if " " in path_text else p
+    # Derive paper_id correctly: json_path.parent is usually paper_dir (user/<username>/<paper_id>/)
+    # But for preview/export it might be in export/ subfolder
+    if json_path.parent.name == "export":
+        paper_id = json_path.parent.parent.name
+    else:
+        paper_id = json_path.parent.name
 
-    # Helper: try a candidate, return if it exists
-    def _try(candidate: Path) -> Path | None:
-        if candidate.is_file():
-            return candidate
-        return None
-
-    # 1. Absolute path
-    if p.is_absolute():
-        if (r := _try(p)):
-            return r
-        if p_norm != p and (r := _try(p_norm)):
-            return r
-        return p  # fallback — return original even if not found
-
-    # 2. Relative to json_path.parent
-    if (r := _try(json_path.parent / p)):
-        return r
-    if p_norm != p and (r := _try(json_path.parent / p_norm)):
-        return r
-
-    # 3. Sibling image/ folder
-    paper_root = json_path.parent.parent
-    if (r := _try(paper_root / "image" / p)):
-        return r
-    if p_norm != p and (r := _try(paper_root / "image" / p_norm)):
-        return r
-    # Also try just the basename in the image folder
-    fname = p.name
-    fname_norm = p_norm.name if p_norm != p else fname
-    if fname and fname != str(p):
-        if (r := _try(paper_root / "image" / fname)):
-            return r
-    if fname_norm != fname and (r := _try(paper_root / "image" / fname_norm)):
-        return r
-
-    # 4. safe_paper_image_dir() — needs Flask app context; best-effort
+    # Try safe_paper_image_dir for canonical user/<username>/<paper_id>/image/ location
     try:
         from tools.editor.utils import safe_paper_image_dir
-        # Derive paper_id from the path: …/user/<username>/<paper_id>/export/…
-        paper_id = json_path.parent.name if json_path.parent.name not in ("export",) else paper_root.name
         img_dir = safe_paper_image_dir(paper_id)
-        if img_dir:
-            for name in (p, p_norm, fname, fname_norm):
-                if name and (r := _try(img_dir / name)):
-                    return r
+        if img_dir and img_dir.exists():
+            # Try direct match
+            candidate = img_dir / path
+            if candidate.is_file():
+                return candidate
+            # Try with just the filename
+            fname = path.name
+            candidate = img_dir / fname
+            if candidate.is_file():
+                return candidate
+            # Extension-insensitive match (JSON may say .png but disk has .jpg)
+            stem = Path(fname).stem
+            for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                candidate = img_dir / (stem + ext)
+                if candidate.is_file():
+                    return candidate
+            # Glob fallback
+            for match in img_dir.glob(f"{stem}.*"):
+                if match.is_file():
+                    return match
+            # Also try img_dir/image/ subdirectory
+            if img_dir.name != "image":
+                img_dir2 = img_dir / "image"
+                if img_dir2.is_dir():
+                    candidate = img_dir2 / path
+                    if candidate.is_file():
+                        return candidate
+                    candidate = img_dir2 / fname
+                    if candidate.is_file():
+                        return candidate
+                    for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                        candidate = img_dir2 / (stem + ext)
+                        if candidate.is_file():
+                            return candidate
+                    for match in img_dir2.glob(f"{stem}.*"):
+                        if match.is_file():
+                            return match
     except Exception:
         pass
 
-    # 5. Final fallback: original relative path (will fail .is_file() and trigger
-    #    the prompt-box branch in the caller, which is the desired behaviour when
-    #    no image exists yet).
-    return json_path.parent / p
+    return _BASE_DIR / path
+
+
+def _constrain_table_width(table, cfg: dict | None = None) -> None:
+    """Constrain table to column width in 2-col layouts (port of AEJ's _set_table_width_full)."""
+    cfg = cfg or {}
+    if cfg.get("columns", 1) <= 1:
+        return
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    if tbl_pr is None:
+        tbl_pr = OxmlElement("w:tblPr")
+        tbl.insert(0, tbl_pr)
+    # pct=5000 = 100% text area width (spans full column in multi-col section)
+    tbl_w = tbl_pr.find(qn("w:tblW"))
+    if tbl_w is None:
+        tbl_w = OxmlElement("w:tblW")
+        tbl_pr.append(tbl_w)
+    tbl_w.set(qn("w:w"), "5000")
+    tbl_w.set(qn("w:type"), "pct")
+    # Center
+    jc = tbl_pr.find(qn("w:jc"))
+    if jc is None:
+        jc = OxmlElement("w:jc")
+        tbl_pr.append(jc)
+    jc.set(qn("w:val"), "center")
+    # Fixed layout for consistent widths
+    tbl_layout = tbl_pr.find(qn("w:tblLayout"))
+    if tbl_layout is None:
+        tbl_layout = OxmlElement("w:tblLayout")
+        tbl_pr.append(tbl_layout)
+    tbl_layout.set(qn("w:type"), "fixed")
+    table.autofit = False
+
 
 
 def _set_full_cell_borders(cell):
@@ -726,6 +754,52 @@ def _strip_math_delimiters(formula: str) -> str:
     return s
 
 
+def _shrink_omml_to_column(omml, formula: str, column_width_pt: float, base_size_pt: float = 11.0) -> None:
+    """Auto-shrink OMML equation font to fit column width (port of AEJ add_formula logic).
+    
+    Estimates formula width from character count, and if it exceeds 90% of column width,
+    scales down the font size on all m:r elements. Mutates omml in-place.
+    """
+    import re as _re
+    MATH_NS_LOCAL = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+    col_w_cm = column_width_pt * 2.54 / 72.0  # pt → cm
+    max_fw_cm = col_w_cm * 0.90
+    
+    cleaned = _re.sub(r'\\[a-zA-Z]+|\{|\}|\[|\]|\^|\_|\\$|\\', '', formula)
+    formula_size = base_size_pt
+    
+    is_matrix = "matrix" in formula or "cases" in formula or "\\\\" in formula
+    if is_matrix:
+        formula_size = max(5.0, formula_size - 2.5)
+    else:
+        est_cm = len(cleaned) * formula_size * 0.38 / 28.35
+        if est_cm > max_fw_cm:
+            scale = max_fw_cm / est_cm
+            formula_size = max(5.0, formula_size * scale)
+    
+    effective_halfpt = int(formula_size * 2)
+    
+    # Inject w:sz into all m:r elements
+    for omath_run in omml.iter(f'{{{MATH_NS_LOCAL}}}r'):
+        wrPr = omath_run.find(qn('w:rPr'))
+        if wrPr is None:
+            wrPr = etree.Element(qn('w:rPr'))
+            omath_run.insert(0, wrPr)
+        rFonts = wrPr.find(qn('w:rFonts'))
+        if rFonts is None:
+            rFonts = etree.SubElement(wrPr, qn('w:rFonts'))
+        rFonts.set(qn('w:ascii'), 'Cambria Math')
+        rFonts.set(qn('w:hAnsi'), 'Cambria Math')
+        sz = wrPr.find(qn('w:sz'))
+        if sz is None:
+            sz = etree.SubElement(wrPr, qn('w:sz'))
+        sz.set(qn('w:val'), str(effective_halfpt))
+        szCs = wrPr.find(qn('w:szCs'))
+        if szCs is None:
+            szCs = etree.SubElement(wrPr, qn('w:szCs'))
+        szCs.set(qn('w:val'), str(effective_halfpt))
+
+
 def _add_equation_line(doc: Document, formula: str, number: str | None = None, style_id: str = "Equation0", column_width_pt: float | None = None):
     """Render a display equation with optional right-aligned number.
 
@@ -745,6 +819,8 @@ def _add_equation_line(doc: Document, formula: str, number: str | None = None, s
     p.add_run("\t")
     omml = _latex_to_omml(formula)
     if omml is not None:
+        # Auto-shrink font to fit column width
+        _shrink_omml_to_column(omml, formula, cw)
         tag = omml.tag.split("}")[-1] if "}" in omml.tag else omml.tag
         if tag == "oMath":
             p._p.append(omml)
@@ -766,9 +842,28 @@ def _add_prompt_box_with_text(doc: Document, text: str, full_borders: bool = Tru
     table = doc.add_table(rows=1, cols=1)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.style = "Normal Table"
+    # Allow table to wrap content
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    tblPr = table._tbl.tblPr if table._tbl.tblPr is not None else OxmlElement('w:tblPr')
+    if table._tbl.tblPr is None:
+        table._tbl.append(tblPr)
+    tblLayout = OxmlElement('w:tblLayout')
+    tblLayout.set(qn('w:type'), 'autofit')
+    tblPr.append(tblLayout)
     _set_table_borders(table, full=full_borders)
     cell = table.cell(0, 0)
     _set_full_cell_borders(cell)
+    # Enable word wrap for the cell
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcW = OxmlElement('w:tcW')
+    tcW.set(qn('w:type'), 'auto')
+    tcPr.append(tcW)
+    vAlign = OxmlElement('w:vAlign')
+    vAlign.set(qn('w:val'), 'top')
+    tcPr.append(vAlign)
+    
     paragraph = cell.paragraphs[0]
     set_para_style(paragraph, "BodyText")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -790,6 +885,10 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
     full_borders = cfg.get("full_borders", False)
     table_auto_label = cfg.get("table_auto_label", False)
     figure_auto_label = cfg.get("figure_auto_label", False)
+    # ponytail: column_width_pt defaults to 468 (single-col ~16.5cm).
+    # 2-col generators must pass cfg["column_width_pt"] (~240pt) so equation
+    # tab stops don't overflow into the adjacent column.
+    column_width_pt = cfg.get("column_width_pt", 468.0)
 
     if item_id == "text":
         text = str(item.get("text", ""))
@@ -815,6 +914,9 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
             paragraph.add_run().add_picture(str(image_path), width=Cm(width_cm))
         else:
             prompt_body = prompt if prompt else f"Figure {image_number} not found"
+            # Truncate long prompts to prevent overflow in DOCX
+            if len(prompt_body) > 300:
+                prompt_body = prompt_body[:297] + "..."
             if title:
                 fallback_text = f"[PROMPT UNTUK AI GAMBAR: {title}. {prompt_body}]"
             else:
@@ -834,7 +936,7 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
         formula_text = str(item.get("latex", "") or item.get("text", "") or item.get("formula", "")).strip()
         if formula_text:
             formula_text = _strip_math_delimiters(formula_text)
-            _add_equation_line(doc, formula_text, formula_number if formula_number else None, style_id=eq_style)
+            _add_equation_line(doc, formula_text, formula_number if formula_number else None, style_id=eq_style, column_width_pt=column_width_pt)
 
     elif item_id in ("tabel", "table"):
         table_number = str(item.get("TableNumber", "")).strip()
@@ -887,6 +989,7 @@ def _render_content_item(doc: Document, item: dict, json_path: Path, cfg: dict |
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.autofit = True
         _set_table_borders(table, full=full_borders)
+        _constrain_table_width(table, cfg)
 
         for column_index, value in enumerate(headers):
             cell = table.rows[0].cells[column_index]

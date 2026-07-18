@@ -56,7 +56,7 @@ def generate_qris():
         email = data.get('email', user.email if user else '')
 
         # Map amount → tokens. Never fallback 1:1; client amount is user-controlled.
-        TOKEN_PACKAGES = {1000: 10, 5000: 60, 15000: 200, 150000: 3000}
+        TOKEN_PACKAGES = {1000: 10, 41000: 300000, 125000: 1200000, 315000: 3500000}
         amount = int(amount)
         if amount not in TOKEN_PACKAGES:
             return jsonify({'error': 'Invalid token package amount'}), 400

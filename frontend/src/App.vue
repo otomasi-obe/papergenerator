@@ -5,6 +5,7 @@ import { useUserStateStore } from './stores/userState'
 import { useAuthStore } from './stores/auth'
 import TokenPurchaseModal from './components/TokenPurchaseModal.vue'
 import FloatingChatButton from './components/FloatingChatButton.vue'
+import MaintenanceBanner from './components/MaintenanceBanner.vue'
 
 const userState = useUserStateStore()
 const auth = useAuthStore()
@@ -23,6 +24,7 @@ onMounted(async () => {
 
 <template>
   <div id="main-content">
+    <MaintenanceBanner />
     <ErrorBoundary>
       <router-view />
     </ErrorBoundary>

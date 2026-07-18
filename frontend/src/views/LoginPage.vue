@@ -1,25 +1,30 @@
 <template>
- <main class="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center px-4">
- <div class="w-full max-w-md">
+ <main class="login-page min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+ <!-- Animated floating orbs -->
+ <div class="login-orb login-orb-1"></div>
+ <div class="login-orb login-orb-2"></div>
+ <div class="login-orb login-orb-3"></div>
+
+ <div class="w-full max-w-md relative z-10">
  <!-- Logo -->
  <div class="text-center mb-8">
  <div class="inline-flex items-center justify-center mb-3">
  <img :src="logoWithText" alt="PaperFull" class="h-12 object-contain drop-shadow-[0_4px_24px_rgba(11,64,136,0.25)]" />
  </div>
- <p class="text-cream-200/80 text-sm">AI-powered academic paper writing tool</p>
+ <p class="text-cream-200/80 text-sm tracking-wide">AI-powered academic paper writing tool</p>
  </div>
 
- <!-- Login Card -->
- <div class="bg-cream-50/10 border border-cream-300/40 rounded-2xl p-8 backdrop-blur-sm">
+ <!-- Login Card — glassmorphism -->
+ <div class="login-card bg-white/[0.06] border border-white/[0.12] rounded-2xl p-8 backdrop-blur-xl shadow-[0_8px_60px_rgba(0,0,0,0.4)]">
  <h2 class="text-cream-50 text-xl font-semibold mb-2 text-center font-serif">
  {{ isRegister ? 'Create an account' : 'Sign in to your account' }}
  </h2>
- <p class="text-cream-200/80 text-sm text-center mb-7">
+ <p class="text-cream-200/70 text-sm text-center mb-7">
  {{ isRegister ? 'Register with your email to get started' : 'Use your email or Google account' }}
  </p>
 
  <!-- Error Alert -->
- <div v-if="errorMsg" class="mb-5 flex items-center gap-2 bg-red-500/15 border border-red-500/40 text-red-300 dark:text-red-400 text-sm rounded-xl p-3">
+ <div v-if="errorMsg" class="mb-5 flex items-center gap-2 bg-red-500/15 border border-red-500/40 text-red-300 text-sm rounded-xl p-3 animate-[slideDown_0.3s_ease]">
  <span>⚠️</span>
  <span>{{ errorMsg }}</span>
  </div>
@@ -27,34 +32,34 @@
  <!-- Email/Password Form -->
  <form @submit.prevent="handleSubmit" class="space-y-4 mb-5">
  <div v-if="isRegister" class="block">
- <label for="login-name" class="block text-xs font-medium mb-1 text-cream-100/90">
+ <label for="login-name" class="block text-xs font-medium mb-1.5 text-cream-100/90 tracking-wide uppercase">
  Name <span class="text-red-400">*</span>
  </label>
  <input id="login-name" v-model="form.name" type="text" placeholder="Your full name"
  autocomplete="name" aria-required="true"
- class="w-full px-4 py-3 bg-cream-50/10 border border-cream-300/40 rounded-xl text-cream-50 placeholder-cream-300/60 text-sm focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-[#238f7f]/30" />
+ class="login-input w-full px-4 py-3 bg-white/[0.06] border border-white/[0.12] rounded-xl text-cream-50 placeholder-cream-300/40 text-sm focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.08] focus:shadow-[0_0_0_3px_rgba(251,191,36,0.12)] transition-all duration-200" />
  </div>
  <div class="block">
- <label for="login-email" class="block text-xs font-medium mb-1 text-cream-100/90">
+ <label for="login-email" class="block text-xs font-medium mb-1.5 text-cream-100/90 tracking-wide uppercase">
  Email <span class="text-red-400">*</span>
  </label>
  <input id="login-email" v-model="form.email" type="email" placeholder="you@example.com"
  autocomplete="email" inputmode="email" aria-required="true"
- class="w-full px-4 py-3 bg-cream-50/10 border border-cream-300/40 rounded-xl text-cream-50 placeholder-cream-300/60 text-sm focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-[#238f7f]/30" />
+ class="login-input w-full px-4 py-3 bg-white/[0.06] border border-white/[0.12] rounded-xl text-cream-50 placeholder-cream-300/40 text-sm focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.08] focus:shadow-[0_0_0_3px_rgba(251,191,36,0.12)] transition-all duration-200" />
  </div>
  <div class="block">
- <label for="login-password" class="block text-xs font-medium mb-1 text-cream-100/90">
+ <label for="login-password" class="block text-xs font-medium mb-1.5 text-cream-100/90 tracking-wide uppercase">
  Password <span class="text-red-400">*</span>
  </label>
  <div class="relative">
  <input id="login-password" v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="Min. 8 chars, mix of types"
  :autocomplete="isRegister ? 'new-password' : 'current-password'" aria-required="true"
- class="w-full px-4 py-3 bg-cream-50/10 border border-cream-300/40 rounded-xl text-cream-50 placeholder-cream-300/60 text-sm focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-[#238f7f]/30 pr-12" />
+ class="login-input w-full px-4 py-3 bg-white/[0.06] border border-white/[0.12] rounded-xl text-cream-50 placeholder-cream-300/40 text-sm focus:outline-none focus:border-amber-400/60 focus:bg-white/[0.08] focus:shadow-[0_0_0_3px_rgba(251,191,36,0.12)] transition-all duration-200 pr-12" />
  <button
  type="button"
  @click="showPassword = !showPassword"
  :aria-label="showPassword ? 'Hide password' : 'Show password'"
- class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-cream-200/80 hover:text-cream-50 transition"
+ class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-cream-200/60 hover:text-cream-50 transition-colors"
  >
  {{ showPassword ? 'Hide' : 'Show' }}
  </button>
@@ -69,7 +74,7 @@
  </div>
  <!-- Math CAPTCHA widget — for register (always) and login (when required) -->
  <div v-if="showCaptcha" class="block">
- <label class="block text-xs font-medium mb-1 text-cream-100/90">
+ <label class="block text-xs font-medium mb-1.5 text-cream-100/90 tracking-wide uppercase">
  Security Check
  </label>
  <CaptchaWidget
@@ -78,22 +83,22 @@
  />
  </div>
  <button type="submit" :disabled="submitting"
- class="w-full px-6 py-3.5 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white rounded-xl font-semibold transition text-sm disabled:opacity-50 active:scale-95 shadow-lg shadow-amber-500/25 border border-amber-400/30">
+ class="login-submit w-full px-6 py-3.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:from-amber-600 active:to-amber-500 text-white rounded-xl font-semibold transition-all text-sm disabled:opacity-50 active:scale-[0.97] shadow-[0_4px_24px_rgba(245,158,11,0.3)] border border-amber-400/30">
  {{ submitting ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In') }}
  </button>
  </form>
 
  <!-- Divider -->
  <div class="flex items-center gap-3 mb-5">
- <div class="flex-1 h-px bg-cream-300/40"></div>
- <span class="text-cream-200/80 text-xs">or</span>
- <div class="flex-1 h-px bg-cream-300/40"></div>
+ <div class="flex-1 h-px bg-gradient-to-r from-transparent via-cream-300/30 to-transparent"></div>
+ <span class="text-cream-200/60 text-xs tracking-widest uppercase">or</span>
+ <div class="flex-1 h-px bg-gradient-to-r from-transparent via-cream-300/30 to-transparent"></div>
  </div>
 
  <!-- Google Login Button -->
  <button
  @click="auth.loginWithGoogle()"
- class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-cream-100 text-navy-900 rounded-xl font-semibold transition-all shadow-lg text-sm active:scale-95 border border-cream-300/40"
+ class="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-white hover:bg-cream-50 text-navy-900 rounded-xl font-semibold transition-all shadow-lg text-sm active:scale-[0.97] border border-white/80 hover:shadow-[0_8px_30px_rgba(255,255,255,0.15)]"
  >
  <svg class="w-5 h-5" viewBox="0 0 24 24">
  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -105,22 +110,23 @@
  </button>
 
  <!-- Toggle Register/Login -->
- <p class="text-center text-cream-200/80 text-sm mt-6">
+ <p class="text-center text-cream-200/70 text-sm mt-6">
  {{ isRegister ? 'Already have an account?' : "Don't have an account?" }}
- <button @click="toggleMode" class="text-cream-100 hover:text-cream-50 font-medium ml-1">
+ <button @click="toggleMode" class="text-amber-300 hover:text-amber-200 font-medium ml-1 underline underline-offset-2 decoration-amber-400/30 hover:decoration-amber-300/60 transition-all">
  {{ isRegister ? 'Sign In' : 'Register' }}
  </button>
  </p>
 
- <p class="text-center text-cream-200/70 text-xs mt-4">
+ <p class="text-center text-cream-200/50 text-xs mt-4 leading-relaxed">
  By signing in, you agree to our privacy policy.<br>
  Your papers are private and belong to you.
  </p>
  </div>
 
  <div class="text-center mt-6">
- <router-link to="/" class="text-cream-200/80 hover:text-cream-200 text-sm transition">
- ← Back to home
+ <router-link to="/" class="text-cream-200/60 hover:text-cream-200 text-sm transition-colors inline-flex items-center gap-1.5">
+ <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+ Back to home
  </router-link>
  </div>
  </div>
@@ -321,3 +327,102 @@ async function handleSubmit() {
  }
 }
 </script>
+
+<style scoped>
+/* Animated mesh gradient background */
+.login-page {
+  background: linear-gradient(135deg, #040a18 0%, #0a1628 25%, #0d1f3c 50%, #081530 75%, #040a18 100%);
+  background-size: 400% 400%;
+  animation: loginBgShift 20s ease infinite;
+}
+
+@keyframes loginBgShift {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 100% 0%; }
+  50% { background-position: 100% 100%; }
+  75% { background-position: 0% 100%; }
+}
+
+/* Floating decorative orbs */
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.login-orb-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #f59e0b, transparent 70%);
+  top: -10%;
+  right: -5%;
+  animation: orbFloat1 12s ease-in-out infinite;
+}
+
+.login-orb-2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #1265c8, transparent 70%);
+  bottom: -8%;
+  left: -5%;
+  animation: orbFloat2 15s ease-in-out infinite;
+}
+
+.login-orb-3 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, #238f7f, transparent 70%);
+  top: 40%;
+  left: 50%;
+  animation: orbFloat3 10s ease-in-out infinite;
+}
+
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-30px, 20px) scale(1.1); }
+  66% { transform: translate(20px, -30px) scale(0.95); }
+}
+
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(25px, -15px) scale(1.05); }
+  66% { transform: translate(-20px, 25px) scale(0.9); }
+}
+
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.1; }
+  50% { transform: translate(-50%, -20px) scale(1.15); opacity: 0.2; }
+}
+
+/* Card entrance */
+.login-card {
+  animation: cardEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .login-page,
+  .login-orb,
+  .login-card {
+    animation: none !important;
+  }
+}
+</style>

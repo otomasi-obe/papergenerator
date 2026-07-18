@@ -205,6 +205,8 @@ def build_document(
         "table_copy": "TableText",
         "equation": "Equation",
         "max_fig_width_cm": 8.0,
+        # 2-col: (595.3 - 2*54 - 12) / 2 = 237.65pt
+        "column_width_pt": 237.65,
     }
     
     render_sections(doc, config, json_path, BASE_DIR, cfg)

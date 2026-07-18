@@ -12,6 +12,7 @@ interface ImageGenJob {
   image: string | null
   error: string | null
   itemKey: string | null
+  queuePosition: number  // -1 = unknown, 0 = running, 1+ = waiting in queue
 }
 
 interface JobSubscriber {
@@ -92,11 +93,12 @@ export const useImageGenStore = defineStore('imageGen', () => {
     // Poll ALL inflight jobs every cycle
     for (const id of inflightIds) {
       try {
-        const res = await api.get<{ status: string; image?: string; error?: string }>(`/api/image-jobs/${id}`)
+        const res = await api.get<{ status: string; image?: string; error?: string; queue_position?: number }>(`/api/image-jobs/${id}`)
         const data = res.data || {}
         const cur = jobs[id]
         if (!cur) continue
         cur.status = (data.status as ImageGenJob['status']) || cur.status
+        if (data.queue_position !== undefined) cur.queuePosition = data.queue_position
         if (data.status === 'done') {
           cur.image = data.image || null
           _notify(id, 'done', data.image || '')
@@ -162,6 +164,7 @@ export const useImageGenStore = defineStore('imageGen', () => {
         image: null,
         error: null,
         itemKey: itemKey || null,
+        queuePosition: -1,
       }
       if (!subscribers[id]) subscribers[id] = []
       subscribers[id].push({ onDone, onError })
@@ -197,6 +200,7 @@ export const useImageGenStore = defineStore('imageGen', () => {
         image: null,
         error: null,
         itemKey: null,
+        queuePosition: -1,
       }
     }
     // Subscribe callbacks (with dedup to prevent duplicate callbacks on remount)
@@ -232,6 +236,7 @@ export const useImageGenStore = defineStore('imageGen', () => {
           image: j.image || null,
           error: j.error || null,
           itemKey: jobs[j.id]?.itemKey || null,
+          queuePosition: (j as any).queue_position ?? -1,
         }
       }
       _persist()

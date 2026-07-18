@@ -574,7 +574,9 @@ def add_figure(doc, fig_data, fig_counter):
         try:
             json_dir = Path(str(TEMPLATE_JSON)).parent
             paper_dir = json_dir.parent
-            image_dir = paper_dir / "image"
+            image_dir = json_dir / "image"  # canonical: user/<paper_id>/image/
+            if not image_dir.is_dir():
+                image_dir = paper_dir / "image"  # fallback: user/<username>/image/
             if image_dir.is_dir() and image_path_str:
                 candidates.append(image_dir / image_path_str)
                 stem = os.path.splitext(image_path_str)[0]

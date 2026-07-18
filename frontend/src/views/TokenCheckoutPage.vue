@@ -6,7 +6,7 @@
       <!-- Header -->
       <div class="mb-8">
         <button
-          @click="router.push('/tokens/purchase')"
+          @click="goBackToPackages"
           class="text-sm text-ink-500 dark:text-ink-400 hover:text-ink-700 dark:hover:text-ink-200 mb-4 flex items-center gap-1"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,6 +29,13 @@
             <span class="text-ink-700 dark:text-ink-200">Paket</span>
             <span class="font-medium text-ink-900 dark:text-ink-50">{{ packageName }}</span>
           </div>
+          <BadgeTier v-if="badge" :badge="badge" size="sm" />
+          <ul v-if="badge" class="text-left text-xs text-ink-600 dark:text-cream-100 space-y-0.5 border-t border-cream-200 dark:border-ash-700 pt-2">
+            <li v-for="b in BADGE_TIERS[badge].benefits" :key="b" class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              {{ b }}
+            </li>
+          </ul>
           <div class="flex justify-between">
             <span class="text-ink-700 dark:text-ink-200">Token</span>
             <span class="font-medium text-ink-900 dark:text-ink-50">{{ tokens }}</span>
@@ -169,6 +176,8 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AppHeader from '../components/AppHeader.vue'
+import { BADGE_TIERS, type BadgeKey } from '../config/badgeTiers'
+import BadgeTier from '../components/BadgeTier.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -177,6 +186,7 @@ const selectedMethod = ref<string | null>(null)
 const packageName = ref('')
 const tokens = ref(0)
 const amount = ref(0)
+const badge = ref<BadgeKey>('starter')
 
 onMounted(() => {
   const pkg = route.query.package as string
@@ -184,7 +194,7 @@ onMounted(() => {
   const tokensStr = route.query.tokens as string
 
   if (!pkg || !amountStr || !tokensStr) {
-    router.push('/tokens/purchase')
+    goBackToPackages()
     return
   }
 
@@ -197,8 +207,19 @@ onMounted(() => {
     monthly: 'Bulanan (30 Hari)',
     yearly: 'Tahunan (365 Hari)'
   }
+  const pkgBadges: Record<string, BadgeKey> = {
+    daily: 'starter',
+    weekly: 'pro',
+    monthly: 'elite',
+    yearly: 'elite'
+  }
   packageName.value = pkgNames[pkg] || pkg
+  badge.value = pkgBadges[pkg] || 'starter'
 })
+
+function goBackToPackages() {
+  window.dispatchEvent(new Event('open-token-purchase'))
+}
 
 function selectMethod(method: string) {
   selectedMethod.value = method

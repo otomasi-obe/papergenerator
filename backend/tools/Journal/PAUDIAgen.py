@@ -21,6 +21,7 @@ from docx.shared import Inches, Pt
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATE_PATH = BASE_DIR / "PAUDIA.docx"
+TEMPLATE_JSON = None  # set by build_document()
 
 FONT = "Times New Roman"
 SZ_TITLE = 14
@@ -261,9 +262,11 @@ def _add_fig(doc, fig, cnt):
     ip = str(fig.get("Path", ""))
     actual = None
     if ip:
-        cands = [Path(ip), BASE_DIR.parent / "image" / ip]
+        _json_dir = TEMPLATE_JSON.parent if TEMPLATE_JSON else BASE_DIR.parent
+        cands = [Path(ip), _json_dir / "image" / ip, BASE_DIR.parent / "image" / ip]
         stem = os.path.splitext(ip)[0]
         for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+            cands.append(_json_dir / "image" / f"{stem}{ext}")
             cands.append(BASE_DIR.parent / "image" / f"{stem}{ext}")
         for c in cands:
             if c.exists():
@@ -582,6 +585,9 @@ def build_document(
     json_path = Path(json_path)
     template_path = Path(template_path)
     config = json.loads(json_path.read_text(encoding="utf-8"))
+
+    global TEMPLATE_JSON
+    TEMPLATE_JSON = json_path
 
     if output_path:
         final = Path(output_path)

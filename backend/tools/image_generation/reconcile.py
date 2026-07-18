@@ -279,6 +279,16 @@ def _patch_content_list(content: list, file_map: dict[str, Path]) -> int:
                         break
             continue
 
+        # ── Skip if user already set a valid bare filename ──
+        # Don't override user's manual image selection
+        if not os.path.isabs(path_text):
+            base = os.path.basename(path_text).replace(" ", "")
+            if base in file_map:
+                # Already a valid filename — keep it, just mark as patched
+                item["Path"] = base
+                patched += 1
+                continue
+
         # Normalise existing absolute paths to basename even if file exists.
         # Frontend only needs the filename; serving uses paper_id to locate.
         if os.path.isabs(path_text):

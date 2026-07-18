@@ -60,18 +60,20 @@
               <div class="text-center">
                 <div class="text-2xl mb-1">{{ pkg.icon }}</div>
                 <h3 class="font-semibold text-ink-900 dark:text-ink-50 text-sm">{{ pkg.name }}</h3>
-                <p class="text-xs text-ink-500 dark:text-[#fef9c3] mb-2">{{ pkg.duration }}</p>
+                <p class="text-xs text-ink-500 dark:text-cream-100 mb-2">{{ pkg.duration }}</p>
                 <div class="text-base sm:text-lg font-bold text-ink-900 dark:text-ink-50">{{ formatIDR(pkg.price) }}</div>
-                <p class="text-xs font-bold text-[#fef08a]">{{ formatTokenShort(pkg.tokens) }} token</p>
+                <p class="text-xs font-bold text-cream-700 dark:text-cream-200">{{ formatTokenShort(pkg.tokens) }} token</p>
+                <!-- Badge -->
+                <BadgeTier :badge="pkg.badge" size="sm" class="mt-2" />
                 <!-- Benefits -->
-                <ul class="mt-3 text-left text-xs text-ink-600 dark:text-[#fef9c3] space-y-1 border-t border-cream-200 dark:border-ash-700 pt-3">
-                  <li v-for="b in pkg.benefits" :key="b" class="flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                <ul class="mt-2 text-left text-[11px] text-ink-600 dark:text-cream-100 space-y-0.5 border-t border-cream-200 dark:border-ash-700 pt-2">
+                  <li v-for="b in BADGE_TIERS[pkg.badge].benefits" :key="b" class="flex items-center gap-1.5">
+                    <svg class="w-3 h-3 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                     {{ b }}
                   </li>
                 </ul>
                 <!-- Estimates -->
-                <div class="mt-2 pt-2 border-t border-cream-200 dark:border-ash-700 text-xs text-ink-500 dark:text-[#fef9c3] space-y-1">
+                <div class="mt-2 pt-2 border-t border-cream-200 dark:border-ash-700 text-xs text-ink-500 dark:text-cream-100 space-y-1">
                   <div>Generate Full ~{{ pkg.fullGenEstimate }}x</div>
                   <div>SLR ~{{ pkg.slrEstimate }}x</div>
                 </div>
@@ -141,13 +143,16 @@
               ]"
             >
               <div class="flex items-center gap-4">
-                <div class="w-14 h-14 rounded-xl bg-[#1A3A5C] flex items-center justify-center shrink-0">
-                  <span class="text-white font-black text-lg tracking-wider">VA</span>
-                </div>
-                <div class="flex-1">
-                  <h4 class="font-bold text-ink-900 dark:text-ink-50">Virtual Account</h4>
-                  <p class="text-xs text-ink-500 dark:text-ink-400">Transfer ke nomor rekening virtual bank</p>
-                </div>
+                                <div class="w-14 h-14 rounded-xl bg-[#1A3A5C] flex items-center justify-center shrink-0">
+                                  <span class="text-white font-black text-lg tracking-wider">VA</span>
+                                </div>
+                                <div class="flex-1">
+                                  <div class="flex items-center gap-2 flex-wrap">
+                                    <h4 class="font-bold text-ink-900 dark:text-ink-50">Virtual Account</h4>
+                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold">Active</span>
+                                  </div>
+                                  <p class="text-xs text-ink-500 dark:text-ink-400">Transfer ke nomor rekening virtual bank</p>
+                                </div>
                 <div
                   :class="[
                     'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0',
@@ -200,6 +205,13 @@
               <div>
                 <h3 class="font-bold text-ink-900 dark:text-ink-50">{{ selectedPkg?.name }}</h3>
                 <p class="text-sm text-ink-500 dark:text-ink-400">{{ selectedPkg?.tokens }} token • {{ selectedPkg?.duration }}</p>
+                <BadgeTier v-if="selectedPkg" :badge="selectedPkg.badge" size="sm" class="mt-1" />
+                <ul v-if="selectedPkg" class="mt-2 text-left text-xs text-ink-600 dark:text-cream-100 space-y-0.5 border-t border-cream-200 dark:border-ash-700 pt-2">
+                  <li v-for="b in BADGE_TIERS[selectedPkg.badge].benefits" :key="b" class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    {{ b }}
+                  </li>
+                </ul>
               </div>
               <div class="text-right">
                 <div class="text-xl font-bold text-ink-900 dark:text-ink-50">{{ formatIDR(selectedPkg?.price || 0) }}</div>
@@ -386,6 +398,8 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import QRCode from 'qrcode'
 import api from '../api/index.ts'
+import { BADGE_TIERS, type BadgeKey } from '../config/badgeTiers'
+import BadgeTier from './BadgeTier.vue'
 
 interface Package {
   id: string
@@ -396,6 +410,9 @@ interface Package {
   icon: string
   popular?: boolean
   maintenance?: boolean
+  badge: BadgeKey
+  fullGenEstimate: number
+  slrEstimate: number
 }
 
 const props = defineProps<{
@@ -406,37 +423,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-interface Package {
-  id: string
-  name: string
-  duration: string
-  price: number
-  tokens: number
-  icon: string
-  popular?: boolean
-  maintenance?: boolean
-  benefits: string[]
-  fullGenEstimate: number
-  slrEstimate: number
-}
-
 const packages: Package[] = [
-  {
-    id: 'test',
-    name: 'Test 1k',
-    duration: '24 Jam',
-    price: 1000,
-    tokens: 10,
-    icon: '🧪',
-    popular: false,
-    maintenance: true,
-    benefits: [
-      'Paket testing QRIS',
-      '10 token',
-    ],
-    fullGenEstimate: 0,
-    slrEstimate: 0
-  },
   {
     id: 'daily',
     name: 'Harian',
@@ -445,12 +432,7 @@ const packages: Package[] = [
     tokens: 300000,
     icon: '⚡',
     popular: false,
-    benefits: [
-      'Prioritas antrian normal',
-      'Template jurnal standar',
-      '1 revisi gratis',
-      '1 job paralel'
-    ],
+    badge: 'starter',
     fullGenEstimate: 2,
     slrEstimate: 1
   },
@@ -462,13 +444,7 @@ const packages: Package[] = [
     tokens: 1200000,
     icon: '📅',
     popular: true,
-    benefits: [
-      'Prioritas antrian tinggi',
-      'Template jurnal premium + SLR',
-      '3 revisi gratis',
-      '2 job paralel',
-      'Support email prioritas'
-    ],
+    badge: 'pro',
     fullGenEstimate: 10,
     slrEstimate: 4
   },
@@ -479,16 +455,22 @@ const packages: Package[] = [
     price: 315000,
     tokens: 3500000,
     icon: '🗓️',
-    benefits: [
-      'Prioritas antrian tertinggi',
-      'Semua template + custom template',
-      'Revisi unlimited',
-      '5 job paralel',
-      'Support chat prioritas + telepon',
-      'Export Word/LaTeX/PDF tanpa watermark'
-    ],
+    badge: 'elite',
     fullGenEstimate: 29,
     slrEstimate: 14
+  },
+  {
+    id: 'test',
+    name: 'Test 1k',
+    duration: '24 Jam',
+    price: 1000,
+    tokens: 10,
+    icon: '🧪',
+    popular: false,
+    maintenance: true,
+    badge: 'trial',
+    fullGenEstimate: 0,
+    slrEstimate: 0
   }
 ]
 

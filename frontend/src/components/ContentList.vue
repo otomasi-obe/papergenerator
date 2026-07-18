@@ -129,7 +129,11 @@
                 :disabled="!String(item.Prompt || '').trim() || !!generating[stableKey(item)]"
                 class="px-2.5 py-1.5 bg-navy-700 hover:bg-navy-800 dark:bg-cream-200 dark:hover:bg-cream-100 text-cream-50 dark:text-ash-900 rounded text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 active:scale-95 transition-transform focus-visible:ring-2 focus-visible:ring-[#238f7f]/30">
                 <span v-if="generating[stableKey(item)]" class="w-3 h-3 border-2 border-cream-50 dark:border-ash-900 border-t-transparent rounded-full animate-spin"></span>
-                ✨ Generate Image
+                <template v-if="generating[stableKey(item)]">
+                  <span v-if="getQueueLabel(stableKey(item))">{{ getQueueLabel(stableKey(item)) }}</span>
+                  <span v-else>Generating image…</span>
+                </template>
+                <template v-else>✨ Generate Image</template>
               </button>
             </div>
           </div>
@@ -527,6 +531,22 @@ function srcKindLabel(kind: string): string {
   return '📤 upload'
 }
 
+/** Queue status label for the Generate button. */
+function getQueueLabel(k: string): string {
+  // Find the job by itemKey
+  const job = Object.values(imageGenStore.jobs).find(
+    j => j.itemKey === k && (j.status === 'queued' || j.status === 'running')
+  )
+  if (!job) return ''
+  if (job.status === 'running') return 'Generating image…'
+  if (job.status === 'queued') {
+    const pos = job.queuePosition
+    if (pos > 0) return `Menunggu antrian: ${pos}`
+    return 'Mengantri…'
+  }
+  return ''
+}
+
 /** Figure number label of the OTHER figure currently using this source. */
 function otherFigLabel(filename: string): string {
   const owner = store.figureSourceUsage.get(filename)
@@ -577,7 +597,8 @@ function reattachJobs(): void {
     const k = stableKey(item)
     const job = imageGenStore.getJob(item.JobId)
     if (!job || job.status === 'done' || job.status === 'error') {
-      if (job?.status === 'done' && job.image?.filename && !item.Path) {
+      if (job?.status === 'done' && job.image?.filename) {
+        // Always update Path — stale placeholder (e.g. "gambar/fig1.png") must be replaced
         item.Path = job.image.filename
       }
       item.JobId = ''

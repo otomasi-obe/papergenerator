@@ -1,19 +1,17 @@
 """
-Image generation worker pool.
+Image generation worker — single sequential queue.
 
 Architecture
 ============
-- Pure API-only workers: no accounts, no browsers, no Playwright.
-- Workers process jobs via image_api_v2.py providers (Alibaba, AG, Cloudflare).
-- A central dispatcher pulls `queued` jobs from DB and pushes to the worker
-  with the shortest local queue.
+- ONE worker thread processes image jobs one at a time (no concurrent API calls).
+- A dispatcher pulls `queued` jobs from DB ordered by created_at (FIFO).
+- No timeout, no retry limit — jobs keep retrying until they succeed.
+- Frontend polls /api/image-jobs/<id> which returns queue_position.
 
 Persistence
 ===========
-- All jobs are persisted in `image_gen_jobs` so they survive process restarts
-  and frontend page reloads. The frontend polls /api/image-jobs/<id>.
-- On startup, any `queued` or `running` jobs are re-queued into worker queues
-  (running ones are demoted to queued).
+- All jobs in `image_gen_jobs` table — survive restarts.
+- On startup, queued/running jobs are re-queued.
 """
 
 from __future__ import annotations
@@ -31,22 +29,20 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parent
-
 
 class _Worker(threading.Thread):
-    """One worker processes image generation jobs via API providers."""
+    """Single worker — processes jobs sequentially, no timeout."""
 
-    def __init__(self, app, worker_id: int):
-        super().__init__(name=f"img-worker-{worker_id}", daemon=True)
+    def __init__(self, app):
+        super().__init__(name="img-worker-0", daemon=True)
         self.app = app
-        self.worker_id = worker_id
+        self.worker_id = 0
         self.q: "queue.Queue[str]" = queue.Queue()
         self._stop_event = threading.Event()
 
     def stop(self):
         self._stop_event.set()
-        self.q.put("")  # unblock get()
+        self.q.put("")
 
     def submit(self, job_id: str):
         self.q.put(job_id)
@@ -55,31 +51,21 @@ class _Worker(threading.Thread):
         return self.q.qsize()
 
     def run(self):
-            while not self._stop_event.is_set():
-                try:
-                    job_id = self.q.get(timeout=1.0)
-                except queue.Empty:
-                    continue
-                if job_id == "":
-                    break
-                try:
-                    self._process(job_id)
-                except Exception:
-                    log.exception(
-                        "img-worker %d: unhandled error processing %s",
-                        self.worker_id, job_id,
-                    )
-    def _process(self, job_id: str):
-        # Watchdog timeout: fail job if processing takes > 10 minutes
-        # Uses threading.Timer instead of signal.SIGALRM (which only works in main thread)
-        watchdog_timeout = int(os.getenv("IMAGE_GEN_WATCHDOG_TIMEOUT", "120"))
-        generate_timeout = int(os.getenv("IMAGE_GEN_GENERATE_TIMEOUT", "60"))
-        max_job_retries = int(os.getenv("IMAGE_GEN_MAX_RETRIES", "3"))
+        while not self._stop_event.is_set():
+            try:
+                job_id = self.q.get(timeout=1.0)
+            except queue.Empty:
+                continue
+            if job_id == "":
+                break
+            try:
+                self._process(job_id)
+            except Exception:
+                log.exception("img-worker: unhandled error processing %s", job_id)
 
-        _timed_out = threading.Event()
-        _timer = threading.Timer(watchdog_timeout, _timed_out.set)
-        _timer.daemon = True
-        _timer.start()
+    def _process(self, job_id: str):
+        # ponytail: no watchdog timeout — user requirement.
+        # No max_retries limit — keep retrying until success.
 
         try:
             from sqlalchemy import update  # noqa: PLC0415
@@ -88,20 +74,14 @@ class _Worker(threading.Thread):
             from tools.editor.utils import safe_paper_image_dir  # noqa: PLC0415
 
             with self.app.app_context():
-                # Atomic claim: only the FIRST worker that flips status from
-                # 'queued' to 'running' actually proceeds. This is the single
-                # source of truth that defends against (a) the dispatcher
-                # double-dispatching (window between check and submit) and
-                # (b) a user cancelling between our read and write.
                 now = datetime.now(timezone.utc)
                 result = db.session.execute(
                     update(ImageGenJob)
                     .where(ImageGenJob.id == job_id, ImageGenJob.status == "queued")
-                    .values(status="running", worker=f"api-{self.worker_id}", started_at=now)
+                    .values(status="running", worker="api-0", started_at=now)
                 )
                 safe_commit()
                 if result.rowcount == 0:
-                    # Lost the race or job is cancelled/done/missing.
                     return
 
                 job = db.session.get(ImageGenJob, job_id)
@@ -110,16 +90,12 @@ class _Worker(threading.Thread):
                 paper_id = job.paper_id
                 user_id = job.user_id
                 prompt = job.prompt
-                # Track retry count
                 retry_count = getattr(job, "retry_count", 0) or 0
 
-                # Resolve paper image dir under app_context: user/<username>/<paper_id>/image/
                 paper_dir = safe_paper_image_dir(paper_id)
 
             if paper_dir is None:
                 with self.app.app_context():
-                    from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
-
                     job2 = db.session.get(ImageGenJob, job_id)
                     if job2:
                         job2.status = "error"
@@ -128,14 +104,10 @@ class _Worker(threading.Thread):
                         safe_commit()
                 return
 
-            # Long-running work outside DB transaction (no app_context needed).
             out_path: Optional[Path] = None
-            ext = ".jpg"
             try:
                 paper_dir.mkdir(parents=True, exist_ok=True)
 
-                # Use target_path from job if available (meaningful filename from paper JSON)
-                # Fall back to uuid hash for backward compatibility
                 target_filename = None
                 with self.app.app_context():
                     _job_check = db.session.get(ImageGenJob, job_id)
@@ -143,16 +115,12 @@ class _Worker(threading.Thread):
                         target_filename = _job_check.target_path
 
                 if target_filename:
-                    # Sanitize: strip any path traversal
                     safe_name = os.path.basename(target_filename)
-                    # Replace spaces and other unsafe chars with underscores
                     base, fext = os.path.splitext(safe_name)
                     base = re.sub(r'[^A-Za-z0-9_.-]', '_', base)
                     safe_name = base + fext
-                    # Ensure .jpg extension
                     if fext.lower() not in ('.jpg', '.jpeg', '.png'):
                         safe_name = base + '.jpg'
-                    # Avoid collision if file already exists
                     final_filename = safe_name
                     counter = 1
                     while (paper_dir / final_filename).exists():
@@ -161,10 +129,10 @@ class _Worker(threading.Thread):
                         counter += 1
                     filename = final_filename
                 else:
-                    filename = f"{uuid.uuid4().hex}{ext}"
+                    filename = f"{uuid.uuid4().hex}.jpg"
                 out_path = paper_dir / filename
 
-                # ─── API-ONLY: all generation via API providers (Alibaba, AG, Cloudflare) ───
+                # ─── Generate via single API (no timeout) ───
                 res: dict = {}
                 try:
                     from tools.image_generation.image_api_v2 import generate_image as api_generate_image  # noqa: PLC0415
@@ -172,12 +140,9 @@ class _Worker(threading.Thread):
                         prompt, str(out_path),
                         compress=True,
                         max_size_mb=1.0,
-                        generate_timeout_s=generate_timeout,
                     )
                 except Exception as api_err:
-                    raise RuntimeError(
-                        f"API image generation failed: {api_err}"
-                    )
+                    raise RuntimeError(f"API image generation failed: {api_err}")
 
                 with self.app.app_context():
                     img = PaperImage(
@@ -185,8 +150,6 @@ class _Worker(threading.Thread):
                         user_id=user_id,
                         filename=filename,
                         original_name=filename,
-                        # file_path is relative reference only; actual serving
-                        # uses safe_paper_dir(paper_id) / filename, not this field.
                         file_path=f"{paper_id}/{filename}",
                     )
                     db.session.add(img)
@@ -194,11 +157,7 @@ class _Worker(threading.Thread):
 
                     job2 = db.session.get(ImageGenJob, job_id)
                     if job2:
-                        # Respect a concurrent cancel: if the job was cancelled
-                        # while we were generating, don't overwrite that status.
                         if job2.status == "cancelled":
-                            # Drop the freshly-created image (orphaned) and the
-                            # file on disk.
                             try:
                                 db.session.delete(img)
                             except Exception:
@@ -214,9 +173,7 @@ class _Worker(threading.Thread):
                             job2.finished_at = datetime.now(timezone.utc)
                     safe_commit()
 
-                # Simpan ke user storage (user/<username>/<paper_id>/image/)
-                # Note: image sudah tersimpan di safe_paper_image_dir — ini adalah salinan
-                # ke user storage yang menggunakan paper_id (bukan judul_paper)
+                # Save to user storage
                 try:
                     from utils.core.user_storage import get_username, get_paper_base_by_id, _ensure_dir
                     import shutil
@@ -224,108 +181,52 @@ class _Worker(threading.Thread):
                     paper_base = get_paper_base_by_id(username, paper_id)
                     image_dir = _ensure_dir(paper_base / "image")
                     dest = image_dir / Path(out_path).name
-                    shutil.copy2(str(out_path), str(dest))
+                    if out_path.resolve() != dest.resolve():
+                        shutil.copy2(str(out_path), str(dest))
                 except Exception:
                     log.warning("Gagal simpan image ke user storage", exc_info=True)
 
                 log.info(
-                    "img-worker %d: done job=%s file=%s size=%s",
-                    self.worker_id,
-                    job_id,
-                    filename,
+                    "img-worker: done job=%s file=%s size=%s",
+                    job_id, filename,
                     res.get("size") if res else "unknown",
                 )
             except Exception as e:
-                log.exception("img-worker %d: failed job=%s", self.worker_id, job_id)
+                log.exception("img-worker: failed job=%s", job_id)
                 try:
                     if out_path and out_path.exists():
                         out_path.unlink()
                 except Exception:
                     pass
-                
-                # Job-level retry: re-queue if under max retries
-                with self.app.app_context():
-                    from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
+                # Re-queue: no retry limit — keep trying until success
+                with self.app.app_context():
                     job2 = db.session.get(ImageGenJob, job_id)
                     if job2 and job2.status != "cancelled":
                         current_retry = getattr(job2, "retry_count", 0) or 0
-                        if current_retry < max_job_retries:
-                            # Re-queue for retry
-                            job2.status = "queued"
-                            job2.retry_count = current_retry + 1
-                            job2.error = f"Retry {current_retry + 1}/{max_job_retries}: generation failed"
-                            job2.worker = None
-                            safe_commit()
-                            log.warning(
-                                "img-worker %d: job=%s re-queued (retry %d/%d): %s",
-                                self.worker_id, job_id, current_retry + 1,
-                                max_job_retries, str(e)[:200],
-                            )
-                        else:
-                            # Max retries exceeded — final failure
-                            job2.status = "error"
-                            job2.error = "Image generation failed after all retries"
-                            job2.finished_at = datetime.now(timezone.utc)
-                            safe_commit()
-                            log.error(
-                                "img-worker %d: job=%s failed permanently after %d retries: %s",
-                                self.worker_id, job_id, max_job_retries, str(e)[:200],
-                            )
-
-        finally:
-            # Cancel the timer
-            _timer.cancel()
-            if _timed_out.is_set():
-                log.warning("img-worker %d: job %s exceeded watchdog timeout", self.worker_id, job_id)
-
-                # ─── Cleanup partial output file ───
-                out_path_var = locals().get("out_path")
-                if out_path_var is not None and out_path_var.exists():
-                    try:
-                        out_path_var.unlink()
-                        log.info(
-                            "img-worker %d: cleaned up partial output %s after timeout",
-                            self.worker_id, out_path_var,
+                        job2.status = "queued"
+                        job2.retry_count = current_retry + 1
+                        job2.error = f"Retry {current_retry + 1}: {str(e)[:300]}"
+                        job2.worker = None
+                        safe_commit()
+                        log.warning(
+                            "img-worker: job=%s re-queued (retry %d): %s",
+                            job_id, current_retry + 1, str(e)[:200],
                         )
-                    except Exception:
-                        pass
 
-                # ─── Update job status ke error ───
-                try:
-                    with self.app.app_context():
-                        from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
-
-                        job2 = db.session.get(ImageGenJob, job_id)
-                        if job2 is not None and job2.status == "running":
-                            job2.status = "error"
-                            job2.error = "Watchdog timeout — generation took too long"
-                            job2.finished_at = datetime.now(timezone.utc)
-                            safe_commit()
-                            log.info(
-                                "img-worker %d: job %s marked error after watchdog timeout",
-                                self.worker_id, job_id,
-                            )
-                except Exception:
-                    log.exception(
-                        "img-worker %d: error updating job %s status after timeout",
-                        self.worker_id, job_id,
-                    )
+        except Exception:
+            log.exception("img-worker: outer error for %s", job_id)
 
 
 class _Dispatcher(threading.Thread):
-    """Picks up newly-queued jobs from the DB and routes them to the worker
-    with the shortest local queue. We don't bind a job to an account upfront —
-    bottlenecks naturally even out via the shortest-queue heuristic.
-    """
+    """Picks up queued jobs from DB, routes to the single worker."""
 
-    def __init__(self, app, workers: list[_Worker], poll_interval: float = 1.5):
+    def __init__(self, app, worker: _Worker, poll_interval: float = 2.0):
         super().__init__(name="img-dispatcher", daemon=True)
         self.app = app
-        self.workers = workers
+        self.worker = worker
         self.poll_interval = poll_interval
         self._stop_event = threading.Event()
-        # Track which job_ids are already submitted to avoid double-dispatch.
         self._dispatched: set[str] = set()
         self._lock = threading.Lock()
 
@@ -336,15 +237,9 @@ class _Dispatcher(threading.Thread):
         with self._lock:
             self._dispatched.add(job_id)
 
-    def _least_loaded_worker(self) -> _Worker:
-        return min(self.workers, key=lambda w: w.qsize())
-
     def run(self):
         from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
 
-        # On startup: requeue any queued/running jobs that were left behind by a
-        # previous process. Running ones are demoted because their browser
-        # session is gone.
         with self.app.app_context():
             stale = ImageGenJob.query.filter(ImageGenJob.status.in_(["queued", "running"])).all()
             for j in stale:
@@ -363,31 +258,28 @@ class _Dispatcher(threading.Thread):
                         .all()
                     )
                     ids = [j.id for j in queued]
-                # Submit all queued ids. _Worker._process atomically flips
-                # queued→running, so duplicate submissions become cheap no-ops.
-                # This also recovers jobs manually reset to queued after a
-                # worker/browser hang.
-                for jid in ids:
-                    self._least_loaded_worker().submit(jid)
-                # Bound the dispatched set: drop entries that left the active
-                # set on the DB side (done/error/cancelled). Without this the
-                # set grows unboundedly across the process lifetime.
-                if len(self._dispatched) > 256:
-                    with self.app.app_context():
-                        active = {
-                            r[0]
-                            for r in db.session.query(ImageGenJob.id)
+
+                    # Clean up _dispatched: remove IDs no longer queued/running
+                    if self._dispatched:
+                        active_ids = {
+                            r[0] for r in db.session.query(ImageGenJob.id)
                             .filter(ImageGenJob.status.in_(["queued", "running"]))
                             .all()
                         }
+                        with self._lock:
+                            self._dispatched.intersection_update(active_ids)
+
+                for jid in ids:
                     with self._lock:
-                        self._dispatched.intersection_update(active)
+                        if jid not in self._dispatched:
+                            self._dispatched.add(jid)
+                            self.worker.submit(jid)
             except Exception:
                 log.exception("img-dispatcher: poll failed")
             time.sleep(self.poll_interval)
 
 
-_workers: list[_Worker] = []
+_worker: Optional[_Worker] = None
 _dispatcher: Optional[_Dispatcher] = None
 _started = False
 _start_lock = threading.Lock()
@@ -398,37 +290,27 @@ def get_dispatcher() -> Optional[_Dispatcher]:
 
 
 def start_image_workers(app):
-    """Idempotent: starts workers + dispatcher once per process."""
-    global _started, _workers, _dispatcher
+    """Idempotent: starts single worker + dispatcher once per process."""
+    global _started, _worker, _dispatcher
     with _start_lock:
         if _started:
             return
-        num_workers = int(os.environ.get("IMAGE_GEN_WORKERS", "2"))
-        for i in range(num_workers):
-            w = _Worker(app, i)
-            w.start()
-            _workers.append(w)
-        _dispatcher = _Dispatcher(app, _workers)
+        _worker = _Worker(app)
+        _worker.start()
+        _dispatcher = _Dispatcher(app, _worker)
         _dispatcher.start()
         _started = True
-        log.info("image worker pool started: %d API-only workers", len(_workers))
+        log.info("image worker pool started: 1 sequential worker (no timeout)")
 
 
 def submit_now(job_id: str):
-    """Optional: skip the DB poll and dispatch a freshly-created job
-    immediately (latency optimization). Safe to no-op if the dispatcher is
-    not yet up — the next poll will pick the job up anyway.
-    """
-    if not _dispatcher or not _workers:
+    """Optional: skip the DB poll and dispatch a freshly-created job immediately."""
+    if not _dispatcher or not _worker:
         return
     with _dispatcher._lock:
-        # Periodic cleanup: if _dispatched grows too large, prune completed jobs
         if len(_dispatcher._dispatched) > 100:
             try:
                 from utils.database.models import ImageGenJob, db
-                # DB access requires a Flask app_context. submit_now() may be
-                # called from a worker thread (e.g. paper_worker._auto_enqueue_figure_images)
-                # that has no active app_context, so push one explicitly.
                 with _dispatcher.app.app_context():
                     active_ids = {
                         r[0] for r in db.session.query(ImageGenJob.id).filter(
@@ -438,8 +320,31 @@ def submit_now(job_id: str):
                     }
                 _dispatcher._dispatched = active_ids
             except Exception as e:
-                log.debug("submit_now: dispatched-set cleanup skipped: %s", e)  # Best effort cleanup
+                log.debug("submit_now: dispatched-set cleanup skipped: %s", e)
         if job_id in _dispatcher._dispatched:
             return
         _dispatcher._dispatched.add(job_id)
-    min(_workers, key=lambda w: w.qsize()).submit(job_id)
+    _worker.submit(job_id)
+
+
+def get_queue_position(job_id: str) -> int:
+    """Return 1-based queue position for a job (0 = running, -1 = done/error)."""
+    try:
+        from utils.database.models import ImageGenJob, db
+        from main import app
+        with app.app_context():
+            queued = (
+                ImageGenJob.query.filter_by(status="queued")
+                .order_by(ImageGenJob.created_at.asc())
+                .all()
+            )
+            for i, j in enumerate(queued):
+                if j.id == job_id:
+                    return i + 1
+            running = ImageGenJob.query.filter_by(status="running").all()
+            for j in running:
+                if j.id == job_id:
+                    return 0  # Currently being processed
+            return -1  # Done or error
+    except Exception:
+        return -1

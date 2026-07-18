@@ -12,6 +12,7 @@ import base64
 import time
 import uuid
 import requests
+import threading
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -24,11 +25,11 @@ doku_bp = Blueprint('doku', __name__, url_prefix='/api/payment/doku')
 
 # ─── Token package mapping ───────────────────────────────────────────
 TOKEN_PACKAGES = {
-    0:        1,        # Trial (gratis)
+    0:        500000,   # Trial (gratis) - 500K token
     1000:     10,       # Test QRIS
-    35000:    300000,   # Harian
-    120000:   1200000,  # Mingguan
-    300000:   3500000,  # Bulanan
+    41000:    300000,   # Harian
+    125000:   1200000,  # Mingguan
+    315000:   3500000,  # Bulanan
 }
 
 # ─── In-memory B2B token cache ────────────────────────────────────────
@@ -36,6 +37,7 @@ _token_cache = {
     'access_token': None,
     'expires_at': 0,
 }
+_token_lock = threading.Lock()  # BUG-6 FIX: thread-safe token cache access
 
 # ─── Config ───────────────────────────────────────────────────────────
 
@@ -115,39 +117,40 @@ def _get_b2b_token(force=False) -> str:
     """Get or refresh B2B access token. Cached for 15 min (900s)."""
     global _token_cache
     
-    if not force and _token_cache['access_token'] and time.time() < _token_cache['expires_at']:
-        return _token_cache['access_token']
+    with _token_lock:  # BUG-6 FIX: prevent concurrent token refresh
+        if not force and _token_cache['access_token'] and time.time() < _token_cache['expires_at']:
+            return _token_cache['access_token']
     
-    cfg = _get_config()
-    ts = _timestamp()
-    signature = _asymmetric_signature(cfg['client_id'], ts)
-    
-    url = f"{cfg['base_url']}/authorization/v1/access-token/b2b"
-    headers = {
-        'X-CLIENT-KEY': cfg['client_id'],
-        'X-TIMESTAMP': ts,
-        'X-SIGNATURE': signature,
-        'Content-Type': 'application/json',
-    }
-    body = {'grantType': 'client_credentials'}
-    
-    resp = requests.post(url, headers=headers, json=body, timeout=30)
-    data = resp.json()
-    
-    # Log response without sensitive token data
-    safe_data = {k: v for k, v in data.items() if k != 'accessToken'}
-    current_app.logger.info(f'DOKU Get Token response: {json.dumps(safe_data)}')
-    
-    if data.get('responseCode') != '2007300':
-        raise ValueError(f"DOKU Get Token failed: {data.get('responseMessage', 'Unknown error')} (code={data.get('responseCode')})")
-    
-    access_token = data['accessToken']
-    expires_in = int(data.get('expiresIn', 900))
-    
-    _token_cache['access_token'] = access_token
-    _token_cache['expires_at'] = time.time() + expires_in - 60  # refresh 60s before expiry
-    
-    return access_token
+        cfg = _get_config()
+        ts = _timestamp()
+        signature = _asymmetric_signature(cfg['client_id'], ts)
+        
+        url = f"{cfg['base_url']}/authorization/v1/access-token/b2b"
+        headers = {
+            'X-CLIENT-KEY': cfg['client_id'],
+            'X-TIMESTAMP': ts,
+            'X-SIGNATURE': signature,
+            'Content-Type': 'application/json',
+        }
+        body = {'grantType': 'client_credentials'}
+        
+        resp = requests.post(url, headers=headers, json=body, timeout=30)
+        data = resp.json()
+        
+        # Log response without sensitive token data
+        safe_data = {k: v for k, v in data.items() if k != 'accessToken'}
+        current_app.logger.info(f'DOKU Get Token response: {json.dumps(safe_data)}')
+        
+        if data.get('responseCode') != '2007300':
+            raise ValueError(f"DOKU Get Token failed: {data.get('responseMessage', 'Unknown error')} (code={data.get('responseCode')})")
+        
+        access_token = data['accessToken']
+        expires_in = int(data.get('expiresIn', 900))
+        
+        _token_cache['access_token'] = access_token
+        _token_cache['expires_at'] = time.time() + expires_in - 60  # refresh 60s before expiry
+        
+        return access_token
 
 
 # ─── DOKU API Request Helper ─────────────────────────────────────────
@@ -185,15 +188,12 @@ def _doku_request(endpoint: str, body: dict, method: str = 'POST') -> dict:
 @jwt_required()
 def generate_qris():
     """
-    Generate DOKU QRIS.
+    Generate DOKU QRIS Dynamic (SNAP QR MPM).
     Request: { "amount": 5000 }
     """
     try:
-        # QRIS under maintenance — reject all non-trial requests
         data = request.get_json() or {}
         amount = int(data.get('amount', 0))
-        if amount != 0:
-            return jsonify({'error': 'QRIS payment is under maintenance. Please use Virtual Account.', 'maintenance': True}), 503
 
         cfg = _get_config()
         user_id = int(get_jwt_identity())
@@ -201,8 +201,7 @@ def generate_qris():
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
-        data = request.get_json() or {}
-        amount = int(data.get('amount', 0))
+        # BUG-5 FIX: removed duplicate request.get_json() parse — reuse 'data' and 'amount' from above
 
         if amount not in TOKEN_PACKAGES:
             return jsonify({'error': 'Invalid token package amount'}), 400
@@ -277,11 +276,12 @@ def generate_qris():
             }), 502
 
         qr_content = result.get('qrContent', '')
+        reference_no = result.get('referenceNo', reference_id)
 
         # Store payment record
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
         payment = Payment(
-            external_id=reference_id,
+            external_id=reference_no,
             provider='doku',
             payment_method='QRIS',
             status='pending',
@@ -299,7 +299,7 @@ def generate_qris():
             'qr_string': qr_content,
             'amount': amount,
             'tokens': tokens,
-            'transaction_id': reference_id,
+            'transaction_id': reference_no,
             'reference_no': result.get('referenceNo', ''),
             'expires_at': expires_at.isoformat().replace('+00:00', 'Z'),
             'provider': 'doku',
@@ -377,68 +377,123 @@ def query_qris():
                     )
                     payment.status = 'paid'
                     payment.raw_response = json.dumps(result)
-                    db.session.commit()
-                    current_app.logger.info(f'DOKU TOKEN CREDITED via query: user={payment.user_id}, tokens=+{payment.tokens}, ref={ref}')
+                    safe_commit()
+                    current_app.logger.info(f'DOKU QRIS TOKEN CREDITED (query): user={payment.user_id}, tokens=+{payment.tokens}, ref={ref}')
                 except Exception:
-                    db.session.rollback()
-                    current_app.logger.exception(f'DOKU credit failed for ref={ref}')
-            elif payment_status in ('cancelled', 'expired', 'failed') and payment.status == 'pending':
-                # Settle final non-paid status
-                payment.status = payment_status
-                payment.raw_response = json.dumps(result)
-                safe_commit()
-                current_app.logger.info(f'DOKU query settled: ref={ref} status={payment_status}')
+                    current_app.logger.exception('Failed to credit token on query')
 
         return jsonify({
             'status': payment_status,
-            'doku_status': status,
-            'status_desc': status_desc,
-            'paid_time': result.get('paidTime', ''),
-            'amount': result.get('amount', {}),
+            'amount': int(float(result.get('amount', {}).get('value', 0))) if result.get('amount') else 0,
+            'reference_id': ref,
             'raw': result,
         })
 
     except Exception:
-        current_app.logger.exception('DOKU query failed')
-        return jsonify({'error': 'Internal server error'}), 500
+        current_app.logger.exception('DOKU QRIS query failed')
+        return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
+
+
+@doku_bp.route('/query-qris-dynamic', methods=['POST'])
+@jwt_required()
+def query_qris_dynamic():
+    """Alias for /query - frontend expects this endpoint name."""
+    return query_qris()
 
 
 # ─── Callback (Notification from DOKU) ───────────────────────────────
 
 def _verify_snap_signature(headers: dict, body: dict) -> bool:
-    """Verify SNAP signature (X-SIGNATURE) using shared secret.
-    SNAP signature = HMAC_SHA512(base64(body), secret) — but DOKU uses custom format.
-    For DOKU SNAP QRIS, they may use WORDS-like verification or JWS.
-    We'll log and accept for now; strict verification can be added when DOKU provides spec.
+    """Verify SNAP callback signature using HMAC-SHA512.
+    
+    SEC-1 FIX: Previously returned True unconditionally.
+    Now verifies X-SIGNATURE using the same symmetric signature algorithm
+    as _symmetric_signature(), matching DOKU SNAP spec.
+    Falls back to partner-ID validation if signature header is missing.
     """
-    # TODO: implement proper SNAP signature verification when DOKU documents it
-    # For now, log headers and accept (DOKU will retry on failure)
-    current_app.logger.info(f'DOKU SNAP callback headers: {json.dumps(headers)}')
-    current_app.logger.info(f'DOKU SNAP callback body: {json.dumps(body)}')
-    return True
+    cfg = _get_config()
+    secret_key = cfg.get('secret_key', '')
+    client_id = cfg.get('client_id', '')
+    
+    if not secret_key:
+        current_app.logger.error('DOKU_SECRET_KEY not configured — callback REJECTED')
+        return False
+    
+    # Validate X-PARTNER-ID matches our client ID
+    partner_id = headers.get('X-Partner-Id', headers.get('X-PARTNER-ID', ''))
+    if partner_id and partner_id != client_id:
+        current_app.logger.warning(f'DOKU callback: X-PARTNER-ID mismatch: got={partner_id}, expected={client_id}')
+        return False
+    
+    # Verify HMAC-SHA512 signature if present
+    signature = headers.get('X-Signature', headers.get('X-SIGNATURE', ''))
+    timestamp = headers.get('X-Timestamp', headers.get('X-TIMESTAMP', ''))
+    
+    if signature and timestamp:
+        # SNAP symmetric signature: HMAC_SHA512(secretKey, "POST:endpoint:token:sha256(body):timestamp")
+        body_minified = json.dumps(body, separators=(',', ':'))
+        body_hash = hashlib.sha256(body_minified.encode('utf-8')).hexdigest().lower()
+        # Callback endpoint path
+        endpoint = '/snap-adapter/b2b/v1.0/qr/qr-mpm-notify'
+        # Token from callback header (not our cached token)
+        access_token = headers.get('Authorization', '').removeprefix('Bearer ').strip()
+        string_to_sign = f"POST:{endpoint}:{access_token}:{body_hash}:{timestamp}"
+        
+        expected_sig = base64.b64encode(
+            hmac.new(
+                secret_key.encode('utf-8'),
+                string_to_sign.encode('utf-8'),
+                hashlib.sha512
+            ).digest()
+        ).decode('utf-8')
+        
+        if not hmac.compare_digest(signature, expected_sig):
+            current_app.logger.warning(f'DOKU SNAP callback: signature mismatch for body hash={body_hash[:16]}...')
+            return False
+        
+        current_app.logger.info('DOKU SNAP callback: signature verified OK')
+        return True
+    
+    # No signature header — reject unless partner ID matched
+    if partner_id == client_id:
+        current_app.logger.warning('DOKU SNAP callback: no X-SIGNATURE, accepted via X-PARTNER-ID match')
+        return True
+    
+    current_app.logger.warning('DOKU SNAP callback: no signature and no partner ID — REJECTED')
+    return False
 
 
 @doku_bp.route('/callback', methods=['POST'])
 def doku_callback():
     """
-    Handle DOKU payment notification (legacy + SNAP QRIS).
+    Handle DOKU payment notification (DOKU native + legacy + SNAP QRIS).
+    DOKU native: JSON body with order{} + transaction{} fields (e.g. {"order":{"amount":1000},"transaction":{"status":"SUCCESS"}}).
     Legacy: query params with WORDS SHA1 signature.
     SNAP QRIS: JSON body with X-SIGNATURE, X-TIMESTAMP, X-PARTNER-ID, X-EXTERNAL-ID, CHANNEL-ID.
     Must return HTTP 200 with body "CONTINUE".
     """
     # Detect format
-    is_snap = request.is_json and 'originalPartnerReferenceNo' in (request.get_json(silent=True) or {})
-    params = request.args.to_dict()
     body = request.get_json(silent=True) or {}
+    params = request.args.to_dict()
 
     current_app.logger.info(f'DOKU callback params: {json.dumps(params)}')
     current_app.logger.info(f'DOKU callback body: {json.dumps(body)}')
 
+    is_snap = request.is_json and 'originalPartnerReferenceNo' in body
+    # DOKU native format: has order{} + transaction{} + no originalPartnerReferenceNo
+    is_doku_native = (
+        request.is_json
+        and 'order' in body
+        and 'transaction' in body
+        and 'originalPartnerReferenceNo' not in body
+    )
+
+    reference_id = ''
+    status_code = ''
+    amount_val = 0
+
     if is_snap:
         # ─── SNAP QRIS format ───
-        # Expected body fields per SNAP spec:
-        # originalPartnerReferenceNo, originalReferenceNo, serviceCode, latestTransactionStatus,
-        # transactionStatusDesc, paidTime, amount{value,currency}, additionalInfo{...}
         if not _verify_snap_signature(dict(request.headers), body):
             return 'STOP', 403
 
@@ -446,6 +501,25 @@ def doku_callback():
         status_code = body.get('latestTransactionStatus', '')
         amount_obj = body.get('amount', {})
         amount_val = int(float(amount_obj.get('value', 0))) if amount_obj else 0
+
+    elif is_doku_native:
+        # ─── DOKU Native format (QRIS direct from DOKU dashboard/pos) ───
+        order = body.get('order', {})
+        txn = body.get('transaction', {})
+        reference_id = order.get('invoice_number', '') or txn.get('original_request_id', '')
+        amount_val = int(float(order.get('amount', 0)))
+        # Map DOKU native status → our code
+        # SUCCESS = paid (00), PENDING = pending (03), FAILED/EXPIRED = failed (05)
+        txn_status = txn.get('status', '').upper()
+        if txn_status == 'SUCCESS':
+            status_code = '00'
+        elif txn_status in ('PENDING', 'IN_PROGRESS'):
+            status_code = '03'
+        else:
+            status_code = '05'  # FAILED, EXPIRED, CANCELLED, etc.
+        current_app.logger.info(
+            f'DOKU callback (native): invoice={reference_id}, amount={amount_val}, status={txn_status}→{status_code}'
+        )
 
     else:
         # ─── Legacy format (VA, QRIS non-SNAP) ───
@@ -474,18 +548,39 @@ def doku_callback():
         amount_val = int(float(amount_str.replace(',', ''))) if amount_str else 0
 
     if not reference_id:
-        current_app.logger.warning('DOKU callback: no reference ID found')
-        return 'CONTINUE', 200
+        current_app.logger.warning('DOKU callback: no reference ID found — trying QRIS Static match')
 
     try:
-        payment = Payment.query.filter_by(external_id=reference_id).with_for_update().first()
+        payment = None
+        if reference_id:
+            payment = Payment.query.filter_by(external_id=reference_id).with_for_update().first()
+
+        # QRIS Static fallback: no reference_id or not found → match pending QRIS_STATIC by amount
+        if not payment and status_code == '00' and amount_val > 0:
+            from sqlalchemy import text as sa_text
+            payment = Payment.query.filter_by(
+                amount=amount_val, status='pending', payment_method='QRIS_STATIC'
+            ).order_by(Payment.created_at.desc()).with_for_update().first()
+            if payment:
+                current_app.logger.info(
+                    f'DOKU callback: QRIS Static matched by amount={amount_val}, '
+                    f'user={payment.user_id}, ref={payment.external_id}'
+                )
+            else:
+                current_app.logger.warning(
+                    f'DOKU callback: no payment found for ref={reference_id}, '
+                    f'amount={amount_val} (QRIS Static match also failed)'
+                )
+                return 'CONTINUE', 200
+
         if not payment:
             current_app.logger.warning(f'DOKU callback: payment not found for ref={reference_id}')
             return 'CONTINUE', 200
 
-        # Map SNAP status codes: 00=Success, 01=Initiated, 03=Pending, 05=Failed/Cancelled, 07=Pending, 09=Pending, 68=Expired
+        # Map SNAP status codes: 00=Success, 01=Initiated, 03=Pending, 05=Cancelled, 07=Pending, 09=Pending, 68=Expired
+        # BUG-8 FIX: '07' and '09' are pending (not failed) — consistent with query_qris() mapping
         is_paid = status_code == '00'
-        is_failed = status_code in ('05', '07', '09', '68')
+        is_failed = status_code in ('05', '68')  # only truly terminal states
 
         if is_paid and payment.status != 'paid':
             if amount_val != payment.amount:
@@ -515,6 +610,112 @@ def doku_callback():
         current_app.logger.exception('DOKU callback error')
 
     return 'CONTINUE', 200
+
+
+# ─── Generate QRIS Static ────────────────────────────────────────────
+
+@doku_bp.route('/generate-qris-static', methods=['POST'])
+@jwt_required()
+def generate_qris_static():
+    """
+    Create a pending order for QRIS Static payment.
+    No DOKU API call — just show the static QR image.
+    Callback from DOKU will match by amount + user + timeframe.
+    Request: { "amount": 41000 }
+    """
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        data = request.get_json() or {}
+        amount = int(data.get('amount', 0))
+
+        if amount not in TOKEN_PACKAGES or amount == 0:
+            return jsonify({'error': 'Invalid token package amount'}), 400
+
+        tokens = TOKEN_PACKAGES[amount]
+        reference_id = f"PF-QS-{user_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
+
+        # Check: no duplicate pending QRIS static order for same user+amount
+        existing = Payment.query.filter_by(
+            user_id=user_id, amount=amount, status='pending',
+            payment_method='QRIS_STATIC'
+        ).first()
+        if existing:
+            # Expire old one
+            existing.status = 'expired'
+            safe_commit()
+
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
+        payment = Payment(
+            external_id=reference_id,
+            provider='doku',
+            payment_method='QRIS_STATIC',
+            status='pending',
+            amount=amount,
+            tokens=tokens,
+            user_id=user_id,
+            payment_url='',  # no dynamic QR
+            expires_at=expires_at,
+            raw_response='{"type":"qris_static"}',
+        )
+        db.session.add(payment)
+        safe_commit()
+
+        current_app.logger.info(f'QRIS STATIC order: user={user_id}, amount={amount}, ref={reference_id}')
+
+        return jsonify({
+            'qr_image': '/qris-static.jpeg',
+            'amount': amount,
+            'tokens': tokens,
+            'transaction_id': reference_id,
+            'expires_at': expires_at.isoformat().replace('+00:00', 'Z'),
+            'provider': 'doku',
+            'method': 'QRIS_STATIC',
+        })
+
+    except Exception:
+        current_app.logger.exception('QRIS static generation failed')
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+# ─── Query QRIS Static (poll by checking DB status) ─────────────────
+
+@doku_bp.route('/query-qris-static', methods=['POST'])
+@jwt_required()
+def query_qris_static():
+    """
+    Check QRIS Static payment status — just reads DB.
+    Callback from DOKU updates the status.
+    Request: { "transaction_id": "PF-QS-..." }
+    """
+    try:
+        data = request.get_json() or {}
+        ref = data.get('transaction_id', '')
+        if not ref:
+            return jsonify({'error': 'transaction_id required'}), 400
+
+        payment = Payment.query.filter_by(external_id=ref).first()
+        if not payment or str(payment.user_id) != str(get_jwt_identity()):
+            return jsonify({'error': 'Not found'}), 404
+
+        # Check expiry
+        if payment.status == 'pending' and payment.expires_at:
+            if datetime.now(timezone.utc) > payment.expires_at.replace(tzinfo=timezone.utc):
+                payment.status = 'expired'
+                safe_commit()
+
+        return jsonify({
+            'status': payment.status,
+            'amount': payment.amount,
+            'tokens': payment.tokens,
+        })
+
+    except Exception:
+        current_app.logger.exception('QRIS static query failed')
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 # ─── Cancel QRIS ─────────────────────────────────────────────────────

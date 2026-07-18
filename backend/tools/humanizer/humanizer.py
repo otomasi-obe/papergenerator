@@ -406,6 +406,8 @@ class TextHumanizer:
         result = re.sub(r',\s*,\s*', ', ', result)
         # Clean up empty lines from removed phrases
         result = re.sub(r'\n{3,}', '\n\n', result)
+        # ponytail: fix "Also, Note:" / "Also, Note that" double-transition artifact
+        result = re.sub(r'\bAlso,\s+Note(?::| that)\s*', 'Note: ', result)
         return result.strip()
 
     def vary_sentences(self, text: str, intensity: str = "medium") -> str:

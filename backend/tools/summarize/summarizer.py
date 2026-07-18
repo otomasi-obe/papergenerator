@@ -290,26 +290,33 @@ def run_summarizer(data: dict) -> dict:
         result["keywords"] = keywords
         result["option"] = option
         result["domain"] = domain
-        return result
+        return {
+            "text": result["summary"],
+            "result": result,
+        }
 
     if mode == "hybrid":
         extractive_result = extractive_summarize(text, ratio=ratio)
         keywords = extract_keywords(text)
         key_sentences = extract_key_sentences(text, num_sentences=5)
+        summary_text = extractive_result["summary"]
         return {
-            "summary": extractive_result["summary"],
-            "sentences": extractive_result["sentences"],
-            "scores": extractive_result["scores"],
-            "keywords": keywords,
-            "key_sentences": key_sentences,
-            "method": "hybrid",
-            "option": option,
-            "domain": domain,
-            "llm_prompt_hint": (
-                f"Refine and improve the following extractive summary into a "
-                f"{option} format for {domain} domain:\n\n"
-                f"{extractive_result['summary']}"
-            ),
+            "text": summary_text,
+            "result": {
+                "summary": summary_text,
+                "sentences": extractive_result["sentences"],
+                "scores": extractive_result["scores"],
+                "keywords": keywords,
+                "key_sentences": key_sentences,
+                "method": "hybrid",
+                "option": option,
+                "domain": domain,
+                "llm_prompt_hint": (
+                    f"Refine and improve the following extractive summary into a "
+                    f"{option} format for {domain} domain:\n\n"
+                    f"{summary_text}"
+                ),
+            },
         }
 
     # mode == "ai" -> return data for LLM processing by tools_api

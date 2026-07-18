@@ -59,6 +59,9 @@ class User(db.Model):
     token_quota_monthly = db.Column(db.Integer, default=500000, nullable=False)
     token_used_month = db.Column(db.Integer, default=0, nullable=False)
     usage_month_key = db.Column(db.String(7), default="", nullable=False)  # 'YYYY-MM'
+    # Badge tier (auto-assigned: trial/starter/pro/elite)
+    badge = db.Column(db.String(20), default="trial", nullable=False)
+    badge_expires_at = db.Column(db.DateTime, nullable=True)
     # Settings
     nickname = db.Column(db.String(100), nullable=True, default="")
     institution = db.Column(db.String(255), nullable=True, default="")
@@ -107,6 +110,8 @@ class User(db.Model):
             "token_quota_monthly": self.token_quota_monthly,
             "token_used_month": self.token_used_month,
             "usage_month_key": self.usage_month_key,
+            "badge": self.badge,
+            "badge_expires_at": self.badge_expires_at.isoformat() if self.badge_expires_at else None,
             "nickname": self.nickname or "",
             "institution": self.institution or "",
             "preferred_language": self.preferred_language or "id",
@@ -727,6 +732,30 @@ class UserState(db.Model):
             "paper_id": self.paper_id,
             "value": self.state_value,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class PaperDeleteLog(db.Model):
+    """Audit trail for paper deletions — who deleted what and when."""
+    __tablename__ = "paper_delete_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    paper_id = db.Column(db.String(20), nullable=False, index=True)
+    paper_title = db.Column(db.Text, nullable=False, default="Untitled")
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_email = db.Column(db.String(255), nullable=True)
+    user_name = db.Column(db.String(255), nullable=True)
+    deleted_at = db.Column(db.DateTime, default=_utcnow, nullable=False, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paper_id": self.paper_id,
+            "paper_title": self.paper_title,
+            "user_id": self.user_id,
+            "user_email": self.user_email,
+            "user_name": self.user_name,
+            "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
         }
 
 

@@ -26,10 +26,12 @@ from utils.database.models import (
     ImageGenJob,
     LiteratureItem,
     Paper,
+    PaperDeleteLog,
     PaperFile,
     PaperImage,
     ProjectMemory,
     SlrJob,
+    User,
     UserState,
     db,
 safe_commit,)
@@ -279,6 +281,16 @@ def delete_paper(paper_id: str):
         from sqlalchemy import text as _sa_text
         db.session.execute(_sa_text("DELETE FROM chat_drafts WHERE paper_id = :pid"), {"pid": paper_id})
         db.session.execute(_sa_text("DELETE FROM user_states WHERE paper_id = :pid"), {"pid": paper_id})
+
+        # Audit log — capture snapshot BEFORE delete so we keep title/user info
+        _user = User.query.get(user_id) if user_id else None
+        db.session.add(PaperDeleteLog(
+            paper_id=paper_id,
+            paper_title=paper.title or "Untitled",
+            user_id=user_id,
+            user_email=_user.email if _user else None,
+            user_name=_user.name if _user else None,
+        ))
 
         db.session.delete(paper)
 

@@ -195,18 +195,36 @@
  {{ auth.user?.name?.[0]?.toUpperCase() || 'U' }}
  </span>
  <span class="hidden md:inline font-medium">{{ auth.user?.name || 'User' }}</span>
+ <BadgeTier v-if="auth.user?.badge" :badge="auth.user.badge" size="sm" class="ml-1" />
  <span class="text-ink-500 dark:text-[#fef08a]">▾</span>
  </button>
 
  <!-- Dropdown -->
- <div v-if="menuOpen" role="menu" class="absolute right-0 top-full mt-1 w-56 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50" tabindex="-1">
+ <div v-if="menuOpen" role="menu" class="absolute right-0 top-full mt-1 w-64 bg-cream-50 dark:bg-ash-800 border border-cream-300 dark:border-ash-700 rounded-xl shadow-lg overflow-hidden z-50" tabindex="-1">
  <div class="px-4 py-3 border-b border-cream-200 dark:border-ash-700">
  <p class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ auth.user?.name }}</p>
  <p class="text-xs text-ink-600 dark:text-[#fef08a]">{{ auth.user?.email }}</p>
- <span v-if="auth.isAdmin" class="text-xs bg-navy-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50 px-1.5 py-0.5 rounded-full mt-1 inline-block">Admin</span>
+ <div class="flex items-center gap-2 mt-2 flex-wrap">
+ <span v-if="auth.isAdmin" class="text-xs bg-navy-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50 px-1.5 py-0.5 rounded-full">Admin</span>
+ <BadgeTier v-if="auth.user?.badge" :badge="auth.user.badge" size="sm" />
+ </div>
  </div>
 
- <!-- Theme switcher -->
+ <!-- Badge Benefits (inline in dropdown) -->
+ <div v-if="auth.user?.badge && BADGE_TIERS[auth.user.badge]" class="px-4 py-3 border-b border-cream-200 dark:border-ash-700">
+ <div class="text-[10px] uppercase tracking-wider text-ink-500 dark:text-[#fef08a] font-semibold mb-1.5">Benefit {{ BADGE_TIERS[auth.user.badge].label }}</div>
+ <ul class="text-xs text-ink-600 dark:text-cream-100 space-y-1">
+ <li v-for="b in BADGE_TIERS[auth.user.badge].benefits" :key="b" class="flex items-start gap-1.5">
+ <svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+ <span>{{ b }}</span>
+ </li>
+ </ul>
+ <div v-if="auth.user?.badge_expires_at && auth.user.badge !== 'trial'" class="mt-2 text-[10px] text-ink-500 dark:text-ink-400">
+ Berlaku sampai: {{ formatDate(auth.user.badge_expires_at) }}
+ </div>
+ </div>
+
+  <!-- Theme switcher -->
  <div class="px-3 py-2.5 border-b border-cream-200 dark:border-ash-700">
  <div class="text-[11px] uppercase tracking-wider text-ink-500 dark:text-[#fef08a] font-semibold mb-1.5 px-1">Theme</div>
  <div class="grid grid-cols-3 gap-1 bg-cream-100 dark:bg-ash-700 p-1 rounded-lg">
@@ -264,6 +282,8 @@ import { useQuotaStore } from '../stores/quota'
 import TokenPurchaseModal from './TokenPurchaseModal.vue'
 import TokenDetailModal from './TokenDetailModal.vue'
 import UpdateHistoryButton from './UpdateHistoryButton.vue'
+import BadgeTier from './BadgeTier.vue'
+import { BADGE_TIERS } from '../config/badgeTiers'
 
 const logoUrl = '/assets/logo.png'
 
@@ -277,6 +297,7 @@ const detailModalOpen = ref(false)
 const menuRef = ref<HTMLElement | null>(null)
 const quotaRef = ref<HTMLElement | null>(null)
 const bellRef = ref<HTMLElement | null>(null)
+const showBadgeBenefits = ref(false)
 
 const { mode, setMode } = useTheme()
 
@@ -337,6 +358,17 @@ function formatTime(iso: string | null | undefined): string {
  }
 }
 
+function formatDate(iso: string | null | undefined): string {
+ if (!iso) return ''
+ try {
+ const d = new Date(iso)
+ if (Number.isNaN(d.getTime())) return ''
+ return d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+ } catch {
+ return ''
+ }
+}
+
 interface ThemeOption {
  value: 'light' | 'dark' | 'system'
  label: string
@@ -350,7 +382,7 @@ const themeOptions: ThemeOption[] = [
 ]
 
 function formatNum(n: number | string): string {
-  return Number(n || 0).toLocaleString('id-ID')
+ return Number(n || 0).toLocaleString('id-ID')
 }
 
 function doLogout(): void {
@@ -368,6 +400,9 @@ function handleOutsideClick(e: MouseEvent): void {
  }
  if (bellRef.value && !bellRef.value.contains(target)) {
  bellOpen.value = false
+ }
+ if (showBadgeBenefits.value && menuRef.value && !menuRef.value.contains(target)) {
+ showBadgeBenefits.value = false
  }
 }
 

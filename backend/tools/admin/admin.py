@@ -11,7 +11,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
-from utils.database.models import ApiUsageLog, Paper, PaperImage, User, db, safe_commit
+from utils.database.models import ApiUsageLog, Paper, PaperDeleteLog, PaperImage, User, db, safe_commit
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def list_users():
         return jsonify({"error": "Admin access required"}), 403
 
     try:
-        limit = min(int(request.args.get("limit", 50)), 200)
+        limit = min(int(request.args.get("limit", 50)), 2000)
         offset = max(int(request.args.get("offset", 0)), 0)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid limit/offset parameter"}), 400
@@ -262,3 +262,26 @@ def get_summary_stats():
             "total_api_calls": total_calls,
         }
     )
+
+
+@admin.route("/delete-log", methods=["GET"])
+@jwt_required()
+def get_delete_log():
+    """Return recent paper deletion logs for admin dashboard."""
+    if not _require_admin():
+        return jsonify({"error": "Admin access required"}), 403
+
+    try:
+        limit = min(int(request.args.get("limit", 200)), 500)
+        offset = int(request.args.get("offset", 0))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid limit/offset"}), 400
+
+    q = PaperDeleteLog.query.order_by(desc(PaperDeleteLog.deleted_at))
+    total = q.count()
+    logs = q.limit(limit).offset(offset).all()
+
+    return jsonify({
+        "logs": [log.to_dict() for log in logs],
+        "pagination": {"limit": limit, "offset": offset, "total": total},
+    })

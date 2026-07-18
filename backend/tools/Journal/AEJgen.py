@@ -1046,6 +1046,8 @@ def add_figure(doc, fig_data, fig_counter):
                 candidates.extend([
                     _os.path.join(json_dir, image_path),
                     _os.path.join(json_dir, image_path_norm) if image_path_norm != image_path else "",
+                    _os.path.join(json_dir, "image", image_path),  # canonical: user/<paper_id>/image/
+                    _os.path.join(json_dir, "image", image_path_norm) if image_path_norm != image_path else "",
                     _os.path.join(_os.path.dirname(json_dir), "image", image_path) if json_dir else "",
                     _os.path.join(_os.path.dirname(json_dir), "image", image_path_norm) if json_dir and image_path_norm != image_path else "",
                     _os.path.join(str(_os.path.dirname(_os.path.abspath(__file__))), image_path),

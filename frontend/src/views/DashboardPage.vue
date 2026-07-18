@@ -4,16 +4,23 @@
 
  <main class="px-4 lg:px-8 py-8 max-w-7xl mx-auto">
    <!-- Header -->
-    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
-        <p class="text-ink-700 dark:text-[#7eb8e0] text-sm mt-1">
-          {{ filteredPapers.length }} paper{{ filteredPapers.length === 1 ? '' : 's' }}
-          <span v-if="searchQuery && filteredPapers.length !== papers.length" class="text-ink-500 dark:text-ink-400"> of {{ papers.length }}</span>
-          <span v-if="lastUpdated" class="text-ink-500 dark:text-ink-400"> · Last updated {{ lastUpdated }}</span>
-        </p>
-      </div>
-     <router-link to="/editor"
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+         <div>
+           <h1 class="text-2xl font-bold font-serif text-ink-900 dark:text-ink-50">My Papers</h1>
+           <p class="text-ink-700 dark:text-[#7eb8e0] text-sm mt-1">
+             {{ filteredPapers.length }} paper{{ filteredPapers.length === 1 ? '' : 's' }}
+             <span v-if="searchQuery && filteredPapers.length !== papers.length" class="text-ink-500 dark:text-ink-400"> of {{ papers.length }}</span>
+             <span v-if="lastUpdated" class="text-ink-500 dark:text-ink-400"> · Last updated {{ lastUpdated }}</span>
+           </p>
+           <!-- Badge display -->
+                     <div v-if="auth.user?.badge" class="flex items-center gap-2 mt-2">
+                       <BadgeTier :badge="auth.user.badge as string" size="sm" />
+                       <span class="text-xs text-ink-600 dark:text-ink-400" v-if="auth.user.badge_expires_at && auth.user.badge !== 'trial'">
+                         Berlaku sampai {{ formatDate(auth.user.badge_expires_at as string) }}
+                       </span>
+                     </div>
+         </div>
+        <router-link to="/editor"
          class="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] rounded-xl font-medium transition-all duration-300 shadow-sm dark:hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2"
          >
            + New Paper
@@ -64,7 +71,7 @@
       <div class="text-6xl mb-4 animate-[float_3s_ease-in-out_infinite]" aria-hidden="true">📄</div>
       <h2 class="text-xl font-semibold text-ink-900 dark:text-ink-50 mb-2">No papers yet</h2>
       <p class="text-ink-600 dark:text-[#7eb8e0] mb-8 max-w-sm mx-auto">Start writing your first academic paper with AI-powered generation, citation management, and more.</p>
-      <router-link to="/editor" class="px-8 py-3.5 min-h-[44px] inline-flex items-center gap-2 bg-gradient-to-r from-navy-600 via-navy-500 to-navy-600 hover:from-navy-500 hover:via-navy-400 hover:to-navy-500 text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] rounded-xl font-semibold transition-all active:scale-95 shadow-lg shadow-navy-500/20 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
+      <router-link to="/editor" class="px-8 py-3.5 min-h-[44px] inline-flex items-center gap-2 bg-gradient-to-r from-cream-100 via-cream-200 to-cream-100 hover:from-cream-200 hover:via-cream-300 hover:to-cream-200 text-ink-900 dark:text-white dark:from-[#1a4470] dark:via-[#2563a8] dark:to-[#1a4470] dark:hover:from-[#1e4d80] dark:hover:via-[#2d6fb5] dark:hover:to-[#1e4d80] rounded-xl font-semibold transition-all duration-300 shadow-sm dark:hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Create First Paper
           </router-link>
@@ -81,9 +88,9 @@
 
    <div v-if="!searchQuery || filteredPapers.length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
      <article v-for="paper in filteredPapers" :key="paper.id"
-      class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_30px_rgba(166,138,92,0.2)] dark:hover:shadow-[0_8px_30px_rgba(37,99,168,0.3)] transition-all duration-300 overflow-hidden group hover:border-cream-400 dark:hover:border-[#2563a8]/50 hover:-translate-y-0.5">
-      <!-- Top accent bar -->
-      <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 dark:from-[#1a4470] dark:via-[#3b82f6] dark:to-[#1a4470] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          class="relative bg-white dark:bg-ash-800 rounded-2xl border border-cream-200 dark:border-ash-700 shadow-sm hover:shadow-[0_8px_30px_rgba(166,138,92,0.2)] dark:hover:shadow-[0_8px_30px_rgba(37,99,168,0.3)] transition-all duration-300 overflow-hidden group hover:border-cream-400 dark:hover:border-[#2563a8]/50 hover:-translate-y-0.5">
+         <!-- Top accent bar -->
+         <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cream-300 via-cream-400 to-cream-300 dark:from-[#1a4470] dark:via-[#3b82f6] dark:to-[#1a4470] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
      <router-link :to="{ name: 'editor', params: { paperId: paper.id } }" @click="store.currentPaperId = null"
      class="block p-5 pb-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] rounded-t-2xl">
      <h3 class="font-semibold font-serif text-ink-900 dark:text-ink-50 text-base leading-snug line-clamp-3 mb-2 group-hover:text-navy-700 dark:group-hover:text-[#6db4f0] transition">
@@ -159,7 +166,7 @@
    </div>
    </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api/index.js'
@@ -168,6 +175,7 @@ import AppDialog from '../components/AppDialog.vue'
 import StateView from '../components/StateView.vue'
 import OnboardingWizard from '../components/OnboardingWizard.vue'
 import TourGuide from '../components/TourGuide.vue'
+import BadgeTier from '../components/BadgeTier.vue'
 import { usePaperStore } from '../stores/paper.js'
 import { useAuthStore } from '../stores/auth.js'
 import { usePaperJobsStore } from '../stores/paperJobs.js'
@@ -180,10 +188,16 @@ const auth = useAuthStore()
 const jobsStore = usePaperJobsStore()
 const quotaStore = useQuotaStore()
 
-const lastUpdated = computed(() => {
-  const dates = papers.value.map(p => p.updated_at).filter(Boolean).sort()
-  return dates.length ? formatDate(dates[dates.length - 1]) : ''
-})
+function formatDate(iso: string | null | undefined): string {
+ if (!iso) return ''
+ try {
+ const d = new Date(iso)
+ if (Number.isNaN(d.getTime())) return ''
+ return d.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })
+ } catch {
+ return ''
+ }
+}
 
 // Onboarding wizard state
 const showOnboarding = ref(false)
@@ -191,9 +205,14 @@ const showTour = ref(false)
 
 // Tour steps for dashboard
 const tourSteps = [
- { target: 'a[href="/editor"]', title: 'Buat Paper Baru', description: 'Klik tombol ini untuk membuat paper baru dengan AI.', position: 'bottom' },
- { target: '.grid', title: 'Daftar Paper Anda', description: 'Semua paper yang Anda buat akan muncul di sini. Klik untuk membuka.', position: 'top' },
+ { target: 'a[href="/editor"]', title: 'Buat Paper Baru', description: 'Klik tombol ini untuk membuat paper baru dengan AI.', position: 'bottom' as const },
+ { target: '.grid', title: 'Daftar Paper Anda', description: 'Semua paper yang Anda buat akan muncul di sini. Klik untuk membuka.', position: 'top' as const },
 ]
+
+const lastUpdated = computed(() => {
+  const dates = papers.value.map(p => p.updated_at).filter(Boolean).sort()
+  return dates.length ? formatDate(dates[dates.length - 1]) : ''
+})
 
 // Check if user needs onboarding
 async function checkOnboarding() {
@@ -229,9 +248,9 @@ function onOnboardingComplete() {
  checkTour()
 }
 
-const papers = ref([])
+const papers = ref<any[]>([])
 const loading = ref(true)
-const deleteTarget = ref(null)
+const deleteTarget = ref<any>(null)
 const searchQuery = ref('')
 const sortBy = ref('updated')
 
@@ -239,21 +258,21 @@ const filteredPapers = computed(() => {
   let list = papers.value
   const q = searchQuery.value.toLowerCase().trim()
   if (q) {
-    list = list.filter(p =>
+    list = list.filter((p: any) =>
       (p.title || '').toLowerCase().includes(q) ||
       (p.snippet || '').toLowerCase().includes(q)
     )
   }
-  return [...list].sort((a, b) => {
+  return [...list].sort((a: any, b: any) => {
     if (sortBy.value === 'title') return (a.title || '').localeCompare(b.title || '')
-    if (sortBy.value === 'created') return new Date(b.created_at) - new Date(a.created_at)
-    return new Date(b.updated_at) - new Date(a.updated_at)
+    if (sortBy.value === 'created') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   })
 })
 const copying = ref(null)
 const errorMsg = ref('')
 const toastMsg = ref('')
-let toastTimer = null
+let toastTimer: any = null
 
 function showToast(msg) {
  toastMsg.value = msg
@@ -323,23 +342,6 @@ async function doDelete() {
  } finally {
  deleteTarget.value = null
  }
-}
-
-function formatDate(iso) {
- if (!iso) return ''
- const d = new Date(iso)
- const now = new Date()
- const diff = now - d
- if (diff < 60000) return 'just now'
- if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
- if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
- if (diff < 86400000 * 7) return `${Math.floor(diff / 86400000)}d ago`
- return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-// Token Purchase
-function goToTokenPurchase() {
- router.push('/tokens/purchase')
 }
 
 onMounted(async () => {

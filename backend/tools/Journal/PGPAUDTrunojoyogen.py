@@ -178,9 +178,11 @@ def _add_fig(doc, fig, cnt):
     ip = str(fig.get("Path", ""))
     actual = None
     if ip:
-        cands = [Path(ip), BASE.parent / "image" / ip]
+        _json_dir = TEMPLATE_JSON.parent if hasattr(TEMPLATE_JSON, 'parent') else BASE.parent
+        cands = [Path(ip), _json_dir / "image" / ip, BASE.parent / "image" / ip]
         stem = os.path.splitext(ip)[0]
         for ext in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+            cands.append(_json_dir / "image" / f"{stem}{ext}")
             cands.append(BASE.parent / "image" / f"{stem}{ext}")
         for c in cands:
             if c.exists(): actual = c; break

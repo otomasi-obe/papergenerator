@@ -13,6 +13,8 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 from lxml import etree
 
+from ._docx_base import _constrain_table_width, _shrink_omml_to_column
+
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
 JSON_PATH = BASE_DIR / "ieee.json"
@@ -23,7 +25,7 @@ PAGE_WIDTH_PT = 595.3
 BODY_MARGIN_PT = 45.35
 BODY_GAP_PT = 18.0
 BODY_COLUMN_WIDTH_PT = (PAGE_WIDTH_PT - (2 * BODY_MARGIN_PT) - BODY_GAP_PT) / 2
-MAX_FIGURE_WIDTH_CM = 8.4
+MAX_FIGURE_WIDTH_CM = 4.0  # 2-col: ~50% column width (matches AEJ)
 NS_MAP = {
     b"http://purl.oclc.org/ooxml/wordprocessingml/main": b"http://schemas.openxmlformats.org/wordprocessingml/2006/main",
     b"http://purl.oclc.org/ooxml/officeDocument/relationships": b"http://schemas.openxmlformats.org/officeDocument/2006/relationships",
@@ -1007,53 +1009,71 @@ def _add_point_list(doc: Document, item: dict):
 
 
 def _resolve_path(path_text: str, json_path: Path) -> Path:
-    """Resolve an image path to an actual file on disk.
-
-    Tries (in order):
-      1. Absolute path as-is
-      2. Relative to json_path.parent (legacy behaviour)
-      3. Sibling image/ folder (export/ and image/ live under <paper_id>/)
-      4. safe_paper_image_dir() lookup by paper_id (best effort)
-      5. BASE_DIR fallback
-    """
     path = Path(path_text)
     if path.is_absolute():
         return path
-
-    # 2. Relative to json_path.parent
     json_relative = json_path.parent / path
     if json_relative.exists():
         return json_relative
 
-    # 3. Sibling image/ folder: …/<paper_id>/export/_tmp.json → …/<paper_id>/image/
-    paper_root = json_path.parent.parent
-    candidate = paper_root / "image" / path
-    if candidate.is_file():
-        return candidate
-    fname = path.name
-    if fname and fname != str(path):
-        candidate = paper_root / "image" / fname
-        if candidate.is_file():
-            return candidate
+    # Also try the image/ subdirectory next to the JSON (correct for preview: user/<username>/<paper_id>/image/)
+    image_relative = json_path.parent / "image" / path
+    if image_relative.exists():
+        return image_relative
 
-    # 4. safe_paper_image_dir() — needs Flask app context; best-effort
+    # Derive paper_id correctly: json_path.parent is usually paper_dir (user/<username>/<paper_id>/)
+    # But for preview/export it might be in export/ subfolder
+    if json_path.parent.name == "export":
+        paper_id = json_path.parent.parent.name
+    else:
+        paper_id = json_path.parent.name
+
+    # Try safe_paper_image_dir for canonical user/<username>/<paper_id>/image/ location
     try:
         from tools.editor.utils import safe_paper_image_dir
-        paper_id = paper_root.name
         img_dir = safe_paper_image_dir(paper_id)
-        if img_dir:
+        if img_dir and img_dir.exists():
+            # Try direct match
             candidate = img_dir / path
             if candidate.is_file():
                 return candidate
-            if fname:
-                candidate = img_dir / fname
+            # Try with just the filename
+            fname = path.name
+            candidate = img_dir / fname
+            if candidate.is_file():
+                return candidate
+            # Extension-insensitive match (JSON may say .png but disk has .jpg)
+            stem = Path(fname).stem
+            for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                candidate = img_dir / (stem + ext)
                 if candidate.is_file():
                     return candidate
+            # Glob fallback
+            for match in img_dir.glob(f"{stem}.*"):
+                if match.is_file():
+                    return match
+            # Also try img_dir/image/ subdirectory
+            if img_dir.name != "image":
+                img_dir2 = img_dir / "image"
+                if img_dir2.is_dir():
+                    candidate = img_dir2 / path
+                    if candidate.is_file():
+                        return candidate
+                    candidate = img_dir2 / fname
+                    if candidate.is_file():
+                        return candidate
+                    for ext in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.tiff', '.tif'):
+                        candidate = img_dir2 / (stem + ext)
+                        if candidate.is_file():
+                            return candidate
+                    for match in img_dir2.glob(f"{stem}.*"):
+                        if match.is_file():
+                            return match
     except Exception:
         pass
 
-    # 5. Final fallback
     return BASE_DIR / path
+
 
 
 def _set_full_cell_borders(cell):
@@ -1127,6 +1147,22 @@ def _add_prompt_box(doc: Document, item: dict):
     _set_table_borders_match_template(table)
     cell = table.cell(0, 0)
     _set_full_cell_borders(cell)
+    # Enable word wrap so long prompts wrap inside the cell
+    tblPr = table._tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        table._tbl.append(tblPr)
+    tblLayout = OxmlElement('w:tblLayout')
+    tblLayout.set(qn('w:type'), 'autofit')
+    tblPr.append(tblLayout)
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcW = OxmlElement('w:tcW')
+    tcW.set(qn('w:type'), 'auto')
+    tcPr.append(tcW)
+    vAlign = OxmlElement('w:vAlign')
+    vAlign.set(qn('w:val'), 'top')
+    tcPr.append(vAlign)
     paragraph = cell.paragraphs[0]
     _set_para_style(paragraph, "Body Text")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1186,6 +1222,7 @@ def _add_table(doc: Document, item: dict):
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
     _set_table_borders_match_template(table)
+    _constrain_table_width(table, {"columns": 2})
     for column_index, value in enumerate(headers):
         cell = table.rows[0].cells[column_index]
         _set_horizontal_cell_borders(cell, top=True, bottom=True)
@@ -1219,7 +1256,21 @@ def _add_equation_line(doc: Document, formula: str, number: str | None = None):
     tab_stops.add_tab_stop(Pt(BODY_COLUMN_WIDTH_PT / 2), WD_TAB_ALIGNMENT.CENTER)
     tab_stops.add_tab_stop(Pt(BODY_COLUMN_WIDTH_PT), WD_TAB_ALIGNMENT.RIGHT)
     paragraph.add_run("\t")
-    if not _append_inline_math(paragraph, formula):
+    omml = _latex_to_omml(formula)
+    if omml is not None:
+        # Auto-shrink font to fit column width
+        _shrink_omml_to_column(omml, formula, BODY_COLUMN_WIDTH_PT)
+        tag = omml.tag.split("}")[-1] if "}" in omml.tag else omml.tag
+        if tag == "oMath":
+            paragraph._p.append(omml)
+        elif tag == "oMathPara":
+            paragraph._p.append(omml)
+        else:
+            wrapper = etree.fromstring(f'<m:oMath xmlns:m="{MATH_NS}"/>')
+            wrapper.append(omml)
+            paragraph._p.append(wrapper)
+        paragraph.add_run("\u200b")
+    else:
         run = paragraph.add_run(formula)
         run.italic = True
     if number is not None:
@@ -1498,6 +1549,9 @@ def _add_figure_from_content(doc: Document, item: dict, json_path: Path):
         # NOT the internal wrapper [PROMPT UNTUK AI GAMBAR: ...]. The user
         # copies this prompt straight into an image generator.
         prompt_body = _clean_image_prompt(prompt) if prompt else f"Figure {image_number} not found"
+        # Truncate long prompts to prevent overflow in DOCX
+        if len(prompt_body) > 300:
+            prompt_body = prompt_body[:297] + "..."
         _add_prompt_box_with_text(doc, prompt_body)
 
     # Add caption using title or prompt
@@ -1558,6 +1612,8 @@ def _add_table_from_content(doc: Document, item: dict):
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = True
     _set_table_borders_match_template(table)
+    # Constrain to column width (2-col layout)
+    _constrain_table_width(table, {"columns": 2})
 
     # Add headers
     for column_index, value in enumerate(headers):
@@ -1594,6 +1650,22 @@ def _add_prompt_box_with_text(doc: Document, text: str):
     _set_table_borders_match_template(table)
     cell = table.cell(0, 0)
     _set_full_cell_borders(cell)
+    # Enable word wrap so long prompts wrap inside the cell
+    tblPr = table._tbl.tblPr
+    if tblPr is None:
+        tblPr = OxmlElement('w:tblPr')
+        table._tbl.append(tblPr)
+    tblLayout = OxmlElement('w:tblLayout')
+    tblLayout.set(qn('w:type'), 'autofit')
+    tblPr.append(tblLayout)
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcW = OxmlElement('w:tcW')
+    tcW.set(qn('w:type'), 'auto')
+    tcPr.append(tcW)
+    vAlign = OxmlElement('w:vAlign')
+    vAlign.set(qn('w:val'), 'top')
+    tcPr.append(vAlign)
     paragraph = cell.paragraphs[0]
     _set_para_style(paragraph, "Body Text")
     paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT

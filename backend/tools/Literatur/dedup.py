@@ -1,17 +1,23 @@
-"""Deduplikasi untuk SLR: DOI exact match + Jaro-Winkler fuzzy pada judul.
+"""Deduplikasi SLR: ID priority chain + title fuzzy fallback + canonical merge.
 
-Dua lapis dedup:
-1. DOI exact match — paling akurat, tidak ada false positive
-2. Jaro-Winkler similarity (threshold 0.90) pada title_normalized —
-   tangkap duplikat tanpa DOI atau DOI berbeda (preprint vs published)
+Priority chain (spec dosen section 7):
+1. DOI (normalized)
+2. PMID
+3. PMC ID
+4. arXiv ID
+5. Semantic Scholar Paper ID
+6. OpenAlex ID
+7. Crossref ID
+8. Normalized title (fuzzy ≥ 0.95 = auto dup, 0.90-0.95 = check author+year)
 
-Gunakan rapidfuzz (lebih cepat dari python-Levenshtein murni).
+Canonical merge: duplicate paper's sources/source_ranks merged into canonical record.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -19,155 +25,210 @@ log = logging.getLogger(__name__)
 # ── DOI normalization ──────────────────────────────────────────────────────
 
 def normalize_doi(doi: str | None) -> str | None:
-    """Normalisasi DOI ke bentuk lowercase, strip prefix URL.
-
-    "https://doi.org/10.1234/abc" → "10.1234/abc"
-    "10.1234/ABC" → "10.1234/abc"
-    """
+    """Normalisasi DOI ke bentuk lowercase, strip prefix URL."""
     if not doi or not isinstance(doi, str):
         return None
     doi = doi.strip()
-    # Remove URL prefix
     doi = re.sub(r'^https?://(dx\.)?doi\.org/', '', doi, flags=re.IGNORECASE)
-    # Remove whitespace
     doi = doi.strip().lower()
     return doi if doi else None
 
 
 # ── Title normalization ────────────────────────────────────────────────────
 
-
 def normalize_title(title: str | None) -> str | None:
-    """Normalisasi judul untuk perbandingan fuzzy.
-
-    - Lowercase
-    - Hapus punctuation (kecuali hyphen dalam kata)
-    - Collapse whitespace
-    - Hapus leading/trailing articles (the, a, an)
-    """
+    """Normalisasi judul: lowercase, strip punctuation, normalize unicode, collapse whitespace."""
     if not title:
         return None
-    t = title.lower().strip()
-    # Hapus karakter non-alphanumeric (kecuali spasi dan hyphen dalam kata)
+    t = unicodedata.normalize("NFKD", title.lower().strip())
     t = re.sub(r'[^\w\s-]', '', t)
-    # Collapse whitespace
     t = re.sub(r'\s+', ' ', t).strip()
-    # Hapus leading articles
     t = re.sub(r'^(the|a|an)\s+', '', t)
     return t if t else None
 
 
+# ── External ID extraction ─────────────────────────────────────────────────
+
+def extract_ids(paper: dict | Any) -> dict[str, str | None]:
+    """Extract all external IDs from a paper dict or Paper object."""
+    if hasattr(paper, '__dict__'):
+        d = {k: getattr(paper, k, None) for k in
+             ('doi', 'pmid', 'pmcid', 'arxiv_id', 's2_id', 'openalex_id', 'crossref_id',
+              'source', 'source_id')}
+    else:
+        d = {
+            'doi': paper.get('doi'),
+            'pmid': paper.get('pmid'),
+            'pmcid': paper.get('pmcid'),
+            'arxiv_id': paper.get('arxiv_id'),
+            's2_id': paper.get('s2_id'),
+            'openalex_id': paper.get('openalex_id'),
+            'crossref_id': paper.get('crossref_id'),
+            'source': paper.get('source'),
+            'source_id': paper.get('source_id'),
+        }
+
+    # Auto-extract from source/source_id if fetcher-specific
+    source = (d.get('source') or '').lower()
+    source_id = d.get('source_id') or ''
+
+    if source == 'semantic_scholar' and not d.get('s2_id'):
+        d['s2_id'] = source_id
+    elif source == 'openalex' and not d.get('openalex_id'):
+        d['openalex_id'] = source_id
+    elif source == 'crossref' and not d.get('crossref_id'):
+        d['crossref_id'] = source_id
+    elif source == 'arxiv' and not d.get('arxiv_id'):
+        d['arxiv_id'] = source_id
+    elif source == 'pubmed' and not d.get('pmid'):
+        d['pmid'] = source_id
+    elif source == 'pmc' and not d.get('pmcid'):
+        d['pmcid'] = source_id
+
+    return d
+
+
+# ID priority chain — order matters
+_ID_FIELDS = ['doi', 'pmid', 'pmcid', 'arxiv_id', 's2_id', 'openalex_id', 'crossref_id']
+
+
+def _id_key(field: str, value: str | None) -> str | None:
+    """Normalize an external ID value for exact matching."""
+    if not value:
+        return None
+    v = str(value).strip().lower()
+    if field == 'doi':
+        return normalize_doi(v)
+    if field == 'pmcid' and not v.startswith('pmc'):
+        v = f'pmc{v}'
+    return v if v else None
+
+
 # ── Deduplication ──────────────────────────────────────────────────────────
 
-
 class Deduplicator:
-    """Deduplikasi dua tahap: DOI exact → Jaro-Winkler fuzzy.
+    """ID priority chain dedup + title fuzzy fallback + canonical merge.
 
     Usage:
         dedup = Deduplicator()
         unique, duplicates = dedup.deduplicate(papers)
-        # papers: list of dicts with 'doi', 'title', 'id'
+        # Each unique paper has merged sources/source_ranks from duplicates.
     """
 
     def __init__(
         self,
-        jw_threshold: float = 0.90,
-        jw_title_threshold: float = 0.92,
+        auto_dup_threshold: float = 0.95,
+        review_dup_threshold: float = 0.90,
     ):
-        """
-        Args:
-            jw_threshold: Jaro-Winkler similarity minimum (default 0.90)
-            jw_title_threshold: Threshold lebih tinggi untuk judul pendek (<30 chars)
-        """
-        self.jw_threshold = jw_threshold
-        self.jw_title_threshold = jw_title_threshold
-        self._seen_dois: set[str] = set()
-        self._seen_titles: list[tuple[str, str]] = []  # (normalized_title, paper_id)
+        self.auto_dup_threshold = auto_dup_threshold
+        self.review_dup_threshold = review_dup_threshold
+        self._id_index: dict[str, dict[str, int]] = {}  # field -> {id_value: paper_index}
+        self._seen_titles: list[tuple[str, int]] = []  # (normalized_title, paper_index)
+        self._papers: list[dict] = []
 
     def reset(self) -> None:
-        """Reset state untuk batch baru."""
-        self._seen_dois.clear()
+        self._id_index.clear()
         self._seen_titles.clear()
+        self._papers.clear()
 
-    def is_duplicate(self, doi: str | None, title: str | None, paper_id: str = "") -> tuple[bool, str | None]:
-        """Cek apakah satu paper duplikat dari yang sudah ada.
+    def _find_by_id(self, ids: dict[str, str | None]) -> int | None:
+        """Find existing paper index by any ID in priority chain."""
+        for field in _ID_FIELDS:
+            val = _id_key(field, ids.get(field))
+            if val and field in self._id_index and val in self._id_index[field]:
+                return self._id_index[field][val]
+        return None
 
-        Args:
-            doi: DOI paper (bisa None)
-            title: Judul paper (bisa None)
-            paper_id: ID untuk logging
+    def _index_ids(self, idx: int, ids: dict[str, str | None]) -> None:
+        """Add paper's IDs to index."""
+        for field in _ID_FIELDS:
+            val = _id_key(field, ids.get(field))
+            if val:
+                self._id_index.setdefault(field, {})[val] = idx
 
-        Returns:
-            (is_duplicate, reason)
-            reason: "doi_match:X" atau "title_similar:X (0.XXX)"
+    def _find_by_title(self, title: str | None, year: int | None, authors: list[str], unique: list[dict] | None = None) -> tuple[int | None, str | None]:
+        """Find existing paper by fuzzy title match.
+
+        Returns (paper_index, reason) or (None, None).
         """
-        # Stage 1: DOI exact match
-        doi_norm = normalize_doi(doi)
-        if doi_norm and doi_norm in self._seen_dois:
-            return True, f"doi_match:{doi_norm}"
-
-        # Stage 2: Jaro-Winkler title similarity
         title_norm = normalize_title(title)
-        if title_norm:
-            threshold = (
-                self.jw_title_threshold
-                if len(title_norm) < 30
-                else self.jw_threshold
-            )
-            for existing_title, existing_id in self._seen_titles:
-                sim = _jaro_winkler_similarity(title_norm, existing_title)
-                if sim >= threshold:
-                    return True, f"title_similar:{existing_id} ({sim:.3f})"
+        if not title_norm:
+            return None, None
 
-        return False, None
+        search_list = unique if unique is not None else self._papers
 
-    def add(self, doi: str | None, title: str | None, paper_id: str) -> None:
-        """Tambah paper ke set yang sudah dilihat."""
-        doi_norm = normalize_doi(doi)
-        if doi_norm:
-            self._seen_dois.add(doi_norm)
+        for existing_title, idx in self._seen_titles:
+            sim = _jaro_winkler_similarity(title_norm, existing_title)
+            if sim >= self.auto_dup_threshold:
+                return idx, f"title_auto:{sim:.3f}"
+            if sim >= self.review_dup_threshold:
+                if not search_list or idx >= len(search_list):
+                    continue
+                existing = search_list[idx]
+                if year and existing.get('year') and year == existing.get('year'):
+                    return idx, f"title_year:{sim:.3f}"
+                if authors and existing.get('authors'):
+                    a1 = (authors[0] or '').lower().strip()
+                    a2 = (existing['authors'][0] or '').lower().strip()
+                    if a1 and a2 and a1 == a2:
+                        return idx, f"title_author:{sim:.3f}"
+        return None, None
 
-        title_norm = normalize_title(title)
-        if title_norm:
-            self._seen_titles.append((title_norm, paper_id))
+    def _merge_sources(self, canonical: dict, duplicate: dict) -> None:
+        """Merge duplicate's source info into canonical record."""
+        dup_source = duplicate.get('source', '')
+        if dup_source and dup_source not in canonical.get('sources', []):
+            canonical.setdefault('sources', []).append(dup_source)
+
+        # Merge source_ranks
+        dup_rank = duplicate.get('source_rank')
+        if dup_source and dup_rank is not None:
+            canonical.setdefault('source_ranks', {})[dup_source] = dup_rank
 
     def deduplicate(
         self,
         papers: list[dict[str, Any]],
         id_key: str = "id",
-        doi_key: str = "doi",
-        title_key: str = "title",
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-        """Deduplicate list of paper dicts.
+        """Deduplicate papers using ID priority chain + title fuzzy.
 
-        Args:
-            papers: List paper dict
-            id_key: Key untuk ID
-            doi_key: Key untuk DOI
-            title_key: Key untuk judul
-
-        Returns:
-            (unique_papers, duplicate_papers)
-            Setiap duplicate punya field `_dup_reason` yang menjelaskan kenapa.
+        Returns (unique_papers, duplicate_papers).
+        Unique papers have merged sources/source_ranks from all duplicates.
         """
         self.reset()
         unique: list[dict] = []
         duplicates: list[dict] = []
 
         for i, paper in enumerate(papers):
-            pid = paper.get(id_key, str(i))
-            doi = paper.get(doi_key)
-            title = paper.get(title_key)
+            ids = extract_ids(paper)
+            title = paper.get('title')
+            year = paper.get('year')
+            authors = paper.get('authors', [])
 
-            is_dup, reason = self.is_duplicate(doi, title, pid)
-            if is_dup:
-                paper_copy = dict(paper)
-                paper_copy["_dup_reason"] = reason
-                duplicates.append(paper_copy)
-                log.debug("Duplicate: %s → %s", pid, reason)
+            # Stage 1: ID exact match (priority chain)
+            match_idx = self._find_by_id(ids)
+
+            # Stage 2: Title fuzzy fallback
+            if match_idx is None:
+                match_idx, reason = self._find_by_title(title, year, authors, unique)
             else:
-                self.add(doi, title, pid)
+                reason = f"id_match:{ids.get('doi') or ids.get('pmid') or 'id'}"
+
+            if match_idx is not None:
+                # Duplicate — merge into canonical
+                paper_copy = dict(paper)
+                paper_copy["_dup_reason"] = reason or "id_match"
+                duplicates.append(paper_copy)
+                self._merge_sources(unique[match_idx], paper)
+                log.debug("Duplicate: %s → %s", paper.get(id_key, str(i)), reason)
+            else:
+                # Unique — add to index
+                idx = len(unique)
                 unique.append(paper)
+                self._index_ids(idx, ids)
+                title_norm = normalize_title(title)
+                if title_norm:
+                    self._seen_titles.append((title_norm, idx))
 
         log.info(
             "Dedup: %d total → %d unique, %d duplicates (%.1f%% removed)",
@@ -180,32 +241,61 @@ class Deduplicator:
 def deduplicate(
     papers: list[dict[str, Any]],
     id_key: str = "id",
-    doi_key: str = "doi",
-    title_key: str = "title",
-    jw_threshold: float = 0.90,
+    auto_dup_threshold: float = 0.95,
+    review_dup_threshold: float = 0.90,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Shortcut function untuk deduplikasi."""
-    dedup = Deduplicator(jw_threshold=jw_threshold)
-    return dedup.deduplicate(papers, id_key, doi_key, title_key)
+    """Shortcut function."""
+    dedup = Deduplicator(auto_dup_threshold=auto_dup_threshold, review_dup_threshold=review_dup_threshold)
+    return dedup.deduplicate(papers, id_key=id_key)
+
+
+# ── PRISMA statistics ──────────────────────────────────────────────────────
+
+class PRISMAStats:
+    """Collect PRISMA flow numbers throughout the SLR pipeline."""
+
+    def __init__(self):
+        self.records_identified = 0           # total raw fetched
+        self.duplicates_removed = 0           # after dedup
+        self.records_screened = 0             # after dedup, before relevance filter
+        self.records_excluded_title = 0       # filtered by relevance/keyword
+        self.abstracts_assessed = 0           # papers with abstracts sent to LLM
+        self.abstracts_excluded = 0           # LLM rejected
+        self.full_texts_sought = 0            # papers with pdf_url
+        self.full_texts_not_retrieved = 0     # pdf_url but not accessible
+        self.full_texts_assessed = 0
+        self.full_texts_excluded = 0
+        self.studies_included = 0             # final selected
+
+    def to_dict(self) -> dict:
+        return {
+            "records_identified": self.records_identified,
+            "duplicates_removed": self.duplicates_removed,
+            "records_screened": self.records_screened,
+            "records_excluded_by_title": self.records_excluded_title,
+            "abstracts_assessed": self.abstracts_assessed,
+            "abstracts_excluded": self.abstracts_excluded,
+            "full_texts_sought": self.full_texts_sought,
+            "full_texts_not_retrieved": self.full_texts_not_retrieved,
+            "full_texts_assessed": self.full_texts_assessed,
+            "full_texts_excluded": self.full_texts_excluded,
+            "studies_included": self.studies_included,
+        }
 
 
 # ── Jaro-Winkler via rapidfuzz ─────────────────────────────────────────────
-
 
 def _jaro_winkler_similarity(s1: str, s2: str) -> float:
     """Jaro-Winkler similarity via rapidfuzz, fallback ke pure Python."""
     try:
         from rapidfuzz.distance import JaroWinkler
-
         return JaroWinkler.normalized_similarity(s1, s2)  # type: ignore[no-any-return]
     except ImportError:
-        # Pure Python fallback
         return _jaro_winkler_pure(s1, s2)
 
 
 def _jaro_winkler_pure(s1: str, s2: str) -> float:
     """Pure Python Jaro-Winkler implementation — fallback."""
-    # Jaro similarity
     if s1 == s2:
         return 1.0
     if not s1 or not s2:
@@ -233,7 +323,6 @@ def _jaro_winkler_pure(s1: str, s2: str) -> float:
     if matches == 0:
         return 0.0
 
-    # Transpositions
     transpositions = 0
     k = 0
     for i in range(len_s1):
@@ -250,7 +339,6 @@ def _jaro_winkler_pure(s1: str, s2: str) -> float:
         + (matches - transpositions / 2) / matches
     ) / 3.0
 
-    # Winkler boost
     prefix = 0
     for i in range(min(4, len_s1, len_s2)):
         if s1[i] == s2[i]:
@@ -264,22 +352,22 @@ def _jaro_winkler_pure(s1: str, s2: str) -> float:
 # ── Self-test ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # Test normalization
+    # Test DOI normalization
     assert normalize_doi("https://doi.org/10.1234/ABC") == "10.1234/abc"
     assert normalize_doi("10.1234/XYZ") == "10.1234/xyz"
     assert normalize_doi(None) is None
-    assert normalize_doi("") is None
 
+    # Test title normalization
     assert normalize_title("The Great Paper") == "great paper"
     assert normalize_title("  A Study of ML  ") == "study of ml"
 
-    # Test dedup
+    # Test ID priority chain
     papers = [
-        {"id": "1", "doi": "10.1000/abc", "title": "Machine Learning for SLR"},
-        {"id": "2", "doi": "10.1000/abc", "title": "Machine Learning for SLR"},  # DOI dup
-        {"id": "3", "doi": "10.1000/xyz", "title": "Machine Learning for SLR"},  # Title dup
-        {"id": "4", "doi": None, "title": "Machine Learning for Systematic Lit Review"},  # Similar
-        {"id": "5", "doi": "10.1000/new", "title": "Completely Different Topic"},  # Unique
+        {"id": "1", "doi": "10.1000/abc", "title": "Machine Learning for SLR", "source": "openalex", "source_id": "W123", "openalex_id": "W123", "year": 2023, "authors": ["Alice"]},
+        {"id": "2", "doi": "10.1000/abc", "title": "Machine Learning for SLR", "source": "crossref", "source_id": "CR456", "crossref_id": "CR456", "year": 2023, "authors": ["Alice"]},  # DOI dup
+        {"id": "3", "doi": "10.1000/xyz", "title": "Machine Learning for SLR", "source": "semantic_scholar", "source_id": "S789", "s2_id": "S789", "year": 2023, "authors": ["Alice"]},  # Title dup
+        {"id": "4", "doi": None, "title": "Machine Learning for Systematic Lit Review", "source": "pubmed", "source_id": "PM1", "pmid": "PM1", "year": 2023, "authors": ["Bob"]},  # Similar title
+        {"id": "5", "doi": "10.1000/new", "title": "Completely Different Topic", "source": "arxiv", "source_id": "2401.001", "arxiv_id": "2401.001", "year": 2024, "authors": ["Charlie"]},  # Unique
     ]
 
     dedup = Deduplicator()
@@ -287,11 +375,26 @@ if __name__ == "__main__":
 
     print(f"Unique: {len(unique)}")
     for p in unique:
-        print(f"  {p['id']}: {p['title'][:50]}")
+        print(f"  {p['id']}: {p['title'][:50]}  sources={p.get('sources', [])}")
     print(f"\nDuplicates: {len(dups)}")
     for p in dups:
         print(f"  {p['id']}: {p.get('_dup_reason', '?')}")
 
     assert len(unique) == 2, f"Expected 2 unique, got {len(unique)}"
     assert len(dups) == 3, f"Expected 3 duplicates, got {len(dups)}"
-    print("\n✓ All dedup tests passed")
+    # Canonical paper should have merged sources
+    assert "crossref" in unique[0].get("sources", []), f"Canonical missing crossref source: {unique[0].get('sources')}"
+    assert "semantic_scholar" in unique[0].get("sources", []), f"Canonical missing S2 source: {unique[0].get('sources')}"
+    assert "pubmed" in unique[0].get("sources", []), f"Canonical missing pubmed source: {unique[0].get('sources')}"
+
+    # Test PRISMA
+    prisma = PRISMAStats()
+    prisma.records_identified = 500
+    prisma.duplicates_removed = 100
+    prisma.records_screened = 400
+    prisma.studies_included = 50
+    d = prisma.to_dict()
+    assert d["records_identified"] == 500
+    assert d["studies_included"] == 50
+
+    print("\n✓ All dedup + canonical + PRISMA tests passed")

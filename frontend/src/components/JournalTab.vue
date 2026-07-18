@@ -44,16 +44,27 @@
             <li
               v-for="(j, idx) in filtered"
               :key="j"
-              @click="pick(j)"
+              @click="!isLocked(j) && pick(j)"
               role="option"
               :aria-selected="store.paper.journal === j"
               :class="[
-                'px-3 py-2 cursor-pointer flex items-center justify-between transition-colors',
+                'px-3 py-2 flex items-center justify-between transition-colors',
+                isLocked(j)
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'cursor-pointer',
                 store.paper.journal === j || highlightedIndex === idx ? 'bg-ivory-200 dark:bg-anthracite-600 font-medium text-ink-900 dark:text-anthracite-50' : 'text-ink-800 dark:text-anthracite-100 hover:bg-ivory-100 dark:hover:bg-anthracite-600',
               ]"
             >
-              <span>{{ j }}</span>
-              <span v-if="store.paper.journal === j" class="text-ink-700 dark:text-anthracite-100 text-xs">✓ active</span>
+              <span class="flex items-center gap-2">
+                <span>{{ j }}</span>
+                <span :class="['text-[10px] px-1.5 py-0.5 rounded-full font-semibold', tierStyle(j)]" :title="`Tier: ${tierLabel(j)}`">
+                  {{ tierShort(j) }}
+                </span>
+              </span>
+              <span class="flex items-center gap-1">
+                <span v-if="isLocked(j)" class="text-xs">🔒</span>
+                <span v-if="store.paper.journal === j" class="text-ink-700 dark:text-anthracite-100 text-xs">✓ active</span>
+              </span>
             </li>
           </ul>
 
@@ -160,10 +171,28 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { usePaperStore } from '../stores/paper'
 import { useToolsStore } from '../stores/tools'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
+import { journalTier, isJournalUnlocked, TIER_BADGE_STYLE, TIER_SHORT, type BadgeKey } from '../config/badgeTiers'
 
 const store = usePaperStore()
 const toolsStore = useToolsStore()
 const uiStore = useUiStore()
+const authStore = useAuthStore()
+
+const userBadge = computed<BadgeKey | undefined>(() => authStore.user?.badge as BadgeKey | undefined)
+
+function isLocked(j: string): boolean {
+  return !isJournalUnlocked(j, userBadge.value)
+}
+function tierStyle(j: string): string {
+  return TIER_BADGE_STYLE[journalTier(j)]
+}
+function tierShort(j: string): string {
+  return TIER_SHORT[journalTier(j)]
+}
+function tierLabel(j: string): string {
+  return journalTier(j).charAt(0).toUpperCase() + journalTier(j).slice(1)
+}
 
 const search = ref<string>('')
 const open = ref<boolean>(false)
@@ -216,12 +245,19 @@ function pick(journal: string): void {
 
 function moveHighlight(delta: number): void {
   if (!filtered.value.length) return
-  highlightedIndex.value = Math.max(0, Math.min(filtered.value.length - 1, highlightedIndex.value + delta))
+  let next = highlightedIndex.value
+  let attempts = 0
+  do {
+    next = Math.max(0, Math.min(filtered.value.length - 1, next + delta))
+    attempts++
+  } while (isLocked(filtered.value[next]) && attempts < filtered.value.length)
+  highlightedIndex.value = next
 }
 
 function pickHighlighted(): void {
   if (highlightedIndex.value >= 0 && highlightedIndex.value < filtered.value.length) {
-    pick(filtered.value[highlightedIndex.value])
+    const j = filtered.value[highlightedIndex.value]
+    if (!isLocked(j)) pick(j)
   }
 }
 

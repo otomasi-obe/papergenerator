@@ -50,22 +50,31 @@
           <ul v-if="open && filtered.length"
             id="journal-preview-list"
             role="listbox"
-            class="absolute z-50 mt-1 w-64 bg-white dark:bg-ash-800 border border-cream-300 dark:border-ash-600 rounded-xl shadow-lg max-h-64 overflow-y-auto text-sm">
+            class="absolute z-50 mt-1 w-72 bg-white dark:bg-ash-800 border border-cream-300 dark:border-ash-600 rounded-xl shadow-lg max-h-64 overflow-y-auto text-sm">
             <li
               v-for="(j, idx) in filtered"
               :key="j"
-              @click="pick(j)"
+              @click="!isLocked(j) && pick(j)"
               @mouseenter="$event.currentTarget.classList.add('hovering')"
               @mouseleave="$event.currentTarget.classList.remove('hovering')"
               role="option"
               :aria-selected="store.paper.journal === j"
               :class="[
-                'px-3 py-2 cursor-pointer flex items-center justify-between transition-all duration-150',
+                'px-3 py-2 flex items-center justify-between gap-2 transition-all duration-150',
+                isLocked(j)
+                  ? 'cursor-not-allowed opacity-50'
+                  : 'cursor-pointer',
                 store.paper.journal === j || highlightedIndex === idx ? 'bg-cream-100 dark:bg-ash-700 font-medium text-navy-700 dark:text-cream-200 translate-x-1' : 'text-ink-800 dark:text-ash-100 hover:bg-cream-100 hover:dark:bg-ash-700 hover:translate-x-1 hover:font-medium hover:text-navy-700 hover:dark:text-cream-200',
               ]"
             >
-              <span>{{ j }}</span>
-              <span v-if="store.paper.journal === j" class="text-xs text-[#238f7f] dark:text-[#4eb2a3]">✓</span>
+              <span class="flex items-center gap-2 min-w-0">
+                <span class="truncate">{{ j }}</span>
+              </span>
+              <span class="flex items-center gap-1.5 shrink-0">
+                <BadgeTier :badge="tierKey(j)" size="xs" />
+                <span v-if="isLocked(j)" class="text-xs">🔒</span>
+                <span v-if="store.paper.journal === j" class="text-xs text-[#238f7f] dark:text-[#4eb2a3]">✓</span>
+              </span>
             </li>
           </ul>
           <p v-if="open && search && filtered.length === 0" class="absolute mt-1 text-xs text-ink-600 dark:text-ash-300 z-50 bg-white dark:bg-ash-800 border border-cream-300 dark:border-ash-600 rounded-lg px-3 py-2 shadow">
@@ -224,10 +233,13 @@
 // @ts-nocheck
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePaperStore } from '../stores/paper'
+import { useAuthStore } from '../stores/auth'
 import DiffBlock from './DiffBlock.vue'
+import BadgeTier from './BadgeTier.vue'
 import { renderLatex, renderRichText } from '../composables/useMathRender'
 import { useSanitize } from '../composables/useSanitize'
 import { getJournalLayout } from '../composables/journalLayouts'
+import { journalTier, isJournalUnlocked, TIER_SHORT, BADGE_TIERS, type BadgeKey } from '../config/badgeTiers'
 import api from '../api/index.js'
 
 const failedImages = ref(new Set<string>())
@@ -272,7 +284,23 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const store = usePaperStore()
+const authStore = useAuthStore()
 const journalLabel = computed(() => store.paper.journal || 'IEEE')
+
+const userBadge = computed<BadgeKey | undefined>(() => authStore.user?.badge as BadgeKey | undefined)
+
+function isLocked(j: string): boolean {
+  return !isJournalUnlocked(j, userBadge.value)
+}
+function tierShort(j: string): string {
+  return TIER_SHORT[journalTier(j)]
+}
+function tierLabel(j: string): string {
+  return BADGE_TIERS[journalTier(j)].label
+}
+function tierKey(j: string): string {
+  return journalTier(j)
+}
 
 // Journal search dropdown
 const search = ref<string>('')
@@ -291,18 +319,33 @@ function pick(journal: string): void {
   open.value = false
   search.value = ''
   highlightedIndex.value = -1
+  // Cancel any in-flight render before starting new one
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
+  if (renderDebounceTimer) { clearTimeout(renderDebounceTimer); renderDebounceTimer = null }
+  pdfLoading.value = false
+  pdfUrl.value = ''
+  clearPdfBlobUrl()
+  pdfError.value = false
+  pdfProgress.value = 0
   // Auto render dengan template baru
   nextTick(() => renderPdf())
 }
 
 function moveHighlight(delta: number): void {
   if (!filtered.value.length) return
-  highlightedIndex.value = Math.max(0, Math.min(filtered.value.length - 1, highlightedIndex.value + delta))
+  let next = highlightedIndex.value
+  let attempts = 0
+  do {
+    next = Math.max(0, Math.min(filtered.value.length - 1, next + delta))
+    attempts++
+  } while (isLocked(filtered.value[next]) && attempts < filtered.value.length)
+  highlightedIndex.value = next
 }
 
 function pickHighlighted(): void {
   if (highlightedIndex.value >= 0 && highlightedIndex.value < filtered.value.length) {
-    pick(filtered.value[highlightedIndex.value])
+    const j = filtered.value[highlightedIndex.value]
+    if (!isLocked(j)) pick(j)
   }
 }
 
@@ -312,9 +355,19 @@ function handleClickOutside(e: MouseEvent): void {
   }
 }
 
+// Auto-switch journal if current one is locked for user's tier
+watch(userBadge, () => {
+  if (store.paper.journal && isLocked(store.paper.journal)) {
+    pick('IEEE')
+  }
+})
+
 // Fetch journals on mount
 onMounted(() => {
   store.fetchJournals()
+  if (store.paper.journal && isLocked(store.paper.journal)) {
+    pick('IEEE')
+  }
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -569,8 +622,10 @@ function triggerRender() {
 }
 
 async function renderPdf() {
-  if (pdfLoading.value) return
   if (!store.currentPaperId) return
+  // Cancel any in-flight render (from previous journal or tab switch)
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null }
+  if (renderDebounceTimer) { clearTimeout(renderDebounceTimer); renderDebounceTimer = null }
   pdfLoading.value = true
   pdfError.value = false
   pdfUrl.value = ''
@@ -586,9 +641,11 @@ async function renderPdf() {
   }, 500)
 
   try {
+    // Send current paper data from store to bypass DB race (auto-save is 800ms debounced)
+    const paperPayload = store.toPaperJson ? store.toPaperJson() : store.paper
     const res = await api.post(
       `/api/papers/${encodeURIComponent(String(store.currentPaperId))}/pdf-preview`,
-      { journal: store.paper.journal || 'IEEE' },
+      { journal: store.paper.journal || 'IEEE', paper: paperPayload },
       { timeout: 300000 }
     )
     if (res.data?.pdf_url) {

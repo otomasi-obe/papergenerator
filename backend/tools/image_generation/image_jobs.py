@@ -130,7 +130,14 @@ def get_image_job(job_id: str):
     job = ImageGenJob.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
         return jsonify({"error": "Job not found"}), 404
-    return jsonify(job.to_dict())
+    result = job.to_dict()
+    # Add queue position for frontend display
+    try:
+        from .worker import get_queue_position
+        result["queue_position"] = get_queue_position(job_id)
+    except Exception:
+        result["queue_position"] = -1
+    return jsonify(result)
 
 
 @image_jobs.route("/<job_id>/cancel", methods=["POST"])

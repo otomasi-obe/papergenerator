@@ -640,8 +640,10 @@ def add_figure(doc, fig_data, fig_counter):
     image_path = None
     if "Path" in fig_data and fig_data["Path"]:
         raw = str(fig_data["Path"])
-        # Resolve relative to TEMPLATE_JSON directory
-        img_p = TEMPLATE_JSON.parent.parent / "image" / Path(raw).name
+        # Resolve: try canonical json_dir/image/ first, then legacy parent/image/
+        img_p = TEMPLATE_JSON.parent / "image" / Path(raw).name
+        if not img_p.exists():
+            img_p = TEMPLATE_JSON.parent.parent / "image" / Path(raw).name
         if img_p.exists():
             image_path = img_p
         else:

@@ -188,10 +188,10 @@
  </div>
  <div class="grid md:grid-cols-3 gap-6">
  <div v-for="(feature, index) in features" :key="feature.title"
- class="feat-card bg-white/5 border border-white/10 rounded-2xl p-6" :style="{ '--stagger': index + 'ms' }">
- <div class="text-3xl mb-4" aria-hidden="true">{{ feature.icon }}</div>
- <h3 class="text-lg font-semibold mb-2">{{ feature.title }}</h3>
- <p class="text-cream-300/80 text-sm leading-relaxed">{{ feature.description }}</p>
+ class="feat-card bg-white/[0.04] border border-white/[0.08] rounded-2xl p-6 hover:bg-white/[0.08] hover:border-white/[0.15] hover:shadow-[0_8px_40px_rgba(192,219,255,0.08)] transition-all duration-300" :style="{ '--stagger': index + 'ms' }">
+ <div class="text-3xl mb-4 transition-transform duration-300 group-hover:scale-110" aria-hidden="true">{{ feature.icon }}</div>
+ <h3 class="text-lg font-semibold mb-2 text-cream-50">{{ feature.title }}</h3>
+ <p class="text-cream-300/70 text-sm leading-relaxed">{{ feature.description }}</p>
  </div>
  </div>
  </section>
@@ -274,11 +274,13 @@
 
  <!-- CTA -->
  <section class="max-w-3xl mx-auto px-8 pb-24 text-center">
- <div class="bg-gradient-to-r from-navy-500/20 to-navy-400/20 border border-navy-400/30 rounded-3xl p-12">
- <h2 class="text-3xl font-bold mb-4 font-serif">Ready to write your paper?</h2>
- <p class="text-cream-200/70 mb-8">Join researchers using AI to accelerate their academic writing.</p>
+ <div class="bg-gradient-to-br from-navy-500/20 via-navy-400/10 to-amber-500/10 border border-navy-400/20 rounded-3xl p-12 relative overflow-hidden">
+ <!-- Decorative gradient orb -->
+ <div class="absolute -top-20 -right-20 w-60 h-60 bg-gradient-to-br from-amber-400/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+ <h2 class="text-3xl font-bold mb-4 font-serif relative">Ready to write your paper?</h2>
+ <p class="text-cream-200/60 mb-8 relative">Join researchers using AI to accelerate their academic writing.</p>
  <router-link to="/login"
- class="inline-flex items-center gap-3 px-8 py-4 bg-navy-500 hover:bg-navy-400 text-white rounded-xl font-semibold transition shadow-lg active:scale-95"
+ class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-white rounded-xl font-semibold transition-all shadow-[0_4px_24px_rgba(245,158,11,0.3)] active:scale-95 relative"
  >
  Start Writing for Free
  </router-link>

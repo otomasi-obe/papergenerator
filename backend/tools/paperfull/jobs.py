@@ -518,6 +518,15 @@ def _reconcile_section_images(paper_data: dict, paper_id: str, upload_base: Path
                         obj["Path"] = base
                         used_images.add(base)
                         return
+                # ── Skip reconciliation if user already set a valid image ──
+                # If Path is a bare filename that exists in the image folder,
+                # the user manually selected it — don't override their choice.
+                if current_path and not os.path.isabs(current_path):
+                    base = os.path.basename(current_path).replace(" ", "")
+                    if base in {f.name for f in image_files}:
+                        obj["Path"] = base
+                        used_images.add(base)
+                        return
                 # Find matching image
                 matched = _find_matching_image(obj)
                 if matched:
@@ -3427,19 +3436,19 @@ def generate_stream(paper_id: str):
                                     _max_retry_attempt = max(_max_retry_attempt, _img.retry_count or 0)
 
                         _all_done = _img_done
-                        _pending = _total_jobs - _all_done
+                        _pending = _total_jobs - _all_done - _img_retrying
 
                         # Emit progress every 3 seconds at most
                         if _time.time() - _last_progress_emit > 3:
-                            msg_parts = [f'Generating images: {_all_done}/{_total_jobs} done']
+                            msg_parts = [f'Generating images: {_img_done}/{_total_jobs} done']
                             if _img_retrying > 0:
                                 msg_parts.append(f'({_img_retrying} retrying, attempt {_max_retry_attempt}/3)')
                             elif _img_errors > 0:
                                 msg_parts.append(f'({_img_errors} errors)')
-                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': ' '.join(msg_parts), 'total': _total_jobs, 'done': _all_done, 'errors': _img_errors, 'retrying': _img_retrying})}\n\n"
+                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': ' '.join(msg_parts), 'total': _total_jobs, 'done': _img_done, 'errors': _img_errors, 'retrying': _img_retrying})}\n\n"
                             _last_progress_emit = _time.time()
 
-                        if _pending <= 0:
+                        if _pending <= 0 and _img_retrying == 0:
                             final_msg = f'All {_total_jobs} images generated!' if _img_errors == 0 else f'{_total_jobs - _img_errors}/{_total_jobs} images generated ({_img_errors} errors)'
                             log.info("[paperfull] All %d image/chart jobs completed in %.1fs for paper %s (%d errors)", _total_jobs, _elapsed_wait, paper_id, _img_errors)
                             yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': final_msg, 'total': _total_jobs, 'done': _total_jobs, 'errors': _img_errors})}\n\n"
