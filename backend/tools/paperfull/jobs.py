@@ -3425,14 +3425,22 @@ def generate_stream(paper_id: str):
                 log.info("[paperfull] Waiting for %d image/chart jobs for paper %s", _total_jobs, paper_id)
 
                 _wait_start = _time.time()
-                _max_wait = 120  # 2 minutes max — remaining images reconciled async
+                _max_wait = 900  # 15 minutes — wait for ALL images (elite GPT-5.5-image ~80s each × N)
                 _last_progress_emit = -10  # emit immediately on first check
 
                 while True:
                     _elapsed_wait = _time.time() - _wait_start
                     if _elapsed_wait > _max_wait:
-                        log.warning("[paperfull] Image wait timed out after %.0fs for paper %s", _elapsed_wait, paper_id)
-                        yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': 'Image generation timed out — some images may be missing', 'total': _total_jobs, 'done': _total_jobs})}\n\n"
+                        # Only emit timeout if some images still not done
+                        try:
+                            _still_done = sum(1 for _jid in image_job_ids if ImageGenJob.query.get(_jid) and ImageGenJob.query.get(_jid).status == "done")
+                            _still_errors = sum(1 for _jid in image_job_ids if ImageGenJob.query.get(_jid) and ImageGenJob.query.get(_jid).status in ("error", "failed"))
+                            _still_total = _still_done + _still_errors
+                        except Exception:
+                            _still_total = _total_jobs
+                        if _still_total < _total_jobs:
+                            log.warning("[paperfull] Image wait timed out after %.0fs for paper %s (got %d/%d)", _elapsed_wait, paper_id, _still_total, _total_jobs)
+                            yield f"event: progress\ndata: {_json.dumps({'stage': 'image_generation', 'message': 'Image generation timed out — some images may be missing', 'total': _total_jobs, 'done': _still_total})}\n\n"
                         break
 
                     try:
@@ -3484,6 +3492,28 @@ def generate_stream(paper_id: str):
 
                     _time.sleep(3)
 
+            # ── Reconcile image paths BEFORE images_complete ──────────────────
+            # MUST complete before frontend reloads on images_complete event,
+            # so images are already embedded when user sees "all images done".
+            if generate_images and _all_job_ids:
+                try:
+                    with _app.app_context():
+                        from tools.image_generation.reconcile import reconcile_figure_images
+                        from tools.editor.utils import safe_paper_image_dir
+                        _upl = safe_paper_image_dir(paper_id)
+                        _upload_base = _upl.parent if _upl else None
+                        if _upload_base is not None:
+                            _p = Paper.query.get(paper_id)
+                            if _p and _p.data:
+                                reconcile_figure_images(paper_id, _p.data, _upload_base)
+                                _reconcile_section_images(_p.data, paper_id, _upload_base)
+                                ok_rec, rec_err = _persist_paper_data(paper_id, user_id, _p.data)
+                                if not ok_rec:
+                                    log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
+                                log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
+                except Exception as _rec_e:
+                    log.warning("[paperfull] Image reconciliation failed for paper %s: %s", paper_id, _rec_e)
+
             # ── Count errors for images_complete event ────────────────────────
             error_count = 0
             if generate_images:
@@ -3495,36 +3525,8 @@ def generate_stream(paper_id: str):
                 except Exception:
                     pass
 
-            # ── Send images_complete event ─────────────────────────────
+            # ── Send images_complete event (reconcile already done) ──────────
             yield f"event: images_complete\ndata: {_json.dumps({'image_jobs': image_job_ids, 'errors': error_count, 'total': len(image_job_ids) })}\n\n"
-
-            # ── Reconcile image paths AFTER images_complete ──────────────────
-            # Runs in background thread so it survives GeneratorExit (client disconnect).
-            # Frontend reloads on images_complete, so reconciliation MUST complete
-            # before the user reloads. We start it here and detach.
-            if generate_images and _all_job_ids:
-                import threading
-                def _reconcile_bg():
-                    try:
-                        with _app.app_context():
-                            from tools.image_generation.reconcile import reconcile_figure_images
-                            from tools.editor.utils import safe_paper_image_dir
-                            _upl = safe_paper_image_dir(paper_id)
-                            _upload_base = _upl.parent if _upl else None
-                            if _upload_base is not None:
-                                # Need fresh paper_data for reconciliation
-                                _p = Paper.query.get(paper_id)
-                                if _p and _p.data:
-                                    reconcile_figure_images(paper_id, _p.data, _upload_base)
-                                    _reconcile_section_images(_p.data, paper_id, _upload_base)
-                                    ok_rec, rec_err = _persist_paper_data(paper_id, user_id, _p.data)
-                                    if not ok_rec:
-                                        log.warning("[paperfull] Image reconciliation re-save failed for paper %s: %s", paper_id, rec_err)
-                                    log.info("[paperfull] Image reconciliation complete for paper %s", paper_id)
-                    except Exception as _bg_e:
-                        log.warning("[paperfull] Background image reconciliation failed for paper %s: %s", paper_id, _bg_e)
-                _t = threading.Thread(target=_reconcile_bg, daemon=True)
-                _t.start()
 
         except GeneratorExit:
             # Client disconnected before SSE finished. Do NOT try to write to

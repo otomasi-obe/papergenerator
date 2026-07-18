@@ -1538,8 +1538,22 @@ function startSSEPolling(jobId) {
                   }
                 }
                 if (data.status === 'complete') {
-                  finishGeneration()
-                  return
+                  // Backend sends 'complete' when TEXT is done, but images may still be generating.
+                  // Wait for 'images_complete' event before finishing.
+                  if (data.total_jobs && data.total_jobs > 0) {
+                    // Show image generation progress panel
+                    imageGenProgress.value = {
+                      total: data.total_jobs,
+                      done: 0,
+                      message: `Generating ${data.total_jobs} images...`,
+                      retrying: 0
+                    }
+                    // Don't finish — keep SSE alive for progress/images_complete events
+                  } else {
+                    // No images to generate, safe to finish
+                    finishGeneration()
+                    return
+                  }
                 }
                 if (data.status === 'cancelled') {
                   // Don't call cancelGeneration() here — it aborts the stream we're reading from.

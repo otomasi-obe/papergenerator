@@ -77,6 +77,12 @@ from utils.job_core import (
 )
 from tools.payment.doku import doku_bp
 
+# Developer Room blueprint
+try:
+    from tools.dev.dev import dev
+except ImportError:
+    dev = None
+
 # ── Sentry / GlitchTip integration (no-op when DSN empty) ────────────────────
 try:
     import sentry_sdk
@@ -610,6 +616,10 @@ app.register_blueprint(tools_api)
 app.register_blueprint(logging_api)
 app.register_blueprint(state_bp)
 app.register_blueprint(doku_bp)    # DOKU SNAP payment endpoints (QRIS + VA)
+
+# Developer Room (restricted access)
+if dev:
+    app.register_blueprint(dev)
 
 # ─── Image generation provider health endpoint ─────────────────────
 @app.route("/api/image-providers/status", methods=["GET"])
