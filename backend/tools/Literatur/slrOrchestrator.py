@@ -67,7 +67,9 @@ log.info("slrOrchestrator initialized with logging to %s", _LOG_FILE)
 # ── Configuration ──────────────────────────────────────────────────────────
 
 MAX_WORKERS_DEFAULT = 8
-FETCH_TIMEOUT_SEC = 300  # 5 min total fetch
+FETCH_TIMEOUT_SEC = 300          # 5 min total fetch
+PER_FETCHER_TIMEOUT_SEC = 30     # 30 sec per individual fetcher
+MAX_FETCHER_RETRIES = 2          # Retry failed fetchers up to 2 times
 # PER_FETCHER_LIMIT removed — per-fetcher limit is now computed dynamically as top_n * 2 in run_slr()
 RATE_LIMITERS: dict[str, RateLimiter] = {}
 
@@ -121,15 +123,26 @@ def _get_rate_limiters() -> dict[str, RateLimiter]:
     return RATE_LIMITERS
 
 
-# ── Fetch worker ───────────────────────────────────────────────────────────
+# ── Fetch worker with timeout & retry ──────────────────────────────────────
 
 def _fetch_single_source(
     fetcher_name: str,
     query: str,
     limit: Optional[int] = None,
     filters: Optional[dict] = None,
+    timeout: int = PER_FETCHER_TIMEOUT_SEC,
+    max_retries: int = MAX_FETCHER_RETRIES,
 ) -> list[Paper]:
-    """Fetch papers from single source. No hard limit if limit=None."""
+    """Fetch papers from single source with timeout and retry.
+    
+    Args:
+        fetcher_name: Name of fetcher (e.g., 'openalex', 'pubmed')
+        query: Search query string
+        limit: Max papers per fetcher
+        filters: Additional filters (year_from, year_to, etc.)
+        timeout: Timeout per attempt in seconds
+        max_retries: Number of retry attempts on failure
+    """
     if fetcher_name not in FETCHER_ALL:
         log.warning("Fetcher %s not found in ALL", fetcher_name)
         return []
@@ -138,35 +151,74 @@ def _fetch_single_source(
     rate_limiters = _get_rate_limiters()
     rl = rate_limiters.get(fetcher_name, RateLimiter(min_interval=0.5))
 
-    try:
-        client = get_client()
-        rl.wait()
-        
-        log.info(
-            "Fetcher %s: query=%s, limit=%s",
-            fetcher_name, query[:50], limit,
-        )
-        
-        papers = list(fetcher.search(
-            client=client,
-            query=query,
-            limit=limit,
-            filters=filters or {},
-        ))
-        
-        log.info(
-            "Fetcher %s: fetched %d papers (query=%s)",
-            fetcher_name, len(papers), query[:50],
-        )
-        
-        return papers
-        
-    except Exception as exc:
-        log.warning(
-            "Fetcher %s failed (query=%s): %s",
-            fetcher_name, query[:50], exc,
-        )
-        return []
+    last_exception = None
+    
+    for attempt in range(max_retries + 1):
+        try:
+            client = get_client()
+            rl.wait()
+            
+            log.info(
+                "Fetcher %s (attempt %d/%d): query=%s, limit=%s",
+                fetcher_name, attempt + 1, max_retries + 1, query[:50], limit,
+            )
+            
+            # Use threading timeout for the fetch operation
+            import threading
+            import queue
+            
+            result_queue: queue.Queue[list[Paper]] = queue.Queue()
+            exc_queue: queue.Queue[Exception] = queue.Queue()
+            
+            def fetch_worker():
+                try:
+                    papers = list(fetcher.search(
+                        client=client,
+                        query=query,
+                        limit=limit,
+                        filters=filters or {},
+                    ))
+                    result_queue.put(papers)
+                except Exception as exc:
+                    exc_queue.put(exc)
+            
+            thread = threading.Thread(target=fetch_worker, daemon=True)
+            thread.start()
+            thread.join(timeout=timeout)
+            
+            if thread.is_alive():
+                # Timeout occurred
+                raise TimeoutError(f"Fetcher {fetcher_name} timed out after {timeout}s")
+            
+            if not exc_queue.empty():
+                raise exc_queue.get()
+            
+            papers = result_queue.get()
+            
+            log.info(
+                "Fetcher %s: fetched %d papers (query=%s)",
+                fetcher_name, len(papers), query[:50],
+            )
+            
+            return papers
+            
+        except Exception as exc:
+            last_exception = exc
+            if attempt < max_retries:
+                wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s
+                log.warning(
+                    "Fetcher %s attempt %d failed: %s. Retrying in %ds...",
+                    fetcher_name, attempt + 1, exc, wait_time
+                )
+                time.sleep(wait_time)
+            else:
+                log.warning(
+                    "Fetcher %s failed after %d attempts (query=%s): %s",
+                    fetcher_name, max_retries + 1, query[:50], exc,
+                )
+                return []
+    
+    return []
 
 
 # ── Main orchestrator ──────────────────────────────────────────────────────
@@ -273,7 +325,14 @@ def run_slr(
         for q in queries:
             fetch_tasks.append((fn, q))
     
-    log.info("Submitting %d fetch tasks...", len(fetch_tasks))
+    log.info(
+        "Submitting %d fetch tasks (timeout=%ds, max_retries=%d)...",
+        len(fetch_tasks), PER_FETCHER_TIMEOUT_SEC, MAX_FETCHER_RETRIES,
+    )
+    
+    # Track failed fetchers for auto-fallback
+    failed_fetchers: set[str] = set()
+    successful_fetchers: set[str] = set()
     
     # Submit all tasks
     with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="slr-fetch") as executor:
@@ -298,6 +357,13 @@ def run_slr(
                     log.warning("Fetch task %s (q=%s) failed: %s", fn, q[:30], exc)
                     papers = []
                 
+                # Track fetcher success/failure
+                if papers:
+                    successful_fetchers.add(fn)
+                    failed_fetchers.discard(fn)
+                else:
+                    failed_fetchers.add(fn)
+                
                 # Dedup on-the-fly
                 for p in papers:
                     k = p.dedup_key()
@@ -308,14 +374,51 @@ def run_slr(
                 completed += 1
                 if completed % max(1, len(fetch_tasks) // 5) == 0:
                     log.info(
-                        "Fetch progress: %d/%d tasks completed, %d unique papers so far",
+                        "Fetch progress: %d/%d tasks done, %d unique papers, "
+                        "failed: %s",
                         completed, len(fetch_tasks), len(all_papers),
+                        list(failed_fetchers)[:5],
                     )
         except TimeoutError:
-            log.warning("Fetch timeout after %ds — %d/%d tasks completed, using partial results",
+            log.warning("Fetch timeout after %ds — %d/%d tasks done, using partial results",
                         FETCH_TIMEOUT_SEC, completed, len(futures))
             for f in futures:
                 f.cancel()
+    
+    # ── Stage 2.5: Auto-fallback for failed Tier 1 fetchers ──────────
+    # If a primary fetcher (OpenAlex, Crossref, Semantic Scholar) failed,
+    # retry with fallback query to ensure coverage
+    if failed_fetchers:
+        fallback_fetchers = failed_fetchers & FETCHER_ALL.keys()
+        if fallback_fetchers:
+            log.info("Auto-fallback: retrying %d failed fetchers with simplified query...",
+                     len(fallback_fetchers))
+            
+            for fn in list(fallback_fetchers):
+                # Get the original query for this fetcher
+                orig_queries = fetch_map.get(fn, [])
+                if not orig_queries:
+                    continue
+                
+                # Try with simplified query (first query, shortened)
+                simple_query = orig_queries[0][:80]
+                log.info("Fallback fetcher %s: trying simplified query '%s'", fn, simple_query)
+                
+                fallback_papers = _fetch_single_source(
+                    fn, simple_query,
+                    limit=per_fetcher_limit,
+                    filters=filters,
+                    timeout=PER_FETCHER_TIMEOUT_SEC,
+                    max_retries=1,  # Only 1 retry for fallback
+                )
+                
+                if fallback_papers:
+                    for p in fallback_papers:
+                        k = p.dedup_key()
+                        if k not in seen_keys:
+                            seen_keys[k] = len(all_papers)
+                            all_papers.append(p)
+                    log.info("Fallback %s: recovered %d papers", fn, len(fallback_papers))
     
     elapsed = time.time() - start_time
     log.info(
