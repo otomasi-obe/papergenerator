@@ -477,6 +477,17 @@ def run_slr(
         log.warning("programmatic_rank failed (%s), using original order", exc)
         ranked_papers = unique_papers
     
+    # ── Stage 5.5: Semantic rank (SBERT) ───────────────────────────────
+    # Optional enhancement: combine BM25 with SBERT embeddings
+    try:
+        from tools.Literatur.slrSemantic import semantic_rank
+        ranked_papers = semantic_rank(ranked_papers, keyword, weight=0.4)
+        log.info("SBERT semantic ranking applied (weight=40%%)")
+    except ImportError:
+        log.debug("SBERT not available (sentence-transformers not installed), using BM25 only")
+    except Exception as exc:
+        log.warning("SBERT semantic rank failed (%s), keeping BM25 scores", exc)
+    
     log.info("Ranked papers")
     
     # ── Stage 6: Group ──────────────────────────────────────────────────
