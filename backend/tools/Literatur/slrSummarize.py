@@ -229,12 +229,23 @@ def programmatic_rank(papers: list[dict], query: str) -> list[dict]:
 
     query_lower = query.lower()
 
-    # Pre-compute max citations for log-normalization
-    max_citations = max((p.get("citations", 0) or 0 for p in papers), default=1)
-    if max_citations == 0:
-        max_citations = 1
-    # Log-scale: log(citations+1) / log(max_citations+1) → prevents single paper dominating
-    max_log_cit = math.log(max_citations + 1)
+    # Pre-compute per-source citation statistics for fair cross-source normalization
+    # Group papers by source, compute max log-citations per source
+    source_to_papers: dict[str, list[dict]] = {}
+    for p in papers:
+        src = p.get("source", "unknown")
+        if src not in source_to_papers:
+            source_to_papers[src] = []
+        source_to_papers[src].append(p)
+    
+    source_max_log_cit: dict[str, float] = {}
+    for src, src_papers in source_to_papers.items():
+        max_cit = max((p.get("citations", 0) or 0 for p in src_papers), default=1)
+        source_max_log_cit[src] = math.log(max_cit + 1) if max_cit > 0 else 1.0
+    
+    # Global fallback
+    global_max_cit = max((p.get("citations", 0) or 0 for p in papers), default=1)
+    global_max_log_cit = math.log(global_max_cit + 1)
 
     # ── Build corpus statistics for BM25 (title + abstract) ──────────────
     # Combine title + abstract as document text
@@ -296,9 +307,11 @@ def programmatic_rank(papers: list[dict], query: str) -> list[dict]:
         norm_bm25_title = min(bm25_title / 5.0, 1.0)
         norm_bm25_abstract = min(bm25_abstract / 5.0, 1.0)
 
-        # Citations (20%): log-normalized to 0-1
+        # Citations (20%): log-normalized to 0-1 (per-source for fairness)
         citations = paper.get("citations", 0) or 0
-        cit_norm = math.log(citations + 1) / max_log_cit if max_log_cit > 0 else 0
+        src = paper.get("source", "unknown")
+        src_max_log = source_max_log_cit.get(src, global_max_log_cit)
+        cit_norm = math.log(citations + 1) / src_max_log if src_max_log > 0 else 0
 
         # Recency (10%): 2020+ gets full score, older gets linear decay
         year = paper.get("year", 0) or 0
