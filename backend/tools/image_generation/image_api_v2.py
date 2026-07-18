@@ -7,6 +7,12 @@ Env:
   IMAGE_GEN_API_KEY  — Bearer token (required)
   IMAGE_GEN_API_URL  — base URL (default https://ai.otomasi.app)
   IMAGE_GEN_MODELS   — comma-separated model list (default: cx/gpt-5.5-image,ag/gemini-3.1-flash-image,alibaba-media/wan2.6-t2i)
+
+Badge-tier model mapping (fallback if badge provided):
+  Elite:    GPT-Image + SDXL
+  Pro:      Flux 2 + Dreamshaper + SDXL
+  Starter:  SDXL Lightning + Flux 2
+  Trial:    SDXL Lightning + Dreamshaper
 """
 
 from __future__ import annotations
@@ -15,7 +21,6 @@ import base64
 import json
 import logging
 import os
-import re
 from pathlib import Path
 from typing import Optional
 
@@ -24,9 +29,30 @@ log = logging.getLogger(__name__)
 API_URL = (os.environ.get("IMAGE_GEN_API_URL") or "https://ai.otomasi.app").rstrip("/")
 API_KEY = os.environ.get("IMAGE_GEN_API_KEY") or ""
 
-# Multi-model fallback list — tried in order until one succeeds
+# Default fallback models (used when no badge or unknown badge)
 _DEFAULT_MODELS = "cx/gpt-5.5-image,ag/gemini-3.1-flash-image,alibaba-media/wan2.6-t2i"
 MODELS = [m.strip() for m in os.environ.get("IMAGE_GEN_MODELS", _DEFAULT_MODELS).split(",") if m.strip()]
+
+# Badge-tier model mapping (all free Cloudflare models except GPT-Image)
+BADGE_MODELS = {
+    "elite": [
+        "cx/gpt-5.5-image",
+        "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
+    ],
+    "pro": [
+        "cf/@cf/black-forest-labs/flux-2-klein-9b",
+        "cf/@cf/lykon/dreamshaper-8-lcm",
+        "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
+    ],
+    "starter": [
+        "cf/@cf/bytedance/stable-diffusion-xl-lightning",
+        "cf/@cf/black-forest-labs/flux-2-klein-9b",
+    ],
+    "trial": [
+        "cf/@cf/bytedance/stable-diffusion-xl-lightning",
+        "cf/@cf/lykon/dreamshaper-8-lcm",
+    ],
+}
 
 # ponytail: no timeout — user requirement. API can take minutes for complex prompts.
 _TIMEOUT = int(os.environ.get("IMAGE_GEN_TIMEOUT_S", "0")) or None
@@ -39,8 +65,14 @@ def generate_image(
     compress: bool = True,
     max_size_mb: float = 1.0,
     generate_timeout_s: int = 0,
+    badge: Optional[str] = None,
 ) -> dict:
-    """Generate image via ai.otomasi.app SSE endpoint. Multi-model fallback."""
+    """Generate image via ai.otomasi.app SSE endpoint. Multi-model fallback.
+
+    Args:
+        badge: User badge tier ('elite', 'pro', 'starter', 'trial'). If provided,
+               uses tier-specific model list. Falls back to MODELS if unknown.
+    """
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -55,11 +87,19 @@ def generate_image(
     timeout_val = generate_timeout_s or _TIMEOUT
     timeout = httpx.Timeout(timeout_val) if timeout_val else httpx.Timeout(None)
 
+    # Select model list based on badge
+    if badge and badge.lower() in BADGE_MODELS:
+        models = BADGE_MODELS[badge.lower()]
+        log.info("image_api: badge=%s, using tier models: %s", badge, models)
+    else:
+        models = MODELS
+        log.info("image_api: no badge or unknown badge='%s', using default models: %s", badge, models)
+
     last_error: Optional[str] = None
 
-    for i, model in enumerate(MODELS):
+    for i, model in enumerate(models):
         attempt = i + 1
-        log.info("image_api: attempt %d/%d model=%s", attempt, len(MODELS), model)
+        log.info("image_api: attempt %d/%d model=%s", attempt, len(models), model)
         try:
             result = _try_model(model, prompt, out, timeout, httpx)
             if compress:
@@ -68,7 +108,7 @@ def generate_image(
             return result
         except Exception as e:
             last_error = f"model={model}: {e}"
-            log.warning("image_api: attempt %d/%d model=%s FAILED: %s", attempt, len(MODELS), model, str(e)[:300])
+            log.warning("image_api: attempt %d/%d model=%s FAILED: %s", attempt, len(models), model, str(e)[:300])
             # Clean up partial file
             if out.exists():
                 try:
@@ -76,53 +116,68 @@ def generate_image(
                 except Exception:
                     pass
 
-    raise RuntimeError(f"All {len(MODELS)} models failed. Last error: {last_error}")
+    raise RuntimeError(f"All {len(models)} models failed. Last error: {last_error}")
 
 
 def _try_model(model: str, prompt: str, out: Path, timeout, httpx) -> dict:
     """Try generating with a single model. Raises on failure."""
     url = f"{API_URL}/v1/images/generations"
+    
+    # Cloudflare models use JSON response, others use SSE
+    is_cloudflare = model.startswith("cf/@cf/")
+    
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json",
-        "Accept": "text/event-stream",
     }
+    if not is_cloudflare:
+        headers["Accept"] = "text/event-stream"
+    
     payload = {
         "model": model,
         "prompt": prompt,
         "n": 1,
-        "size": "auto",
-        "quality": "auto",
-        "background": "auto",
-        "image_detail": "high",
-        "output_format": "png",
+        "size": "512x512" if is_cloudflare else "auto",
     }
 
     image_bytes: Optional[bytes] = None
+    last_b64: Optional[str] = None
 
     with httpx.Client(timeout=timeout) as client:
-        with client.stream("POST", url, headers=headers, json=payload) as resp:
+        if is_cloudflare:
+            # Direct JSON response for Cloudflare models
+            resp = client.post(url, headers=headers, json=payload)
             if resp.status_code != 200:
-                body = resp.read().decode("utf-8", errors="replace")[:500]
+                body = resp.text[:500]
                 raise RuntimeError(f"HTTP {resp.status_code}: {body}")
+            
+            data = resp.json()
+            # Extract b64_json from data[0].b64_json
+            if "data" in data and data["data"]:
+                last_b64 = data["data"][0].get("b64_json")
+        else:
+            # SSE streaming for other models (GPT-Image, etc.)
+            with client.stream("POST", url, headers=headers, json=payload) as resp:
+                if resp.status_code != 200:
+                    body = resp.read().decode("utf-8", errors="replace")[:500]
+                    raise RuntimeError(f"HTTP {resp.status_code}: {body}")
 
-            # Parse SSE stream: collect last b64_json from any event
-            last_b64: Optional[str] = None
-            for line in resp.iter_lines():
-                if not line:
-                    continue
-                if line.startswith("data:"):
-                    data_str = line[5:].strip()
-                    try:
-                        data = json.loads(data_str)
-                    except (json.JSONDecodeError, ValueError):
+                # Parse SSE stream: collect last b64_json from any event
+                for line in resp.iter_lines():
+                    if not line:
                         continue
-                    b64 = data.get("b64_json")
-                    if b64:
-                        last_b64 = b64
+                    if line.startswith("data:"):
+                        data_str = line[5:].strip()
+                        try:
+                            data = json.loads(data_str)
+                        except (json.JSONDecodeError, ValueError):
+                            continue
+                        b64 = data.get("b64_json")
+                        if b64:
+                            last_b64 = b64
 
     if not last_b64:
-        raise RuntimeError("No b64_json in SSE response")
+        raise RuntimeError("No b64_json in response")
 
     image_bytes = base64.b64decode(last_b64)
     if not image_bytes or len(image_bytes) < 400:

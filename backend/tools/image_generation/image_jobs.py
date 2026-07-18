@@ -13,7 +13,7 @@ import logging
 import uuid
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required, current_user
 
 from utils.database.models import ImageGenJob, Paper, PaperImage, db, safe_commit
 from tools.editor.utils import PAPER_ID_RE
@@ -67,6 +67,7 @@ def create_image_job():
         paper_id=paper_id,
         prompt=prompt,
         status="queued",
+        badge=current_user.badge if current_user else None,
     )
     db.session.add(job)
     try:

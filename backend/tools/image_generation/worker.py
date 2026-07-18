@@ -136,10 +136,20 @@ class _Worker(threading.Thread):
                 res: dict = {}
                 try:
                     from tools.image_generation.image_api_v2 import generate_image as api_generate_image  # noqa: PLC0415
+                    # Get badge from job record for tier-based model selection
+                    badge = None
+                    try:
+                        with self.app.app_context():
+                            job2 = db.session.get(ImageGenJob, job_id)
+                            if job2:
+                                badge = job2.badge
+                    except Exception:
+                        pass
                     res = api_generate_image(
                         prompt, str(out_path),
                         compress=True,
                         max_size_mb=1.0,
+                        badge=badge,
                     )
                 except Exception as api_err:
                     raise RuntimeError(f"API image generation failed: {api_err}")
