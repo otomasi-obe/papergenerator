@@ -3218,10 +3218,10 @@ def generate_stream(paper_id: str):
                 paper_data["references"] = {"items": _checked_lit_refs}
                 log.warning("[paperfull] Filled missing references from %d checked literature items for paper %s", len(_checked_lit_refs), paper_id)
             elif _refs_empty(paper_data):
-                _update_bell_job("error", 100, error="Generation incomplete: references missing")
-                _pf_snapshot("error", reasoning_acc, full_content, error="Generation incomplete: references missing", force=True)
-                yield f"event: error\ndata: {_json.dumps({'error': 'Generation incomplete: references missing. Please retry; the model stopped before the References section.'})}\n\n"
-                return
+                # No references generated AND no literature items — warn but continue.
+                # ponytail: user can add references manually in editor after generation.
+                log.warning("[paperfull] Paper %s generated without references (no literature items)", paper_id)
+                paper_data["references"] = {"items": []}
 
             # ── Post-process: fix mojibake + clean LaTeX artifacts ────
             from tools.paperfull.text_cleaner import clean_paper_data
