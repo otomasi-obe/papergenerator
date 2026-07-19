@@ -131,7 +131,7 @@
  <p class="text-xs text-ink-600 dark:text-[#fef08a]">{{ auth.user?.email }}</p>
  <div class="flex items-center gap-2 mt-2 flex-wrap">
  <span v-if="auth.isAdmin" class="text-xs bg-navy-200 dark:bg-ash-700 text-ink-900 dark:text-ink-50 px-1.5 py-0.5 rounded-full">Admin</span>
- <BadgeTier v-if="auth.isDeveloper || auth.user?.email === 'anabilhisyam23@gmail.com'" badge="developer" size="sm" />
+ <BadgeTier v-if="auth.isDeveloper" badge="developer" size="sm" />
  <BadgeTier v-if="auth.user?.badge" :badge="auth.user.badge" size="sm" />
  </div>
  </div>

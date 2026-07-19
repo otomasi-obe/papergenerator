@@ -1108,3 +1108,82 @@ def delete_my_account():
     resp = jsonify({"success": True, "message": "Account deleted"})
     unset_jwt_cookies(resp)
     return resp
+
+
+# Dev room access management (only anabilhisyam23@gmail.com can manage)
+DEV_MANAGER_EMAIL = "anabilhisyam23@gmail.com"
+
+
+def _require_dev_manager():
+    """Check if current user is the dev manager."""
+    try:
+        user_id = int(get_jwt_identity())
+    except (ValueError, TypeError):
+        return False
+    user = User.query.get(user_id)
+    return bool(user and user.email == DEV_MANAGER_EMAIL)
+
+
+@auth.route("/dev/list", methods=["GET"])
+@jwt_required()
+def dev_list():
+    """List all developers with dev room access."""
+    if not _require_dev_manager():
+        return jsonify({"error": "Only dev manager can list devs"}), 403
+
+    devs = User.query.filter_by(is_developer=True).all()
+    return jsonify({
+        "developers": [{"id": d.id, "email": d.email, "name": d.name, "role": d.role} for d in devs]
+    })
+
+
+@auth.route("/dev/add", methods=["POST"])
+@jwt_required()
+def dev_add():
+    """Grant dev room access to a user by email."""
+    if not _require_dev_manager():
+        return jsonify({"error": "Only dev manager can add devs"}), 403
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    if user.is_developer:
+        return jsonify({"success": True, "message": f"{email} already has dev access"})
+
+    user.is_developer = True
+    safe_commit()
+    return jsonify({"success": True, "message": f"{email} granted dev access"})
+
+
+@auth.route("/dev/remove", methods=["POST"])
+@jwt_required()
+def dev_remove():
+    """Revoke dev room access from a user by email."""
+    if not _require_dev_manager():
+        return jsonify({"error": "Only dev manager can remove devs"}), 403
+
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "Email required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    if not user.is_developer:
+        return jsonify({"success": True, "message": f"{email} does not have dev access"})
+
+    user.is_developer = False
+    safe_commit()
+    return jsonify({"success": True, "message": f"{email} dev access revoked"})
+
+
+# ------------------------------------------------------------
+# End of file

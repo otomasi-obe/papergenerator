@@ -70,6 +70,8 @@ class User(db.Model):
     # Account deletion (GDPR-style soft delete + anonymize)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False, index=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
+    # Dev room access (granted by anabilhisyam23@gmail.com)
+    is_developer = db.Column(db.Boolean, default=False, nullable=False)
 
     # BUG-11: Validate enum-like fields at the ORM level
     @validates("role")
@@ -115,6 +117,7 @@ class User(db.Model):
             "nickname": self.nickname or "",
             "institution": self.institution or "",
             "preferred_language": self.preferred_language or "id",
+            "is_developer": bool(self.is_developer),
         }
 
 
@@ -760,6 +763,28 @@ class PaperDeleteLog(db.Model):
             "user_email": self.user_email,
             "user_name": self.user_name,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
+        }
+
+
+# ─── Feedback (user kritik & saran) ──────────────────────────────────────────
+class Feedback(db.Model):
+    __tablename__ = "feedback"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    email = db.Column(db.String(255), nullable=True)  # for anonymous or backup
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default="new", nullable=False)  # new, read, archived
+    created_at = db.Column(db.DateTime, default=_utcnow, index=True, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "email": self.email,
+            "message": self.message,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

@@ -93,29 +93,56 @@
               <table class="w-full text-sm">
                 <thead class="text-left text-ink-500 dark:text-ink-300 text-xs uppercase">
                   <tr>
-                    <th class="px-4 py-3">ID</th>
-                    <th class="px-4 py-3">Queue</th>
+                    <th class="px-4 py-3">Job ID</th>
+                    <th class="px-4 py-3">Paper ID</th>
+                    <th class="px-4 py-3">Kind</th>
                     <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Progress</th>
+                    <th class="px-4 py-3">Stage</th>
                     <th class="px-4 py-3">Started</th>
-                    <th class="px-4 py-3">Duration</th>
-                    <th class="px-4 py-3">Meta</th>
+                    <th class="px-4 py-3">Updated</th>
+                    <th class="px-4 py-3">Error</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-cream-200 dark:divide-ash-700">
                   <tr v-for="job in jobs" :key="job.id" class="hover:bg-cream-50 dark:hover:bg-ash-700/50">
                     <td class="px-4 py-3 font-mono text-xs text-ink-700 dark:text-ink-200">{{ job.id.slice(0, 12) }}…</td>
-                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-200">{{ job.queue }}</span></td>
+                    <td class="px-4 py-3 font-mono text-xs text-ink-700 dark:text-ink-200">{{ job.paper_id || '—' }}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-xs bg-cream-100 dark:bg-ash-700 text-ink-700 dark:text-ink-200">{{ job.kind }}</span></td>
                     <td class="px-4 py-3">
                       <span class="px-2 py-0.5 rounded text-xs" :class="jobStatusClass(job.status)">
                         {{ job.status }}
                       </span>
                     </td>
+                    <td class="px-4 py-3">
+                      <div class="w-24 h-2 rounded-full bg-cream-200 dark:bg-ash-700 overflow-hidden">
+                        <div class="h-full transition-all duration-300 bg-blue-500" :style="{ width: (job.progress || 0) + '%' }"></div>
+                      </div>
+                      <span class="text-xs text-ink-500 dark:text-ink-400 ml-1">{{ job.progress || 0 }}%</span>
+                    </td>
+                    <td class="px-4 py-3 text-ink-600 dark:text-ink-300">{{ job.stage || '—' }}</td>
                     <td class="px-4 py-3 text-ink-600 dark:text-ink-300">{{ formatDate(job.started_at) }}</td>
-                    <td class="px-4 py-3 text-ink-600 dark:text-ink-300">{{ job.duration ? job.duration + 's' : '—' }}</td>
-                    <td class="px-4 py-3 text-ink-500 dark:text-ink-400 max-w-xs truncate">{{ job.meta }}</td>
+                    <td class="px-4 py-3 text-ink-600 dark:text-ink-300">{{ formatDate(job.updated_at) }}</td>
+                    <td class="px-4 py-3 text-red-600 dark:text-red-400 max-w-xs truncate" :title="job.error">{{ job.error || '—' }}</td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+            <!-- Pagination -->
+            <div v-if="jobsTotalPages > 1" class="flex items-center justify-between gap-2 mt-4 flex-wrap">
+              <button @click="jobsPage = 1" :disabled="jobsPage <= 1" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="jobsPage === 1 ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                ««
+              </button>
+              <button @click="jobsPage--" :disabled="jobsPage <= 1" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="jobsPage === 1 ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                «
+              </button>
+              <span class="text-xs text-ink-600 dark:text-ink-300">Page {{ jobsPage }} of {{ jobsTotalPages }}</span>
+              <button @click="jobsPage++" :disabled="jobsPage >= jobsTotalPages" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="jobsPage === jobsTotalPages ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                »
+              </button>
+              <button @click="jobsPage = jobsTotalPages" :disabled="jobsPage >= jobsTotalPages" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="jobsPage === jobsTotalPages ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                »»
+              </button>
             </div>
           </div>
           <div v-else class="p-5 text-center text-ink-500 dark:text-ink-400">No jobs found</div>
@@ -177,6 +204,22 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+            <!-- Pagination -->
+            <div v-if="imageJobsTotalPages > 1" class="flex items-center justify-between gap-2 mt-4 flex-wrap">
+              <button @click="imageJobsPage = 1" :disabled="imageJobsPage <= 1" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="imageJobsPage === 1 ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                ««
+              </button>
+              <button @click="imageJobsPage--" :disabled="imageJobsPage <= 1" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="imageJobsPage === 1 ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                «
+              </button>
+              <span class="text-xs text-ink-600 dark:text-ink-300">Page {{ imageJobsPage }} of {{ imageJobsTotalPages }}</span>
+              <button @click="imageJobsPage++" :disabled="imageJobsPage >= imageJobsTotalPages" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="imageJobsPage === imageJobsTotalPages ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                »
+              </button>
+              <button @click="imageJobsPage = imageJobsTotalPages" :disabled="imageJobsPage >= imageJobsTotalPages" class="px-2 py-1 rounded text-[10px] font-medium border transition-colors" :class="imageJobsPage === imageJobsTotalPages ? 'bg-navy-700 text-cream-50 border-navy-700' : 'border-ivory-300 dark:border-ash-500 text-ink-700 dark:text-ink-50 hover:bg-ivory-100 dark:hover:bg-ash-700'">
+                »»
+              </button>
             </div>
           </div>
           <div v-else class="p-5 text-center text-ink-500 dark:text-ink-400">No image jobs found</div>
@@ -323,6 +366,66 @@
           </div>
         </div>
       </div>
+
+      <!-- Dev Access Tab -->
+      <div v-if="activeTab === 'dev-access'" id="dev-panel-dev-access" role="tabpanel" aria-labelledby="dev-tab-dev-access" class="space-y-6">
+        <div class="bg-white dark:bg-ash-800 rounded-2xl border shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-cream-300 dark:border-ash-700 bg-cream-50 dark:bg-ash-850">
+            <h2 class="font-semibold text-ink-900 dark:text-ink-50">Dev Room Access</h2>
+          </div>
+          <div class="p-5 space-y-4">
+            <div v-if="devError" class="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">{{ devError }}</div>
+            <div v-if="devSuccess" class="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-sm">{{ devSuccess }}</div>
+
+            <!-- Add Dev Form -->
+            <div class="p-4 rounded-xl bg-cream-50 dark:bg-ash-700/50">
+              <h3 class="font-medium text-ink-900 dark:text-ink-50 mb-3">Grant Dev Access</h3>
+              <div class="flex gap-2">
+                <input
+                  v-model="newDevEmail"
+                  type="email"
+                  placeholder="partner@email.com"
+                  class="flex-1 px-3 py-2 text-sm border border-cream-300 dark:border-ash-700 rounded-lg bg-white dark:bg-ash-800 text-ink-900 dark:text-ink-100 focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                  @keydown.enter="addDev"
+                />
+                <button
+                  @click="addDev"
+                  :disabled="addingDev || !newDevEmail.trim()"
+                  class="px-4 py-2 text-sm rounded-lg bg-[var(--accent)] text-cream-50 hover:opacity-90 disabled:opacity-50 transition"
+                >
+                  <span v-if="addingDev" class="flex items-center gap-1.5"><svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg> Adding...</span>
+                  <span v-else>Add Dev</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Dev List -->
+            <div v-if="developers.length > 0">
+              <h3 class="font-medium text-ink-900 dark:text-ink-50 mb-3">Current Developers ({{ developers.length }})</h3>
+              <div class="space-y-2">
+                <div v-for="dev in developers" :key="dev.id" class="flex items-center justify-between p-3 rounded-xl bg-cream-50 dark:bg-ash-700/50">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-cream-50 font-medium text-sm">{{ dev.email.charAt(0).toUpperCase() }}</div>
+                    <div>
+                      <div class="font-medium text-ink-900 dark:text-ink-50">{{ dev.email }}</div>
+                      <div class="text-xs text-ink-500 dark:text-ink-400">{{ dev.name }} · {{ dev.role }}</div>
+                    </div>
+                  </div>
+                  <button
+                    @click="removeDev(dev.email)"
+                    :disabled="removingDevId === dev.id"
+                    class="px-3 py-1.5 text-xs rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition"
+                  >
+                    <span v-if="removingDevId === dev.id" class="flex items-center gap-1.5"><svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg></span>
+                    <span v-else>Remove</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-ink-500 dark:text-ink-400 py-4">No developers with dev access yet</div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -332,7 +435,7 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import AppHeader from '../components/AppHeader.vue'
 import api from '../api/index.js'
 
-const activeTab = ref<'system' | 'jobs' | 'image-jobs' | 'db' | 'cache' | 'flags'>('system')
+const activeTab = ref<'system' | 'jobs' | 'image-jobs' | 'db' | 'cache' | 'flags' | 'dev-access'>('system')
 const loadingJobs = ref(false)
 const loadingDb = ref(false)
 const loadingCache = ref(false)
@@ -353,6 +456,7 @@ const devTabs = [
   { id: 'db' as const, label: 'Database', icon: '🗃️' },
   { id: 'cache' as const, label: 'Cache', icon: '🗄️' },
   { id: 'flags' as const, label: 'Flags', icon: '🚩' },
+  { id: 'dev-access' as const, label: 'Dev Access', icon: '👥' },
 ]
 
 const versionInfo = ref<{ version: string; buildDate: string; commit: string; env: string } | null>(null)
@@ -428,6 +532,7 @@ async function loadAll() {
     loadCache(),
     loadFlags(),
     loadMaintenance(),
+    loadDevList(),
   ])
 }
 
@@ -452,8 +557,65 @@ async function saveMaintenance() {
     })
     // Refresh flags to sync MAINTENANCE_MODE state
     await loadFlags()
+    // Emit event so MaintenanceBanner component updates immediately
+    window.dispatchEvent(new Event('maintenance-banner-updated'))
   } catch (e) {
     console.error('Failed to save maintenance banner', e)
+  }
+}
+
+// Dev Access management
+const developers = ref<{ id: number; email: string; name: string; role: string }[]>([])
+const newDevEmail = ref('')
+const addingDev = ref(false)
+const removingDevId = ref<number | null>(null)
+const devError = ref('')
+const devSuccess = ref('')
+
+async function loadDevList() {
+  try {
+    const res = await api.get('/api/dev/list')
+    developers.value = res.data.developers || []
+  } catch (e: any) {
+    devError.value = e?.response?.data?.error || 'Failed to load dev list'
+  }
+}
+
+async function addDev() {
+  const email = newDevEmail.value.trim().toLowerCase()
+  if (!email) { devError.value = 'Email required'; return }
+  addingDev.value = true
+  devError.value = ''
+  devSuccess.value = ''
+  try {
+    const res = await api.post('/api/dev/add', { email })
+    devSuccess.value = res.data.message || `Added ${email}`
+    newDevEmail.value = ''
+    await loadDevList()
+    // Refresh user state so header badge updates if self
+    const auth = JSON.parse(localStorage.getItem('pg_user') || 'null')
+    if (auth?.email === email) {
+      window.location.reload()
+    }
+  } catch (e: any) {
+    devError.value = e?.response?.data?.error || 'Failed to add dev'
+  } finally {
+    addingDev.value = false
+  }
+}
+
+async function removeDev(email: string) {
+  removingDevId.value = -(developers.value.findIndex(d => d.email === email) + 1)
+  devError.value = ''
+  devSuccess.value = ''
+  try {
+    const res = await api.post('/api/dev/remove', { email })
+    devSuccess.value = res.data.message || `Removed ${email}`
+    await loadDevList()
+  } catch (e: any) {
+    devError.value = e?.response?.data?.error || 'Failed to remove dev'
+  } finally {
+    removingDevId.value = null
   }
 }
 
@@ -475,11 +637,17 @@ async function loadHealth() {
   }
 }
 
+const jobsPage = ref(1)
+const jobsTotalPages = ref(1)
+const imageJobsPage = ref(1)
+const imageJobsTotalPages = ref(1)
+
 async function loadJobs() {
   loadingJobs.value = true
   try {
-    const res = await api.get('/api/dev/jobs')
+    const res = await api.get(`/api/dev/jobs?page=${jobsPage.value}&per_page=50`)
     jobs.value = res.data.jobs || []
+    jobsTotalPages.value = res.data.pagination?.total_pages || 1
     statsCards.value[2].value = jobs.value.filter(j => j.status === 'started').length
   } catch (e) {
     console.error('Failed to load jobs', e)
@@ -488,11 +656,24 @@ async function loadJobs() {
   }
 }
 
+let jobsTimer: ReturnType<typeof setInterval> | null = null
+
+function startJobsPolling() {
+  stopJobsPolling()
+  loadJobs()
+  jobsTimer = setInterval(loadJobs, 3000)
+}
+
+function stopJobsPolling() {
+  if (jobsTimer) { clearInterval(jobsTimer); jobsTimer = null }
+}
+
 async function loadImageJobs() {
   loadingImageJobs.value = true
   try {
-    const res = await api.get('/api/image-jobs')
+    const res = await api.get(`/api/dev/image-jobs?page=${imageJobsPage.value}&per_page=50`)
     imageJobs.value = res.data.jobs || []
+    imageJobsTotalPages.value = res.data.pagination?.total_pages || 1
     statsCards.value[2].value = imageJobs.value.filter(j => j.status === 'running' || j.status === 'queued').length
   } catch (e) {
     console.error('Failed to load image jobs', e)
@@ -561,14 +742,25 @@ async function toggleFlag(flag: { key: string; enabled: boolean }) {
 
 onMounted(async () => {
   await loadAll()
-  // Start polling only when image-jobs tab is active
+  // Start polling when jobs or image-jobs tab is active
   watch(activeTab, (tab) => {
-    if (tab === 'image-jobs') startImageJobsPolling()
-    else stopImageJobsPolling()
+    if (tab === 'image-jobs') {
+      startImageJobsPolling()
+      stopJobsPolling()
+      imageJobsPage.value = 1
+    } else if (tab === 'jobs') {
+      startJobsPolling()
+      stopImageJobsPolling()
+      jobsPage.value = 1
+    } else {
+      stopImageJobsPolling()
+      stopJobsPolling()
+    }
   }, { immediate: true })
 })
 
 onUnmounted(() => {
   stopImageJobsPolling()
+  stopJobsPolling()
 })
 </script>

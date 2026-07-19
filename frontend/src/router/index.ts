@@ -79,7 +79,7 @@ const routes: RouteRecordRaw[] = [
     path: '/developer',
     name: 'developer',
     component: () => import('../views/DeveloperRoomPage.vue'),
-    meta: { requiresAuth: true, emailWhitelist: ['anabilhisyam23@gmail.com', 'devtest@paperfull.app'] }
+    meta: { requiresAuth: true, requiresDev: true }
   },
   {
     path: '/tokens/pay',
@@ -154,6 +154,9 @@ router.beforeEach(async (to, _from, next) => {
     return next('/login')
   }
   if (to.meta.requiresAdmin && auth.user?.role !== 'admin') {
+    return next('/dashboard')
+  }
+  if (to.meta.requiresDev && !auth.user?.is_developer) {
     return next('/dashboard')
   }
   if (to.meta.emailWhitelist && Array.isArray(to.meta.emailWhitelist)) {
