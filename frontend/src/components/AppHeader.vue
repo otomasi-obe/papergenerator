@@ -169,11 +169,6 @@
  <span aria-hidden="true">🛠️</span> <span class="hidden sm:inline text-sm font-medium">Dev</span>
  </router-link>
 
- <!-- Dev button: kanan dari dropdown user -->
- <router-link v-if="auth.isDeveloper" to="/developer" class="dev-btn flex items-center justify-center gap-1.5 p-2 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-150 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
- <span aria-hidden="true">🛠️</span> <span class="hidden sm:inline text-sm font-medium">Dev</span>
- </router-link>
-
  <!-- Feedback button: kanan dari Dev button -->
  <button @click="feedbackOpen = true" class="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-cream-100 dark:hover:bg-ash-700 rounded-lg active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2 transition" title="Kritik & Saran" aria-label="Kritik & Saran">
  <span aria-hidden="true" class="text-lg">💬</span>
