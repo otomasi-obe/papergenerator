@@ -234,6 +234,28 @@ def _try_kie_nano_banana(model: str, prompt: str, out: Path, timeout, httpx) -> 
     }
     kie_model = kie_model_map.get(model, "nano-banana-2-lite")
 
+    # Z-Image has stricter prompt length limit (~500 chars). Use extractive
+    # summarization to preserve most important sentences instead of hard cut.
+    if model == "z-image" and len(prompt) > 400:
+        original_len = len(prompt)
+        try:
+            from tools.Literatur.summarizer import summarize as _extractive
+
+            summarized = _extractive(prompt, n_sentences=3)
+            if summarized and len(summarized) <= 400:
+                prompt = summarized
+                log.info("image_api: z-image prompt summarized %d→%d chars",
+                         original_len, len(prompt))
+            else:
+                prompt = prompt[:400]  # fallback hard truncate
+                log.info("image_api: z-image prompt hard truncated %d→%d chars",
+                         original_len, len(prompt))
+        except Exception as e:
+            log.warning("image_api: z-image summarize failed (%s), hard truncate", e)
+            prompt = prompt[:400]
+            log.info("image_api: z-image prompt hard truncated %d→%d chars",
+                     original_len, len(prompt))
+
     # Read key pool from env
     # KIE_AI_KEYS_NANO="key1,key2" for nano-banana family
     # KIE_AI_KEYS_ZIMAGE="key1,key2" for z-image

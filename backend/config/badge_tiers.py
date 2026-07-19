@@ -158,38 +158,22 @@ def get_max_free_revisions(badge: str | None) -> int:
 def get_image_models(badge: str | None) -> list[str]:
     """Get image model list for badge (for API)."""
     # Map to actual model IDs used in image_api_v2.py that work with OTOMASI proxy (ai.otomasi.app)
-    # Only cx/gpt-5.5-image and cx/gpt-5.5 work reliably (others: Cloudflare 502, Alibaba 502, GPT-Image 401)
+    # Only cx/gpt-5.5-image and cx/gpt-5.5 work reliably (others: Cloudflare 401/502, Alibaba 502, GPT-Image 401)
+    # Z-Image (Kie.ai) is the primary fallback after the working GPT-5.5 models.
     badge = badge or DEFAULT_TIER
-    # Working fallbacks for all tiers (only these 2 models work on OTOMASI proxy)
-    working_fallbacks = ["cx/gpt-5.5-image", "cx/gpt-5.5"]
-    # Kie.ai models (require KIE_AI_API_KEY env var)
-    nano_models = ["nano-banana-2-lite", "nano-banana", "nano-banana-edit"]
+    # Working models on OTOMASI proxy (proven working)
+    working = ["cx/gpt-5.5-image", "cx/gpt-5.5"]
+    # Kie.ai Z-Image (primary fallback, no API key needed via OTOMASI proxy)
     zimage_model = "z-image"
-    cf_models = [
-        "cf/@cf/black-forest-labs/flux-2-klein-9b",       # Flux 2 (free, quota-limited)
-        "cf/@cf/bytedance/stable-diffusion-xl-lightning", # SDXL Lightning (free)
-        "cf/@cf/lykon/dreamshaper-8-lcm",                 # Dreamshaper (free)
-        "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",# SDXL Base (free)
-    ]
+    # Drop Cloudflare models — they return HTTP 401 (API key missing)
     if badge == "elite":
-        # GPT-5.5 primary + all Kie.ai + Cloudflare fallbacks
-        return working_fallbacks + nano_models + [zimage_model] + cf_models
+        return working + [zimage_model]
     elif badge == "pro":
-        # Nano Banana primary + Z-Image + Cloudflare (no GPT-5.5, no Elite models)
-        return nano_models + [zimage_model] + cf_models
+        return working + [zimage_model]
     elif badge == "starter":
-        # Z-Image primary + Cloudflare fallbacks
-        return [zimage_model] + [
-            "cf/@cf/bytedance/stable-diffusion-xl-lightning",
-            "cf/@cf/black-forest-labs/flux-2-klein-9b",
-            "cf/@cf/lykon/dreamshaper-8-lcm",
-        ]
+        return working + [zimage_model]
     elif badge == "trial":
-        # Z-Image primary + Cloudflare fallbacks (limited)
-        return [zimage_model] + [
-            "cf/@cf/bytedance/stable-diffusion-xl-lightning",
-            "cf/@cf/lykon/dreamshaper-8-lcm",
-        ]
+        return working + [zimage_model]
     return BADGE_TIERS[DEFAULT_TIER]["image_models"]
 
 
