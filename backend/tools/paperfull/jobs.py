@@ -1278,11 +1278,45 @@ def publish_progress(job_id: str, payload: dict) -> None:
             _r.publish(progress_channel(job_id), json.dumps(payload, default=str))
             # Keep last snapshot for late subscribers (24h TTL).
             _r.setex(f"job:{job_id}:last", 86400, json.dumps(payload, default=str))
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning(f"Failed to publish progress for job {job_id}: {e}")
 
 
-# ── Endpoints ───────────────────────────────────────────────────────────────
+# ── Endpoints ───────────────────────────────────────────────────────────
+
+    @jobs.route("/api/papers/<paper_id>/cancel", methods=["POST"])
+    @jwt_required()
+    def cancel_generate_stream(paper_id: str):
+        """Cancel an in-progress generate-stream for a paper.
+        Sets Redis cancel flag that the streaming generator checks.
+        """
+        try:
+            user_id = int(get_jwt_identity())
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid user identity"}), 401
+
+        paper = Paper.query.filter_by(id=paper_id, user_id=user_id).first()
+        if not paper:
+            return jsonify({"error": "paper not found"}), 404
+
+        _r = get_redis()
+        if _r:
+            _cancel_key = f"paperfull:cancel:{paper_id}"
+            _r.setex(_cancel_key, 3600, "1")
+            # Also publish progress event so any SSE subscribers see it
+            publish_progress(paper_id, {"stage": "cancelled", "percent": 0, "status": "cancelled"})
+
+        # Update AiJob if exists
+        job = AiJob.query.filter_by(paper_id=paper_id, user_id=user_id).filter(
+            AiJob.status.in_(["queued", "running", "pending"])
+        ).first()
+        if job:
+            job.status = "cancelled"
+            job.error = "Cancelled by user"
+            job.finished_at = datetime.now(timezone.utc)
+            safe_commit()
+
+        return jsonify({"status": "cancelled"})
 
 
 @jobs.route("/api/papers/<paper_id>/generate", methods=["POST"])
@@ -2973,9 +3007,32 @@ def generate_stream(paper_id: str):
 
             _pf_snapshot("streaming", reasoning_acc, full_content, force=True)
 
+            # Emit progress events every ~2% or every 50 tokens
+            _last_progress_pct = 0
+            _tokens_at_last_progress = 0
+            ESTIMATED_TOTAL_TOKENS = 8000  # rough target for full paper
+
+            # Redis cancel flag check
+            _cancel_key = f"paperfull:cancel:{paper_id}"
+            def _is_cancelled():
+                try:
+                    _r = get_redis()
+                    if _r and _r.exists(_cancel_key):
+                        return True
+                except Exception:
+                    pass
+                return False
 
             try:
                 for line in resp.iter_lines(decode_unicode=True):
+                    # Check cancel flag
+                    if _is_cancelled():
+                        log.info("Generation cancelled for paper %s via Redis flag", paper_id)
+                        _update_bell_job("cancelled", _last_progress_pct, error="Cancelled by user")
+                        _pf_snapshot("cancelled", reasoning_acc, full_content, error="Cancelled by user", force=True)
+                        yield f"event: done\ndata: {_json.dumps({'status': 'cancelled'})}\n\n"
+                        return
+
                     # Heartbeat every 15s — prevents nginx/proxy idle timeout
                     if _time.time() - t_last_yield > 15:
                         yield f": heartbeat {_time.time()}\n\n"
@@ -3008,6 +3065,16 @@ def generate_stream(paper_id: str):
                                 yield f"event: content\ndata: {_json.dumps({'token': content, 'total_tokens': token_count})}\n\n"
                                 t_last_yield = _time.time()
                                 _pf_snapshot("streaming", reasoning_acc, full_content)
+
+                                # Emit progress event every ~2% or every 50 tokens
+                                if token_count - _tokens_at_last_progress >= 50:
+                                    pct = min(95, 5 + int((token_count / ESTIMATED_TOTAL_TOKENS) * 90))
+                                    if pct > _last_progress_pct:
+                                        _last_progress_pct = pct
+                                        _tokens_at_last_progress = token_count
+                                        yield f"event: progress\ndata: {_json.dumps({'stage': 'generating', 'percent': pct, 'total_tokens': token_count})}\n\n"
+                                        # Also update AiJob (bell job) in DB
+                                        _update_bell_job("running", pct)
                         except _json.JSONDecodeError:
                             pass
                     elif line.startswith("{"):
