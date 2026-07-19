@@ -21,6 +21,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - **Image badge-tier models**: unify ke working GPT-5.5 + z-image untuk semua tier (elite/pro/starter/trial), drop Cloudflare models (HTTP 401)
 - **Z-Image prompt**: extractive summarizer (3 kalimat) kalau prompt >400 char, fallback hard truncate
 
+## [1.5.2] — 2026-07-18
+
+### Fixed
+- **AI reasoning + image progress via SSE**: `PaperfullTab` handle `thinking` / `content` / `progress` / `image_generation` SSE events — reasoning stream, JSON tokens, dan image progress render live
+- **Image reconciliation race**: pindah ke background thread biar survive `GeneratorExit` (client disconnect) dan gak race frontend reload
+- **Dark theme tokens**: unify `anthracite` → `ash` across components
+- **Version-based cache-bust**: `main.ts` fetch `version-history.json` (no-store), bandingin `localStorage pf_version`, force reload sekali kalau mismatch → fix silent stale-index.html serving old chunks (Vite keep old hashed chunks, no ChunkLoadError fired)
+- **Version bump**: `version-history.json` → 1.5.2
+
+### Changed
+- **Unified dark theme tokens** across all components
+
 ## [1.5.1] — 2026-07-18
 
 ### Fixed
