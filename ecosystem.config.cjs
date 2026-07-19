@@ -49,5 +49,25 @@ module.exports = {
         BACKEND_PORT: '8001',
       }
     },
-    ]
-};
+        {
+          name: 'paper-image-worker',
+          cwd: '/home/sirobo/papergenerator/backend',
+          script: '/home/sirobo/papergenerator/backend/.venv/bin/python',
+          args: '-m tools.image_generation.worker_runner',
+          interpreter: 'none',
+          exec_mode: 'fork',
+          max_restarts: 10,
+          min_uptime: '30s',
+          restart_delay: 5000,
+          env: {
+            DATABASE_URL: 'postgresql://papergenerator@/papergenerator',
+            REDIS_URL: 'redis://:5b393a50e4a92d7d2713967c5d4fa38a458994980a0e4572582809f7479c18e3@localhost:6379/0',
+            IMAGE_GEN_API_KEY: 'sk-an8...x9z0',
+            IMAGE_GEN_API_URL: 'https://ai.otomasi.app',
+            KIE_AI_API_KEY: '',
+            KIE_AI_KEYS_NANO: '',
+            KIE_AI_KEYS_ZIMAGE: '',
+          }
+        },
+      ]
+    };
