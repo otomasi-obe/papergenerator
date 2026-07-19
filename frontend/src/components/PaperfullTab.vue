@@ -1857,6 +1857,7 @@ watch([reasoningText, contentText], () => {
 async function stopGeneration() {
   if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null }
   const jobId = activeJob.value?.id || activeJob.value?.job_id
+  const paperId = store.currentPaperId
   if (jobId) {
     // RQ job — cancel via API
     try {
@@ -1866,10 +1867,19 @@ async function stopGeneration() {
     } catch (err) {
       console.warn('Failed to cancel job:', err)
     }
-  } else if (_sseCtrl) {
-    // Direct SSE stream — abort the fetch controller
-    _sseCtrl.abort()
-    _sseCtrl = null
+  } else if (_sseCtrl || paperId) {
+    // Direct SSE stream — set cancel flag + abort fetch
+    if (paperId) {
+      try {
+        await api.post(`/api/papers/${paperId}/cancel`)
+      } catch (err) {
+        console.warn('Failed to cancel stream:', err)
+      }
+    }
+    if (_sseCtrl) {
+      _sseCtrl.abort()
+      _sseCtrl = null
+    }
     cancelGeneration()
   }
 }

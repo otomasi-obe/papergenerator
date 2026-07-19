@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from '../api/index.js'
 
 const DISMISSED_KEY = 'maintenance-banner-dismissed' // sessionStorage key
@@ -89,7 +89,17 @@ function saveDismissedForever() {
   }
 }
 
+// Listen for banner updates from dev room save
+function onBannerUpdate() {
+  loadMaintenance()
+}
+
 onMounted(() => {
   loadMaintenance()
+  window.addEventListener('maintenance-banner-updated', onBannerUpdate)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('maintenance-banner-updated', onBannerUpdate)
 })
 </script>
