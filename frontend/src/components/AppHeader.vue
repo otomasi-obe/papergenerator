@@ -168,6 +168,11 @@
  <router-link v-if="auth.isDeveloper" to="/developer" class="dev-btn flex items-center justify-center gap-1.5 p-2 min-h-[44px] min-w-[44px] rounded-lg transition-all duration-150 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2">
  <span aria-hidden="true">🛠️</span> <span class="hidden sm:inline text-sm font-medium">Dev</span>
  </router-link>
+
+ <!-- Feedback button: kanan dari Dev button -->
+ <button @click="feedbackModalOpen = true" class="flex items-center justify-center gap-1.5 p-2 min-h-[44px] min-w-[44px] rounded-lg text-ink-700 dark:text-[#fef08a] hover:bg-cream-100 dark:hover:bg-ash-700 transition-all duration-150 active:scale-95 focus-visible:ring-2 focus-visible:ring-[#238f7f] focus-visible:ring-offset-2" :title="'Kritik & Saran'">
+ <span aria-hidden="true">💬</span>
+ </button>
  </div>
  </div>
  </div>
@@ -175,8 +180,9 @@
  <Teleport to="body">
  <TokenPurchaseModal :isOpen="purchaseModalOpen" @close="purchaseModalOpen = false" />
  <TokenDetailModal :open="detailModalOpen" @close="detailModalOpen = false" @buy-tokens="detailModalOpen = false; purchaseModalOpen = true" />
+ <FeedbackModal :isOpen="feedbackModalOpen" @close="feedbackModalOpen = false" />
  </Teleport>
-</template>
+ </template>
 
 <script setup lang="ts">
 // @ts-nocheck
@@ -190,6 +196,7 @@ import TokenPurchaseModal from './TokenPurchaseModal.vue'
 import TokenDetailModal from './TokenDetailModal.vue'
 import UpdateHistoryButton from './UpdateHistoryButton.vue'
 import BadgeTier from './BadgeTier.vue'
+import FeedbackModal from './FeedbackModal.vue'
 import { BADGE_TIERS } from '../config/badgeTiers'
 
 const logoUrl = '/assets/logo.png'
