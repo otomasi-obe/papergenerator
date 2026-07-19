@@ -117,14 +117,14 @@ def generate_image(
 
 def _try_model(model: str, prompt: str, out: Path, timeout, httpx) -> dict:
     """Try generating with a single model. Raises on failure."""
-    # Kie.ai Nano Banana models
-    is_kie_nano = model in ("nano-banana", "nano-banana-2-lite", "nano-banana-edit")
+    # Kie.ai models (Nano Banana + Z-Image)
+    is_kie = model in ("nano-banana", "nano-banana-2-lite", "nano-banana-edit", "z-image")
 
     # OTOMASI Proxy models
     is_cloudflare = model.startswith("cf/@cf/")
     is_alibaba = model.startswith("alibaba-media/")
 
-    if is_kie_nano:
+    if is_kie:
         return _try_kie_nano_banana(model, prompt, out, timeout, httpx)
 
     url = f"{API_URL}/v1/images/generations"
