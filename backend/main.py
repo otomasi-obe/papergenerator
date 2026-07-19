@@ -65,7 +65,7 @@ from tools.Literatur.slr import slr_api
 from utils.ai_tools.tools_api import tools_api
 from utils.logging import logging_api
 from utils.state_bp.state import state_bp
-from utils.database.models import AiJob, Paper, db, safe_commit
+from utils.database.models import AiJob, Feedback, Paper, db, safe_commit
 from utils.job_core import (
     init_job_core as _init_job_core,
     _job_create,
@@ -628,6 +628,88 @@ def image_providers_status():
     """Return health status of all image generation providers (API-first)."""
     from tools.image_generation.image_api_v2 import get_provider_status
     return jsonify(get_provider_status())
+
+
+# ─── Feedback endpoint ───────────────────────────────────────────────────────
+@app.route("/api/feedback", methods=["POST"])
+@jwt_required()
+def submit_feedback():
+    """Submit user feedback / critique & saran."""
+    try:
+        data = request.get_json(silent=True) or {}
+        message = (data.get("message") or "").strip()
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+        if len(message) > 2000:
+            return jsonify({"error": "Message too long (max 2000 characters)"}), 400
+
+        user_id = get_jwt_identity()
+        # Try to get email from JWT claims or user record
+        email = None
+        try:
+            from utils.database.models import User
+            user = User.query.get(user_id)
+            if user:
+                email = user.email
+        except Exception:
+            pass
+
+        fb = Feedback(
+            user_id=user_id,
+            email=email,
+            message=message,
+        )
+        db.session.add(fb)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Feedback submitted successfully",
+                "feedback_id": fb.id,
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        log.exception("Failed to submit feedback")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/api/dev/feedback", methods=["GET"])
+@jwt_required()
+def dev_feedback_list():
+    """List feedback items (dev/restricted access)."""
+    try:
+        # Require developer role
+        if not get_jwt().get("isDeveloper", False):
+            return jsonify({"error": "Developer access required"}), 403
+
+        limit = int(request.args.get("limit", 50))
+        offset = int(request.args.get("offset", 0))
+        status_filter = request.args.get("status")  # new, read, archived
+
+        query = Feedback.query.order_by(Feedback.created_at.desc())
+        if status_filter:
+            query = query.filter_by(status=status_filter)
+
+        total = query.count()
+        feedbacks = query.offset(offset).limit(limit).all()
+
+        return jsonify(
+            {
+                "feedback": [f.to_dict() for f in feedbacks],
+                "pagination": {
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset,
+                    "has_more": offset + limit < total,
+                },
+                "filters": {"status": status_filter},
+            }
+        )
+    except Exception as e:
+        log.exception("Failed to list feedback")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 # ─── Observability routes: /metrics, /api/metrics, /api/healthz ───────────────
