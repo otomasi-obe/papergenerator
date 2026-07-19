@@ -163,30 +163,30 @@ def get_image_models(badge: str | None) -> list[str]:
     # Working fallbacks for all tiers (only these 2 models work on OTOMASI proxy)
     working_fallbacks = ["cx/gpt-5.5-image", "cx/gpt-5.5"]
     # Kie.ai models (require KIE_AI_API_KEY env var)
-    kie_models = ["nano-banana-2-lite", "nano-banana", "nano-banana-edit", "z-image"]
+    nano_models = ["nano-banana-2-lite", "nano-banana", "nano-banana-edit"]
+    zimage_model = "z-image"
+    cf_models = [
+        "cf/@cf/black-forest-labs/flux-2-klein-9b",       # Flux 2 (free, quota-limited)
+        "cf/@cf/bytedance/stable-diffusion-xl-lightning", # SDXL Lightning (free)
+        "cf/@cf/lykon/dreamshaper-8-lcm",                 # Dreamshaper (free)
+        "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",# SDXL Base (free)
+    ]
     if badge == "elite":
-        return working_fallbacks + kie_models + [
-            "cf/@cf/black-forest-labs/flux-2-klein-9b",       # Flux 2 (free, quota-limited)
-            "cf/@cf/bytedance/stable-diffusion-xl-lightning", # SDXL Lightning (free)
-            "cf/@cf/lykon/dreamshaper-8-lcm",                 # Dreamshaper (free)
-            "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",# SDXL Base (free)
-        ]
+        # GPT-5.5 primary + all Kie.ai + Cloudflare fallbacks
+        return working_fallbacks + nano_models + [zimage_model] + cf_models
     elif badge == "pro":
-        return working_fallbacks + kie_models[:2] + [  # nano-banana-2-lite, nano-banana
-            "cf/@cf/black-forest-labs/flux-2-klein-9b",
-            "cf/@cf/lykon/dreamshaper-8-lcm",
-            "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
-            "cf/@cf/bytedance/stable-diffusion-xl-lightning",
-            "cf/@cf/black-forest-labs/flux-1-schnell",
-        ]
+        # Nano Banana primary + Z-Image + Cloudflare (no GPT-5.5, no Elite models)
+        return nano_models + [zimage_model] + cf_models
     elif badge == "starter":
-        return working_fallbacks + [kie_models[0]] + [  # nano-banana-2-lite only
+        # Z-Image primary + Cloudflare fallbacks
+        return [zimage_model] + [
             "cf/@cf/bytedance/stable-diffusion-xl-lightning",
             "cf/@cf/black-forest-labs/flux-2-klein-9b",
             "cf/@cf/lykon/dreamshaper-8-lcm",
         ]
     elif badge == "trial":
-        return working_fallbacks + [
+        # Z-Image primary + Cloudflare fallbacks (limited)
+        return [zimage_model] + [
             "cf/@cf/bytedance/stable-diffusion-xl-lightning",
             "cf/@cf/lykon/dreamshaper-8-lcm",
         ]
