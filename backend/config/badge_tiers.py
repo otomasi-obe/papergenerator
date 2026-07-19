@@ -157,26 +157,36 @@ def get_max_free_revisions(badge: str | None) -> int:
 
 def get_image_models(badge: str | None) -> list[str]:
     """Get image model list for badge (for API)."""
-    # Map to actual model IDs used in image_api_v2.py
+    # Map to actual model IDs used in image_api_v2.py that work with OTOMASI proxy (ai.otomasi.app)
+    # Only cx/gpt-5.5-image and cx/gpt-5.5 work reliably (others: Cloudflare 502, Alibaba 502, GPT-Image 401)
     badge = badge or DEFAULT_TIER
+    # Working fallbacks for all tiers (only these 2 models work on OTOMASI proxy)
+    working_fallbacks = ["cx/gpt-5.5-image", "cx/gpt-5.5"]
+    # Kie.ai models (require KIE_AI_API_KEY env var)
+    kie_models = ["nano-banana-2-lite", "nano-banana", "nano-banana-edit", "z-image"]
     if badge == "elite":
-        return [
-            "cx/gpt-5.5-image",
-            "cf/@cf/black-forest-labs/flux-2-klein-9b",
+        return working_fallbacks + kie_models + [
+            "cf/@cf/black-forest-labs/flux-2-klein-9b",       # Flux 2 (free, quota-limited)
+            "cf/@cf/bytedance/stable-diffusion-xl-lightning", # SDXL Lightning (free)
+            "cf/@cf/lykon/dreamshaper-8-lcm",                 # Dreamshaper (free)
+            "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",# SDXL Base (free)
         ]
     elif badge == "pro":
-        return [
+        return working_fallbacks + kie_models[:2] + [  # nano-banana-2-lite, nano-banana
             "cf/@cf/black-forest-labs/flux-2-klein-9b",
             "cf/@cf/lykon/dreamshaper-8-lcm",
             "cf/@cf/stabilityai/stable-diffusion-xl-base-1.0",
+            "cf/@cf/bytedance/stable-diffusion-xl-lightning",
+            "cf/@cf/black-forest-labs/flux-1-schnell",
         ]
     elif badge == "starter":
-        return [
+        return working_fallbacks + [kie_models[0]] + [  # nano-banana-2-lite only
             "cf/@cf/bytedance/stable-diffusion-xl-lightning",
             "cf/@cf/black-forest-labs/flux-2-klein-9b",
+            "cf/@cf/lykon/dreamshaper-8-lcm",
         ]
     elif badge == "trial":
-        return [
+        return working_fallbacks + [
             "cf/@cf/bytedance/stable-diffusion-xl-lightning",
             "cf/@cf/lykon/dreamshaper-8-lcm",
         ]

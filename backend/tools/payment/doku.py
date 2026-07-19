@@ -192,6 +192,7 @@ def generate_qris():
     Request: { "amount": 5000 }
     """
     try:
+
         data = request.get_json() or {}
         amount = int(data.get('amount', 0))
 
@@ -741,10 +742,11 @@ def query_qris_static():
 @jwt_required()
 def generate_va():
     """
-    Generate DOKU Virtual Account.
-    Request: { "amount": 5000, "channel": "VIRTUAL_ACCOUNT_BRI" }
+    Generate DOKU Virtual Account (SNAP VA).
+    Request: { "amount": 5000, "channel": "BNI" }
     """
     try:
+
         cfg = _get_config()
         user_id = int(get_jwt_identity())
         user = User.query.get(user_id)

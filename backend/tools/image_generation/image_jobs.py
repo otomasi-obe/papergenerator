@@ -15,8 +15,9 @@ import uuid
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required, current_user
 
-from utils.database.models import ImageGenJob, Paper, PaperImage, db, safe_commit
+from utils.database.models import ImageGenJob, Paper, PaperImage, User, db, safe_commit
 from tools.editor.utils import PAPER_ID_RE
+from config.badge_tiers import TIER_RANK  # noqa: PLC0415
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ def create_image_job():
         prompt=prompt,
         status="queued",
         badge=current_user.badge if current_user else None,
+        priority=TIER_RANK.get(current_user.badge, 0) if current_user else 0,
     )
     db.session.add(job)
     try:
@@ -81,7 +83,7 @@ def create_image_job():
     try:
         from .worker import submit_now  # noqa: PLC0415
 
-        submit_now(job.id)
+        submit_now(job.id, badge=job.badge)
     except Exception:
         log.exception("submit_now failed (job will still run via dispatcher poll)")
 
@@ -264,6 +266,8 @@ def regenerate_images():
             prompt=spec["prompt"],
             target_path=spec["target_path"][:500] if spec["target_path"] else None,
             status="queued",
+            badge=current_user.badge if current_user else None,
+            priority=TIER_RANK.get(current_user.badge, 0) if current_user else 0,
         )
         db.session.add(job)
         created.append(job)
@@ -278,7 +282,7 @@ def regenerate_images():
     try:
         from .worker import submit_now  # noqa: PLC0415
         for job in created:
-            submit_now(job.id)
+            submit_now(job.id, badge=job.badge)
     except Exception:
         log.exception("submit_now failed (jobs will still run via dispatcher poll)")
 

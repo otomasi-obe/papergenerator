@@ -42,6 +42,13 @@ def generate_qris():
     Request body: { "amount": 5000, "description": "Token purchase" }
     """
     try:
+        # Maintenance: QRIS disabled
+        return jsonify({
+            'error': 'Payment method under maintenance',
+            'message': 'QRIS sedang maintenance. Silakan gunakan metode pembayaran lain.',
+            'maintenance': True
+        }), 503
+
         api_key = _get_xendit_credentials()
         data = request.get_json() or {}
         amount = data.get('amount')
@@ -253,6 +260,13 @@ def generate_va():
     Request body: { "amount": 5000, "bank": "bca", "description": "Token purchase" }
     """
     try:
+        # Maintenance: VA disabled
+        return jsonify({
+            'error': 'Payment method under maintenance',
+            'message': 'Virtual Account sedang maintenance. Silakan gunakan metode pembayaran lain.',
+            'maintenance': True
+        }), 503
+
         api_key = _get_xendit_credentials()
         data = request.get_json() or {}
         amount = data.get('amount')
@@ -469,25 +483,30 @@ def check_va_status(external_id):
 @payment_bp.route('/methods', methods=['GET'])
 def get_payment_methods():
     """Get available payment methods"""
+    # Maintenance mode: QRIS & VA disabled
     return jsonify({
         'qris': {
             'name': 'QRIS',
             'description': 'Scan QR code dengan aplikasi bank/e-wallet',
             'min_amount': 1000,
-            'icon': 'qris'
+            'icon': 'qris',
+            'maintenance': True,
+            'maintenance_message': 'QRIS sedang maintenance. Silakan gunakan metode pembayaran lain.'
         },
         'va': {
             'name': 'Virtual Account',
             'description': 'Transfer ke rekening virtual account',
             'min_amount': 1000,
             'banks': [
-                {'code': 'bca', 'name': 'Bank BCA', 'icon': 'bca'},
-                {'code': 'bni', 'name': 'Bank BNI', 'icon': 'bni'},
-                {'code': 'bri', 'name': 'Bank BRI', 'icon': 'bri'},
-                {'code': 'mandiri', 'name': 'Bank Mandiri', 'icon': 'mandiri'},
-                {'code': 'cimb', 'name': 'CIMB Niaga', 'icon': 'cimb'},
-                {'code': 'permata', 'name': 'Bank Permata', 'icon': 'permata'},
+                {'code': 'bca', 'name': 'Bank BCA', 'icon': 'bca', 'maintenance': True},
+                {'code': 'bni', 'name': 'Bank BNI', 'icon': 'bni', 'maintenance': True},
+                {'code': 'bri', 'name': 'Bank BRI', 'icon': 'bri', 'maintenance': True},
+                {'code': 'mandiri', 'name': 'Bank Mandiri', 'icon': 'mandiri', 'maintenance': True},
+                {'code': 'cimb', 'name': 'CIMB Niaga', 'icon': 'cimb', 'maintenance': True},
+                {'code': 'permata', 'name': 'Bank Permata', 'icon': 'permata', 'maintenance': True},
             ],
-            'icon': 'va'
+            'icon': 'va',
+            'maintenance': True,
+            'maintenance_message': 'Virtual Account sedang maintenance. Silakan gunakan metode pembayaran lain.'
         }
     })

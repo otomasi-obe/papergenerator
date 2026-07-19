@@ -7,6 +7,14 @@ export const BADGE_TIERS = {
     imageModels: ['SDXL Lightning', 'Dreamshaper (fallback)'],
     imageQuality: 'Cepat, kualitas standar'
   },
+  developer: {
+    label: 'DEV',
+    color: 'badge-dev-gradient',
+    textColor: 'text-white',
+    benefits: ['Full system access', 'Developer Room', 'All journals unlocked', 'Unlimited quota'],
+    imageModels: ['All models'],
+    imageQuality: 'Best - all models available'
+  },
   starter: {
     label: 'Starter',
     color: 'bg-amber-500',
@@ -46,7 +54,7 @@ export type BadgeKey = keyof typeof BADGE_TIERS
 export type BadgeTier = (typeof BADGE_TIERS)[BadgeKey]
 
 // Tier rank: higher = more access
-export const TIER_RANK: Record<BadgeKey, number> = { trial: 0, starter: 1, pro: 2, elite: 3 }
+export const TIER_RANK: Record<BadgeKey, number> = { trial: 0, developer: 4, starter: 1, pro: 2, elite: 3 }
 
 // Journal → tier yang dibutuhkan untuk unlock
 export const JOURNAL_TIERS: Record<string, BadgeKey> = {
@@ -83,8 +91,9 @@ export const TIER_BADGE_STYLE: Record<BadgeKey, string> = {
   starter: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
   pro: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   elite: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  developer: 'badge-dev-gradient text-white',
 }
 
 export const TIER_SHORT: Record<BadgeKey, string> = {
-  trial: 'T', starter: 'S', pro: 'P', elite: 'E',
+  trial: 'T', starter: 'S', pro: 'P', elite: 'E', developer: 'D',
 }

@@ -79,6 +79,14 @@ def generate_payment():
         description = data.get('description', 'PaperFull Token Purchase')
         method = data.get('method', 'qris')  # 'qris' or 'va'
 
+        # Maintenance: QRIS & VA disabled
+        if method in ('qris', 'va'):
+            return jsonify({
+                'error': 'Payment method under maintenance',
+                'message': f'{method.upper()} sedang maintenance. Silakan gunakan metode pembayaran lain.',
+                'maintenance': True
+            }), 503
+
         if amount not in TOKEN_PACKAGES:
             return jsonify({'error': 'Invalid token package amount'}), 400
 

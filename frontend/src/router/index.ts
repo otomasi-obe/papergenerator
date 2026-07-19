@@ -76,6 +76,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/developer',
+    name: 'developer',
+    component: () => import('../views/DeveloperRoomPage.vue'),
+    meta: { requiresAuth: true, emailWhitelist: ['anabilhisyam23@gmail.com', 'devtest@paperfull.app'] }
+  },
+  {
     path: '/tokens/pay',
     name: 'token-pay',
     component: () => import('../views/TokenPayPage.vue'),

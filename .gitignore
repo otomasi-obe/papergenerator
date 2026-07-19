@@ -186,3 +186,8 @@ trash/
 
 # one-off test scripts
 backend/_scratch/
+
+# Local dev / user data
+backend/tools/image_generation/user/
+backend/cookies*.txt
+backend/tools/dev/

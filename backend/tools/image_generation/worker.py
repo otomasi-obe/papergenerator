@@ -1,10 +1,10 @@
 """
-Image generation worker — single sequential queue.
+Image generation worker — priority queue + parallel workers per tier.
 
 Architecture
 ============
-- ONE worker thread processes image jobs one at a time (no concurrent API calls).
-- A dispatcher pulls `queued` jobs from DB ordered by created_at (FIFO).
+- Multiple worker threads per badge tier (elite=3, pro=2, starter=1, trial=1).
+- One dispatcher per tier pulls `queued` jobs filtered by badge, ordered by priority desc + created_at asc (FIFO within priority).
 - No timeout, no retry limit — jobs keep retrying until they succeed.
 - Frontend polls /api/image-jobs/<id> which returns queue_position.
 
@@ -25,7 +25,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 log = logging.getLogger(__name__)
 
@@ -33,10 +33,11 @@ log = logging.getLogger(__name__)
 class _Worker(threading.Thread):
     """Single worker — processes jobs sequentially, no timeout."""
 
-    def __init__(self, app):
-        super().__init__(name="img-worker-0", daemon=True)
+    def __init__(self, app, tier: str, worker_idx: int):
+        super().__init__(name=f"img-worker-{tier}-{worker_idx}", daemon=True)
         self.app = app
-        self.worker_id = 0
+        self.tier = tier
+        self.worker_idx = worker_idx
         self.q: "queue.Queue[str]" = queue.Queue()
         self._stop_event = threading.Event()
 
@@ -61,7 +62,7 @@ class _Worker(threading.Thread):
             try:
                 self._process(job_id)
             except Exception:
-                log.exception("img-worker: unhandled error processing %s", job_id)
+                log.exception("img-worker[%s-%d]: unhandled error processing %s", self.tier, self.worker_idx, job_id)
 
     def _process(self, job_id: str):
         # ponytail: no watchdog timeout — user requirement.
@@ -75,10 +76,11 @@ class _Worker(threading.Thread):
 
             with self.app.app_context():
                 now = datetime.now(timezone.utc)
+                worker_name = f"{self.tier}-{self.worker_idx}"
                 result = db.session.execute(
                     update(ImageGenJob)
                     .where(ImageGenJob.id == job_id, ImageGenJob.status == "queued")
-                    .values(status="running", worker="api-0", started_at=now)
+                    .values(status="running", worker=worker_name, started_at=now)
                 )
                 safe_commit()
                 if result.rowcount == 0:
@@ -197,12 +199,12 @@ class _Worker(threading.Thread):
                     log.warning("Gagal simpan image ke user storage", exc_info=True)
 
                 log.info(
-                    "img-worker: done job=%s file=%s size=%s",
-                    job_id, filename,
+                    "img-worker[%s-%d]: done job=%s file=%s size=%s",
+                    self.tier, self.worker_idx, job_id, filename,
                     res.get("size") if res else "unknown",
                 )
             except Exception as e:
-                log.exception("img-worker: failed job=%s", job_id)
+                log.exception("img-worker[%s-%d]: failed job=%s", self.tier, self.worker_idx, job_id)
                 try:
                     if out_path and out_path.exists():
                         out_path.unlink()
@@ -220,25 +222,27 @@ class _Worker(threading.Thread):
                         job2.worker = None
                         safe_commit()
                         log.warning(
-                            "img-worker: job=%s re-queued (retry %d): %s",
-                            job_id, current_retry + 1, str(e)[:200],
+                            "img-worker[%s-%d]: job=%s re-queued (retry %d): %s",
+                            self.tier, self.worker_idx, job_id, current_retry + 1, str(e)[:200],
                         )
 
         except Exception:
-            log.exception("img-worker: outer error for %s", job_id)
+            log.exception("img-worker[%s-%d]: outer error for %s", self.tier, self.worker_idx, job_id)
 
 
 class _Dispatcher(threading.Thread):
-    """Picks up queued jobs from DB, routes to the single worker."""
+    """Picks up queued jobs from DB for a specific tier, routes to that tier's workers."""
 
-    def __init__(self, app, worker: _Worker, poll_interval: float = 2.0):
-        super().__init__(name="img-dispatcher", daemon=True)
+    def __init__(self, app, workers: List[_Worker], tier: str, poll_interval: float = 2.0):
+        super().__init__(name=f"img-dispatcher-{tier}", daemon=True)
         self.app = app
-        self.worker = worker
+        self.workers = workers
+        self.tier = tier
         self.poll_interval = poll_interval
         self._stop_event = threading.Event()
         self._dispatched: set[str] = set()
         self._lock = threading.Lock()
+        self._worker_idx = 0  # round-robin
 
     def stop(self):
         self._stop_event.set()
@@ -261,9 +265,10 @@ class _Dispatcher(threading.Thread):
         while not self._stop_event.is_set():
             try:
                 with self.app.app_context():
+                    # Filter by badge tier = this dispatcher's tier
                     queued = (
-                        ImageGenJob.query.filter_by(status="queued")
-                        .order_by(ImageGenJob.created_at.asc())
+                        ImageGenJob.query.filter_by(status="queued", badge=self.tier)
+                        .order_by(ImageGenJob.priority.desc(), ImageGenJob.created_at.asc())
                         .limit(20)
                         .all()
                     )
@@ -283,58 +288,94 @@ class _Dispatcher(threading.Thread):
                     with self._lock:
                         if jid not in self._dispatched:
                             self._dispatched.add(jid)
-                            self.worker.submit(jid)
+                            # Round-robin across workers in this tier
+                            worker = self.workers[self._worker_idx % len(self.workers)]
+                            self._worker_idx += 1
+                            worker.submit(jid)
             except Exception:
-                log.exception("img-dispatcher: poll failed")
+                log.exception("img-dispatcher[%s]: poll failed", self.tier)
             time.sleep(self.poll_interval)
 
 
-_worker: Optional[_Worker] = None
-_dispatcher: Optional[_Dispatcher] = None
+# Global state
+_workers_by_tier: Dict[str, List[_Worker]] = {}
+_dispatchers_by_tier: Dict[str, _Dispatcher] = {}
 _started = False
 _start_lock = threading.Lock()
 
 
-def get_dispatcher() -> Optional[_Dispatcher]:
-    return _dispatcher
+def get_dispatcher(tier: str) -> Optional[_Dispatcher]:
+    return _dispatchers_by_tier.get(tier)
 
 
 def start_image_workers(app):
-    """Idempotent: starts single worker + dispatcher once per process."""
-    global _started, _worker, _dispatcher
+    """Idempotent: starts worker pools + dispatchers per tier once per process."""
+    from config.badge_tiers import get_max_parallel_jobs  # noqa: PLC0415
+    global _started, _workers_by_tier, _dispatchers_by_tier
     with _start_lock:
         if _started:
             return
-        _worker = _Worker(app)
-        _worker.start()
-        _dispatcher = _Dispatcher(app, _worker)
-        _dispatcher.start()
+
+        tiers = ["elite", "pro", "starter", "trial"]
+        for tier in tiers:
+            max_workers = get_max_parallel_jobs(tier)
+            workers = [_Worker(app, tier, i) for i in range(max_workers)]
+            for w in workers:
+                w.start()
+            _workers_by_tier[tier] = workers
+
+            dispatcher = _Dispatcher(app, workers, tier)
+            dispatcher.start()
+            _dispatchers_by_tier[tier] = dispatcher
+
         _started = True
-        log.info("image worker pool started: 1 sequential worker (no timeout)")
+        total_workers = sum(len(w) for w in _workers_by_tier.values())
+        log.info("image worker pool started: %d workers (%s)", total_workers,
+                 ", ".join(f"{t}={len(w)}" for t, w in _workers_by_tier.items()))
 
 
-def submit_now(job_id: str):
+def submit_now(job_id: str, badge: str = None):
     """Optional: skip the DB poll and dispatch a freshly-created job immediately."""
-    if not _dispatcher or not _worker:
+    if not badge:
+        # Try to get badge from job
+        from utils.database.models import ImageGenJob, db
+        from main import app
+        try:
+            with app.app_context():
+                job = db.session.get(ImageGenJob, job_id)
+                if job:
+                    badge = job.badge
+        except Exception:
+            pass
+
+    tier = badge or "trial"
+    dispatcher = _dispatchers_by_tier.get(tier)
+    workers = _workers_by_tier.get(tier)
+    if not dispatcher or not workers:
         return
-    with _dispatcher._lock:
-        if len(_dispatcher._dispatched) > 100:
+
+    with dispatcher._lock:
+        if len(dispatcher._dispatched) > 100:
             try:
                 from utils.database.models import ImageGenJob, db
-                with _dispatcher.app.app_context():
+                with dispatcher.app.app_context():
                     active_ids = {
                         r[0] for r in db.session.query(ImageGenJob.id).filter(
-                            ImageGenJob.id.in_(list(_dispatcher._dispatched)),
+                            ImageGenJob.id.in_(list(dispatcher._dispatched)),
                             ImageGenJob.status.in_(('queued', 'running'))
                         ).all()
                     }
-                _dispatcher._dispatched = active_ids
+                dispatcher._dispatched = active_ids
             except Exception as e:
                 log.debug("submit_now: dispatched-set cleanup skipped: %s", e)
-        if job_id in _dispatcher._dispatched:
+        if job_id in dispatcher._dispatched:
             return
-        _dispatcher._dispatched.add(job_id)
-    _worker.submit(job_id)
+        dispatcher._dispatched.add(job_id)
+
+    # Round-robin submit
+    worker = workers[dispatcher._worker_idx % len(workers)]
+    dispatcher._worker_idx += 1
+    worker.submit(job_id)
 
 
 def get_queue_position(job_id: str) -> int:
@@ -345,7 +386,7 @@ def get_queue_position(job_id: str) -> int:
         with app.app_context():
             queued = (
                 ImageGenJob.query.filter_by(status="queued")
-                .order_by(ImageGenJob.created_at.asc())
+                .order_by(ImageGenJob.priority.desc(), ImageGenJob.created_at.asc())
                 .all()
             )
             for i, j in enumerate(queued):

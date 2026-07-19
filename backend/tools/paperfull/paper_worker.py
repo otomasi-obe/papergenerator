@@ -445,9 +445,15 @@ def _auto_enqueue_figure_images(
     import logging
     import uuid
 
-    from utils.database.models import ImageGenJob, db, safe_commit  # noqa: PLC0415
+    from utils.database.models import ImageGenJob, User, db, safe_commit  # noqa: PLC0415
+    from config.badge_tiers import TIER_RANK  # noqa: PLC0415
 
     logger = logging.getLogger(__name__)
+
+    # Get user badge for priority
+    user = db.session.get(User, user_id)
+    user_badge = user.badge if user else "trial"
+    user_priority = TIER_RANK.get(user_badge, 0)
 
     figures = _collect_all_gambar(paper_data)
     if not figures:
@@ -519,6 +525,8 @@ def _auto_enqueue_figure_images(
             prompt=enriched[:2000],  # MAX_PROMPT_CHARS
             status="queued",
             target_path=target_path[:500] if target_path else None,
+            badge=user_badge,
+            priority=user_priority,
         )
         db.session.add(job)
         enqueued += 1
@@ -548,7 +556,7 @@ def _auto_enqueue_figure_images(
                 .all()
             )
             if new_jobs:
-                submit_now(new_jobs[0].id)
+                submit_now(new_jobs[0].id, badge=user_badge)
         except Exception:
             logger.warning(
                 "[auto_image] submit_now failed, dispatcher poll will pick up",

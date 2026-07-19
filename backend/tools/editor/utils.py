@@ -138,6 +138,11 @@ def safe_paper_image_dir(paper_id: str) -> Path | None:
     except Exception:
         pass
 
+    # Fallback: worker saves to user/<paper_id>/image/ (direct canonical)
+    direct_img = (Path(current_app.root_path) / "user" / paper_id / "image")
+    if direct_img.is_dir() and any(direct_img.iterdir()):
+        return direct_img
+
     return img_dir
 
 

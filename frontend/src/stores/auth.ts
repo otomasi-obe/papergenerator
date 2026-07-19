@@ -25,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
+  const isDeveloper = computed(() => user.value?.email === 'anabilhisyam23@gmail.com')
 
   function setUser(userData: User | null): void {
     user.value = userData
@@ -97,5 +98,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, isLoggedIn, isAdmin, setUser, fetchMe, loginWithGoogle, logout, startHeartbeat, stopHeartbeat, _loaded }
+  return { user, isLoggedIn, isAdmin, isDeveloper, setUser, fetchMe, loginWithGoogle, logout, startHeartbeat, stopHeartbeat, _loaded }
 })

@@ -8,11 +8,13 @@
         ? 'badge-elite-gradient text-white badge-shimmer'
         : isPro
           ? 'badge-pro-gradient text-white'
-          : [tierInfo?.color, tierInfo?.textColor]
+          : isDeveloper && badge === 'developer'
+            ? 'badge-dev-gradient text-white badge-shimmer'
+            : [tierInfo?.color, tierInfo?.textColor]
     ]"
   >
-    <span v-if="isElite" class="absolute inset-0 badge-shine pointer-events-none"></span>
-    <span class="relative z-10 tracking-wider px-2">{{ tierInfo?.label }}</span>
+    <span v-if="isElite || (isDeveloper && badge === 'developer')" class="absolute inset-0 badge-shine pointer-events-none"></span>
+    <span class="relative z-10 tracking-wider px-2">{{ isDeveloper && badge === 'developer' ? 'DEV' : tierInfo?.label }}</span>
   </span>
 </template>
 
@@ -32,6 +34,7 @@ const tierInfo = computed(() => {
 
 const isElite = computed(() => props.badge === 'elite')
 const isPro = computed(() => props.badge === 'pro')
+const isDeveloper = computed(() => props.badge === 'developer')
 
 const sizeClasses = {
   xs: 'text-[9px] py-0',
@@ -63,6 +66,44 @@ const sizeClasses = {
     0 0 8px rgba(59, 130, 246, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Developer gradient: orange → red → pink (hotter than elite) */
+.badge-dev-gradient {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 45%, #ec4899 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 3px rgba(245, 158, 11, 0.6),
+    0 0 0 1px rgba(239, 68, 68, 0.4),
+    0 0 14px rgba(239, 68, 68, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Dev glow pulse — faster + hotter than elite */
+.badge-dev-gradient {
+  animation: dev-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes dev-glow {
+  0%, 100% {
+    box-shadow:
+      0 1px 3px rgba(245, 158, 11, 0.6),
+      0 0 0 1px rgba(239, 68, 68, 0.35),
+      0 0 10px rgba(239, 68, 68, 0.4),
+      0 0 20px rgba(236, 72, 153, 0.2),
+      0 0 32px rgba(239, 68, 68, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 1px 3px rgba(245, 158, 11, 0.7),
+      0 0 0 1.5px rgba(239, 68, 68, 0.55),
+      0 0 16px rgba(239, 68, 68, 0.7),
+      0 0 30px rgba(236, 72, 153, 0.4),
+      0 0 48px rgba(239, 68, 68, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
 }
 
 /* Shimmer sweep — smooth diagonal light band */
@@ -137,5 +178,6 @@ const sizeClasses = {
 @media (prefers-reduced-motion: reduce) {
   .badge-shimmer::before { animation: none; display: none; }
   .badge-elite-gradient { animation: none; }
+  .badge-dev-gradient { animation: none; }
 }
 </style>

@@ -678,6 +678,7 @@ class ImageGenJob(db.Model):
     retry_count = db.Column(db.Integer, default=0, nullable=False)  # job-level retry attempts
     target_path = db.Column(db.String(500), nullable=True)  # intended filename from paper JSON (e.g., "fig1_architecture.jpg")
     badge = db.Column(db.String(20), nullable=True)  # user badge tier at job creation (for model selection)
+    priority = db.Column(db.Integer, default=0, nullable=False, index=True)  # badge tier rank: elite=3, pro=2, starter=1, trial=0
     created_at = db.Column(db.DateTime, default=_utcnow, index=True, nullable=False)
     started_at = db.Column(db.DateTime, nullable=True)  # when worker claimed the job
     finished_at = db.Column(db.DateTime, nullable=True)  # when job reached terminal state
@@ -699,6 +700,7 @@ class ImageGenJob(db.Model):
             "retry_count": self.retry_count or 0,
             "target_path": self.target_path,
             "badge": self.badge,
+            "priority": self.priority,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,

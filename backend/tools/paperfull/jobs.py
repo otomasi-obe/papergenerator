@@ -1293,6 +1293,13 @@ def enqueue_generate(paper_id: str):
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
 
+    # Get user badge for priority
+    from utils.database.models import User  # noqa: PLC0415
+    from config.badge_tiers import TIER_RANK  # noqa: PLC0415
+    user = User.query.get(user_id)
+    user_badge = user.badge if user else "trial"
+    user_priority = TIER_RANK.get(user_badge, 0)
+
     # Validate paper_id format to prevent path traversal
     if not re.match(r"^[A-Za-z0-9_-]{1,64}$", paper_id):
         return jsonify({"error": "Invalid paper id"}), 400
@@ -2154,6 +2161,13 @@ def generate_stream(paper_id: str):
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid user identity"}), 401
 
+    # Get user badge for priority
+    from utils.database.models import User  # noqa: PLC0415
+    from config.badge_tiers import TIER_RANK  # noqa: PLC0415
+    user = User.query.get(user_id)
+    user_badge = user.badge if user else "trial"
+    user_priority = TIER_RANK.get(user_badge, 0)
+
     # Validate paper_id format to prevent path traversal
     import re as _re
     if not _re.match(r"^[A-Za-z0-9_-]{1,64}$", paper_id):
@@ -2417,13 +2431,15 @@ def generate_stream(paper_id: str):
         created_jobs = []
         for spec in _specs:
             job = ImageGenJob(
-                id=_uuid.uuid4().hex,
-                user_id=user_id,
-                paper_id=paper_id,
-                prompt=spec["prompt"],
-                target_path=spec["target_path"][:500] if spec["target_path"] else None,
-                status="queued",
-            )
+                        id=uuid.uuid4().hex,
+                        user_id=user_id,
+                        paper_id=paper_id,
+                        prompt=spec["prompt"],
+                        target_path=spec["target_path"][:500] if spec["target_path"] else None,
+                        status="queued",
+                        badge=user_badge,
+                        priority=user_priority,
+                    )
             db.session.add(job)
             created_jobs.append(job)
 
@@ -2432,7 +2448,7 @@ def generate_stream(paper_id: str):
         try:
             from tools.image_generation.worker import submit_now  # noqa: PLC0415
             for job in created_jobs:
-                submit_now(job.id)
+                submit_now(job.id, badge=user_badge)
         except Exception:
             log.exception("submit_now failed (jobs will still run via dispatcher poll)")
 
@@ -3100,6 +3116,8 @@ def generate_stream(paper_id: str):
                                                     prompt=_p_text[:2000],
                                                     status="queued",
                                                     target_path=_tp[:500] if _tp else None,
+                                                    badge=user_badge,
+                                                    priority=user_priority,
                                                 )
                                                 db.session.add(_ij)
                                             safe_commit()
@@ -3346,11 +3364,14 @@ def generate_stream(paper_id: str):
                 try:
                     # Resolve user badge for tier-based model selection in the worker
                     user_badge = None
+                    user_priority = 0
                     try:
                         from utils.database.models import User as _User
+                        from config.badge_tiers import TIER_RANK
                         _u = _User.query.get(int(user_id))
                         if _u:
                             user_badge = _u.badge
+                            user_priority = TIER_RANK.get(user_badge, 0)
                     except Exception:
                         pass
                     image_prompts = _collect_gambar_prompts(paper_data, paper_kind=paper_kind)
@@ -3394,6 +3415,7 @@ def generate_stream(paper_id: str):
                                 status="queued",
                                 target_path=target_path[:500] if target_path else None,
                                 badge=user_badge,
+                                priority=user_priority,
                             )
                             db.session.add(img_job)
                             image_job_ids.append(img_job.id)
@@ -3425,7 +3447,7 @@ def generate_stream(paper_id: str):
                 log.info("[paperfull] Waiting for %d image/chart jobs for paper %s", _total_jobs, paper_id)
 
                 _wait_start = _time.time()
-                _max_wait = 900  # 15 minutes — wait for ALL images (elite GPT-5.5-image ~80s each × N)
+                _max_wait = 1800  # 30 minutes — wait for ALL images (elite GPT-5.5-image ~80-100s each × N, worker has no timeout)
                 _last_progress_emit = -10  # emit immediately on first check
 
                 while True:
@@ -3444,6 +3466,10 @@ def generate_stream(paper_id: str):
                         break
 
                     try:
+                        # Expire session cache BEFORE polling — long-lived SSE generator
+                        # holds a request-scoped session whose identity map would otherwise
+                        # return stale ImageGenJob rows (job stays "running" forever).
+                        db.session.expire_all()
                         # Check ImageGenJob (Gemini) statuses
                         _img_done = 0
                         _img_errors = 0

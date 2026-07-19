@@ -101,11 +101,12 @@
           </button>
           <p class="text-sm text-ink-800 dark:text-ink-200 mb-3">Pilih metode pembayaran:</p>
           <div class="space-y-3 max-w-xl mx-auto">
-            <!-- QRIS -->
+            <!-- QRIS (Maintenance) -->
             <button
+              disabled
               @click="method = 'qris'"
               :class="[
-                'w-full rounded-xl border-2 p-4 transition-all text-left hover:shadow-md',
+                'w-full rounded-xl border-2 p-4 transition-all text-left opacity-60 cursor-not-allowed',
                 method === 'qris'
                   ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700'
                   : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
@@ -118,9 +119,9 @@
                 <div class="flex-1">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h4 class="font-bold text-ink-900 dark:text-ink-50">QRIS</h4>
-                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold">Active</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Maintenance</span>
                   </div>
-                  <p class="text-xs text-ink-500 dark:text-ink-400">Bayar instan dengan QRIS</p>
+                  <p class="text-xs text-ink-500 dark:text-ink-400">Sedang maintenance</p>
                 </div>
                 <div
                   :class="[
@@ -137,41 +138,42 @@
               </div>
             </button>
 
-            <!-- Virtual Account -->
-            <button
-              @click="method = 'va'"
-              :class="[
-                'w-full rounded-xl border-2 p-4 transition-all text-left hover:shadow-md',
-                method === 'va'
-                  ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700'
-                  : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800 hover:border-[var(--accent)]'
-              ]"
-            >
-              <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 rounded-xl bg-[#1A3A5C] flex items-center justify-center shrink-0">
-                                  <span class="text-white font-black text-lg tracking-wider">VA</span>
-                                </div>
-                                <div class="flex-1">
-                                  <div class="flex items-center gap-2 flex-wrap">
-                                    <h4 class="font-bold text-ink-900 dark:text-ink-50">Virtual Account</h4>
-                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-semibold">Active</span>
-                                  </div>
-                                  <p class="text-xs text-ink-500 dark:text-ink-400">Transfer ke nomor rekening virtual bank</p>
-                                </div>
-                <div
-                  :class="[
-                    'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0',
-                    method === 'va'
-                      ? 'border-[var(--accent)] bg-[var(--accent)]'
-                      : 'border-cream-300 dark:border-ash-600'
-                  ]"
-                >
-                  <svg v-if="method === 'va'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              </div>
-            </button>
+            <!-- Virtual Account (Maintenance) -->
+                        <button
+                          disabled
+                          @click="method = 'va'"
+                          :class="[
+                            'w-full rounded-xl border-2 p-4 transition-all text-left opacity-60 cursor-not-allowed',
+                            method === 'va'
+                              ? 'border-[var(--accent)] bg-cream-100 dark:bg-ash-700'
+                              : 'border-cream-200 dark:border-ash-700 bg-cream-50 dark:bg-ash-800'
+                          ]"
+                        >
+                          <div class="flex items-center gap-4">
+                                            <div class="w-14 h-14 rounded-xl bg-[#1A3A5C] flex items-center justify-center shrink-0">
+                                              <span class="text-white font-black text-lg tracking-wider">VA</span>
+                                            </div>
+                                            <div class="flex-1">
+                                              <div class="flex items-center gap-2 flex-wrap">
+                                                <h4 class="font-bold text-ink-900 dark:text-ink-50">Virtual Account</h4>
+                                                <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">Maintenance</span>
+                                              </div>
+                                              <p class="text-xs text-ink-500 dark:text-ink-400">Sedang maintenance</p>
+                                            </div>
+                            <div
+                              :class="[
+                                'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0',
+                                method === 'va'
+                                  ? 'border-[var(--accent)] bg-[var(--accent)]'
+                                  : 'border-cream-300 dark:border-ash-600'
+                              ]"
+                            >
+                              <svg v-if="method === 'va'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          </div>
+                        </button>
 
             <!-- Bank grid (shown when VA selected) -->
             <div v-if="method === 'va'" class="ml-4 space-y-2">
@@ -385,7 +387,8 @@
         <button
           v-if="step === 'method'"
           @click="confirmMethod"
-          class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg transition active:scale-95"
+          :disabled="isMethodMaintenance"
+          class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition active:scale-95"
         >
           Bayar dengan {{ method === 'qris' ? 'QRIS' : 'VA' }} →
         </button>
@@ -487,7 +490,7 @@ const packages: Package[] = [
 const step = ref<'package' | 'method' | 'payment'>('package')
 const selectedPackageId = ref<string | null>(null)
 const selectedPackage = ref<Package | null>(null)
-const method = ref<'qris' | 'va'>('va')
+const method = ref<'qris' | 'va'>('qris')
 const loading = ref(false)
 const paymentData = ref<any>(null)
 const paymentStatus = ref<'pending' | 'paid' | 'expired' | 'cancelled' | 'failed'>('pending')
@@ -508,12 +511,15 @@ const tokens = ref(0)
 const selectedBank = ref('VIRTUAL_ACCOUNT_BRI')
 const banks = [
   { channel: 'VIRTUAL_ACCOUNT_BRI', label: 'BRI', active: true },
-  { channel: 'VIRTUAL_ACCOUNT_BANK_PERMATA', label: 'Permata', active: true },
+  { channel: 'VIRTUAL_ACCOUNT_BANK_PERMATA', label: 'Permata', active: false },
   { channel: 'VIRTUAL_ACCOUNT_BNI', label: 'BNI', active: false },
   { channel: 'VIRTUAL_ACCOUNT_MANDIRI', label: 'Mandiri', active: false },
 ]
 
 const selectedPkg = computed(() => packages.find(p => p.id === selectedPackageId.value) || null)
+
+const maintenanceMethods = ['qris', 'va']
+const isMethodMaintenance = computed(() => maintenanceMethods.includes(method.value))
 
 function selectPackage(pkg: Package) {
   if (pkg.maintenance) return
