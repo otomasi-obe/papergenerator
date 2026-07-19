@@ -426,6 +426,29 @@
           </div>
         </div>
       </div>
+
+      <!-- Feedback Tab -->
+      <div v-if="activeTab === 'feedback'" id="dev-panel-feedback" role="tabpanel" aria-labelledby="dev-tab-feedback" class="space-y-6">
+        <div class="bg-white dark:bg-ash-800 rounded-2xl border shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-cream-300 dark:border-ash-700 bg-cream-50 dark:bg-ash-850 flex items-center justify-between">
+            <h2 class="font-semibold text-ink-900 dark:text-ink-50">User Feedback (Kritik & Saran)</h2>
+            <button @click="loadFeedback" :disabled="loadingFeedback" class="px-3 py-1.5 text-xs rounded-lg bg-[var(--accent)] text-cream-50 hover:opacity-90 disabled:opacity-50">Refresh</button>
+          </div>
+          <div class="p-5 space-y-3" v-if="feedbacks.length > 0">
+            <div v-for="fb in feedbacks" :key="fb.id" class="p-4 rounded-xl bg-cream-50 dark:bg-ash-700/50 border border-cream-200 dark:border-ash-600">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium text-ink-900 dark:text-ink-50">{{ fb.email || 'Anonymous' }}</span>
+                  <span class="px-2 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">{{ fb.status }}</span>
+                </div>
+                <span class="text-xs text-ink-500 dark:text-ink-400">{{ formatDate(fb.created_at) }}</span>
+              </div>
+              <p class="text-sm text-ink-700 dark:text-ink-200 whitespace-pre-wrap">{{ fb.message }}</p>
+            </div>
+          </div>
+          <div v-else class="p-5 text-center text-ink-500 dark:text-ink-400">No feedback yet</div>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -435,12 +458,13 @@ import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import AppHeader from '../components/AppHeader.vue'
 import api from '../api/index.js'
 
-const activeTab = ref<'system' | 'jobs' | 'image-jobs' | 'db' | 'cache' | 'flags' | 'dev-access'>('system')
+const activeTab = ref<'system' | 'jobs' | 'image-jobs' | 'db' | 'cache' | 'flags' | 'dev-access' | 'feedback'>('system')
 const loadingJobs = ref(false)
 const loadingDb = ref(false)
 const loadingCache = ref(false)
 const loadingFlags = ref(false)
 const loadingImageJobs = ref(false)
+const loadingFeedback = ref(false)
 
 const statsCards = ref([
   { label: 'Papers', value: 0, icon: '📄' },
@@ -457,6 +481,7 @@ const devTabs = [
   { id: 'cache' as const, label: 'Cache', icon: '🗄️' },
   { id: 'flags' as const, label: 'Flags', icon: '🚩' },
   { id: 'dev-access' as const, label: 'Dev Access', icon: '👥' },
+  { id: 'feedback' as const, label: 'Feedback', icon: '💬' },
 ]
 
 const versionInfo = ref<{ version: string; buildDate: string; commit: string; env: string } | null>(null)
@@ -467,6 +492,16 @@ const cacheInfo = ref<{ connected: boolean; used_memory: string; keys: number; h
 const flags = ref<{ key: string; enabled: boolean; description: string }[]>([])
 const imageJobs = ref<any[]>([])
 let imageJobsTimer: ReturnType<typeof setInterval> | null = null
+const feedbacks = ref<any[]>([])
+
+async function loadFeedback(): Promise<void> {
+  try {
+    const res = await api.get('/api/dev/feedback')
+    feedbacks.value = res.data.feedback || []
+  } catch (e) {
+    console.error('Failed to load feedback', e)
+  }
+}
 
 // Maintenance banner (synced with MAINTENANCE_MODE flag)
 const maintEnabled = ref(false)
@@ -523,19 +558,6 @@ function imageJobProgress(job: any): number {
   return 0
 }
 
-async function loadAll() {
-  await Promise.all([
-    loadVersion(),
-    loadHealth(),
-    loadJobs(),
-    loadDbStats(),
-    loadCache(),
-    loadFlags(),
-    loadMaintenance(),
-    loadDevList(),
-  ])
-}
-
 async function loadMaintenance() {
   try {
     const res = await api.get('/api/dev/maintenance-banner/public')
@@ -579,6 +601,20 @@ async function loadDevList() {
   } catch (e: any) {
     devError.value = e?.response?.data?.error || 'Failed to load dev list'
   }
+}
+
+async function loadAll() {
+  await Promise.all([
+    loadVersion(),
+    loadHealth(),
+    loadJobs(),
+    loadDbStats(),
+    loadCache(),
+    loadFlags(),
+    loadMaintenance(),
+    loadDevList(),
+    loadFeedback(),
+  ])
 }
 
 async function addDev() {
