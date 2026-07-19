@@ -43,6 +43,29 @@
       ]
     },
     {
+      "version": "1.5.2",
+      "released": "2026-07-18",
+      "title": "Generate Full SSE indicators (reasoning/image progress) + version cache-bust",
+      "changes": [
+        {
+          "type": "fix",
+          "text": "AI reasoning + image progress via SSE: PaperfullTab handle thinking/content/progress/image_generation SSE events — reasoning stream, JSON tokens, image progress render live"
+        },
+        {
+          "type": "fix",
+          "text": "Image reconciliation race: pindah ke background thread biar survive GeneratorExit (client disconnect) dan gak race frontend reload"
+        },
+        {
+          "type": "fix",
+          "text": "Version-based cache-bust: main.ts fetch version-history.json (no-store), bandingin localStorage pf_version, force reload sekali kalau mismatch → fix silent stale-index.html serving old chunks"
+        },
+        {
+          "type": "changed",
+          "text": "Unify dark theme tokens (anthracite → ash) across components"
+        }
+      ]
+    },
+    {
       "version": "1.5.1",
       "released": "2026-07-18",
       "title": "Stale Chunk Auto-Reload + Badge Tiers + Maintenance Banner + SLR PRISMA/DOI",
