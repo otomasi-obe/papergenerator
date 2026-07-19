@@ -1,8 +1,47 @@
 {
-  "version": "1.5.2",
-  "released": "2026-07-18",
-  "title": "Update v1.5.2 — Generate Full SSE indicators (reasoning/image progress) + version cache-bust",
+  "version": "1.5.3",
+  "released": "2026-07-20",
+  "title": "Update v1.5.3 — Feedback + Dev Room access + Cancel generate-stream + image-tier unify",
   "history": [
+    {
+      "version": "1.5.3",
+      "released": "2026-07-20",
+      "title": "Feedback, Dev Room Access, Cancel Stream, Image Tier Unify",
+      "changes": [
+        {
+          "type": "new",
+          "text": "Kritik & Saran (Feedback): tombol 💬 di AppHeader + FeedbackModal + Feedback model + endpoint submit/list"
+        },
+        {
+          "type": "new",
+          "text": "Developer Room access: is_developer flag di User, endpoint /dev/list + /dev/add (hanya anabilhisyam23@gmail.com), guard requiresDev di router"
+        },
+        {
+          "type": "new",
+          "text": "Cancel generate-stream: POST /api/papers/<id>/cancel set Redis cancel flag + update AiJob, frontend stopGeneration panggil API lalu abort SSE"
+        },
+        {
+          "type": "new",
+          "text": "Generate-stream progress events: emit progress tiap ~2% / 50 token via SSE"
+        },
+        {
+          "type": "new",
+          "text": "paper-image-worker PM2 process: tools.image_generation.worker_runner sebagai proses PM2 terpisah"
+        },
+        {
+          "type": "fix",
+          "text": "Duplicate Dev button di AppHeader dihapus (satu di dropdown, satu standalone)"
+        },
+        {
+          "type": "fix",
+          "text": "MaintenanceBanner: onUnmounted listener cleanup + event maintenance-banner-updated dari Dev Room"
+        },
+        {
+          "type": "changed",
+          "text": "Image badge-tier: unify ke GPT-5.5 + z-image semua tier, drop Cloudflare (HTTP 401); Z-Image prompt extractive summarizer >400 char"
+        }
+      ]
+    },
     {
       "version": "1.5.1",
       "released": "2026-07-18",

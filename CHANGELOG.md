@@ -3,6 +3,24 @@
 All notable changes to PaperFull (papergenerator) are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.3] — 2026-07-20
+
+### Added
+- **Kritik & Saran (Feedback)**: tombol 💬 di AppHeader + `FeedbackModal.vue` + `Feedback` model (user_id, email, message, status) + endpoint submit/list (`/feedback`)
+- **Developer Room access management**: `is_developer` flag di `User`, endpoint `/dev/list` + `/dev/add` (hanya `anabilhisyam23@gmail.com`), guard `requiresDev` di router + `isDeveloper` di auth store (ganti hardcode email)
+- **Cancel generate-stream**: endpoint `POST /api/papers/<id>/cancel` set Redis cancel flag + update `AiJob` status, frontend `PaperfullTab.stopGeneration()` panggil API lalu abort SSE
+- **Generate-stream progress events**: emit progress tiap ~2% / 50 token via SSE
+- **paper-image-worker PM2 process**: `tools.image_generation.worker_runner` sebagai proses PM2 terpisah (restart_delay 5s, max_restarts 10)
+
+### Fixed
+- **Duplicate Dev button**: hapus tombol Dev ganda di AppHeader (satu di dropdown, satu standalone)
+- **MaintenanceBanner**: tambah `onUnmounted` listener cleanup + event `maintenance-banner-updated` dari Dev Room
+- **word-GPT-Plus submodule**: hide official API key settings (`officialAPIKey`/`officialBasePath`/`officialCustomModel`) + yarn lock refresh
+
+### Changed
+- **Image badge-tier models**: unify ke working GPT-5.5 + z-image untuk semua tier (elite/pro/starter/trial), drop Cloudflare models (HTTP 401)
+- **Z-Image prompt**: extractive summarizer (3 kalimat) kalau prompt >400 char, fallback hard truncate
+
 ## [1.5.1] — 2026-07-18
 
 ### Fixed
