@@ -54,6 +54,114 @@ from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_req
 
 from utils.database.models import AiJob, Paper, ImageGenJob, db, safe_commit
 
+
+# ── Helper: Extract partial paper from truncated JSON (Bell path) ──────────────
+def _extract_partial_paper_bell(clean: str) -> dict | None:
+    """
+    Attempt to extract a usable partial paper structure from truncated JSON.
+    Returns dict with minimal required fields or None if unrecoverable.
+    """
+    import re
+    try:
+        partial = {}
+        
+        # Extract title
+        title_match = re.search(r'"title"\s*:\s*"([^"]*)"', clean)
+        if title_match:
+            partial["title"] = title_match.group(1)
+        
+        # Extract abstract
+        abstract_match = re.search(r'"abstract"\s*:\s*"([^"]*)"', clean)
+        if abstract_match:
+            partial["abstract"] = abstract_match.group(1)
+        
+        # Extract keywords array
+        keywords_match = re.search(r'"keywords"\s*:\s*(\[.*?\])', clean, re.DOTALL)
+        if keywords_match:
+            try:
+                partial["keywords"] = json.loads(keywords_match.group(1))
+            except:
+                partial["keywords"] = []
+        
+        # Extract sections using balanced brace parsing
+        sections = _extract_sections_balanced_bell(clean)
+        if sections:
+            partial["sections"] = sections
+        
+        # Extract references
+        refs_match = re.search(r'"references"\s*:\s*(\{.*?\})', clean, re.DOTALL)
+        if refs_match:
+            try:
+                partial["references"] = json.loads(refs_match.group(1))
+            except:
+                partial["references"] = {"items": []}
+        else:
+            partial["references"] = {"items": []}
+        
+        if partial.get("title") or partial.get("sections"):
+            partial.setdefault("authors", [{"name": "Author Name", "affiliation": "", "location": "", "email": ""}])
+            partial.setdefault("figures", [])
+            partial.setdefault("tables", [])
+            partial.setdefault("equations", [])
+            partial.setdefault("acknowledgment", "")
+            partial.setdefault("citation_style", "ieee")
+            partial.setdefault("language", "id")
+            return partial
+            
+    except Exception:
+        pass
+    return None
+
+
+def _extract_sections_balanced_bell(clean: str) -> list[dict]:
+    """Extract section objects using balanced brace counting."""
+    import re
+    sections = []
+    
+    for i in range(1, 10):
+        pattern = rf'"section{i}"\s*:\s*'
+        match = re.search(pattern, clean)
+        if not match:
+            continue
+        
+        start = match.end()
+        brace_count = 0
+        in_string = False
+        escape_next = False
+        
+        for j, ch in enumerate(clean[start:]):
+            if escape_next:
+                escape_next = False
+                continue
+            if ch == '\\':
+                escape_next = True
+                continue
+            if ch == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if not in_string:
+                if ch == '{':
+                    brace_count += 1
+                elif ch == '}':
+                    brace_count -= 1
+                    if brace_count == 0:
+                        section_json = clean[start:start + j + 1]
+                        try:
+                            sec = json.loads(section_json)
+                            sec.setdefault("title", f"SECTION {i}")
+                            sections.append(sec)
+                        except:
+                            pass
+                        break
+      
+    return sections
+
+
+# ── Redis helpers ──────────────────────────────────────────────────────────────
+from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
+
+from utils.database.models import AiJob, Paper, ImageGenJob, db, safe_commit
+
 jobs = Blueprint("jobs", __name__)
 
 log = logging.getLogger(__name__)
@@ -1954,14 +2062,19 @@ def _cleanup_orphaned_jobs(user_id: int) -> None:
     """Mark orphaned/stuck jobs as error.
 
     Orphaned = job in DB with status queued/running/pending but:
-      - Not in Redis RQ queue (worker crashed/lost it), OR
+      - Not in Redis RQ queue/started registry (worker crashed/lost it), OR
       - Stuck at 0% progress for > 10 minutes with no RQ job backing it
     """
     try:
         from rq import Queue
+        from rq.registry import StartedJobRegistry
         _r = get_redis()
         q = Queue("paper", connection=_r) if _r else None
+        # Check BOTH queued jobs AND currently executing jobs
         rq_job_ids = {j.id for j in q.jobs} if q else set()
+        if q:
+            started_registry = StartedJobRegistry(queue=q)
+            rq_job_ids.update(started_registry.get_job_ids())
     except Exception:
         rq_job_ids = set()
 
@@ -1976,7 +2089,7 @@ def _cleanup_orphaned_jobs(user_id: int) -> None:
     ).all()
 
     for job in active_jobs:
-        # Check if job is in RQ queue
+        # Check if job is in RQ queue OR currently executing
         in_rq = job.id in rq_job_ids
 
         # Check age
@@ -1985,10 +2098,30 @@ def _cleanup_orphaned_jobs(user_id: int) -> None:
 
         # Mark as error if orphaned (not in RQ) AND old enough
         if not in_rq and is_old:
-            job.status = "error"
-            job.error = "Job lost — worker not available or crashed"
-            safe_commit()
-            logging.getLogger(__name__).warning(f"Auto-marked orphaned job {job.id} as error (age={age})")
+            # CHECK: If paper exists and has substantial content, don't mark as error.
+            # The worker may have completed but failed to update job status.
+            paper_saved = False
+            if job.paper_id:
+                from utils.database.models import Paper
+                paper = Paper.query.filter_by(id=job.paper_id).first()
+                if paper and paper.data and isinstance(paper.data, dict):
+                    # Check for substantial content (title + sections)
+                    if paper.data.get("title") and paper.data.get("sections"):
+                        paper_saved = True
+
+            if paper_saved:
+                # Paper was generated successfully - mark job as done instead of error
+                job.status = "done"
+                job.error = None
+                job.stage = "done"
+                job.progress = 100
+                safe_commit()
+                logging.getLogger(__name__).info(f"Auto-marked completed job {job.id} as done (paper saved, age={age})")
+            else:
+                job.status = "error"
+                job.error = "Job lost — worker not available or crashed"
+                safe_commit()
+                logging.getLogger(__name__).warning(f"Auto-marked orphaned job {job.id} as error (age={age})")
 
 
 @jobs.route("/api/me/ai-jobs/recent", methods=["GET"])
@@ -2163,6 +2296,9 @@ def generate_status(paper_id: str):
             "status": state.get("status", "not_found"),
             "reasoning": state.get("reasoning", ""),
             "content": state.get("content", ""),
+            "progress": int(state.get("progress") or 0),
+            "stage": state.get("stage") or state.get("status"),
+            "job_id": state.get("job_id"),
             "error": state.get("error"),
             "started_at": state.get("started_at"),
         })
@@ -2240,8 +2376,14 @@ def generate_stream(paper_id: str):
 
     # Parse request body
     data_texts: list[str] = []
+    # Retain original extracted uploads for PaperFile persistence after Data/Draft
+    # classification moves narrative drafts out of data_texts.
+    uploaded_data_texts: list[str] = []
     reference_texts: list[str] = []
     selected_drafts: list | str | None = None
+    # Manifest of narrative drafts uploaded through the Data/Draft bucket.
+    # It is used both for prompt guidance and deterministic post-AI overlay.
+    draft_manifest: dict = {"drafts": [], "classifications": []}
     revisi_semua = False
     regenerate_images = False
     
@@ -2288,6 +2430,7 @@ def generate_stream(paper_id: str):
             log.info("[paperfull] data_uploads: %d files, ref_uploads: %d files", len(data_uploads), len(ref_uploads))
             if data_uploads:
                 data_texts = _extract_texts_from_files(data_uploads)
+                uploaded_data_texts = list(data_texts)
                 log.info("[paperfull] extracted %d data_texts from files, total chars: %d", len(data_texts), sum(len(t) for t in data_texts))
                 # Write to debug log
                 import logging as _log_module2
@@ -2317,6 +2460,24 @@ def generate_stream(paper_id: str):
         except Exception as _fe:
             log.warning("generate-stream file extraction failed for paper %s: %s", paper_id, _fe)
 
+        # ── Classify Data/Draft bucket before prompt construction ────────
+        # Narrative DOCX/PDF drafts must not be treated as experiment data.
+        if data_texts:
+            try:
+                from tools.paperfull.draft_preservation import collect_draft_manifest
+                data_texts, _draft_refs, draft_manifest = collect_draft_manifest(data_texts)
+                reference_texts.extend(_draft_refs)
+                log.info(
+                    "[paperfull] Data/Draft classification: %d raw data, %d protected drafts, %d total classifications",
+                    len(data_texts), len(draft_manifest.get("drafts", [])),
+                    len(draft_manifest.get("classifications", [])),
+                )
+            except Exception as _classify_e:
+                # Fail safe: if classification itself breaks, do not silently
+                # convert potential user prose into experimental data.
+                log.error("[paperfull] Data/Draft classification failed: %s", _classify_e)
+                return jsonify({"error": "Gagal mengklasifikasikan file Data/Draft"}), 400
+
         # ── Persist uploaded files to PaperFile DB + user storage ────────
         # Files uploaded during paperfull generate were only extracted for text
         # but never saved. Now we save them so they appear in the file list.
@@ -2326,7 +2487,7 @@ def generate_stream(paper_id: str):
             _pf_username = _pf_get_username(user_id=user_id)
             _pf_judul = paper.title if paper else "untitled"
             _all_uploads = [
-                (data_uploads, data_texts, "data"),
+                (data_uploads, uploaded_data_texts, "data"),
                 (ref_uploads, reference_texts, "reference"),
             ]
             for _file_list, _text_list, _bucket in _all_uploads:
@@ -2390,6 +2551,14 @@ def generate_stream(paper_id: str):
         data_texts = body.get("data_texts") or []
         reference_texts = body.get("reference_texts") or []
         selected_drafts = body.get("selected_drafts")
+        if data_texts:
+            try:
+                from tools.paperfull.draft_preservation import collect_draft_manifest
+                data_texts, _draft_refs, draft_manifest = collect_draft_manifest([str(t) for t in data_texts if t])
+                reference_texts.extend(_draft_refs)
+            except Exception as _classify_e:
+                log.error("[paperfull] JSON Data/Draft classification failed: %s", _classify_e)
+                return jsonify({"error": "Gagal mengklasifikasikan file Data/Draft"}), 400
 
     # ── Pre-store data_texts to Paper.data BEFORE generation ─────────────
     # This ensures data persists even if closure loses the variable.
@@ -2907,6 +3076,17 @@ def generate_stream(paper_id: str):
                         paper_id,
                     )
 
+            # ── USER DRAFT PROTECTION BLOCK ─────────────────────────────
+            if draft_manifest.get("drafts"):
+                try:
+                    from tools.paperfull.draft_preservation import draft_prompt_block
+                    _draft_block = draft_prompt_block(draft_manifest)
+                    if _draft_block:
+                        user_parts.append(_draft_block)
+                        log.info("[paperfull] Injected USER DRAFT verbatim protection block (%d chars)", len(_draft_block))
+                except Exception as _dp_e:
+                    log.warning("[paperfull] Failed to inject draft protection block: %s", _dp_e)
+
             # ── REVISI SEMUA: inject existing paper JSON ──────────────
             if revisi_semua:
                 try:
@@ -2987,7 +3167,7 @@ def generate_stream(paper_id: str):
             _pf_started_at = datetime.now(timezone.utc).isoformat()
             _pf_last_write = [0.0]
 
-            def _pf_snapshot(status, reasoning, content, error=None, force=False):
+            def _pf_snapshot(status, reasoning, content, error=None, progress=None, stage=None, force=False):
                 now = _time.time()
                 if not force and (now - _pf_last_write[0]) < 1.5:
                     return
@@ -2999,13 +3179,16 @@ def generate_stream(paper_id: str):
                             "status": status,
                             "reasoning": (reasoning or "")[-20000:],
                             "content": (content or "")[-60000:],
+                            "progress": int(progress if progress is not None else _last_progress_pct),
+                            "stage": stage or status,
+                            "job_id": _bell_job_id,
                             "started_at": _pf_started_at,
                             "error": error,
                         }, default=str))
                 except Exception:
                     pass
 
-            _pf_snapshot("streaming", reasoning_acc, full_content, force=True)
+            _pf_snapshot("streaming", reasoning_acc, full_content, progress=1, stage="starting", force=True)
 
             # Emit progress events every ~2% or every 50 tokens
             _last_progress_pct = 0
@@ -3073,6 +3256,7 @@ def generate_stream(paper_id: str):
                                         _last_progress_pct = pct
                                         _tokens_at_last_progress = token_count
                                         yield f"event: progress\ndata: {_json.dumps({'stage': 'generating', 'percent': pct, 'total_tokens': token_count})}\n\n"
+                                        _pf_snapshot("streaming", reasoning_acc, full_content, progress=pct, stage="generating", force=True)
                                         # Also update AiJob (bell job) in DB
                                         _update_bell_job("running", pct)
                         except _json.JSONDecodeError:
@@ -3270,10 +3454,16 @@ def generate_stream(paper_id: str):
                             raise ValueError(f"json_repair returned {type(raw_paper)}")
                     except Exception as e2:
                         log.warning("JSON parse failed for paper %s: %s", paper_id, e2)
-                        _update_bell_job("error", 100, error="JSON parse failed — paper content could not be parsed")
-                        _pf_snapshot("error", reasoning_acc, full_content, error="JSON parse failed", force=True)
-                        yield f"event: error\ndata: {_json.dumps({'error': 'JSON parse failed — paper content could not be parsed'})}\n\n"
-                        return
+                        # TRUNCATION RECOVERY: Try to extract partial paper
+                        partial = _extract_partial_paper_bell(clean)
+                        if partial:
+                            log.warning("[bell] Returning PARTIAL paper structure (truncation recovery)")
+                            raw_paper = partial
+                        else:
+                            _update_bell_job("error", 100, error="JSON parse failed — paper content could not be parsed")
+                            _pf_snapshot("error", reasoning_acc, full_content, error="JSON parse failed", force=True)
+                            yield f"event: error\ndata: {_json.dumps({'error': 'JSON parse failed — paper content could not be parsed'})}\n\n"
+                            return
                 else:
                     _update_bell_job("error", 100, error="JSON parse failed and json_repair not available")
                     _pf_snapshot("error", reasoning_acc, full_content, error="JSON parse failed and json_repair not available", force=True)
@@ -3312,7 +3502,7 @@ def generate_stream(paper_id: str):
             from tools.paperfull.text_cleaner import clean_paper_data
             paper_data = clean_paper_data(paper_data)
 
-            # ── Post-process: programmatic humanization (anti-Turnitin) ────
+            # ── Post-process: academic prose quality improvement ────
             try:
                 from tools.humanizer.humanizer import TextHumanizer
                 _humanizer = TextHumanizer()
@@ -3342,11 +3532,33 @@ def generate_stream(paper_id: str):
                     return data
                 
                 paper_data = _humanize_recursive(paper_data)
-                log.info("[paperfull] Applied post-generation humanization (programmatic, anti-Turnitin)")
+                log.info("[paperfull] Applied post-generation prose quality pass")
             except ImportError:
                 log.info("[paperfull] Humanizer not available, skipping post-humanization")
             except Exception as _hum_e:
                 log.warning("[paperfull] Post-humanization failed, continuing: %s", _hum_e)
+
+            # ── Draft verbatim overlay (exact preservation of user drafts) ────
+            # Must run AFTER humanizer to restore any human-written draft sections
+            # that were modified by post-processing.
+            if draft_manifest.get("drafts"):
+                try:
+                    from tools.paperfull.draft_preservation import apply_verbatim_drafts, assert_verbatim_preserved
+                    draft_audit = apply_verbatim_drafts(paper_data, draft_manifest)
+                    paper_data["_draft_preservation"] = draft_audit
+                    log.info(
+                        "[paperfull] Draft preservation overlay: status=%s protected=%d exact=%d mismatches=%d",
+                        draft_audit.get("status"), draft_audit.get("protected_sections", 0),
+                        draft_audit.get("exact_matches", 0), draft_audit.get("mismatches", 0)
+                    )
+                    # Fail closed if exact match not achieved
+                    assert_verbatim_preserved(draft_audit)
+                except Exception as _dv_e:
+                    log.error("[paperfull] Draft preservation overlay failed: %s", _dv_e)
+                    _update_bell_job("error", 100, error=f"Draft preservation failed: {_dv_e}")
+                    _pf_snapshot("error", reasoning_acc, full_content, error=f"Draft preservation failed: {_dv_e}", force=True)
+                    yield f"event: error\ndata: {_json.dumps({'error': f'Draft preservation failed: {_dv_e}'})}\n\n"
+                    return
 
             # ── Post-process: data integrity verification ────
             _stored_data_texts = paper_data.get("_data_texts", []) or []
@@ -3380,6 +3592,28 @@ def generate_stream(paper_id: str):
             if _injected_data_texts:
                 paper_data["_data_texts"] = _injected_data_texts
                 paper_data["_data_files_count"] = len([t for t in _injected_data_texts if t and t.strip()])
+
+            # ── Shared quality gate (same as queued worker) ─────────────
+            # Run after recovering source data and immediately before persistence;
+            # truncated JSON, missing references, or untraceable values must not be saved.
+            from tools.paperfull.quality_gate import validate_paper_quality, quality_error_message
+            _quality_data_warnings = (
+                _verify_data_integrity(paper_data, _injected_data_texts, paper_id)
+                if _injected_data_texts else []
+            )
+            quality = validate_paper_quality(
+                paper_data,
+                has_source_data=bool(_injected_data_texts),
+                data_warnings=_quality_data_warnings,
+            )
+            if not quality["ok"]:
+                _quality_error = quality_error_message(quality)
+                _update_bell_job("error", 100, error=_quality_error)
+                _pf_snapshot("error", reasoning_acc, full_content, error=_quality_error, force=True)
+                yield f"event: error\ndata: {_json.dumps({'error': _quality_error})}\n\n"
+                return
+            if quality["warnings"]:
+                paper_data["_quality_warnings"] = quality["warnings"]
 
             # ── Save to DB (fresh connection, retries on stale SSL) ───
             try:

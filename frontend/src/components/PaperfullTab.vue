@@ -165,7 +165,7 @@
       >
         <div class="flex items-center gap-2 mb-1">
           <span class="text-base">📊</span>
-          <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">Data</span>
+          <span class="text-xs font-semibold text-ink-900 dark:text-ink-50">Data/Draft</span>
           <!-- + upload button -->
           <div class="relative ml-auto">
             <button
@@ -187,8 +187,8 @@
           </div>
         </div>
         <p class="text-[10px] text-ink-500 dark:text-ink-300 leading-snug">
-          csv, xlsx, pdf — data mentah untuk tabel &amp; grafik
-        </p>
+                  Data mentah (csv, xlsx, pdf) untuk tabel & grafik, atau draft paper (docx, pdf) yang teksnya dipertahankan apa adanya.
+                </p>
         <!-- Inline paper files list with checkboxes -->
         <div v-if="paperFilesList.length" class="mt-2">
           <!-- Select All for Data -->
@@ -356,7 +356,7 @@
       <div ref="reasoningScroll" class="max-h-[350px] overflow-y-auto p-4 scroll-smooth reasoning-panel">
         <div v-if="!reasoningText" class="text-xs text-ink-500 dark:text-ink-300 italic flex items-center gap-2">
           <span class="w-3 h-3 border-2 border-navy-300 border-t-navy-600 dark:border-t-cream-300 rounded-full animate-spin"></span>
-          <span>Menunggu data dari server...</span>
+          <span>{{ contentText ? 'Provider tidak mengirim AI reasoning terpisah; paper JSON sedang streaming di panel bawah.' : 'Menunggu data dari server...' }}</span>
         </div>
         <div v-else>
           <div
@@ -562,6 +562,19 @@ const refInputRef = ref(null)
 // Progress tracking
 const displayProgress = ref(0)
 let _progressTimer = null
+let _hasServerProgress = false
+
+function setGenerationProgress(pct: number, source: 'server' | 'local' | 'final' = 'local') {
+  const next = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)))
+  if (source === 'server') _hasServerProgress = true
+  // Once backend progress is available, local estimates are fallback-only and
+  // must not advance beyond the server-owned job progress.
+  if (_hasServerProgress && source === 'local' && next > displayProgress.value) return
+  if (source === 'final' || next >= displayProgress.value) {
+    displayProgress.value = next
+    jobsStore.updateStreamProgress(next)
+  }
+}
 
 // Streaming output — split into reasoning (thinking) and content (output)
 const reasoningText = ref('')
@@ -1063,11 +1076,9 @@ function startProgressTicker() {
       // Phase 3: stuck at 95% until done
       pct = 95
     }
-    // Never regress — SSE content/progress events may have pushed higher
-    if (pct > displayProgress.value) {
-      displayProgress.value = pct
-      jobsStore.updateStreamProgress(pct)
-    }
+    // Never regress — SSE/content events may have pushed higher. If backend
+    // progress exists, ticker becomes fallback-only via setGenerationProgress().
+    setGenerationProgress(pct, 'local')
     saveState()
   }, 5000)
 }
@@ -1429,7 +1440,7 @@ async function checkActiveJob() {
     if (activeJob.value && !generating.value) {
       generating.value = true
       generatingTopic.value = activeJob.value.prompt || ''
-      displayProgress.value = activeJob.value.progress || 5
+      setGenerationProgress(activeJob.value.progress || 5, 'server')
       _startTime = activeJob.value.started_at ? new Date(activeJob.value.started_at).getTime() : Date.now()
       startProgressTicker()
       startTimeTracker()
@@ -1614,8 +1625,11 @@ function _startStatusPoll() {
         }
         if (typeof st.content === 'string' && st.content.length >= contentText.value.length) {
           contentText.value = st.content
-          displayProgress.value = Math.min(95, Math.max(displayProgress.value, Math.floor(st.content.length / 200)))
-          jobsStore.updateStreamProgress(displayProgress.value)
+        }
+        if (typeof st.progress === 'number' && st.progress > 0) {
+          setGenerationProgress(st.progress, 'server')
+        } else if (typeof st.content === 'string' && st.content.length) {
+          setGenerationProgress(Math.min(95, Math.floor(st.content.length / 200)), 'local')
         }
         // Auto-scroll reasoning panel
         nextTick(() => {
@@ -1962,6 +1976,7 @@ async function generate() {
   generating.value = true
   generatingTopic.value = t
   displayProgress.value = 0
+  _hasServerProgress = false
   reasoningText.value = ''
   contentText.value = ''
   imageGenProgress.value = { total: 0, done: 0, message: '', retrying: 0 }
@@ -2382,9 +2397,8 @@ async function consumeSSEStream(res) {
             // Scale progress by expected ~8000 tokens for a full paper (5–90% range)
             if (payload.total_tokens) {
               const pct = Math.min(90, 5 + Math.floor((payload.total_tokens / 8000) * 85))
-              if (pct > displayProgress.value) displayProgress.value = pct
+              setGenerationProgress(pct, 'local')
             }
-            jobsStore.updateStreamProgress(displayProgress.value)
             // Sync to store every ~2 seconds via timer (reliable, not lossy)
             _syncStreamIfNeeded()
             // Try to detect completed sections and push to editor
@@ -2401,6 +2415,8 @@ async function consumeSSEStream(res) {
                 message: payload.message || '',
                 retrying: payload.retrying || 0,
               }
+            } else if (typeof payload.percent === 'number') {
+              setGenerationProgress(payload.percent, 'server')
             }
           } else if (currentEvent === 'done') {
             doneReceived = true
