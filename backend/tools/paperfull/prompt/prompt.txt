@@ -56,9 +56,9 @@ must satisfy these quality gates before JSON output:
    □ JSON schema is complete and parseable.
 
 ================================================================================
-A-1. ANTI-AI-WRITING PROTOCOL — NATURAL ACADEMIC WRITING
+A-1. ACADEMIC PROSE QUALITY — PRECISE, READABLE, NON-FORMULAIC
 ================================================================================
-The paper must read like careful human academic writing, not generic AI prose.
+The paper must use careful academic writing rather than generic or formulaic prose.
 Before final JSON output, scan every paragraph and rewrite passages that contain
 AI-writing patterns. Do not only replace words. If one paragraph has 3+ issues,
 rewrite the whole paragraph.
@@ -222,6 +222,24 @@ Before output, scan the ENTIRE paper for ANY of these violations:
 ================================================================================
 A1. ⛔ DIRECTION COMPLIANCE — FOLLOW USER'S UPLOADED FILES
 ================================================================================
+
+── A1.0 USER DRAFT VERBATIM LOCK ───────────────────────────────────────────────
+
+When the user message contains "## USER DRAFT — PROTECTED VERBATIM TEXT":
+
+  1. Every PROTECTED SECTION was written by the user and is immutable.
+  2. Copy each protected section title and content EXACTLY, character for character.
+  3. Do NOT paraphrase, translate, humanize, correct grammar, alter punctuation,
+     change capitalization, merge/split sentences, or reorder paragraphs.
+  4. Generate new content ONLY for sections not included in the protected blocks.
+  5. If a protected section seems incomplete but has no explicit [TODO], [LENGKAPI],
+     [FILL HERE], or "..." placeholder, preserve the whole section and do not extend it.
+  6. A protected draft is NOT ## DATA SUMBER and is NOT automatically a review paper.
+  7. Before output, compare protected content against its supplied SHA256 block and
+     ensure the text was copied without any edits. A programmatic gate verifies this.
+
+This rule overrides A-1 prose rewriting and any instruction to improve uploaded draft
+wording. Prose quality rules apply only to newly generated content.
 
 When the user prompt contains "## REFERENSI / DRAFT (WAJIB DIGUNAKAN)" or
 "## LITERATUR (CHECKED)" or "## Chat Drafts":
@@ -622,18 +640,19 @@ E. WRITING STYLE
   furthermore, moreover, consequently, nevertheless, "it is important to note",
   "in conclusion", "plays a crucial role", "in today's world", paradigm shift,
   cutting-edge, state-of-the-art. Use direct synonyms.
-• Vary sentence length: SD > 10. Mix short (3–6 words), medium (12–18),
-  long (40–60). DON'T have >3 consecutive sentences of similar length.
-• Rotate openers: Subject | Number | Adverb | Conjunction | Subordinate | Personal.
-• Natural insertions: 1 parenthetical/200 words, 1–2 em-dash/500 words,
-  1 question/300 words, 1 specific number/150 words.
+• Vary sentence length when it improves clarity. Combine concise claims with fuller
+  explanations, but do not force word-count patterns or artificial irregularity.
+• Vary sentence and paragraph openings naturally; preserve the formal register of
+  the selected field and language.
+• Use parentheticals, dashes, questions, first-person voice, and specific numbers
+  only when warranted by the argument and available evidence. Never add them by quota.
 • Literature review: CRITICAL SYNTHESIS. Every work: method + concrete results +
   specific limitations + relation to this work.
 • Results: INTERPRETATION. Not table reading. Numbers first, WHY analysis,
   compare, investigate anomalies, practical implications.
 • Honest voice: 1 limitation per main section. Claims supported by specific evidence.
 
-See HUMANIZE GUIDE for detailed anti-AI-detection rules.
+See ACADEMIC WRITING QUALITY GUIDE for evidence-preserving prose guidance.
 
 ================================================================================
 F. CHAPTER 4 DATA (RESULTS AND DISCUSSION) — SEE ALSO A0 DATA INTEGRITY PROTOCOL
@@ -796,13 +815,12 @@ G. FINAL CHECKLIST
 □ REFERENCES: number order [1],[2] etc matches order of first appearance in text
 □ CITATIONS: consistent format (IEEE/APA/etc) throughout all paragraphs
 
-── WRITING & ANTI-AI ────────────────────────────────────────────────────
-□ Zero Tier 1 banned words (delve, tapestry, leverage, etc.)
-□ Zero Tier 2 banned words at sentence starts (furthermore, moreover, etc.)
-□ No 3+ consecutive sentences of similar length (±3 words)
-□ At least 1 contraction per 200 words, 1 sentence < 8 words per paragraph
-□ Vocabulary TTR target 0.62-0.72. No repeated adjective >3x per section.
-□ At least 1 rhetorical question per 400 words
+── WRITING QUALITY ──────────────────────────────────────────────────────
+□ Generic filler, unsupported superlatives, and repetitive transitions removed
+□ Sentence and paragraph structure varies where it improves readability
+□ Formal register matches the selected language, journal, and discipline
+□ Technical terminology remains stable; no forced synonym rotation
+□ No contractions, questions, asides, fragments, or personal voice added by quota
 
 ── TECHNICAL ─────────────────────────────────────────────────────────────
 □ LaTeX: no \\text \\mathbb \\mathcal. Inline math: $...$
